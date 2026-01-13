@@ -396,17 +396,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
             <div className="field-group">
               <DatePicker
-                id="effectiveDate"
-                name="effectiveDate"
-                label="Status Date"
-                required={true}
-                value={formData.effectiveDate}
-                onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
-              />
-            </div>
-
-            <div className="field-group">
-              <DatePicker
                 id="appointedDate"
                 name="appointedDate"
                 label="Appointment Date"
