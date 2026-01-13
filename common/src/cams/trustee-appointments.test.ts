@@ -1,24 +1,23 @@
 import {
   formatAppointmentStatus,
   getStatusOptions,
-  AppointmentStatus,
   chapterAppointmentTypeMap,
 } from './trustee-appointments';
-import { ChapterType, AppointmentType } from './trustees';
+import { AppointmentChapterType, AppointmentType, AppointmentStatus } from './trustees';
 
 describe('trustee-appointments', () => {
   describe('formatAppointmentStatus', () => {
     test.each([
       ['active', 'Active'],
       ['inactive', 'Inactive'],
-      ['voluntary-suspended', 'Voluntary Suspended'],
-      ['involuntary-suspended', 'Involuntary Suspended'],
+      ['voluntarily-suspended', 'Voluntarily Suspended'],
+      ['involuntarily-suspended', 'Involuntarily Suspended'],
       ['deceased', 'Deceased'],
       ['resigned', 'Resigned'],
       ['terminated', 'Terminated'],
       ['removed', 'Removed'],
-    ])('should format "%s" as "%s"', (input: AppointmentStatus, expected: string) => {
-      expect(formatAppointmentStatus(input)).toBe(expected);
+    ])('should format "%s" as "%s"', (input, expected) => {
+      expect(formatAppointmentStatus(input as AppointmentStatus)).toBe(expected);
     });
   });
 
@@ -26,7 +25,7 @@ describe('trustee-appointments', () => {
     describe('Chapter 7', () => {
       test('should return correct status options for panel', () => {
         const result = getStatusOptions('7', 'panel');
-        expect(result).toEqual(['active', 'voluntary-suspended', 'involuntary-suspended']);
+        expect(result).toEqual(['active', 'voluntarily-suspended', 'involuntarily-suspended']);
       });
 
       test('should return correct status options for off-panel', () => {
@@ -90,7 +89,7 @@ describe('trustee-appointments', () => {
 
     test('should return default fallback for unknown combinations', () => {
       // This tests the fallback case
-      const result = getStatusOptions('7' as ChapterType, 'standing' as AppointmentType);
+      const result = getStatusOptions('7' as AppointmentChapterType, 'standing' as AppointmentType);
       expect(result).toEqual(['active', 'inactive']);
     });
   });

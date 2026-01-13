@@ -26,8 +26,8 @@ export function formatAppointmentStatus(status: AppointmentStatus): string {
   const statusLabels: Record<AppointmentStatus, string> = {
     active: 'Active',
     inactive: 'Inactive',
-    'voluntary-suspended': 'Voluntary Suspended',
-    'involuntary-suspended': 'Involuntary Suspended',
+    'voluntarily-suspended': 'Voluntarily Suspended',
+    'involuntarily-suspended': 'Involuntarily Suspended',
     deceased: 'Deceased',
     resigned: 'Resigned',
     terminated: 'Terminated',
@@ -42,7 +42,7 @@ const statusOptionsConfig: Record<
   Partial<Record<AppointmentType, readonly AppointmentStatus[]>>
 > = {
   '7': {
-    panel: ['active', 'voluntary-suspended', 'involuntary-suspended'],
+    panel: ['active', 'voluntarily-suspended', 'involuntarily-suspended'],
     'off-panel': ['deceased', 'resigned', 'terminated'],
     elected: ['active', 'inactive'],
     'converted-case': ['active', 'inactive'],
