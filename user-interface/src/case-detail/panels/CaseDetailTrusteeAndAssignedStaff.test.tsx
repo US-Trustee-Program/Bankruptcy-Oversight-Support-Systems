@@ -4,7 +4,6 @@ import CaseDetailTrusteeAndAssignedStaff, {
 } from './CaseDetailTrusteeAndAssignedStaff';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { CaseDetail } from '@common/cams/cases';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Actions from '@common/cams/actions';
 import { AttorneyUser, CamsUser, Staff } from '@common/cams/users';
@@ -15,6 +14,7 @@ import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { Consolidation } from '@common/cams/events';
+import { CaseDetail } from '@common/cams/cases';
 
 const TEST_CASE_ID = '101-23-12345';
 const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
@@ -23,15 +23,15 @@ const TEST_TRIAL_ATTORNEY_2 = MockAttorneys.Carl;
 const TEST_ASSIGNMENT_2 = MockData.getAttorneyAssignment({ ...TEST_TRIAL_ATTORNEY_2 });
 const TEST_TRUSTEE = MockData.getLegacyTrustee();
 
-const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
-  override: {
-    caseId: TEST_CASE_ID,
-    chapter: '15',
-    assignments: [TEST_ASSIGNMENT_1, TEST_ASSIGNMENT_2],
-    trustee: TEST_TRUSTEE,
-    _actions: [Actions.ManageAssignments],
-  },
-});
+const CONSOLIDATE_FROM: Consolidation = {
+  caseId: TEST_CASE_ID,
+  otherCase: MockData.getCaseSummary({ override: { caseId: '222-24-00001' } }),
+  orderDate: '01-12-2024',
+  consolidationType: 'administrative',
+  documentType: 'CONSOLIDATION_FROM',
+  updatedBy: MockData.getCamsUser(),
+  updatedOn: '01-12-2024',
+};
 
 const CONSOLIDATE_TO: Consolidation = {
   caseId: TEST_CASE_ID,
@@ -42,6 +42,17 @@ const CONSOLIDATE_TO: Consolidation = {
   updatedBy: MockData.getCamsUser(),
   updatedOn: '01-12-2024',
 };
+
+const BASE_TEST_CASE_DETAIL = MockData.getCaseDetail({
+  override: {
+    caseId: TEST_CASE_ID,
+    chapter: '15',
+    assignments: [TEST_ASSIGNMENT_1, TEST_ASSIGNMENT_2],
+    trustee: TEST_TRUSTEE,
+    _actions: [Actions.ManageAssignments],
+    consolidation: [CONSOLIDATE_FROM],
+  },
+});
 
 const attorneyList: AttorneyUser[] = MockData.buildArray(MockData.getAttorneyUser, 2);
 
@@ -164,6 +175,21 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
         chapter: '7',
       };
       renderWithProps({ caseDetail: caseDetailChapter7 });
+      const editButton = screen.queryByTestId('open-modal-button');
+      expect(editButton).not.toBeInTheDocument();
+    });
+
+    test('should not show edit button when case is not a lead case', () => {
+      const user: CamsUser = MockData.getCamsUser({
+        roles: [CamsRole.CaseAssignmentManager],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+
+      const caseDetailNotLeadCase = {
+        ...BASE_TEST_CASE_DETAIL,
+        consolidation: [CONSOLIDATE_TO], // CONSOLIDATION_TO means this is a child case
+      };
+      renderWithProps({ caseDetail: caseDetailNotLeadCase });
       const editButton = screen.queryByTestId('open-modal-button');
       expect(editButton).not.toBeInTheDocument();
     });
@@ -322,7 +348,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       });
     });
 
-    test('should show joint administration warning for member cases', async () => {
+    test('should not show edit button for member cases', () => {
       const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
       const onCaseAssignment = vi.fn();
       renderWithProps({
@@ -330,21 +356,11 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
         onCaseAssignment,
       });
 
-      const assignedStaffEditButton = screen.getByTestId('open-modal-button');
-      fireEvent.click(assignedStaffEditButton);
-
-      const modal = screen.getByTestId(`modal-${assignmentModalId}`);
-      await waitFor(() => {
-        expect(modal).toBeVisible();
-      });
-
-      const memberCaseMessage = screen.getByTestId('alert-message');
-      expect(memberCaseMessage).toHaveTextContent(
-        'The assignees for this case will not match the lead case.',
-      );
+      const assignedStaffEditButton = screen.queryByTestId('open-modal-button');
+      expect(assignedStaffEditButton).not.toBeInTheDocument();
     });
 
-    test('should not show joint administration warning for non-member cases', async () => {
+    test('should not show joint administration warning for lead cases', async () => {
       const onCaseAssignment = vi.fn();
       renderWithProps({ onCaseAssignment });
 

@@ -736,7 +736,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                           caseBasicInfo?.reopenedDate,
                           caseBasicInfo?.closedDate,
                         )}
-                        onCaseAssignment={handleCaseAssignment}
                       />
                     }
                   />
@@ -745,11 +744,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                     element={
                       <CaseDetailTrusteeAndAssignedStaff
                         caseDetail={caseBasicInfo}
-                        onCaseAssignment={function (
-                          _props: AssignAttorneyModalCallbackProps,
-                        ): void {
-                          throw new Error('Function not implemented.');
-                        }}
+                        onCaseAssignment={handleCaseAssignment}
                       />
                     }
                   />

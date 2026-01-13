@@ -220,6 +220,6 @@ describe('SessionTimeoutManager', () => {
     });
 
     // Check that the modal content includes the timing information
-    expect(screen.getByText(/Your session will expire in/i)).toBeInTheDocument();
+    expect(screen.getByText(/You will be logged out in/i)).toBeInTheDocument();
   });
 });
