@@ -135,7 +135,6 @@ resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 }
 
 
-//Storage Account Resources
 resource apiFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   name: apiFunctionStorageName
   location: location
@@ -168,7 +167,6 @@ resource apiFunctionSlotStorageAccount 'Microsoft.Storage/storageAccounts@2022-0
   }
 }
 
-//Function App Resources
 var userAssignedIdentities = union(
   {
     '${appConfigIdentity.id}': {}
@@ -241,7 +239,7 @@ var baseApiFunctionAppConfigProperties = {
     functionAppScaleLimit: 1
     minimumElasticInstanceCount: 1
     publicNetworkAccess: 'Enabled'
-    ipSecurityRestrictionsDefaultAction: 'Deny'
+    ipSecurityRestrictionsDefaultAction: isUstpDeployment ? 'Deny' : 'Allow'
     scmIpSecurityRestrictions: [
       {
         ipAddress: 'Any'
@@ -285,6 +283,7 @@ var baseApiFunctionAppConfigProperties = {
 
   var slotFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
     ipSecurityRestrictions: stagingIpSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
     appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
       {
         name: 'INFO_SHA'
@@ -308,7 +307,6 @@ var baseApiFunctionAppConfigProperties = {
     }
   })
 
-//Create App Insights
 module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
   name: 'appi-${apiFunctionName}-module'
   scope: resourceGroup()
@@ -452,7 +450,6 @@ var baseApplicationSettings = concat(
       ]
 )
 
-//API Function Application Settings
 var apiApplicationSettings = concat(
   baseApplicationSettings,
   createApplicationInsights
@@ -460,33 +457,31 @@ var apiApplicationSettings = concat(
     : []
 )
 
-// Firewall rules for production slot
-// USTP: Deny all (access controlled by specific allow rules)
-// Flexion: Allow all (production is publicly accessible)
-var productionIpSecurityRestrictionsRules = concat(
-  [
-    {
-      ipAddress: 'Any'
-      action: isUstpDeployment ? 'Deny' : 'Allow'
-      priority: 2147483647
-      name: isUstpDeployment ? 'Deny all' : 'Allow all'
-      description: isUstpDeployment ? 'Deny all access' : 'Allow all access'
-    }
-  ],
-  allowVeracodeScan
-    ? [
+var productionIpSecurityRestrictionsRules = isUstpDeployment
+  ? concat(
+      allowVeracodeScan
+        ? [
+            {
+              ipAddress: '3.32.105.199/32'
+              action: 'Allow'
+              priority: 1000
+              name: 'Veracode Agent'
+              description: 'Allow Veracode DAST Scans'
+            }
+          ]
+        : [],
+      [
         {
-          ipAddress: '3.32.105.199/32'
-          action: 'Allow'
-          priority: 1000
-          name: 'Veracode Agent'
-          description: 'Allow Veracode DAST Scans'
+          ipAddress: 'Any'
+          action: 'Deny'
+          priority: 2147483647
+          name: 'Deny all'
+          description: 'Deny all access'
         }
       ]
-    : []
-)
+    )
+  : []
 
-// Firewall rules for staging slot (always deny for both environments)
 var stagingIpSecurityRestrictionsRules = concat(
   [
     {
@@ -510,7 +505,6 @@ var stagingIpSecurityRestrictionsRules = concat(
     : []
 )
 
-//Private Endpoints
 module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${apiFunctionName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
@@ -539,7 +533,6 @@ module setApiFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if 
   }
 }
 
-// Creates a managed identity that would be used to grant access to function instance
 var sqlIdentityName = !empty(sqlServerIdentityName) ? sqlServerIdentityName : 'id-sql-${apiFunctionName}-readonly'
 var sqlIdentityRG = !empty(sqlServerIdentityResourceGroupName)
   ? sqlServerIdentityResourceGroupName
