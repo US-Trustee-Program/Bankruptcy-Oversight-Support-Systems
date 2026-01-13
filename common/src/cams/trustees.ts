@@ -21,8 +21,8 @@ export type AppointmentType =
 export type AppointmentStatus =
   | 'active'
   | 'inactive'
-  | 'voluntary-suspended'
-  | 'involuntary-suspended'
+  | 'voluntarily-suspended'
+  | 'involuntarily-suspended'
   | 'deceased'
   | 'resigned'
   | 'terminated'
