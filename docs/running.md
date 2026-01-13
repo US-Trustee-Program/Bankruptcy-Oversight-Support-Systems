@@ -278,6 +278,12 @@ export CAMS_ENABLED_DATAFLOWS=<data-flow-names>
 
 The `data-flow-name` is a list of `MODULE_NAME` values from the function definitions in `backend/function-apps/input` or `backend/function-apps/migrations` for the function(s) being tested.
 
+Available migration dataflows include:
+- `MIGRATE_ASSIGNEES` - Migrate office staff assignments
+- `MIGRATE_CASES` - Migrate cases from ACMS to Cosmos
+- `MIGRATE_CHILDCASES_TO_MEMBERCASES` - One-time migration to rename childCases field to memberCases in consolidation orders
+- `MIGRATE_CONSOLIDATIONS` - Migrate consolidation orders from ACMS to Cosmos
+
 Run the data flow functions from the `backend` node project:
 ```shell
 npm run start:dataflows
