@@ -72,6 +72,34 @@ describe('phone-helper', () => {
         extension: undefined,
       });
     });
+
+    test('should handle 11-digit number with leading 1 (country code)', () => {
+      expect(parsePhoneNumber('1-111-111-1111')).toEqual({
+        number: '111-111-1111',
+        extension: undefined,
+      });
+    });
+
+    test('should handle 11-digit number with leading 1 and extension', () => {
+      expect(parsePhoneNumber('1-111-111-1111 x11111')).toEqual({
+        number: '111-111-1111',
+        extension: '11111',
+      });
+    });
+
+    test('should handle 11-digit number without formatting', () => {
+      expect(parsePhoneNumber('15008316978')).toEqual({
+        number: '500-831-6978',
+        extension: undefined,
+      });
+    });
+
+    test('should handle 11-digit number with leading 1 and various extension formats', () => {
+      expect(parsePhoneNumber('1-229-606-8381 ext. 7478')).toEqual({
+        number: '229-606-8381',
+        extension: '7478',
+      });
+    });
   });
 
   describe('formatPhoneNumber', () => {

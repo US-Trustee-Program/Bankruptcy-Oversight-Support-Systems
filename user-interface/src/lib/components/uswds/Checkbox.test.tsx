@@ -102,4 +102,49 @@ describe('Test Checkbox component', async () => {
     expect(parent).toHaveClass('usa-form-group');
     expect(parent).toHaveClass('usa-checkbox');
   });
+
+  test('should toggle checkbox when Space key is pressed', async () => {
+    const checkboxOnClick = vi.fn();
+    renderWithProps({ onChange: checkboxOnClick });
+
+    const button = screen.getByTestId('button-checkbox-checkbox123-click-target');
+
+    // Press Space key down
+    fireEvent.keyDown(button, { key: ' ' });
+    expect(checkboxOnClick).not.toHaveBeenCalled(); // Should not toggle on keyDown
+
+    // Release Space key
+    fireEvent.keyUp(button, { key: ' ' });
+    expect(checkboxOnClick).toHaveBeenCalled(); // Should toggle on keyUp
+  });
+
+  test('should toggle checkbox when Enter key is pressed', async () => {
+    const checkboxOnClick = vi.fn();
+    renderWithProps({ onChange: checkboxOnClick });
+
+    const button = screen.getByTestId('button-checkbox-checkbox123-click-target');
+
+    // Press Enter key down
+    fireEvent.keyDown(button, { key: 'Enter' });
+    expect(checkboxOnClick).not.toHaveBeenCalled(); // Should not toggle on keyDown
+
+    // Release Enter key
+    fireEvent.keyUp(button, { key: 'Enter' });
+    expect(checkboxOnClick).toHaveBeenCalled(); // Should toggle on keyUp
+  });
+
+  test('should ignore keyboard-initiated native clicks', async () => {
+    const checkboxOnClick = vi.fn();
+    renderWithProps({ onChange: checkboxOnClick });
+
+    const button = screen.getByTestId('button-checkbox-checkbox123-click-target');
+
+    // Simulate a keyboard-initiated click (detail === 0)
+    fireEvent.click(button, { detail: 0 });
+    expect(checkboxOnClick).not.toHaveBeenCalled();
+
+    // Simulate a mouse click (detail > 0)
+    fireEvent.click(button, { detail: 1 });
+    expect(checkboxOnClick).toHaveBeenCalled();
+  });
 });

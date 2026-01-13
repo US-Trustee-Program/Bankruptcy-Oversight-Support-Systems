@@ -7,20 +7,22 @@ export interface IconProps {
   tooltip?: string;
   className?: string;
   focusable?: boolean;
+  decorative?: boolean;
 }
 
 export default function Icon(props: IconProps) {
   const link = `/assets/styles/img/sprite.svg#${props.name}`;
   const isFocusable = !!props.focusable;
+  const isDecorative = props.decorative ?? true;
 
   return (
     <svg
       className={`usa-icon ${props.className ?? ''}`}
-      aria-hidden="true"
       focusable={isFocusable}
-      role="img"
+      role={isDecorative ? undefined : 'img'}
+      aria-hidden={isDecorative ? 'true' : undefined}
       data-testid="icon"
-      aria-label={`${props.name} icon`}
+      aria-label={isDecorative ? undefined : `${props.name} icon`}
     >
       {props.tooltip && <title>{props.tooltip}</title>}
       <use xlinkHref={link}></use>

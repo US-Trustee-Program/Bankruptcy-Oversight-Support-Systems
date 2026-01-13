@@ -423,7 +423,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button
-            className="unstyled-button"
+            className="spaced-button"
             type="button"
             onClick={handleCancel}
             uswdsStyle={UswdsButtonStyle.Unstyled}

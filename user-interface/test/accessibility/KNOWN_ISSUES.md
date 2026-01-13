@@ -92,7 +92,7 @@ This centralized approach makes it easy to manage disabled rules across all test
 
 ---
 
-## Form Label Violations (label-title-only)
+## Form Label Violations (label-title-only) - ✓ FIXED
 
 **Severity:** Serious
 **WCAG Rule:** Best Practice (cat.forms)
@@ -117,20 +117,23 @@ The following test files detect this violation:
      - `#radio-case-not-listed-radio-button` (title: "case not listed")
    - Location: Within accordion content for suggested cases
 
-### Recommended Fix
-Replace the `title` attribute with proper form labeling:
-1. Use a `<label>` element with a `for` attribute pointing to the input's `id`
-2. Use `aria-label` or `aria-labelledby` for programmatic labeling
-3. Ensure visible text label is associated with the form control
+### Fix Implemented
+**Date Fixed:** January 2, 2026
 
-### Date Identified
-December 2025
+The Radio.tsx and Checkbox.tsx components were updated to include proper ARIA attributes:
+1. Added `role="radio"` and `role="checkbox"` to button elements
+2. Added `aria-checked` to communicate state to assistive technology
+3. Added `aria-label` for programmatic labeling
+4. Implemented proper keyboard support (Space/Enter keys)
+5. RadioGroup.tsx enhanced with arrow key navigation
+
+These changes ensure that radio buttons and checkboxes are properly announced by screen readers and have appropriate accessible names, even when wrapped in custom button components.
 
 ### Status
-**Open** - Awaiting fix in application code
+**FIXED** - Re-enabled in accessibility tests
 
 ### Test Configuration
-**Rule Status:** Temporarily disabled in all tests via centralized configuration
+**Rule Status:** Re-enabled - Removed from `DISABLED_A11Y_RULES` in `test-constants.ts`
 
 ---
 

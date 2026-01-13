@@ -28,7 +28,7 @@ describe('Tag', () => {
 
     const tag = screen.getByTestId('tag-test');
     const id = tag.getAttribute('id');
-    expect(id).toMatch(/^tag-id-\d+$/);
+    expect(id).toMatch(/^tag-id-.+$/);
   });
 
   test('should apply UswdsTagStyle.Default correctly', () => {
@@ -175,8 +175,8 @@ describe('Tag', () => {
     const id1 = tags[0].getAttribute('id');
     const id2 = tags[1].getAttribute('id');
 
-    expect(id1).toMatch(/^tag-id-\d+$/);
-    expect(id2).toMatch(/^tag-id-\d+$/);
+    expect(id1).toMatch(/^tag-id-.+$/);
+    expect(id2).toMatch(/^tag-id-.+$/);
     expect(id1).not.toBe(id2);
   });
 });

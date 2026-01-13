@@ -1,7 +1,7 @@
 import './TrusteeContactForm.scss';
 import './TrusteeAppointmentForm.scss';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import Input from '@/lib/components/uswds/Input';
+import DatePicker from '@/lib/components/uswds/DatePicker';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
@@ -395,11 +395,21 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
             </div>
 
             <div className="field-group">
-              <Input
+              <DatePicker
+                id="effectiveDate"
+                name="effectiveDate"
+                label="Status Date"
+                required={true}
+                value={formData.effectiveDate}
+                onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
+              />
+            </div>
+
+            <div className="field-group">
+              <DatePicker
                 id="appointedDate"
                 name="appointedDate"
                 label="Appointment Date"
-                type="date"
                 required={true}
                 value={formData.appointedDate}
                 onChange={(e) => handleFieldChange('appointedDate', e.target.value)}
@@ -428,11 +438,10 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
             {isEditMode && (
               <div className="field-group">
-                <Input
+                <DatePicker
                   id="effectiveDate"
                   name="effectiveDate"
                   label="Status Effective Date"
-                  type="date"
                   required={true}
                   value={formData.effectiveDate}
                   onChange={(e) => handleFieldChange('effectiveDate', e.target.value)}
@@ -447,7 +456,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
           <Button
-            className="unstyled-button"
+            className="spaced-button"
             type="button"
             onClick={handleCancel}
             uswdsStyle={UswdsButtonStyle.Unstyled}

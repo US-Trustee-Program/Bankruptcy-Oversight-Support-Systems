@@ -2,7 +2,7 @@
   $theme-font-path: '/assets/fonts',
   $theme-image-path: '/assets/styles/img'
 );
-@use 'uswds';
+@use 'uswds/index' as uswds;
 @use 'styles/abstracts/colors';
 @use 'styles/abstracts/tables';
 
@@ -136,6 +136,11 @@ body {
 .float-right {
   display: flex;
   justify-content: right;
+}
+
+button.spaced-button {
+  margin-left: 1rem;
+  margin-right: 1rem;
 }
 
 @media screen and (max-width: 800px) {
