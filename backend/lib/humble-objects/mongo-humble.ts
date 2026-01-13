@@ -32,6 +32,10 @@ export class CollectionHumble<T> {
     return this.collection.updateOne(query, { $set: item });
   }
 
+  public async updateMany(query: DocumentQuery, update: MongoDocument) {
+    return this.collection.updateMany(query, update);
+  }
+
   public async deleteOne(query: DocumentQuery) {
     return this.collection.deleteOne(query);
   }

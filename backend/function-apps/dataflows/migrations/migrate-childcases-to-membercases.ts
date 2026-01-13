@@ -6,6 +6,10 @@ import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import Factory from '../../../lib/factory';
 import { ConsolidationOrder } from '@common/cams/orders';
 import { MongoCollectionAdapter } from '../../../lib/adapters/gateways/mongo/utils/mongo-adapter';
+import QueryBuilder from '../../../lib/query/query-builder';
+import { Document as MongoDocument } from 'mongodb';
+
+const { and, using } = QueryBuilder;
 
 const MODULE_NAME = 'MIGRATE-CHILDCASES-TO-MEMBERCASES';
 
@@ -42,12 +46,14 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
       }
     ).getAdapter();
 
+    const doc = using<ConsolidationOrder>();
+
     // Build a specific query to target ONLY consolidation order documents
     // This ensures we don't accidentally modify unrelated documents
-    const migrationQuery = {
-      orderType: 'consolidation', // Must be a consolidation order
-      childCases: { $exists: true }, // Must have the old field name
-    };
+    const migrationQuery = and(
+      doc('orderType').equals('consolidation'), // Must be a consolidation order
+      doc('childCases').exists(), // Must have the old field name
+    );
 
     // Find all consolidation documents with the old 'childCases' field
     const documentsWithChildCases = await adapter.find(migrationQuery);
@@ -73,9 +79,10 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
 
     // Perform the field rename using MongoDB's $rename operator
     // This renames the field from 'childCases' to 'memberCases' for all matching documents
-    const result = await adapter.updateMany(migrationQuery, {
+    const updateOperation: MongoDocument = {
       $rename: { childCases: 'memberCases' },
-    });
+    };
+    const result = await adapter.updateMany(migrationQuery, updateOperation);
 
     logger.info(
       MODULE_NAME,
