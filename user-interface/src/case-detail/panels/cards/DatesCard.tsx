@@ -1,7 +1,7 @@
 import './DatesCard.scss';
 import { formatDate } from '@/lib/utils/datetime';
 
-export interface DatesCardProps {
+interface DatesCardProps {
   dateFiled: string;
   reopenedDate?: string;
   closedDate?: string;

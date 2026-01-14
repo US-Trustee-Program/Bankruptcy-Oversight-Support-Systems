@@ -209,7 +209,7 @@ export const getCasesRepository = (context: ApplicationContext): CasesRepository
   return repo;
 };
 
-export const getRuntimeStateRepository = <T extends RuntimeState>(
+const getRuntimeStateRepository = <T extends RuntimeState>(
   context: ApplicationContext,
 ): RuntimeStateRepository<T> => {
   if (context.config.get('dbMock')) {

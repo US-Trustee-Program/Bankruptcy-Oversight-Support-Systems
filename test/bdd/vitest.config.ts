@@ -20,7 +20,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: './test/bdd/helpers/setup-tests.ts',
+    setupFiles: path.resolve(__dirname, './helpers/setup-tests.ts'),
     // Run BDD full-stack tests + common unit tests + helper infrastructure tests
     include: [
       'test/bdd/features/**/*.spec.{ts,tsx}',
