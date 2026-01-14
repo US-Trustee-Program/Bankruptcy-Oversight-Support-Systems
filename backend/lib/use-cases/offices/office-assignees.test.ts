@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
-import * as factory from '../../factory';
+import factory from '../../factory';
 import OfficeAssigneesUseCase from './office-assignees';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';

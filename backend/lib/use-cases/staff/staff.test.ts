@@ -3,7 +3,7 @@ import StaffUseCase from './staff';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UserGroupsRepository } from '../gateways.types';
 import { UserGroup } from '@common/cams/users';
-import * as Factory from '../../factory';
+import Factory from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import { StorageGateway } from '../../adapters/types/storage';
