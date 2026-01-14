@@ -27,6 +27,10 @@
         "**/node_modules/**",
         "**/dist/**",
         "**/coverage/**"
+      ],
+      "ignoreFiles": [
+        "function-apps/api/index.ts",
+        "lib/testing/mock-gateways/mock-oauth2-constants.ts"
       ]
     },
     "user-interface": {
@@ -87,7 +91,9 @@
     "playwright",
     "date",
     "dot",
-    "tsx"
+    "dev-tools/.venv-docs/bin/python",
+    "dev-tools/.venv-docs/bin/python3",
+    "python3"
   ],
   "ignoreDependencies": [
     "@azure/cosmos",
@@ -111,8 +117,16 @@
     "@vitest/eslint-plugin",
     "prettier",
     "typescript-eslint",
-    "react",
-    "c8",
-    "@faker-js/faker"
+    "cams",
+    "esbuild",
+    "@vitest/coverage-v8",
+    "@launchdarkly/node-server-sdk",
+    "launchdarkly-react-client-sdk",
+    "@okta/okta-auth-js",
+    "@launchdarkly/node-server-sdk",
+    "launchdarkly-react-client-sdk",
+    "react-router-dom",
+    "common",
+    "globals"
   ]
 }

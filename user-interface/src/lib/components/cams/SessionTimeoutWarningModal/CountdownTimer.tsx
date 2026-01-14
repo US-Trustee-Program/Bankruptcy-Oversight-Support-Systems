@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-export interface CountdownTimerProps {
+interface CountdownTimerProps {
   timeInMs: number;
   running?: boolean;
 }
