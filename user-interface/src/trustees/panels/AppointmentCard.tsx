@@ -34,11 +34,11 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     navigate(`/trustees/${props.appointment.trusteeId}/appointments/${props.appointment.id}/edit`);
   }
 
+  const appointmentCardHeaderText = `${districtDisplay}: Chapter ${formattedChapter} - ${formattedAppointmentType}`;
+
   return (
     <div className="appointment-card-container">
-      <h3 className="appointment-card-heading">
-        {districtDisplay}: Chapter {formattedChapter} - {formattedAppointmentType}
-      </h3>
+      <h3 className="appointment-card-heading">{appointmentCardHeaderText}</h3>
       <div className="appointment-card usa-card">
         <div className="usa-card__container">
           <div className="usa-card__body">
