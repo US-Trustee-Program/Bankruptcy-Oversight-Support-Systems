@@ -22,7 +22,8 @@ describe('TrusteeAppointmentsMongoRepository', () => {
   const sampleAppointment: TrusteeAppointment = {
     id: 'appointment-1',
     trusteeId: 'trustee-1',
-    chapter: '7-panel',
+    chapter: '7',
+    appointmentType: 'panel',
     courtId: '0208',
     divisionCode: '081',
     appointedDate: '2020-01-15T00:00:00Z',
@@ -116,7 +117,8 @@ describe('TrusteeAppointmentsMongoRepository', () => {
       expect(mockAdapter).toHaveBeenCalledWith(expectedReadQuery);
       expect(result.id).toBe('appointment-1');
       expect(result.trusteeId).toBe('trustee-1');
-      expect(result.chapter).toBe('7-panel');
+      expect(result.chapter).toBe('7');
+      expect(result.appointmentType).toBe('panel');
       expect(result.status).toBe('active');
     });
 
@@ -165,7 +167,8 @@ describe('TrusteeAppointmentsMongoRepository', () => {
         {
           ...sampleAppointment,
           id: 'appointment-1',
-          chapter: '7-panel',
+          chapter: '7',
+          appointmentType: 'panel',
           divisionCode: '081',
           documentType: 'TRUSTEE_APPOINTMENT',
         },
@@ -173,6 +176,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
           ...sampleAppointment,
           id: 'appointment-2',
           chapter: '11',
+          appointmentType: 'case-by-case',
           divisionCode: '087',
           documentType: 'TRUSTEE_APPOINTMENT',
         },
@@ -186,8 +190,10 @@ describe('TrusteeAppointmentsMongoRepository', () => {
 
       expect(mockAdapter).toHaveBeenCalledWith(expectedGetTrusteeAppointmentsQuery);
       expect(result).toHaveLength(2);
-      expect(result[0].chapter).toBe('7-panel');
+      expect(result[0].chapter).toBe('7');
+      expect(result[0].appointmentType).toBe('panel');
       expect(result[1].chapter).toBe('11');
+      expect(result[1].appointmentType).toBe('case-by-case');
       expect(result[0].trusteeId).toBe('trustee-1');
       expect(result[1].trusteeId).toBe('trustee-1');
     });
@@ -215,7 +221,8 @@ describe('TrusteeAppointmentsMongoRepository', () => {
   describe('createAppointment', () => {
     const trusteeId = 'trustee-123';
     const appointmentInput: TrusteeAppointmentInput = {
-      chapter: '7-panel',
+      chapter: '7',
+      appointmentType: 'panel',
       courtId: '081',
       divisionCode: '1',
       appointedDate: '2024-01-15',
@@ -269,6 +276,7 @@ describe('TrusteeAppointmentsMongoRepository', () => {
     const appointmentId = 'appointment-1';
     const appointmentUpdate: TrusteeAppointmentInput = {
       chapter: '11',
+      appointmentType: 'case-by-case',
       courtId: '081',
       divisionCode: '2',
       appointedDate: '2024-02-01',

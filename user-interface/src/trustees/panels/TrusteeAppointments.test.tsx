@@ -23,7 +23,8 @@ describe('TrusteeAppointments', () => {
     {
       id: 'appointment-001',
       trusteeId: 'trustee-123',
-      chapter: '7-panel',
+      chapter: '7',
+      appointmentType: 'panel',
       courtId: '081',
       courtDivisionName: 'Manhattan',
       courtName: 'Southern District of New York',
@@ -40,6 +41,7 @@ describe('TrusteeAppointments', () => {
       id: 'appointment-002',
       trusteeId: 'trustee-123',
       chapter: '11',
+      appointmentType: 'case-by-case',
       courtId: '081',
       courtDivisionName: 'New York',
       courtName: 'Northern District of New York',
@@ -111,10 +113,10 @@ describe('TrusteeAppointments', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Southern District of New York \(Manhattan\) - Chapter 7 - Panel/i),
+        screen.getByText(/Southern District of New York - Manhattan: Chapter 7 - Panel/i),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/Northern District of New York \(New York\) - Chapter 11/i),
+        screen.getByText(/Northern District of New York - New York: Chapter 11/i),
       ).toBeInTheDocument();
     });
   });

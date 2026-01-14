@@ -29,7 +29,8 @@ describe('AppointmentCard', () => {
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
     trusteeId: 'trustee-123',
-    chapter: '7-panel',
+    chapter: '7',
+    appointmentType: 'panel',
     courtDivisionName: 'Manhattan',
     courtId: '0208',
     courtName: 'Southern District of New York',
@@ -59,7 +60,7 @@ describe('AppointmentCard', () => {
     renderWithProps();
 
     expect(
-      screen.getByText(/Southern District of New York \(Manhattan\) - Chapter 7 - Panel/i),
+      screen.getByText(/Southern District of New York - Manhattan: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -69,7 +70,7 @@ describe('AppointmentCard', () => {
     });
 
     expect(
-      screen.getByText(/Eastern District of New York \(Manhattan\) - Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York - Manhattan: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -83,7 +84,7 @@ describe('AppointmentCard', () => {
     });
 
     expect(
-      screen.getByText(/Eastern District of New York \(Brooklyn\) - Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York - Brooklyn: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -98,13 +99,17 @@ describe('AppointmentCard', () => {
 
     expect(screen.getByText(/District:/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Eastern District of New York \(Brooklyn\)/i, { selector: 'li' }),
+      screen.getByText(/Eastern District of New York - Brooklyn/i, { selector: 'li' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Chapter:/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/7 - Panel/i).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Status:/i)).toBeInTheDocument();
-    expect(screen.getByText(/Active 01\/15\/2020/i)).toBeInTheDocument();
+    expect(screen.getByText(/^7$/, { selector: 'li' })).toBeInTheDocument();
+    expect(screen.getByText(/Type:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Panel/i, { selector: 'li' })).toBeInTheDocument();
     expect(screen.getByText(/Appointed:/i)).toBeInTheDocument();
+    expect(screen.getByText(/Status:/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Active$/, { selector: 'li' })).toBeInTheDocument();
+    expect(screen.getByText(/Status Effective:/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/01\/15\/2020/).length).toBe(2);
   });
 
   test('should format chapter 11 correctly', () => {
@@ -137,18 +142,19 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointment11v });
 
-    expect(screen.getByText(/Chapter 11 - Subchapter V/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chapter 11 Subchapter V/i)).toBeInTheDocument();
   });
 
-  test('should format chapter 7-non-panel correctly', () => {
-    const appointment7NonPanel: TrusteeAppointment = {
+  test('should format chapter 7 off-panel correctly', () => {
+    const appointment7OffPanel: TrusteeAppointment = {
       ...mockAppointment,
-      chapter: '7-non-panel',
+      chapter: '7',
+      appointmentType: 'off-panel',
     };
 
-    renderWithProps({ appointment: appointment7NonPanel });
+    renderWithProps({ appointment: appointment7OffPanel });
 
-    expect(screen.getByText(/Chapter 7 - Non-Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chapter 7 - Off Panel/i)).toBeInTheDocument();
   });
 
   test('should display inactive status correctly', () => {
@@ -160,7 +166,10 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: inactiveAppointment });
 
-    expect(screen.getByText(/Inactive 06\/01\/2018/i)).toBeInTheDocument();
+    expect(screen.getByText(/Status:/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Inactive$/i, { selector: 'li' })).toBeInTheDocument();
+    expect(screen.getByText(/Status Effective:/i)).toBeInTheDocument();
+    expect(screen.getByText(/06\/01\/2018/)).toBeInTheDocument();
   });
 
   test('should display appointedDate with standardized mm/dd/yyyy formatting', () => {
@@ -182,7 +191,7 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointmentWithoutCourtName });
 
-    expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Court not found: Chapter 7 - Panel/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
   });
 
@@ -194,7 +203,7 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointmentWithoutDivisionName });
 
-    expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Court not found: Chapter 7 - Panel/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
   });
 
@@ -207,7 +216,7 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointmentWithoutCourt });
 
-    expect(screen.getByText(/Court not found - Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getByText(/Court not found: Chapter 7 - Panel/i)).toBeInTheDocument();
     expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
   });
 
