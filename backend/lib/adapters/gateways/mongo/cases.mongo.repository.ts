@@ -16,7 +16,10 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
-import { generatePhoneticTokens } from '../../../use-cases/cases/phonetic-utils';
+import {
+  generatePhoneticTokensWithNicknames,
+  expandQueryWithNicknames,
+} from '../../../use-cases/cases/phonetic-utils';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -277,8 +280,10 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     if (predicate.debtorName) {
       const allMatchers: ConditionOrConjunction<SyncedCase>[] = [];
 
-      // 1. Phonetic search using phonetic tokens from debtor and jointDebtor
-      const searchTokens = generatePhoneticTokens(predicate.debtorName);
+      // 1. Phonetic search with nickname expansion
+      // Expands query with nickname variations (e.g., "Mike" → ["mike", "michael", "mikey", "mick"])
+      // then generates phonetic tokens for all variations
+      const searchTokens = generatePhoneticTokensWithNicknames(predicate.debtorName);
       if (searchTokens.length > 0) {
         const phoneticMatchers: ConditionOrConjunction<SyncedCase>[] = searchTokens.flatMap(
           (token) => [
@@ -289,11 +294,10 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         allMatchers.push(...phoneticMatchers);
       }
 
-      // 2. Substring/prefix search for partial word matching (e.g., "sm" matching "Smith")
-      const searchWords = predicate.debtorName
-        .trim()
-        .split(/\s+/)
-        .filter((word) => word.length > 0);
+      // 2. Substring/prefix search with nickname expansion
+      // Expands query with nicknames, then does regex matching for partial words
+      // (e.g., "Mike" expands to ["mike", "michael", ...] and searches for all variations)
+      const searchWords = expandQueryWithNicknames(predicate.debtorName);
       searchWords.forEach((word) => {
         // Case-insensitive regex for substring matching
         const regex = new RegExp(word, 'i');

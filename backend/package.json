@@ -49,6 +49,7 @@
     "jsonwebtoken": "9.0.2",
     "mongodb": "7.0.0",
     "mssql": "12.2.0",
+    "name-match": "1.0.4",
     "natural": "8.1.0"
   },
   "devDependencies": {
