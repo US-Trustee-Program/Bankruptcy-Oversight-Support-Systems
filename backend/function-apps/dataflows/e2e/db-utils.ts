@@ -1,10 +1,5 @@
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
-import {
-  getConsolidationOrdersRepository,
-  getOrdersRepository,
-  getTrusteesRepository,
-  getUserGroupsRepository,
-} from '../../../lib/factory';
+import factory from '../../../lib/factory';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { ConsolidationOrder, TransferOrder } from '@common/cams/orders';
 import { CamsUserReference, UserGroup } from '@common/cams/users';
@@ -36,7 +31,7 @@ export async function insertConsolidationOrders(
   appContext: ApplicationContext,
   consolidations: ConsolidationOrder[],
 ) {
-  const consolidationRepo = getConsolidationOrdersRepository(appContext);
+  const consolidationRepo = factory.getConsolidationOrdersRepository(appContext);
   await consolidationRepo.createMany(consolidations);
   console.log('Created Consolidation Orders....   ', consolidations);
   consolidationRepo.release();
@@ -46,7 +41,7 @@ export async function insertTransferOrders(
   appContext: ApplicationContext,
   transfers: TransferOrder[],
 ) {
-  const transfersRepo = getOrdersRepository(appContext);
+  const transfersRepo = factory.getOrdersRepository(appContext);
   await transfersRepo.createMany(transfers);
   console.log('Created Transfer Orders....   ', transfers);
   transfersRepo.release();
@@ -60,7 +55,7 @@ export async function syncCases(context: ApplicationContext, caseIds: string[]) 
 }
 
 export async function insertTrustees(appContext: ApplicationContext, trustees: Trustee[]) {
-  const trusteeRepo = getTrusteesRepository(appContext);
+  const trusteeRepo = factory.getTrusteesRepository(appContext);
   const testUser = {
     id: 'test-user',
     name: 'Test User',
@@ -73,7 +68,7 @@ export async function insertTrustees(appContext: ApplicationContext, trustees: T
 }
 
 export async function insertUserGroups(appContext: ApplicationContext, userGroups: UserGroup[]) {
-  const userGroupsRepo = getUserGroupsRepository(appContext);
+  const userGroupsRepo = factory.getUserGroupsRepository(appContext);
   await userGroupsRepo.upsertUserGroupsBatch(appContext, userGroups);
   console.log('Created User Groups....   ', userGroups);
   userGroupsRepo.release();
