@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import { OfficesUseCase } from './offices';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import * as factory from '../../factory';
+import factory from '../../factory';
 import { CamsUserGroup, Staff } from '@common/cams/users';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';

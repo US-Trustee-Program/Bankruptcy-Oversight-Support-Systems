@@ -11,7 +11,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CamsUserReference } from '@common/cams/users';
 import { UserGroupGateway } from '../../adapters/types/authorization';
 import MockData from '@common/cams/test-utilities/mock-data';
-import * as factory from '../../factory';
+import factory from '../../factory';
 import * as errorUtilities from '../../common-errors/error-utilities';
 
 // Mock the factory functions
