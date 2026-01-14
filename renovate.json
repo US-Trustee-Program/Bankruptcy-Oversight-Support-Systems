@@ -1,14 +1,13 @@
 {
-  "enabled": false,
+  "enabled": true,
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended"
   ],
   "timezone": "America/New_York",
-  "stabilityDays": 7,
   "prConcurrentLimit": 10,
   "branchConcurrentLimit": 5,
-  "minimumReleaseAge": "7 days",
+  "minimumReleaseAge": "14 days",
   "separateMajorMinor": true,
   "separateMinorPatch": false,
   "rangeStrategy": "pin",
