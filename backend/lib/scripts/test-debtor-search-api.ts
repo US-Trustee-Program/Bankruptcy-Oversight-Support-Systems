@@ -15,10 +15,14 @@
  *       with CAMS_LOGIN_PROVIDER='mock' environment variable
  */
 
+import * as dotenv from 'dotenv';
 import axios, { AxiosInstance } from 'axios';
 import * as jwt from 'jsonwebtoken';
 import { DEBTORS } from '../testing/mock-data/debtors.mock';
 import { DebtorSearchDocument } from '../adapters/types/search';
+
+// Load environment variables
+dotenv.config();
 
 // Generate a mock JWT token for testing
 function generateMockToken(): string {
@@ -98,6 +102,15 @@ async function testEndpoint(name: string, fn: () => Promise<any>): Promise<boole
 
 async function main() {
   logSection('Debtor Search API Test Suite');
+
+  // Check environment configuration
+  logInfo('Environment Configuration:');
+  logInfo(`CAMS_LOGIN_PROVIDER: ${process.env.CAMS_LOGIN_PROVIDER || 'NOT SET'}`);
+  if (process.env.CAMS_LOGIN_PROVIDER !== 'mock') {
+    logError('CAMS_LOGIN_PROVIDER must be set to "mock" for this test to work');
+    logInfo('Please set CAMS_LOGIN_PROVIDER=mock in your .env file and restart the Express server');
+    process.exit(1);
+  }
 
   const results: boolean[] = [];
 
