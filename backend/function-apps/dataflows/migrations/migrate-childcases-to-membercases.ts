@@ -13,6 +13,11 @@ const { and, using } = QueryBuilder;
 
 const MODULE_NAME = 'MIGRATE-CHILDCASES-TO-MEMBERCASES';
 
+// Type that includes the legacy 'childCases' field for migration purposes
+type LegacyConsolidationOrder = ConsolidationOrder & {
+  childCases?: ConsolidationOrder['memberCases'];
+};
+
 const START_FUNCTION = buildFunctionName(MODULE_NAME, 'start');
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
@@ -46,7 +51,7 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
       }
     ).getAdapter();
 
-    const doc = using<ConsolidationOrder>();
+    const doc = using<LegacyConsolidationOrder>();
 
     // Build a specific query to target ONLY consolidation order documents
     // This ensures we don't accidentally modify unrelated documents
@@ -55,10 +60,8 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
       doc('childCases').exists(), // Must have the old field name
     );
 
-    // Find all consolidation documents with the old 'childCases' field
-    const documentsWithChildCases = await adapter.find(migrationQuery);
-
-    const count = documentsWithChildCases.length;
+    // Count documents with the old 'childCases' field without loading them into memory
+    const count = await adapter.countDocuments(migrationQuery);
     logger.info(
       MODULE_NAME,
       `Found ${count} consolidation order document(s) with 'childCases' field to migrate.`,
@@ -70,12 +73,11 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
     }
 
     // Log a sample of what will be migrated (first document's consolidationId for verification)
-    if (documentsWithChildCases.length > 0) {
-      logger.info(
-        MODULE_NAME,
-        `Sample document to migrate - consolidationId: ${documentsWithChildCases[0].consolidationId}`,
-      );
-    }
+    const sampleDoc = await adapter.findOne(migrationQuery);
+    logger.info(
+      MODULE_NAME,
+      `Sample document to migrate - consolidationId: ${sampleDoc.consolidationId}`,
+    );
 
     // Perform the field rename using MongoDB's $rename operator
     // This renames the field from 'childCases' to 'memberCases' for all matching documents
