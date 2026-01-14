@@ -34,7 +34,7 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '@common/cams/auditable';
 import { OrdersSearchPredicate } from '@common/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import Factory, { getCasesGateway } from '../../factory';
+import Factory from '../../factory';
 
 const MODULE_NAME = 'ORDERS-USE-CASE';
 
@@ -374,7 +374,7 @@ export class OrdersUseCase {
     );
     context.logger.debug(MODULE_NAME, `Included case id's were:`, includedCases);
 
-    const gateway = getCasesGateway(context);
+    const gateway = Factory.getCasesGateway(context);
     for (const caseId of additionalCaseIds) {
       const summary = await gateway.getCaseSummary(context, caseId);
       if (summary) {
