@@ -4,12 +4,7 @@ import {
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
-import {
-  getCasesGateway,
-  getCasesRepository,
-  getConsolidationOrdersRepository,
-  getOrdersRepository,
-} from '../../factory';
+import Factory from '../../factory';
 import { OrderSyncState } from '../gateways.types';
 import {
   ConsolidationOrder,
@@ -68,10 +63,10 @@ describe('Orders use case', () => {
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
-    ordersRepo = getOrdersRepository(mockContext);
-    casesRepo = getCasesRepository(mockContext);
-    casesGateway = getCasesGateway(mockContext);
-    consolidationRepo = getConsolidationOrdersRepository(mockContext);
+    ordersRepo = Factory.getOrdersRepository(mockContext);
+    casesRepo = Factory.getCasesRepository(mockContext);
+    casesGateway = Factory.getCasesGateway(mockContext);
+    consolidationRepo = Factory.getConsolidationOrdersRepository(mockContext);
     useCase = new OrdersUseCase(mockContext);
 
     vi.spyOn(MockMongoRepository.prototype, 'count').mockResolvedValue(0);
@@ -1260,7 +1255,7 @@ describe('Orders use case', () => {
     const courtDivisionCode = '000';
 
     vi.resetModules();
-    const Factory = await import('../../factory');
+    const Factory = (await import('../../factory')).default;
     ordersRepo = Factory.getOrdersRepository(mockContext);
     casesRepo = Factory.getCasesRepository(mockContext);
 
