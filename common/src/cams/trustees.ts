@@ -6,20 +6,59 @@ import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
 
-// Chapter types supported for trustee assignments
-export type ChapterType = '7-panel' | '7-non-panel' | '11' | '11-subchapter-v' | '12' | '13';
+export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
-export function formatChapterType(chapter: string): string {
-  const chapterLabels = {
-    '7-panel': '7 - Panel',
-    '7-non-panel': '7 - Non-Panel',
-    '11': '11',
-    '11-subchapter-v': '11 - Subchapter V',
-    '12': '12',
-    '13': '13',
-  } as Record<string, string>;
+export type AppointmentType =
+  | 'panel'
+  | 'off-panel'
+  | 'case-by-case'
+  | 'pool'
+  | 'out-of-pool'
+  | 'standing'
+  | 'elected'
+  | 'converted-case';
+
+export type AppointmentStatus =
+  | 'active'
+  | 'inactive'
+  | 'voluntarily-suspended'
+  | 'involuntarily-suspended'
+  | 'deceased'
+  | 'resigned'
+  | 'terminated'
+  | 'removed';
+
+export function getAppointmentDetails(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): string {
+  const chapterTypeString = formatChapterType(chapter);
+  const appointmentTypeString = formatAppointmentType(appointmentType);
+
+  return `${chapterTypeString} - ${appointmentTypeString}`;
+}
+
+export function formatChapterType(chapter: AppointmentChapterType): string {
+  const chapterLabels: Partial<Record<AppointmentChapterType, string>> = {
+    '11-subchapter-v': '11 Subchapter V',
+  };
 
   return chapterLabels[chapter] || chapter;
+}
+
+export function formatAppointmentType(appointmentType: AppointmentType): string {
+  const appointmentTypeLabels: Record<AppointmentType, string> = {
+    panel: 'Panel',
+    pool: 'Pool',
+    'off-panel': 'Off Panel',
+    'case-by-case': 'Case by Case',
+    'out-of-pool': 'Out of Pool',
+    standing: 'Standing',
+    elected: 'Elected',
+    'converted-case': 'Converted Case',
+  };
+
+  return appointmentTypeLabels[appointmentType];
 }
 
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
@@ -99,13 +138,14 @@ export type TrusteeOversightHistory = AbstractTrusteeHistory<
 };
 
 type AppointmentData = {
-  chapter: ChapterType;
+  chapter: AppointmentChapterType;
+  appointmentType: AppointmentType;
   courtId: string;
   divisionCode: string;
   courtName?: string;
   courtDivisionName?: string;
   appointedDate: string;
-  status: 'active' | 'inactive';
+  status: AppointmentStatus;
   effectiveDate: string;
 };
 

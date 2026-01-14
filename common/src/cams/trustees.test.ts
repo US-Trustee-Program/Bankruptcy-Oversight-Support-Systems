@@ -1,4 +1,11 @@
-import { TRUSTEE_STATUS_VALUES, formatChapterType } from './trustees';
+import {
+  TRUSTEE_STATUS_VALUES,
+  getAppointmentDetails,
+  formatChapterType,
+  formatAppointmentType,
+  AppointmentChapterType,
+  AppointmentType,
+} from './trustees';
 
 describe('trustees', () => {
   test('TRUSTEE_STATUS_VALUES', () => {
@@ -7,28 +14,54 @@ describe('trustees', () => {
 
   describe('formatChapterType', () => {
     test.each([
-      // Known chapter mappings
-      ['7-panel', '7 - Panel'],
-      ['7-non-panel', '7 - Non-Panel'],
+      ['7', '7'],
       ['11', '11'],
-      ['11-subchapter-v', '11 - Subchapter V'],
+      ['11-subchapter-v', '11 Subchapter V'],
       ['12', '12'],
       ['13', '13'],
-      // Unknown chapters should return original value
-      ['unknown', 'unknown'],
-      ['7', '7'],
-      ['15', '15'],
-      ['', ''],
-      // Case sensitivity and whitespace
-      ['7-PANEL', '7-PANEL'],
-      ['7-panel ', '7-panel '],
-      [' 7-panel', ' 7-panel'],
-      // Special characters
-      ['7-panel-test', '7-panel-test'],
-      ['123', '123'],
-      ['11-', '11-'],
     ])('should format "%s" as "%s"', (input, expected) => {
-      expect(formatChapterType(input)).toBe(expected);
+      expect(formatChapterType(input as AppointmentChapterType)).toBe(expected);
     });
+  });
+
+  describe('formatAppointmentType', () => {
+    test.each([
+      ['panel', 'Panel'],
+      ['off-panel', 'Off Panel'],
+      ['case-by-case', 'Case by Case'],
+      ['pool', 'Pool'],
+      ['out-of-pool', 'Out of Pool'],
+      ['standing', 'Standing'],
+      ['elected', 'Elected'],
+      ['converted-case', 'Converted Case'],
+    ])('should format "%s" as "%s"', (input, expected) => {
+      expect(formatAppointmentType(input as AppointmentType)).toBe(expected);
+    });
+  });
+
+  describe('getAppointmentDetails', () => {
+    test.each([
+      ['7', 'panel', '7 - Panel'],
+      ['7', 'off-panel', '7 - Off Panel'],
+      ['7', 'elected', '7 - Elected'],
+      ['7', 'converted-case', '7 - Converted Case'],
+      ['11', 'case-by-case', '11 - Case by Case'],
+      ['11-subchapter-v', 'pool', '11 Subchapter V - Pool'],
+      ['11-subchapter-v', 'out-of-pool', '11 Subchapter V - Out of Pool'],
+      ['12', 'standing', '12 - Standing'],
+      ['12', 'case-by-case', '12 - Case by Case'],
+      ['13', 'standing', '13 - Standing'],
+      ['13', 'case-by-case', '13 - Case by Case'],
+    ])(
+      'should format chapter "%s" with type "%s" as "%s"',
+      (chapter, appointmentType, expected) => {
+        expect(
+          getAppointmentDetails(
+            chapter as AppointmentChapterType,
+            appointmentType as AppointmentType,
+          ),
+        ).toBe(expected);
+      },
+    );
   });
 });

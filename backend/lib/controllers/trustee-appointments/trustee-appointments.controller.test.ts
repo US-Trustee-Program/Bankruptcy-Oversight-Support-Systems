@@ -148,7 +148,8 @@ describe('TrusteeAppointmentsController', () => {
 
   describe('POST /api/trustees/:trusteeId/appointments', () => {
     const appointmentInput: TrusteeAppointmentInput = {
-      chapter: '7-panel',
+      chapter: '7',
+      appointmentType: 'panel',
       courtId: '081',
       divisionCode: '1',
       appointedDate: '2024-01-15',
@@ -205,6 +206,7 @@ describe('TrusteeAppointmentsController', () => {
   describe('PUT /api/trustees/:trusteeId/appointments/:appointmentId', () => {
     const appointmentUpdate: TrusteeAppointmentInput = {
       chapter: '11',
+      appointmentType: 'case-by-case',
       courtId: '081',
       divisionCode: '2',
       appointedDate: '2024-02-01',

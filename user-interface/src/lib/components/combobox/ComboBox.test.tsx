@@ -1258,9 +1258,11 @@ describe('test cams combobox', () => {
       const ariaDesc = 'Additional description for this combobox';
       renderWithProps({ ariaDescription: ariaDesc });
 
-      const ariaDescElement = document.querySelector(`#${comboboxId}-aria-description`);
-      expect(ariaDescElement).toBeInTheDocument();
-      expect(ariaDescElement).toHaveTextContent(ariaDesc);
+      // AriaDescription should appear in the visible hint div, not the screen-reader-only span
+      const hintElement = document.querySelector(`#${comboboxId}-hint`);
+      expect(hintElement).toBeInTheDocument();
+      expect(hintElement).toHaveTextContent(ariaDesc);
+      expect(hintElement).toHaveClass('usa-hint');
     });
 
     test('should render required asterisk when required prop is true', async () => {
@@ -1509,13 +1511,26 @@ describe('test cams combobox', () => {
         multiSelect: true,
       });
 
+      // Screen-reader-only span should NOT contain ariaDescription (to avoid duplication)
       const ariaDescElement = document.querySelector(`#${comboboxId}-aria-description`);
       expect(ariaDescElement).toBeInTheDocument();
       expect(ariaDescElement?.textContent).toContain('Test Label');
       expect(ariaDescElement?.textContent).toContain('multi-select');
       expect(ariaDescElement?.textContent).toContain('required');
-      expect(ariaDescElement?.textContent).toContain('Custom aria description');
+      expect(ariaDescElement?.textContent).not.toContain('Custom aria description');
       expect(ariaDescElement?.textContent).toContain('1 items currently selected');
+
+      // AriaDescription should be in the visible hint div
+      const hintElement = document.querySelector(`#${comboboxId}-hint`);
+      expect(hintElement).toBeInTheDocument();
+      expect(hintElement?.textContent).toContain('Custom aria description');
+
+      // Combobox should reference both elements via aria-describedby
+      const combobox = screen.getByRole('combobox');
+      expect(combobox).toHaveAttribute(
+        'aria-describedby',
+        `${comboboxId}-aria-description ${comboboxId}-hint`,
+      );
     });
 
     test('should build correct ARIA description for disabled state', () => {
