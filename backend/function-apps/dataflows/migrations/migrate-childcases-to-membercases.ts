@@ -5,7 +5,6 @@ import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import Factory from '../../../lib/factory';
 import { ConsolidationOrder } from '@common/cams/orders';
-import { MongoCollectionAdapter } from '../../../lib/adapters/gateways/mongo/utils/mongo-adapter';
 import QueryBuilder from '../../../lib/query/query-builder';
 import { Document as MongoDocument } from 'mongodb';
 
@@ -43,13 +42,8 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
   try {
     logger.info(MODULE_NAME, 'Starting migration of childCases to memberCases...');
 
-    // Get the raw MongoDB adapter to perform bulk operations
+    // Get the consolidation orders repository
     const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
-    const adapter: MongoCollectionAdapter<ConsolidationOrder> = (
-      consolidationsRepo as unknown as {
-        getAdapter: () => MongoCollectionAdapter<ConsolidationOrder>;
-      }
-    ).getAdapter();
 
     const doc = using<LegacyConsolidationOrder>();
 
@@ -60,41 +54,22 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
       doc('childCases').exists(), // Must have the old field name
     );
 
-    // Count documents with the old 'childCases' field without loading them into memory
-    const count = await adapter.countDocuments(migrationQuery);
-    logger.info(
-      MODULE_NAME,
-      `Found ${count} consolidation order document(s) with 'childCases' field to migrate.`,
-    );
-
-    if (count === 0) {
-      logger.info(MODULE_NAME, 'No documents to migrate. Migration complete.');
-      return;
-    }
-
-    // Log a sample of what will be migrated (first document's consolidationId for verification)
-    const sampleDoc = await adapter.findOne(migrationQuery);
-    logger.info(
-      MODULE_NAME,
-      `Sample document to migrate - consolidationId: ${sampleDoc.consolidationId}`,
-    );
-
     // Perform the field rename using MongoDB's $rename operator
     // This renames the field from 'childCases' to 'memberCases' for all matching documents
     const updateOperation: MongoDocument = {
       $rename: { childCases: 'memberCases' },
     };
-    const result = await adapter.updateMany(migrationQuery, updateOperation);
+    const result = await consolidationsRepo.updateManyByQuery(migrationQuery, updateOperation);
 
     logger.info(
       MODULE_NAME,
-      `Migration complete. Modified ${result.modifiedCount} consolidation order document(s) out of ${count} found.`,
+      `Migration complete. Matched ${result.matchedCount} document(s), modified ${result.modifiedCount} consolidation order document(s).`,
     );
 
-    if (result.modifiedCount !== count) {
+    if (result.modifiedCount !== result.matchedCount) {
       logger.warn(
         MODULE_NAME,
-        `Warning: Found ${count} documents but only modified ${result.modifiedCount}. Some documents may have already been migrated or were not modifiable.`,
+        `Warning: Matched ${result.matchedCount} documents but only modified ${result.modifiedCount}. Some documents may have already been migrated or were not modifiable.`,
       );
     }
   } catch (originalError) {
