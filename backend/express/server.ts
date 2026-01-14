@@ -338,7 +338,20 @@ export function createApp(): Application {
     }
   };
 
+  const handleDebtorSearchSuggest = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new DebtorSearchController(context);
+      const camsResponse = await controller.handleSuggestRequest(context);
+      sendCamsResponse(res, camsResponse);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   app.get('/api/debtors/search', handleDebtorSearch);
+  app.get('/api/debtors/search/suggest', handleDebtorSearchSuggest);
   app.get('/api/debtors/search/stats', handleDebtorSearchStats);
   app.post('/api/debtors/search/init', handleDebtorSearchInit);
   app.post('/api/debtors/search/sync', handleDebtorSearchSync);

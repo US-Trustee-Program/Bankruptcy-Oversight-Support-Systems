@@ -356,4 +356,12 @@ export interface SearchGateway extends Releasable {
    * @returns The number of documents
    */
   getDocumentCount(): Promise<number>;
+
+  /**
+   * Gets autocomplete suggestions for partial text
+   * @param searchText The partial text to get suggestions for
+   * @param options Suggestion options
+   * @returns Array of suggestion results
+   */
+  suggest?<T>(searchText: string, options?: SearchOptions): Promise<T[]>;
 }

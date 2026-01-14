@@ -7,6 +7,7 @@ import {
   DebtorSearchUseCase,
   DebtorSearchResponse,
 } from '../../use-cases/debtors/debtor-search.use-case';
+import { SuggestionResult } from '../../adapters/types/search';
 
 const MODULE_NAME = 'DEBTOR-SEARCH-CONTROLLER';
 
@@ -29,6 +30,9 @@ export class DebtorSearchController implements CamsController {
    * - top: Number of results to return (optional, default: 25)
    * - skip: Number of results to skip for pagination (optional, default: 0)
    * - fields: Comma-separated list of fields to return (optional)
+   * - highlight: Comma-separated list of fields to highlight (optional)
+   * - facets: Comma-separated list of fields to generate facets for (optional)
+   * - filter: OData-style filter expression (optional, e.g., "state eq 'CA'")
    */
   public async handleRequest(
     context: ApplicationContext,
@@ -44,6 +48,13 @@ export class DebtorSearchController implements CamsController {
       const fields = query.fields
         ? query.fields.split(',').map((f: string) => f.trim())
         : undefined;
+      const highlight = query.highlight
+        ? query.highlight.split(',').map((f: string) => f.trim())
+        : undefined;
+      const facets = query.facets
+        ? query.facets.split(',').map((f: string) => f.trim())
+        : undefined;
+      const filter = query.filter || undefined;
 
       // Perform the search
       const searchResult = await this.useCase.searchDebtors(context, {
@@ -52,6 +63,9 @@ export class DebtorSearchController implements CamsController {
         top,
         skip,
         fields,
+        highlight,
+        facets,
+        filter,
       });
 
       // Build response with pagination metadata
@@ -167,6 +181,49 @@ export class DebtorSearchController implements CamsController {
             success: true,
             message: 'Debtor data synced successfully',
             documentsProcessed: debtorDocuments.length,
+          },
+        },
+      });
+
+      return response;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    } finally {
+      await finalizeDeferrable(context);
+    }
+  }
+
+  /**
+   * Handle autocomplete suggestions request
+   *
+   * Query parameters:
+   * - q: Partial search text (required, minimum 2 characters)
+   * - top: Number of suggestions to return (optional, default: 10)
+   */
+  public async handleSuggestRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<{ suggestions: SuggestionResult[] }>> {
+    try {
+      const query = context.request?.query || {};
+
+      // Parse query parameters
+      const searchText = query.q || '';
+      const top = parseInt(query.top || '10', 10);
+
+      // Get suggestions
+      const suggestions = await this.useCase.getSuggestions(context, {
+        searchText,
+        top,
+      });
+
+      const response = httpSuccess({
+        body: {
+          meta: {
+            self: context.request!.url,
+            count: suggestions.length,
+          },
+          data: {
+            suggestions,
           },
         },
       });

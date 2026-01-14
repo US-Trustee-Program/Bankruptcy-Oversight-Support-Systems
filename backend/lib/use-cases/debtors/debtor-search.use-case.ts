@@ -1,6 +1,12 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { SearchGateway } from '../gateways.types';
-import { DebtorSearchDocument, SearchResult } from '../../adapters/types/search';
+import {
+  DebtorSearchDocument,
+  SearchResult,
+  FacetResult,
+  SearchResultItem,
+  SuggestionResult,
+} from '../../adapters/types/search';
 import { getSearchGateway } from '../../factory';
 import { CamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -13,6 +19,9 @@ export interface DebtorSearchOptions {
   top?: number;
   skip?: number;
   fields?: string[];
+  highlight?: string[];
+  facets?: string[];
+  filter?: string;
 }
 
 export interface DebtorSearchResponse {
@@ -20,6 +29,13 @@ export interface DebtorSearchResponse {
   totalCount: number;
   searchText: string;
   fuzzy: boolean;
+  facets?: Record<string, FacetResult[]>;
+  items?: SearchResultItem<DebtorSearchDocument>[];
+}
+
+export interface SuggestionOptions {
+  searchText: string;
+  top?: number;
 }
 
 /**
@@ -39,13 +55,25 @@ export class DebtorSearchUseCase {
     context: ApplicationContext,
     options: DebtorSearchOptions,
   ): Promise<DebtorSearchResponse> {
-    const { searchText, fuzzy = false, top = 25, skip = 0, fields } = options;
+    const {
+      searchText,
+      fuzzy = false,
+      top = 25,
+      skip = 0,
+      fields,
+      highlight,
+      facets,
+      filter,
+    } = options;
 
     context.logger?.info(MODULE_NAME, 'Searching debtors', {
       searchText,
       fuzzy,
       top,
       skip,
+      highlight,
+      facets,
+      filter,
     });
 
     try {
@@ -72,12 +100,17 @@ export class DebtorSearchUseCase {
           top,
           skip,
           select: fields,
+          highlight,
+          facets,
+          filter,
         },
       );
 
       context.logger?.info(MODULE_NAME, 'Search completed', {
         resultsFound: searchResult.count,
         resultsReturned: searchResult.results.length,
+        hasFacets: !!searchResult.facets,
+        hasHighlighting: !!searchResult.items,
       });
 
       return {
@@ -85,6 +118,8 @@ export class DebtorSearchUseCase {
         totalCount: searchResult.count,
         searchText: searchText.trim(),
         fuzzy,
+        facets: searchResult.facets,
+        items: searchResult.items,
       };
     } catch (error) {
       context.logger?.error(MODULE_NAME, 'Error searching debtors', error);
@@ -202,6 +237,48 @@ export class DebtorSearchUseCase {
         message: 'Failed to get search index statistics',
         originalError: error,
       });
+    }
+  }
+
+  /**
+   * Get autocomplete suggestions for partial text
+   */
+  async getSuggestions(
+    context: ApplicationContext,
+    options: SuggestionOptions,
+  ): Promise<SuggestionResult[]> {
+    const { searchText, top = 10 } = options;
+
+    context.logger?.info(MODULE_NAME, 'Getting suggestions', {
+      searchText,
+      top,
+    });
+
+    try {
+      // Validate search text
+      if (!searchText || searchText.trim().length < 2) {
+        return [];
+      }
+
+      // Check if suggest method exists (it's optional in the interface)
+      if (!this.searchGateway.suggest) {
+        context.logger?.warn(MODULE_NAME, 'Suggest method not implemented in search gateway');
+        return [];
+      }
+
+      // Get suggestions
+      const suggestions = await this.searchGateway.suggest(searchText.trim(), { top });
+
+      context.logger?.info(MODULE_NAME, 'Suggestions retrieved', {
+        count: suggestions.length,
+      });
+
+      return suggestions;
+    } catch (error) {
+      context.logger?.error(MODULE_NAME, 'Error getting suggestions', error);
+
+      // Don't throw for suggestions - just return empty array
+      return [];
     }
   }
 }

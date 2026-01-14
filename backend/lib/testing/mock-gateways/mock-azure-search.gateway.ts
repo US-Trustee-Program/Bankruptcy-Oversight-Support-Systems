@@ -1,5 +1,12 @@
 import { SearchGateway } from '../../use-cases/gateways.types';
-import { DebtorSearchDocument, SearchResult, SearchOptions } from '../../adapters/types/search';
+import {
+  DebtorSearchDocument,
+  SearchResult,
+  SearchOptions,
+  SearchResultItem,
+  FacetResult,
+  SuggestionResult,
+} from '../../adapters/types/search';
 
 /**
  * Mock implementation of SearchGateway for testing
@@ -35,7 +42,7 @@ export class MockAzureSearchGateway implements SearchGateway {
   }
 
   /**
-   * Performs simple in-memory search
+   * Performs enhanced in-memory search with scoring, highlighting, and facets
    * Supports fuzzy matching with basic Levenshtein-like logic
    */
   async search<T>(searchText: string, options?: SearchOptions): Promise<SearchResult<T>> {
@@ -46,51 +53,112 @@ export class MockAzureSearchGateway implements SearchGateway {
     const searchLower = searchText.toLowerCase();
     const isFuzzy = options?.fuzzy || false;
 
-    // Filter documents based on search text
-    let filtered = this.mockDocuments.filter((doc) => {
+    // Enhanced search with scoring and highlighting
+    const searchResults: Array<{
+      doc: DebtorSearchDocument;
+      score: number;
+      highlights: Record<string, string[]>;
+    }> = [];
+
+    // Search and score documents
+    this.mockDocuments.forEach((doc) => {
       const nameLower = doc.name.toLowerCase();
       const firstNameLower = doc.firstName?.toLowerCase() || '';
       const lastNameLower = doc.lastName?.toLowerCase() || '';
+      const cityLower = doc.city?.toLowerCase() || '';
+      const stateLower = doc.state?.toLowerCase() || '';
 
+      let score = 0;
+      const highlights: Record<string, string[]> = {};
+
+      // Check name field
       if (isFuzzy) {
-        // Simple fuzzy matching: allow 1 character difference
-        return (
-          this.fuzzyMatch(nameLower, searchLower) ||
-          this.fuzzyMatch(firstNameLower, searchLower) ||
-          this.fuzzyMatch(lastNameLower, searchLower)
-        );
+        if (this.fuzzyMatch(nameLower, searchLower)) {
+          score += 10;
+          highlights.name = [this.highlightMatch(doc.name, searchText)];
+        }
+        if (this.fuzzyMatch(firstNameLower, searchLower)) {
+          score += 8;
+          highlights.firstName = [this.highlightMatch(doc.firstName || '', searchText)];
+        }
+        if (this.fuzzyMatch(lastNameLower, searchLower)) {
+          score += 9;
+          highlights.lastName = [this.highlightMatch(doc.lastName || '', searchText)];
+        }
+      } else {
+        // Exact match scoring
+        if (nameLower.includes(searchLower)) {
+          score += nameLower === searchLower ? 15 : 10;
+          highlights.name = [this.highlightMatch(doc.name, searchText)];
+        }
+        if (firstNameLower.includes(searchLower)) {
+          score += firstNameLower === searchLower ? 12 : 8;
+          highlights.firstName = [this.highlightMatch(doc.firstName || '', searchText)];
+        }
+        if (lastNameLower.includes(searchLower)) {
+          score += lastNameLower === searchLower ? 13 : 9;
+          highlights.lastName = [this.highlightMatch(doc.lastName || '', searchText)];
+        }
       }
 
-      // Exact substring match
-      return (
-        nameLower.includes(searchLower) ||
-        firstNameLower.includes(searchLower) ||
-        lastNameLower.includes(searchLower)
-      );
+      // Check city/state for bonus scoring
+      if (cityLower.includes(searchLower)) {
+        score += 3;
+        highlights.city = [this.highlightMatch(doc.city || '', searchText)];
+      }
+      if (stateLower.includes(searchLower)) {
+        score += 2;
+        highlights.state = [this.highlightMatch(doc.state || '', searchText)];
+      }
+
+      if (score > 0) {
+        searchResults.push({ doc, score, highlights });
+      }
     });
+
+    // Sort by score (highest first)
+    searchResults.sort((a, b) => b.score - a.score);
+
+    // Apply filters if specified
+    let filteredResults = searchResults;
+    if (options?.filter) {
+      filteredResults = this.applyFilter(searchResults, options.filter);
+    }
+
+    // Calculate facets if requested
+    let facets: Record<string, FacetResult[]> | undefined;
+    if (options?.facets && options.facets.length > 0) {
+      facets = this.calculateFacets(filteredResults, options.facets);
+    }
 
     // Apply pagination
     const skip = options?.skip || 0;
     const top = options?.top || 25;
-    const totalCount = filtered.length;
-    filtered = filtered.slice(skip, skip + top);
+    const totalCount = filteredResults.length;
+    const paginatedResults = filteredResults.slice(skip, skip + top);
 
-    // Apply field selection if specified
-    if (options?.select && options.select.length > 0) {
-      filtered = filtered.map((doc) => {
-        const selected: any = {};
-        options.select!.forEach((field) => {
-          if (field in doc) {
-            selected[field] = (doc as any)[field];
-          }
-        });
-        return selected;
-      });
+    // Build response
+    let results: T[];
+    let items: SearchResultItem<T>[] | undefined;
+
+    // If highlighting was requested, include items with scores and highlights
+    if (options?.highlight && options.highlight.length > 0) {
+      items = paginatedResults.map((r) => ({
+        document: this.selectFields(r.doc, options?.select) as T,
+        score: r.score,
+        highlights: r.highlights,
+      }));
+      results = items.map((item) => item.document);
+    } else {
+      // Simple results without highlighting
+      results = paginatedResults.map((r) => this.selectFields(r.doc, options?.select) as T);
     }
 
     return {
-      results: filtered as T[],
+      results,
       count: totalCount,
+      facets,
+      items,
     };
   }
 
@@ -199,5 +267,138 @@ export class MockAzureSearchGateway implements SearchGateway {
   getAllDocuments(): DebtorSearchDocument[] {
     // Return a deep copy to prevent external modification
     return this.mockDocuments.map((doc) => ({ ...doc }));
+  }
+
+  /**
+   * Provides autocomplete suggestions based on partial text
+   */
+  async suggest(searchText: string, options?: SearchOptions): Promise<SuggestionResult[]> {
+    if (!this.indexCreated || searchText.length < 2) {
+      return [];
+    }
+
+    const searchLower = searchText.toLowerCase();
+    const suggestions = new Set<string>();
+    const top = options?.top || 10;
+
+    // Collect unique suggestions from name fields
+    this.mockDocuments.forEach((doc) => {
+      // Check full name
+      if (doc.name.toLowerCase().startsWith(searchLower)) {
+        suggestions.add(doc.name);
+      }
+      // Check first name
+      if (doc.firstName && doc.firstName.toLowerCase().startsWith(searchLower)) {
+        suggestions.add(doc.firstName);
+      }
+      // Check last name
+      if (doc.lastName && doc.lastName.toLowerCase().startsWith(searchLower)) {
+        suggestions.add(doc.lastName);
+      }
+    });
+
+    // Convert to array and limit results
+    const suggestionArray = Array.from(suggestions).slice(0, top);
+
+    // Return with highlighting
+    return suggestionArray.map((text) => ({
+      text,
+      highlightedText: this.highlightMatch(text, searchText),
+    })) as SuggestionResult[];
+  }
+
+  /**
+   * Highlights matching text with <em> tags
+   */
+  private highlightMatch(text: string, searchText: string): string {
+    if (!text) return text;
+
+    const regex = new RegExp(`(${searchText})`, 'gi');
+    return text.replace(regex, '<em>$1</em>');
+  }
+
+  /**
+   * Applies filter expressions (simplified OData-like filtering)
+   */
+  private applyFilter(
+    results: Array<{
+      doc: DebtorSearchDocument;
+      score: number;
+      highlights: Record<string, string[]>;
+    }>,
+    filter: string,
+  ): Array<{ doc: DebtorSearchDocument; score: number; highlights: Record<string, string[]> }> {
+    // Simple filter parsing - supports "field eq 'value'" format
+    const filterParts = filter.match(/(\w+)\s+(eq|ne)\s+'([^']+)'/);
+    if (!filterParts) return results;
+
+    const [, field, operator, value] = filterParts;
+    const valueLower = value.toLowerCase();
+
+    return results.filter((r) => {
+      const fieldValue = (r.doc as Record<string, unknown>)[field] as string | undefined;
+      const fieldValueLower = fieldValue?.toLowerCase();
+      if (!fieldValueLower) return operator === 'ne';
+
+      if (operator === 'eq') {
+        return fieldValueLower === valueLower;
+      } else if (operator === 'ne') {
+        return fieldValueLower !== valueLower;
+      }
+      return true;
+    });
+  }
+
+  /**
+   * Calculates facets for the given fields
+   */
+  private calculateFacets(
+    results: Array<{
+      doc: DebtorSearchDocument;
+      score: number;
+      highlights: Record<string, string[]>;
+    }>,
+    facetFields: string[],
+  ): Record<string, FacetResult[]> {
+    const facets: Record<string, FacetResult[]> = {};
+
+    facetFields.forEach((field) => {
+      const counts: Record<string, number> = {};
+
+      results.forEach((r) => {
+        const value = (r.doc as Record<string, unknown>)[field] as string | undefined;
+        if (value) {
+          counts[value] = (counts[value] || 0) + 1;
+        }
+      });
+
+      // Convert to FacetResult array and sort by count
+      facets[field] = Object.entries(counts)
+        .map(([value, count]) => ({ value, count }))
+        .sort((a, b) => b.count - a.count);
+    });
+
+    return facets;
+  }
+
+  /**
+   * Selects only specified fields from a document
+   */
+  private selectFields(
+    doc: DebtorSearchDocument,
+    fields?: string[],
+  ): Partial<DebtorSearchDocument> {
+    if (!fields || fields.length === 0) {
+      return { ...doc };
+    }
+
+    const selected: Partial<DebtorSearchDocument> = {};
+    fields.forEach((field) => {
+      const key = field as keyof DebtorSearchDocument;
+      if (key in doc) {
+        selected[key] = doc[key];
+      }
+    });
+    return selected;
   }
 }

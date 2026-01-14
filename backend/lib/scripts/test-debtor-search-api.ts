@@ -19,7 +19,12 @@ import * as dotenv from 'dotenv';
 import axios, { AxiosInstance } from 'axios';
 import * as jwt from 'jsonwebtoken';
 import { DEBTORS } from '../testing/mock-data/debtors.mock';
-import { DebtorSearchDocument } from '../adapters/types/search';
+import {
+  DebtorSearchDocument,
+  SearchResultItem,
+  FacetResult,
+  SuggestionResult,
+} from '../adapters/types/search';
 
 // Load environment variables
 dotenv.config();
@@ -82,19 +87,22 @@ function logSection(title: string) {
   console.log(colors.bright + colors.magenta + '═'.repeat(60) + colors.reset + '\n');
 }
 
-async function testEndpoint(name: string, fn: () => Promise<any>): Promise<boolean> {
+async function testEndpoint(name: string, fn: () => Promise<unknown>): Promise<boolean> {
   try {
     log(`Testing: ${name}`, colors.yellow);
-    const result = await fn();
+    await fn();
     logSuccess(`${name} - Success`);
     return true;
-  } catch (error: any) {
+  } catch (error) {
     logError(`${name} - Failed`);
-    if (error.response) {
-      console.error('  Status:', error.response.status);
-      console.error('  Data:', JSON.stringify(error.response.data, null, 2));
+    const err = error as { response?: { status: number; data: unknown }; message?: string };
+    if (err.response) {
+      console.error('  Status:', err.response.status);
+      console.error('  Data:', JSON.stringify(err.response.data, null, 2));
+    } else if (err.message) {
+      console.error('  Error:', err.message);
     } else {
-      console.error('  Error:', error.message);
+      console.error('  Error:', error);
     }
     return false;
   }
@@ -185,8 +193,8 @@ async function main() {
     }),
   );
 
-  // Test 5: Search tests
-  logSection('5. Search Tests');
+  // Test 5: Basic Search tests
+  logSection('5. Basic Search Tests');
 
   const searchTests = [
     { q: 'Smith', fuzzy: false, description: 'Exact search for "Smith"' },
@@ -215,7 +223,7 @@ async function main() {
 
         if (data.results.length > 0) {
           logInfo('Results:');
-          data.results.forEach((r: any, i: number) => {
+          data.results.forEach((r: DebtorSearchDocument, i: number) => {
             console.log(`    ${i + 1}. ${r.name} (${r.city}, ${r.state})`);
           });
         }
@@ -265,15 +273,150 @@ async function main() {
     }),
   );
 
-  // Test 8: Error handling
-  logSection('8. Error Handling Tests');
+  // Test 8: NEW - Hit Highlighting Test
+  logSection('8. Hit Highlighting Test');
+  results.push(
+    await testEndpoint('Search with highlighting', async () => {
+      const response = await api.get('/debtors/search', {
+        params: {
+          q: 'John',
+          highlight: 'name,firstName,lastName',
+        },
+      });
+
+      const data = response.data.data;
+      if (data.items && data.items.length > 0) {
+        logInfo('Highlighted Results:');
+        data.items.forEach((item: SearchResultItem<DebtorSearchDocument>, i: number) => {
+          console.log(`    ${i + 1}. Score: ${item.score.toFixed(2)}`);
+          console.log(`       Document: ${item.document.name}`);
+          if (item.highlights) {
+            Object.entries(item.highlights).forEach(([field, values]: [string, string[]]) => {
+              console.log(`       ${field}: ${values.join(', ')}`);
+            });
+          }
+        });
+      }
+      return response;
+    }),
+  );
+
+  // Test 9: NEW - Faceted Search Test
+  logSection('9. Faceted Search Test');
+  results.push(
+    await testEndpoint('Search with facets', async () => {
+      const response = await api.get('/debtors/search', {
+        params: {
+          q: 'son',
+          facets: 'state,city',
+        },
+      });
+
+      const data = response.data.data;
+      if (data.facets) {
+        logInfo('Facets:');
+        Object.entries(data.facets).forEach(([field, values]: [string, FacetResult[]]) => {
+          console.log(`    ${field}:`);
+          values.slice(0, 5).forEach((facet: FacetResult) => {
+            console.log(`      - ${facet.value}: ${facet.count} documents`);
+          });
+        });
+      }
+      return response;
+    }),
+  );
+
+  // Test 10: NEW - Filter Test
+  logSection('10. Filter Test');
+  results.push(
+    await testEndpoint('Search with filter', async () => {
+      const response = await api.get('/debtors/search', {
+        params: {
+          q: 'son',
+          filter: "state eq 'NY'",
+        },
+      });
+
+      const data = response.data.data;
+      logInfo(`Results found with filter: ${data.totalCount}`);
+      if (data.results.length > 0) {
+        logInfo('Filtered Results (all should be from NY):');
+        data.results.forEach((r: DebtorSearchDocument, i: number) => {
+          console.log(`    ${i + 1}. ${r.name} (${r.city}, ${r.state})`);
+        });
+      }
+      return response;
+    }),
+  );
+
+  // Test 11: NEW - Autocomplete Suggestions Test
+  logSection('11. Autocomplete Suggestions Test');
+  results.push(
+    await testEndpoint('Get suggestions for "Jo"', async () => {
+      const response = await api.get('/debtors/search/suggest', {
+        params: {
+          q: 'Jo',
+          top: 5,
+        },
+      });
+
+      const data = response.data.data;
+      logInfo(`Suggestions found: ${data.suggestions.length}`);
+      if (data.suggestions.length > 0) {
+        logInfo('Suggestions:');
+        data.suggestions.forEach((s: SuggestionResult, i: number) => {
+          console.log(`    ${i + 1}. ${s.text}`);
+          if (s.highlightedText) {
+            console.log(`       Highlighted: ${s.highlightedText}`);
+          }
+        });
+      }
+      return response;
+    }),
+  );
+
+  // Test 12: Combined Features Test
+  logSection('12. Combined Features Test');
+  results.push(
+    await testEndpoint('Search with multiple features', async () => {
+      const response = await api.get('/debtors/search', {
+        params: {
+          q: 'Smith',
+          fuzzy: true,
+          highlight: 'name,firstName,lastName',
+          facets: 'state',
+          top: 3,
+        },
+      });
+
+      const data = response.data.data;
+      logInfo(`Results found: ${data.totalCount}`);
+
+      if (data.items && data.items.length > 0) {
+        logInfo('Results with scoring and highlighting:');
+        data.items.forEach((item: SearchResultItem<DebtorSearchDocument>, i: number) => {
+          console.log(`    ${i + 1}. ${item.document.name} (Score: ${item.score})`);
+        });
+      }
+
+      if (data.facets && data.facets.state) {
+        logInfo(`State facet count: ${data.facets.state.length}`);
+      }
+
+      return response;
+    }),
+  );
+
+  // Test 13: Error handling
+  logSection('13. Error Handling Tests');
   results.push(
     await testEndpoint('Search with empty query', async () => {
       try {
         await api.get('/debtors/search', { params: { q: '' } });
         throw new Error('Should have failed with empty query');
-      } catch (error: any) {
-        if (error.response && error.response.status === 400) {
+      } catch (error) {
+        const err = error as { response?: { status: number } };
+        if (err.response && err.response.status === 400) {
           logInfo('Correctly rejected empty query');
           return { data: 'success' };
         }
@@ -287,8 +430,9 @@ async function main() {
       try {
         await api.get('/debtors/search', { params: { q: 'a' } });
         throw new Error('Should have failed with short query');
-      } catch (error: any) {
-        if (error.response && error.response.status === 400) {
+      } catch (error) {
+        const err = error as { response?: { status: number } };
+        if (err.response && err.response.status === 400) {
           logInfo('Correctly rejected short query');
           return { data: 'success' };
         }
