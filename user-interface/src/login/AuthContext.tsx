@@ -1,7 +1,7 @@
 import OktaAuth from '@okta/okta-auth-js';
 import { createContext } from 'react';
 
-export type AuthContextValue = {
+type AuthContextValue = {
   oktaAuth?: OktaAuth;
   renewToken: () => Promise<void>;
 };

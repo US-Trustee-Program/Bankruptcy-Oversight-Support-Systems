@@ -2,7 +2,7 @@ import { createAuditRecord } from '@common/cams/auditable';
 import { DxtrCase, SyncedCase } from '@common/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { getCasesGateway, getCasesRepository } from '../../factory';
+import factory from '../../factory';
 import { CaseSyncEvent } from '@common/queue/dataflow-types';
 import { generatePhoneticTokens } from '../cases/phonetic-utils';
 
@@ -37,8 +37,8 @@ async function exportAndLoad(
   context: ApplicationContext,
   events: CaseSyncEvent[],
 ): Promise<CaseSyncEvent[]> {
-  const casesGateway = getCasesGateway(context);
-  const repo = getCasesRepository(context);
+  const casesGateway = factory.getCasesGateway(context);
+  const repo = factory.getCasesRepository(context);
   for (const event of events) {
     try {
       event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
@@ -59,7 +59,7 @@ async function exportAndLoad(
 
 async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
   try {
-    const gateway = getCasesGateway(context);
+    const gateway = factory.getCasesGateway(context);
     event.bCase = await gateway.getCaseDetail(context, event.caseId);
   } catch (originalError) {
     const error = getCamsError(

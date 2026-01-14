@@ -221,6 +221,31 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     }
   }
 
+  public async updateMany(query: Query<T>, update: MongoDocument): Promise<UpdateResult> {
+    const mongoQuery = toMongoQuery(query);
+
+    try {
+      const result = await this.collectionHumble.updateMany(mongoQuery, update);
+      const unknownError = new UnknownError(this.moduleName, {
+        message: 'Failed to update documents in database.',
+      });
+
+      if (!result.acknowledged) {
+        throw unknownError;
+      }
+
+      return {
+        matchedCount: result.matchedCount,
+        modifiedCount: result.modifiedCount,
+      };
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed to update items. ${originalError.message}`, {
+        query,
+        update,
+      });
+    }
+  }
+
   public async insertOne(item: T, options: { useProvidedId?: true } = {}) {
     try {
       let mongoItem: CamsItem<T>;

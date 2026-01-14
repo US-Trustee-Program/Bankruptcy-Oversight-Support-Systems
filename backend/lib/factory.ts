@@ -89,7 +89,7 @@ let mockConsolidationsRepository: MockMongoRepository;
 let mockCasesRepository: MockMongoRepository;
 let mockUserSessionCacheRepository: MockMongoRepository;
 
-export const getUserGroupsRepository = (context: ApplicationContext): UserGroupsRepository => {
+const getUserGroupsRepository = (context: ApplicationContext): UserGroupsRepository => {
   if (context.config.get('dbMock')) {
     return new MockMongoRepository();
   }
@@ -98,7 +98,7 @@ export const getUserGroupsRepository = (context: ApplicationContext): UserGroups
   return repo;
 };
 
-export const getCasesGateway = (context: ApplicationContext): CasesInterface => {
+const getCasesGateway = (context: ApplicationContext): CasesInterface => {
   if (!casesGateway) {
     if (context.config.get('dbMock')) {
       casesGateway = new CasesLocalGateway();
@@ -109,7 +109,7 @@ export const getCasesGateway = (context: ApplicationContext): CasesInterface => 
   return casesGateway;
 };
 
-export const getAssignmentRepository = (context: ApplicationContext): CaseAssignmentRepository => {
+const getAssignmentRepository = (context: ApplicationContext): CaseAssignmentRepository => {
   if (context.config.get('dbMock')) {
     return new MockMongoRepository();
   }
@@ -118,7 +118,7 @@ export const getAssignmentRepository = (context: ApplicationContext): CaseAssign
   return repo;
 };
 
-export const getCaseNotesRepository = (context: ApplicationContext): CaseNotesRepository => {
+const getCaseNotesRepository = (context: ApplicationContext): CaseNotesRepository => {
   if (context.config.get('dbMock')) {
     return new MockMongoRepository();
   }
@@ -127,20 +127,20 @@ export const getCaseNotesRepository = (context: ApplicationContext): CaseNotesRe
   return repo;
 };
 
-export const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUseCase => {
+const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUseCase => {
   const gateway = context.config.get('dbMock')
     ? new MockCaseDocketGateway()
     : new DxtrCaseDocketGateway();
   return new CaseDocketUseCase(gateway);
 };
 
-export const getSqlConnection = (databaseConfig: IDbConfig) => {
+const getSqlConnection = (databaseConfig: IDbConfig) => {
   // Reference https://github.com/tediousjs/node-mssql#readme
   // TODO We may want to refactor this to use non ConnectionPool connection object since we have moved to function app.
   return new ConnectionPool(databaseConfig as config);
 };
 
-export const getOrdersGateway = (context: ApplicationContext): OrdersGateway => {
+const getOrdersGateway = (context: ApplicationContext): OrdersGateway => {
   if (!ordersGateway) {
     if (context.config.get('dbMock')) {
       ordersGateway = new MockOrdersGateway();
@@ -151,7 +151,7 @@ export const getOrdersGateway = (context: ApplicationContext): OrdersGateway => 
   return ordersGateway;
 };
 
-export const getOfficesGateway = (context: ApplicationContext): OfficesGateway => {
+const getOfficesGateway = (context: ApplicationContext): OfficesGateway => {
   if (context.config.get('dbMock')) {
     return new MockOfficesGateway();
   } else {
@@ -159,7 +159,7 @@ export const getOfficesGateway = (context: ApplicationContext): OfficesGateway =
   }
 };
 
-export const getOfficesRepository = (context: ApplicationContext): OfficesRepository => {
+const getOfficesRepository = (context: ApplicationContext): OfficesRepository => {
   if (context.config.authConfig.provider === 'mock') {
     return MockMongoRepository.getInstance(context);
   }
@@ -168,8 +168,7 @@ export const getOfficesRepository = (context: ApplicationContext): OfficesReposi
   return repo;
 };
 
-// transfer orders
-export const getOrdersRepository = (context: ApplicationContext): OrdersRepository => {
+const getOrdersRepository = (context: ApplicationContext): OrdersRepository => {
   if (context.config.get('dbMock')) {
     if (!mockOrdersRepository) {
       mockOrdersRepository = MockMongoRepository.getInstance(context);
@@ -182,7 +181,7 @@ export const getOrdersRepository = (context: ApplicationContext): OrdersReposito
   }
 };
 
-export const getConsolidationOrdersRepository = (
+const getConsolidationOrdersRepository = (
   context: ApplicationContext,
 ): ConsolidationOrdersRepository => {
   if (context.config.get('dbMock')) {
@@ -197,7 +196,7 @@ export const getConsolidationOrdersRepository = (
   }
 };
 
-export const getCasesRepository = (context: ApplicationContext): CasesRepository => {
+const getCasesRepository = (context: ApplicationContext): CasesRepository => {
   if (context.config.get('dbMock')) {
     if (!mockCasesRepository) {
       mockCasesRepository = MockMongoRepository.getInstance(context);
@@ -209,7 +208,7 @@ export const getCasesRepository = (context: ApplicationContext): CasesRepository
   return repo;
 };
 
-export const getRuntimeStateRepository = <T extends RuntimeState>(
+const getRuntimeStateRepository = <T extends RuntimeState>(
   context: ApplicationContext,
 ): RuntimeStateRepository<T> => {
   if (context.config.get('dbMock')) {
@@ -218,7 +217,7 @@ export const getRuntimeStateRepository = <T extends RuntimeState>(
   return new RuntimeStateMongoRepository<T>(context);
 };
 
-export const getOrderSyncStateRepo = (
+const getOrderSyncStateRepo = (
   context: ApplicationContext,
 ): RuntimeStateRepository<OrderSyncState> => {
   if (!orderSyncStateRepo) {
@@ -227,7 +226,7 @@ export const getOrderSyncStateRepo = (
   return orderSyncStateRepo;
 };
 
-export const getOfficeStaffSyncStateRepo = (
+const getOfficeStaffSyncStateRepo = (
   context: ApplicationContext,
 ): RuntimeStateRepository<OfficeStaffSyncState> => {
   if (!officeStaffSyncStateRepo) {
@@ -236,7 +235,7 @@ export const getOfficeStaffSyncStateRepo = (
   return officeStaffSyncStateRepo;
 };
 
-export const getCasesSyncStateRepo = (
+const getCasesSyncStateRepo = (
   context: ApplicationContext,
 ): RuntimeStateRepository<CasesSyncState> => {
   if (!casesSyncStateRepo) {
@@ -247,7 +246,7 @@ export const getCasesSyncStateRepo = (
   return casesSyncStateRepo;
 };
 
-export const getUsersRepository = (context: ApplicationContext): UsersRepository => {
+const getUsersRepository = (context: ApplicationContext): UsersRepository => {
   if (context.config.get('dbMock')) {
     return MockMongoRepository.getInstance(context);
   }
@@ -259,7 +258,7 @@ export const getUsersRepository = (context: ApplicationContext): UsersRepository
   return usersRepository;
 };
 
-export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
+const getAuthorizationGateway = (context: ApplicationContext): OpenIdConnectGateway => {
   if (context.config.authConfig.provider === 'okta') {
     return OktaGateway;
   }
@@ -269,7 +268,7 @@ export const getAuthorizationGateway = (context: ApplicationContext): OpenIdConn
   return null;
 };
 
-export const getUserSessionUseCase = (context: ApplicationContext) => {
+const getUserSessionUseCase = (context: ApplicationContext) => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserSessionUseCase();
   }
@@ -278,9 +277,7 @@ export const getUserSessionUseCase = (context: ApplicationContext) => {
   return repo;
 };
 
-export const getUserSessionCacheRepository = (
-  context: ApplicationContext,
-): UserSessionCacheRepository => {
+const getUserSessionCacheRepository = (context: ApplicationContext): UserSessionCacheRepository => {
   if (context.config.get('dbMock')) {
     if (!mockUserSessionCacheRepository) {
       mockUserSessionCacheRepository = MockMongoRepository.getInstance(context);
@@ -292,16 +289,14 @@ export const getUserSessionCacheRepository = (
   return repo;
 };
 
-export const getStorageGateway = (_context: ApplicationContext): StorageGateway => {
+const getStorageGateway = (_context: ApplicationContext): StorageGateway => {
   if (!storageGateway) {
     storageGateway = LocalStorageGateway;
   }
   return storageGateway;
 };
 
-export const getUserGroupGateway = async (
-  context: ApplicationContext,
-): Promise<UserGroupGateway> => {
+const getUserGroupGateway = async (context: ApplicationContext): Promise<UserGroupGateway> => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserGroupGateway();
   } else {
@@ -336,9 +331,7 @@ const getAcmsGateway = (context: ApplicationContext): AcmsGateway => {
   return acmsGateway;
 };
 
-export const getOfficeAssigneesRepository = (
-  context: ApplicationContext,
-): OfficeAssigneesRepository => {
+const getOfficeAssigneesRepository = (context: ApplicationContext): OfficeAssigneesRepository => {
   if (context.config.dbMock === true) {
     return MockMongoRepository.getInstance(context);
   }
@@ -347,7 +340,7 @@ export const getOfficeAssigneesRepository = (
   return repo;
 };
 
-export const getTrusteesRepository = (context: ApplicationContext): TrusteesRepository => {
+const getTrusteesRepository = (context: ApplicationContext): TrusteesRepository => {
   if (context.config.get('dbMock')) {
     return new MockMongoRepository();
   }
@@ -356,7 +349,7 @@ export const getTrusteesRepository = (context: ApplicationContext): TrusteesRepo
   return repo;
 };
 
-export const getTrusteeAppointmentsRepository = (
+const getTrusteeAppointmentsRepository = (
   context: ApplicationContext,
 ): TrusteeAppointmentsRepository => {
   if (context.config.get('dbMock')) {
@@ -367,11 +360,11 @@ export const getTrusteeAppointmentsRepository = (
   return repo;
 };
 
-export const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
+const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
   return StorageQueueGateway;
 };
 
-export const getListsGateway = (context: ApplicationContext): ListsRepository => {
+const getListsGateway = (context: ApplicationContext): ListsRepository => {
   if (context.config.get('dbMock')) {
     return new MockMongoRepository();
   }
@@ -380,7 +373,7 @@ export const getListsGateway = (context: ApplicationContext): ListsRepository =>
   return repo;
 };
 
-const Factory = {
+const factory = {
   getAcmsGateway,
   getCasesGateway,
   getAssignmentRepository,
@@ -411,4 +404,4 @@ const Factory = {
   getUserGroupsRepository,
 };
 
-export default Factory;
+export default factory;

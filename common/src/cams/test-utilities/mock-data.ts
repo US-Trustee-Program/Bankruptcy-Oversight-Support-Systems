@@ -630,7 +630,8 @@ function getTrusteeAppointment(override: Partial<TrusteeAppointment> = {}): Trus
   return {
     id: faker.string.uuid(),
     trusteeId: faker.string.uuid(),
-    chapter: '7-panel',
+    chapter: '7',
+    appointmentType: 'panel',
     courtDivisionName: 'Manhattan',
     courtId: '0208',
     courtName: 'Southern District of New York',

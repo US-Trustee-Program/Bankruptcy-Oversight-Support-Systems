@@ -8,7 +8,7 @@ import {
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import { getCasesGateway } from '../../factory';
+import factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsUser } from '@common/cams/users';
 import { REGION_02_GROUP_BU, REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
@@ -89,7 +89,7 @@ describe('Case management tests', () => {
 
   describe('constructor tests', () => {
     test('should always set casesRepo and officesGateway', () => {
-      const casesGateway = getCasesGateway(applicationContext);
+      const casesGateway = factory.getCasesGateway(applicationContext);
 
       const basic = new CaseManagement(applicationContext);
       const withOptionalParams = new CaseManagement(applicationContext, casesGateway);

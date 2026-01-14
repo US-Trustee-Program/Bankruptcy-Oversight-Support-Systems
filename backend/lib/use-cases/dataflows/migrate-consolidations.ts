@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { ConsolidationFrom, ConsolidationTo } from '@common/cams/events';
 import { ConsolidationType } from '@common/cams/orders';
 import { CaseSummary } from '@common/cams/cases';
@@ -52,7 +52,7 @@ class AcmsOrders {
     predicate: AcmsPredicate,
   ): Promise<string[]> {
     try {
-      const gateway = Factory.getAcmsGateway(context);
+      const gateway = factory.getAcmsGateway(context);
       const leadCaseIds = await gateway.getLeadCaseIds(context, predicate);
       context.logger.debug(
         MODULE_NAME,
@@ -79,9 +79,9 @@ class AcmsOrders {
       success: true,
     };
     try {
-      const casesRepo = Factory.getCasesRepository(context);
-      const dxtr = Factory.getCasesGateway(context);
-      const acms = Factory.getAcmsGateway(context);
+      const casesRepo = factory.getCasesRepository(context);
+      const dxtr = factory.getCasesGateway(context);
+      const acms = factory.getAcmsGateway(context);
 
       const basics = await acms.getConsolidationDetails(context, acmsLeadCaseId);
       report.leadCaseId = basics.leadCaseId;

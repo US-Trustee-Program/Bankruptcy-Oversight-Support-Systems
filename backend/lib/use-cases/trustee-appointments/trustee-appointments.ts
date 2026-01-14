@@ -1,25 +1,38 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { getTrusteeAppointmentsRepository, getTrusteesRepository } from '../../factory';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import factory from '../../factory';
+import {
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+  TRUSTEE_APPOINTMENTS_INTERNAL_SPEC,
+} from '@common/cams/trustee-appointments';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUserReference } from '@common/cams/users';
-import { TrusteeAppointmentHistory, TrusteeHistory, ChapterType } from '@common/cams/trustees';
+import {
+  TrusteeAppointmentHistory,
+  TrusteeHistory,
+  AppointmentChapterType,
+  AppointmentType,
+  AppointmentStatus,
+} from '@common/cams/trustees';
 import { Creatable } from '../../adapters/types/persistence.gateway';
 import DateHelper from '@common/date-helper';
+import { validateObject } from '@common/cams/validation';
+import { CamsError } from '../../common-errors/cams-error';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-USE-CASE';
 
 type AppointmentSnapshot = {
-  chapter: ChapterType;
+  chapter: AppointmentChapterType;
+  appointmentType: AppointmentType;
   courtId: string;
   divisionCode: string;
   appointedDate: string;
-  status: 'active' | 'inactive';
+  status: AppointmentStatus;
   effectiveDate: string;
 };
 
@@ -29,8 +42,8 @@ export class TrusteeAppointmentsUseCase {
   private readonly courtsUseCase: CourtsUseCase;
 
   constructor(context: ApplicationContext) {
-    this.trusteeAppointmentsRepository = getTrusteeAppointmentsRepository(context);
-    this.trusteesRepository = getTrusteesRepository(context);
+    this.trusteeAppointmentsRepository = factory.getTrusteeAppointmentsRepository(context);
+    this.trusteesRepository = factory.getTrusteesRepository(context);
     this.courtsUseCase = new CourtsUseCase();
   }
 
@@ -44,9 +57,21 @@ export class TrusteeAppointmentsUseCase {
     );
   }
 
+  private validateAppointmentData(appointmentData: TrusteeAppointmentInput): void {
+    const validationResult = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointmentData);
+
+    if (!validationResult.valid && validationResult.reasonMap?.$?.reasons) {
+      const errors = validationResult.reasonMap.$.reasons.join('; ');
+      throw new CamsError(MODULE_NAME, {
+        message: errors,
+      });
+    }
+  }
+
   private hasAppointmentChanged(before: TrusteeAppointment, after: TrusteeAppointment): boolean {
     return (
       before.chapter !== after.chapter ||
+      before.appointmentType !== after.appointmentType ||
       before.courtId !== after.courtId ||
       before.divisionCode !== after.divisionCode ||
       before.appointedDate !== after.appointedDate ||
@@ -148,6 +173,8 @@ export class TrusteeAppointmentsUseCase {
         });
       }
 
+      this.validateAppointmentData(appointmentData);
+
       const userReference = getCamsUserReference(context.session.user);
 
       const createdAppointment = await this.trusteeAppointmentsRepository.createAppointment(
@@ -164,6 +191,7 @@ export class TrusteeAppointmentsUseCase {
         undefined,
         {
           chapter: createdAppointment.chapter,
+          appointmentType: createdAppointment.appointmentType,
           courtId: createdAppointment.courtId,
           divisionCode: createdAppointment.divisionCode,
           appointedDate: createdAppointment.appointedDate,
@@ -197,6 +225,8 @@ export class TrusteeAppointmentsUseCase {
     appointmentData: TrusteeAppointmentInput,
   ): Promise<TrusteeAppointment> {
     try {
+      this.validateAppointmentData(appointmentData);
+
       const userReference = getCamsUserReference(context.session.user);
 
       const existingAppointment = await this.trusteeAppointmentsRepository.read(appointmentId);
@@ -216,6 +246,7 @@ export class TrusteeAppointmentsUseCase {
           userReference,
           {
             chapter: existingAppointment.chapter,
+            appointmentType: existingAppointment.appointmentType,
             courtId: existingAppointment.courtId,
             divisionCode: existingAppointment.divisionCode,
             appointedDate: existingAppointment.appointedDate,
@@ -224,6 +255,7 @@ export class TrusteeAppointmentsUseCase {
           },
           {
             chapter: updatedAppointment.chapter,
+            appointmentType: updatedAppointment.appointmentType,
             courtId: updatedAppointment.courtId,
             divisionCode: updatedAppointment.divisionCode,
             appointedDate: updatedAppointment.appointedDate,
