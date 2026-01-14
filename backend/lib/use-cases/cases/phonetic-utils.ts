@@ -76,11 +76,12 @@ export function filterCasesByDebtorNameSimilarity(
 }
 
 /**
- * Checks if a debtor name matches the search query using Jaro-Winkler similarity.
+ * Checks if a debtor name matches the search query using prefix matching and Jaro-Winkler similarity.
  * Compares each word in the search query against each word in the debtor name.
  * Returns true if ALL words in the search query have a match in the debtor name.
+ * Supports partial word matching (e.g., "sm" matches "Smith", "jon" matches "John").
  *
- * @param searchQuery - User's search input (e.g., "Jon Smith")
+ * @param searchQuery - User's search input (e.g., "Jon Smith" or "john sm")
  * @param debtorName - Debtor or joint debtor name (e.g., "John Smith")
  * @returns True if the name matches the search query
  */
@@ -93,6 +94,12 @@ function matchesDebtorName(searchQuery: string, debtorName: string): boolean {
   // Every word in the search query must match at least one word in the debtor name
   return queryWords.every((queryWord) =>
     nameWords.some((nameWord) => {
+      // Check prefix match first (for partial typing like "sm" matching "smith")
+      if (nameWord.startsWith(queryWord)) {
+        return true;
+      }
+
+      // Fall back to Jaro-Winkler similarity for fuzzy matching
       const similarity = natural.JaroWinklerDistance(queryWord, nameWord);
       return similarity >= JARO_WINKLER_THRESHOLD;
     }),

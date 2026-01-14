@@ -275,18 +275,36 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
 
     if (predicate.debtorName) {
-      // Phonetic search using phonetic tokens from debtor and jointDebtor
+      const allMatchers: ConditionOrConjunction<SyncedCase>[] = [];
+
+      // 1. Phonetic search using phonetic tokens from debtor and jointDebtor
       const searchTokens = generatePhoneticTokens(predicate.debtorName);
       if (searchTokens.length > 0) {
-        // OR logic: match any phonetic token in either debtor or jointDebtor
         const phoneticMatchers: ConditionOrConjunction<SyncedCase>[] = searchTokens.flatMap(
           (token) => [
             doc('debtor.phoneticTokens' as keyof SyncedCase).contains([token]),
             doc('jointDebtor.phoneticTokens' as keyof SyncedCase).contains([token]),
           ],
         );
+        allMatchers.push(...phoneticMatchers);
+      }
 
-        conditions.push(or(...phoneticMatchers));
+      // 2. Substring/prefix search for partial word matching (e.g., "sm" matching "Smith")
+      const searchWords = predicate.debtorName
+        .trim()
+        .split(/\s+/)
+        .filter((word) => word.length > 0);
+      searchWords.forEach((word) => {
+        // Case-insensitive regex for substring matching
+        const regex = new RegExp(word, 'i');
+        allMatchers.push(
+          doc('debtor.name' as keyof SyncedCase).regex(regex),
+          doc('jointDebtor.name' as keyof SyncedCase).regex(regex),
+        );
+      });
+
+      if (allMatchers.length > 0) {
+        conditions.push(or(...allMatchers));
       }
     }
 
