@@ -41,9 +41,9 @@ export function generatePhoneticTokens(text: string): string[] {
       // Metaphone (variable-length code)
       const metaphoneCode = metaphone.process(word);
       if (metaphoneCode) tokens.add(metaphoneCode);
-    } catch (error) {
-      // Silently skip words that can't be processed
-      console.warn(`Phonetic processing failed for word "${word}":`, error);
+    } catch {
+      // eslint-disable-next-line no-empty
+      // Silently skip words that can't be processed (e.g., numbers, special characters)
     }
   });
 

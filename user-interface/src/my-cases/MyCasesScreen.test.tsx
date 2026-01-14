@@ -77,6 +77,14 @@ describe('MyCasesScreen', () => {
         `${getCaseNumber(expectedData[i].caseId)} (${expectedData[i].courtDivisionName})`,
       );
       expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].caseTitle);
+      // Check Debtor column
+      const debtorCell = tableData![dIndex++];
+      if (expectedData[i].debtor?.name) {
+        expect(debtorCell).toHaveTextContent(`Debtor: ${expectedData[i].debtor.name}`);
+      }
+      if (expectedData[i].jointDebtor?.name) {
+        expect(debtorCell).toHaveTextContent(`Joint Debtor: ${expectedData[i].jointDebtor!.name}`);
+      }
       expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].chapter);
       expect(tableData![dIndex++]).toHaveTextContent(formatDate(expectedData[i].dateFiled));
     }

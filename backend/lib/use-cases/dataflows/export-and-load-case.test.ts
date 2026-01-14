@@ -100,6 +100,10 @@ describe('Export and Load Case Tests', () => {
         updatedOn: expect.any(String),
         createdBy: SYSTEM_USER_REFERENCE,
         createdOn: expect.any(String),
+        debtor: {
+          ...bCase.debtor,
+          phoneticTokens: expect.any(Array),
+        },
       };
 
       const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
