@@ -57,8 +57,7 @@ function SessionTimeoutWarningModal_(
         <p>
           You will be logged out in{' '}
           {timerKey > 0 && <CountdownTimer key={timerKey} timeInMs={warningSeconds * 1000} />}{' '}
-          seconds due to inactivity. Click &quot;Stay Logged In&quot; to continue working, or
-          &quot;Log Out Now&quot; to be logged out.
+          seconds due to inactivity.
         </p>
       }
       forceAction={true}
