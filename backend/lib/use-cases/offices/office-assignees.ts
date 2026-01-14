@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { getOfficeAssigneesRepository, getOfficesGateway } from '../../factory';
+import Factory from '../../factory';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CaseAssignment } from '@common/cams/assignments';
 import { mapDivisionCodeToUstpOffice } from '@common/cams/offices';
@@ -13,7 +13,7 @@ type CaseClosedEvent = {
 };
 
 async function getDivisionCodeMap(context: ApplicationContext) {
-  const gateway = getOfficesGateway(context);
+  const gateway = Factory.getOfficesGateway(context);
   const offices = await gateway.getOffices(context);
   return mapDivisionCodeToUstpOffice(offices);
 }
@@ -55,7 +55,7 @@ async function createCaseAssignment(
   context: ApplicationContext,
   assignee: OfficeAssignee,
 ): Promise<void> {
-  const repo = getOfficeAssigneesRepository(context);
+  const repo = Factory.getOfficeAssigneesRepository(context);
   await repo.create(assignee);
 }
 
@@ -63,7 +63,7 @@ async function deleteCaseAssignment(
   context: ApplicationContext,
   assignee: OfficeAssignee,
 ): Promise<void> {
-  const repo = getOfficeAssigneesRepository(context);
+  const repo = Factory.getOfficeAssigneesRepository(context);
   const { caseId, userId } = assignee;
   await repo.deleteMany({ caseId, userId });
 }
@@ -73,7 +73,7 @@ async function handleCaseClosedEvent(
   event: CaseClosedEvent,
 ): Promise<void> {
   try {
-    const repo = getOfficeAssigneesRepository(context);
+    const repo = Factory.getOfficeAssigneesRepository(context);
     await repo.deleteMany({ caseId: event.caseId });
   } catch (originalError) {
     throw getCamsErrorWithStack(originalError, MODULE_NAME, {

@@ -6,7 +6,7 @@ import { getFeatureFlags } from '../../lib/adapters/utils/feature-flag';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 import { azureToCamsHttpRequest } from './functions';
 import { UnauthorizedError } from '../../lib/common-errors/unauthorized-error';
-import { getUserSessionUseCase } from '../../lib/factory';
+import Factory from '../../lib/factory';
 import { sanitizeDeep } from '../../lib/use-cases/validations';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
@@ -89,7 +89,7 @@ async function getApplicationContextSession(context: ApplicationContext) {
     });
   }
 
-  const sessionUseCase = getUserSessionUseCase(context);
+  const sessionUseCase = Factory.getUserSessionUseCase(context);
   return sessionUseCase.lookup(context, accessToken);
 }
 

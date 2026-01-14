@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { getCaseNotesRepository } from '../../factory';
+import Factory from '../../factory';
 import { CaseNotesRepository, UpdateResult } from '../gateways.types';
 import {
   CaseNote,
@@ -20,7 +20,7 @@ export class CaseNotesUseCase {
   private caseNotesRepository: CaseNotesRepository;
   private context: ApplicationContext;
   constructor(applicationContext: ApplicationContext) {
-    this.caseNotesRepository = getCaseNotesRepository(applicationContext);
+    this.caseNotesRepository = Factory.getCaseNotesRepository(applicationContext);
     this.context = applicationContext;
   }
 

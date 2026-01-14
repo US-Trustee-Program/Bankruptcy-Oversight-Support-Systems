@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseDocketUseCase } from '../../use-cases/case-docket/case-docket';
-import { getCaseDocketUseCase } from '../../factory';
+import Factory from '../../factory';
 import { isCamsError } from '../../common-errors/cams-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
@@ -14,7 +14,7 @@ export class CaseDocketController implements CamsController {
   private readonly useCase: CaseDocketUseCase;
 
   constructor(applicationContext: ApplicationContext) {
-    this.useCase = getCaseDocketUseCase(applicationContext);
+    this.useCase = Factory.getCaseDocketUseCase(applicationContext);
   }
   public async handleRequest(
     context: ApplicationContext,

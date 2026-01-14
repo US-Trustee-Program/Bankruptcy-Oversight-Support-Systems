@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
 import { TrusteeOversightAssignment, TrusteeOversightHistory } from '@common/cams/trustees';
 import { CamsRole, OversightRoles, OversightRoleType } from '@common/cams/roles';
-import { getTrusteesRepository, getUserGroupGateway } from '../../factory';
+import Factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { getCamsUserReference } from '@common/cams/session';
@@ -20,7 +20,7 @@ export class TrusteeAssignmentsUseCase {
   private readonly trusteesRepository: TrusteesRepository;
 
   constructor(context: ApplicationContext) {
-    this.trusteesRepository = getTrusteesRepository(context);
+    this.trusteesRepository = Factory.getTrusteesRepository(context);
   }
 
   /**
@@ -133,7 +133,7 @@ export class TrusteeAssignmentsUseCase {
           unassignedUpdate,
         );
 
-        const userGroupGateway = await getUserGroupGateway(context);
+        const userGroupGateway = await Factory.getUserGroupGateway(context);
         const assigneeUser = await userGroupGateway.getUserById(context, staffUserId);
 
         const userAndRole = {
@@ -166,7 +166,7 @@ export class TrusteeAssignmentsUseCase {
         return true;
       }
 
-      const userGroupGateway = await getUserGroupGateway(context);
+      const userGroupGateway = await Factory.getUserGroupGateway(context);
       const assigneeUser = await userGroupGateway.getUserById(context, staffUserId);
 
       const trusteeManager = getCamsUserReference(context.session.user);

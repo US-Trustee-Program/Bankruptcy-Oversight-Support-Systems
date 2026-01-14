@@ -1,7 +1,7 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAppointmentsRepository, TrusteesRepository } from '../gateways.types';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { getTrusteeAppointmentsRepository, getTrusteesRepository } from '../../factory';
+import Factory from '../../factory';
 import {
   TrusteeAppointment,
   TrusteeAppointmentInput,
@@ -42,8 +42,8 @@ export class TrusteeAppointmentsUseCase {
   private readonly courtsUseCase: CourtsUseCase;
 
   constructor(context: ApplicationContext) {
-    this.trusteeAppointmentsRepository = getTrusteeAppointmentsRepository(context);
-    this.trusteesRepository = getTrusteesRepository(context);
+    this.trusteeAppointmentsRepository = Factory.getTrusteeAppointmentsRepository(context);
+    this.trusteesRepository = Factory.getTrusteesRepository(context);
     this.courtsUseCase = new CourtsUseCase();
   }
 
