@@ -60,7 +60,7 @@ describe('AppointmentCard', () => {
     renderWithProps();
 
     expect(
-      screen.getByText(/Southern District of New York - Manhattan: Chapter 7 - Panel/i),
+      screen.getByText(/Southern District of New York \(Manhattan\): Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -70,7 +70,7 @@ describe('AppointmentCard', () => {
     });
 
     expect(
-      screen.getByText(/Eastern District of New York - Manhattan: Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York \(Manhattan\): Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -84,7 +84,7 @@ describe('AppointmentCard', () => {
     });
 
     expect(
-      screen.getByText(/Eastern District of New York - Brooklyn: Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York \(Brooklyn\): Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -99,7 +99,7 @@ describe('AppointmentCard', () => {
 
     expect(screen.getByText(/District:/i)).toBeInTheDocument();
     expect(
-      screen.getByText(/Eastern District of New York - Brooklyn/i, { selector: 'li' }),
+      screen.getByText(/Eastern District of New York \(Brooklyn\)/i, { selector: 'li' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Chapter:/i)).toBeInTheDocument();
     expect(screen.getByText(/^7$/, { selector: 'li' })).toBeInTheDocument();

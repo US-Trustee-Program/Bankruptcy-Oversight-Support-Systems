@@ -22,7 +22,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const formattedAppointmentType = formatAppointmentType(appointmentType);
   let districtDisplay;
   if (props.appointment.courtName && props.appointment.courtDivisionName) {
-    districtDisplay = `${props.appointment.courtName} - ${props.appointment.courtDivisionName}`;
+    districtDisplay = `${props.appointment.courtName} (${props.appointment.courtDivisionName})`;
   } else {
     districtDisplay = 'Court not found';
   }
