@@ -1,9 +1,4 @@
-import Factory, {
-  getAssignmentRepository,
-  getOfficesGateway,
-  getOfficesRepository,
-  getQueueGateway,
-} from '../../factory';
+import Factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
 import { CaseAssignment } from '@common/cams/assignments';
@@ -26,8 +21,8 @@ export class CaseAssignmentUseCase {
 
   constructor(applicationContext: ApplicationContext) {
     this.context = applicationContext;
-    this.assignmentRepository = getAssignmentRepository(applicationContext);
-    this.queueGateway = getQueueGateway(applicationContext);
+    this.assignmentRepository = Factory.getAssignmentRepository(applicationContext);
+    this.queueGateway = Factory.getQueueGateway(applicationContext);
   }
 
   // TODO: createTrialAttorneyAssignments should not take a role, or should be renamed
@@ -81,12 +76,12 @@ export class CaseAssignmentUseCase {
     context.logger.info(MODULE_NAME, 'New assignments:', newAssignees);
 
     const bCase = await casesRepo.getSyncedCase(caseId);
-    const officesGateway = getOfficesGateway(context);
+    const officesGateway = Factory.getOfficesGateway(context);
     const offices = await officesGateway.getOffices(context);
     const divisionCodeMap = mapDivisionCodeToUstpOffice(offices);
     const { officeCode } = divisionCodeMap.get(bCase.caseId.substring(0, 3));
 
-    const officesRepo = getOfficesRepository(context);
+    const officesRepo = Factory.getOfficesRepository(context);
     const calls = [];
     const validatedAssignments: CamsUserReference[] = [];
     newAssignees.forEach((assignee) => {
