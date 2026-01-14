@@ -1,0 +1,106 @@
+import { app, InvocationContext, output } from '@azure/functions';
+import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
+import ContextCreator from '../../azure/application-context-creator';
+import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import Factory from '../../../lib/factory';
+import { ConsolidationOrder } from '@common/cams/orders';
+import QueryBuilder from '../../../lib/query/query-builder';
+import { Document as MongoDocument } from 'mongodb';
+
+const { and, using } = QueryBuilder;
+
+const MODULE_NAME = 'MIGRATE-CHILDCASES-TO-MEMBERCASES';
+
+// Type that includes the legacy 'childCases' field for migration purposes
+type LegacyConsolidationOrder = ConsolidationOrder & {
+  childCases?: ConsolidationOrder['memberCases'];
+};
+
+const START_FUNCTION = buildFunctionName(MODULE_NAME, 'start');
+const START = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'start'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
+
+const HARD_STOP = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
+  connection: 'AzureWebJobsStorage',
+});
+
+/**
+ * Migrates consolidation documents in Cosmos DB from 'childCases' to 'memberCases'
+ * This is a one-time data migration to align the database schema with the code.
+ *
+ * IMPORTANT: This migration specifically targets documents in the 'consolidations' collection
+ * that have orderType='consolidation' and the old 'childCases' field.
+ */
+async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
+  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const { logger } = context;
+
+  try {
+    logger.info(MODULE_NAME, 'Starting migration of childCases to memberCases...');
+
+    // Get the consolidation orders repository
+    const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
+
+    const doc = using<LegacyConsolidationOrder>();
+
+    // Build a specific query to target ONLY consolidation order documents
+    // This ensures we don't accidentally modify unrelated documents
+    const migrationQuery = and(
+      doc('orderType').equals('consolidation'), // Must be a consolidation order
+      doc('childCases').exists(), // Must have the old field name
+    );
+
+    // Perform the field rename using MongoDB's $rename operator
+    // This renames the field from 'childCases' to 'memberCases' for all matching documents
+    const updateOperation: MongoDocument = {
+      $rename: { childCases: 'memberCases' },
+    };
+    const result = await consolidationsRepo.updateManyByQuery(migrationQuery, updateOperation);
+
+    logger.info(
+      MODULE_NAME,
+      `Migration complete. Matched ${result.matchedCount} document(s), modified ${result.modifiedCount} consolidation order document(s).`,
+    );
+
+    if (result.modifiedCount !== result.matchedCount) {
+      logger.warn(
+        MODULE_NAME,
+        `Warning: Matched ${result.matchedCount} documents but only modified ${result.modifiedCount}. Some documents may have already been migrated or were not modifiable.`,
+      );
+    }
+  } catch (originalError) {
+    const error = getCamsError(
+      originalError,
+      MODULE_NAME,
+      'Failed to rename consolidation field from childCases to memberCases.',
+    );
+    logger.camsError(error);
+    invocationContext.extraOutputs.set(HARD_STOP, [
+      {
+        message: 'Migration of childCases to memberCases failed',
+        error,
+      },
+    ]);
+    throw error;
+  }
+}
+
+function setup() {
+  app.storageQueue(START_FUNCTION, {
+    connection: START.connection,
+    queueName: START.queueName,
+    handler: start,
+    extraOutputs: [HARD_STOP],
+  });
+}
+
+const MigrateChildCasesToMemberCases = {
+  MODULE_NAME,
+  setup,
+};
+
+export default MigrateChildCasesToMemberCases;

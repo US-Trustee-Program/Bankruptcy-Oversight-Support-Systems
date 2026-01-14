@@ -110,6 +110,7 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Updates<T, T>,
     Releasable {
   count: (keyRoot: string) => Promise<number>;
+  updateManyByQuery: (query: Query<T>, update: unknown) => Promise<UpdateResult>;
 }
 
 export interface UserSessionCacheRepository<T = CamsSession>

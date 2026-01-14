@@ -165,7 +165,7 @@ Note the following assumptions:
 
 | Name                       | Type (Secret/Variable) | Is Flexion Only? | Description                                            |
 | -------------------------- | ---------------------- | ---------------- | ------------------------------------------------------ |
-| CAMS_ENABLED_DATAFLOWS     | Variable               | ---              | Sets up which dataflows are active on deployment |
+| CAMS_ENABLED_DATAFLOWS     | Variable               | ---              | Sets up which dataflows are active on deployment. Comma-separated list of MODULE_NAME values. See [running.md](../running.md) for available dataflows. |
 
 ### Key Vault
 

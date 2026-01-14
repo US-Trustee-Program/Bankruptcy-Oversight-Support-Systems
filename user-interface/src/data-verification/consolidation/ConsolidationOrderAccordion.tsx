@@ -59,7 +59,7 @@ export function ConsolidationOrderAccordion(props: ConsolidationOrderAccordionPr
     caseTableActions: consolidationControls.caseTableActions,
     clearButton: consolidationControls.clearButton,
     confirmationModal: consolidationControls.confirmationModal,
-    divisionCode: getUniqueDivisionCodeOrUndefined(consolidationStore.order.memberCases),
+    divisionCode: getUniqueDivisionCodeOrUndefined(consolidationStore.order.memberCases ?? []),
     expandedAccordionId: expandedId!,
     filteredOfficeRecords: getDivisionComboOptions(
       consolidationStore.filteredOfficesList ?? props.courts,
