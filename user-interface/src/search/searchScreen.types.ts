@@ -7,6 +7,7 @@ export type SearchScreenFormData = {
   divisionCodes?: string[];
   chapters?: string[];
   excludeClosedCases?: boolean;
+  debtorName?: string;
 };
 
 const CASE_NUMBER_INVALID_ERROR_REASON = 'Must be 7 digits';
@@ -20,10 +21,11 @@ const atLeastOneSearchCriterion: ValidatorFunction = (obj: unknown) => {
   const hasCaseNumber = !!form.caseNumber;
   const hasDivisionCodes = !!form.divisionCodes && form.divisionCodes.length > 0;
   const hasChapters = !!form.chapters && form.chapters.length > 0;
+  const hasDebtorName = !!form.debtorName && form.debtorName.trim().length > 0;
 
   // Include Closed Cases alone is not a valid search criterion
-  // User must have at least one of: case number, division codes, or chapters
-  if (!hasCaseNumber && !hasDivisionCodes && !hasChapters) {
+  // User must have at least one of: case number, division codes, chapters, or debtor name
+  if (!hasCaseNumber && !hasDivisionCodes && !hasChapters && !hasDebtorName) {
     return {
       reasonMap: {
         $: {

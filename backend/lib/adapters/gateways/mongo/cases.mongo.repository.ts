@@ -16,6 +16,7 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
+import { generatePhoneticTokens } from '../../../use-cases/cases/phonetic-utils';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -271,6 +272,22 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
     if (predicate.divisionCodes?.length > 0) {
       conditions.push(doc('courtDivisionCode').contains(predicate.divisionCodes));
+    }
+
+    if (predicate.debtorName) {
+      // Phonetic search using phonetic tokens from debtor and jointDebtor
+      const searchTokens = generatePhoneticTokens(predicate.debtorName);
+      if (searchTokens.length > 0) {
+        // OR logic: match any phonetic token in either debtor or jointDebtor
+        const phoneticMatchers: ConditionOrConjunction<SyncedCase>[] = searchTokens.flatMap(
+          (token) => [
+            doc('debtor.phoneticTokens' as keyof SyncedCase).contains([token]),
+            doc('jointDebtor.phoneticTokens' as keyof SyncedCase).contains([token]),
+          ],
+        );
+
+        conditions.push(or(...phoneticMatchers));
+      }
     }
 
     if (predicate.excludeMemberConsolidations === true && predicate.excludedCaseIds?.length > 0) {

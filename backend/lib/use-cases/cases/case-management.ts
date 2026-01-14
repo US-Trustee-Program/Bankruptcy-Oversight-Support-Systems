@@ -24,6 +24,7 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignment } from '@common/cams/assignments';
+import { filterCasesByDebtorNameSimilarity } from './phonetic-utils';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -88,11 +89,17 @@ export default class CaseManagement {
 
       const searchResult = await this.casesRepository.searchCases(predicate);
 
+      // Apply Jaro-Winkler filtering if searching by debtor name
+      let filteredCases = searchResult.data;
+      if (predicate.debtorName) {
+        filteredCases = filterCasesByDebtorNameSimilarity(searchResult.data, predicate.debtorName);
+      }
+
       const casesMap = new Map<string, ResourceActions<SyncedCase>>();
       const caseIds = [];
-      for (const casesKey in searchResult.data) {
-        caseIds.push(searchResult.data[casesKey].caseId);
-        const bCase = searchResult.data[casesKey];
+      for (const casesKey in filteredCases) {
+        caseIds.push(filteredCases[casesKey].caseId);
+        const bCase = filteredCases[casesKey];
         bCase.officeCode = buildOfficeCode(bCase.regionId, bCase.courtDivisionCode);
         bCase._actions = getAction<CaseBasics>(context, bCase);
         casesMap.set(bCase.caseId, bCase);
@@ -110,7 +117,14 @@ export default class CaseManagement {
         }
       }
 
-      return { metadata: searchResult.metadata, data: Array.from(casesMap.values()) };
+      // Update metadata to reflect filtered results
+      const finalData = Array.from(casesMap.values());
+      const metadata = {
+        ...searchResult.metadata,
+        total: predicate.debtorName ? finalData.length : searchResult.metadata.total,
+      };
+
+      return { metadata, data: finalData };
     } catch (originalError) {
       if (!isCamsError(originalError)) {
         throw new UnknownError(MODULE_NAME, {

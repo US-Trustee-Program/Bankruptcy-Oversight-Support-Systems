@@ -24,6 +24,7 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import LocalStorage from '@/lib/utils/local-storage';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Checkbox from '@/lib/components/uswds/Checkbox';
+import Input from '@/lib/components/uswds/Input';
 import { SEARCH_SCREEN_SPEC, SearchScreenFormData } from './searchScreen.types';
 import { validateObject, ValidatorReasonMap } from '@common/cams/validation';
 import useDebounce from '@/lib/hooks/UseDebounce';
@@ -94,6 +95,7 @@ export default function SearchScreen() {
       divisionCodes: predicate.divisionCodes,
       chapters: predicate.chapters,
       excludeClosedCases: predicate.excludeClosedCases,
+      debtorName: predicate.debtorName,
     };
   };
 
@@ -222,6 +224,17 @@ export default function SearchScreen() {
     });
   }
 
+  function handleDebtorNameChange(ev: ChangeEvent<HTMLInputElement>): void {
+    const debtorName = ev.target.value;
+    const newPredicate = { ...temporarySearchPredicate };
+    if (debtorName && debtorName.trim().length > 0) {
+      newPredicate.debtorName = debtorName;
+    } else {
+      delete newPredicate.debtorName;
+    }
+    setTemporarySearchPredicate(newPredicate);
+  }
+
   function performSearch() {
     // Enable showing validation errors
     setShowCaseNumberError(true);
@@ -294,6 +307,19 @@ export default function SearchScreen() {
                   errorMessage={fieldErrors.caseNumber?.reasons?.[0]}
                 />
               </div>
+            </div>
+            <div className="debtor-name-search" data-testid="debtor-name-search">
+              <Input
+                id="debtor-name-field"
+                name="debtor-name"
+                label="Debtor/Joint Debtor Name"
+                placeholder="e.g., John Doe"
+                onChange={handleDebtorNameChange}
+                onFocus={handleFilterFormElementFocus}
+                aria-label="Find case by debtor or joint debtor name"
+                autoComplete="off"
+                errorMessage={fieldErrors.debtorName?.reasons?.[0]}
+              />
             </div>
             <div className="case-district-search form-field" data-testid="case-district-search">
               <div className="usa-search usa-search--small">

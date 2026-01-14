@@ -17,6 +17,7 @@ type TaxIds = {
 
 export type Party = LegacyAddress & {
   name: string;
+  phoneticTokens?: string[];
   phone?: string;
   extension?: string;
   email?: string;
