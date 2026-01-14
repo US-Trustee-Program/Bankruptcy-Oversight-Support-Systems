@@ -45,7 +45,7 @@ const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${mockToken}`,
+    Authorization: `Bearer ${mockToken}`,
   },
 });
 
@@ -230,13 +230,13 @@ async function main() {
   results.push(
     await testEndpoint('Search with pagination', async () => {
       const response1 = await api.get('/debtors/search', {
-        params: { q: '', top: 3, skip: 0 },
+        params: { q: 'son', top: 3, skip: 0 },
       });
       logInfo(`Page 1: ${response1.data.data.results.length} results`);
       logInfo(`Has next: ${response1.data.meta.pagination.hasNext}`);
 
       const response2 = await api.get('/debtors/search', {
-        params: { q: '', top: 3, skip: 3 },
+        params: { q: 'son', top: 3, skip: 3 },
       });
       logInfo(`Page 2: ${response2.data.data.results.length} results`);
       logInfo(`Has previous: ${response2.data.meta.pagination.hasPrevious}`);
