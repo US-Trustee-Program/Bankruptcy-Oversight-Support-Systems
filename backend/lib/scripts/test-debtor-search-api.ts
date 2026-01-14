@@ -26,7 +26,7 @@ function generateMockToken(): string {
   const now = Math.floor(Date.now() / 1000);
   const claims = {
     aud: 'api://default',
-    sub: 'user',
+    sub: 'user@fake.com', // Use a valid mock user subject
     iss: 'http://localhost:7071',
     exp: now + 3600, // 1 hour expiration
     groups: [],
