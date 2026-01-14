@@ -12,17 +12,36 @@
  * Usage: npm run test-debtor-api
  *
  * Note: Requires the express server to be running on port 7071
+ *       with CAMS_LOGIN_PROVIDER='mock' environment variable
  */
 
 import axios, { AxiosInstance } from 'axios';
+import * as jwt from 'jsonwebtoken';
 import { DEBTORS } from '../testing/mock-data/debtors.mock';
 import { DebtorSearchDocument } from '../adapters/types/search';
+
+// Generate a mock JWT token for testing
+function generateMockToken(): string {
+  const key = 'mock-secret'; // pragma: allowlist secret
+  const now = Math.floor(Date.now() / 1000);
+  const claims = {
+    aud: 'api://default',
+    sub: 'user',
+    iss: 'http://localhost:7071',
+    exp: now + 3600, // 1 hour expiration
+    groups: [],
+  };
+  return jwt.sign(claims, key);
+}
+
+const mockToken = generateMockToken();
 
 const API_BASE_URL = 'http://localhost:7071/api';
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Authorization': `Bearer ${mockToken}`,
   },
 });
 
