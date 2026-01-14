@@ -2357,7 +2357,8 @@ async function getTrusteeAppointments(trusteeId: string) {
       {
         id: 'appointment-1',
         trusteeId,
-        chapter: '7-panel' as const,
+        chapter: '7' as const,
+        appointmentType: 'panel' as const,
         courtId: '0208',
         divisionCode: '081',
         appointedDate: '2023-01-01T00:00:00Z',

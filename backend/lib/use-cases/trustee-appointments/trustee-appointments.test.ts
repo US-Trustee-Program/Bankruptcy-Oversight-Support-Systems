@@ -5,6 +5,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeAppointmentsUseCase } from './trustee-appointments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { AppointmentType } from '@common/cams/trustees';
 
 describe('TrusteeAppointmentsUseCase tests', () => {
   let context: ApplicationContext;
@@ -86,7 +87,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
   describe('createAppointment', () => {
     const appointmentInput: TrusteeAppointmentInput = {
-      chapter: '7-panel',
+      chapter: '7',
+      appointmentType: 'panel',
       courtId: '081',
       divisionCode: '1',
       appointedDate: '2024-01-15',
@@ -190,6 +192,104 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         `Created appointment ${mockCreatedAppointment.id} for trustee ${trusteeId}`,
       );
     });
+
+    test('should throw error when appointmentType is invalid for chapter', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const invalidAppointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'standing' as unknown as AppointmentType,
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, invalidAppointmentInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain(
+        'Appointment type "standing" is not valid for chapter 7',
+      );
+    });
+
+    test('should throw error when status is invalid for chapter and appointmentType', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const invalidAppointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'deceased',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, invalidAppointmentInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain(
+        'Status "deceased" is not valid for chapter 7 with appointment type "panel"',
+      );
+    });
+
+    test('should throw error when appointmentType is pool for Chapter 7', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const invalidAppointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'pool' as unknown as AppointmentType,
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, invalidAppointmentInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('Appointment type "pool" is not valid for chapter 7');
+    });
+
+    test('should throw error when status is active for Chapter 7 off-panel', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const invalidAppointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'off-panel',
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, invalidAppointmentInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain(
+        'Status "active" is not valid for chapter 7 with appointment type "off-panel"',
+      );
+    });
   });
 
   describe('updateAppointment', () => {
@@ -197,6 +297,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     const appointmentId = 'appointment-123';
     const appointmentUpdate: TrusteeAppointmentInput = {
       chapter: '11',
+      appointmentType: 'case-by-case',
       courtId: '081',
       divisionCode: '2',
       appointedDate: '2024-02-01',
@@ -329,7 +430,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
         id: appointmentId,
         trusteeId,
         courtId: '081',
-        chapter: '7-panel',
+        chapter: '7',
+        appointmentType: 'panel',
         divisionCode: 'MAB',
       });
       const mockUpdatedAppointment = MockData.getTrusteeAppointment({
@@ -398,7 +500,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           trusteeId,
           appointmentId,
           before: expect.objectContaining({
-            chapter: '7-panel',
+            chapter: '7',
+            appointmentType: 'panel',
             divisionCode: 'MAB',
             courtName: 'Test Court',
             courtDivisionName: 'Boston',
@@ -439,11 +542,114 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       expect(historyUpdateSpy).not.toHaveBeenCalled();
     });
+
+    test('should throw error when appointmentType is invalid for chapter', async () => {
+      const invalidAppointmentUpdate: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'standing' as unknown as AppointmentType,
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          invalidAppointmentUpdate,
+        ),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain(
+        'Appointment type "standing" is not valid for chapter 7',
+      );
+    });
+
+    test('should throw error when status is invalid for chapter and appointmentType', async () => {
+      const invalidAppointmentUpdate: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'deceased',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          invalidAppointmentUpdate,
+        ),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain(
+        'Status "deceased" is not valid for chapter 7 with appointment type "panel"',
+      );
+    });
+
+    test('should throw error when updating to pool appointmentType for Chapter 7', async () => {
+      const invalidAppointmentUpdate: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'pool' as unknown as AppointmentType,
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          invalidAppointmentUpdate,
+        ),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('Appointment type "pool" is not valid for chapter 7');
+    });
+
+    test('should throw error when updating status to deceased for Chapter 11 Subchapter V pool', async () => {
+      const invalidAppointmentUpdate: TrusteeAppointmentInput = {
+        chapter: '11-subchapter-v',
+        appointmentType: 'pool',
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-15',
+        status: 'deceased',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      };
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.updateAppointment(
+          context,
+          trusteeId,
+          appointmentId,
+          invalidAppointmentUpdate,
+        ),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain(
+        'Status "deceased" is not valid for chapter 11-subchapter-v with appointment type "pool"',
+      );
+    });
   });
 
   describe('createAppointment audit history', () => {
     const appointmentInput: TrusteeAppointmentInput = {
-      chapter: '7-panel',
+      chapter: '7',
+      appointmentType: 'panel',
       courtId: '081',
       divisionCode: 'MAB',
       appointedDate: '2024-01-15',
@@ -502,7 +708,8 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           appointmentId: mockCreatedAppointment.id,
           before: undefined,
           after: expect.objectContaining({
-            chapter: '7-panel',
+            chapter: '7',
+            appointmentType: 'panel',
             divisionCode: 'MAB',
             courtName: 'Test Court',
             courtDivisionName: 'Boston',
