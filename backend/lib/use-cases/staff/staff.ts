@@ -1,6 +1,6 @@
 import { UserGroupsRepository } from '../gateways.types';
 import { ApplicationContext } from '../../adapters/types/basic';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { Staff } from '@common/cams/users';
 import { OversightRoles, OversightRoleType } from '@common/cams/roles';
 
@@ -10,14 +10,14 @@ export default class StaffUseCase {
   userGroupsRepository: UserGroupsRepository;
 
   constructor(context: ApplicationContext) {
-    this.userGroupsRepository = Factory.getUserGroupsRepository(context);
+    this.userGroupsRepository = factory.getUserGroupsRepository(context);
   }
 
   private buildOversightGroupMapping(applicationContext: ApplicationContext): {
     roleToEmptyStaff: Record<OversightRoleType, Staff[]>;
     groupNameToRole: Map<string, OversightRoleType>;
   } {
-    const storage = Factory.getStorageGateway(applicationContext);
+    const storage = factory.getStorageGateway(applicationContext);
     const roleMapping = storage.getRoleMapping();
 
     // Pre-initialize result with all oversight roles mapped to empty arrays

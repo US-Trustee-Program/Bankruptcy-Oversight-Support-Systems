@@ -373,7 +373,7 @@ const getListsGateway = (context: ApplicationContext): ListsRepository => {
   return repo;
 };
 
-const Factory = {
+const factory = {
   getAcmsGateway,
   getCasesGateway,
   getAssignmentRepository,
@@ -404,4 +404,4 @@ const Factory = {
   getUserGroupsRepository,
 };
 
-export default Factory;
+export default factory;

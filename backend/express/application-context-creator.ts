@@ -6,7 +6,7 @@ import { getFeatureFlags } from '../lib/adapters/utils/feature-flag';
 import { LoggerImpl } from '../lib/adapters/services/logger.service';
 import { CamsDict, CamsHttpMethod, CamsHttpRequest } from '../lib/adapters/types/http';
 import { UnauthorizedError } from '../lib/common-errors/unauthorized-error';
-import Factory from '../lib/factory';
+import factory from '../lib/factory';
 import { sanitizeDeep } from '../lib/use-cases/validations';
 import { getCamsError } from '../lib/common-errors/error-utilities';
 
@@ -103,7 +103,7 @@ async function getApplicationContextSession(context: ApplicationContext) {
     });
   }
 
-  const sessionUseCase = Factory.getUserSessionUseCase(context);
+  const sessionUseCase = factory.getUserSessionUseCase(context);
   return sessionUseCase.lookup(context, accessToken);
 }
 

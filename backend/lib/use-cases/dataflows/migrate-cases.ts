@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { MaybeCaseSyncEvents, MaybeData, MaybeVoid } from './queue-types';
 
 const MODULE_NAME = 'MIGRATE-CASES-USE-CASE';
@@ -12,7 +12,7 @@ const MODULE_NAME = 'MIGRATE-CASES-USE-CASE';
  */
 async function loadMigrationTable(context: ApplicationContext): Promise<MaybeData<number>> {
   try {
-    const gateway = Factory.getAcmsGateway(context);
+    const gateway = factory.getAcmsGateway(context);
     await gateway.loadMigrationTable(context);
     const count = await gateway.getMigrationCaseCount(context);
     return { data: count };
@@ -35,7 +35,7 @@ async function getPageOfCaseEvents(
   end: number,
 ): Promise<MaybeCaseSyncEvents> {
   try {
-    const gateway = Factory.getAcmsGateway(context);
+    const gateway = factory.getAcmsGateway(context);
     const caseIds = await gateway.getMigrationCaseIds(context, start, end);
     return {
       events: caseIds.map((caseId) => {
@@ -63,7 +63,7 @@ async function getPageOfCaseEvents(
  */
 async function emptyMigrationTable(context: ApplicationContext): Promise<MaybeVoid> {
   try {
-    const gateway = Factory.getAcmsGateway(context);
+    const gateway = factory.getAcmsGateway(context);
     await gateway.emptyMigrationTable(context);
     return { success: true };
   } catch (originalError) {

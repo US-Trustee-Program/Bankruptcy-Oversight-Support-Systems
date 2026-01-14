@@ -1,4 +1,4 @@
-import Factory from '../../factory';
+import factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { EventCaseReference } from '@common/cams/events';
 
@@ -9,7 +9,7 @@ function getEarliestDate(orders: Array<EventCaseReference>) {
 
 export class CaseAssociatedUseCase {
   public async getAssociatedCases(context: ApplicationContext): Promise<EventCaseReference[]> {
-    const casesRepo = Factory.getCasesRepository(context);
+    const casesRepo = factory.getCasesRepository(context);
     const caseId = context.request.params.caseId;
     const consolidation = await casesRepo.getConsolidation(caseId);
     if (!consolidation.length) return [];

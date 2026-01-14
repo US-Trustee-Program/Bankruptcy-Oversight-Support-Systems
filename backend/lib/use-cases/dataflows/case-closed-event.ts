@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-CLOSED-EVENT-USE-CASE';
@@ -23,7 +23,7 @@ async function handleCaseClosedEvent(context: ApplicationContext, event: CaseClo
 }
 
 async function deleteCaseAssignment(context: ApplicationContext, caseId: string) {
-  const repo = Factory.getOfficeAssigneesRepository(context);
+  const repo = factory.getOfficeAssigneesRepository(context);
   await repo.deleteMany({ caseId });
 }
 

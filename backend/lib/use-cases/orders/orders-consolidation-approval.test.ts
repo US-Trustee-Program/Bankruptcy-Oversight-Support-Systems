@@ -4,7 +4,7 @@ import {
   createMockApplicationContextSession,
 } from '../../testing/testing-utilities';
 import { OrdersUseCase } from './orders';
-import Factory from '../../factory';
+import factory from '../../factory';
 import {
   ConsolidationOrderActionApproval,
   getCaseSummaryFromConsolidationOrderCase,
@@ -32,7 +32,7 @@ describe('Orders use case', () => {
   beforeEach(async () => {
     mockContext = await createMockApplicationContext();
     mockContext.session = await createMockApplicationContextSession({ user: authorizedUser });
-    casesRepo = Factory.getCasesRepository(mockContext);
+    casesRepo = factory.getCasesRepository(mockContext);
     useCase = new OrdersUseCase(mockContext);
 
     vi.spyOn(MockMongoRepository.prototype, 'count').mockResolvedValue(0);

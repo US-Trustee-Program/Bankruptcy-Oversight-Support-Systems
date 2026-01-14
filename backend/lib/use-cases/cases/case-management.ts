@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -44,10 +44,10 @@ export default class CaseManagement {
   casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
-    this.assignmentRepository = Factory.getAssignmentRepository(applicationContext);
-    this.casesGateway = casesGateway ? casesGateway : Factory.getCasesGateway(applicationContext);
-    this.officesGateway = Factory.getOfficesGateway(applicationContext);
-    this.casesRepository = Factory.getCasesRepository(applicationContext);
+    this.assignmentRepository = factory.getAssignmentRepository(applicationContext);
+    this.casesGateway = casesGateway ? casesGateway : factory.getCasesGateway(applicationContext);
+    this.officesGateway = factory.getOfficesGateway(applicationContext);
+    this.casesRepository = factory.getCasesRepository(applicationContext);
   }
 
   public async searchCases(
@@ -124,7 +124,7 @@ export default class CaseManagement {
     context: ApplicationContext,
     caseId: string,
   ): Promise<ResourceActions<CaseDetail>> {
-    const casesRepo = Factory.getCasesRepository(context);
+    const casesRepo = factory.getCasesRepository(context);
     try {
       const caseDetails = await this.casesGateway.getCaseDetail(context, caseId);
       caseDetails.transfers = await casesRepo.getTransfers(caseId);

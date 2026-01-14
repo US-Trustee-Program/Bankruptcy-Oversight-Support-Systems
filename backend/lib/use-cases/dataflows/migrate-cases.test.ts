@@ -3,7 +3,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { AcmsGatewayImpl } from '../../adapters/gateways/acms/acms.gateway';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UnknownError } from '../../common-errors/unknown-error';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AcmsGateway } from '../gateways.types';
 import MigrateCases from './migrate-cases';
@@ -54,7 +54,7 @@ describe('Migrate cases use case', () => {
     });
 
     test('should throw error if we cannot get case ids to migrate', async () => {
-      vi.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
       const expected = new UnknownError('test-module', {
         message: 'Failed to get case IDs to migrate from the ACMS gateway.',
       });
@@ -82,7 +82,7 @@ describe('Migrate cases use case', () => {
     });
 
     test('should return an error if the migration table is not loaded', async () => {
-      vi.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
       const expected = new UnknownError('test-module', {
         message: 'Failed to populate migration table.',
       });
@@ -108,7 +108,7 @@ describe('Migrate cases use case', () => {
     });
 
     test('should return an error if the migration table is not dropped', async () => {
-      vi.spyOn(Factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue(mockAcmsGateway);
       const expected = new UnknownError('test-module', {
         message: 'Failed to empty migration table.',
       });

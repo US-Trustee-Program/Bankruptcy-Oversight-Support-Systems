@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
-import Factory from '../../../lib/factory';
+import factory from '../../../lib/factory';
 
 const MODULE_NAME = 'HEALTHCHECK-SQL-DB';
 
@@ -12,7 +12,7 @@ export default class HealthcheckSqlDb {
 
   public async checkDxtrDbRead() {
     try {
-      const client = Factory.getSqlConnection(this.applicationContext.config.dxtrDbConfig);
+      const client = factory.getSqlConnection(this.applicationContext.config.dxtrDbConfig);
       const sqlConnection = await client.connect();
       const sqlRequest = sqlConnection.request();
       const results = await sqlRequest.query('SELECT TOP 1 * FROM [dbo].[AO_CS]');

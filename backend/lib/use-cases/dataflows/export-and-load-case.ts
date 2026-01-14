@@ -2,7 +2,7 @@ import { createAuditRecord } from '@common/cams/auditable';
 import { SyncedCase } from '@common/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { CaseSyncEvent } from '@common/queue/dataflow-types';
 
 const MODULE_NAME = 'EXPORT-AND-LOAD';
@@ -11,8 +11,8 @@ async function exportAndLoad(
   context: ApplicationContext,
   events: CaseSyncEvent[],
 ): Promise<CaseSyncEvent[]> {
-  const casesGateway = Factory.getCasesGateway(context);
-  const repo = Factory.getCasesRepository(context);
+  const casesGateway = factory.getCasesGateway(context);
+  const repo = factory.getCasesRepository(context);
   for (const event of events) {
     try {
       event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
@@ -32,7 +32,7 @@ async function exportAndLoad(
 
 async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
   try {
-    const gateway = Factory.getCasesGateway(context);
+    const gateway = factory.getCasesGateway(context);
     event.bCase = await gateway.getCaseDetail(context, event.caseId);
   } catch (originalError) {
     const error = getCamsError(
@@ -49,7 +49,7 @@ async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
 
 async function loadCase(context: ApplicationContext, event: CaseSyncEvent) {
   try {
-    const casesRepo = Factory.getCasesRepository(context);
+    const casesRepo = factory.getCasesRepository(context);
     const synced = createAuditRecord<SyncedCase>({ ...event.bCase, documentType: 'SYNCED_CASE' });
     await casesRepo.syncDxtrCase(synced);
   } catch (originalError) {
