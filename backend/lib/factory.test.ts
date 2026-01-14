@@ -33,7 +33,7 @@ describe('Factory function-apps', () => {
   beforeEach(async () => {
     vi.resetModules();
 
-    factory = await import('./factory');
+    factory = (await import('./factory')).default;
 
     RuntimeStateMongoRepository = (
       await import('./adapters/gateways/mongo/runtime-state.mongo.repository')
