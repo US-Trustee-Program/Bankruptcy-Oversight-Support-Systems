@@ -1321,7 +1321,8 @@ describe('TrusteeDetailAuditHistory', () => {
     test('should display division code when court information is missing', async () => {
       const mockAppointmentHistory = createMockAppointmentHistory({
         before: {
-          chapter: '7-panel',
+          chapter: '7',
+          appointmentType: 'panel',
           courtId: '081',
           divisionCode: 'MAB',
           appointedDate: '2023-01-15',
@@ -1578,7 +1579,8 @@ function createMockAppointmentHistory(
     documentType: 'AUDIT_APPOINTMENT',
     appointmentId: `appointment-${id}`,
     before: {
-      chapter: '7-panel',
+      chapter: '7',
+      appointmentType: 'panel',
       courtId: '081',
       divisionCode: 'MAB',
       courtName: 'United States Bankruptcy Court - District of Massachusetts',
@@ -1589,6 +1591,7 @@ function createMockAppointmentHistory(
     },
     after: {
       chapter: '11',
+      appointmentType: 'case-by-case',
       courtId: '081',
       divisionCode: 'MAW',
       courtName: 'United States Bankruptcy Court - District of Massachusetts',

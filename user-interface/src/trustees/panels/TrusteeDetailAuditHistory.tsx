@@ -13,7 +13,7 @@ import {
   TrusteeSoftwareHistory,
   TrusteeOversightHistory,
   TrusteeAppointmentHistory,
-  formatChapterType,
+  getAppointmentDetails,
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
@@ -200,9 +200,10 @@ function ShowTrusteeAppointmentHistory(props: ShowTrusteeAppointmentHistoryProps
 
   const formatAppointmentData = (data: typeof history.before | typeof history.after) => {
     if (!data) return '(none)';
+    const { chapter, appointmentType } = data;
     return (
       <>
-        Chapter: {formatChapterType(data.chapter)}
+        Chapter: {getAppointmentDetails(chapter, appointmentType)}
         <br />
         District:{' '}
         {data.courtName && data.courtDivisionName
