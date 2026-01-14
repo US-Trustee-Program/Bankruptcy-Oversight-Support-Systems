@@ -1,5 +1,5 @@
 import { CamsUser, PrivilegedIdentityUser } from '@common/cams/users';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
@@ -27,7 +27,7 @@ async function getPrivilegedIdentityUser(
   };
 
   if (!options?.idpUser) {
-    const userGroupGateway = await Factory.getUserGroupGateway(context);
+    const userGroupGateway = await factory.getUserGroupGateway(context);
     const user = await userGroupGateway.getUserById(context, userId);
     if (!user.roles.includes(CamsRole.PrivilegedIdentityUser)) return user;
 
@@ -40,7 +40,7 @@ async function getPrivilegedIdentityUser(
 
   try {
     if (!options?.pimUser) {
-      const usersRepository = Factory.getUsersRepository(context);
+      const usersRepository = factory.getUsersRepository(context);
       pimUser = await usersRepository.getPrivilegedIdentityUser(combined.id);
     }
     if (new Date() < new Date(pimUser.expires)) {
@@ -73,7 +73,7 @@ async function getOfficesFromGroupNames(
   context: ApplicationContext,
   idpGroups: string[],
 ): Promise<UstpOfficeDetails[]> {
-  const officesGateway = Factory.getOfficesGateway(context);
+  const officesGateway = factory.getOfficesGateway(context);
   const ustpOffices = await officesGateway.getOffices(context);
   return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupName));
 }

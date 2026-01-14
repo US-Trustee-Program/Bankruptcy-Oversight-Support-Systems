@@ -4,7 +4,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { ServerConfigError } from '../../common-errors/server-config-error';
 import { CamsSession } from '@common/cams/session';
 import { urlRegex } from '@common/cams/test-utilities/regex';
@@ -136,7 +136,7 @@ describe('user-session.gateway test', () => {
 
   test('should throw ServerConfigError if factory does not return an OidcConnectGateway', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
-    vi.spyOn(Factory, 'getAuthorizationGateway').mockReturnValue(null);
+    vi.spyOn(factory, 'getAuthorizationGateway').mockReturnValue(null);
     await expect(gateway.lookup(context, jwtString)).rejects.toThrow(ServerConfigError);
   });
 

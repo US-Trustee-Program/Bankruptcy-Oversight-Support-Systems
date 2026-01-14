@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseSyncEvent } from '@common/queue/dataflow-types';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CasesSyncState } from '../gateways.types';
 import { randomUUID } from 'node:crypto';
@@ -19,11 +19,11 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
         lastSyncDate,
       };
     } else {
-      const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
+      const runtimeStateRepo = factory.getCasesSyncStateRepo(context);
       syncState = await runtimeStateRepo.read('CASES_SYNC_STATE');
     }
 
-    const casesGateway = Factory.getCasesGateway(context);
+    const casesGateway = factory.getCasesGateway(context);
     const caseIds = await casesGateway.getUpdatedCaseIds(context, syncState.lastSyncDate);
 
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {

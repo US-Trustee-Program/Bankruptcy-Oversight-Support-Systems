@@ -1,12 +1,12 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { CasesSyncState } from '../gateways.types';
 import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-RUNTIME-STATE';
 
 async function storeRuntimeState(context: ApplicationContext, lastSyncDate: string) {
-  const runtimeStateRepo = Factory.getCasesSyncStateRepo(context);
+  const runtimeStateRepo = factory.getCasesSyncStateRepo(context);
   try {
     const newSyncState: CasesSyncState = {
       documentType: 'CASES_SYNC_STATE',

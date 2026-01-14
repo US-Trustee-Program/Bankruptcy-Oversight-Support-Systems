@@ -1,7 +1,7 @@
 import { ConnectionError, ConnectionPool, MSSQLError } from 'mssql';
 import { ApplicationContext } from '../types/basic';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../types/database';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { deferClose } from '../../deferrable/defer-close';
 
 const MODULE_NAME = 'DATABASE-UTILITY';
@@ -16,7 +16,7 @@ export async function executeQuery(
   // we should do some sanitization here to eliminate sql injection issues
   try {
     if (!sqlConnectionPool) {
-      sqlConnectionPool = Factory.getSqlConnection(databaseConfig);
+      sqlConnectionPool = factory.getSqlConnection(databaseConfig);
       deferClose(sqlConnectionPool);
     }
 
