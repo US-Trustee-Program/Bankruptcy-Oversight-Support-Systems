@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "license": "CC0 v1.0",
   "description": "Full-stack BDD tests for CAMS",
-  "main": "index.js",
   "type": "module",
   "scripts": {
     "clean": "rm -rf node_modules && rm -rf coverage",

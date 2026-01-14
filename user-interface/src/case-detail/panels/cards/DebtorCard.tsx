@@ -3,7 +3,7 @@ import { Debtor, DebtorAttorney } from '@common/cams/parties';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 import { parsePhoneNumber } from '@common/phone-helper';
 
-export interface DebtorCardProps {
+interface DebtorCardProps {
   title: string;
   debtor: Debtor;
   debtorTypeLabel?: string;
