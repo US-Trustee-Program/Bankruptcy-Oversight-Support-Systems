@@ -28,9 +28,7 @@ async function runPOC() {
 
   console.log(`   Endpoint: ${config.azureSearchConfig.endpoint || '[Not configured]'}`);
   console.log(`   Index Name: ${config.azureSearchConfig.indexName}`);
-  console.log(
-    `   Mode: ${config.azureSearchConfig.mock || config.dbMock ? 'MOCK' : 'REAL'}\n`,
-  );
+  console.log(`   Mode: ${config.azureSearchConfig.mock || config.dbMock ? 'MOCK' : 'REAL'}\n`);
 
   const searchGateway = getSearchGateway(context);
 
@@ -42,33 +40,31 @@ async function runPOC() {
 
     // Step 2: Transform mock debtors to search documents
     console.log('🔄 Step 2: Transforming mock debtor data...');
-    const documents: DebtorSearchDocument[] = Array.from(DEBTORS.entries()).map(
-      ([key, debtor]) => {
-        // Parse city and state from cityStateZipCountry
-        const cityStateZip = debtor.cityStateZipCountry || '';
-        const parts = cityStateZip.split(',');
-        const city = parts[0]?.trim() || '';
-        const stateZip = parts[1]?.trim() || '';
-        const state = stateZip.split(' ')[0] || '';
+    const documents: DebtorSearchDocument[] = Array.from(DEBTORS.entries()).map(([key, debtor]) => {
+      // Parse city and state from cityStateZipCountry
+      const cityStateZip = debtor.cityStateZipCountry || '';
+      const parts = cityStateZip.split(',');
+      const city = parts[0]?.trim() || '';
+      const stateZip = parts[1]?.trim() || '';
+      const state = stateZip.split(' ')[0] || '';
 
-        // Split name into first and last name (simple split on space)
-        const nameParts = debtor.name.split(' ');
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
+      // Split name into first and last name (simple split on space)
+      const nameParts = debtor.name.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
 
-        return {
-          id: key.replace(/-/g, ''), // Remove hyphens for ID
-          name: debtor.name,
-          firstName,
-          lastName,
-          ssn: debtor.ssn?.replace(/-/g, ''), // Store without hyphens
-          taxId: debtor.taxId?.replace(/-/g, ''), // Store without hyphens
-          address: debtor.address1,
-          city,
-          state,
-        };
-      },
-    );
+      return {
+        id: key.replace(/-/g, ''), // Remove hyphens for ID
+        name: debtor.name,
+        firstName,
+        lastName,
+        ssn: debtor.ssn?.replace(/-/g, ''), // Store without hyphens
+        taxId: debtor.taxId?.replace(/-/g, ''), // Store without hyphens
+        address: debtor.address1,
+        city,
+        state,
+      };
+    });
     console.log(`   ✅ Transformed ${documents.length} documents\n`);
 
     // Step 3: Upload Documents
@@ -130,7 +126,7 @@ async function runPOC() {
     // For this POC, we'll demonstrate the concept
     console.log('   ℹ️  Note: PII fields (SSN, TaxID) are filterable but not searchable');
     console.log('   This prevents them from appearing in autocomplete and general search');
-    console.log('   Real implementation would use: $filter=ssn eq \'010101010\'\n');
+    console.log("   Real implementation would use: $filter=ssn eq '010101010'\n");
 
     // Summary
     console.log('✨ POC Complete!\n');

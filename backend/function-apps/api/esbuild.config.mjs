@@ -5,7 +5,7 @@ import { COMMON_BUILD_OPTIONS } from '../../esbuild-shared.mjs';
 // This eliminates code duplication across multiple bundles
 const entryPoints = ['index.ts'];
 
-// eslint-disable-next-line no-undef
+ 
 console.log('Building single bundle with all Azure Functions');
 
 esbuild
@@ -16,8 +16,8 @@ esbuild
     outbase: '.',
   })
   .catch((err) => {
-    // eslint-disable-next-line no-undef
+     
     console.error('Build failed:', err);
-    // eslint-disable-next-line no-undef
+     
     process.exit(1);
   });

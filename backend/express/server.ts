@@ -22,6 +22,7 @@ import { CourtsController } from '../lib/controllers/courts/courts.controller';
 import { StaffController } from '../lib/controllers/staff/staff.controller';
 import { ListsController } from '../lib/controllers/lists/lists.controller';
 import { PrivilegedIdentityAdminController } from '../lib/controllers/admin/privileged-identity-admin.controller';
+import { DebtorSearchController } from '../lib/controllers/debtors/debtor-search.controller';
 import { finalizeDeferrable } from '../lib/deferrable/finalize-deferrable';
 import { mockAuthentication } from '../lib/testing/mock-gateways/mock-oauth2-gateway';
 import { httpSuccess } from '../lib/adapters/utils/http-response';
@@ -287,6 +288,60 @@ export function createApp(): Application {
 
   app.get('/api/trustees/:trusteeId/oversight-assignments', handleTrusteeAssignments);
   app.post('/api/trustees/:trusteeId/oversight-assignments', handleTrusteeAssignments);
+
+  // Debtor Search endpoints
+  const handleDebtorSearch = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new DebtorSearchController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const handleDebtorSearchStats = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new DebtorSearchController(context);
+      const camsResponse = await controller.handleStatsRequest(context);
+      sendCamsResponse(res, camsResponse);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const handleDebtorSearchInit = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new DebtorSearchController(context);
+      const camsResponse = await controller.handleInitializeIndexRequest(context);
+      sendCamsResponse(res, camsResponse);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const handleDebtorSearchSync = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new DebtorSearchController(context);
+      const camsResponse = await controller.handleSyncDataRequest(context);
+      sendCamsResponse(res, camsResponse);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  app.get('/api/debtors/search', handleDebtorSearch);
+  app.get('/api/debtors/search/stats', handleDebtorSearchStats);
+  app.post('/api/debtors/search/init', handleDebtorSearchInit);
+  app.post('/api/debtors/search/sync', handleDebtorSearchSync);
 
   const handleTrusteeHistory = async (req: Request, res: Response, next: NextFunction) => {
     try {

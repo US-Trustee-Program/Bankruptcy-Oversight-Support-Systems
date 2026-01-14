@@ -110,7 +110,7 @@ export class MockAzureSearchGateway implements SearchGateway {
 
   /**
    * Simple fuzzy matching that allows for minor typos
-   * Checks if strings are similar with Levenshtein distance <= 1
+   * Checks if any substring of the text matches the pattern with edit distance <= 1
    */
   private fuzzyMatch(text: string, pattern: string): boolean {
     // Exact match
@@ -118,29 +118,71 @@ export class MockAzureSearchGateway implements SearchGateway {
       return true;
     }
 
-    // Check if pattern matches with 1 character edit distance
-    // This is a simplified fuzzy match - production would use proper Levenshtein
-    if (Math.abs(text.length - pattern.length) > 1) {
-      return false;
-    }
+    // Try to find a fuzzy match for the pattern anywhere in the text
+    // For each possible substring of the text that is close in length to the pattern
+    const patternLen = pattern.length;
+    const textLen = text.length;
 
-    // Check for single character difference
-    let differences = 0;
-    const minLength = Math.min(text.length, pattern.length);
+    // Check substrings of text that are within 1 character of pattern length
+    // We need to be more restrictive to avoid false positives
+    for (let start = 0; start < textLen; start++) {
+      // Only check substring lengths that make sense
+      const maxLen = Math.min(patternLen + 1, textLen - start);
+      const minLen = Math.max(1, patternLen - 1);
 
-    for (let i = 0; i < minLength; i++) {
-      if (text[i] !== pattern[i]) {
-        differences++;
-        if (differences > 1) {
-          return false;
+      for (let len = minLen; len <= maxLen; len++) {
+        if (start + len > textLen) continue;
+        const substring = text.substring(start, start + len);
+
+        // Calculate edit distance between substring and pattern
+        const distance = this.calculateEditDistance(substring, pattern);
+        if (distance <= 1) {
+          return true;
         }
       }
     }
 
-    // Account for length difference
-    differences += Math.abs(text.length - pattern.length);
+    return false;
+  }
 
-    return differences <= 1;
+  /**
+   * Calculate the Levenshtein edit distance between two strings
+   */
+  private calculateEditDistance(str1: string, str2: string): number {
+    const m = str1.length;
+    const n = str2.length;
+
+    // Create a 2D array for dynamic programming
+    const dp: number[][] = Array(m + 1)
+      .fill(null)
+      .map(() => Array(n + 1).fill(0));
+
+    // Initialize first row and column
+    for (let i = 0; i <= m; i++) {
+      dp[i][0] = i;
+    }
+    for (let j = 0; j <= n; j++) {
+      dp[0][j] = j;
+    }
+
+    // Fill the dp table
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        if (str1[i - 1] === str2[j - 1]) {
+          dp[i][j] = dp[i - 1][j - 1];
+        } else {
+          dp[i][j] =
+            1 +
+            Math.min(
+              dp[i - 1][j], // deletion
+              dp[i][j - 1], // insertion
+              dp[i - 1][j - 1], // substitution
+            );
+        }
+      }
+    }
+
+    return dp[m][n];
   }
 
   /**
@@ -155,6 +197,7 @@ export class MockAzureSearchGateway implements SearchGateway {
    * Helper method to get all documents (useful for tests)
    */
   getAllDocuments(): DebtorSearchDocument[] {
-    return [...this.mockDocuments];
+    // Return a deep copy to prevent external modification
+    return this.mockDocuments.map((doc) => ({ ...doc }));
   }
 }
