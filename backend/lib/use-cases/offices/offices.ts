@@ -1,15 +1,7 @@
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { AttorneyUser, Staff, UserGroup } from '@common/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
-import {
-  getOfficeAssigneesRepository,
-  getOfficesGateway,
-  getOfficesRepository,
-  getOfficeStaffSyncStateRepo,
-  getStorageGateway,
-  getUserGroupGateway,
-  getUserGroupsRepository,
-} from '../../factory';
+import factory from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
@@ -21,7 +13,7 @@ export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
 
 export class OfficesUseCase {
   public async getOffices(context: ApplicationContext): Promise<UstpOfficeDetails[]> {
-    const officesGateway = getOfficesGateway(context);
+    const officesGateway = factory.getOfficesGateway(context);
     return await officesGateway.getOffices(context);
   }
 
@@ -29,7 +21,7 @@ export class OfficesUseCase {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<AttorneyUser[]> {
-    const repository = getOfficesRepository(context);
+    const repository = factory.getOfficesRepository(context);
     return await repository.getOfficeAttorneys(officeCode);
   }
 
@@ -37,16 +29,16 @@ export class OfficesUseCase {
     context: ApplicationContext,
     officeCode: string,
   ): Promise<Staff[]> {
-    const repository = getOfficeAssigneesRepository(context);
+    const repository = factory.getOfficeAssigneesRepository(context);
     return await repository.getDistinctAssigneesByOffice(officeCode);
   }
 
   public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
-    const officesGateway = getOfficesGateway(context);
-    const repository = getOfficesRepository(context);
-    const userGroupSource = await getUserGroupGateway(context);
-    const storage = getStorageGateway(context);
-    const userGroupsRepository = getUserGroupsRepository(context);
+    const officesGateway = factory.getOfficesGateway(context);
+    const repository = factory.getOfficesRepository(context);
+    const userGroupSource = await factory.getUserGroupGateway(context);
+    const storage = factory.getStorageGateway(context);
+    const userGroupsRepository = factory.getUserGroupsRepository(context);
 
     // Get IdP to CAMS mappings.
     const offices = await officesGateway.getOffices(context);
@@ -148,7 +140,7 @@ export class OfficesUseCase {
       officesWithUsers,
     };
 
-    const runtimeStateRepo = getOfficeStaffSyncStateRepo(context);
+    const runtimeStateRepo = factory.getOfficeStaffSyncStateRepo(context);
 
     await runtimeStateRepo.upsert(result);
     return result;

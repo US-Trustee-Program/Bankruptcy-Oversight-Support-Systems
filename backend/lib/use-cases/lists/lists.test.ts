@@ -3,7 +3,7 @@ import ListsUseCase from './lists';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ListsRepository } from '../gateways.types';
-import Factory from '../../factory';
+import factory from '../../factory';
 import {
   BankList,
   BankruptcySoftwareList,
@@ -33,7 +33,7 @@ describe('ListsUseCase tests', () => {
     };
 
     // Mock the factory to return our mock repository
-    vi.spyOn(Factory, 'getListsGateway').mockReturnValue(mockListsRepository);
+    vi.spyOn(factory, 'getListsGateway').mockReturnValue(mockListsRepository);
   });
 
   afterEach(() => {
@@ -53,7 +53,7 @@ describe('ListsUseCase tests', () => {
       const result = await useCase.getBankruptcySoftwareList(context);
 
       // Assert
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.getBankruptcySoftwareList).toHaveBeenCalled();
       expect(result).toEqual(mockSoftwareList);
     });
@@ -71,7 +71,7 @@ describe('ListsUseCase tests', () => {
       const result = await useCase.getBankruptcySoftwareList(context);
 
       // Assert - Verify the result is sorted by value
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.getBankruptcySoftwareList).toHaveBeenCalled();
       expect(result).toHaveLength(3);
       expect(result[0].value).toBe('Alpha Software');
@@ -91,7 +91,7 @@ describe('ListsUseCase tests', () => {
 
       // Act & Assert
       await expect(useCase.getBankruptcySoftwareList(context)).rejects.toThrow(errorMessage);
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.getBankruptcySoftwareList).toHaveBeenCalled();
     });
   });
@@ -109,7 +109,7 @@ describe('ListsUseCase tests', () => {
       const result = await useCase.getBanksList(context);
 
       // Assert
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.getBankList).toHaveBeenCalled();
       expect(result).toEqual(mockBanksList);
     });
@@ -121,7 +121,7 @@ describe('ListsUseCase tests', () => {
 
       // Act & Assert
       await expect(useCase.getBanksList(context)).rejects.toThrow(errorMessage);
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.getBankList).toHaveBeenCalled();
     });
   });
@@ -141,7 +141,7 @@ describe('ListsUseCase tests', () => {
       const result = await useCase.createBankruptcySoftware(context, itemToCreate);
 
       // Assert
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.postBankruptcySoftware).toHaveBeenCalledWith(itemToCreate);
       expect(result).toEqual(mockItemId);
     });
@@ -160,7 +160,7 @@ describe('ListsUseCase tests', () => {
       await expect(useCase.createBankruptcySoftware(context, itemToCreate)).rejects.toThrow(
         errorMessage,
       );
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.postBankruptcySoftware).toHaveBeenCalledWith(itemToCreate);
     });
   });
@@ -180,7 +180,7 @@ describe('ListsUseCase tests', () => {
       const result = await useCase.createBank(context, itemToCreate);
 
       // Assert
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.postBank).toHaveBeenCalledWith(itemToCreate);
       expect(result).toEqual(mockItemId);
     });
@@ -197,7 +197,7 @@ describe('ListsUseCase tests', () => {
 
       // Act & Assert
       await expect(useCase.createBank(context, itemToCreate)).rejects.toThrow(errorMessage);
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.postBank).toHaveBeenCalledWith(itemToCreate);
     });
   });
@@ -212,7 +212,7 @@ describe('ListsUseCase tests', () => {
       await useCase.deleteBankruptcySoftware(context, itemId);
 
       // Assert
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.deleteBankruptcySoftware).toHaveBeenCalledWith(itemId);
     });
 
@@ -224,7 +224,7 @@ describe('ListsUseCase tests', () => {
 
       // Act & Assert
       await expect(useCase.deleteBankruptcySoftware(context, itemId)).rejects.toThrow(errorMessage);
-      expect(Factory.getListsGateway).toHaveBeenCalledWith(context);
+      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.deleteBankruptcySoftware).toHaveBeenCalledWith(itemId);
     });
   });

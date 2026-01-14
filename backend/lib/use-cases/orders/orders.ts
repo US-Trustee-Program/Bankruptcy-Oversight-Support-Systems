@@ -34,7 +34,7 @@ import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { createAuditRecord } from '@common/cams/auditable';
 import { OrdersSearchPredicate } from '@common/api/search';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import Factory, { getCasesGateway } from '../../factory';
+import factory from '../../factory';
 
 const MODULE_NAME = 'ORDERS-USE-CASE';
 
@@ -69,8 +69,8 @@ export class OrdersUseCase {
   }
 
   public async getOrders(context: ApplicationContext): Promise<Array<Order>> {
-    const ordersRepo = Factory.getOrdersRepository(this.context);
-    const consolidationsRepo = Factory.getConsolidationOrdersRepository(this.context);
+    const ordersRepo = factory.getOrdersRepository(this.context);
+    const consolidationsRepo = factory.getConsolidationOrdersRepository(this.context);
 
     let predicate: OrdersSearchPredicate = undefined;
     if (context.session) {
@@ -86,7 +86,7 @@ export class OrdersUseCase {
   }
 
   public async getSuggestedCases(context: ApplicationContext): Promise<Array<CaseSummary>> {
-    const casesGateway = Factory.getCasesGateway(this.context);
+    const casesGateway = factory.getCasesGateway(this.context);
     const { caseId } = context.request.params;
     return casesGateway.getSuggestedCases(context, caseId);
   }
@@ -100,8 +100,8 @@ export class OrdersUseCase {
       throw new UnauthorizedError(MODULE_NAME);
     }
 
-    const ordersRepo = Factory.getOrdersRepository(this.context);
-    const casesRepo = Factory.getCasesRepository(this.context);
+    const ordersRepo = factory.getOrdersRepository(this.context);
+    const casesRepo = factory.getCasesRepository(this.context);
 
     context.logger.info(MODULE_NAME, 'Updating transfer order:', data);
     const initialOrder = await ordersRepo.read(id, data.caseId);
@@ -147,11 +147,11 @@ export class OrdersUseCase {
     options?: SyncOrdersOptions,
   ): Promise<SyncOrdersStatus> {
     let initialSyncState: OrderSyncState;
-    const runtimeStateRepo = Factory.getOrderSyncStateRepo(context);
-    const ordersGateway = Factory.getOrdersGateway(context);
-    const ordersRepo = Factory.getOrdersRepository(context);
-    const casesRepo = Factory.getCasesRepository(context);
-    const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
+    const runtimeStateRepo = factory.getOrderSyncStateRepo(context);
+    const ordersGateway = factory.getOrdersGateway(context);
+    const ordersRepo = factory.getOrdersRepository(context);
+    const casesRepo = factory.getCasesRepository(context);
+    const consolidationsRepo = factory.getConsolidationOrdersRepository(context);
 
     try {
       initialSyncState = await runtimeStateRepo.read('ORDERS_SYNC_STATE', '');
@@ -299,7 +299,7 @@ export class OrdersUseCase {
     }
     let before;
     try {
-      const casesRepo = Factory.getCasesRepository(context);
+      const casesRepo = factory.getCasesRepository(context);
       const fullHistory = await casesRepo.getCaseHistory(bCase.caseId);
       before = fullHistory
         .filter((h) => h.documentType === 'AUDIT_CONSOLIDATION')
@@ -350,8 +350,8 @@ export class OrdersUseCase {
       });
     }
 
-    const casesRepo = Factory.getCasesRepository(context);
-    const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
+    const casesRepo = factory.getCasesRepository(context);
+    const consolidationsRepo = factory.getConsolidationOrdersRepository(context);
     const provisionalOrder = await consolidationsRepo.read(provisionalOrderId);
 
     if (reason) {
@@ -374,7 +374,7 @@ export class OrdersUseCase {
     );
     context.logger.debug(MODULE_NAME, `Included case id's were:`, includedCases);
 
-    const gateway = getCasesGateway(context);
+    const gateway = factory.getCasesGateway(context);
     for (const caseId of additionalCaseIds) {
       const summary = await gateway.getCaseSummary(context, caseId);
       if (summary) {
@@ -539,7 +539,7 @@ export class OrdersUseCase {
       const maybeLeadCaseId = order.leadCaseIdHint ?? undefined;
       if (maybeLeadCaseId && !caseMap.has(maybeLeadCaseId) && !notFound.has(maybeLeadCaseId)) {
         try {
-          const casesGateway = Factory.getCasesGateway(context);
+          const casesGateway = factory.getCasesGateway(context);
           const maybeLeadCase = await casesGateway.getCaseSummary(context, maybeLeadCaseId);
           if (maybeLeadCase) {
             caseMap.set(maybeLeadCaseId, {

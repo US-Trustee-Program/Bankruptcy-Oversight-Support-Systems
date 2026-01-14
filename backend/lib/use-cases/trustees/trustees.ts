@@ -2,7 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesRepository } from '../gateways.types';
 import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import { getTrusteesRepository } from '../../factory';
+import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import V from '@common/cams/validators';
 import {
@@ -24,7 +24,7 @@ export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
 
   constructor(context: ApplicationContext) {
-    this.trusteesRepository = getTrusteesRepository(context);
+    this.trusteesRepository = factory.getTrusteesRepository(context);
   }
 
   private checkValidation(validatorResult: ValidatorResult) {

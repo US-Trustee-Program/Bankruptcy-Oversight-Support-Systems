@@ -1,9 +1,4 @@
-import Factory, {
-  getAssignmentRepository,
-  getOfficesGateway,
-  getOfficesRepository,
-  getQueueGateway,
-} from '../../factory';
+import factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
 import { CaseAssignment } from '@common/cams/assignments';
@@ -26,8 +21,8 @@ export class CaseAssignmentUseCase {
 
   constructor(applicationContext: ApplicationContext) {
     this.context = applicationContext;
-    this.assignmentRepository = getAssignmentRepository(applicationContext);
-    this.queueGateway = getQueueGateway(applicationContext);
+    this.assignmentRepository = factory.getAssignmentRepository(applicationContext);
+    this.queueGateway = factory.getQueueGateway(applicationContext);
   }
 
   // TODO: createTrialAttorneyAssignments should not take a role, or should be renamed
@@ -38,7 +33,7 @@ export class CaseAssignmentUseCase {
     role: string,
     options: { processRoles?: CamsRoleType[] } = {},
   ): Promise<void> {
-    const casesRepo = Factory.getCasesRepository(context);
+    const casesRepo = factory.getCasesRepository(context);
     const userAndProcessRoles = [].concat(context.session.user.roles).concat(options.processRoles);
     if (!userAndProcessRoles.includes(CamsRole.CaseAssignmentManager)) {
       throw new AssignmentError(MODULE_NAME, {
@@ -76,17 +71,17 @@ export class CaseAssignmentUseCase {
     newAssignees: CamsUserReference[],
     role: string,
   ): Promise<string[]> {
-    const casesRepo = Factory.getCasesRepository(context);
-    const assignmentRepo = Factory.getAssignmentRepository(context);
+    const casesRepo = factory.getCasesRepository(context);
+    const assignmentRepo = factory.getAssignmentRepository(context);
     context.logger.info(MODULE_NAME, 'New assignments:', newAssignees);
 
     const bCase = await casesRepo.getSyncedCase(caseId);
-    const officesGateway = getOfficesGateway(context);
+    const officesGateway = factory.getOfficesGateway(context);
     const offices = await officesGateway.getOffices(context);
     const divisionCodeMap = mapDivisionCodeToUstpOffice(offices);
     const { officeCode } = divisionCodeMap.get(bCase.caseId.substring(0, 3));
 
-    const officesRepo = getOfficesRepository(context);
+    const officesRepo = factory.getOfficesRepository(context);
     const calls = [];
     const validatedAssignments: CamsUserReference[] = [];
     newAssignees.forEach((assignee) => {
@@ -209,7 +204,7 @@ export class CaseAssignmentUseCase {
   }
 
   public async findAssignmentsByCaseId(caseIds: string[]): Promise<Map<string, CaseAssignment[]>> {
-    const assignmentRepo = Factory.getAssignmentRepository(this.context);
+    const assignmentRepo = factory.getAssignmentRepository(this.context);
     return await assignmentRepo.getAssignmentsForCases(caseIds);
   }
 
@@ -219,7 +214,7 @@ export class CaseAssignmentUseCase {
   }
 
   public async getCaseAssignments(userId: string): Promise<CaseAssignment[]> {
-    const assignmentRepo = Factory.getAssignmentRepository(this.context);
+    const assignmentRepo = factory.getAssignmentRepository(this.context);
     return await assignmentRepo.findAssignmentsByAssignee(userId);
   }
 }

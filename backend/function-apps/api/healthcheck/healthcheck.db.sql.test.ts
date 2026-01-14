@@ -4,7 +4,7 @@ import { ConnectionPool } from 'mssql';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { closeDeferred } from '../../../lib/deferrable/defer-close';
-import * as factory from '../../../lib/factory';
+import factory from '../../../lib/factory';
 import HealthcheckSqlDb from './healthcheck.db.sql';
 
 describe('healthcheck.db.sql', () => {

@@ -1,4 +1,4 @@
-import { getAuthorizationGateway, getUserSessionCacheRepository } from '../../factory';
+import factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { isCamsError } from '../../common-errors/cams-error';
@@ -22,7 +22,7 @@ export class UserSessionUseCase {
   private readonly sessionCacheRepository: UserSessionCacheRepository;
 
   constructor(context: ApplicationContext) {
-    this.sessionCacheRepository = getUserSessionCacheRepository(context);
+    this.sessionCacheRepository = factory.getUserSessionCacheRepository(context);
   }
 
   private async lookupSession(context: ApplicationContext, token: string) {
@@ -44,7 +44,7 @@ export class UserSessionUseCase {
     context: ApplicationContext,
     token: string,
   ): Promise<GetUserResponse> {
-    const authGateway = getAuthorizationGateway(context);
+    const authGateway = factory.getAuthorizationGateway(context);
     if (!authGateway) {
       throw new ServerConfigError(MODULE_NAME, {
         message: UNSUPPORTED_AUTHENTICATION_PROVIDER,

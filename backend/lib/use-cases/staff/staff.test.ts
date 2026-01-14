@@ -3,7 +3,7 @@ import StaffUseCase from './staff';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UserGroupsRepository } from '../gateways.types';
 import { UserGroup } from '@common/cams/users';
-import * as Factory from '../../factory';
+import factory from '../../factory';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import { StorageGateway } from '../../adapters/types/storage';
@@ -38,8 +38,8 @@ describe('StaffUseCase', () => {
     };
 
     // Mock factory functions using spyOn
-    vi.spyOn(Factory, 'getUserGroupsRepository').mockReturnValue(mockUserGroupsRepository);
-    vi.spyOn(Factory, 'getStorageGateway').mockReturnValue(mockStorageGateway);
+    vi.spyOn(factory, 'getUserGroupsRepository').mockReturnValue(mockUserGroupsRepository);
+    vi.spyOn(factory, 'getStorageGateway').mockReturnValue(mockStorageGateway);
 
     staffUseCase = new StaffUseCase(mockApplicationContext);
   });
@@ -194,7 +194,7 @@ describe('StaffUseCase', () => {
 
       await staffUseCase.getOversightStaff(mockApplicationContext);
 
-      expect(Factory.getStorageGateway).toHaveBeenCalledWith(mockApplicationContext);
+      expect(factory.getStorageGateway).toHaveBeenCalledWith(mockApplicationContext);
       expect(mockUserGroupsRepository.getUserGroupsByNames).toHaveBeenCalled();
     });
 

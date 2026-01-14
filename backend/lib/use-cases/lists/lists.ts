@@ -5,14 +5,14 @@ import {
   BankruptcySoftwareList,
   BankruptcySoftwareListItem,
 } from '@common/cams/lists';
-import Factory from '../../factory';
+import factory from '../../factory';
 import { Creatable } from '@common/cams/creatable';
 
 class ListsUseCase {
   public async getBankruptcySoftwareList(
     context: ApplicationContext,
   ): Promise<BankruptcySoftwareList> {
-    const softwareList = (await Factory.getListsGateway(context).getBankruptcySoftwareList()).sort(
+    const softwareList = (await factory.getListsGateway(context).getBankruptcySoftwareList()).sort(
       (a, b) => a.value.localeCompare(b.value),
     );
 
@@ -23,22 +23,22 @@ class ListsUseCase {
     context: ApplicationContext,
     item: Creatable<BankruptcySoftwareListItem>,
   ): Promise<string> {
-    return await Factory.getListsGateway(context).postBankruptcySoftware(item);
+    return await factory.getListsGateway(context).postBankruptcySoftware(item);
   }
 
   public async getBanksList(context: ApplicationContext): Promise<BankList> {
-    return await Factory.getListsGateway(context).getBankList();
+    return await factory.getListsGateway(context).getBankList();
   }
 
   public async createBank(
     context: ApplicationContext,
     item: Creatable<BankListItem>,
   ): Promise<string> {
-    return await Factory.getListsGateway(context).postBank(item);
+    return await factory.getListsGateway(context).postBank(item);
   }
 
   public async deleteBankruptcySoftware(context: ApplicationContext, id: string): Promise<void> {
-    return await Factory.getListsGateway(context).deleteBankruptcySoftware(id);
+    return await factory.getListsGateway(context).deleteBankruptcySoftware(id);
   }
 }
 
