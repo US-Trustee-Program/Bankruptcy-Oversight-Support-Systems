@@ -1,10 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import {
-  getAssignmentRepository,
-  getCasesRepository,
-  getOfficeAssigneesRepository,
-  getOfficesGateway,
-} from '../../factory';
+import Factory from '../../factory';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import { mapDivisionCodeToUstpOffice } from '@common/cams/offices';
@@ -15,14 +10,14 @@ import { OfficeAssignee } from '../gateways.types';
 const MODULE_NAME = 'MIGRATE-OFFICE-ASSIGNEES-USE-CASE';
 
 async function migrateAssignments(context: ApplicationContext) {
-  const assignmentsRepo = getAssignmentRepository(context);
+  const assignmentsRepo = Factory.getAssignmentRepository(context);
   const allAssignments = await assignmentsRepo.getAllActiveAssignments();
 
-  const officesGateway = getOfficesGateway(context);
+  const officesGateway = Factory.getOfficesGateway(context);
   const offices = await officesGateway.getOffices(context);
   const divisionCodeMap = mapDivisionCodeToUstpOffice(offices);
 
-  const casesRepo = getCasesRepository(context);
+  const casesRepo = Factory.getCasesRepository(context);
   const safeGetCase = async (caseId: string) => {
     try {
       return await casesRepo.getSyncedCase(caseId);
@@ -71,7 +66,7 @@ async function createOfficeAssignee(
   context: ApplicationContext,
   assignee: OfficeAssignee,
 ): Promise<boolean> {
-  const officeAssigneesRepo = getOfficeAssigneesRepository(context);
+  const officeAssigneesRepo = Factory.getOfficeAssigneesRepository(context);
   let error: CamsError;
   try {
     await officeAssigneesRepo.create(assignee);

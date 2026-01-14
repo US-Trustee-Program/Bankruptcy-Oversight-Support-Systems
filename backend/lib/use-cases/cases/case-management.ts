@@ -1,10 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import Factory, {
-  getAssignmentRepository,
-  getCasesGateway,
-  getCasesRepository,
-  getOfficesGateway,
-} from '../../factory';
+import Factory from '../../factory';
 import { CasesInterface } from './cases.interface';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 import { UnknownError } from '../../common-errors/unknown-error';
@@ -49,10 +44,10 @@ export default class CaseManagement {
   casesRepository: CasesRepository;
 
   constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
-    this.assignmentRepository = getAssignmentRepository(applicationContext);
-    this.casesGateway = casesGateway ? casesGateway : getCasesGateway(applicationContext);
-    this.officesGateway = getOfficesGateway(applicationContext);
-    this.casesRepository = getCasesRepository(applicationContext);
+    this.assignmentRepository = Factory.getAssignmentRepository(applicationContext);
+    this.casesGateway = casesGateway ? casesGateway : Factory.getCasesGateway(applicationContext);
+    this.officesGateway = Factory.getOfficesGateway(applicationContext);
+    this.casesRepository = Factory.getCasesRepository(applicationContext);
   }
 
   public async searchCases(
