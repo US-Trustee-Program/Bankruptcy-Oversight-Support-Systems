@@ -1,5 +1,14 @@
+.trustee-detail-screen-heading {
+  h1 {
+    font-size: 2.5rem;
+  }
+}
+
 .trustee-form-screen {
   .usa-alert-container {
     margin-left: 0;
+  }
+  .field-group.appointedDate {
+    margin-bottom: 0.5rem;
   }
 }
