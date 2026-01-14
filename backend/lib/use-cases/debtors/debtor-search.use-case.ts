@@ -2,8 +2,8 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { SearchGateway } from '../gateways.types';
 import { DebtorSearchDocument, SearchResult } from '../../adapters/types/search';
 import { getSearchGateway } from '../../factory';
-import { CamsError } from '@common/cams/error';
-import { UnknownError } from '@common/cams/error';
+import { CamsError } from '../../common-errors/cams-error';
+import { UnknownError } from '../../common-errors/unknown-error';
 
 const MODULE_NAME = 'DEBTOR-SEARCH-USE-CASE';
 
