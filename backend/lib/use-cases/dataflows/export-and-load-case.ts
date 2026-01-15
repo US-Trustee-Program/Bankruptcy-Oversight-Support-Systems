@@ -76,7 +76,7 @@ async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
 
 async function loadCase(context: ApplicationContext, event: CaseSyncEvent) {
   try {
-    const casesRepo = getCasesRepository(context);
+    const casesRepo = factory.getCasesRepository(context);
     const caseWithTokens = addPhoneticTokens(event.bCase);
     const synced = createAuditRecord<SyncedCase>({
       ...caseWithTokens,
