@@ -105,28 +105,35 @@ describe('Test Assign Attorney Modal Component', () => {
       expect(submitButton).toBeDisabled();
     });
 
-    const checkbox1 = await TestingUtilities.selectCheckbox('1-checkbox');
+    // Attorneys are sorted alphabetically: Bob, Brian, Frank, Joe, Mark, May, Mobnext, Sally, Shara, Susan
+    // Selecting Brian (index 1 after sort)
+    const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
+    const checkbox1 = await TestingUtilities.selectCheckbox(
+      `attorney-${sortedAttorneys[1].id}-checkbox`,
+    );
 
     await waitFor(() => {
       expect(checkbox1).toBeChecked();
       expect(submitButton).toBeEnabled();
     });
 
-    const checkbox2 = await TestingUtilities.selectCheckbox('2-checkbox');
+    const checkbox2 = await TestingUtilities.selectCheckbox(
+      `attorney-${sortedAttorneys[2].id}-checkbox`,
+    );
 
     await waitFor(() => {
       expect(checkbox2).toBeChecked();
       expect(submitButton).toBeEnabled();
     });
 
-    await TestingUtilities.selectCheckbox('1-checkbox');
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[1].id}-checkbox`);
 
     await waitFor(() => {
       expect(checkbox1).not.toBeChecked();
       expect(submitButton).toBeEnabled();
     });
 
-    await TestingUtilities.selectCheckbox('2-checkbox');
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[2].id}-checkbox`);
 
     await waitFor(() => {
       expect(checkbox2).not.toBeChecked();
@@ -166,25 +173,24 @@ describe('Test Assign Attorney Modal Component', () => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    await TestingUtilities.selectCheckbox('1-checkbox');
-    await TestingUtilities.selectCheckbox('2-checkbox');
-    await TestingUtilities.selectCheckbox('3-checkbox');
+    const sortedAttorneys = [...attorneyList].sort((a, b) => {
+      if (a.name < b.name) {
+        return -1;
+      }
+      if (a.name > b.name) {
+        return 1;
+      }
+      return 0;
+    });
+
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[1].id}-checkbox`);
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[2].id}-checkbox`);
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[3].id}-checkbox`);
     await userEvent.click(submitButton);
 
-    const expectedAttorneys = attorneyList
-      .sort((a, b) => {
-        if (a.name < b.name) {
-          return -1;
-        }
-        if (a.name > b.name) {
-          return 1;
-        }
-        return 0;
-      })
-      .slice(1, 4)
-      .map((attorney) => {
-        return { id: attorney.id, name: attorney.name };
-      });
+    const expectedAttorneys = sortedAttorneys.slice(1, 4).map((attorney) => {
+      return { id: attorney.id, name: attorney.name };
+    });
 
     await waitFor(() => {
       expect(postSpy).toHaveBeenCalledWith(
@@ -268,9 +274,10 @@ describe('Test Assign Attorney Modal Component', () => {
       expect(modal).toHaveClass('is-visible');
     });
 
-    await TestingUtilities.selectCheckbox('1-checkbox');
-    await TestingUtilities.selectCheckbox('2-checkbox');
-    await TestingUtilities.selectCheckbox('3-checkbox');
+    const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[1].id}-checkbox`);
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[2].id}-checkbox`);
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[3].id}-checkbox`);
     await userEvent.click(submitButton);
 
     await waitFor(() => {
