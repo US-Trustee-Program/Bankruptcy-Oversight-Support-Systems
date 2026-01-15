@@ -19,42 +19,34 @@ export function AssignAttorneyModalView(props: AssignAttorneyModalViewProps) {
       heading={viewModel.modalHeading}
       content={
         <>
-          <div className="visible-headings">
-            <h2 className="attorney-name">Attorney Name</h2>
-          </div>
-          <div className="usa-table-container--scrollable" ref={viewModel.tableContainerRef}>
-            <table className="attorney-list" role="none">
-              <thead>
-                <tr>
-                  <th>Attorney Name</th>
-                </tr>
-              </thead>
-              <tbody data-testid="case-load-table-body">
-                {viewModel.attorneyList.length > 0 &&
-                  viewModel.attorneyList
-                    .sort(viewModel.sortAttorneys)
-                    .map((attorney: AttorneyUser, idx: number) => {
-                      return (
-                        <tr key={idx}>
-                          <td className="assign-attorney-checkbox-column">
-                            <Checkbox
-                              id={`${idx}-checkbox`}
-                              value={attorney.id}
-                              onFocus={viewModel.handleFocus}
-                              onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                                viewModel.updateCheckList(event, attorney)
-                              }
-                              checked={viewModel.attorneyIsInCheckList(attorney)}
-                              className="attorney-list-checkbox"
-                              label={attorney.name}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-              </tbody>
-            </table>
-          </div>
+          <fieldset className="attorney-selection-fieldset">
+            <legend className="attorney-name-legend">Attorney Name</legend>
+            <div
+              className="attorney-list"
+              data-testid="case-load-table-body"
+              ref={viewModel.tableContainerRef}
+            >
+              {viewModel.attorneyList.length > 0 &&
+                viewModel.attorneyList
+                  .sort(viewModel.sortAttorneys)
+                  .map((attorney: AttorneyUser, idx: number) => {
+                    return (
+                      <Checkbox
+                        key={idx}
+                        id={`${idx}-checkbox`}
+                        value={attorney.id}
+                        onFocus={viewModel.handleFocus}
+                        onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                          viewModel.updateCheckList(event, attorney)
+                        }
+                        checked={viewModel.attorneyIsInCheckList(attorney)}
+                        className="attorney-list-checkbox"
+                        label={attorney.name}
+                      />
+                    );
+                  })}
+            </div>
+          </fieldset>
           {viewModel.alertMessage && (
             <Alert {...viewModel.alertMessage} show={true} inline={true} />
           )}
