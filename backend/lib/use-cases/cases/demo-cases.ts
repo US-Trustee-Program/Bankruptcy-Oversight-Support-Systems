@@ -131,6 +131,63 @@ export const DEMO_CASES: SyncedCase[] = [
   // Mixed: names with multiple suffixes or complex patterns
   createDemoCase('081-24-00049', 'William Smith Jr Esq', '15'),
   createDemoCase('081-24-00050', 'Dr Michael Johnson III', '7'),
+
+  // ===== SPANISH NAMES (Romanized ASCII) =====
+  // Demonstrates phonetic matching for Spanish names
+  createDemoCase('081-24-00051', 'Jose Garcia', '7'),
+  createDemoCase('081-24-00052', 'Jorge Lopez', '15'),
+  createDemoCase('081-24-00053', 'Juan Rodriguez', '7'),
+  createDemoCase('081-24-00054', 'Maria Martinez', '15'),
+  createDemoCase('081-24-00055', 'Carlos Hernandez', '7'),
+  createDemoCase('081-24-00056', 'Ana Gonzalez', '15'),
+  createDemoCase('081-24-00057', 'Luis Fernandez', '7'),
+  createDemoCase('081-24-00058', 'Carmen Ramirez', '15'),
+
+  // Spanish name variants (to test phonetic matching)
+  createDemoCase('081-24-00059', 'Joseph Garcia', '7'), // Jose variant
+  createDemoCase('081-24-00060', 'Rodriquez Martinez', '15'), // Common typo
+  createDemoCase('081-24-00061', 'Martines Gonzalez', '7'), // Missing z
+
+  // ===== ARABIC NAMES (Romanized ASCII) =====
+  // Demonstrates variant matching for Arabic romanizations
+  createDemoCase('081-24-00062', 'Muhammad Ali', '7'),
+  createDemoCase('081-24-00063', 'Mohammed Hassan', '15'),
+  createDemoCase('081-24-00064', 'Mohammad Khan', '7'),
+  createDemoCase('081-24-00065', 'Ahmed Ibrahim', '15'),
+  createDemoCase('081-24-00066', 'Ahmad Rahman', '7'),
+  createDemoCase('081-24-00067', 'Hussein Abdullah', '15'),
+  createDemoCase('081-24-00068', 'Husain Khalil', '7'),
+  createDemoCase('081-24-00069', 'Omar Mahmoud', '15'),
+  createDemoCase('081-24-00070', 'Ali Yousef', '7'),
+  createDemoCase('081-24-00071', 'Hassan Saleh', '15'),
+
+  // ===== ASIAN NAMES (Romanized ASCII) =====
+  // Chinese names
+  createDemoCase('081-24-00072', 'Li Wang', '7'),
+  createDemoCase('081-24-00073', 'Wang Chen', '15'),
+  createDemoCase('081-24-00074', 'Zhang Wei', '7'),
+  createDemoCase('081-24-00075', 'Liu Yang', '15'),
+  createDemoCase('081-24-00076', 'Chen Ming', '7'),
+
+  // Chinese name variants
+  createDemoCase('081-24-00077', 'Wong Chen', '15'), // Cantonese variant of Wang
+  createDemoCase('081-24-00078', 'Chang Wei', '7'), // Wade-Giles variant of Zhang
+
+  // Korean names
+  createDemoCase('081-24-00079', 'Kim Lee', '15'),
+  createDemoCase('081-24-00080', 'Lee Park', '7'),
+  createDemoCase('081-24-00081', 'Park Min', '15'),
+  createDemoCase('081-24-00082', 'Choi Jung', '7'),
+
+  // Vietnamese names
+  createDemoCase('081-24-00083', 'Nguyen Tran', '15'),
+  createDemoCase('081-24-00084', 'Tran Le', '7'),
+  createDemoCase('081-24-00085', 'Le Pham', '15'),
+
+  // Japanese names
+  createDemoCase('081-24-00086', 'Tanaka Suzuki', '7'),
+  createDemoCase('081-24-00087', 'Yamamoto Sato', '15'),
+  createDemoCase('081-24-00088', 'Takahashi Ito', '7'),
 ];
 
 /**
@@ -220,6 +277,64 @@ export const DEMO_SEARCH_SCENARIOS = [
     query: 'Bill Smith',
     description: 'Nickname with suffix - should find "William Smith Jr Esq"',
     expectedCaseIds: ['081-24-00003', '081-24-00049'],
+  },
+  // Spanish name search scenarios
+  {
+    query: 'Jose',
+    description: 'Spanish name: Should find "Jose Garcia" and "Joseph Garcia" (variant)',
+    expectedCaseIds: ['081-24-00051', '081-24-00059'],
+  },
+  {
+    query: 'Rodriguez',
+    description: 'Spanish surname: Should find Rodriguez and Rodriquez (typo)',
+    expectedCaseIds: ['081-24-00053', '081-24-00060'],
+  },
+  {
+    query: 'Martinez',
+    description: 'Spanish surname: Should find Martinez and Martines (missing z)',
+    expectedCaseIds: ['081-24-00054', '081-24-00060', '081-24-00061'],
+  },
+  // Arabic name search scenarios
+  {
+    query: 'Muhammad',
+    description: 'Arabic name variants: Should find Muhammad, Mohammed, Mohammad',
+    expectedCaseIds: ['081-24-00062', '081-24-00063', '081-24-00064'],
+  },
+  {
+    query: 'Mohammed',
+    description: 'Arabic variant search: Should find all Muhammad variants',
+    expectedCaseIds: ['081-24-00062', '081-24-00063', '081-24-00064'],
+  },
+  {
+    query: 'Ahmed',
+    description: 'Arabic name: Should find Ahmed and Ahmad (romanization variant)',
+    expectedCaseIds: ['081-24-00065', '081-24-00066'],
+  },
+  {
+    query: 'Hussein',
+    description: 'Arabic name: Should find Hussein and Husain (romanization variant)',
+    expectedCaseIds: ['081-24-00067', '081-24-00068'],
+  },
+  // Asian name search scenarios
+  {
+    query: 'Wang',
+    description: 'Chinese surname: Should find Wang and Wong (Cantonese variant)',
+    expectedCaseIds: ['081-24-00072', '081-24-00073', '081-24-00077'],
+  },
+  {
+    query: 'Zhang',
+    description: 'Chinese surname: Should find Zhang and Chang (Wade-Giles romanization)',
+    expectedCaseIds: ['081-24-00074', '081-24-00078'],
+  },
+  {
+    query: 'Kim',
+    description: 'Korean surname: Should find Kim Lee',
+    expectedCaseIds: ['081-24-00079'],
+  },
+  {
+    query: 'Nguyen',
+    description: 'Vietnamese surname: Most common Vietnamese surname',
+    expectedCaseIds: ['081-24-00083'],
   },
 ];
 

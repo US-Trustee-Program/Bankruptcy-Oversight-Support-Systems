@@ -2,9 +2,9 @@ import { describe, test, expect } from 'vitest';
 import { getDemoCases, getDemoSearchScenarios } from './demo-cases';
 
 describe('Demo Cases', () => {
-  test('should return 50 demo cases', () => {
+  test('should return 88 demo cases', () => {
     const cases = getDemoCases();
-    expect(cases).toHaveLength(50);
+    expect(cases).toHaveLength(88);
   });
 
   test('all demo cases should have phoneticTokens', () => {
@@ -138,5 +138,81 @@ describe('Demo Cases', () => {
     expect(names).toContain('Michael Davis MD');
     expect(names).toContain('William Smith Jr Esq');
     expect(names).toContain('Dr Michael Johnson III');
+  });
+
+  test('should include Spanish name test cases', () => {
+    const cases = getDemoCases();
+    const names = cases.map((c) => c.debtor?.name);
+
+    // Check for Spanish names
+    expect(names).toContain('Jose Garcia');
+    expect(names).toContain('Jorge Lopez');
+    expect(names).toContain('Juan Rodriguez');
+    expect(names).toContain('Maria Martinez');
+    expect(names).toContain('Carlos Hernandez');
+
+    // Check for Spanish name variants
+    expect(names).toContain('Joseph Garcia'); // Jose variant
+    expect(names).toContain('Rodriquez Martinez'); // Common typo
+    expect(names).toContain('Martines Gonzalez'); // Missing z
+  });
+
+  test('should include Arabic name test cases', () => {
+    const cases = getDemoCases();
+    const names = cases.map((c) => c.debtor?.name);
+
+    // Check for Arabic names
+    expect(names).toContain('Muhammad Ali');
+    expect(names).toContain('Mohammed Hassan');
+    expect(names).toContain('Mohammad Khan');
+    expect(names).toContain('Ahmed Ibrahim');
+    expect(names).toContain('Ahmad Rahman');
+    expect(names).toContain('Hussein Abdullah');
+    expect(names).toContain('Husain Khalil');
+  });
+
+  test('should include Asian name test cases', () => {
+    const cases = getDemoCases();
+    const names = cases.map((c) => c.debtor?.name);
+
+    // Check for Chinese names
+    expect(names).toContain('Li Wang');
+    expect(names).toContain('Wang Chen');
+    expect(names).toContain('Zhang Wei');
+    expect(names).toContain('Wong Chen'); // Cantonese variant
+    expect(names).toContain('Chang Wei'); // Wade-Giles variant
+
+    // Check for Korean names
+    expect(names).toContain('Kim Lee');
+    expect(names).toContain('Park Min');
+
+    // Check for Vietnamese names
+    expect(names).toContain('Nguyen Tran');
+
+    // Check for Japanese names
+    expect(names).toContain('Tanaka Suzuki');
+    expect(names).toContain('Yamamoto Sato');
+  });
+
+  test('demo scenarios should include non-English name searches', () => {
+    const scenarios = getDemoSearchScenarios();
+    const queries = scenarios.map((s) => s.query);
+
+    // Check for Spanish name searches
+    expect(queries).toContain('Jose');
+    expect(queries).toContain('Rodriguez');
+    expect(queries).toContain('Martinez');
+
+    // Check for Arabic name searches
+    expect(queries).toContain('Muhammad');
+    expect(queries).toContain('Mohammed');
+    expect(queries).toContain('Ahmed');
+    expect(queries).toContain('Hussein');
+
+    // Check for Asian name searches
+    expect(queries).toContain('Wang');
+    expect(queries).toContain('Zhang');
+    expect(queries).toContain('Kim');
+    expect(queries).toContain('Nguyen');
   });
 });
