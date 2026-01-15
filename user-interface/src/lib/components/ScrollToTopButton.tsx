@@ -36,7 +36,7 @@ export default function ScrollToTopButton() {
     <Button
       onClick={() => scrollElement()}
       className="scroll-to-top-button"
-      title="scroll to top"
+      title="Scroll to top."
       aria-label="scroll to top of the screen contents"
     >
       <Icon name="arrow_upward"></Icon>

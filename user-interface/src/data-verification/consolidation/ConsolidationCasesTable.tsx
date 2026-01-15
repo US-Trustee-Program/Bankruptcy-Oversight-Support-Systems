@@ -142,7 +142,7 @@ function ConsolidationCaseTable_(
                   className="checkbox-toggle"
                   onChange={toggleAllCheckBoxes}
                   value={checkboxGroupState}
-                  title="select all cases"
+                  title="Select all cases."
                   ref={toggleCheckboxRef}
                 ></Checkbox>
               </th>
@@ -167,7 +167,7 @@ function ConsolidationCaseTable_(
                         onChange={handleCaseSelection}
                         name="case-selection"
                         value={idx}
-                        title={`select ${bCase.caseTitle}`}
+                        title={`Select ${bCase.caseTitle}.`}
                         checked={included.includes(idx)}
                         disabled={bCase.isMemberCase}
                       ></Checkbox>
