@@ -65,7 +65,7 @@ function CaseTable_(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                     id={`case-not-listed-radio-button`}
                     name="case-selection"
                     label=""
-                    title={`case not listed`}
+                    title={`Case not listed`}
                     value={idx}
                     checked={idx === selectedIdx}
                     onChange={handleCaseSelection}
@@ -91,7 +91,7 @@ function CaseTable_(props: CaseTableProps, CaseTableRef: React.Ref<CaseTableImpe
                     name="case-selection"
                     data-testid={`${id}-radio-${idx}`}
                     checked={idx === selectedIdx}
-                    title={`select ${bCase.caseTitle}`}
+                    title={`Select ${bCase.caseTitle}`}
                     className="suggested-cases-radio-button"
                   />
                 </td>

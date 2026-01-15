@@ -33,7 +33,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
                 'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.PRIVILEGED_IDENTITY)
               }
               onClick={() => setActiveNav(AdminNavState.PRIVILEGED_IDENTITY)}
-              title="manage privileged identity"
+              title="Manage privileged identity"
             >
               Privileged Identity
             </NavLink>
@@ -47,7 +47,7 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
               'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKRUPTCY_SOFTWARE)
             }
             onClick={() => setActiveNav(AdminNavState.BANKRUPTCY_SOFTWARE)}
-            title="manage bankruptcy software"
+            title="Manage bankruptcy software"
           >
             Bankruptcy Software
           </NavLink>
