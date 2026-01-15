@@ -11,6 +11,8 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { getCamsUserReference } from '@common/cams/session';
 import { CamsUser } from '@common/cams/users';
 import React, { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
+import LocalFormCache from '@/lib/utils/local-form-cache';
+import { buildCaseNoteFormKey } from './CaseNoteFormModal';
 
 type CallbackFunction = (noteId?: string) => void;
 
@@ -67,6 +69,13 @@ function CaseNoteRemovalModal_(
       api
         .deleteCaseNote(noteForRemoval)
         .then(() => {
+          // Delete the associated draft for this note
+          const draftKey = buildCaseNoteFormKey(
+            formValuesFromShowOptions.caseId,
+            'edit',
+            formValuesFromShowOptions.id,
+          );
+          LocalFormCache.clearForm(draftKey);
           formValuesFromShowOptions.callback();
         })
         .catch(() => {
@@ -86,9 +95,15 @@ function CaseNoteRemovalModal_(
     }
   }
 
+  function hide() {
+    if (modalRef.current?.hide) {
+      modalRef.current?.hide({});
+    }
+  }
+
   useImperativeHandle(ref, () => ({
     show,
-    hide: () => {},
+    hide,
   }));
 
   return (

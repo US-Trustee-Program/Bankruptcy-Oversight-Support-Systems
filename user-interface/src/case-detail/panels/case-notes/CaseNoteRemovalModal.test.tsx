@@ -14,6 +14,8 @@ import React from 'react';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import CaseNoteRemovalModal from './CaseNoteRemovalModal';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import LocalFormCache from '@/lib/utils/local-form-cache';
+import { buildCaseNoteFormKey } from './CaseNoteFormModal';
 
 const caseId = '000-11-22222';
 const userId = '001';
@@ -214,5 +216,66 @@ describe('Case Note Removal Modal Tests', async () => {
     expect(globalAlertSpy.error).toHaveBeenCalledWith(
       'There was a problem removing the case note.',
     );
+  });
+
+  test('should delete associated draft when case note is removed', async () => {
+    const session = MockData.getCamsSession();
+    session.user.id = userId;
+    session.user.name = userFullName;
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
+      data: caseNotes,
+    });
+    vi.spyOn(Api2, 'deleteCaseNote').mockResolvedValue();
+    const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
+
+    const modalRef = React.createRef<CaseNoteRemovalModalRef>();
+    const callbackSpy = vi.fn();
+    const noteId = caseNotes[0].id!;
+    const noteCaseId = caseNotes[0].caseId;
+
+    const openProps: Partial<CaseNoteRemovalModalOpenProps> = {
+      id: noteId,
+      caseId: noteCaseId,
+      callback: callbackSpy,
+    };
+
+    renderWithProps(modalRef, openProps);
+
+    const openModalButton = screen.queryByTestId('open-modal-button');
+    await waitFor(() => {
+      expect(openModalButton).toBeInTheDocument();
+    });
+
+    await userEvent.click(openModalButton!);
+    const modalSubmitButton = screen.queryByTestId('button-remove-note-modal-submit-button');
+    await waitFor(() => {
+      expect(modalSubmitButton).toBeVisible();
+    });
+    await userEvent.click(modalSubmitButton!);
+
+    const expectedDraftKey = buildCaseNoteFormKey(noteCaseId, 'edit', noteId);
+    await waitFor(() => {
+      expect(clearFormSpy).toHaveBeenCalledWith(expectedDraftKey);
+    });
+    expect(callbackSpy).toHaveBeenCalled();
+  });
+
+  test('should expose hide function on modal ref', async () => {
+    const modalRef = React.createRef<CaseNoteRemovalModalRef>();
+    renderWithProps(modalRef);
+
+    await waitFor(() => {
+      expect(modalRef.current).not.toBeNull();
+    });
+
+    // Verify hide function exists
+    expect(modalRef.current?.hide).toBeDefined();
+    expect(typeof modalRef.current?.hide).toBe('function');
+
+    // Verify calling hide doesn't throw an error
+    expect(() => {
+      modalRef.current?.hide();
+    }).not.toThrow();
   });
 });
