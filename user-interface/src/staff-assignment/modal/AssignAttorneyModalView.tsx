@@ -29,11 +29,11 @@ export function AssignAttorneyModalView(props: AssignAttorneyModalViewProps) {
               {viewModel.attorneyList.length > 0 &&
                 viewModel.attorneyList
                   .sort(viewModel.sortAttorneys)
-                  .map((attorney: AttorneyUser, idx: number) => {
+                  .map((attorney: AttorneyUser) => {
                     return (
                       <Checkbox
-                        key={idx}
-                        id={`${idx}-checkbox`}
+                        key={attorney.id}
+                        id={`attorney-${attorney.id}-checkbox`}
                         value={attorney.id}
                         onFocus={viewModel.handleFocus}
                         onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
