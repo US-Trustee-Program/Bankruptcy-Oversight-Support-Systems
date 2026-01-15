@@ -2387,7 +2387,7 @@ Create experimental environment file:
 **File:** `backend/.env.experiment`
 ```bash
 # Azure DocumentDB (with vector search support)
-MONGO_CONNECTION_STRING="mongodb+srv://camsadmin:<password>@<cluster>.mongodbv.cosmos.azure.us/cams-vector-experiment?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false"
+MONGO_CONNECTION_STRING="mongodb+srv://cams:<password>@<cluster>.mongodbv.cosmos.azure.us/cams-vector-experiment?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false"
 
 # Experimental database name
 COSMOS_DATABASE_NAME=cams-vector-experiment
