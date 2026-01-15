@@ -184,7 +184,7 @@ function SearchResults(props: SearchResultsProps) {
             className="case-list"
             scrollable="true"
             uswdsStyle={['striped']}
-            title="search results."
+            title="Search results"
             caption={`${new Intl.NumberFormat('en-US').format(totalCount)} ${totalCount === 1 ? 'case' : 'cases'}`}
           >
             <Header id={id} labels={searchResultsHeaderLabels} />
