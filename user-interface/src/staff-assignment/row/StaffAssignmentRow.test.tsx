@@ -10,14 +10,14 @@ import { BrowserRouter } from 'react-router-dom';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { CaseBasics } from '@common/cams/cases';
+import { SyncedCase } from '@common/cams/cases';
 import Actions, { ResourceActions } from '@common/cams/actions';
 import { Staff } from '@common/cams/users';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
 describe('StaffAssignmentRow tests', () => {
-  const bCase: ResourceActions<CaseBasics> = {
-    ...MockData.getCaseBasics(),
+  const bCase: ResourceActions<SyncedCase> = {
+    ...MockData.getSyncedCase(),
     _actions: [Actions.ManageAssignments],
   };
 
@@ -36,7 +36,7 @@ describe('StaffAssignmentRow tests', () => {
   }
 
   type TestComponentProps = {
-    bCase: ResourceActions<CaseBasics>;
+    bCase: ResourceActions<SyncedCase>;
     labels: [];
   };
 
