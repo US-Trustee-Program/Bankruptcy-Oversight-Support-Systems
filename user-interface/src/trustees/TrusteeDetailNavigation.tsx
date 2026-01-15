@@ -45,7 +45,7 @@ export default function TrusteeDetailNavigation({
               data-testid="trustee-profile-nav-link"
               className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.TRUSTEE_PROFILE)}`}
               onClick={() => setActiveNav(TrusteeNavState.TRUSTEE_PROFILE)}
-              title="View basic details about the current trustee."
+              title="View basic details about the current trustee"
             >
               Profile
             </NavLink>
@@ -56,7 +56,7 @@ export default function TrusteeDetailNavigation({
               data-testid="trustee-appointments-nav-link"
               className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.APPOINTMENTS)}`}
               onClick={() => setActiveNav(TrusteeNavState.APPOINTMENTS)}
-              title="View appointments for the current trustee."
+              title="View appointments for the current trustee"
             >
               Appointments
             </NavLink>
@@ -67,7 +67,7 @@ export default function TrusteeDetailNavigation({
               data-testid="trustee-assigned-staff-nav-link"
               className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.ASSIGNED_STAFF)}`}
               onClick={() => setActiveNav(TrusteeNavState.ASSIGNED_STAFF)}
-              title="View staff assigned to the current trustee."
+              title="View staff assigned to the current trustee"
             >
               Assigned Staff
             </NavLink>
@@ -78,7 +78,7 @@ export default function TrusteeDetailNavigation({
               data-testid="trustee-audit-history-nav-link"
               className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.AUDIT_HISTORY)}`}
               onClick={() => setActiveNav(TrusteeNavState.AUDIT_HISTORY)}
-              title="View audit history for the trustee."
+              title="View audit history for the trustee"
             >
               Change History
             </NavLink>
