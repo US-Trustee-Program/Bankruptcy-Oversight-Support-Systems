@@ -53,7 +53,7 @@ export default function CaseDetailNavigation({
                 'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.CASE_OVERVIEW)
               }
               onClick={() => setActiveNav(CaseNavState.CASE_OVERVIEW)}
-              title="View basic details about the current case."
+              title="View basic details about the current case"
               end
             >
               Case Overview
@@ -68,7 +68,7 @@ export default function CaseDetailNavigation({
                 setCurrentNav(activeNav, CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF)
               }
               onClick={() => setActiveNav(CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF)}
-              title="View trustee and assigned staff details for the current case."
+              title="View trustee and assigned staff details for the current case"
               end
             >
               Assigned Staff & Trustee
@@ -80,7 +80,7 @@ export default function CaseDetailNavigation({
               data-testid="court-docket-link"
               className={'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.COURT_DOCKET)}
               onClick={() => setActiveNav(CaseNavState.COURT_DOCKET)}
-              title="View court docket entries."
+              title="View court docket entries"
             >
               Court Docket
             </NavLink>
@@ -91,7 +91,7 @@ export default function CaseDetailNavigation({
               data-testid="case-notes-link"
               className={'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.CASE_NOTES)}
               onClick={() => setActiveNav(CaseNavState.CASE_NOTES)}
-              title="View case notes."
+              title="View case notes"
             >
               Case Notes
             </NavLink>
@@ -105,7 +105,7 @@ export default function CaseDetailNavigation({
                   'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.ASSOCIATED_CASES)
                 }
                 onClick={() => setActiveNav(CaseNavState.ASSOCIATED_CASES)}
-                title="View associated cases."
+                title="View associated cases"
               >
                 Associated Cases
               </NavLink>
@@ -119,7 +119,7 @@ export default function CaseDetailNavigation({
                 'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.AUDIT_HISTORY)
               }
               onClick={() => setActiveNav(CaseNavState.AUDIT_HISTORY)}
-              title="View case audit history."
+              title="View case audit history"
             >
               Change History
             </NavLink>

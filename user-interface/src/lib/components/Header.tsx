@@ -121,7 +121,7 @@ export const Header = () => {
                     data-testid="header-my-cases-link"
                     className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.MY_CASES)}
                     onClick={() => setActiveNav(NavState.MY_CASES)}
-                    title="View a list of cases assigned to your account."
+                    title="View a list of cases assigned to your account"
                   >
                     My Cases
                   </NavLink>
@@ -138,7 +138,7 @@ export const Header = () => {
                       onClick={() => {
                         return setActiveNav(NavState.STAFF_ASSIGNMENT);
                       }}
-                      title="View or edit staff assignments for cases."
+                      title="View or edit staff assignments for cases"
                     >
                       Staff Assignment
                     </NavLink>
@@ -158,7 +158,7 @@ export const Header = () => {
                         onClick={() => {
                           return setActiveNav(NavState.DATA_VERIFICATION);
                         }}
-                        title="View status of, approve, or reject case events."
+                        title="View status of, approve, or reject case events"
                       >
                         Data Verification
                       </NavLink>
@@ -173,7 +173,7 @@ export const Header = () => {
                     onClick={() => {
                       return setActiveNav(NavState.SEARCH);
                     }}
-                    title="Search for cases."
+                    title="Search for cases"
                   >
                     Case Search
                   </NavLink>
@@ -188,7 +188,7 @@ export const Header = () => {
                         data-testid="header-trustees-link"
                         className={'usa-nav-link ' + setCurrentNav(activeNav, NavState.TRUSTEES)}
                         onClick={() => setActiveNav(NavState.TRUSTEES)}
-                        title="Manage trustee profiles."
+                        title="Manage trustee profiles"
                       >
                         Trustees
                       </NavLink>
