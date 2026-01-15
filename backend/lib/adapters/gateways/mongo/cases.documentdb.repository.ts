@@ -7,7 +7,7 @@ import {
 } from '@common/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '@common/cams/history';
-import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, Field } from '../../../query/query-builder';
 import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -16,8 +16,10 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
+import { getEmbeddingService } from '../../services/embedding.service';
+import { MongoDocumentDbCollectionAdapter } from './utils/mongo-documentdb-adapter';
 
-const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
+const MODULE_NAME = 'CASES-DOCUMENTDB-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
 const { and, or, using } = QueryBuilder;
@@ -32,15 +34,39 @@ const {
   pipeline,
   sort,
   source,
+  vectorSearch,
 } = QueryPipeline;
 
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
   return predicate.limit && predicate.offset >= 0;
 }
 
-export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
+/**
+ * Cases Repository Implementation for DocumentDB (Azure Cosmos DB vCore)
+ *
+ * This repository supports vector search operations for DocumentDB/Azure Cosmos DB vCore
+ * using the $search.cosmosSearch operator.
+ *
+ * Key Features:
+ * - Fuzzy name search using vector embeddings
+ * - Uses MongoDocumentDbAggregateRenderer for vector search stages
+ * - Falls back to traditional search if vector generation fails
+ * - Supports all standard CasesRepository operations
+ *
+ * Vector Search Flow:
+ * 1. User provides predicate.name (e.g., "John Smith")
+ * 2. EmbeddingService generates 384-dimensional vector from name
+ * 3. Pipeline applies traditional filters first (division, chapter, etc.)
+ * 4. $search.cosmosSearch finds similar vectors in keywordsVector field
+ * 5. Results sorted and paginated
+ *
+ * Architecture Note:
+ * This is separate from CasesMongoRepository which targets Azure Cosmos DB
+ * with MongoDB API (RU-based model) that does NOT support vector search.
+ */
+export class CasesDocumentDbRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
-  private static instance: CasesMongoRepository;
+  private static instance: CasesDocumentDbRepository;
   private context: ApplicationContext;
 
   private constructor(context: ApplicationContext) {
@@ -49,25 +75,38 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!CasesMongoRepository.instance) {
-      CasesMongoRepository.instance = new CasesMongoRepository(context);
+    if (!CasesDocumentDbRepository.instance) {
+      CasesDocumentDbRepository.instance = new CasesDocumentDbRepository(context);
     }
-    CasesMongoRepository.referenceCount++;
-    return CasesMongoRepository.instance;
+    CasesDocumentDbRepository.referenceCount++;
+    return CasesDocumentDbRepository.instance;
   }
 
   public static dropInstance() {
-    if (CasesMongoRepository.referenceCount > 0) {
-      CasesMongoRepository.referenceCount--;
+    if (CasesDocumentDbRepository.referenceCount > 0) {
+      CasesDocumentDbRepository.referenceCount--;
     }
-    if (CasesMongoRepository.referenceCount < 1) {
-      CasesMongoRepository.instance?.client?.close().then();
-      CasesMongoRepository.instance = null;
+    if (CasesDocumentDbRepository.referenceCount < 1) {
+      CasesDocumentDbRepository.instance?.client?.close().then();
+      CasesDocumentDbRepository.instance = null;
     }
   }
 
   public release() {
-    CasesMongoRepository.dropInstance();
+    CasesDocumentDbRepository.dropInstance();
+  }
+
+  /**
+   * Override getAdapter to return DocumentDB-specific adapter.
+   * This adapter uses MongoDocumentDbAggregateRenderer for vector search support.
+   */
+  protected getAdapter<T>() {
+    return MongoDocumentDbCollectionAdapter.newDocumentDbAdapter<T>(
+      this.moduleName,
+      this.collectionName,
+      this.databaseName,
+      this.client,
+    );
   }
 
   async getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>> {
@@ -292,6 +331,20 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     return conditions;
   }
 
+  /**
+   * Search cases with optional vector search support.
+   *
+   * If predicate.name is provided, performs fuzzy name matching using vector embeddings.
+   * Otherwise, performs traditional search using database indexes.
+   *
+   * Vector search flow:
+   * 1. Generate embedding from predicate.name using EmbeddingService
+   * 2. Apply traditional filters (division, chapter, etc.)
+   * 3. Use vector search to find similar names
+   * 4. Sort and paginate results
+   *
+   * Falls back to traditional search if embedding generation fails.
+   */
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
       if (predicate.includeOnlyUnassigned) {
@@ -308,6 +361,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
       const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
+      // Check if vector search is requested
+      if (predicate.name && predicate.name.trim().length > 0) {
+        return await this.searchCasesWithVectorSearch(predicate, conditions, dateFiled, caseNumber);
+      }
+
+      // Fall back to traditional search
       const spec = pipeline(
         match(and(...conditions)),
         sort(descending(dateFiled), descending(caseNumber)),
@@ -324,6 +383,73 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       });
       throw error;
     }
+  }
+
+  /**
+   * Private method to perform vector search for case names.
+   *
+   * This method:
+   * 1. Generates a query vector from the search name
+   * 2. Pre-filters cases with traditional conditions (division, chapter, etc.)
+   * 3. Applies vector search on the filtered subset
+   * 4. Sorts by date and case number
+   * 5. Paginates results
+   *
+   * Strategy: Hybrid search (traditional filters + vector search)
+   * - Pre-filtering reduces the vector search scope
+   * - Vector search provides fuzzy name matching
+   * - Traditional sorting ensures consistent ordering
+   *
+   * Falls back to traditional search if embedding generation fails.
+   */
+  private async searchCasesWithVectorSearch(
+    predicate: CasesSearchPredicate,
+    conditions: ConditionOrConjunction<SyncedCase>[],
+    dateFiled: Field<SyncedCase>,
+    caseNumber: Field<SyncedCase>,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
+    const embeddingService = getEmbeddingService();
+
+    // Generate query vector from search name
+    this.context.logger.debug(MODULE_NAME, `Generating query vector for name: "${predicate.name}"`);
+    const queryVector = await embeddingService.generateEmbedding(this.context, predicate.name);
+
+    if (!queryVector) {
+      this.context.logger.warn(
+        MODULE_NAME,
+        'Failed to generate query vector, falling back to traditional search',
+      );
+      // Fall back to traditional search
+      const spec = pipeline(
+        match(and(...conditions)),
+        sort(descending(dateFiled), descending(caseNumber)),
+        paginate(predicate.offset, predicate.limit),
+      );
+      return await this.getAdapter<SyncedCase>().paginate(spec);
+    }
+
+    this.context.logger.debug(
+      MODULE_NAME,
+      `Query vector generated: ${queryVector.length} dimensions`,
+    );
+
+    // Build pipeline with vector search AFTER traditional filters
+    // Strategy: Pre-filter with traditional conditions, then apply vector search
+    const k = Math.max(predicate.limit * 2, 50); // Get more candidates for ranking
+
+    const spec = pipeline(
+      match(and(...conditions)), // Pre-filter with traditional conditions FIRST
+      vectorSearch(queryVector, 'keywordsVector', k, 'COS'), // Cosine similarity search
+      sort(descending(dateFiled), descending(caseNumber)),
+      paginate(predicate.offset, predicate.limit),
+    );
+
+    this.context.logger.debug(
+      MODULE_NAME,
+      `Vector search pipeline built: ${conditions.length} filters, k=${k}, limit=${predicate.limit}`,
+    );
+
+    return await this.getAdapter<SyncedCase>().paginate(spec);
   }
 
   private async searchForUnassignedCases(

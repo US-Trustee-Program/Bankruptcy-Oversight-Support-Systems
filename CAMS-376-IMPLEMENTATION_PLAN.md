@@ -2,17 +2,64 @@
 
 **Feature Branch:** `CAMS-376-vector-encodings`
 **Date Created:** 2026-01-12
-**Status:** Planning Phase
+**Last Updated:** 2026-01-14
+**Status:** Implementation Complete - Awaiting Infrastructure Integration
 
 ## Table of Contents
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Technical Decisions](#technical-decisions)
-4. [Implementation Steps](#implementation-steps)
-5. [Testing Strategy](#testing-strategy)
-6. [Deployment Guide](#deployment-guide)
-7. [Performance Considerations](#performance-considerations)
-8. [Troubleshooting](#troubleshooting)
+1. [Current Status](#current-status)
+2. [Overview](#overview)
+3. [Architecture](#architecture)
+4. [Technical Decisions](#technical-decisions)
+5. [Implementation Steps](#implementation-steps)
+6. [Testing Strategy](#testing-strategy)
+7. [Deployment Guide](#deployment-guide)
+8. [Performance Considerations](#performance-considerations)
+9. [Troubleshooting](#troubleshooting)
+
+---
+
+## Current Status
+
+### ✅ Implementation Complete (January 14, 2026)
+
+All code implementation for vector search has been completed and thoroughly tested:
+
+**Repositories:**
+- ✅ `CasesAtlasRepository` - MongoDB Atlas with `$vectorSearch` operator
+- ✅ `CasesDocumentDbRepository` - Azure DocumentDB with `$search.cosmosSearch` operator
+- ✅ `CasesMongoRepository` - Preserved as-is for Cosmos DB RU-based (no vector search)
+
+**Adapters:**
+- ✅ `MongoAtlasCollectionAdapter` - Uses `MongoAtlasAggregateRenderer`
+- ✅ `MongoDocumentDbCollectionAdapter` - Uses `MongoDocumentDbAggregateRenderer`
+
+**Renderers:**
+- ✅ `MongoAtlasAggregateRenderer` - Renders `$vectorSearch` for Atlas
+- ✅ `MongoDocumentDbAggregateRenderer` - Renders `$search.cosmosSearch` for DocumentDB
+
+**Test Coverage:**
+- ✅ 18 unit tests (9 for Atlas, 9 for DocumentDB) - all passing
+- ✅ Tests cover encoding, fallback, pipeline construction, edge cases
+- ✅ Both repositories demonstrate where vector encoding occurs
+
+**Code Location:**
+- All production code in `backend/lib/adapters/gateways/mongo/`
+- Test convention: Using `test()` instead of `it()`
+- Docker compose file moved to: `test/vector-search/docker-compose.local-mongo.yml`
+
+### ⚠️ Awaiting Integration Testing
+
+**CasesDocumentDbRepository Status:**
+- ✅ Implementation complete with comprehensive unit tests
+- ⏳ Awaiting integration testing with actual DocumentDB instance
+- ⏳ Requires Azure DocumentDB with vector search support
+
+**Next Steps for Integration:**
+1. Provision DocumentDB instance (see Phase 7 in this document)
+2. Run integration tests with actual database
+3. Verify `$search.cosmosSearch` syntax works as expected
+4. Performance testing with real data
+5. Production readiness assessment
 
 ---
 
@@ -107,7 +154,7 @@ export type SyncedCase = DxtrCase & Auditable & {
 ### 1. Embedding Model: `Xenova/all-MiniLM-L6-v2`
 - **Dimensions:** 384 (good balance of speed vs. quality)
 - **Size:** ~25 MB
-- **Speed:** ~50-100ms per encoding
+- **Speed:** Fast inference time
 - **Quality:** Sufficient for name matching
 
 **Why not larger models?**
@@ -153,6 +200,108 @@ pipeline(
 - Case title
 - Attorney names
 - Custom tags
+
+### 5. Repository Architecture: Separation of Concerns
+
+**ARCHITECTURAL IMPLEMENTATION COMPLETE** (January 14, 2026):
+
+The existing `CasesMongoRepository` is specifically designed for **Azure Cosmos DB with MongoDB API (RU-based model)**, which does NOT support vector search operations. Therefore, we implemented a multi-repository architecture with renderer-specific adapters.
+
+#### ✅ Implemented Repository Strategy
+
+1. **CasesMongoRepository** (Unchanged - Cosmos DB RU-based)
+   - ✅ Original implementation preserved for traditional search
+   - ✅ No vector search capabilities (by design)
+   - ✅ Used with existing Cosmos DB MongoDB API infrastructure
+   - **Location**: `backend/lib/adapters/gateways/mongo/cases.mongo.repository.ts`
+
+2. **✅ CasesAtlasRepository** (NEW - for MongoDB Atlas)
+   - ✅ Implements `CasesRepository` interface
+   - ✅ Uses `$vectorSearch` operator (MongoDB Atlas syntax)
+   - ✅ Overrides `getAdapter()` to return `MongoAtlasCollectionAdapter`
+   - ✅ Comprehensive unit tests (9 tests, all passing)
+   - **Location**: `backend/lib/adapters/gateways/mongo/cases.atlas.repository.ts`
+   - **Tests**: `backend/lib/adapters/gateways/mongo/cases.atlas.repository.test.ts`
+
+3. **✅ CasesDocumentDbRepository** (NEW - for Azure DocumentDB)
+   - ✅ Implements `CasesRepository` interface
+   - ✅ Uses `$search.cosmosSearch` operator (Azure DocumentDB syntax)
+   - ✅ Overrides `getAdapter()` to return `MongoDocumentDbCollectionAdapter`
+   - ✅ Comprehensive unit tests (9 tests, all passing)
+   - **Location**: `backend/lib/adapters/gateways/mongo/cases.documentdb.repository.ts`
+   - **Tests**: `backend/lib/adapters/gateways/mongo/cases.documentdb.repository.test.ts`
+   - **Status**: Awaiting integration testing with actual DocumentDB instance
+
+#### ✅ Implemented Query Renderer Architecture
+
+1. **MongoAggregateRenderer** (Base - Cosmos DB RU-based)
+   - ✅ Handles all traditional MongoDB aggregation stages
+   - ✅ Throws `CamsError` with "Unsupported Operation" for vector search
+   - ✅ Clear indication that base renderer doesn't support vector operations
+   - **Location**: `backend/lib/adapters/gateways/mongo/utils/mongo-aggregate-renderer.ts`
+
+2. **✅ MongoAtlasAggregateRenderer** (extends base)
+   - ✅ Renders `$vectorSearch` operator for MongoDB Atlas
+   - ✅ Uses `index`, `queryVector`, `numCandidates`, `limit` parameters
+   - ✅ All other stages delegated to base renderer
+   - **Location**: `backend/lib/adapters/gateways/mongo/utils/mongo-atlas-aggregate-renderer.ts`
+
+3. **✅ MongoDocumentDbAggregateRenderer** (extends base)
+   - ✅ Renders `$search.cosmosSearch` operator for Azure DocumentDB / DocumentDB
+   - ✅ Uses `vector`, `path`, `k`, `similarity` parameters
+   - ✅ All other stages delegated to base renderer
+   - **Location**: `backend/lib/adapters/gateways/mongo/utils/mongo-documentdb-aggregate-renderer.ts`
+
+#### ✅ Implemented Adapter Architecture (NEW)
+
+To properly separate renderer concerns, we created renderer-specific collection adapters:
+
+1. **✅ MongoCollectionAdapter** (Base adapter)
+   - ✅ Uses base `MongoAggregateRenderer`
+   - ✅ No vector search support (by design)
+   - **Location**: `backend/lib/adapters/gateways/mongo/utils/mongo-adapter.ts`
+
+2. **✅ MongoAtlasCollectionAdapter** (NEW - extends base)
+   - ✅ Uses `MongoAtlasAggregateRenderer` for vector search
+   - ✅ Overrides `aggregate()` and `paginate()` methods
+   - ✅ Factory method: `newAtlasAdapter()`
+   - **Location**: `backend/lib/adapters/gateways/mongo/utils/mongo-atlas-adapter.ts`
+
+3. **✅ MongoDocumentDbCollectionAdapter** (NEW - extends base)
+   - ✅ Uses `MongoDocumentDbAggregateRenderer` for vector search
+   - ✅ Overrides `aggregate()` and `paginate()` methods
+   - ✅ Factory method: `newDocumentDbAdapter()`
+   - **Location**: `backend/lib/adapters/gateways/mongo/utils/mongo-documentdb-adapter.ts`
+
+#### Test Results
+
+**All tests passing (18 total):**
+```bash
+✓ cases.atlas.repository.test.ts (9 tests) 21ms
+✓ cases.documentdb.repository.test.ts (9 tests) 19ms
+
+Test Files  2 passed (2)
+     Tests  18 passed (18)
+```
+
+**Test coverage:**
+- ✅ Vector encoding occurs when `predicate.name` is provided
+- ✅ Encoding produces 384-dimensional vectors
+- ✅ No encoding when name is not provided or empty
+- ✅ Fallback behavior when encoding fails
+- ✅ Pipeline construction with filters
+- ✅ k parameter calculation
+- ✅ Traditional search path (no vector encoding)
+
+#### Benefits of This Approach
+
+- ✅ **Separation of Concerns**: Each repository targets specific infrastructure
+- ✅ **Open/Closed Principle**: Extended for new capabilities without modifying existing code
+- ✅ **Clear Capabilities**: Easy to see which repository supports which features
+- ✅ **Zero Risk to Existing**: Current Cosmos DB implementation untouched
+- ✅ **Easy Migration**: Switch repositories via configuration, no code changes in use cases
+- ✅ **Testability**: Each repository has comprehensive unit tests
+- ✅ **Renderer Isolation**: Adapters properly separate renderer concerns
 
 ---
 
@@ -1621,7 +1770,7 @@ describe('CasesMongoRepository - Vector Search', () => {
 ### Manual Testing Checklist
 
 - [ ] Model downloads successfully with `npm run download:models`
-- [ ] Model loads in <200ms on warm start
+- [ ] Model loads quickly on warm start
 - [ ] Test script passes: `npm run test:models`
 - [ ] Unit tests pass
 - [ ] Case sync adds keywords and vector to documents
@@ -1795,43 +1944,12 @@ node backend/scripts/backfill-vectors.mjs
 
 3. **Check Application Insights:**
    - Look for log messages: "Embedding model loaded successfully"
-   - Verify embedding generation times (~50-100ms)
+   - Verify embedding generation is performing well
    - Check for any errors
-
-### Rollback Plan
-
-If issues occur:
-
-1. **Disable vector search:**
-   - Deploy without vector search code (comment out in repository)
-   - Traditional search continues to work
-
-2. **Remove vector index:**
-   ```javascript
-   db.cases.dropIndex('keywordsVector_index');
-   ```
-
-3. **Revert to previous deployment:**
-   ```bash
-   az functionapp deployment source config-zip \
-     --resource-group <rg> \
-     --name <app> \
-     --src previous-version.zip
-   ```
 
 ---
 
 ## Performance Considerations
-
-### Expected Performance Metrics
-
-| Operation | Expected Time | Notes |
-|-----------|--------------|-------|
-| Model load (cold start) | 100-200ms | With bundled model |
-| Model load (download) | 2-3 seconds | Without bundled model |
-| Text → Vector | 50-100ms | Per embedding |
-| Vector search | 100-500ms | Depends on dataset size |
-| Total search latency | 200-700ms | Including all overhead |
 
 ### Optimization Tips
 
@@ -1878,10 +1996,10 @@ async generateEmbedding(context: ApplicationContext, text: string): Promise<numb
 ```
 
 Monitor these metrics:
-- `embedding_generation_duration`: Should be 50-100ms
-- `vector_search_duration`: Should be 100-500ms
+- `embedding_generation_duration`: Track embedding generation performance
+- `vector_search_duration`: Track vector search performance
 - `vector_search_results_count`: Track result quality
-- `embedding_model_load_time`: Should be <200ms with bundled model
+- `embedding_model_load_time`: Track model initialization time
 
 ---
 
@@ -2097,9 +2215,9 @@ All application code for vector search has been successfully implemented and tes
 #### Phase 1-3: Core Services ✅
 - ✅ `EmbeddingService` created with singleton pattern (`backend/lib/adapters/services/embedding.service.ts`)
   - Model: Xenova/all-MiniLM-L6-v2 (384 dimensions)
-  - Loads in 62-91ms from local cache
-  - Generates embeddings in 1-3ms per text
-  - Successfully tested with similarity scores (0.85+ for similar names)
+  - Fast loading from local cache
+  - Fast embedding generation per text
+  - Successfully tested with high similarity scores for similar names
 - ✅ Data model updates (`common/src/api/search.ts`, `common/src/cams/cases.ts`)
   - Added `name?: string` to `CasesSearchPredicate`
   - Added `keywords?: string[]` and `keywordsVector?: number[]` to `SyncedCase`
@@ -2140,7 +2258,7 @@ Capabilities: EnableServerless, EnableMongo, EnableMongoRoleBasedAccessControl
 #### Required Infrastructure
 To complete testing and deployment, the project requires:
 
-**Azure Cosmos DB for MongoDB vCore** (NOT RU-based)
+**Azure DocumentDB** (NOT RU-based)
 - Supports `$search` aggregation stage with `cosmosSearch` operator
 - Supports vector indexing on array fields
 - Required for all vector similarity operations
@@ -2149,13 +2267,13 @@ To complete testing and deployment, the project requires:
 
 ---
 
-## Phase 7 (Infrastructure): Provision Azure Cosmos DB for MongoDB vCore
+## Phase 7 (Infrastructure): Provision Azure DocumentDB
 
 **IMPORTANT:** This requires team approval due to cost implications and is a prerequisite for testing the vector search implementation.
 
 ### Cost Considerations
 
-**Azure Cosmos DB for MongoDB vCore** has different pricing than the current RU-based model:
+**Azure DocumentDB** has different pricing than the current RU-based model:
 
 - **Current (RU-based):** Scales to zero when idle, pay-per-request
 - **vCore model:** Always-on compute, charged hourly even when idle
@@ -2268,7 +2386,7 @@ Create experimental environment file:
 
 **File:** `backend/.env.experiment`
 ```bash
-# Azure Cosmos DB for MongoDB vCore (with vector search support)
+# Azure DocumentDB (with vector search support)
 MONGO_CONNECTION_STRING="mongodb+srv://camsadmin:<password>@<cluster>.mongodbv.cosmos.azure.us/cams-vector-experiment?tls=true&authMechanism=SCRAM-SHA-256&retrywrites=false"
 
 # Experimental database name
@@ -2467,8 +2585,8 @@ Once basic functionality is verified:
 # export ADMIN_KEY=$(grep ADMIN_KEY backend/.env | cut -d'=' -f2)
 
 # Test 1: Measure embedding generation time
-# - First request (cold start): 50-100ms for model load + generation
-# - Subsequent requests: 1-5ms (model cached)
+# - First request (cold start): Model load + generation
+# - Subsequent requests: Generation only (model cached)
 
 # Test 2: Measure end-to-end search latency
 time curl -s http://localhost:7071/api/cases \
@@ -2477,10 +2595,10 @@ time curl -s http://localhost:7071/api/cases \
   -H "Content-Type: application/json" \
   -d '{"name":"John Smith","limit":25,"offset":0}' > /dev/null
 
-# Expected total time: 200-700ms
-# - Embedding generation: 50-100ms (first request) or 1-5ms (cached)
-# - Vector search: 100-500ms (depends on k parameter and dataset size)
-# - Traditional filters + sort + paginate: 50-100ms
+# Timing will vary based on:
+# - Embedding generation (cold start vs cached model)
+# - Vector search (depends on k parameter and dataset size)
+# - Traditional filters, sorting, and pagination
 
 # Test 3: Verify fallback to traditional search
 # (Stop API, break vector index, restart API, test)
@@ -2568,152 +2686,41 @@ curl "https://ustp-cams-node-api-development.azurewebsites.us/api/cases" \
 
 ---
 
-## Infrastructure Cost Estimation
+## Files Modified/Created in This Implementation
 
-### vCore Cluster (M25, Single Shard, No HA)
+### ✅ Repository Implementations (NEW)
+- `backend/lib/adapters/gateways/mongo/cases.atlas.repository.ts` - **NEW** - MongoDB Atlas repository with $vectorSearch
+- `backend/lib/adapters/gateways/mongo/cases.atlas.repository.test.ts` - **NEW** - Comprehensive unit tests (9 tests)
+- `backend/lib/adapters/gateways/mongo/cases.documentdb.repository.ts` - **NEW** - Azure DocumentDB repository with $search.cosmosSearch
+- `backend/lib/adapters/gateways/mongo/cases.documentdb.repository.test.ts` - **NEW** - Comprehensive unit tests (9 tests)
+- `backend/lib/adapters/gateways/mongo/cases.mongo.repository.ts` - **UNCHANGED** - Preserved vanilla implementation
 
-**Monthly costs (US Government Cloud):**
-- Compute: ~$0.20/hour × 730 hours = ~$146/month
-- Storage: 32 GB × ~$0.25/GB/month = ~$8/month
-- **Total: ~$154/month**
+### ✅ Adapter Implementations (NEW)
+- `backend/lib/adapters/gateways/mongo/utils/mongo-atlas-adapter.ts` - **NEW** - Atlas-specific collection adapter
+- `backend/lib/adapters/gateways/mongo/utils/mongo-documentdb-adapter.ts` - **NEW** - DocumentDB-specific collection adapter
+- `backend/lib/adapters/gateways/mongo/utils/mongo-adapter.ts` - **UNCHANGED** - Base adapter preserved
 
-**Comparison to RU-based:**
-- RU-based (current): Scales to zero, ~$0-50/month depending on usage
-- vCore: Always-on, ~$154/month minimum
+### ✅ Renderer Implementations (NEW)
+- `backend/lib/adapters/gateways/mongo/utils/mongo-atlas-aggregate-renderer.ts` - **NEW** - $vectorSearch renderer for Atlas
+- `backend/lib/adapters/gateways/mongo/utils/mongo-documentdb-aggregate-renderer.ts` - **NEW** - $search.cosmosSearch renderer for DocumentDB
+- `backend/lib/adapters/gateways/mongo/utils/mongo-aggregate-renderer.ts` - **MODIFIED** - Added toVectorSearch() that throws error
 
-**Optimization options:**
-- After testing, can delete experimental cluster to stop charges
-- For production, consider shared vCore cluster across multiple databases
-- Monitor actual usage and right-size tier (M25 → M30 if needed, or downgrade)
-
-### Cost Management: Deprovisioning After Experiment
-
-**YES - You can delete the vCore cluster to minimize costs after experimentation.**
-
-#### Immediate Cost Savings
-- Charges stop immediately upon deletion
-- Billed hourly, so partial month is prorated
-- Example: 2-week experiment = ~$77 instead of $154/month
-
-#### How to Deprovision
-
-**Step 1: Export experimental data (optional, if you want to preserve test results)**
-```bash
-# Export data for future reference
-mongodump --uri="<vcore-connection-string>" \
-  --db=cams-vector-experiment \
-  --out=./experimental-data-backup
-
-# Compress backup
-tar -czf experimental-data-backup.tar.gz experimental-data-backup/
-```
-
-**Step 2: Delete the vCore cluster**
-```bash
-# Set variables
-CLUSTER_NAME="cosmos-vcore-cams-experiment"
-RESOURCE_GROUP="bankruptcy-oversight-support-systems"
-
-# Delete the cluster (WARNING: Cannot be undone)
-az cosmosdb mongocluster delete \
-  --cluster-name "${CLUSTER_NAME}" \
-  --resource-group "${RESOURCE_GROUP}" \
-  --yes
-
-# Verify deletion
-az cosmosdb mongocluster show \
-  --cluster-name "${CLUSTER_NAME}" \
-  --resource-group "${RESOURCE_GROUP}" 2>&1 | grep -q "not found" && echo "✓ Cluster deleted"
-```
-
-**Step 3: Remove environment configuration**
-```bash
-# Restore original .env
-cd backend
-cp .env.backup .env
-
-# Verify using original database
-grep DATABASE_NAME .env
-```
-
-#### What Gets Deleted
-- ✅ vCore cluster and all compute resources
-- ✅ All data in the experimental database
-- ✅ Vector indexes
-- ✅ Firewall rules and configuration
-
-#### What Remains
-- ✅ Your application code (all changes are in feature branch)
-- ✅ Backup data (if you exported it)
-- ✅ Knowledge about vector search functionality
-- ✅ Test procedures and documentation
-
-#### If You Need to Restart Later
-If team approves production deployment later:
-1. Re-provision vCore cluster (15-30 minutes)
-2. Run seed script to regenerate test data
-3. Continue testing from where you left off
-
-Total time to restart: ~45 minutes
-
-#### Recommendation
-**For experimentation:** Provision → Test (1-2 weeks) → Deprovision
-- Estimated cost: $50-100 for 1-2 weeks
-- Can restart anytime if needed
-
-**For production:** Provision dedicated vCore cluster only after team approves the feature for production use
-
----
-
-## Infrastructure Decision Checklist
-
-Before proceeding with vCore provisioning, team should consider:
-
-- [ ] **Budget approval** for experimentation (~$50-100 for 1-2 weeks, cluster can be deleted after)
-- [ ] **Timeline** for testing and decision (cluster will be deprovisioned after evaluation to minimize costs)
-- [ ] **Alternative approaches** (e.g., use external vector database like Pinecone, though adds complexity)
-- [ ] **Production vs. development** separation (separate vCore clusters or shared?)
-- [ ] **Backup and disaster recovery** requirements for vCore cluster
-- [ ] **Monitoring and alerting** setup for vector search performance
-- [ ] **Documentation** for operations team on new infrastructure
-
----
-
-## Alternative: Local MongoDB with Atlas Search (Development Only)
-
-For local development without Azure costs, can use MongoDB Atlas free tier:
-
-**Steps:**
-1. Create free MongoDB Atlas cluster (M0)
-2. Enable Atlas Search (includes vector search on free tier)
-3. Update local `.env` with Atlas connection string
-4. Run seed script against Atlas cluster
-5. Test vector search locally
-
-**Limitations:**
-- Atlas uses different syntax for vector search (`$vectorSearch` vs `cosmosSearch`)
-- Would require code changes to support both
-- Not suitable for production deployment in Azure
-
----
-
-## Files Modified in This Implementation
-
-### Core Implementation Files
-- `backend/lib/adapters/services/embedding.service.ts` - NEW
-- `backend/lib/query/query-pipeline.ts` - MODIFIED (added VectorSearch)
-- `backend/lib/adapters/gateways/mongo/utils/mongo-aggregate-renderer.ts` - MODIFIED (added renderer)
-- `backend/lib/adapters/gateways/mongo/cases.mongo.repository.ts` - MODIFIED (added searchCasesWithVectorSearch)
+### ✅ Core Service Files
+- `backend/lib/adapters/services/embedding.service.ts` - NEW (from previous implementation)
+- `backend/lib/query/query-pipeline.ts` - MODIFIED (added VectorSearch stage)
 - `common/src/api/search.ts` - MODIFIED (added name field)
 - `common/src/cams/cases.ts` - MODIFIED (added keywords/keywordsVector fields)
 
-### Test Files
+### ✅ Test and Script Files
 - `backend/scripts/test-embedding-service.ts` - NEW
-- `backend/scripts/seed-experimental-database.ts` - EXISTING (Phase 0)
+- `backend/scripts/seed-experimental-database.ts` - EXISTING
+- `test/vector-search/docker-compose.local-mongo.yml` - **MOVED** from root
 
 ### Configuration Files
 - `backend/esbuild-shared.mjs` - MODIFIED (externalized transformer deps)
 - `backend/.env.experiment` - NEW (not in git)
+- `test/vector-search/README.md` - MODIFIED (updated docker-compose path references)
+- `CAMS-376-LOCAL-POC-SUCCESS.md` - MODIFIED (updated docker-compose path)
 
 ---
 
@@ -2722,40 +2729,249 @@ For local development without Azure costs, can use MongoDB Atlas free tier:
 ### What's Ready
 ✅ All application code is complete and follows established patterns
 ✅ Query builder infrastructure properly extended
-✅ Embedding service tested and working (62ms model load, 1-3ms per embedding)
+✅ Embedding service tested and working with fast model load and embedding generation
 ✅ Repository implements hybrid search correctly (vector → filter → sort → paginate)
 ✅ Graceful fallback if embedding generation fails
 
 ### What's Blocked
-⚠️ Testing requires **Azure Cosmos DB for MongoDB vCore** infrastructure
-⚠️ Current Cosmos DB (RU-based) does not support `$search` or vector indexing
-⚠️ Estimated cost: **~$50-100 for 1-2 week experiment** (cluster can be deleted after testing)
-
-### Decision Needed
-- Approve vCore cluster provisioning for experimentation (~$50-100 for 1-2 weeks)
-- **Cost savings**: Cluster can be deleted after testing to minimize costs
-- OR defer vector search feature until budget available
-- OR explore alternative vector databases (adds architectural complexity)
-
-### Next Steps After Approval
-1. Provision vCore cluster (15-30 minutes)
-2. Configure firewall rules
-3. Seed experimental database (5-10 minutes)
-4. Test vector search locally
-5. Deploy to Azure development slot
-6. Validate functionality and performance
-7. Team review and production readiness assessment
-8. **Deprovision cluster** if not moving to production (stops all charges)
+⚠️ Testing requires **Azure DocumentDB** infrastructure
 
 ---
 
-## Contact & Support
+## MongoDB Atlas Implementation (January 14, 2026)
 
-For questions or issues with this implementation:
-- Review this document first
-- Check troubleshooting section
-- Consult Application Insights logs
-- Review Azure Cosmos DB metrics
+### ✅ Completed: Atlas Validation and Alternative Path
 
-**Feature Branch:** `CAMS-376-vector-encodings`
-**Last Updated:** 2026-01-12
+**Date Completed:** January 14, 2026
+**Status:** Atlas vector search validated, production integration pending
+
+#### Findings: MongoDB Atlas vs Azure DocumentDB
+
+Testing revealed that **MongoDB Atlas uses different syntax** than Azure DocumentDB:
+- **Atlas:** Uses `$vectorSearch` operator with `index`, `queryVector`, `numCandidates`, `limit` parameters
+- **Azure DocumentDB:** Uses `$search.cosmosSearch` operator with `vector`, `path`, `k` parameters
+
+**Impact:** The current implementation targeting Azure DocumentDB needs Atlas-specific rendering for MongoDB Atlas deployment.
+
+#### Files Created for Atlas Support
+
+**Atlas Repository Implementation:**
+- `test/vector-search/cases.atlas.repository.ts` - Repository implementation using Atlas syntax
+  - Implements `CasesRepository` interface
+  - Uses `$vectorSearch` operator
+  - Index name: `vector_index`
+  - Successfully tested with real Atlas cluster
+
+**Atlas Query Renderer:**
+- `backend/lib/adapters/gateways/mongo/utils/mongo-atlas-aggregate-renderer.ts`
+  - Extends base MongoDB aggregate renderer
+  - Renders `$vectorSearch` stages for Atlas
+  - Converts `k` parameter to `numCandidates` (k × 2) and `limit`
+  - Includes required `index` parameter
+
+**Test Scripts:**
+- `test/vector-search/test-mongodb-atlas-repository.ts` - Integration tests (✅ ALL PASSING)
+- `test/vector-search/seed-mongodb-atlas.ts` - Atlas database seeding script
+- `test/vector-search/test-atlas-renderer.ts` - Renderer validation (✅ PASSING)
+
+#### Validation Results
+
+**Test Environment:**
+- MongoDB Atlas Free Tier (M0)
+- Database: `cams-vector-test`
+- Collection: `cases`
+- Index: `vector_index` (384 dimensions, cosine similarity)
+- Test data: 60 cases with vector embeddings using MockData
+
+**Test Results:**
+```
+✅ Traditional Search: PASS
+   - Found 19 cases in division 081
+   - Pagination working correctly
+
+✅ Vector Search: PASS
+   - Searching "John" returned 7 results
+   - Found "Jon Smith" (typo variant) ✓
+   - Found "John Smyth" (spelling variant) ✓
+
+✅ Nickname Matching: PASS
+   - Searching "Michael" found "Mike Johnson" ✓
+
+✅ Renderer Validation: PASS
+   - Atlas renderer produces correct $vectorSearch syntax
+   - Cosmos renderer produces correct $search.cosmosSearch syntax
+```
+
+### Next Steps: Production Integration
+
+#### Option 1: Deploy with MongoDB Atlas (Recommended)
+
+**Prerequisites:**
+- MongoDB Atlas US Government account (FedRAMP High authorized)
+- Production cluster provisioned
+
+**Implementation Steps:**
+
+**Step 1: Update Production Code to Use Atlas Renderer**
+
+The production `CasesMongoRepository` currently uses `mongo-aggregate-renderer.ts` which targets Azure DocumentDB. Update to use Atlas renderer:
+
+**Option A: Conditional renderer based on environment**
+```typescript
+// backend/lib/adapters/gateways/mongo/cases.mongo.repository.ts
+
+import MongoAggregateRenderer from '../utils/mongo-aggregate-renderer';
+import MongoAtlasAggregateRenderer from '../utils/mongo-atlas-aggregate-renderer';
+
+// Determine which renderer to use based on connection string or config
+const isAtlas = context.config.mongoConnectionString?.includes('mongodb.net');
+const renderer = isAtlas ? MongoAtlasAggregateRenderer : MongoAggregateRenderer;
+
+// Use renderer throughout the repository
+const query = renderer.toMongoAggregate(pipeline);
+```
+
+**Option B: Environment variable configuration**
+```bash
+# .env
+MONGO_VECTOR_SEARCH_PROVIDER=atlas  # or "cosmos-vcore"
+```
+
+```typescript
+// backend/lib/adapters/gateways/mongo/cases.mongo.repository.ts
+const provider = process.env.MONGO_VECTOR_SEARCH_PROVIDER || 'cosmos-vcore';
+const renderer = provider === 'atlas'
+  ? MongoAtlasAggregateRenderer
+  : MongoAggregateRenderer;
+```
+
+**Step 2: Configure Atlas Search Index Name**
+
+Make index name configurable instead of hardcoded:
+
+```typescript
+// backend/lib/adapters/gateways/mongo/utils/mongo-atlas-aggregate-renderer.ts
+
+function toMongoAtlasVectorSearch(stage: VectorSearch, indexName?: string) {
+  return {
+    $vectorSearch: {
+      index: indexName || process.env.ATLAS_VECTOR_INDEX_NAME || 'vector_index',
+      path: stage.path,
+      queryVector: stage.vector,
+      numCandidates: stage.k * 2,
+      limit: stage.k,
+      ...(stage.similarity && { similarity: stage.similarity }),
+    },
+  };
+}
+```
+
+**Step 3: Create Atlas Search Index**
+
+Using MongoDB Atlas UI:
+1. Navigate to: Database → Browse Collections → Search tab
+2. Click "Create Search Index"
+3. Select JSON Editor
+4. Configuration:
+```json
+{
+  "fields": [
+    {
+      "type": "vector",
+      "path": "keywordsVector",
+      "numDimensions": 384,
+      "similarity": "cosine"
+    }
+  ]
+}
+```
+5. Index name: `vector_index`
+6. Wait for index to build (typically 1-5 minutes)
+
+**Step 4: Update Connection String**
+
+```bash
+# .env or Azure App Settings
+MONGO_CONNECTION_STRING="mongodb+srv://<user>:<password>@<cluster>.mongodb.net/<database>?retryWrites=true&w=majority"
+MONGO_VECTOR_SEARCH_PROVIDER=atlas
+ATLAS_VECTOR_INDEX_NAME=vector_index
+```
+
+**Step 5: Deploy and Validate**
+
+```bash
+# Build with existing process
+cd backend
+npm run build:all
+
+# Deploy
+cd function-apps/api
+npm run pack
+
+# Deploy to Azure (use existing deployment process)
+# ...
+
+# Test vector search endpoint
+curl -X POST "https://<function-app>.azurewebsites.us/api/cases" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"John Smith","divisionCodes":["081"],"limit":10,"offset":0}'
+```
+
+**Step 6: Monitor and Validate**
+
+Check Application Insights for:
+- "Embedding model loaded successfully" (should appear once per instance)
+- "Vector search for '<name>' returned X results"
+- Latency metrics for search operations
+- Error rates (should remain low)
+
+#### Option 2: Deploy with Azure DocumentDB
+
+If team decides to use Azure DocumentDB instead:
+
+**Prerequisites:**
+- Azure DocumentDB cluster provisioned
+- Vector index created with `cosmosSearch` configuration
+
+**Steps:**
+1. Follow Phase 7 instructions in this document (lines 2152-2504)
+2. Use existing `mongo-aggregate-renderer.ts` (no changes needed)
+3. Create vector index using `cosmosSearch` syntax
+4. Deploy and test
+
+**Note:** Azure DocumentDB is not currently available in Azure US Government cloud.
+
+### Testing Checklist
+
+Before production deployment:
+
+- [ ] Atlas Search index created and active
+- [ ] Environment variables configured (`MONGO_VECTOR_SEARCH_PROVIDER=atlas`)
+- [ ] Index name matches configuration
+- [ ] Integration tests passing with Atlas connection
+- [ ] Traditional search (without name) still works
+- [ ] Vector search (with name) returns relevant results
+- [ ] Fuzzy matching working (typos, nicknames)
+- [ ] Combined filters (name + division + chapter) work correctly
+- [ ] Fallback to traditional search if embedding fails
+- [ ] Performance acceptable (<1s end-to-end)
+- [ ] Application Insights logging working
+- [ ] Error handling tested (invalid names, empty results)
+
+### Cost Comparison
+
+**MongoDB Atlas (US Government):**
+- Free tier (M0): $0/month (limited to 512MB storage, no SLA)
+- M10 (development): ~$60/month
+- M30 (production): ~$300/month
+- Includes vector search at no additional cost
+
+**Azure DocumentDB:**
+- M25 (minimum): ~$154/month
+- Always-on compute (no scale-to-zero)
+- Currently unavailable in US Government cloud
+
+**Recommendation:** Start with MongoDB Atlas for faster deployment and proven functionality.
+
+---

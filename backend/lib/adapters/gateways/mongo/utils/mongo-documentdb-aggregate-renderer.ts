@@ -1,3 +1,17 @@
+/**
+ * Azure Cosmos DB vCore / DocumentDB Aggregate Query Renderer
+ *
+ * This extends the base MongoDB aggregate renderer with Azure Cosmos DB vCore vector search syntax.
+ *
+ * Key difference from mongo-atlas-aggregate-renderer.ts:
+ * - Uses $search.cosmosSearch operator (Cosmos DB vCore) instead of $vectorSearch (Atlas)
+ * - Different parameter names and structure
+ * - Cosmos DB vCore specific configuration
+ *
+ * Note: This is designed for Azure Cosmos DB for MongoDB vCore API which supports vector search.
+ * It is NOT compatible with Azure Cosmos DB RU-based MongoDB API.
+ */
+
 import {
   Accumulator,
   AddFields,
@@ -20,7 +34,7 @@ import {
 } from '../../../../query/query-builder';
 import { CamsError } from '../../../../common-errors/cams-error';
 
-const MODULE_NAME = 'MONGO-AGGREGATE-RENDERER';
+const MODULE_NAME = 'MONGO-DOCUMENTDB-AGGREGATE-RENDERER';
 
 function toMongoAggregateSort(sort: Sort) {
   return {
@@ -35,21 +49,32 @@ function toMongoAggregateSort(sort: Sort) {
 }
 
 /**
- * Vector search is NOT supported by Azure Cosmos DB with MongoDB API (RU-based model).
- * This base renderer is designed for traditional Cosmos DB operations only.
+ * Render vector search stage for Azure Cosmos DB vCore.
  *
- * For vector search capabilities, use:
- * - MongoAtlasAggregateRenderer for MongoDB Atlas
- * - MongoCosmosVCoreAggregateRenderer for Azure Cosmos DB vCore (when available)
+ * Cosmos DB vCore uses $search operator with cosmosSearch for vector similarity:
+ * {
+ *   $search: {
+ *     cosmosSearch: {
+ *       vector: [0.1, 0.2, ...],     // Query vector
+ *       path: "keywordsVector",       // Field containing vectors
+ *       k: 10                          // Number of results
+ *     }
+ *   }
+ * }
  *
- * @throws {CamsError} Always throws with "Unsupported Operation" message
+ * See: https://learn.microsoft.com/en-us/azure/cosmos-db/mongodb/vcore/vector-search
  */
-function toVectorSearch(_stage: VectorSearch) {
-  throw new CamsError(MODULE_NAME, {
-    message:
-      'Vector search is not supported by Azure Cosmos DB with MongoDB API (RU-based model). Use MongoAtlasAggregateRenderer for MongoDB Atlas or switch to a vector-capable database.',
-    status: 501, // Not Implemented
-  });
+function toDocumentDbVectorSearch(stage: VectorSearch) {
+  return {
+    $search: {
+      cosmosSearch: {
+        vector: stage.vector,
+        path: stage.path,
+        k: stage.k,
+        ...(stage.similarity && { similarity: stage.similarity }),
+      },
+    },
+  };
 }
 
 function toMongoPaginatedFacet(paginate: Paginate) {
@@ -117,9 +142,6 @@ function toMongoGroup(stage: Group) {
   }, group);
 }
 
-// TODO: Future contraction. We can provide a unified projection `toMongoProject` if we produce another stage that includes inclusive and exclusive field specifications.
-// See: https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#syntax
-
 function toMongoProjectExclude(stage: ExcludeFields) {
   const fields = stage.fields.reduce((acc, field) => {
     acc[field.name] = 0;
@@ -173,7 +195,13 @@ const mapCondition: { [key: string]: string } = {
   IF_NULL: '$ifNull',
 };
 
-function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
+/**
+ * Convert a CAMS pipeline to Azure Cosmos DB vCore aggregate query.
+ *
+ * This is identical to the base renderer except it uses toDocumentDbVectorSearch
+ * for VECTOR_SEARCH stages.
+ */
+function toMongoDocumentDbAggregate(pipeline: Pipeline): AggregateQuery {
   return pipeline.stages.map((stage) => {
     if (stage.stage === 'SORT') {
       return toMongoAggregateSort(stage);
@@ -200,12 +228,12 @@ function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
       return toMongoGroup(stage);
     }
     if (stage.stage === 'VECTOR_SEARCH') {
-      return toVectorSearch(stage);
+      return toDocumentDbVectorSearch(stage);
     }
   });
 }
 
-const MongoAggregateRenderer = {
+const MongoDocumentDbAggregateRenderer = {
   toMongoAggregateSort,
   toMongoLookup,
   toMongoAddFields,
@@ -215,8 +243,8 @@ const MongoAggregateRenderer = {
   toMongoProjectInclude,
   toMongoFilterCondition,
   translateCondition,
-  toMongoAggregate,
-  toVectorSearch,
+  toMongoDocumentDbAggregate,
+  toDocumentDbVectorSearch,
 };
 
-export default MongoAggregateRenderer;
+export default MongoDocumentDbAggregateRenderer;

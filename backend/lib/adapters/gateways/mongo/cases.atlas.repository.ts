@@ -7,7 +7,7 @@ import {
 } from '@common/cams/events';
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '@common/cams/history';
-import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, Field } from '../../../query/query-builder';
 import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -16,8 +16,10 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
+import { getEmbeddingService } from '../../services/embedding.service';
+import { MongoAtlasCollectionAdapter } from './utils/mongo-atlas-adapter';
 
-const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
+const MODULE_NAME = 'CASES-ATLAS-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
 const { and, or, using } = QueryBuilder;
@@ -32,15 +34,39 @@ const {
   pipeline,
   sort,
   source,
+  vectorSearch,
 } = QueryPipeline;
 
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
   return predicate.limit && predicate.offset >= 0;
 }
 
-export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
+/**
+ * Cases Repository Implementation for MongoDB Atlas
+ *
+ * This repository is specifically designed for MongoDB Atlas with vector search support.
+ * It uses the MongoAtlasAggregateRenderer to generate $vectorSearch stages.
+ *
+ * Key Features:
+ * - Fuzzy name search using vector embeddings
+ * - Uses MongoDB Atlas $vectorSearch operator
+ * - Falls back to traditional search if vector generation fails
+ * - Supports all standard CasesRepository operations
+ *
+ * Vector Search Flow:
+ * 1. User provides predicate.name (e.g., "John Smith")
+ * 2. EmbeddingService generates 384-dimensional vector from name
+ * 3. Pipeline applies traditional filters first (division, chapter, etc.)
+ * 4. $vectorSearch finds similar vectors in keywordsVector field
+ * 5. Results sorted and paginated
+ *
+ * Architecture Note:
+ * This is separate from CasesMongoRepository which targets Azure Cosmos DB
+ * with MongoDB API (RU-based model) that does NOT support vector search.
+ */
+export class CasesAtlasRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
-  private static instance: CasesMongoRepository;
+  private static instance: CasesAtlasRepository;
   private context: ApplicationContext;
 
   private constructor(context: ApplicationContext) {
@@ -49,25 +75,38 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   public static getInstance(context: ApplicationContext) {
-    if (!CasesMongoRepository.instance) {
-      CasesMongoRepository.instance = new CasesMongoRepository(context);
+    if (!CasesAtlasRepository.instance) {
+      CasesAtlasRepository.instance = new CasesAtlasRepository(context);
     }
-    CasesMongoRepository.referenceCount++;
-    return CasesMongoRepository.instance;
+    CasesAtlasRepository.referenceCount++;
+    return CasesAtlasRepository.instance;
   }
 
   public static dropInstance() {
-    if (CasesMongoRepository.referenceCount > 0) {
-      CasesMongoRepository.referenceCount--;
+    if (CasesAtlasRepository.referenceCount > 0) {
+      CasesAtlasRepository.referenceCount--;
     }
-    if (CasesMongoRepository.referenceCount < 1) {
-      CasesMongoRepository.instance?.client?.close().then();
-      CasesMongoRepository.instance = null;
+    if (CasesAtlasRepository.referenceCount < 1) {
+      CasesAtlasRepository.instance?.client?.close().then();
+      CasesAtlasRepository.instance = null;
     }
   }
 
   public release() {
-    CasesMongoRepository.dropInstance();
+    CasesAtlasRepository.dropInstance();
+  }
+
+  /**
+   * Override getAdapter to return MongoDB Atlas-specific adapter.
+   * This adapter uses MongoAtlasAggregateRenderer for vector search support.
+   */
+  protected getAdapter<T>() {
+    return MongoAtlasCollectionAdapter.newAtlasAdapter<T>(
+      this.moduleName,
+      this.collectionName,
+      this.databaseName,
+      this.client,
+    );
   }
 
   async getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>> {
@@ -292,6 +331,17 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     return conditions;
   }
 
+  /**
+   * Search cases with optional vector search support.
+   *
+   * This is where the magic happens! If predicate.name is provided:
+   * 1. **Vector Encoding Occurs Here** - EmbeddingService.generateEmbedding() is called
+   * 2. Traditional filters are applied
+   * 3. Vector search finds similar names using MongoDB Atlas $vectorSearch
+   * 4. Results are sorted and paginated
+   *
+   * The vector encoding happens in searchCasesWithVectorSearch() method below.
+   */
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
       if (predicate.includeOnlyUnassigned) {
@@ -308,6 +358,17 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
       const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
+      // Check if vector search is requested
+      if (predicate.name && predicate.name.trim().length > 0) {
+        this.context.logger.info(
+          MODULE_NAME,
+          `Vector search requested for name: "${predicate.name}"`,
+        );
+        return await this.searchCasesWithVectorSearch(predicate, conditions, dateFiled, caseNumber);
+      }
+
+      // Fall back to traditional search
+      this.context.logger.debug(MODULE_NAME, 'Using traditional search (no name provided)');
       const spec = pipeline(
         match(and(...conditions)),
         sort(descending(dateFiled), descending(caseNumber)),
@@ -324,6 +385,70 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       });
       throw error;
     }
+  }
+
+  /**
+   * **VECTOR ENCODING HAPPENS HERE**
+   *
+   * This method demonstrates where predicate.name gets encoded to a vector:
+   *
+   * Step 1: Get EmbeddingService singleton
+   * Step 2: Call generateEmbedding(context, predicate.name) -> Returns 384-dimensional vector
+   * Step 3: Build pipeline with vectorSearch stage
+   * Step 4: MongoAtlasAggregateRenderer converts pipeline to MongoDB $vectorSearch syntax
+   *
+   * The actual encoding occurs at line with "await embeddingService.generateEmbedding()"
+   */
+  private async searchCasesWithVectorSearch(
+    predicate: CasesSearchPredicate,
+    conditions: ConditionOrConjunction<SyncedCase>[],
+    dateFiled: Field<SyncedCase>,
+    caseNumber: Field<SyncedCase>,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
+    // Step 1: Get embedding service
+    const embeddingService = getEmbeddingService();
+
+    // Step 2: **ENCODING HAPPENS HERE** - Convert text to 384-dimensional vector
+    this.context.logger.debug(MODULE_NAME, `Generating query vector for name: "${predicate.name}"`);
+    const queryVector = await embeddingService.generateEmbedding(this.context, predicate.name);
+
+    if (!queryVector) {
+      this.context.logger.warn(
+        MODULE_NAME,
+        'Failed to generate query vector, falling back to traditional search',
+      );
+      // Fall back to traditional search
+      const spec = pipeline(
+        match(and(...conditions)),
+        sort(descending(dateFiled), descending(caseNumber)),
+        paginate(predicate.offset, predicate.limit),
+      );
+      return await this.getAdapter<SyncedCase>().paginate(spec);
+    }
+
+    this.context.logger.info(
+      MODULE_NAME,
+      `Query vector generated: ${queryVector.length} dimensions`,
+    );
+
+    // Step 3: Build pipeline with vector search stage
+    // Strategy: Pre-filter with traditional conditions, then apply vector search
+    const k = Math.max(predicate.limit * 2, 50); // Get more candidates for ranking
+
+    const spec = pipeline(
+      match(and(...conditions)), // Pre-filter with traditional conditions FIRST
+      vectorSearch(queryVector, 'keywordsVector', k, 'COS'), // Cosine similarity search
+      sort(descending(dateFiled), descending(caseNumber)),
+      paginate(predicate.offset, predicate.limit),
+    );
+
+    this.context.logger.info(
+      MODULE_NAME,
+      `Vector search pipeline: ${conditions.length} filters, k=${k}, limit=${predicate.limit}`,
+    );
+
+    // Step 4: Adapter uses MongoAtlasAggregateRenderer to convert to $vectorSearch
+    return await this.getAdapter<SyncedCase>().paginate(spec);
   }
 
   private async searchForUnassignedCases(

@@ -1,3 +1,15 @@
+/**
+ * MongoDB Atlas Aggregate Query Renderer
+ *
+ * This extends the base MongoDB aggregate renderer with Atlas-specific vector search syntax.
+ *
+ * Key difference from mongo-aggregate-renderer.ts:
+ * - Uses $vectorSearch operator (Atlas) instead of $search.cosmosSearch (Cosmos DB vCore)
+ * - Adds index parameter (required for Atlas)
+ * - Uses numCandidates instead of k
+ * - Adds limit parameter to $vectorSearch stage
+ */
+
 import {
   Accumulator,
   AddFields,
@@ -20,7 +32,7 @@ import {
 } from '../../../../query/query-builder';
 import { CamsError } from '../../../../common-errors/cams-error';
 
-const MODULE_NAME = 'MONGO-AGGREGATE-RENDERER';
+const MODULE_NAME = 'MONGO-ATLAS-AGGREGATE-RENDERER';
 
 function toMongoAggregateSort(sort: Sort) {
   return {
@@ -35,21 +47,30 @@ function toMongoAggregateSort(sort: Sort) {
 }
 
 /**
- * Vector search is NOT supported by Azure Cosmos DB with MongoDB API (RU-based model).
- * This base renderer is designed for traditional Cosmos DB operations only.
+ * Render vector search stage for MongoDB Atlas.
  *
- * For vector search capabilities, use:
- * - MongoAtlasAggregateRenderer for MongoDB Atlas
- * - MongoCosmosVCoreAggregateRenderer for Azure Cosmos DB vCore (when available)
- *
- * @throws {CamsError} Always throws with "Unsupported Operation" message
+ * Atlas uses $vectorSearch operator with this structure:
+ * {
+ *   $vectorSearch: {
+ *     index: "vector_index",        // Atlas Search index name
+ *     path: "keywordsVector",        // Field containing vectors
+ *     queryVector: [0.1, 0.2, ...], // Query vector
+ *     numCandidates: 100,            // Number of candidates to consider
+ *     limit: 10                      // Max results to return
+ *   }
+ * }
  */
-function toVectorSearch(_stage: VectorSearch) {
-  throw new CamsError(MODULE_NAME, {
-    message:
-      'Vector search is not supported by Azure Cosmos DB with MongoDB API (RU-based model). Use MongoAtlasAggregateRenderer for MongoDB Atlas or switch to a vector-capable database.',
-    status: 501, // Not Implemented
-  });
+function toAtlasVectorSearch(stage: VectorSearch) {
+  return {
+    $vectorSearch: {
+      index: 'vector_index', // TODO: Make this configurable via stage or context
+      path: stage.path,
+      queryVector: stage.vector,
+      numCandidates: stage.k * 2, // Use double k as numCandidates for better recall
+      limit: stage.k,
+      ...(stage.similarity && { similarity: stage.similarity }),
+    },
+  };
 }
 
 function toMongoPaginatedFacet(paginate: Paginate) {
@@ -117,9 +138,6 @@ function toMongoGroup(stage: Group) {
   }, group);
 }
 
-// TODO: Future contraction. We can provide a unified projection `toMongoProject` if we produce another stage that includes inclusive and exclusive field specifications.
-// See: https://www.mongodb.com/docs/manual/reference/operator/aggregation/project/#syntax
-
 function toMongoProjectExclude(stage: ExcludeFields) {
   const fields = stage.fields.reduce((acc, field) => {
     acc[field.name] = 0;
@@ -173,7 +191,13 @@ const mapCondition: { [key: string]: string } = {
   IF_NULL: '$ifNull',
 };
 
-function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
+/**
+ * Convert a CAMS pipeline to MongoDB Atlas aggregate query.
+ *
+ * This is identical to the base renderer except it uses toAtlasVectorSearch
+ * for VECTOR_SEARCH stages.
+ */
+function toMongoAtlasAggregate(pipeline: Pipeline): AggregateQuery {
   return pipeline.stages.map((stage) => {
     if (stage.stage === 'SORT') {
       return toMongoAggregateSort(stage);
@@ -200,12 +224,12 @@ function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
       return toMongoGroup(stage);
     }
     if (stage.stage === 'VECTOR_SEARCH') {
-      return toVectorSearch(stage);
+      return toAtlasVectorSearch(stage);
     }
   });
 }
 
-const MongoAggregateRenderer = {
+const MongoAtlasAggregateRenderer = {
   toMongoAggregateSort,
   toMongoLookup,
   toMongoAddFields,
@@ -215,8 +239,8 @@ const MongoAggregateRenderer = {
   toMongoProjectInclude,
   toMongoFilterCondition,
   translateCondition,
-  toMongoAggregate,
-  toVectorSearch,
+  toMongoAtlasAggregate,
+  toAtlasVectorSearch,
 };
 
-export default MongoAggregateRenderer;
+export default MongoAtlasAggregateRenderer;

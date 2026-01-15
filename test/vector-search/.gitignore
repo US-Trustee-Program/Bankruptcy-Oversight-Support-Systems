@@ -1,0 +1,6 @@
+# Environment variables with secrets - NEVER commit!
+.env
+
+# Generated test data and reports
+*.log
+generated-mock-data.json

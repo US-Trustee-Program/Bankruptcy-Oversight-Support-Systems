@@ -1,7 +1,9 @@
-import QueryPipeline, { Stage } from '../../../../query/query-pipeline';
+import QueryPipeline, { Stage, VectorSearch } from '../../../../query/query-pipeline';
 import MongoAggregateRenderer from './mongo-aggregate-renderer';
+import MongoAtlasAggregateRenderer from './mongo-atlas-aggregate-renderer';
 import { Condition, Field } from '../../../../query/query-builder';
 import { CaseAssignment } from '@common/cams/assignments';
+import { CamsError } from '../../../../common-errors/cams-error';
 
 const { pipeline } = QueryPipeline;
 
@@ -155,6 +157,79 @@ describe('aggregation query renderer tests', () => {
     const actual = MongoAggregateRenderer.toMongoAggregate(query);
 
     expect(actual).toEqual(expected);
+  });
+
+  describe('vector search renderer tests', () => {
+    const mockVector = new Array(384).fill(0.1);
+    const vectorSearchStage: VectorSearch = {
+      stage: 'VECTOR_SEARCH',
+      vector: mockVector,
+      path: 'keywordsVector',
+      k: 10,
+      similarity: 'COS',
+    };
+
+    test('base renderer should throw CamsError for vector search', () => {
+      expect(() => MongoAggregateRenderer.toVectorSearch(vectorSearchStage)).toThrow(CamsError);
+    });
+
+    test('base renderer should throw with status 501', () => {
+      let thrownError: CamsError | undefined;
+      try {
+        MongoAggregateRenderer.toVectorSearch(vectorSearchStage);
+      } catch (error) {
+        thrownError = error as CamsError;
+      }
+
+      expect(thrownError).toBeDefined();
+      expect(thrownError).toBeInstanceOf(CamsError);
+      expect(thrownError?.status).toBe(501);
+      expect(thrownError?.module).toBe('MONGO-AGGREGATE-RENDERER');
+      expect(thrownError?.message).toContain('not supported');
+    });
+
+    test('base renderer error should provide guidance', () => {
+      let thrownError: CamsError | undefined;
+      try {
+        MongoAggregateRenderer.toVectorSearch(vectorSearchStage);
+      } catch (error) {
+        thrownError = error as CamsError;
+      }
+
+      expect(thrownError).toBeDefined();
+      expect(thrownError?.message).toContain('MongoAtlasAggregateRenderer');
+      expect(thrownError?.message).toContain('MongoDB Atlas');
+    });
+
+    test('Atlas renderer should produce $vectorSearch stage', () => {
+      const result = MongoAtlasAggregateRenderer.toAtlasVectorSearch(vectorSearchStage);
+
+      expect(result).toHaveProperty('$vectorSearch');
+      expect(result.$vectorSearch).toHaveProperty('index');
+      expect(result.$vectorSearch).toHaveProperty('path', 'keywordsVector');
+      expect(result.$vectorSearch).toHaveProperty('queryVector', mockVector);
+      expect(result.$vectorSearch).toHaveProperty('numCandidates', 20); // k * 2
+      expect(result.$vectorSearch).toHaveProperty('limit', 10); // k
+      expect(result.$vectorSearch).toHaveProperty('similarity', 'COS');
+    });
+
+    test('Atlas renderer should use correct index name', () => {
+      const result = MongoAtlasAggregateRenderer.toAtlasVectorSearch(vectorSearchStage);
+
+      expect(result.$vectorSearch.index).toBe('vector_index');
+    });
+
+    test('Atlas renderer should calculate numCandidates as k * 2', () => {
+      const result = MongoAtlasAggregateRenderer.toAtlasVectorSearch(vectorSearchStage);
+
+      expect(result.$vectorSearch.numCandidates).toBe(vectorSearchStage.k * 2);
+    });
+
+    test('Atlas renderer should set limit to k', () => {
+      const result = MongoAtlasAggregateRenderer.toAtlasVectorSearch(vectorSearchStage);
+
+      expect(result.$vectorSearch.limit).toBe(vectorSearchStage.k);
+    });
   });
 });
 
