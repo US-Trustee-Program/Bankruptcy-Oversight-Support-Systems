@@ -87,7 +87,6 @@ describe('Phonetic Utils - Arabic Names (Romanized ASCII)', () => {
   });
 
   describe('Ahmed variants', () => {
-    // eslint-disable-next-line vitest/expect-expect
     test('should generate phonetic tokens for Ahmed variants', () => {
       const variants = ['Ahmed', 'Ahmad', 'Ahmet', 'Achmed'];
 
@@ -124,7 +123,6 @@ describe('Phonetic Utils - Arabic Names (Romanized ASCII)', () => {
   });
 
   describe('Hussein/Husain variants', () => {
-    // eslint-disable-next-line vitest/expect-expect
     test('should generate phonetic tokens for Hussein variants', () => {
       const variants = ['Hussein', 'Husain', 'Hussain', 'Hossein'];
 
@@ -217,7 +215,6 @@ describe('Phonetic Utils - Arabic Names (Romanized ASCII)', () => {
   });
 
   describe('Arabic surnames', () => {
-    // eslint-disable-next-line vitest/expect-expect
     test('should generate phonetic tokens for common surnames', () => {
       const surnames = [
         'Khan',
