@@ -19,7 +19,9 @@ import { CaseAssignment } from '@common/cams/assignments';
 import {
   generatePhoneticTokensWithNicknames,
   expandQueryWithNicknames,
+  filterCasesByDebtorNameSimilarity,
 } from '../../../use-cases/cases/phonetic-utils';
+import { getDemoCases } from '../../../use-cases/cases/demo-cases';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -256,6 +258,80 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
+  /**
+   * Demo mode search: Simulates database search using in-memory demo cases
+   * Applies the same search logic (phonetic + nickname + filtering) without database
+   */
+  private searchDemoCases(predicate: CasesSearchPredicate): CamsPaginationResponse<SyncedCase> {
+    let results = getDemoCases();
+
+    // Apply debtor name search if provided
+    if (predicate.debtorName) {
+      // Step 1: Simulate database query with BOTH phonetic tokens and regex
+      // This matches the production database query behavior
+
+      // Generate phonetic tokens with nickname expansion (e.g., "Jon" → J500, JN, J535, JN0N)
+      const searchTokens = generatePhoneticTokensWithNicknames(predicate.debtorName);
+
+      // Also get expanded words for regex matching (e.g., "Jon" → ["jon", "jonathan"])
+      const searchWords = expandQueryWithNicknames(predicate.debtorName);
+
+      results = results.filter((bCase) => {
+        // Check phonetic token matching (Jon → John via J500/JN)
+        const phoneticMatch = searchTokens.some((token) => {
+          const debtorTokenMatch =
+            bCase.debtor?.phoneticTokens && bCase.debtor.phoneticTokens.includes(token);
+          const jointDebtorTokenMatch =
+            bCase.jointDebtor?.phoneticTokens && bCase.jointDebtor.phoneticTokens.includes(token);
+          return debtorTokenMatch || jointDebtorTokenMatch;
+        });
+
+        // Check regex matching (partial words, nicknames)
+        const regexMatch = searchWords.some((word) => {
+          const regex = new RegExp(word, 'i');
+          const debtorMatch = bCase.debtor?.name && regex.test(bCase.debtor.name);
+          const jointDebtorMatch = bCase.jointDebtor?.name && regex.test(bCase.jointDebtor.name);
+          return debtorMatch || jointDebtorMatch;
+        });
+
+        // Return case if EITHER phonetic OR regex matches (OR logic, like database query)
+        return phoneticMatch || regexMatch;
+      });
+
+      // Step 2: Apply application-level filtering (Jaro-Winkler + nickname-aware matching)
+      results = filterCasesByDebtorNameSimilarity(results, predicate.debtorName);
+    }
+
+    // Apply chapter filter
+    if (predicate.chapters && predicate.chapters.length > 0) {
+      results = results.filter((bCase) => predicate.chapters!.includes(bCase.chapter));
+    }
+
+    // Apply division filter
+    if (predicate.divisionCodes && predicate.divisionCodes.length > 0) {
+      results = results.filter((bCase) =>
+        predicate.divisionCodes!.includes(bCase.courtDivisionCode),
+      );
+    }
+
+    // Sort by dateFiled descending, then caseNumber descending
+    results.sort((a, b) => {
+      const dateCompare = (b.dateFiled || '').localeCompare(a.dateFiled || '');
+      if (dateCompare !== 0) return dateCompare;
+      return (b.caseId || '').localeCompare(a.caseId || '');
+    });
+
+    // Apply pagination
+    const offset = predicate.offset || 0;
+    const limit = predicate.limit || 25;
+    const paginatedResults = results.slice(offset, offset + limit);
+
+    return {
+      metadata: { total: results.length },
+      data: paginatedResults,
+    };
+  }
+
   addConditions(predicate: CasesSearchPredicate): ConditionOrConjunction<SyncedCase>[] {
     const doc = using<SyncedCase>();
     const conditions: ConditionOrConjunction<SyncedCase>[] = [];
@@ -333,6 +409,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
+      // Demo mode: Return mock cases with full search functionality
+      if (process.env.DEMO_MODE === 'true') {
+        return this.searchDemoCases(predicate);
+      }
+
       if (predicate.includeOnlyUnassigned) {
         return await this.searchForUnassignedCases(predicate);
       }
