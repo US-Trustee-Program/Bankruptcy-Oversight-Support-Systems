@@ -275,7 +275,7 @@ describe('Case Note Removal Modal Tests', async () => {
 
     // Verify calling hide doesn't throw an error
     expect(() => {
-      modalRef.current?.hide();
+      modalRef.current?.hide({});
     }).not.toThrow();
   });
 });
