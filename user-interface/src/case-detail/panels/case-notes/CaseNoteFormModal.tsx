@@ -113,7 +113,7 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   const noteModalId = props.modalId || 'case-note-form-modal';
   const featureFlags = useFeatureFlags();
 
-  const [formKey, setFormKey] = useState<string>('');
+  const formKeyRef = useRef<string>('');
   const [modalOpenOptions, setModalOpenOptions] =
     useState<CaseNoteFormModalOpenProps>(defaultModalOpenOptions);
   const [noteModalTitle, setNoteModalTitle] = useState<string>('');
@@ -159,10 +159,10 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   }
 
   function saveFormData(data: CaseNoteInput) {
-    if (formKey && (data.title?.length > 0 || data.content?.length > 0)) {
-      LocalFormCache.saveForm(formKey, data);
-    } else if (formKey) {
-      LocalFormCache.clearForm(formKey);
+    if (formKeyRef.current && (data.title?.length > 0 || data.content?.length > 0)) {
+      LocalFormCache.saveForm(formKeyRef.current, data);
+    } else if (formKeyRef.current) {
+      LocalFormCache.clearForm(formKeyRef.current);
     }
     toggleButtonOnDirtyForm(initialTitle, initialContent);
   }
@@ -198,7 +198,7 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     } else {
       contentInputRef.current?.clearValue();
     }
-    LocalFormCache.clearForm(formKey);
+    LocalFormCache.clearForm(formKeyRef.current);
 
     setCaseNoteFormError('');
     alertRef.current?.hide();
@@ -328,7 +328,7 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     setCancelButtonLabel(`${showProps.mode === 'edit' ? 'Cancel' : 'Discard'}`);
 
     const formKey = buildCaseNoteFormKey(showProps.caseId, showProps.mode, showProps.id ?? '');
-    setFormKey(formKey);
+    formKeyRef.current = formKey;
     setModalOpenOptions(showProps);
     setInitialTitle(showProps.initialTitle);
     setInitialContent(showProps.initialContent);
