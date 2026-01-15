@@ -386,7 +386,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
               />
             </div>
 
-            <div className="field-group">
+            <div className="field-group appointedDate">
               <DatePicker
                 id="appointedDate"
                 name="appointedDate"
