@@ -1,4 +1,5 @@
 import { vi } from 'vitest';
+import { faker } from '@faker-js/faker';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -620,7 +621,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: 'SOME_RANDOM_STRING', // pragma: allowlist secret
+          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
         };
         const updateData = { zoomInfo: newZoomInfo };
         const updatedTrustee = { ...existingTrustee, zoomInfo: newZoomInfo };
@@ -648,7 +649,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '12345', // Invalid phone format
           meetingId: '1234567890',
-          passcode: 'SOME_RANDOM_STRING', // pragma: allowlist secret
+          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -662,7 +663,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'not-a-valid-url', // Invalid URL
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: 'SOME_RANDOM_STRING', // pragma: allowlist secret
+          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -676,7 +677,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
           meetingId: '12345678', // Only 8 digits, needs 9-11
-          passcode: 'SOME_RANDOM_STRING', // pragma: allowlist secret
+          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -690,7 +691,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
           meetingId: '123456789012', // 12 digits, needs 9-11
-          passcode: 'SOME_RANDOM_STRING', // pragma: allowlist secret
+          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -704,7 +705,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
           meetingId: 'INVALID', // pragma: allowlist secret
-          passcode: 'SOME_RANDOM_STRING', // pragma: allowlist secret
+          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -718,7 +719,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/' + 'a'.repeat(300), // Exceeds 255 char limit
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: 'SOME_RANDOM_STRING', // pragma: allowlist secret
+          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -732,7 +733,7 @@ describe('TrusteesUseCase tests', () => {
           link: '',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: 'SOME_RANDOM_STRING', // pragma: allowlist secret
+          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 

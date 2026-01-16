@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { faker } from '@faker-js/faker';
 import ZoomInfoCard from './ZoomInfoCard';
 import { ZoomInfo } from '@common/cams/trustees';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
@@ -7,6 +8,7 @@ import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities
 describe('ZoomInfoCard', () => {
   let userEvent: CamsUserEvent;
   const mockOnEdit = vi.fn();
+  const testPasscode = faker.string.alphanumeric(10); // pragma: allowlist secret
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -17,7 +19,7 @@ describe('ZoomInfoCard', () => {
     link: 'https://zoom.us/j/123456789',
     phone: '1-555-123-4567',
     meetingId: '123456789',
-    passcode: 'abc123', // pragma: allowlist secret
+    passcode: testPasscode,
   };
 
   test('should render zoom info card with heading', () => {
@@ -53,7 +55,7 @@ describe('ZoomInfoCard', () => {
   test('should render passcode', () => {
     render(<ZoomInfoCard zoomInfo={mockZoomInfo} onEdit={mockOnEdit} />);
 
-    expect(screen.getByTestId('zoom-passcode')).toHaveTextContent('Passcode: abc123');
+    expect(screen.getByTestId('zoom-passcode')).toHaveTextContent(`Passcode: ${testPasscode}`);
   });
 
   test('should format 9-digit meeting ID with spaces', () => {
