@@ -186,19 +186,51 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(editButton).not.toBeInTheDocument();
     });
 
-    test('should not show edit button when case is not a lead case', () => {
+    test('should not show edit button when case is a consolidation member case', () => {
       const user: CamsUser = MockData.getCamsUser({
         roles: [CamsRole.CaseAssignmentManager],
       });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
 
-      const caseDetailNotLeadCase = {
+      const caseDetailMemberCase = {
         ...BASE_TEST_CASE_DETAIL,
-        consolidation: [CONSOLIDATE_TO], // CONSOLIDATION_TO means this is a child case
+        consolidation: [CONSOLIDATE_TO], // CONSOLIDATION_TO means this is a member case
       };
-      renderWithProps({ caseDetail: caseDetailNotLeadCase });
+      renderWithProps({ caseDetail: caseDetailMemberCase });
       const editButton = screen.queryByTestId('open-modal-button');
       expect(editButton).not.toBeInTheDocument();
+    });
+
+    test('should show edit button when case is a consolidation lead case', () => {
+      const user: CamsUser = MockData.getCamsUser({
+        roles: [CamsRole.CaseAssignmentManager],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+
+      const caseDetailLeadCase = {
+        ...BASE_TEST_CASE_DETAIL,
+        consolidation: [CONSOLIDATE_FROM], // CONSOLIDATION_FROM means this is a lead case
+      };
+      renderWithProps({ caseDetail: caseDetailLeadCase });
+      const editButton = screen.queryByTestId('open-modal-button');
+      expect(editButton).toBeInTheDocument();
+      expect(editButton).toBeVisible();
+    });
+
+    test('should show edit button when case is not a consolidation case', () => {
+      const user: CamsUser = MockData.getCamsUser({
+        roles: [CamsRole.CaseAssignmentManager],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+
+      const caseDetailNonConsolidation = {
+        ...BASE_TEST_CASE_DETAIL,
+        consolidation: [], // No consolidation
+      };
+      renderWithProps({ caseDetail: caseDetailNonConsolidation });
+      const editButton = screen.queryByTestId('open-modal-button');
+      expect(editButton).toBeInTheDocument();
+      expect(editButton).toBeVisible();
     });
 
     test('should open assignment modal when edit button is clicked', async () => {
