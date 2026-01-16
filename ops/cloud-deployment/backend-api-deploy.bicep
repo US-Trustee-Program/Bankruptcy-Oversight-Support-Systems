@@ -527,7 +527,7 @@ module apiSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateLinkGroup: 'sites-staging'
     stackName: 'stg-${apiFunctionName}'
     location: location
-    privateLinkServiceId: apiFunctionApp::slot.id
+    privateLinkServiceId: apiFunctionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
