@@ -17,7 +17,7 @@ describe('ZoomInfoCard', () => {
     link: 'https://zoom.us/j/123456789',
     phone: '1-555-123-4567',
     meetingId: '123456789',
-    passcode: 'abc123',
+    passcode: 'abc123', // pragma: allowlist secret
   };
 
   test('should render zoom info card with heading', () => {

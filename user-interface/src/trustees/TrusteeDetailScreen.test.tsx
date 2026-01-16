@@ -232,7 +232,7 @@ describe('TrusteeDetailScreen', () => {
         link: 'https://us02web.zoom.us/j/1234567890',
         phone: '123-456-7890',
         meetingId: '1234567890',
-        passcode: 'testpass123',
+        passcode: 'testpass123', // pragma: allowlist secret
       },
     };
 
@@ -272,7 +272,7 @@ describe('TrusteeDetailScreen', () => {
         link: 'https://us02web.zoom.us/j/1234567890',
         phone: '123-456-7890',
         meetingId: '1234567890',
-        passcode: 'testpass123',
+        passcode: 'testpass123', // pragma: allowlist secret
       },
     };
 
