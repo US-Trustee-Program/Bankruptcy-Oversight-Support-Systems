@@ -8,6 +8,8 @@ export interface TrusteeDetailProfileProps {
   trustee: Trustee;
   onEditPublicProfile: () => void;
   onEditInternalProfile: () => void;
+  onAddAssistant: () => void;
+  onEditAssistant: () => void;
   onEditOtherInformation: () => void;
 }
 
@@ -15,6 +17,8 @@ export default function TrusteeDetailProfile({
   trustee,
   onEditPublicProfile,
   onEditInternalProfile,
+  onAddAssistant,
+  onEditAssistant,
   onEditOtherInformation,
 }: Readonly<TrusteeDetailProfileProps>) {
   return (
@@ -90,6 +94,30 @@ export default function TrusteeDetailProfile({
             {!trustee.internal && <div>No information added.</div>}
             {!!trustee.internal && (
               <FormattedContact contact={trustee.internal} testIdPrefix="trustee-internal" />
+            )}
+          </div>
+          <div className="trustee-assistant-information record-detail-card">
+            <div className="title-bar">
+              <h3>Trustee Assistant (USTP Internal)</h3>
+              <Button
+                id="edit-assistant"
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                aria-label="Edit trustee assistant information"
+                title="Edit trustee assistant information"
+                onClick={trustee.assistant !== null ? onEditAssistant : onAddAssistant}
+              >
+                <IconLabel icon="edit" label="Edit" />
+              </Button>
+            </div>
+            {!trustee.assistant && <div>No information added.</div>}
+            {!!trustee.assistant && (
+              <>
+                <div className="assistant-name">{trustee.assistant.name}</div>
+                <FormattedContact
+                  contact={trustee.assistant.contact}
+                  testIdPrefix="trustee-assistant"
+                />
+              </>
             )}
           </div>
         </div>

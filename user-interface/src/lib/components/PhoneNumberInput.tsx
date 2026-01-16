@@ -62,7 +62,7 @@ function PhoneNumberInput_(props: PhoneNumberInputProps, ref: React.Ref<InputRef
         ev.target.value = formattedPhoneNumber;
         props.onChange?.(ev);
       }}
-      ariaDescription="Example: 123-456-7890"
+      ariaDescription={props.ariaDescription || 'Example: 123-456-7890'}
       type="tel"
       inputMode="numeric"
     ></Input>
