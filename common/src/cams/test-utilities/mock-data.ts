@@ -589,6 +589,7 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
     public: trusteeInput.public,
     // Optional fields with proper types
     internal: sanitizedOverride.internal || trusteeInput.internal,
+    assistant: sanitizedOverride.assistant ?? null,
     banks: sanitizedOverride.banks,
     software: sanitizedOverride.software,
     legacy: sanitizedOverride.legacy,
@@ -601,6 +602,7 @@ function getTrusteeInput(override: Partial<TrusteeInput> = {}): TrusteeInput {
   return {
     name: faker.person.fullName(),
     public: getContactInformation(),
+    assistant: null,
     ...override,
   };
 }
@@ -620,6 +622,7 @@ function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
     name: faker.person.fullName(),
     public: publicContact,
     internal: internalContact,
+    assistant: null,
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
     ...override,
