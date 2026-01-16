@@ -548,6 +548,7 @@ module dataflowsSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep
   params: {
     privateLinkGroup: 'sites-${slotName}'
     stackName: 'stg-${dataflowsFunctionName}'
+    dnsZoneGroupName: 'zone-group'
     location: location
     privateLinkServiceId: dataflowsFunctionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
