@@ -11,6 +11,13 @@ function copyToClipboard(text: string) {
   navigator.clipboard.writeText(text);
 }
 
+function formatMeetingId(meetingId: string): string {
+  if (meetingId.length >= 9 && meetingId.length <= 11) {
+    return `${meetingId.slice(0, 3)} ${meetingId.slice(3, 6)} ${meetingId.slice(6)}`;
+  }
+  return meetingId;
+}
+
 export default function ZoomInfoCard({ zoomInfo, onEdit }: Readonly<ZoomInfoCardProps>) {
   return (
     <div className="trustee-zoom-information record-detail-card" data-testid="zoom-info-card">
@@ -57,7 +64,7 @@ export default function ZoomInfoCard({ zoomInfo, onEdit }: Readonly<ZoomInfoCard
             </a>
           </div>
           <div className="zoom-meeting-id" data-testid="zoom-meeting-id">
-            Meeting ID: {zoomInfo.meetingId}
+            Meeting ID: {formatMeetingId(zoomInfo.meetingId)}
           </div>
           <div className="zoom-passcode" data-testid="zoom-passcode">
             Passcode: {zoomInfo.passcode}
