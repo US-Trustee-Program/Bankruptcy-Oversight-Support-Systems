@@ -75,7 +75,7 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
     }
     if (!value || value.trim() === '') {
       const fieldLabels: Record<string, string> = {
-        passcode: 'Passcode',
+        passcode: 'Passcode', // pragma: allowlist secret
       };
       const label = fieldLabels[fieldName] || fieldName;
       return `${label} is required`;
