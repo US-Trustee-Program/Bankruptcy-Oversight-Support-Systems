@@ -793,6 +793,59 @@ Based on 3,000 queries/day average = 3.3 million queries over 3 years:
 - **Only justified if query volume will exceed 10K/day**
 
 ---
+### Infrustructure Only Costs
+
+ Monthly Infrastructure Costs
+  ┌─────────────────┬──────────────┬─────────────────────────────────────────────────────────────┐
+  │    Solution     │ Service Cost │                            Notes                            │
+  ├─────────────────┼──────────────┼─────────────────────────────────────────────────────────────┤
+  │ Phonetic Search │ $0           │ Uses existing Cosmos DB Serverless                          │
+  ├─────────────────┼──────────────┼─────────────────────────────────────────────────────────────┤
+  │ Azure AI Basic  │ $100         │ AI Search Basic tier service                                │
+  ├─────────────────┼──────────────┼─────────────────────────────────────────────────────────────┤
+  │ Azure AI S1     │ $750         │ AI Search S1 (3 replicas for HA) OR $250 for single replica │
+  ├─────────────────┼──────────────┼─────────────────────────────────────────────────────────────┤
+  │ Vector Search   │ $285         │ Azure PostgreSQL Flexible (2 vCore, 128 GB)                 │
+  └─────────────────┴──────────────┴─────────────────────────────────────────────────────────────┘
+  3-Year Infrastructure-Only Costs
+  ┌─────────────────┬─────────┬────────┬──────────────┐
+  │    Solution     │ Monthly │ Annual │ 3-Year Total │
+  ├─────────────────┼─────────┼────────┼──────────────┤
+  │ Phonetic Search │ $0      │ $0     │ $0           │
+  ├─────────────────┼─────────┼────────┼──────────────┤
+  │ Azure AI Basic  │ $100    │ $1,200 │ $3,600       │
+  ├─────────────────┼─────────┼────────┼──────────────┤
+  │ Azure AI S1     │ $750    │ $9,000 │ $27,000      │
+  ├─────────────────┼─────────┼────────┼──────────────┤
+  │ Vector Search   │ $285    │ $3,420 │ $10,260      │
+  └─────────────────┴─────────┴────────┴──────────────
+
+  Note: These costs assume:
+  - Azure AI Basic: $100/month (new pricing for services created after April 2024)
+  - Azure AI S1: $750/month for 3 replicas (HA setup), or $250/month for single replica
+  - Vector: Azure PostgreSQL Flexible Server General Purpose, 2 vCores
+  - All costs are infrastructure only - no setup, development, or maintenance included
+
+  With Minor Additional Costs
+
+  If we include just the small Azure-specific costs (not development):
+  ┌────────────────┬──────────────┬─────────────┬──────────┬────────────┬─────────┐
+  │    Solution    │ Base Service │ Change Feed │ Storage  │ Total/Year │ 3-Year  │
+  ├────────────────┼──────────────┼─────────────┼──────────┼────────────┼─────────┤
+  │ Phonetic       │ $0           │ $0          │ ~$0      │ $0         │ $0      │
+  ├────────────────┼──────────────┼─────────────┼──────────┼────────────┼─────────┤
+  │ Azure AI Basic │ $1,200       │ $50         │ Included │ $1,250     │ $3,750  │
+  ├────────────────┼──────────────┼─────────────┼──────────┼────────────┼─────────┤
+  │ Azure AI S1    │ $9,000       │ $50         │ Included │ $9,050     │ $27,150 │
+  ├────────────────┼──────────────┼─────────────┼──────────┼────────────┼─────────┤
+  │ Vector         │ $3,420       │ $0          │ Included │ $3,420     │ $10,260 │
+  └────────────────┴──────────────┴─────────────┴──────────┴────────────┴─────────┘
+
+---
+Is there a way to limit storage use to a specific data set in our application?
+
+You can absolutely limit indexing to a specific subset of your data.  For example using Azure AI Search Filtered Indexing for active cases only.
+---
 
 ## Conclusion
 
