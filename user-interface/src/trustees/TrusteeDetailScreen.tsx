@@ -22,6 +22,7 @@ import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
 import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
+import TrusteeZoomInfoForm from './forms/TrusteeZoomInfoForm';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -66,6 +67,10 @@ export default function TrusteeDetailScreen() {
 
   function openEditOtherInformation() {
     navigate(`/trustees/${trusteeId}/other/edit`);
+  }
+
+  function openEditZoomInfo() {
+    navigate(`/trustees/${trusteeId}/zoom/edit`);
   }
 
   useEffect(() => {
@@ -140,6 +145,7 @@ export default function TrusteeDetailScreen() {
               onEditPublicProfile={openEditPublicProfile}
               onEditInternalProfile={openEditInternalProfile}
               onEditOtherInformation={openEditOtherInformation}
+              onEditZoomInfo={openEditZoomInfo}
             />
           </div>
         </div>
@@ -179,6 +185,11 @@ export default function TrusteeDetailScreen() {
           softwareOptions={softwareOptions}
         />
       ),
+    },
+    {
+      path: 'zoom/edit',
+      subHeading: 'Trustee',
+      content: <TrusteeZoomInfoForm trustee={trustee} />,
     },
     {
       path: 'appointments',

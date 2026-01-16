@@ -63,6 +63,13 @@ export function formatAppointmentType(appointmentType: AppointmentType): string 
 
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
 
+export type ZoomInfo = {
+  link: string;
+  phone: string;
+  meetingId: string;
+  passcode: string;
+};
+
 type TrusteeCore = {
   name: string;
   public: ContactInformation;
@@ -72,6 +79,7 @@ type TrusteeCore = {
 type TrusteeOptionalFields = {
   banks?: string[];
   software?: string;
+  zoomInfo?: ZoomInfo;
 };
 
 type TrusteeData = TrusteeCore & TrusteeOptionalFields;
@@ -129,6 +137,13 @@ export type TrusteeSoftwareHistory = AbstractTrusteeHistory<string, string> & {
   documentType: 'AUDIT_SOFTWARE';
 };
 
+export type TrusteeZoomInfoHistory = AbstractTrusteeHistory<
+  ZoomInfo | undefined,
+  ZoomInfo | undefined
+> & {
+  documentType: 'AUDIT_ZOOM_INFO';
+};
+
 type UserAndRole = { user: CamsUserReference; role: OversightRoleType };
 export type TrusteeOversightHistory = AbstractTrusteeHistory<
   UserAndRole | null,
@@ -160,5 +175,6 @@ export type TrusteeHistory =
   | TrusteeInternalContactHistory
   | TrusteeBankHistory
   | TrusteeSoftwareHistory
+  | TrusteeZoomInfoHistory
   | TrusteeOversightHistory
   | TrusteeAppointmentHistory;

@@ -189,6 +189,70 @@ describe('Input additional coverage tests', () => {
     expect(inputEl).toHaveAttribute('aria-describedby', expect.stringContaining('input-hint-'));
   });
 
+  test('should handle ariaDescription as array with multiple lines', () => {
+    const descriptionArray = ['First line of description', 'Second line of description'];
+    render(
+      <Input id="test-aria-array" ariaDescription={descriptionArray} onChange={mockOnChange} />,
+    );
+
+    const inputEl = screen.getByTestId('test-aria-array');
+    const hintEl = document.querySelector('.usa-hint');
+
+    expect(hintEl).toBeInTheDocument();
+    expect(hintEl).toHaveTextContent('First line of description');
+    expect(hintEl).toHaveTextContent('Second line of description');
+
+    const brElements = hintEl?.querySelectorAll('br');
+    expect(brElements).toHaveLength(1);
+
+    expect(inputEl).toHaveAttribute('aria-describedby', expect.stringContaining('input-hint-'));
+  });
+
+  test('should handle ariaDescription as array with single line', () => {
+    const descriptionArray = ['Single line'];
+    render(
+      <Input id="test-aria-single" ariaDescription={descriptionArray} onChange={mockOnChange} />,
+    );
+
+    const hintEl = document.querySelector('.usa-hint');
+
+    expect(hintEl).toBeInTheDocument();
+    expect(hintEl).toHaveTextContent('Single line');
+
+    const brElements = hintEl?.querySelectorAll('br');
+    expect(brElements).toHaveLength(0);
+  });
+
+  test('should not render hint div for empty array', () => {
+    const descriptionArray: string[] = [];
+    render(
+      <Input id="test-aria-empty" ariaDescription={descriptionArray} onChange={mockOnChange} />,
+    );
+
+    const inputEl = screen.getByTestId('test-aria-empty');
+    const hintEl = document.querySelector('.usa-hint');
+
+    expect(hintEl).not.toBeInTheDocument();
+    expect(inputEl).not.toHaveAttribute('aria-describedby');
+  });
+
+  test('should handle ariaDescription as array with three lines', () => {
+    const descriptionArray = ['Line one', 'Line two', 'Line three'];
+    render(
+      <Input id="test-aria-three" ariaDescription={descriptionArray} onChange={mockOnChange} />,
+    );
+
+    const hintEl = document.querySelector('.usa-hint');
+
+    expect(hintEl).toBeInTheDocument();
+    expect(hintEl).toHaveTextContent('Line one');
+    expect(hintEl).toHaveTextContent('Line two');
+    expect(hintEl).toHaveTextContent('Line three');
+
+    const brElements = hintEl?.querySelectorAll('br');
+    expect(brElements).toHaveLength(2);
+  });
+
   test('calls onChange when user types and updates value', async () => {
     const handleChange = vi.fn();
     render(<Input id="change-id" label="Change" onChange={handleChange} />);

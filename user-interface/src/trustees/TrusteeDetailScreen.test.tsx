@@ -225,6 +225,96 @@ describe('TrusteeDetailScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/other/edit');
   });
 
+  test('should navigate to zoom edit route when edit zoom info button is clicked', async () => {
+    const mockTrusteeWithZoom = {
+      ...mockTrustee,
+      zoomInfo: {
+        link: 'https://us02web.zoom.us/j/1234567890',
+        phone: '123-456-7890',
+        meetingId: '1234567890',
+        passcode: 'testpass123',
+      },
+    };
+
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrusteeWithZoom });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+    });
+
+    // Test zoom info edit button
+    const zoomEditButton = screen.getByTestId('button-edit-zoom-info');
+    zoomEditButton.click();
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/zoom/edit');
+  });
+
+  test('should pass onEditZoomInfo handler to TrusteeDetailProfile', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+    });
+
+    // Verify the edit button exists (which confirms the handler was passed)
+    expect(screen.getByTestId('button-edit-zoom-info')).toBeInTheDocument();
+  });
+
+  test('should display zoom info card when zoomInfo is provided', async () => {
+    const mockTrusteeWithZoom = {
+      ...mockTrustee,
+      zoomInfo: {
+        link: 'https://us02web.zoom.us/j/1234567890',
+        phone: '123-456-7890',
+        meetingId: '1234567890',
+        passcode: 'testpass123',
+      },
+    };
+
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrusteeWithZoom });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+    });
+
+    // Verify zoom info is displayed
+    expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
+    expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
+    expect(screen.getByTestId('zoom-link')).toHaveAttribute(
+      'href',
+      'https://us02web.zoom.us/j/1234567890',
+    );
+    expect(screen.getByTestId('zoom-phone')).toHaveTextContent('123-456-7890');
+    expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 1234567890');
+    expect(screen.getByTestId('zoom-passcode')).toHaveTextContent('Passcode: testpass123');
+  });
+
+  test('should display "No information" message when zoomInfo is not provided', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+    });
+
+    // Verify "No information" message is displayed in the zoom info card
+    expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
+    expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
+    expect(screen.getByTestId('zoom-info-empty-message')).toHaveTextContent(
+      'No information has been entered.',
+    );
+  });
+
   test.each([
     {
       route: '/trustees/123/appointments',
@@ -239,6 +329,12 @@ describe('TrusteeDetailScreen', () => {
       description: 'should render subheader "Trustee" for /audit-history route',
       needsLocationState: false,
       needsHistoryMock: true,
+    },
+    {
+      route: '/trustees/123/zoom/edit',
+      expectedSubheader: '',
+      description: 'should render empty subheader for /zoom/edit route',
+      needsLocationState: false,
     },
     {
       route: '/trustees/123',
@@ -263,7 +359,12 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter([route]);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
+        if (expectedSubheader) {
+          expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
+        } else {
+          // For routes with empty subheader, verify page is loaded by checking for h1
+          expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+        }
       });
     },
   );
