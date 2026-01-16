@@ -78,39 +78,57 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
     // PART 2: Migrate case history audit records
     const casesRepo = Factory.getCasesRepository(context);
 
-    // Query for AUDIT_CONSOLIDATION records
+    // Query for ALL AUDIT_CONSOLIDATION records
+    // We'll use conditional logic in the update to only modify records with childCases
     const auditDoc = using<CaseHistory>();
-    const auditMigrationQuery = auditDoc('documentType').equals('AUDIT_CONSOLIDATION');
+    const beforeQuery = auditDoc('documentType').equals('AUDIT_CONSOLIDATION');
 
-    // Rename childCases to memberCases in both before and after fields
-    // MongoDB's $rename will only rename fields that exist, so this handles all cases
-    const auditUpdateOperation: MongoDocument = {
-      $rename: {
-        'before.childCases': 'before.memberCases',
-        'after.childCases': 'after.memberCases',
+    // Use $set to copy and $unset to remove (since $rename can't traverse arrays)
+    // If childCases exists, copy it to memberCases; otherwise keep memberCases as-is
+    const beforeUpdateOperation: MongoDocument = [
+      {
+        $set: {
+          'before.memberCases': { $ifNull: ['$before.childCases', '$before.memberCases'] },
+        },
       },
-    };
+      {
+        $unset: 'before.childCases',
+      },
+    ];
 
-    const auditResult = await casesRepo.updateManyByQuery(
-      auditMigrationQuery,
-      auditUpdateOperation,
-    );
-
-    logger.info(
-      MODULE_NAME,
-      `Audit records migration complete. Matched ${auditResult.matchedCount} document(s), modified ${auditResult.modifiedCount} audit record(s).`,
-    );
-
-    if (auditResult.modifiedCount !== auditResult.matchedCount) {
-      logger.warn(
-        MODULE_NAME,
-        `Warning: Matched ${auditResult.matchedCount} audit documents but only modified ${auditResult.modifiedCount}. Some documents may have already been migrated or were not modifiable.`,
-      );
-    }
+    const beforeResult = await casesRepo.updateManyByQuery(beforeQuery, beforeUpdateOperation);
 
     logger.info(
       MODULE_NAME,
-      `Total migration complete. Orders: ${result.modifiedCount}, Audit records: ${auditResult.modifiedCount}`,
+      `Audit records (before.childCases) migration complete. Matched ${beforeResult.matchedCount} document(s), modified ${beforeResult.modifiedCount} audit record(s).`,
+    );
+
+    // Update records with after.childCases (same query as before)
+    const afterQuery = auditDoc('documentType').equals('AUDIT_CONSOLIDATION');
+
+    const afterUpdateOperation: MongoDocument = [
+      {
+        $set: {
+          'after.memberCases': { $ifNull: ['$after.childCases', '$after.memberCases'] },
+        },
+      },
+      {
+        $unset: 'after.childCases',
+      },
+    ];
+
+    const afterResult = await casesRepo.updateManyByQuery(afterQuery, afterUpdateOperation);
+
+    logger.info(
+      MODULE_NAME,
+      `Audit records (after.childCases) migration complete. Matched ${afterResult.matchedCount} document(s), modified ${afterResult.modifiedCount} audit record(s).`,
+    );
+
+    const totalAuditModified = beforeResult.modifiedCount + afterResult.modifiedCount;
+
+    logger.info(
+      MODULE_NAME,
+      `Total migration complete. Orders: ${result.modifiedCount}, Audit records: ${totalAuditModified}`,
     );
   } catch (originalError) {
     const error = getCamsError(
