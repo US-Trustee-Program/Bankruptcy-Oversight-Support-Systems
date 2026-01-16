@@ -549,7 +549,7 @@ module dataflowsSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep
     privateLinkGroup: 'sites-staging'
     stackName: 'stg-${dataflowsFunctionName}'
     location: location
-    privateLinkServiceId: dataflowsFunctionApp::slot.id
+    privateLinkServiceId: dataflowsFunctionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
