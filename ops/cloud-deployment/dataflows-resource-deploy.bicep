@@ -542,6 +542,21 @@ module dataflowsFunctionPrivateEndpoint './lib/network/subnet-private-endpoint.b
   }
 }
 
+module dataflowsSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${dataflowsFunctionName}-${slotName}-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sites-staging'
+    stackName: 'stg-${dataflowsFunctionName}'
+    location: location
+    privateLinkServiceId: dataflowsFunctionApp::slot.id
+    privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+  }
+}
+
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 
 module setDataflowFunctionSqlServerVnetRule './lib/network/sql-vnet-rule.bicep' = if (createSqlServerVnetRule) {
