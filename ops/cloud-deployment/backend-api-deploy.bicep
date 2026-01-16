@@ -526,7 +526,7 @@ module apiSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   params: {
     privateLinkGroup: 'sites-${slotName}'
     stackName: 'stg-${apiFunctionName}'
-    dnsZoneGroupName: 'zone-group'
+    dnsZoneGroupName: isUstpDeployment ? 'zone-group' : 'default'
     location: location
     privateLinkServiceId: apiFunctionApp.id
     privateEndpointSubnetId: privateEndpointSubnetId
