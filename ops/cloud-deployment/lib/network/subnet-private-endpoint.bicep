@@ -9,6 +9,7 @@ param privateLinkServiceId string
 @description('Group for private link service')
 @allowed([
   'sites'
+  'sites-staging'
   'vault'
 ])
 param privateLinkGroup string
