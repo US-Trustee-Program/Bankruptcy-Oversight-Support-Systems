@@ -524,7 +524,7 @@ module apiSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${apiFunctionName}-${slotName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
-    privateLinkGroup: 'sites-staging'
+    privateLinkGroup: 'sites-${slotName}'
     stackName: 'stg-${apiFunctionName}'
     location: location
     privateLinkServiceId: apiFunctionApp.id
