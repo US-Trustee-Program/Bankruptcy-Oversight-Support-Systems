@@ -57,15 +57,17 @@ export default function TrusteeDetailProfile({
             {trustee.banks &&
               trustee.banks.length > 0 &&
               trustee.banks.map((bank, index) => (
-                <div key={index} className="trustee-bank">
+                <div key={index} className="trustee-bank" data-testid={`trustee-bank-${index}`}>
                   Bank: {bank}
                 </div>
               ))}
             {trustee.software && (
-              <div className="trustee-software">Software: {trustee.software}</div>
+              <div className="trustee-software" data-testid="trustee-software">
+                Software: {trustee.software}
+              </div>
             )}
             {!trustee.software && (!trustee.banks || trustee.banks.length === 0) && (
-              <div>No information has been entered.</div>
+              <div data-testid="no-other-information">No information has been entered.</div>
             )}
           </div>
         </div>
@@ -91,7 +93,9 @@ export default function TrusteeDetailProfile({
                 <IconLabel icon="edit" label="Edit" />
               </Button>
             </div>
-            {!trustee.internal && <div>No information added.</div>}
+            {!trustee.internal && (
+              <div data-testid="no-internal-information">No information added.</div>
+            )}
             {!!trustee.internal && (
               <FormattedContact contact={trustee.internal} testIdPrefix="trustee-internal" />
             )}
