@@ -23,6 +23,7 @@ describe('TrusteesList Component', () => {
         phone: { number: '555-123-4567' },
         email: 'john.doe@example.com',
       },
+      assistant: null,
       updatedOn: '2025-08-14T10:00:00Z',
       updatedBy: { id: 'user-1', name: 'Admin User' },
     },
@@ -35,6 +36,7 @@ describe('TrusteesList Component', () => {
         phone: { number: '555-987-6543' },
         email: 'jane.smith@example.com',
       },
+      assistant: null,
       updatedOn: '2025-08-14T09:00:00Z',
       updatedBy: { id: 'user-2', name: 'Admin User 2' },
     },
@@ -137,6 +139,7 @@ describe('TrusteesList Component', () => {
         phone: { number: '555-1234' },
         email: 'jane.doe@example.com',
       },
+      assistant: null,
       updatedOn: '2025-08-14T08:00:00Z',
       updatedBy: { id: 'user-3', name: 'Admin User 3' },
     };

@@ -53,6 +53,18 @@ export type TrusteePublicFormData = {
   website?: string;
 };
 
+export type TrusteeAssistantFormData = {
+  name?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  extension?: string;
+  email?: string;
+};
+
 const name = [
   V.minLength(1, TRUSTEE_NAME_REQUIRED_ERROR_REASON),
   V.maxLength(50, TRUSTEE_NAME_MAX_LENGTH_ERROR_REASON),
@@ -159,5 +171,18 @@ export const TRUSTEE_PUBLIC_SPEC: Readonly<ValidationSpec<TrusteePublicFormData>
   email,
   website,
   phone,
+  extension,
+};
+
+export const TRUSTEE_ASSISTANT_SPEC: Readonly<ValidationSpec<TrusteeAssistantFormData>> = {
+  $: [completedAddressRequired, phoneRequiredWithExtension],
+  name: [V.optional(...name)],
+  address1: [V.optional(...address1)],
+  address2,
+  city: [V.optional(...city)],
+  state: [V.optional(...state)],
+  zipCode: [V.optional(...zipCode)],
+  email: [V.optional(...email)],
+  phone: [V.optional(...phone)],
   extension,
 };

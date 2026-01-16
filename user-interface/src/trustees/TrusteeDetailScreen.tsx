@@ -20,6 +20,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { BankruptcySoftwareList } from '@common/cams/lists';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
 import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
+import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 
@@ -62,6 +63,14 @@ export default function TrusteeDetailScreen() {
 
   function openEditInternalProfile() {
     navigate(`/trustees/${trusteeId}/contact/edit/internal`);
+  }
+
+  function openAddAssistant() {
+    navigate(`/trustees/${trusteeId}/assistant/create`);
+  }
+
+  function openEditAssistant() {
+    navigate(`/trustees/${trusteeId}/assistant/edit`);
   }
 
   function openEditOtherInformation() {
@@ -139,6 +148,8 @@ export default function TrusteeDetailScreen() {
               trustee={trustee}
               onEditPublicProfile={openEditPublicProfile}
               onEditInternalProfile={openEditInternalProfile}
+              onAddAssistant={openAddAssistant}
+              onEditAssistant={openEditAssistant}
               onEditOtherInformation={openEditOtherInformation}
             />
           </div>
@@ -167,6 +178,16 @@ export default function TrusteeDetailScreen() {
           cancelTo={`/trustees/${trusteeId}`}
         />
       ),
+    },
+    {
+      path: 'assistant/create',
+      subHeading: 'Edit Trustee Assistant (USTP Internal)',
+      content: <TrusteeAssistantForm trusteeId={trusteeId} />,
+    },
+    {
+      path: 'assistant/edit',
+      subHeading: 'Edit Trustee Assistant (USTP Internal)',
+      content: <TrusteeAssistantForm trusteeId={trusteeId} assistant={trustee.assistant} />,
     },
     {
       path: 'other/edit',

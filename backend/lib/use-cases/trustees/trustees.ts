@@ -245,6 +245,22 @@ export class TrusteesUseCase {
         );
       }
 
+      if (!deepEqual(existingTrustee.assistant, updatedTrustee.assistant)) {
+        await this.trusteesRepository.createTrusteeHistory(
+          createAuditRecord(
+            {
+              documentType: 'AUDIT_ASSISTANT',
+              trusteeId,
+              before: deepEqual(existingTrustee.assistant, {})
+                ? undefined
+                : existingTrustee.assistant,
+              after: deepEqual(updatedTrustee.assistant, {}) ? undefined : updatedTrustee.assistant,
+            },
+            userReference,
+          ),
+        );
+      }
+
       return updatedTrustee;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
@@ -296,10 +312,16 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   ],
 };
 
+const assistantSpec: ValidationSpec<{ name: string; contact: ContactInformation }> = {
+  name: [V.minLength(1)],
+  contact: [V.spec(contactInformationSpec)],
+};
+
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
+  assistant: [V.optional(V.nullable(V.spec(assistantSpec)))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   software: [V.optional(V.length(0, 100))],
 };
