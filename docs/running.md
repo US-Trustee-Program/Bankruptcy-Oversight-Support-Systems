@@ -271,10 +271,10 @@ Ensure the desired data flow is enabled via the `CAMS_ENABLED_DATAFLOWS` environ
 flow names with commas.
 ```shell
 export CAMS_ENABLED_DATAFLOWS=<data-flow-names>
-
-# Example:
-# CAMS_ENABLED_DATAFLOWS=SYNC_OFFICE_STAFF,SYNC_ORDERS
 ```
+
+###### Example:
+###### CAMS_ENABLED_DATAFLOWS=SYNC_OFFICE_STAFF,SYNC_ORDERS
 
 The `data-flow-name` is a list of `MODULE_NAME` values from the function definitions in `backend/function-apps/input` or `backend/function-apps/migrations` for the function(s) being tested.
 
@@ -285,6 +285,7 @@ Available migration dataflows include:
 - `MIGRATE_CONSOLIDATIONS` - Migrate consolidation orders from ACMS to Cosmos
 
 Run the data flow functions from the `backend` node project:
+
 ```shell
 npm run start:dataflows
 ```
@@ -297,7 +298,7 @@ curl -H "Content-Type: application/json" \
      -H "Authorization: ApiKey <redacted-key>" \
      -X POST -d "<any-required-json>" \
      http://localhost:7072/<base-path>/<route>
- ```
+```
 
 The `<redacted-key>` is the value of the `ADMIN_KEY` environment variable used when the functions are started.
 
