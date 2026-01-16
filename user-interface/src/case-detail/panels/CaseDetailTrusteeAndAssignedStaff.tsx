@@ -1,5 +1,5 @@
 import { isJointAdministrationMemberCase } from '@common/cams/events';
-import { CaseDetail, isLeadCase } from '@common/cams/cases';
+import { CaseDetail } from '@common/cams/cases';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
 import {
@@ -44,7 +44,7 @@ function CaseDetailTrusteeAndAssignedStaff(
               Assigned Staff{' '}
               {Actions.contains(caseDetail, Actions.ManageAssignments) &&
                 caseDetail.chapter === '15' &&
-                isLeadCase(caseDetail) && (
+                !isJointAdministrationMemberCase(caseDetail.consolidation) && (
                   <OpenModalButton
                     uswdsStyle={UswdsButtonStyle.Unstyled}
                     modalId={'assignmentModalId'}
