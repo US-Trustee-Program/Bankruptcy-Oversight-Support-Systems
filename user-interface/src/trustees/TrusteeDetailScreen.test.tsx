@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi, beforeEach } from 'vitest';
+import { faker } from '@faker-js/faker';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
 import { Trustee } from '@common/cams/trustees';
@@ -232,7 +233,7 @@ describe('TrusteeDetailScreen', () => {
         link: 'https://us02web.zoom.us/j/1234567890',
         phone: '123-456-7890',
         meetingId: '1234567890',
-        passcode: 'testpass123', // pragma: allowlist secret
+        passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
       },
     };
 
@@ -266,13 +267,14 @@ describe('TrusteeDetailScreen', () => {
   });
 
   test('should display zoom info card when zoomInfo is provided', async () => {
+    const testPasscode = faker.string.alphanumeric(10); // pragma: allowlist secret
     const mockTrusteeWithZoom = {
       ...mockTrustee,
       zoomInfo: {
         link: 'https://us02web.zoom.us/j/1234567890',
         phone: '123-456-7890',
         meetingId: '1234567890',
-        passcode: 'testpass123', // pragma: allowlist secret
+        passcode: testPasscode,
       },
     };
 
@@ -294,7 +296,7 @@ describe('TrusteeDetailScreen', () => {
     );
     expect(screen.getByTestId('zoom-phone')).toHaveTextContent('123-456-7890');
     expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 123 456 7890');
-    expect(screen.getByTestId('zoom-passcode')).toHaveTextContent('Passcode: testpass123');
+    expect(screen.getByTestId('zoom-passcode')).toHaveTextContent(`Passcode: ${testPasscode}`);
   });
 
   test('should display "No information" message when zoomInfo is not provided', async () => {
