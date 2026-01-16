@@ -57,4 +57,32 @@ describe('Testing the clipboard with caseId', () => {
       expect(writeTextMock).toHaveBeenCalledTimes(1);
     });
   });
+
+  test('should handle clipboard API errors gracefully', async () => {
+    writeTextMock.mockRejectedValueOnce(new Error('Clipboard unavailable'));
+
+    // Should not throw an error
+    expect(() => copyCaseNumber(testCaseDetail.caseId)).not.toThrow();
+
+    await waitFor(() => {
+      expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
+    });
+  });
+
+  test('should handle missing clipboard API gracefully', () => {
+    const clipboardBackup = navigator.clipboard;
+    Object.defineProperty(navigator, 'clipboard', {
+      value: undefined,
+      configurable: true,
+    });
+
+    // Should not throw an error when clipboard API is unavailable
+    expect(() => copyCaseNumber(testCaseDetail.caseId)).not.toThrow();
+
+    // Restore clipboard
+    Object.defineProperty(navigator, 'clipboard', {
+      value: clipboardBackup,
+      configurable: true,
+    });
+  });
 });

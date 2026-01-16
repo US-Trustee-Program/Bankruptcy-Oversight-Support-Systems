@@ -8,7 +8,9 @@ interface ZoomInfoCardProps {
 }
 
 function copyToClipboard(text: string) {
-  navigator.clipboard.writeText(text);
+  navigator.clipboard?.writeText(text).catch(() => {
+    // Silently fail - clipboard API may be unavailable or reject (non-HTTPS, older browsers, etc.)
+  });
 }
 
 function formatMeetingId(meetingId: string): string {
