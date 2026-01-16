@@ -25,6 +25,9 @@ export type InputProps = Omit<JSX.IntrinsicElements['input'], 'onFocus'> & {
   errorMessage?: string;
 };
 
+const hasAriaDescription = (ariaDescription?: string | string[]) =>
+  !!ariaDescription && (!Array.isArray(ariaDescription) || ariaDescription.length > 0);
+
 function Input_(props: InputProps, ref: React.Ref<InputRef>) {
   //condition for check for title to style tooltip
   const [inputValue, setInputValue] = useState<string>(props.value ?? '');
@@ -98,7 +101,7 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
       <label className="usa-label" id={baseId + '-label'} htmlFor={baseId}>
         {label}
       </label>
-      {ariaDescription && (Array.isArray(ariaDescription) ? ariaDescription.length > 0 : true) && (
+      {hasAriaDescription(ariaDescription) && (
         <div className="usa-hint" id={hintId}>
           {Array.isArray(ariaDescription)
             ? ariaDescription.map((line, index) => (
@@ -128,11 +131,7 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
           data-testid={baseId}
           disabled={inputDisabled}
           value={inputValue}
-          aria-describedby={
-            ariaDescription && (Array.isArray(ariaDescription) ? ariaDescription.length > 0 : true)
-              ? hintId
-              : undefined
-          }
+          aria-describedby={hasAriaDescription(ariaDescription) ? hintId : undefined}
           ref={inputRef}
         />
         {includeClearButton && !inputDisabled && inputValue.length > 0 && (
