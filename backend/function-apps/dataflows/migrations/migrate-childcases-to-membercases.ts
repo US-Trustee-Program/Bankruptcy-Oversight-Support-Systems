@@ -7,6 +7,7 @@ import Factory from '../../../lib/factory';
 import { ConsolidationOrder } from '@common/cams/orders';
 import QueryBuilder from '../../../lib/query/query-builder';
 import { Document as MongoDocument } from 'mongodb';
+import { CaseHistory } from '@common/cams/history';
 
 const { and, using } = QueryBuilder;
 
@@ -32,8 +33,9 @@ const HARD_STOP = output.storageQueue({
  * Migrates consolidation documents in Cosmos DB from 'childCases' to 'memberCases'
  * This is a one-time data migration to align the database schema with the code.
  *
- * IMPORTANT: This migration specifically targets documents in the 'consolidations' collection
- * that have orderType='consolidation' and the old 'childCases' field.
+ * IMPORTANT: This migration targets two collections:
+ * 1. 'consolidations' collection - documents with orderType='consolidation' and 'childCases' field
+ * 2. 'cases' collection - AUDIT_CONSOLIDATION history records with 'childCases' in before/after fields
  */
 async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
@@ -42,7 +44,7 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
   try {
     logger.info(MODULE_NAME, 'Starting migration of childCases to memberCases...');
 
-    // Get the consolidation orders repository
+    // PART 1: Migrate consolidation orders
     const consolidationsRepo = Factory.getConsolidationOrdersRepository(context);
 
     const doc = using<LegacyConsolidationOrder>();
@@ -63,7 +65,7 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
 
     logger.info(
       MODULE_NAME,
-      `Migration complete. Matched ${result.matchedCount} document(s), modified ${result.modifiedCount} consolidation order document(s).`,
+      `Consolidation orders migration complete. Matched ${result.matchedCount} document(s), modified ${result.modifiedCount} consolidation order document(s).`,
     );
 
     if (result.modifiedCount !== result.matchedCount) {
@@ -72,6 +74,44 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
         `Warning: Matched ${result.matchedCount} documents but only modified ${result.modifiedCount}. Some documents may have already been migrated or were not modifiable.`,
       );
     }
+
+    // PART 2: Migrate case history audit records
+    const casesRepo = Factory.getCasesRepository(context);
+
+    // Query for AUDIT_CONSOLIDATION records
+    const auditDoc = using<CaseHistory>();
+    const auditMigrationQuery = auditDoc('documentType').equals('AUDIT_CONSOLIDATION');
+
+    // Rename childCases to memberCases in both before and after fields
+    // MongoDB's $rename will only rename fields that exist, so this handles all cases
+    const auditUpdateOperation: MongoDocument = {
+      $rename: {
+        'before.childCases': 'before.memberCases',
+        'after.childCases': 'after.memberCases',
+      },
+    };
+
+    const auditResult = await casesRepo.updateManyByQuery(
+      auditMigrationQuery,
+      auditUpdateOperation,
+    );
+
+    logger.info(
+      MODULE_NAME,
+      `Audit records migration complete. Matched ${auditResult.matchedCount} document(s), modified ${auditResult.modifiedCount} audit record(s).`,
+    );
+
+    if (auditResult.modifiedCount !== auditResult.matchedCount) {
+      logger.warn(
+        MODULE_NAME,
+        `Warning: Matched ${auditResult.matchedCount} audit documents but only modified ${auditResult.modifiedCount}. Some documents may have already been migrated or were not modifiable.`,
+      );
+    }
+
+    logger.info(
+      MODULE_NAME,
+      `Total migration complete. Orders: ${result.modifiedCount}, Audit records: ${auditResult.modifiedCount}`,
+    );
   } catch (originalError) {
     const error = getCamsError(
       originalError,

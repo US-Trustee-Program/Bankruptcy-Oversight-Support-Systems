@@ -392,4 +392,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       });
     }
   }
+
+  public async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: unknown) {
+    try {
+      return await this.getAdapter<T>().updateMany(query, update);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }
