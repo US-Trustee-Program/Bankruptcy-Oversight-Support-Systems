@@ -12,7 +12,8 @@
     "composite": true,
     "incremental": true,
     "allowSyntheticDefaultImports": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["vitest/globals"]
   },
   "exclude": [
     "dist",
