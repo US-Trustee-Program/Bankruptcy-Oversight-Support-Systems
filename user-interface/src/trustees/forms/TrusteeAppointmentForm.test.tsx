@@ -153,6 +153,15 @@ async function fillCompleteForm(
   }
 }
 
+async function setAppointmentTypeOnDefaultCompleteForm(userEvent: CamsUserEvent, index: number) {
+  await fillCompleteForm(userEvent, {
+    districtIndex: 0,
+    chapterIndex: 0,
+    appointmentTypeIndex: index,
+    appointedDate: TEST_APPOINTED_DATE,
+  });
+}
+
 describe('TrusteeAppointmentForm Tests', () => {
   const navigateTo = vi.fn();
   const navigatorMock = {
@@ -266,7 +275,7 @@ describe('TrusteeAppointmentForm Tests', () => {
     );
 
     // Manually select appointment type since Chapter 7 has multiple options
-    await selectAppointmentType(userEvent, 2); // Panel is at index 2 after alphabetical sorting
+    await selectAppointmentType(userEvent, 2);
     await waitFor(() =>
       expect(document.querySelector('#appointmentType .selection-label')).toHaveTextContent(
         'Panel',
@@ -297,12 +306,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
 
-    await fillCompleteForm(userEvent, {
-      districtIndex: 0,
-      chapterIndex: 0,
-      appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
-      appointedDate: TEST_APPOINTED_DATE,
-    });
+    await setAppointmentTypeOnDefaultCompleteForm(userEvent, 2);
 
     const submitButton = screen.getByRole('button', { name: /save/i });
     await waitFor(() => {
@@ -381,12 +385,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     renderWithProps({ trusteeId: TEST_TRUSTEE_ID });
 
-    await fillCompleteForm(userEvent, {
-      districtIndex: 0,
-      chapterIndex: 0,
-      appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
-      appointedDate: TEST_APPOINTED_DATE,
-    });
+    await setAppointmentTypeOnDefaultCompleteForm(userEvent, 2);
 
     const submitButton = screen.getByRole('button', { name: /save/i });
     await waitFor(() => {
@@ -514,12 +513,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     renderWithProps();
 
-    await fillCompleteForm(userEvent, {
-      districtIndex: 0,
-      chapterIndex: 0,
-      appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
-      appointedDate: TEST_APPOINTED_DATE,
-    });
+    await setAppointmentTypeOnDefaultCompleteForm(userEvent, 2);
 
     const submitButton = screen.getByRole('button', { name: /save/i });
     await waitFor(() => {
@@ -545,7 +539,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await selectDistrict(userEvent, 0);
       await selectChapter(userEvent, 0);
-      await selectAppointmentType(userEvent, 2); // Panel is at index 2 after alphabetical sorting
+      await selectAppointmentType(userEvent, 2);
 
       await waitFor(() => {
         expect(
@@ -563,13 +557,7 @@ describe('TrusteeAppointmentForm Tests', () => {
         existingAppointments: [mockInactiveAppointment],
       });
 
-      await fillCompleteForm(userEvent, {
-        districtIndex: 0,
-        chapterIndex: 0,
-        appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
-        statusIndex: 0,
-        appointedDate: TEST_APPOINTED_DATE,
-      });
+      await setAppointmentTypeOnDefaultCompleteForm(userEvent, 2);
 
       expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
 
@@ -588,7 +576,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       await fillCompleteForm(userEvent, {
         districtIndex: 1,
         chapterIndex: 0,
-        appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
+        appointmentTypeIndex: 2,
         statusIndex: 0,
         appointedDate: TEST_APPOINTED_DATE,
       });
@@ -635,7 +623,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await selectDistrict(userEvent, 0);
       await selectChapter(userEvent, 0);
-      await selectAppointmentType(userEvent, 2); // Panel is at index 2 after alphabetical sorting
+      await selectAppointmentType(userEvent, 2);
 
       await waitFor(() => {
         expect(
@@ -659,13 +647,7 @@ describe('TrusteeAppointmentForm Tests', () => {
         existingAppointments: [mockActiveAppointment],
       });
 
-      await fillCompleteForm(userEvent, {
-        districtIndex: 0,
-        chapterIndex: 0,
-        appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
-        statusIndex: 0,
-        appointedDate: TEST_APPOINTED_DATE,
-      });
+      await setAppointmentTypeOnDefaultCompleteForm(userEvent, 2);
 
       const submitButton = screen.getByRole('button', { name: /save/i });
       expect(submitButton).toBeDisabled();
@@ -681,13 +663,7 @@ describe('TrusteeAppointmentForm Tests', () => {
         existingAppointments: [mockActiveAppointment],
       });
 
-      await fillCompleteForm(userEvent, {
-        districtIndex: 0,
-        chapterIndex: 0,
-        appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
-        statusIndex: 0,
-        appointedDate: TEST_APPOINTED_DATE,
-      });
+      await setAppointmentTypeOnDefaultCompleteForm(userEvent, 2);
 
       const form = screen.getByTestId('trustee-appointment-form') as HTMLFormElement;
 
@@ -1085,7 +1061,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await selectDistrict(userEvent, 0);
       await selectChapter(userEvent, 0);
-      await selectAppointmentType(userEvent, 3); // Panel is at index 3 in edit mode after alphabetical sorting
+      await selectAppointmentType(userEvent, 3);
 
       await waitFor(() => {
         const alert = screen.getByRole('alert');
