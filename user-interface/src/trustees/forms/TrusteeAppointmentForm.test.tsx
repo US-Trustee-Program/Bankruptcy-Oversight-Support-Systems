@@ -266,7 +266,7 @@ describe('TrusteeAppointmentForm Tests', () => {
     );
 
     // Manually select appointment type since Chapter 7 has multiple options
-    await selectAppointmentType(userEvent, 0);
+    await selectAppointmentType(userEvent, 2); // Panel is at index 2 after alphabetical sorting
     await waitFor(() =>
       expect(document.querySelector('#appointmentType .selection-label')).toHaveTextContent(
         'Panel',
@@ -300,7 +300,7 @@ describe('TrusteeAppointmentForm Tests', () => {
     await fillCompleteForm(userEvent, {
       districtIndex: 0,
       chapterIndex: 0,
-      appointmentTypeIndex: 0,
+      appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
       appointedDate: TEST_APPOINTED_DATE,
     });
 
@@ -384,7 +384,7 @@ describe('TrusteeAppointmentForm Tests', () => {
     await fillCompleteForm(userEvent, {
       districtIndex: 0,
       chapterIndex: 0,
-      appointmentTypeIndex: 0,
+      appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
       appointedDate: TEST_APPOINTED_DATE,
     });
 
@@ -517,7 +517,7 @@ describe('TrusteeAppointmentForm Tests', () => {
     await fillCompleteForm(userEvent, {
       districtIndex: 0,
       chapterIndex: 0,
-      appointmentTypeIndex: 0,
+      appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
       appointedDate: TEST_APPOINTED_DATE,
     });
 
@@ -545,7 +545,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await selectDistrict(userEvent, 0);
       await selectChapter(userEvent, 0);
-      await selectAppointmentType(userEvent, 0); // Select "Panel"
+      await selectAppointmentType(userEvent, 2); // Panel is at index 2 after alphabetical sorting
 
       await waitFor(() => {
         expect(
@@ -566,7 +566,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       await fillCompleteForm(userEvent, {
         districtIndex: 0,
         chapterIndex: 0,
-        appointmentTypeIndex: 0,
+        appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
         statusIndex: 0,
         appointedDate: TEST_APPOINTED_DATE,
       });
@@ -588,7 +588,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       await fillCompleteForm(userEvent, {
         districtIndex: 1,
         chapterIndex: 0,
-        appointmentTypeIndex: 0,
+        appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
         statusIndex: 0,
         appointedDate: TEST_APPOINTED_DATE,
       });
@@ -635,7 +635,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await selectDistrict(userEvent, 0);
       await selectChapter(userEvent, 0);
-      await selectAppointmentType(userEvent, 0); // Select "Panel"
+      await selectAppointmentType(userEvent, 2); // Panel is at index 2 after alphabetical sorting
 
       await waitFor(() => {
         expect(
@@ -662,7 +662,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       await fillCompleteForm(userEvent, {
         districtIndex: 0,
         chapterIndex: 0,
-        appointmentTypeIndex: 0, // Select Panel to trigger validation error
+        appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
         statusIndex: 0,
         appointedDate: TEST_APPOINTED_DATE,
       });
@@ -684,7 +684,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       await fillCompleteForm(userEvent, {
         districtIndex: 0,
         chapterIndex: 0,
-        appointmentTypeIndex: 0,
+        appointmentTypeIndex: 2, // Panel is at index 2 after alphabetical sorting
         statusIndex: 0,
         appointedDate: TEST_APPOINTED_DATE,
       });
@@ -1085,7 +1085,7 @@ describe('TrusteeAppointmentForm Tests', () => {
 
       await selectDistrict(userEvent, 0);
       await selectChapter(userEvent, 0);
-      await selectAppointmentType(userEvent, 0); // Select "Panel"
+      await selectAppointmentType(userEvent, 3); // Panel is at index 3 in edit mode after alphabetical sorting
 
       await waitFor(() => {
         const alert = screen.getByRole('alert');
@@ -1169,6 +1169,182 @@ describe('TrusteeAppointmentForm Tests', () => {
       await waitFor(() => {
         expect(screen.getByText('Out of Pool')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('Alphabetical Ordering Tests', () => {
+    test('should display appointment type options in alphabetical order for Chapter 7', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      await selectChapter(userEvent, 0); // Chapter 7
+
+      await waitFor(() => {
+        const appointmentTypeContainer = document.querySelector(
+          '#appointmentType .input-container',
+        ) as HTMLElement;
+        expect(appointmentTypeContainer).not.toHaveClass('disabled');
+      });
+
+      const appointmentTypeExpandButton = document.querySelector(
+        '#appointmentType-expand',
+      ) as HTMLButtonElement;
+      await userEvent.click(appointmentTypeExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Panel')).toBeInTheDocument();
+      });
+
+      // Get all appointment type options
+      const optionItems = document.querySelectorAll('[id^="appointmentType-option-item-"]');
+      const optionTexts = Array.from(optionItems).map((item) => item.textContent || '');
+
+      // Verify they are in alphabetical order
+      const sortedTexts = [...optionTexts].sort((a, b) => a.localeCompare(b));
+      expect(optionTexts).toEqual(sortedTexts);
+    });
+
+    test('should display appointment type options in alphabetical order for Chapter 7 in edit mode', async () => {
+      const appointmentToEdit: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        chapter: '7',
+        appointmentType: 'panel',
+      };
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        appointment: appointmentToEdit,
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#appointmentType')).toBeInTheDocument();
+      });
+
+      const appointmentTypeExpandButton = document.querySelector(
+        '#appointmentType-expand',
+      ) as HTMLButtonElement;
+      await userEvent.click(appointmentTypeExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Off Panel')).toBeInTheDocument();
+      });
+
+      // Get all appointment type options
+      const optionItems = document.querySelectorAll('[id^="appointmentType-option-item-"]');
+      const optionTexts = Array.from(optionItems).map((item) => item.textContent || '');
+
+      // Verify they are in alphabetical order
+      const sortedTexts = [...optionTexts].sort((a, b) => a.localeCompare(b));
+      expect(optionTexts).toEqual(sortedTexts);
+    });
+
+    test('should display status options in alphabetical order for Chapter 7 Panel', async () => {
+      const appointmentToEdit: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        chapter: '7',
+        appointmentType: 'panel',
+        status: 'active',
+      };
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        appointment: appointmentToEdit,
+      });
+
+      await waitFor(() => {
+        const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+        expect(statusExpandButton).not.toBeDisabled();
+      });
+
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      await userEvent.click(statusExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Active')).toBeInTheDocument();
+      });
+
+      // Get all status options
+      const optionItems = document.querySelectorAll('[id^="status-option-item-"]');
+      const optionTexts = Array.from(optionItems).map((item) => item.textContent || '');
+
+      // Verify they are in alphabetical order
+      const sortedTexts = [...optionTexts].sort((a, b) => a.localeCompare(b));
+      expect(optionTexts).toEqual(sortedTexts);
+    });
+
+    test('should display status options in alphabetical order for Chapter 7 Off Panel', async () => {
+      const appointmentToEdit: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        chapter: '7',
+        appointmentType: 'off-panel',
+        status: 'deceased',
+      };
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        appointment: appointmentToEdit,
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#status')).toBeInTheDocument();
+      });
+
+      await waitFor(() => {
+        const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+        expect(statusExpandButton).not.toBeDisabled();
+      });
+
+      const statusExpandButton = document.querySelector('#status-expand') as HTMLButtonElement;
+      await userEvent.click(statusExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Deceased')).toBeInTheDocument();
+      });
+
+      // Get all status options
+      const optionItems = document.querySelectorAll('[id^="status-option-item-"]');
+      const optionTexts = Array.from(optionItems).map((item) => item.textContent || '');
+
+      // Verify they are in alphabetical order
+      const sortedTexts = [...optionTexts].sort((a, b) => a.localeCompare(b));
+      expect(optionTexts).toEqual(sortedTexts);
+    });
+
+    test('should display appointment type options in alphabetical order for Chapter 12', async () => {
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#chapter')).toBeInTheDocument();
+      });
+
+      await selectChapter(userEvent, 3); // Chapter 12
+
+      await waitFor(() => {
+        const appointmentTypeContainer = document.querySelector(
+          '#appointmentType .input-container',
+        ) as HTMLElement;
+        expect(appointmentTypeContainer).not.toHaveClass('disabled');
+      });
+
+      const appointmentTypeExpandButton = document.querySelector(
+        '#appointmentType-expand',
+      ) as HTMLButtonElement;
+      await userEvent.click(appointmentTypeExpandButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Standing')).toBeInTheDocument();
+      });
+
+      // Get all appointment type options
+      const optionItems = document.querySelectorAll('[id^="appointmentType-option-item-"]');
+      const optionTexts = Array.from(optionItems).map((item) => item.textContent || '');
+
+      // Verify they are in alphabetical order
+      const sortedTexts = [...optionTexts].sort((a, b) => a.localeCompare(b));
+      expect(optionTexts).toEqual(sortedTexts);
     });
   });
 });
