@@ -121,10 +121,12 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const appointmentTypeOptions = useMemo<ComboOption<AppointmentType>[]>(() => {
     if (!formData.chapter) return [];
 
-    return getAvailableAppointmentTypes(formData.chapter, isEditMode).map((type) => ({
-      value: type,
-      label: formatAppointmentType(type),
-    }));
+    return getAvailableAppointmentTypes(formData.chapter, isEditMode)
+      .map((type) => ({
+        value: type,
+        label: formatAppointmentType(type),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [formData.chapter, isEditMode]);
 
   // Dynamically generate status options based on selected chapter and appointment type
@@ -132,10 +134,12 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     if (!formData.chapter || !formData.appointmentType) return [];
 
     const statuses = getStatusOptions(formData.chapter, formData.appointmentType);
-    return statuses.map((status) => ({
-      value: status,
-      label: formatAppointmentStatus(status),
-    }));
+    return statuses
+      .map((status) => ({
+        value: status,
+        label: formatAppointmentStatus(status),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label));
   }, [formData.chapter, formData.appointmentType]);
 
   useEffect(() => {
