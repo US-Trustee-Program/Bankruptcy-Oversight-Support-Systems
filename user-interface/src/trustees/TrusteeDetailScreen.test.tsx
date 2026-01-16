@@ -293,7 +293,7 @@ describe('TrusteeDetailScreen', () => {
       'https://us02web.zoom.us/j/1234567890',
     );
     expect(screen.getByTestId('zoom-phone')).toHaveTextContent('123-456-7890');
-    expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 1234567890');
+    expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 123 456 7890');
     expect(screen.getByTestId('zoom-passcode')).toHaveTextContent('Passcode: testpass123');
   });
 
