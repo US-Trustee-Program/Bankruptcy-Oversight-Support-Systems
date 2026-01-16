@@ -76,59 +76,82 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
     }
 
     // PART 2: Migrate case history audit records
+    // Process records programmatically in batches since CosmosDB doesn't support
+    // aggregation pipelines with nested array field operations
+    logger.info(MODULE_NAME, 'Starting audit records migration...');
+
     const casesRepo = Factory.getCasesRepository(context);
 
-    // Query for ALL AUDIT_CONSOLIDATION records
-    // We'll use conditional logic in the update to only modify records with childCases
-    const auditDoc = using<CaseHistory>();
-    const beforeQuery = auditDoc('documentType').equals('AUDIT_CONSOLIDATION');
+    // Fetch all AUDIT_CONSOLIDATION records using the new repository method
+    const auditRecords = await casesRepo.getAllCaseHistory('AUDIT_CONSOLIDATION');
+    logger.info(MODULE_NAME, `Found ${auditRecords.length} audit records to process`);
 
-    // Use $set to copy and $unset to remove (since $rename can't traverse arrays)
-    // If childCases exists, copy it to memberCases; otherwise keep memberCases as-is
-    const beforeUpdateOperation: MongoDocument = [
-      {
-        $set: {
-          'before.memberCases': { $ifNull: ['$before.childCases', '$before.memberCases'] },
-        },
-      },
-      {
-        $unset: 'before.childCases',
-      },
-    ];
+    // Process in batches to avoid overwhelming the database
+    const BATCH_SIZE = 100;
+    let totalModified = 0;
 
-    const beforeResult = await casesRepo.updateManyByQuery(beforeQuery, beforeUpdateOperation);
+    for (let i = 0; i < auditRecords.length; i += BATCH_SIZE) {
+      const batch = auditRecords.slice(i, i + BATCH_SIZE);
+      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+      const totalBatches = Math.ceil(auditRecords.length / BATCH_SIZE);
+
+      logger.info(
+        MODULE_NAME,
+        `Processing batch ${batchNumber}/${totalBatches} (${batch.length} records)...`,
+      );
+
+      let batchModified = 0;
+      for (const record of batch) {
+        let modified = false;
+        const legacyRecord = record as CaseHistory & {
+          before?: { childCases?: unknown; memberCases?: unknown };
+          after?: { childCases?: unknown; memberCases?: unknown };
+        };
+
+        // Migrate before.childCases to before.memberCases
+        if (
+          legacyRecord.before &&
+          'childCases' in legacyRecord.before &&
+          legacyRecord.before.childCases
+        ) {
+          legacyRecord.before.memberCases = legacyRecord.before.childCases;
+          delete legacyRecord.before.childCases;
+          modified = true;
+        }
+
+        // Migrate after.childCases to after.memberCases
+        if (
+          legacyRecord.after &&
+          'childCases' in legacyRecord.after &&
+          legacyRecord.after.childCases
+        ) {
+          legacyRecord.after.memberCases = legacyRecord.after.childCases;
+          delete legacyRecord.after.childCases;
+          modified = true;
+        }
+
+        // Update the record if it was modified
+        if (modified) {
+          await casesRepo.updateCaseHistory(legacyRecord as CaseHistory);
+          batchModified++;
+        }
+      }
+
+      totalModified += batchModified;
+      logger.info(
+        MODULE_NAME,
+        `Batch ${batchNumber}/${totalBatches} complete. Modified ${batchModified} records.`,
+      );
+    }
 
     logger.info(
       MODULE_NAME,
-      `Audit records (before.childCases) migration complete. Matched ${beforeResult.matchedCount} document(s), modified ${beforeResult.modifiedCount} audit record(s).`,
+      `Audit records migration complete. Processed ${auditRecords.length} record(s), modified ${totalModified} audit record(s).`,
     );
 
-    // Update records with after.childCases (same query as before)
-    const afterQuery = auditDoc('documentType').equals('AUDIT_CONSOLIDATION');
-
-    const afterUpdateOperation: MongoDocument = [
-      {
-        $set: {
-          'after.memberCases': { $ifNull: ['$after.childCases', '$after.memberCases'] },
-        },
-      },
-      {
-        $unset: 'after.childCases',
-      },
-    ];
-
-    const afterResult = await casesRepo.updateManyByQuery(afterQuery, afterUpdateOperation);
-
     logger.info(
       MODULE_NAME,
-      `Audit records (after.childCases) migration complete. Matched ${afterResult.matchedCount} document(s), modified ${afterResult.modifiedCount} audit record(s).`,
-    );
-
-    const totalAuditModified = beforeResult.modifiedCount + afterResult.modifiedCount;
-
-    logger.info(
-      MODULE_NAME,
-      `Total migration complete. Orders: ${result.modifiedCount}, Audit records: ${totalAuditModified}`,
+      `Total migration complete. Orders: ${result.modifiedCount}, Audit records: ${totalModified}`,
     );
   } catch (originalError) {
     const error = getCamsError(

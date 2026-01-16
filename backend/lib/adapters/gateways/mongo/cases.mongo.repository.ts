@@ -186,6 +186,22 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
+  async getAllCaseHistory(documentType: string): Promise<CaseHistory[]> {
+    const doc = using<CaseHistory>();
+    try {
+      const query = doc('documentType').equals(documentType);
+      const adapter = this.getAdapter<CaseHistory>();
+      return await adapter.find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to get all case history for document type ${documentType}.`,
+          module: MODULE_NAME,
+        },
+      });
+    }
+  }
+
   async createCaseHistory(history: CaseHistory) {
     try {
       await this.create<CaseHistory>(history);
@@ -195,6 +211,23 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         camsStackInfo: {
           message:
             'Unable to create case history. Please try again later. If the problem persists, please contact USTP support.',
+          module: MODULE_NAME,
+        },
+      });
+    }
+  }
+
+  async updateCaseHistory(history: CaseHistory): Promise<void> {
+    const doc = using<CaseHistory>();
+    try {
+      const query = doc('id').equals(history.id);
+      await this.getAdapter<CaseHistory>().replaceOne(query, history);
+      this.context.logger.debug(MODULE_NAME, `Updated case history for: ${history.caseId}.`);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message:
+            'Unable to update case history. Please try again later. If the problem persists, please contact USTP support.',
           module: MODULE_NAME,
         },
       });
