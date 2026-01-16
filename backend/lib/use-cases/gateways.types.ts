@@ -168,7 +168,9 @@ export interface CasesRepository extends Releasable {
   createConsolidationFrom(reference: ConsolidationFrom): Promise<ConsolidationFrom>;
   getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
+  getAllCaseHistory(documentType: string): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
+  updateCaseHistory(history: CaseHistory): Promise<void>;
   syncDxtrCase(bCase: SyncedCase): Promise<void>;
   searchCases(
     predicate: CasesSearchPredicate,
