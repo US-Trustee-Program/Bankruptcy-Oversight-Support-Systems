@@ -59,7 +59,7 @@ function ZipCodeInput_(props: ZipCodeInputProps, ref: React.Ref<InputRef>) {
       {...otherProps}
       ref={forwardedRef}
       onChange={handleChange}
-      ariaDescription="Example: 12345 or 12345-6789"
+      ariaDescription={props.ariaDescription || 'Example: 12345 or 12345-6789'}
       type="text"
       inputMode="numeric"
     ></Input>
