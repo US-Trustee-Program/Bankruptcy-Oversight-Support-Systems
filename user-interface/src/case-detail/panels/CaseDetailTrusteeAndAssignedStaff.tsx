@@ -1,5 +1,5 @@
 import { isJointAdministrationMemberCase } from '@common/cams/events';
-import { CaseDetail, isLeadCase } from '@common/cams/cases';
+import { CaseDetail } from '@common/cams/cases';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import AssignAttorneyModal from '@/staff-assignment/modal/AssignAttorneyModal';
 import {
@@ -19,6 +19,14 @@ import LegacyFormattedContact from '@/lib/components/cams/LegacyFormattedContact
 export interface CaseDetailTrusteeAndAssignedStaffProps {
   caseDetail: CaseDetail;
   onCaseAssignment: (props: AssignAttorneyModalCallbackProps) => void;
+}
+
+function canEditAssignedStaff(caseDetail: CaseDetail): boolean {
+  return (
+    Actions.contains(caseDetail, Actions.ManageAssignments) &&
+    caseDetail.chapter === '15' &&
+    !isJointAdministrationMemberCase(caseDetail.consolidation)
+  );
 }
 
 function CaseDetailTrusteeAndAssignedStaff(
@@ -42,21 +50,19 @@ function CaseDetailTrusteeAndAssignedStaff(
           <div className="assigned-staff-information record-detail-card">
             <h3>
               Assigned Staff{' '}
-              {Actions.contains(caseDetail, Actions.ManageAssignments) &&
-                caseDetail.chapter === '15' &&
-                isLeadCase(caseDetail) && (
-                  <OpenModalButton
-                    uswdsStyle={UswdsButtonStyle.Unstyled}
-                    modalId={'assignmentModalId'}
-                    modalRef={assignmentModalRef}
-                    ref={openModalButtonRef}
-                    openProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
-                    ariaLabel="Edit assigned staff"
-                    title="Open Staff Assignment window"
-                  >
-                    <IconLabel icon="edit" label="Edit" />
-                  </OpenModalButton>
-                )}
+              {canEditAssignedStaff(caseDetail) && (
+                <OpenModalButton
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  modalId={'assignmentModalId'}
+                  modalRef={assignmentModalRef}
+                  ref={openModalButtonRef}
+                  openProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
+                  ariaLabel="Edit assigned staff"
+                  title="Open Staff Assignment window"
+                >
+                  <IconLabel icon="edit" label="Edit" />
+                </OpenModalButton>
+              )}
             </h3>
             {caseDetail.regionId && (
               <div
