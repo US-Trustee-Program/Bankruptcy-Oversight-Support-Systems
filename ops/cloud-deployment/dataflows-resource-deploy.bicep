@@ -546,7 +546,7 @@ module dataflowsSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep
   name: '${dataflowsFunctionName}-${slotName}-pep-module'
   scope: resourceGroup(virtualNetworkResourceGroupName)
   params: {
-    privateLinkGroup: 'sites-staging'
+    privateLinkGroup: 'sites-${slotName}'
     stackName: 'stg-${dataflowsFunctionName}'
     location: location
     privateLinkServiceId: dataflowsFunctionApp.id

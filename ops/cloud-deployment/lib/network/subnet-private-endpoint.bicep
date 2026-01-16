@@ -6,12 +6,7 @@ param location string = resourceGroup().location
 @description('Resource id of existing service to be linked')
 param privateLinkServiceId string
 
-@description('Group for private link service')
-@allowed([
-  'sites'
-  'sites-staging'
-  'vault'
-])
+@description('Group for private link service (e.g., sites, sites-{slotName}, vault)')
 param privateLinkGroup string
 
 param privateEndpointSubnetId string
