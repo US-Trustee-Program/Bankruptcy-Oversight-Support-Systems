@@ -68,6 +68,13 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
   };
   vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
 
+  // Mock for AssignAttorneyModal
+  const officeAttorneyListResponse: ResponseBody<AttorneyUser[]> = {
+    meta: { self: 'self-url' },
+    data: attorneyList,
+  };
+  vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(officeAttorneyListResponse);
+
   function renderWithProps(props?: Partial<CaseDetailTrusteeAndAssignedStaffProps>) {
     const defaultProps: CaseDetailTrusteeAndAssignedStaffProps = {
       caseDetail: BASE_TEST_CASE_DETAIL,
@@ -317,23 +324,36 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       const apiResult = {
         data: undefined,
       };
+      const userEvent = TestingUtilities.setupUserEvent();
       vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue(apiResult);
 
       const onCaseAssignment = vi.fn();
       renderWithProps({ onCaseAssignment });
 
       const assignedStaffEditButton = screen.getByTestId('open-modal-button');
-      fireEvent.click(assignedStaffEditButton);
+      await userEvent.click(assignedStaffEditButton);
 
       const modal = screen.getByTestId(`modal-${assignmentModalId}`);
       await waitFor(() => {
         expect(modal).toBeVisible();
       });
 
-      await TestingUtilities.selectCheckbox('0-checkbox');
+      // Wait for attorney list to load (API call completes)
+      await waitFor(() => {
+        expect(Api2.getOfficeAttorneys).toHaveBeenCalled();
+      });
+
+      // Wait for attorney list to render and select first attorney
+      // Attorneys are sorted alphabetically, select the first one
+      await waitFor(() => {
+        expect(document.querySelector('.attorney-list-checkbox')).toBeInTheDocument();
+      });
+
+      const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
+      await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[0].id}-checkbox`);
 
       const submitButton = screen.getByTestId(`button-${assignmentModalId}-submit-button`);
-      fireEvent.click(submitButton);
+      await userEvent.click(submitButton);
 
       await waitFor(() => {
         expect(onCaseAssignment).toHaveBeenCalledWith(

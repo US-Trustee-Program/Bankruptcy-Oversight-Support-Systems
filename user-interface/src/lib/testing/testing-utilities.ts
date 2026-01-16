@@ -124,10 +124,19 @@ async function clearComboBoxSelection(id: string) {
 }
 
 async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, selected = true) {
+  // Wait for the ComboBox container to be available
+  await vi.waitFor(() => {
+    const itemListContainer = document.querySelector(`#${id}-item-list-container`);
+    expect(itemListContainer).not.toBeNull();
+  });
+
   const itemListContainer = document.querySelector(`#${id}-item-list-container`);
   if (!itemListContainer!.classList.contains('expanded')) {
     const expandButton = document.querySelector(`#${id}-expand`);
-    await userEvent.click(expandButton!);
+    if (!expandButton) {
+      throw new Error(`Expand button not found for ComboBox with id: ${id}`);
+    }
+    await userEvent.click(expandButton);
   }
 
   const testId = `${id}-option-item-${itemIndex}`;
