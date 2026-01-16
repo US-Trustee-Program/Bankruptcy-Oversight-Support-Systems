@@ -11,6 +11,38 @@ import { PHONE_REGEX, WEBSITE_RELAXED_REGEX } from '@common/cams/regex';
 
 const MEETING_ID_REGEX = /^\d{9,11}$/;
 
+const fieldLabels: Record<string, string> = {
+  link: 'Zoom Link',
+  phone: 'Zoom Phone',
+  meetingId: 'Meeting ID',
+  passcode: 'Passcode', // pragma: allowlist secret
+};
+
+const validators: Record<string, (value: string) => string | null> = {
+  link: (value) => {
+    if (!value.trim()) return `${fieldLabels.link} is required`;
+    if (!WEBSITE_RELAXED_REGEX.test(value)) return `${fieldLabels.link} must be a valid URL`;
+    if (value.length > 255) return 'Max length 255 characters';
+    return null;
+  },
+  phone: (value) => {
+    if (!value.trim() || !PHONE_REGEX.test(value)) return 'Must be a valid phone number';
+    return null;
+  },
+  meetingId: (value) => {
+    if (!value.trim()) return `${fieldLabels.meetingId} is required`;
+    if (!MEETING_ID_REGEX.test(value)) return 'Must be 9 to 11 digits';
+    return null;
+  },
+  passcode: (value) => {
+    if (!value.trim()) return `${fieldLabels.passcode} is required`;
+    return null;
+  },
+};
+
+const validateField = (fieldName: keyof typeof validators, value: string): string | null =>
+  validators[fieldName](value);
+
 type TrusteeZoomInfoFormProps = {
   trustee: Trustee;
 };
@@ -22,10 +54,12 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
   const trusteeId = trustee.trusteeId;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [link, setLink] = useState<string>(trustee.zoomInfo?.link ?? '');
-  const [phone, setPhone] = useState<string>(trustee.zoomInfo?.phone ?? '');
-  const [meetingId, setMeetingId] = useState<string>(trustee.zoomInfo?.meetingId ?? '');
-  const [passcode, setPasscode] = useState<string>(trustee.zoomInfo?.passcode ?? '');
+  const [formState, setFormState] = useState({
+    link: trustee.zoomInfo?.link ?? '',
+    phone: trustee.zoomInfo?.phone ?? '',
+    meetingId: trustee.zoomInfo?.meetingId ?? '',
+    passcode: trustee.zoomInfo?.passcode ?? '',
+  });
 
   const navigate = useCamsNavigator();
 
@@ -33,169 +67,51 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
     navigate.navigateTo(`/trustees/${trusteeId}`);
   }, [navigate, trusteeId]);
 
-  const validateLink = (value: string): string | null => {
-    if (!value || value.trim() === '') {
-      return 'Zoom Link is required';
-    }
-    if (!WEBSITE_RELAXED_REGEX.test(value)) {
-      return 'Zoom Link must be a valid URL';
-    }
-    if (value.length > 255) {
-      return 'Max length 255 characters';
-    }
-    return null;
-  };
+  const createChangeHandler =
+    (fieldName: keyof typeof formState) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
 
-  const validatePhone = (value: string): string | null => {
-    if (!value || value.trim() === '' || !PHONE_REGEX.test(value)) {
-      return 'Must be a valid phone number';
-    }
-    return null;
-  };
+      setFormState((prev) => ({ ...prev, [fieldName]: value }));
 
-  const validateMeetingId = (value: string): string | null => {
-    if (!value || value.trim() === '') {
-      return 'Meeting ID is required';
-    }
-    if (!MEETING_ID_REGEX.test(value)) {
-      return 'Must be 9 to 11 digits';
-    }
-    return null;
-  };
-
-  const validateField = (fieldName: string, value: string): string | null => {
-    if (fieldName === 'link') {
-      return validateLink(value);
-    }
-    if (fieldName === 'phone') {
-      return validatePhone(value);
-    }
-    if (fieldName === 'meetingId') {
-      return validateMeetingId(value);
-    }
-    if (!value || value.trim() === '') {
-      const fieldLabels: Record<string, string> = {
-        passcode: 'Passcode', // pragma: allowlist secret
-      };
-      const label = fieldLabels[fieldName] || fieldName;
-      return `${label} is required`;
-    }
-    return null;
-  };
-
-  const handleLinkChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setLink(value);
-
-    debounce(() => {
-      const error = validateLink(value);
-      setFieldErrors((prev) => {
-        if (error) {
-          return { ...prev, link: error };
-        } else {
-          const { link: _, ...rest } = prev;
+      debounce(() => {
+        const error = validateField(fieldName, value);
+        setFieldErrors((prev) => {
+          if (error) {
+            return { ...prev, [fieldName]: error };
+          }
+          const { [fieldName]: _, ...rest } = prev;
           return rest;
-        }
-      });
-    }, 300);
-  };
+        });
+      }, 300);
+    };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setPhone(value);
-
-    debounce(() => {
-      const error = validatePhone(value);
-      setFieldErrors((prev) => {
-        if (error) {
-          return { ...prev, phone: error };
-        } else {
-          const { phone: _, ...rest } = prev;
-          return rest;
-        }
-      });
-    }, 300);
-  };
-
-  const handleMeetingIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setMeetingId(value);
-
-    debounce(() => {
-      const error = validateField('meetingId', value);
-      setFieldErrors((prev) => {
-        if (error) {
-          return { ...prev, meetingId: error };
-        } else {
-          const { meetingId: _, ...rest } = prev;
-          return rest;
-        }
-      });
-    }, 300);
-  };
-
-  const handlePasscodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setPasscode(value);
-
-    debounce(() => {
-      const error = validateField('passcode', value);
-      setFieldErrors((prev) => {
-        if (error) {
-          return { ...prev, passcode: error };
-        } else {
-          const { passcode: _, ...rest } = prev;
-          return rest;
-        }
-      });
-    }, 300);
+  const validateAll = (state: typeof formState): Record<string, string> => {
+    const errors: Record<string, string> = {};
+    (Object.keys(state) as (keyof typeof formState)[]).forEach((field) => {
+      const error = validateField(field, state[field]);
+      if (error) errors[field] = error;
+    });
+    return errors;
   };
 
   async function handleSubmit(event?: React.MouseEvent<HTMLButtonElement>): Promise<void> {
-    if (event) {
-      event.preventDefault();
-    }
+    event?.preventDefault();
 
-    // Guard clause: prevent submission if trusteeId is missing
-    if (!trusteeId || trusteeId.trim() === '') {
+    if (!trusteeId?.trim()) {
       globalAlert?.error('Cannot save zoom information: Trustee ID is missing');
       return;
     }
 
-    // Validate all fields
-    const errors: Record<string, string> = {};
-
-    const linkError = validateField('link', link);
-    if (linkError) errors.link = linkError;
-
-    const phoneError = validatePhone(phone);
-    if (phoneError) errors.phone = phoneError;
-
-    const meetingIdError = validateField('meetingId', meetingId);
-    if (meetingIdError) errors.meetingId = meetingIdError;
-
-    const passcodeError = validateField('passcode', passcode);
-    if (passcodeError) errors.passcode = passcodeError;
-
+    const errors = validateAll(formState);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
     }
 
-    // Clear any previous errors
     setFieldErrors({});
     setIsSubmitting(true);
     try {
-      const zoomInfoToSend = {
-        link,
-        phone,
-        meetingId,
-        passcode,
-      };
-
-      const response = await Api2.patchTrustee(trusteeId, {
-        zoomInfo: zoomInfoToSend,
-      });
+      const response = await Api2.patchTrustee(trusteeId, { zoomInfo: formState });
       if (response?.data) {
         navigate.navigateTo(`/trustees/${trusteeId}`);
       }
@@ -207,7 +123,7 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
   }
 
   const hasErrors = Object.keys(fieldErrors).length > 0;
-  const hasEmptyFields = !link.trim() || !phone.trim() || !meetingId.trim() || !passcode.trim();
+  const hasEmptyFields = Object.values(formState).some((v) => !v.trim());
   const isSaveDisabled = isSubmitting || hasErrors || hasEmptyFields;
 
   return (
@@ -223,8 +139,8 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
               id="trustee-zoom-link"
               label="Zoom Link"
               name="zoom-link"
-              value={link}
-              onChange={handleLinkChange}
+              value={formState.link}
+              onChange={createChangeHandler('link')}
               data-testid="trustee-zoom-link-input"
               required={true}
               ariaDescription={[
@@ -237,8 +153,8 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
               id="trustee-zoom-phone"
               label="Zoom Phone"
               name="zoom-phone"
-              value={phone}
-              onChange={handlePhoneChange}
+              value={formState.phone}
+              onChange={createChangeHandler('phone')}
               data-testid="trustee-zoom-phone-input"
               required={true}
               errorMessage={fieldErrors.phone}
@@ -247,8 +163,8 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
               id="trustee-zoom-meeting-id"
               label="Meeting ID"
               name="zoom-meeting-id"
-              value={meetingId}
-              onChange={handleMeetingIdChange}
+              value={formState.meetingId}
+              onChange={createChangeHandler('meetingId')}
               data-testid="trustee-zoom-meeting-id-input"
               required={true}
               errorMessage={fieldErrors.meetingId}
@@ -257,8 +173,8 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
               id="trustee-zoom-passcode"
               label="Passcode"
               name="zoom-passcode"
-              value={passcode}
-              onChange={handlePasscodeChange}
+              value={formState.passcode}
+              onChange={createChangeHandler('passcode')}
               data-testid="trustee-zoom-passcode-input"
               required={true}
               errorMessage={fieldErrors.passcode}
