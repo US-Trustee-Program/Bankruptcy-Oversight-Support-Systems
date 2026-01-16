@@ -67,7 +67,7 @@ describe('TrusteesUseCase tests', () => {
 
       // Create a spy on the checkValidation method to ensure it's called and passes
       const checkValidationSpy = vi.spyOn(
-        trusteesUseCase as unknown as { checkValidation: vi.Mock },
+        trusteesUseCase as unknown as { checkValidation: (result: unknown) => void },
         'checkValidation',
       );
 
@@ -611,6 +611,135 @@ describe('TrusteesUseCase tests', () => {
           after: undefined, // Should be undefined for empty object
         }),
       );
+    });
+
+    describe('zoomInfoValidation', () => {
+      test('should update trustee with valid zoomInfo', async () => {
+        const updatedBy = getCamsUserReference(context.session.user);
+        const newZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '123-456-7890',
+          meetingId: '1234567890',
+          passcode: 'testpass123', //pragma: allowlist secret
+        };
+        const updateData = { zoomInfo: newZoomInfo };
+        const updatedTrustee = { ...existingTrustee, zoomInfo: newZoomInfo };
+
+        const updateTrusteeSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+          .mockResolvedValue(updatedTrustee);
+        const historyCreateSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+          .mockResolvedValue();
+
+        await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+        expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
+        expect(historyCreateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            documentType: 'AUDIT_ZOOM_INFO',
+            trusteeId,
+            after: newZoomInfo,
+          }),
+        );
+      });
+
+      test('should throw BadRequestError for zoomInfo with invalid phone format', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '12345', // Invalid phone format
+          meetingId: '1234567890',
+          passcode: 'testpass123', //pragma: allowlist secret
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+          BadRequestError,
+        );
+      });
+
+      test('should throw BadRequestError for zoomInfo with invalid link', async () => {
+        const invalidZoomInfo = {
+          link: 'not-a-valid-url', // Invalid URL
+          phone: '123-456-7890',
+          meetingId: '1234567890',
+          passcode: 'testpass123', //pragma: allowlist secret
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+          BadRequestError,
+        );
+      });
+
+      test('should throw BadRequestError for zoomInfo with invalid meeting ID (too short)', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '123-456-7890',
+          meetingId: '12345678', // Only 8 digits, needs 9-11
+          passcode: 'testpass123', //pragma: allowlist secret
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+          BadRequestError,
+        );
+      });
+
+      test('should throw BadRequestError for zoomInfo with invalid meeting ID (too long)', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '123-456-7890',
+          meetingId: '123456789012', // 12 digits, needs 9-11
+          passcode: 'testpass123', //pragma: allowlist secret
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+          BadRequestError,
+        );
+      });
+
+      test('should throw BadRequestError for zoomInfo with non-numeric meeting ID', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '123-456-7890',
+          meetingId: '12345abc90', //pragma: allowlist secret
+          passcode: 'testpass123', //pragma: allowlist secret
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+          BadRequestError,
+        );
+      });
+
+      test('should throw BadRequestError for zoomInfo with link exceeding max length', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/' + 'a'.repeat(300), // Exceeds 255 char limit
+          phone: '123-456-7890',
+          meetingId: '1234567890',
+          passcode: 'testpass123', //pragma: allowlist secret
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+          BadRequestError,
+        );
+      });
+
+      test('should throw BadRequestError for zoomInfo with empty required fields', async () => {
+        const invalidZoomInfo = {
+          link: '',
+          phone: '123-456-7890',
+          meetingId: '1234567890',
+          passcode: 'testpass123', //pragma: allowlist secret
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+          BadRequestError,
+        );
+      });
     });
   });
 });

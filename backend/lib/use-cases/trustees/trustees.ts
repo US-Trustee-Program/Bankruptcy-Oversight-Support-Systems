@@ -14,11 +14,12 @@ import {
 } from '@common/cams/regex';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
-import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
+import { Trustee, TrusteeHistory, TrusteeInput, ZoomInfo } from '@common/cams/trustees';
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
+const MEETING_ID_REGEX = /^\d{9,11}$/;
 
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
@@ -245,6 +246,20 @@ export class TrusteesUseCase {
         );
       }
 
+      if (!deepEqual(existingTrustee.zoomInfo, updatedTrustee.zoomInfo)) {
+        await this.trusteesRepository.createTrusteeHistory(
+          createAuditRecord(
+            {
+              documentType: 'AUDIT_ZOOM_INFO',
+              trusteeId,
+              before: existingTrustee.zoomInfo,
+              after: updatedTrustee.zoomInfo,
+            },
+            userReference,
+          ),
+        );
+      }
+
       return updatedTrustee;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
@@ -296,12 +311,24 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   ],
 };
 
+const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
+  link: [
+    V.minLength(1),
+    V.matches(WEBSITE_RELAXED_REGEX, 'Zoom Link must be a valid URL'),
+    V.maxLength(255, 'Max length 255 characters'),
+  ],
+  phone: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
+  meetingId: [V.matches(MEETING_ID_REGEX, 'Must be 9 to 11 digits')],
+  passcode: [V.minLength(1)],
+};
+
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   software: [V.optional(V.length(0, 100))],
+  zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
 };
 
 function patchTrustee(

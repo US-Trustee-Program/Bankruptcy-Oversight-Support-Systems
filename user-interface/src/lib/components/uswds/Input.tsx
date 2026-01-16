@@ -20,7 +20,7 @@ export type InputProps = Omit<JSX.IntrinsicElements['input'], 'onFocus'> & {
   value?: string;
   icon?: string;
   includeClearButton?: boolean;
-  ariaDescription?: string;
+  ariaDescription?: string | string[];
   onFocus?: (ev: React.FocusEvent<HTMLElement>) => void;
   errorMessage?: string;
 };
@@ -98,9 +98,16 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
       <label className="usa-label" id={baseId + '-label'} htmlFor={baseId}>
         {label}
       </label>
-      {ariaDescription && (
+      {ariaDescription && (Array.isArray(ariaDescription) ? ariaDescription.length > 0 : true) && (
         <div className="usa-hint" id={hintId}>
-          {ariaDescription}
+          {Array.isArray(ariaDescription)
+            ? ariaDescription.map((line, index) => (
+                <React.Fragment key={index}>
+                  {line}
+                  {index < ariaDescription.length - 1 && <br />}
+                </React.Fragment>
+              ))
+            : ariaDescription}
         </div>
       )}
       <div
@@ -121,7 +128,11 @@ function Input_(props: InputProps, ref: React.Ref<InputRef>) {
           data-testid={baseId}
           disabled={inputDisabled}
           value={inputValue}
-          aria-describedby={ariaDescription ? hintId : undefined}
+          aria-describedby={
+            ariaDescription && (Array.isArray(ariaDescription) ? ariaDescription.length > 0 : true)
+              ? hintId
+              : undefined
+          }
           ref={inputRef}
         />
         {includeClearButton && !inputDisabled && inputValue.length > 0 && (
