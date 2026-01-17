@@ -58,7 +58,7 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
     link: trustee.zoomInfo?.link ?? '',
     phone: trustee.zoomInfo?.phone ?? '',
     meetingId: trustee.zoomInfo?.meetingId ?? '',
-    passcode: trustee.zoomInfo?.passcode ?? '',
+    passcode: trustee.zoomInfo?.passcode ?? '', // pragma: allowlist secret
   });
 
   const navigate = useCamsNavigator();
