@@ -333,13 +333,13 @@ describe('TrusteeAssistantForm', () => {
       );
     });
 
-    test('should send null assistant when form is empty', async () => {
+    test('should send undefined assistant when form is empty', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
       const mockPatchResponse = { data: mockTrustee };
       vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
 
       // Start with no assistant (empty form)
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistant: null });
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistant: undefined });
 
       // Remove all required attributes to allow empty form submission
       const nameInput = screen.getByTestId('assistant-name') as HTMLInputElement;
@@ -362,7 +362,7 @@ describe('TrusteeAssistantForm', () => {
       await waitFor(
         () => {
           expect(Api2.patchTrustee).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
-            assistant: null,
+            assistant: undefined,
           });
         },
         { timeout: 2000 },
@@ -443,31 +443,31 @@ describe('TrusteeAssistantForm', () => {
   });
 
   describe('validateField Helper Function', () => {
-    test('should return null for valid field value', () => {
+    test('should return undefined for valid field value', () => {
       const result = validateField('name', 'Valid Name', TRUSTEE_ASSISTANT_SPEC);
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
     });
 
     test('should return error for invalid field value', () => {
       const result = validateField('name', 'A'.repeat(51), TRUSTEE_ASSISTANT_SPEC);
-      expect(result).not.toBeNull();
+      expect(result).toBeDefined();
       expect(result?.name?.reasons).toContain('Max length 50 characters');
     });
 
-    test('should return null for field not in spec', () => {
+    test('should return undefined for field not in spec', () => {
       // @ts-expect-error Testing with invalid field name
       const result = validateField('nonexistent', 'value', {});
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
     });
 
     test('should handle undefined values', () => {
       const result = validateField('name', undefined, TRUSTEE_ASSISTANT_SPEC);
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
     });
 
     test('should trim whitespace before validation', () => {
       const result = validateField('name', '   ', TRUSTEE_ASSISTANT_SPEC);
-      expect(result).toBeNull();
+      expect(result).toBeUndefined();
     });
   });
 });

@@ -533,12 +533,12 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(validateSpy).toHaveBeenCalled();
   });
 
-  test('validateField returns null when spec does not contain the field', () => {
+  test('validateField returns undefined when spec does not contain the field', () => {
     const result = validateField('address1', 'value', {});
-    expect(result).toBeNull();
+    expect(result).toBeUndefined();
   });
 
-  test('trims value before validating and returns null when validateEach says valid', () => {
+  test('trims value before validating and returns undefined when validateEach says valid', () => {
     const spy = vi.spyOn(Validation, 'validateEach').mockReturnValue(Validation.VALID);
 
     const spec: Partial<typeof TRUSTEE_INTERNAL_SPEC> = {
@@ -547,7 +547,7 @@ describe('TrusteeInternalContactForm Tests', () => {
     const result = validateField('address1', '  abc  ', spec);
 
     expect(spy).toHaveBeenCalledWith(spec.address1, 'abc');
-    expect(result).toBeNull();
+    expect(result).toBeUndefined();
   });
 
   test('returns a ValidatorReasonMap when validateEach reports invalid', () => {

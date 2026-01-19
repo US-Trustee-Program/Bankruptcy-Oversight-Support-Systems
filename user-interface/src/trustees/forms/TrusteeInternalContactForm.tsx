@@ -44,21 +44,21 @@ export function validateField(
   field: keyof TrusteeInternalFormData,
   value: string | undefined,
   spec: Partial<typeof TRUSTEE_INTERNAL_SPEC>,
-): ValidatorReasonMap | null {
+): ValidatorReasonMap | undefined {
   const valueToEval = value?.trim() || undefined;
 
   if (spec?.[field]) {
     const result = validateEach(spec[field], valueToEval);
     const validatorReasonMap: ValidatorReasonMap = {};
     if (result.valid) {
-      return null;
+      return undefined;
     } else {
       validatorReasonMap[field] = { reasons: result.reasons };
       return validatorReasonMap;
     }
-  } else {
-    return null;
   }
+
+  return undefined;
 }
 
 export type TrusteeInternalContactFormProps = {
@@ -219,7 +219,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   const validateFieldAndUpdate = (
     field: keyof TrusteeInternalFormData,
     value: string | undefined,
-  ): ValidatorReasonMap | null => {
+  ): void => {
     const error = validateField(field, value, TRUSTEE_INTERNAL_SPEC);
 
     setFieldErrors((prevErrors) => {
@@ -230,8 +230,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
         return rest;
       }
     });
-
-    return error;
   };
 
   const getFormData = (override?: {

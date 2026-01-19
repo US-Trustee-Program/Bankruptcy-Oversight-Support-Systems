@@ -72,7 +72,7 @@ type TrusteeCore = {
   name: string;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
-  assistant: TrusteeAssistant | null;
+  assistant?: TrusteeAssistant;
 };
 
 type TrusteeOptionalFields = {
