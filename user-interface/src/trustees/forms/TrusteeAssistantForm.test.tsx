@@ -48,7 +48,7 @@ describe('TrusteeAssistantForm', () => {
   const mockNavigate = vi.fn();
   let userEvent: ReturnType<typeof TestingUtilities.setupUserEvent>;
 
-  function renderWithRouter(props: { trusteeId: string; assistant?: TrusteeAssistant | null }) {
+  function renderWithRouter(props: { trusteeId: string; assistant?: TrusteeAssistant }) {
     return render(
       <BrowserRouter>
         <TrusteeAssistantForm {...props} />
