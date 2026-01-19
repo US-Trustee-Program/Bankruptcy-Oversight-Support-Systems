@@ -44,22 +44,22 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
         <td>Staff</td>
         <td data-testid={`previous-assignment-${idx}`}>
           {assignmentHistoryHasValue(history.before) ? (
-            history.before
-              .map((assignment) => {
-                return assignment.name;
-              })
-              .join(', ')
+            <>
+              {history.before.map((assignment, assignmentIdx) => (
+                <div key={assignmentIdx}>{assignment.name}</div>
+              ))}
+            </>
           ) : (
             <>(none)</>
           )}
         </td>
         <td data-testid={`new-assignment-${idx}`}>
           {assignmentHistoryHasValue(history.after) ? (
-            history.after
-              .map((assignment) => {
-                return assignment.name;
-              })
-              .join(', ')
+            <>
+              {history.after.map((assignment, assignmentIdx) => (
+                <div key={assignmentIdx}>{assignment.name}</div>
+              ))}
+            </>
           ) : (
             <>(none)</>
           )}
