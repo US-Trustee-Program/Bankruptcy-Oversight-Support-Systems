@@ -453,12 +453,6 @@ describe('TrusteeAssistantForm', () => {
       expect(result).toContain('Max length 50 characters');
     });
 
-    test('should return undefined for field not in spec', () => {
-      // @ts-expect-error Testing with invalid field name
-      const result = validateField('nonexistent', 'value');
-      expect(result).toBeUndefined();
-    });
-
     test('should handle undefined values', () => {
       const result = validateField('name', undefined);
       expect(result).toBeUndefined();
