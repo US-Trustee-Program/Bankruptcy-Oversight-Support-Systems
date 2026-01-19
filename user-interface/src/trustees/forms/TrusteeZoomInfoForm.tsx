@@ -8,6 +8,7 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import React, { useState, useCallback } from 'react';
 import { Trustee } from '@common/cams/trustees';
 import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZOOM_MEETING_ID_REGEX } from '@common/cams/regex';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 const fieldLabels: Record<string, string> = {
   link: 'Zoom Link',
@@ -19,17 +20,17 @@ const fieldLabels: Record<string, string> = {
 const validators: Record<string, (value: string) => string | null> = {
   link: (value) => {
     if (!value.trim()) return `${fieldLabels.link} is required`;
-    if (!WEBSITE_RELAXED_REGEX.test(value)) return `${fieldLabels.link} must be a valid URL`;
-    if (value.length > 255) return 'Max length 255 characters';
+    if (!WEBSITE_RELAXED_REGEX.test(value)) return FIELD_VALIDATION_MESSAGES.ZOOM_LINK;
+    if (value.length > 255) return FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH;
     return null;
   },
   phone: (value) => {
-    if (!value.trim() || !PHONE_REGEX.test(value)) return 'Must be a valid phone number';
+    if (!value.trim() || !PHONE_REGEX.test(value)) return FIELD_VALIDATION_MESSAGES.PHONE_NUMBER;
     return null;
   },
   meetingId: (value) => {
     if (!value.trim()) return `${fieldLabels.meetingId} is required`;
-    if (!ZOOM_MEETING_ID_REGEX.test(value)) return 'Must be 9 to 11 digits';
+    if (!ZOOM_MEETING_ID_REGEX.test(value)) return FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID;
     return null;
   },
   passcode: (value) => {
