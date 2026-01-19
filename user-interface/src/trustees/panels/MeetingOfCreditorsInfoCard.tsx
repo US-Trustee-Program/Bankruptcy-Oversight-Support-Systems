@@ -1,7 +1,8 @@
 import { ZoomInfo } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-import { copyToClipboard, formatMeetingId } from '@/lib/utils/zoomInfo';
+import { formatMeetingId } from '@/lib/utils/zoomInfo';
+import { copyStringToClipboard } from '@/lib/utils/clipBoard';
 
 interface ZoomInfoCardProps {
   zoomInfo?: ZoomInfo;
@@ -46,7 +47,7 @@ export default function MeetingOfCreditorsInfoCard({
               uswdsStyle={UswdsButtonStyle.Unstyled}
               aria-label="Copy Zoom link"
               title="Copy Zoom link"
-              onClick={() => copyToClipboard(zoomInfo.link)}
+              onClick={() => copyStringToClipboard(zoomInfo.link)}
             >
               <IconLabel icon="content_copy" label="" />
             </Button>

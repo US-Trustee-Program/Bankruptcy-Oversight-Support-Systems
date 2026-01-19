@@ -1,4 +1,5 @@
 import { VALID_CASEID_PATTERN } from '@common/cams/cases';
+import { copyStringToClipboard } from './clipBoard';
 
 export function getCaseNumber(caseId: string | undefined): string {
   if (caseId) {
@@ -11,8 +12,6 @@ export function getCaseNumber(caseId: string | undefined): string {
 
 export function copyCaseNumber(caseId: string | undefined): void {
   if (caseId && VALID_CASEID_PATTERN.test(caseId)) {
-    navigator.clipboard?.writeText(caseId).catch(() => {
-      // Silently fail - clipboard API may be unavailable or reject (non-HTTPS, older browsers, etc.)
-    });
+    copyStringToClipboard(caseId);
   }
 }
