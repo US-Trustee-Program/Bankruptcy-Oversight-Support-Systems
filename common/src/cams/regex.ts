@@ -11,6 +11,9 @@ export const PHONE_REGEX =
   /^(?:1-)?\d{3}-\d{3}-\d{4}(?:\s+(?:x|ext\.?|extension[:.]?)\s*\d{1,6})?$/i;
 export const EXTENSION_REGEX = /^\d{1,6}$/;
 
+// Matches Zoom meeting IDs (9 to 11 digits)
+export const ZOOM_MEETING_ID_REGEX = /^\d{9,11}$/;
+
 export const ZIP_REGEX = /^(\d{5}|\d{5}-\d{4})$/;
 
 export const WEBSITE_REGEX =

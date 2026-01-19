@@ -11,6 +11,7 @@ import {
   PHONE_REGEX,
   WEBSITE_RELAXED_REGEX,
   ZIP_REGEX,
+  ZOOM_MEETING_ID_REGEX,
 } from '@common/cams/regex';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
@@ -19,7 +20,6 @@ import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
-const MEETING_ID_REGEX = /^\d{9,11}$/;
 
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
@@ -318,7 +318,7 @@ const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
     V.maxLength(255, 'Max length 255 characters'),
   ],
   phone: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
-  meetingId: [V.matches(MEETING_ID_REGEX, 'Must be 9 to 11 digits')],
+  meetingId: [V.matches(ZOOM_MEETING_ID_REGEX, 'Must be 9 to 11 digits')],
   passcode: [V.minLength(1)],
 };
 
