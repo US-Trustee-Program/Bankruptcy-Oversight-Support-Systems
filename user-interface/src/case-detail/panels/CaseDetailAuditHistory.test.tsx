@@ -146,8 +146,8 @@ describe('audit history tests', () => {
       data: caseHistory,
     });
 
-    const expectedPrevious = assignmentBefore.map((n) => n.name).join(', ');
-    const expectedNew = assignmentAfter.map((n) => n.name).join(', ');
+    const expectedPrevious = assignmentBefore.map((n) => n.name).join('');
+    const expectedNew = assignmentAfter.map((n) => n.name).join('');
 
     render(<CaseDetailAuditHistory caseId={caseId} />);
 
