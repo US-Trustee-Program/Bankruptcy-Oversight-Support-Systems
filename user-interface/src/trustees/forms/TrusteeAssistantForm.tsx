@@ -115,30 +115,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     } as Partial<TrusteeInput>;
   };
 
-  const clearAddressErrorsIfAllEmpty = (
-    fieldName: keyof TrusteeAssistantFormData,
-    value: string | undefined,
-  ): void => {
-    const requiredAddressFields = ['address1', 'city', 'state', 'zipCode'];
-    const isAddressField = requiredAddressFields.includes(fieldName);
-    if (isAddressField && (value === undefined || value.trim() === '')) {
-      const currentData = getFormData({ name: fieldName, value });
-
-      const allAddressFieldsEmpty =
-        !currentData.address1 && !currentData.city && !currentData.state && !currentData.zipCode;
-
-      if (allAddressFieldsEmpty) {
-        setFieldErrors((prevErrors) => {
-          const { ...copy } = prevErrors;
-          for (const field of requiredAddressFields) {
-            delete copy[field];
-          }
-          return copy;
-        });
-      }
-    }
-  };
-
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = event.target;
     const value = event.target.value === '' ? undefined : event.target.value;
@@ -147,27 +123,22 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     updateField(fieldName, value);
     debounce(() => {
       validateFieldAndUpdate(fieldName, value);
-      clearAddressErrorsIfAllEmpty(fieldName, value);
     }, 300);
   };
 
   const handleStateSelection = (selectedOptions: ComboOption[]) => {
     const value = selectedOptions[0]?.value;
     updateField('state', value);
-
     debounce(() => {
       validateFieldAndUpdate('state', value);
-      clearAddressErrorsIfAllEmpty('state', value);
     }, 300);
   };
 
   const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+    const value = e.target.value || undefined;
     updateField('zipCode', value);
-
     debounce(() => {
       validateFieldAndUpdate('zipCode', value);
-      clearAddressErrorsIfAllEmpty('zipCode', value);
     }, 300);
   };
 
@@ -213,15 +184,15 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     field: keyof TrusteeAssistantFormData,
     value: string | undefined,
   ): void => {
-    const reasons = validateField(field, value);
+    const updatedFormData = getFormData({ name: field, value });
 
-    setFieldErrors((prevErrors) => {
-      if (reasons && reasons.length) {
-        return { ...prevErrors, [field]: { reasons } };
-      }
-      const { [field]: _, ...rest } = prevErrors;
-      return rest;
-    });
+    const results = validateObject(TRUSTEE_ASSISTANT_SPEC, updatedFormData);
+
+    if (!results.valid && results.reasonMap) {
+      setFieldErrors(results.reasonMap);
+    } else {
+      setFieldErrors({});
+    }
   };
 
   const getFormData = (override?: {
