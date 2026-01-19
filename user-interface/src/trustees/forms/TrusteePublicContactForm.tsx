@@ -17,6 +17,7 @@ import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput } from '@common/cams/trustees';
 import { TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from './trusteeForms.types';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
+import { normalizeFormData } from './trusteeForms.utils';
 
 const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePublicFormData => {
   return {
@@ -99,32 +100,9 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     } as TrusteeInput;
   };
 
-  const getFormData = () => {
-    const trimmedData = {
-      ...formData,
-      name: formData.name?.trim(),
-      address1: formData.address1?.trim(),
-      address2: formData.address2?.trim(),
-      city: formData.city?.trim(),
-      zipCode: formData.zipCode?.trim(),
-      phone: formData.phone?.trim(),
-      extension: formData.extension?.trim(),
-      email: formData.email?.trim(),
-      website: formData.website?.trim(),
-    };
-
-    for (const key of Object.keys(trimmedData)) {
-      if (trimmedData[key as keyof TrusteePublicFormData] === '') {
-        trimmedData[key as keyof TrusteePublicFormData] = undefined;
-      }
-    }
-
-    return trimmedData;
-  };
-
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
-    const currentFormData = getFormData();
+    const currentFormData = normalizeFormData(formData);
 
     if (validateFormAndUpdateErrors(currentFormData)) {
       setFieldErrors({});
