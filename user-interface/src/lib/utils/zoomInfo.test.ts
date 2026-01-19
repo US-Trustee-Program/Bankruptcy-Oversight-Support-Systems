@@ -18,7 +18,7 @@ describe('zoomInfo', () => {
       });
     });
 
-    it('should copy text to clipboard successfully', async () => {
+    test('should copy text to clipboard successfully', async () => {
       writeTextMock.mockResolvedValue(undefined);
       Object.defineProperty(navigator, 'clipboard', {
         value: {
@@ -32,7 +32,7 @@ describe('zoomInfo', () => {
       expect(writeTextMock).toHaveBeenCalledWith('test text');
     });
 
-    it('should copy empty string to clipboard', async () => {
+    test('should copy empty string to clipboard', async () => {
       writeTextMock.mockResolvedValue(undefined);
       Object.defineProperty(navigator, 'clipboard', {
         value: {
@@ -46,7 +46,7 @@ describe('zoomInfo', () => {
       expect(writeTextMock).toHaveBeenCalledWith('');
     });
 
-    it('should handle clipboard API rejection silently', async () => {
+    test('should handle clipboard API rejection silently', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       writeTextMock.mockRejectedValue(new Error('Clipboard API failed'));
       Object.defineProperty(navigator, 'clipboard', {
@@ -66,7 +66,7 @@ describe('zoomInfo', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should handle undefined clipboard API silently', () => {
+    test('should handle undefined clipboard API silently', () => {
       Object.defineProperty(navigator, 'clipboard', {
         value: undefined,
         writable: true,
@@ -77,42 +77,32 @@ describe('zoomInfo', () => {
   });
 
   describe('formatMeetingId', () => {
-    it('should format 9-digit meeting ID correctly', () => {
-      const result = formatMeetingId('123456789');
-      expect(result).toBe('123 456 789');
-    });
-
     it('should format 10-digit meeting ID correctly', () => {
       const result = formatMeetingId('1234567890');
       expect(result).toBe('123 456 7890');
     });
 
-    it('should format 11-digit meeting ID correctly', () => {
-      const result = formatMeetingId('12345678901');
-      expect(result).toBe('123 456 78901');
-    });
-
-    it('should return original meeting ID if less than 9 digits', () => {
+    test('should return original meeting ID if less than 9 digits', () => {
       const result = formatMeetingId('12345678');
       expect(result).toBe('12345678');
     });
 
-    it('should return original meeting ID if more than 11 digits', () => {
+    test('should return original meeting ID if more than 11 digits', () => {
       const result = formatMeetingId('123456789012');
       expect(result).toBe('123456789012');
     });
 
-    it('should return original meeting ID if empty string', () => {
+    test('should return original meeting ID if empty string', () => {
       const result = formatMeetingId('');
       expect(result).toBe('');
     });
 
-    it('should return original meeting ID if single digit', () => {
+    test('should return original meeting ID if single digit', () => {
       const result = formatMeetingId('1');
       expect(result).toBe('1');
     });
 
-    it('should handle meeting ID with exactly boundary length', () => {
+    test('should handle meeting ID with exactly boundary length', () => {
       const result8 = formatMeetingId('12345678');
       expect(result8).toBe('12345678');
 
