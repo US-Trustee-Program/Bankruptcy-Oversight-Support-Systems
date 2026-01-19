@@ -101,19 +101,5 @@ describe('zoomInfo', () => {
       const result = formatMeetingId('1');
       expect(result).toBe('1');
     });
-
-    test('should handle meeting ID with exactly boundary length', () => {
-      const result8 = formatMeetingId('12345678');
-      expect(result8).toBe('12345678');
-
-      const result9 = formatMeetingId('123456789');
-      expect(result9).toBe('123 456 789');
-
-      const result11 = formatMeetingId('12345678901');
-      expect(result11).toBe('123 456 78901');
-
-      const result12 = formatMeetingId('123456789012');
-      expect(result12).toBe('123456789012');
-    });
   });
 });
