@@ -671,7 +671,7 @@ describe('test cams combobox', () => {
     renderWithProps({ options: getDefaultOptions() }, ref);
     await toggleDropdown();
 
-    const button1 = document.querySelector('.button1');
+    const button1 = screen.getByRole('button', { name: 'button' });
 
     await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
     await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 1);
@@ -689,11 +689,9 @@ describe('test cams combobox', () => {
     });
 
     // Click button1 and explicitly set focus to it
-    await userEvent.click(button1!);
+    await userEvent.click(button1);
     (button1 as HTMLButtonElement).focus();
-    await waitFor(() => {
-      expect(button1!).toHaveFocus();
-    });
+    expect(button1).toHaveFocus();
 
     // Tab to combobox container first (clear button comes after in DOM)
     await userEvent.tab();
@@ -701,18 +699,14 @@ describe('test cams combobox', () => {
 
     // Tab to clear button
     await userEvent.tab();
-    await waitFor(() => {
-      expect(clearAllBtn).toHaveFocus();
-    });
+    expect(clearAllBtn).toHaveFocus();
 
     expect(isDropdownClosed()).toBeTruthy();
 
-    // Tab past the combobox to next input
+    // Tab past the combobox to next input field
     await userEvent.tab();
-    const input1 = document.querySelector('.input1');
-    await waitFor(() => {
-      expect(input1).toHaveFocus();
-    });
+    const nextInput = screen.getByRole('textbox');
+    expect(nextInput).toHaveFocus();
   });
 
   test('should return selections in onUpdateSelection when a selection is made', async () => {
