@@ -412,7 +412,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['phone']?.reasons?.join(' ')}
                 autoComplete="off"
-                ariaDescription="Example: (123)456-7890"
               />
               <Input
                 id="assistant-extension"
