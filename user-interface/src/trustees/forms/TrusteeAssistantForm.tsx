@@ -17,7 +17,7 @@ import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
 import { TRUSTEE_ASSISTANT_SPEC, TrusteeAssistantFormData } from './trusteeForms.types';
-import { validateEach, validateObject, ValidatorReasonMap } from '@common/cams/validation';
+import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
@@ -78,8 +78,10 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const { trusteeId, assistant } = props;
 
+  type FieldErrors = Partial<Record<keyof TrusteeAssistantFormData | '$', string[] | undefined>>;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<ValidatorReasonMap>({});
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formData, setFormData] = useState<TrusteeAssistantFormData>(getInitialFormData(assistant));
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
@@ -169,12 +171,19 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     const results = validateObject(TRUSTEE_ASSISTANT_SPEC, formData);
 
     if (!results.valid && results.reasonMap) {
-      setFieldErrors(results.reasonMap);
-    }
+      setFieldErrors(
+        Object.fromEntries(
+          Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]),
+        ) as FieldErrors,
+      );
 
-    if (!results.valid && results.reasonMap?.$?.reasons) {
-      setSaveAlert(results.reasonMap.$.reasons.join(' '));
-      partialAddressAlertRef.current?.show();
+      if (results.reasonMap?.$?.reasons) {
+        setSaveAlert(results.reasonMap.$.reasons.join(' '));
+        partialAddressAlertRef.current?.show();
+      }
+    } else {
+      setFieldErrors({});
+      setSaveAlert(null);
     }
 
     return !!results.valid;
@@ -184,15 +193,12 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     field: keyof TrusteeAssistantFormData,
     value: string | undefined,
   ): void => {
-    const updatedFormData = getFormData({ name: field, value });
+    const reasons = validateField(field, value);
 
-    const results = validateObject(TRUSTEE_ASSISTANT_SPEC, updatedFormData);
-
-    if (!results.valid && results.reasonMap) {
-      setFieldErrors(results.reasonMap);
-    } else {
-      setFieldErrors({});
-    }
+    setFieldErrors((prev) => ({
+      ...prev,
+      [field]: reasons,
+    }));
   };
 
   const getFormData = (override?: {
@@ -218,7 +224,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     }
 
     if (override) {
-      return { ...trimmedData, [override.name]: override.value } as TrusteeAssistantFormData;
+      const trimmedOverride = override.value?.trim() || undefined;
+      return { ...trimmedData, [override.name]: trimmedOverride } as TrusteeAssistantFormData;
     }
     return trimmedData;
   };
@@ -267,7 +274,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 required
                 value={formData.name}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['name']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['name']?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -281,7 +288,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 required
                 value={formData.address1}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['address1']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['address1']?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -294,7 +301,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 label="Address Line 2"
                 value={formData.address2 || ''}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['address2']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['address2']?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -308,7 +315,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 required
                 value={formData.city}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['city']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['city']?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -323,7 +330,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 selections={formData.state ? [formData.state] : []}
                 onUpdateSelection={handleStateSelection}
                 autoComplete="off"
-                errorMessage={fieldErrors['state']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['state']?.join(' ')}
               ></UsStatesComboBox>
             </div>
 
@@ -336,7 +343,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 required
                 value={formData.zipCode}
                 onChange={handleZipCodeChange}
-                errorMessage={fieldErrors['zipCode']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['zipCode']?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Example: 12345"
               />
@@ -353,7 +360,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 label="Phone"
                 required
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['phone']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['phone']?.join(' ')}
                 autoComplete="off"
               />
               <Input
@@ -363,7 +370,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 label="Extension"
                 value={formData.extension || ''}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['extension']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['extension']?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
               />
@@ -378,7 +385,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 required
                 value={formData.email}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['email']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['email']?.join(' ')}
                 type="email"
                 autoComplete="off"
               />

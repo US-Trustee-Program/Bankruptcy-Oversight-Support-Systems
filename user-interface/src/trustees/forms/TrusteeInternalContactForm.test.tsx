@@ -409,17 +409,20 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     await userEvent.clear(addr1);
 
-    // With immediate validation, address1 error appears immediately
-    expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).toBeInTheDocument();
+    // Per-field validation doesn't show group-level errors immediately
+    // Address field is optional, so no error appears until submit
+    expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
+    // On submit, full form validation runs and shows partial address error
     expect(screen.queryByText(PARTIAL_ADDRESS_ERROR_REASON)).toBeInTheDocument();
+    expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).toBeInTheDocument();
 
     await userEvent.clear(city);
 
-    // With immediate validation, city error appears immediately
-    expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).toBeInTheDocument();
+    // Per-field validation doesn't show group-level errors immediately
+    expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -428,8 +431,8 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     await userEvent.clear(zip);
 
-    // With immediate validation, zip error appears immediately
-    expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).toBeInTheDocument();
+    // Per-field validation doesn't show group-level errors immediately
+    expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -438,6 +441,11 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     await TestingUtilities.clearComboBoxSelection('trustee-state');
 
+    // Errors from previous submit persist until revalidation
+    // All address fields are now empty, click Save to revalidate
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    // Now that all address fields are empty (valid state), errors should clear
     expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
     expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
     expect(screen.queryByText(STATE_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
@@ -532,40 +540,36 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(validateSpy).toHaveBeenCalled();
   });
 
-  test('validateField returns undefined when spec does not contain the field', () => {
-    const result = validateField('address1', 'value', {});
+  test('validateField returns undefined when field is not in spec', () => {
+    // @ts-expect-error Testing with a field that doesn't exist in spec
+    const result = validateField('nonexistentField', 'value');
     expect(result).toBeUndefined();
   });
 
   test('trims value before validating and returns undefined when validateEach says valid', () => {
     const spy = vi.spyOn(Validation, 'validateEach').mockReturnValue(Validation.VALID);
 
-    const spec: Partial<typeof TRUSTEE_INTERNAL_SPEC> = {
-      address1: TRUSTEE_INTERNAL_SPEC.address1,
-    };
-    const result = validateField('address1', '  abc  ', spec);
+    const result = validateField('address1', '  abc  ');
 
-    expect(spy).toHaveBeenCalledWith(spec.address1, 'abc');
+    expect(spy).toHaveBeenCalledWith(TRUSTEE_INTERNAL_SPEC.address1, 'abc');
     expect(result).toBeUndefined();
   });
 
-  test('returns a ValidatorReasonMap when validateEach reports invalid', () => {
+  test('returns error reasons when validateEach reports invalid', () => {
     const tooLongResult: Validation.ValidatorResult = { reasons: ['too long'] };
     vi.spyOn(Validation, 'validateEach').mockReturnValue(tooLongResult);
 
-    const spec: Partial<typeof TRUSTEE_INTERNAL_SPEC> = { email: TRUSTEE_INTERNAL_SPEC.email };
-    const result = validateField('email', 'bad', spec);
+    const result = validateField('email', 'bad');
 
-    expect(result).toEqual({ email: { reasons: ['too long'] } });
+    expect(result).toEqual(['too long']);
   });
 
   test('converts whitespace-only value to undefined before calling validateEach', () => {
     const spy2 = vi.spyOn(Validation, 'validateEach').mockReturnValue(Validation.VALID);
 
-    const spec: Partial<typeof TRUSTEE_INTERNAL_SPEC> = { city: TRUSTEE_INTERNAL_SPEC.city };
-    validateField('city', '   ', spec);
+    validateField('city', '   ');
 
-    expect(spy2).toHaveBeenCalledWith(spec.city, undefined);
+    expect(spy2).toHaveBeenCalledWith(TRUSTEE_INTERNAL_SPEC.city, undefined);
   });
 
   test('getDynamicSpec removes spec keys that are not present in form data (covers delete path)', async () => {
