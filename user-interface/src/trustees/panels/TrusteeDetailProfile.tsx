@@ -104,7 +104,7 @@ export default function TrusteeDetailProfile({
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 aria-label="Edit trustee assistant information"
                 title="Edit trustee assistant information"
-                onClick={trustee.assistant !== null ? onEditAssistant : onAddAssistant}
+                onClick={trustee.assistant ? onEditAssistant : onAddAssistant}
               >
                 <IconLabel icon="edit" label="Edit" />
               </Button>
