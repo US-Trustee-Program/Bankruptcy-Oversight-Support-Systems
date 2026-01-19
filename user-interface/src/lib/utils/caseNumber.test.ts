@@ -61,7 +61,6 @@ describe('Testing the clipboard with caseId', () => {
   test('should handle clipboard API errors gracefully', async () => {
     writeTextMock.mockRejectedValueOnce(new Error('Clipboard unavailable'));
 
-    // Should not throw an error
     expect(() => copyCaseNumber(testCaseDetail.caseId)).not.toThrow();
 
     await waitFor(() => {
@@ -76,7 +75,6 @@ describe('Testing the clipboard with caseId', () => {
       configurable: true,
     });
 
-    // Should not throw an error when clipboard API is unavailable
     expect(() => copyCaseNumber(testCaseDetail.caseId)).not.toThrow();
 
     // Restore clipboard

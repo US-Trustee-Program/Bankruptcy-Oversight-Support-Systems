@@ -280,7 +280,6 @@ describe('TrusteeDetailProfile', () => {
   test('should render edit button labels correctly', () => {
     renderWithProps({});
 
-    // Three edit buttons: Public, Other Information, Internal, Zoom Info
     expect(screen.getAllByText('Edit')).toHaveLength(4);
   });
 
