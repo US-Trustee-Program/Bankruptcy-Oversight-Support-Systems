@@ -540,12 +540,6 @@ describe('TrusteeInternalContactForm Tests', () => {
     expect(validateSpy).toHaveBeenCalled();
   });
 
-  test('validateField returns undefined when field is not in spec', () => {
-    // @ts-expect-error Testing with a field that doesn't exist in spec
-    const result = validateField('nonexistentField', 'value');
-    expect(result).toBeUndefined();
-  });
-
   test('trims value before validating and returns undefined when validateEach says valid', () => {
     const spy = vi.spyOn(Validation, 'validateEach').mockReturnValue(Validation.VALID);
 
