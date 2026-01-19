@@ -151,9 +151,11 @@ import { useActionState } from 'react';
 import { Api2 } from '@/lib/models/api2';
 import Validators from '@common/cams/validators';
 import { validateObject, ValidationSpec } from '@common/cams/validation';
+import { EMAIL_REGEX } from '@common/cams/regex';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 const subscriptionSpec: ValidationSpec<{ email: string }> = {
-  email: [Validators.isEmailAddress],
+  email: [Validators.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL)],
 };
 
 async function submitWithValidation(prevState, formData) {

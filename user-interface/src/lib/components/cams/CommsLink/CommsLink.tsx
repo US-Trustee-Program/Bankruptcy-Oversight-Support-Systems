@@ -2,6 +2,8 @@ import './CommsLink.scss';
 import { ContactInformation } from '@common/cams/contact';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Validators from '@common/cams/validators';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import { EMAIL_REGEX, PHONE_REGEX } from '@common/cams/regex';
 
 type CommsLinkProps = {
   contact: Omit<ContactInformation, 'address'>;
@@ -32,8 +34,11 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
   const { email, website, phone } = contact;
   const { number, extension } = phone ?? {};
 
-  const isValidEmail = Validators.isEmailAddress(email).valid;
-  const isValidPhoneNumber = Validators.isPhoneNumber(number).valid;
+  const isValidEmail = Validators.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL)(email);
+  const isValidPhoneNumber = Validators.matches(
+    PHONE_REGEX,
+    FIELD_VALIDATION_MESSAGES.PHONE_NUMBER,
+  )(number);
 
   let href = '';
   let labelToUse = label ?? '';
