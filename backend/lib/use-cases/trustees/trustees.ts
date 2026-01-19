@@ -18,6 +18,7 @@ import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
 import { Trustee, TrusteeHistory, TrusteeInput, ZoomInfo } from '@common/cams/trustees';
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -278,25 +279,23 @@ const addressSpec: ValidationSpec<Address> = {
   address3: [V.optional(V.maxLength(50))],
   city: [V.minLength(1)],
   state: [V.exactLength(2)],
-  zipCode: [V.matches(ZIP_REGEX, 'Must be valid zip code')],
+  zipCode: [V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE)],
   countryCode: [V.exactLength(2)],
 };
 
 const phoneSpec: ValidationSpec<PhoneNumber> = {
-  number: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
-  extension: [
-    V.optional(V.matches(EXTENSION_REGEX, 'Provided extension does not match regular expression')),
-  ],
+  number: [V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER)],
+  extension: [V.optional(V.matches(EXTENSION_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION))],
 };
 
 const contactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.spec(addressSpec)],
   phone: [V.optional(V.spec(phoneSpec))],
-  email: [V.optional(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression'))],
+  email: [V.optional(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL))],
   website: [
     V.optional(
-      V.matches(WEBSITE_RELAXED_REGEX, 'Provided website does not match regular expression'),
-      V.maxLength(255, 'Website URL must be less than or equal to 255 characters'),
+      V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.WEBSITE),
+      V.maxLength(255, FIELD_VALIDATION_MESSAGES.WEBSITE_MAX_LENGTH),
     ),
   ],
 };
@@ -304,21 +303,17 @@ const contactInformationSpec: ValidationSpec<ContactInformation> = {
 const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
   phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
-  email: [
-    V.optional(
-      V.nullable(V.matches(EMAIL_REGEX, 'Provided email does not match regular expression')),
-    ),
-  ],
+  email: [V.optional(V.nullable(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL_PROVIDED)))],
 };
 
 const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
   link: [
     V.minLength(1),
-    V.matches(WEBSITE_RELAXED_REGEX, 'Zoom Link must be a valid URL'),
-    V.maxLength(255, 'Max length 255 characters'),
+    V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
+    V.maxLength(255, FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH),
   ],
-  phone: [V.matches(PHONE_REGEX, 'Provided phone number does not match regular expression')],
-  meetingId: [V.matches(ZOOM_MEETING_ID_REGEX, 'Must be 9 to 11 digits')],
+  phone: [V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER)],
+  meetingId: [V.matches(ZOOM_MEETING_ID_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID)],
   passcode: [V.minLength(1)],
 };
 

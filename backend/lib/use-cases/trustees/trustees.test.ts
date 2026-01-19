@@ -7,6 +7,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 describe('TrusteesUseCase tests', () => {
   let context: ApplicationContext;
@@ -647,9 +648,11 @@ describe('TrusteesUseCase tests', () => {
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
-        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
-          BadRequestError,
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
         );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.PHONE_NUMBER);
       });
 
       test('should throw BadRequestError for zoomInfo with invalid link', async () => {
@@ -661,9 +664,11 @@ describe('TrusteesUseCase tests', () => {
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
-        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
-          BadRequestError,
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
         );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_LINK);
       });
 
       test('should throw BadRequestError for zoomInfo with invalid meeting ID (too short)', async () => {
@@ -675,9 +680,11 @@ describe('TrusteesUseCase tests', () => {
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
-        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
-          BadRequestError,
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
         );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
       });
 
       test('should throw BadRequestError for zoomInfo with invalid meeting ID (too long)', async () => {
@@ -689,9 +696,11 @@ describe('TrusteesUseCase tests', () => {
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
-        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
-          BadRequestError,
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
         );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
       });
 
       test('should throw BadRequestError for zoomInfo with non-numeric meeting ID', async () => {
@@ -703,9 +712,11 @@ describe('TrusteesUseCase tests', () => {
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
-        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
-          BadRequestError,
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
         );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
       });
 
       test('should throw BadRequestError for zoomInfo with link exceeding max length', async () => {
@@ -717,9 +728,11 @@ describe('TrusteesUseCase tests', () => {
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
-        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
-          BadRequestError,
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
         );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH);
       });
 
       test('should throw BadRequestError for zoomInfo with empty required fields', async () => {
