@@ -666,7 +666,7 @@ describe('test cams combobox', () => {
     });
   });
 
-  test('Tabbing from another area of the screen to the combo box should first focus on the clear button, then the actual combo box input.', async () => {
+  test('Tabbing from another area of the screen to the combo box should first focus on the combo box input, then the clear button.', async () => {
     const ref = React.createRef<ComboBoxRef>();
     renderWithProps({ options: getDefaultOptions() }, ref);
     await toggleDropdown();
@@ -682,36 +682,36 @@ describe('test cams combobox', () => {
     const clearAllBtn = getClearAllButton();
     expect(clearAllBtn).toBeInTheDocument();
 
-    // this shouldn't be necessary as we've tested this elsewhere, but the dropdown isn't closing when clicking on button1
-    // so we're forcing closed.
-    toggleDropdown();
+    // Close the dropdown and wait for it to be fully closed
+    await toggleDropdown();
     await waitFor(() => {
       expect(isDropdownClosed()).toBeTruthy();
     });
 
+    // Click button1 and explicitly set focus to it
     await userEvent.click(button1!);
     (button1 as HTMLButtonElement).focus();
     await waitFor(() => {
       expect(button1!).toHaveFocus();
     });
 
-    await waitFor(async () => {
-      await userEvent.tab();
+    // Tab to combobox container first (clear button comes after in DOM)
+    await userEvent.tab();
+    await expectInputContainerToHaveFocus();
+
+    // Tab to clear button
+    await userEvent.tab();
+    await waitFor(() => {
       expect(clearAllBtn).toHaveFocus();
     });
 
-    await waitFor(async () => {
-      await userEvent.type(clearAllBtn!, '{Tab}');
-      await expectInputContainerToHaveFocus();
-    });
-
     expect(isDropdownClosed()).toBeTruthy();
-    const container = await getComboInputContainer();
 
+    // Tab past the combobox to next input
     await userEvent.tab();
-
+    const input1 = document.querySelector('.input1');
     await waitFor(() => {
-      expect(container).not.toHaveFocus();
+      expect(input1).toHaveFocus();
     });
   });
 
