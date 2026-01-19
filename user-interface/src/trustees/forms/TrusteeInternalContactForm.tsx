@@ -16,12 +16,7 @@ import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput } from '@common/cams/trustees';
 import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './trusteeForms.types';
-import {
-  validateEach,
-  validateObject,
-  ValidationSpec,
-  ValidatorReasonMap,
-} from '@common/cams/validation';
+import { validateEach, validateObject, ValidatorReasonMap } from '@common/cams/validation';
 import { ContactInformation } from '@common/cams/contact';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
@@ -108,46 +103,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     } as Partial<TrusteeInput>;
   };
 
-  const getDynamicSpec = (currentFormData: TrusteeInternalFormData) => {
-    const spec: Partial<ValidationSpec<TrusteeInternalFormData>> = { ...TRUSTEE_INTERNAL_SPEC };
-
-    const keys = Object.keys(spec) as Array<keyof TrusteeInternalFormData>;
-    for (const key of keys) {
-      if ((key as unknown as string) === '$') {
-        continue;
-      }
-      if (!(key in currentFormData)) {
-        delete spec[key];
-      }
-    }
-
-    return spec;
-  };
-
-  const clearAddressErrorsIfAllEmpty = (
-    fieldName: keyof TrusteeInternalFormData,
-    value: string | undefined,
-  ): void => {
-    const requiredAddressFields = ['address1', 'city', 'state', 'zipCode'];
-    const isAddressField = requiredAddressFields.includes(fieldName);
-    if (isAddressField && (value === undefined || value.trim() === '')) {
-      const currentData = getFormData({ name: fieldName, value });
-
-      const allAddressFieldsEmpty =
-        !currentData.address1 && !currentData.city && !currentData.state && !currentData.zipCode;
-
-      if (allAddressFieldsEmpty) {
-        setFieldErrors((prevErrors) => {
-          const { ...copy } = prevErrors;
-          for (const field of requiredAddressFields) {
-            delete copy[field];
-          }
-          return copy;
-        });
-      }
-    }
-  };
-
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = event.target;
     const value = event.target.value === '' ? undefined : event.target.value;
@@ -156,27 +111,22 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     updateField(fieldName, value);
     debounce(() => {
       validateFieldAndUpdate(fieldName, value);
-      clearAddressErrorsIfAllEmpty(fieldName, value);
     }, 300);
   };
 
   const handleStateSelection = (selectedOptions: ComboOption[]) => {
     const value = selectedOptions[0]?.value;
     updateField('state', value);
-
     debounce(() => {
       validateFieldAndUpdate('state', value);
-      clearAddressErrorsIfAllEmpty('state', value);
     }, 300);
   };
 
   const handleZipCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+    const value = e.target.value || undefined;
     updateField('zipCode', value);
-
     debounce(() => {
       validateFieldAndUpdate('zipCode', value);
-      clearAddressErrorsIfAllEmpty('zipCode', value);
     }, 300);
   };
 
@@ -204,8 +154,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   };
 
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
-    const spec = getDynamicSpec(formData);
-    const results = validateObject(spec, formData);
+    const results = validateObject(TRUSTEE_INTERNAL_SPEC, formData);
     if (!results.valid && results.reasonMap) {
       setFieldErrors(results.reasonMap);
     }
@@ -220,16 +169,15 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     field: keyof TrusteeInternalFormData,
     value: string | undefined,
   ): void => {
-    const error = validateField(field, value, TRUSTEE_INTERNAL_SPEC);
+    const updatedFormData = getFormData({ name: field, value });
 
-    setFieldErrors((prevErrors) => {
-      if (error) {
-        return { ...prevErrors, ...error };
-      } else {
-        const { [field]: _, ...rest } = prevErrors;
-        return rest;
-      }
-    });
+    const results = validateObject(TRUSTEE_INTERNAL_SPEC, updatedFormData);
+
+    if (!results.valid && results.reasonMap) {
+      setFieldErrors(results.reasonMap);
+    } else {
+      setFieldErrors({});
+    }
   };
 
   const getFormData = (override?: {

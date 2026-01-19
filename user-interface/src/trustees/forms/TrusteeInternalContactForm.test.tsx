@@ -409,7 +409,8 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     await userEvent.clear(addr1);
 
-    expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
+    // With immediate validation, address1 error appears immediately
+    expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
@@ -417,11 +418,9 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     await userEvent.clear(city);
 
-    expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
+    // With immediate validation, city error appears immediately
+    expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(city).toHaveValue('');
-    });
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).toBeInTheDocument();
@@ -429,9 +428,9 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     await userEvent.clear(zip);
 
-    await waitFor(() => {
-      expect(zip).toHaveValue('');
-    });
+    // With immediate validation, zip error appears immediately
+    expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).toBeInTheDocument();
+
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).toBeInTheDocument();
