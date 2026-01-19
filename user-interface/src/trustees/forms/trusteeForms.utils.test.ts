@@ -123,4 +123,56 @@ describe('normalizeFormData', () => {
       email: 'jane@example.com',
     });
   });
+
+  test('should exclude specified fields from normalization', () => {
+    const formData = {
+      name: '  John  ',
+      code: '  ABC123  ',
+      id: '  XYZ  ',
+    };
+
+    const result = normalizeFormData(formData, ['code', 'id']);
+
+    expect(result.name).toBe('John');
+    expect(result.code).toBe('  ABC123  ');
+    expect(result.id).toBe('  XYZ  ');
+  });
+
+  test('should exclude single field from normalization', () => {
+    const formData = {
+      name: '  John  ',
+      specialCode: '  PRESERVE  ',
+    };
+
+    const result = normalizeFormData(formData, ['specialCode']);
+
+    expect(result.name).toBe('John');
+    expect(result.specialCode).toBe('  PRESERVE  ');
+  });
+
+  test('should handle empty excludeFields array', () => {
+    const formData = {
+      name: '  John  ',
+      email: '  test@example.com  ',
+    };
+
+    const result = normalizeFormData(formData, []);
+
+    expect(result.name).toBe('John');
+    expect(result.email).toBe('test@example.com');
+  });
+
+  test('should preserve non-string values in excluded fields', () => {
+    const formData = {
+      name: '  John  ',
+      count: 42,
+      active: true,
+    };
+
+    const result = normalizeFormData(formData, ['count']);
+
+    expect(result.name).toBe('John');
+    expect(result.count).toBe(42);
+    expect(result.active).toBe(true);
+  });
 });
