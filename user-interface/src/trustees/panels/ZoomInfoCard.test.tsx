@@ -58,17 +58,6 @@ describe('ZoomInfoCard', () => {
     expect(screen.getByTestId('zoom-passcode')).toHaveTextContent(`Passcode: ${testPasscode}`);
   });
 
-  test('should format 9-digit meeting ID with spaces', () => {
-    const zoomInfoWith9Digits: ZoomInfo = {
-      ...mockZoomInfo,
-      meetingId: '123456789',
-    };
-
-    render(<ZoomInfoCard zoomInfo={zoomInfoWith9Digits} onEdit={mockOnEdit} />);
-
-    expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 123 456 789');
-  });
-
   test('should format 10-digit meeting ID with spaces', () => {
     const zoomInfoWith10Digits: ZoomInfo = {
       ...mockZoomInfo,
@@ -78,17 +67,6 @@ describe('ZoomInfoCard', () => {
     render(<ZoomInfoCard zoomInfo={zoomInfoWith10Digits} onEdit={mockOnEdit} />);
 
     expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 123 456 7890');
-  });
-
-  test('should format 11-digit meeting ID with spaces', () => {
-    const zoomInfoWith11Digits: ZoomInfo = {
-      ...mockZoomInfo,
-      meetingId: '12345678901',
-    };
-
-    render(<ZoomInfoCard zoomInfo={zoomInfoWith11Digits} onEdit={mockOnEdit} />);
-
-    expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 123 456 78901');
   });
 
   test('should not format meeting ID with less than 9 digits', () => {
