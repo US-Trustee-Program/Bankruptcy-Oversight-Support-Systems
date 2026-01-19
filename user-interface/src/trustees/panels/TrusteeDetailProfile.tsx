@@ -3,7 +3,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
-import ZoomInfoCard from './ZoomInfoCard';
+import MeetingOfCreditorsInfoCard from './MeetingOfCreditorsInfoCard';
 
 export interface TrusteeDetailProfileProps {
   trustee: Trustee;
@@ -40,7 +40,7 @@ export default function TrusteeDetailProfile({
             <div className="trustee-name">{trustee.name}</div>
             <FormattedContact contact={trustee.public} testIdPrefix="trustee" />
           </div>
-          <ZoomInfoCard zoomInfo={trustee.zoomInfo} onEdit={onEditZoomInfo} />
+          <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} onEdit={onEditZoomInfo} />
           <div className="trustee-other-information record-detail-card">
             <div className="title-bar">
               <h3>Other Information</h3>

@@ -8,7 +8,10 @@ interface ZoomInfoCardProps {
   onEdit: () => void;
 }
 
-export default function ZoomInfoCard({ zoomInfo, onEdit }: Readonly<ZoomInfoCardProps>) {
+export default function MeetingOfCreditorsInfoCard({
+  zoomInfo,
+  onEdit,
+}: Readonly<ZoomInfoCardProps>) {
   return (
     <div className="trustee-zoom-information record-detail-card" data-testid="zoom-info-card">
       <div className="title-bar">
