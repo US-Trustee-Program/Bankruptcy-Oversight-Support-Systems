@@ -1,3 +1,4 @@
+import './TrusteeAssistantForm.scss';
 import './TrusteeContactForm.scss';
 import React, { useCallback, useRef, useState } from 'react';
 import Input from '@/lib/components/uswds/Input';
@@ -14,33 +15,46 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeInput } from '@common/cams/trustees';
-import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './trusteeForms.types';
+import { TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
+import { TRUSTEE_ASSISTANT_SPEC, TrusteeAssistantFormData } from './trusteeForms.types';
 import { validateEach, validateObject } from '@common/cams/validation';
-import { ContactInformation } from '@common/cams/contact';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
-const getInitialFormData = (
-  info: Partial<ContactInformation> | undefined,
-): TrusteeInternalFormData => {
+const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
+  if (!assistant) {
+    return {
+      name: undefined,
+      address1: undefined,
+      address2: undefined,
+      city: undefined,
+      state: undefined,
+      zipCode: undefined,
+      phone: undefined,
+      extension: undefined,
+      email: undefined,
+    };
+  }
+
+  const contact = assistant.contact;
   return {
-    address1: info?.address?.address1,
-    address2: info?.address?.address2,
-    city: info?.address?.city,
-    state: info?.address?.state,
-    zipCode: info?.address?.zipCode,
-    phone: info?.phone?.number,
-    extension: info?.phone?.extension,
-    email: info?.email,
+    name: assistant.name,
+    address1: contact.address?.address1,
+    address2: contact.address?.address2,
+    city: contact.address?.city,
+    state: contact.address?.state,
+    zipCode: contact.address?.zipCode,
+    phone: contact.phone?.number,
+    extension: contact.phone?.extension,
+    email: contact.email,
   };
 };
 
 export function validateField(
-  field: keyof TrusteeInternalFormData,
+  field: keyof TrusteeAssistantFormData,
   value: string | undefined,
 ): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
-  const rules = TRUSTEE_INTERNAL_SPEC[field];
+  const rules = TRUSTEE_ASSISTANT_SPEC[field];
 
   if (!rules) {
     return undefined;
@@ -50,51 +64,55 @@ export function validateField(
   return result.valid ? undefined : result.reasons;
 }
 
-export type TrusteeInternalContactFormProps = {
+type TrusteeAssistantFormProps = {
   trusteeId: string;
-  cancelTo: string;
-  trustee?: Partial<TrusteeInput>;
+  assistant?: TrusteeAssistant;
 };
 
-// TODO: When we send null to the API, we are getting null back but we agreed that null should only be sent in the PATCH payload.
-function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormProps>) {
+function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const flags = useFeatureFlags();
 
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
 
-  const { cancelTo } = props;
+  const { trusteeId, assistant } = props;
 
-  type FieldErrors = Partial<Record<keyof TrusteeInternalFormData | '$', string[] | undefined>>;
+  type FieldErrors = Partial<Record<keyof TrusteeAssistantFormData | '$', string[] | undefined>>;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [formData, setFormData] = useState<TrusteeInternalFormData>(
-    getInitialFormData(props.trustee?.internal),
-  );
+  const [formData, setFormData] = useState<TrusteeAssistantFormData>(getInitialFormData(assistant));
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
-  const mapPayload = (formData: TrusteeInternalFormData): Partial<TrusteeInput> => {
+  const mapPayload = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
+    // If name is empty, clear the entire assistant
+    if (!formData.name?.trim()) {
+      return { assistant: undefined };
+    }
+
     return {
-      internal: {
-        address:
-          formData.address1 && formData.city && formData.state && formData.zipCode
-            ? {
-                address1: formData.address1,
-                ...(formData.address2 && { address2: formData.address2 }),
-                city: formData.city,
-                state: formData.state,
-                zipCode: formData.zipCode,
-                countryCode: 'US',
-              }
-            : null,
-        phone: formData.phone ? { number: formData.phone, extension: formData.extension } : null,
-        email: formData.email ?? null,
+      assistant: {
+        name: formData.name.trim(),
+        contact: {
+          address:
+            formData.address1 && formData.city && formData.state && formData.zipCode
+              ? {
+                  address1: formData.address1,
+                  ...(formData.address2 && { address2: formData.address2 }),
+                  city: formData.city,
+                  state: formData.state,
+                  zipCode: formData.zipCode,
+                  countryCode: 'US',
+                }
+              : null,
+          phone: formData.phone ? { number: formData.phone, extension: formData.extension } : null,
+          email: formData.email ?? null,
+        },
       },
     } as Partial<TrusteeInput>;
   };
@@ -102,7 +120,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = event.target;
     const value = event.target.value === '' ? undefined : event.target.value;
-    const fieldName = name as keyof TrusteeInternalFormData;
+    const fieldName = name as keyof TrusteeAssistantFormData;
 
     updateField(fieldName, value);
     debounce(() => {
@@ -127,8 +145,8 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   };
 
   const handleCancel = useCallback(() => {
-    navigate.navigateTo(cancelTo);
-  }, [navigate, cancelTo]);
+    navigate.navigateTo(`/trustees/${trusteeId}`);
+  }, [navigate, trusteeId]);
 
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
@@ -139,18 +157,18 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
       const payload = mapPayload(currentFormData);
       try {
-        await Api2.patchTrustee(props.trusteeId, payload);
-        navigate.navigateTo(`/trustees/${props.trusteeId}`);
+        await Api2.patchTrustee(trusteeId, payload);
+        navigate.navigateTo(`/trustees/${trusteeId}`);
       } catch (e) {
-        globalAlert?.error(`Failed to update trustee: ${(e as Error).message}`);
+        globalAlert?.error(`Failed to update trustee assistant: ${(e as Error).message}`);
       } finally {
         setIsSubmitting(false);
       }
     }
   };
 
-  const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
-    const results = validateObject(TRUSTEE_INTERNAL_SPEC, formData);
+  const validateFormAndUpdateErrors = (formData: TrusteeAssistantFormData): boolean => {
+    const results = validateObject(TRUSTEE_ASSISTANT_SPEC, formData);
 
     if (!results.valid && results.reasonMap) {
       setFieldErrors(
@@ -172,7 +190,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   };
 
   const validateFieldAndUpdate = (
-    field: keyof TrusteeInternalFormData,
+    field: keyof TrusteeAssistantFormData,
     value: string | undefined,
   ): void => {
     const reasons = validateField(field, value);
@@ -184,11 +202,12 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   };
 
   const getFormData = (override?: {
-    name: keyof TrusteeInternalFormData;
+    name: keyof TrusteeAssistantFormData;
     value: string | undefined;
   }) => {
     const trimmedData = {
       ...formData,
+      name: formData.name?.trim(),
       address1: formData.address1?.trim(),
       address2: formData.address2?.trim(),
       city: formData.city?.trim(),
@@ -199,19 +218,19 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     };
 
     for (const key of Object.keys(trimmedData)) {
-      if (trimmedData[key as keyof TrusteeInternalFormData] === '') {
-        trimmedData[key as keyof TrusteeInternalFormData] = undefined;
+      if (trimmedData[key as keyof TrusteeAssistantFormData] === '') {
+        trimmedData[key as keyof TrusteeAssistantFormData] = undefined;
       }
     }
 
     if (override) {
       const trimmedOverride = override.value?.trim() || undefined;
-      return { ...trimmedData, [override.name]: trimmedOverride } as TrusteeInternalFormData;
+      return { ...trimmedData, [override.name]: trimmedOverride } as TrusteeAssistantFormData;
     }
     return trimmedData;
   };
 
-  const updateField = (field: keyof TrusteeInternalFormData, value: unknown) => {
+  const updateField = (field: keyof TrusteeAssistantFormData, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -232,15 +251,41 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   return (
     <div className="trustee-form-screen">
-      <form aria-label="Edit Trustee" data-testid="trustee-internal-form" onSubmit={handleSubmit}>
+      <form
+        aria-label="Edit Trustee Assistant"
+        data-testid="trustee-assistant-form"
+        onSubmit={handleSubmit}
+      >
+        <div className="form-header">
+          <span>
+            A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required
+            field.
+          </span>
+        </div>
+
         <div className="form-container">
           <div className="form-column">
             <div className="field-group">
               <Input
-                id="trustee-address1"
-                className="trustee-address1-input"
+                id="assistant-name"
+                className="assistant-name-input"
+                name="name"
+                label="Assistant Name"
+                required
+                value={formData.name}
+                onChange={handleFieldChange}
+                errorMessage={fieldErrors['name']?.join(' ')}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="field-group">
+              <Input
+                id="assistant-address1"
+                className="assistant-address1-input"
                 name="address1"
                 label="Address Line 1"
+                required
                 value={formData.address1}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['address1']?.join(' ')}
@@ -250,8 +295,8 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
             <div className="field-group">
               <Input
-                id="trustee-address2"
-                className="trustee-address2-input"
+                id="assistant-address2"
+                className="assistant-address2-input"
                 name="address2"
                 label="Address Line 2"
                 value={formData.address2 || ''}
@@ -263,10 +308,11 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
             <div className="field-group">
               <Input
-                id="trustee-city"
-                className="trustee-city-input"
+                id="assistant-city"
+                className="assistant-city-input"
                 name="city"
                 label="City"
+                required
                 value={formData.city}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['city']?.join(' ')}
@@ -276,10 +322,11 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
             <div className="field-group">
               <UsStatesComboBox
-                id="trustee-state"
-                className="trustee-state-input"
+                id="assistant-state"
+                className="assistant-state-input"
                 name="state"
                 label="State"
+                required
                 selections={formData.state ? [formData.state] : []}
                 onUpdateSelection={handleStateSelection}
                 autoComplete="off"
@@ -289,10 +336,11 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
             <div className="field-group">
               <ZipCodeInput
-                id="trustee-zip"
-                className="trustee-zip-input"
+                id="assistant-zip"
+                className="assistant-zip-input"
                 name="zipCode"
-                label="ZIP Code"
+                label="Zip Code"
+                required
                 value={formData.zipCode}
                 onChange={handleZipCodeChange}
                 errorMessage={fieldErrors['zipCode']?.join(' ')}
@@ -305,19 +353,19 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
           <div className="form-column">
             <div id="phone-group" className="field-group">
               <PhoneNumberInput
-                id="trustee-phone"
+                id="assistant-phone"
                 value={formData.phone}
-                className="trustee-phone-input"
+                className="assistant-phone-input"
                 name="phone"
                 label="Phone"
+                required
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['phone']?.join(' ')}
                 autoComplete="off"
-                ariaDescription="Example: 123-456-7890"
               />
               <Input
-                id="trustee-extension"
-                className="trustee-extension-input"
+                id="assistant-extension"
+                className="assistant-extension-input"
                 name="extension"
                 label="Extension"
                 value={formData.extension || ''}
@@ -330,10 +378,11 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
             <div className="field-group">
               <Input
-                id="trustee-email"
-                className="trustee-email-input"
+                id="assistant-email"
+                className="assistant-email-input"
                 name="email"
                 label="Email"
+                required
                 value={formData.email}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['email']?.join(' ')}
@@ -371,4 +420,4 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   );
 }
 
-export default React.memo(TrusteeInternalContactForm);
+export default React.memo(TrusteeAssistantForm);
