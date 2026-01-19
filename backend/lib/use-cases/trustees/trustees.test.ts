@@ -1,5 +1,4 @@
 import { vi } from 'vitest';
-import { faker } from '@faker-js/faker';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -66,7 +65,6 @@ describe('TrusteesUseCase tests', () => {
       const trustee = MockData.getTrusteeInput();
       const userRef = getCamsUserReference(context.session.user);
 
-      // Create a spy on the checkValidation method to ensure it's called and passes
       const checkValidationSpy = vi.spyOn(
         trusteesUseCase as unknown as { checkValidation: (result: unknown) => void },
         'checkValidation',
@@ -79,12 +77,11 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.createTrustee(context, trustee);
 
-      // Verify that checkValidation was called and completed successfully
       expect(checkValidationSpy).toHaveBeenCalledWith(expect.objectContaining({ valid: true }));
     });
 
     test('should throw BadRequestError for invalid trustee input', async () => {
-      const invalidTrustee = { ...MockData.getTrusteeInput(), name: '' }; // Invalid: empty name
+      const invalidTrustee = { ...MockData.getTrusteeInput(), name: '' };
 
       await expect(trusteesUseCase.createTrustee(context, invalidTrustee)).rejects.toThrow(
         BadRequestError,
@@ -389,7 +386,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should not create history when no fields change', async () => {
-      const updateData = { name: existingTrustee.name }; // Same name
+      const updateData = { name: existingTrustee.name };
       const updatedTrustee = { ...existingTrustee };
 
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
@@ -404,7 +401,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should throw BadRequestError for invalid update data', async () => {
-      const invalidUpdateData = { name: '' }; // Invalid: empty name
+      const invalidUpdateData = { name: '' };
 
       await expect(
         trusteesUseCase.updateTrustee(context, trusteeId, invalidUpdateData),
@@ -429,7 +426,6 @@ describe('TrusteesUseCase tests', () => {
       const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
 
       expect(result).toEqual(updatedTrustee);
-      // Verify that updateTrustee was called
       expect(MockMongoRepository.prototype.updateTrustee).toHaveBeenCalledWith(
         trusteeId,
         expect.any(Object),
@@ -467,8 +463,8 @@ describe('TrusteesUseCase tests', () => {
           email: null,
           phone: null,
         },
-        software: null, // Should be removed
-        banks: undefined, // Should be removed
+        software: null,
+        banks: undefined,
       };
       const updatedTrustee = { ...existingTrustee, name: 'Updated Name' };
       delete updatedTrustee.internal;
@@ -551,7 +547,6 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should handle empty internal contact object when updating from empty to populated', async () => {
-      // Set up existing trustee with empty internal contact
       const existingTrusteeWithEmptyInternal = {
         ...existingTrustee,
         internal: {},
@@ -576,14 +571,13 @@ describe('TrusteesUseCase tests', () => {
         expect.objectContaining({
           documentType: 'AUDIT_INTERNAL_CONTACT',
           trusteeId,
-          before: undefined, // Should be undefined for empty object
+          before: undefined,
           after: newInternalContact,
         }),
       );
     });
 
     test('should handle empty internal contact object when updating from populated to empty', async () => {
-      // Set up existing trustee with populated internal contact
       const existingInternalContact = MockData.getContactInformation();
       const existingTrusteeWithInternal = {
         ...existingTrustee,
@@ -609,7 +603,7 @@ describe('TrusteesUseCase tests', () => {
           documentType: 'AUDIT_INTERNAL_CONTACT',
           trusteeId,
           before: existingInternalContact,
-          after: undefined, // Should be undefined for empty object
+          after: undefined,
         }),
       );
     });
@@ -621,7 +615,7 @@ describe('TrusteesUseCase tests', () => {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
+          passcode: MockData.randomAlphaNumeric(10),
         };
         const updateData = { zoomInfo: newZoomInfo };
         const updatedTrustee = { ...existingTrustee, zoomInfo: newZoomInfo };
@@ -647,9 +641,9 @@ describe('TrusteesUseCase tests', () => {
       test('should throw BadRequestError for zoomInfo with invalid phone format', async () => {
         const invalidZoomInfo = {
           link: 'https://us02web.zoom.us/j/1234567890',
-          phone: '12345', // Invalid phone format
+          phone: '12345',
           meetingId: '1234567890',
-          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
+          passcode: MockData.randomAlphaNumeric(10),
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -660,10 +654,10 @@ describe('TrusteesUseCase tests', () => {
 
       test('should throw BadRequestError for zoomInfo with invalid link', async () => {
         const invalidZoomInfo = {
-          link: 'not-a-valid-url', // Invalid URL
+          link: 'not-a-valid-url',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
+          passcode: MockData.randomAlphaNumeric(10),
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -676,8 +670,8 @@ describe('TrusteesUseCase tests', () => {
         const invalidZoomInfo = {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
-          meetingId: '12345678', // Only 8 digits, needs 9-11
-          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
+          meetingId: '12345678',
+          passcode: MockData.randomAlphaNumeric(10),
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -690,8 +684,8 @@ describe('TrusteesUseCase tests', () => {
         const invalidZoomInfo = {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
-          meetingId: '123456789012', // 12 digits, needs 9-11
-          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
+          meetingId: '123456789012',
+          passcode: MockData.randomAlphaNumeric(10),
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -704,8 +698,8 @@ describe('TrusteesUseCase tests', () => {
         const invalidZoomInfo = {
           link: 'https://us02web.zoom.us/j/1234567890',
           phone: '123-456-7890',
-          meetingId: 'INVALID', // pragma: allowlist secret
-          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
+          meetingId: 'INVALID',
+          passcode: MockData.randomAlphaNumeric(10),
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -716,10 +710,10 @@ describe('TrusteesUseCase tests', () => {
 
       test('should throw BadRequestError for zoomInfo with link exceeding max length', async () => {
         const invalidZoomInfo = {
-          link: 'https://us02web.zoom.us/j/' + 'a'.repeat(300), // Exceeds 255 char limit
+          link: 'https://us02web.zoom.us/j/' + 'a'.repeat(300),
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
+          passcode: MockData.randomAlphaNumeric(10),
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
@@ -733,7 +727,7 @@ describe('TrusteesUseCase tests', () => {
           link: '',
           phone: '123-456-7890',
           meetingId: '1234567890',
-          passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
+          passcode: MockData.randomAlphaNumeric(10),
         };
         const updateData = { zoomInfo: invalidZoomInfo };
 
