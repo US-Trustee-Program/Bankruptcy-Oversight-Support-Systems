@@ -578,6 +578,9 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
   if (sanitizedOverride.software === null) {
     sanitizedOverride.software = undefined;
   }
+  if (sanitizedOverride.assistant === null) {
+    sanitizedOverride.assistant = undefined;
+  }
 
   // Create a properly typed result
   const result: Trustee = {
@@ -589,6 +592,7 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
     public: trusteeInput.public,
     // Optional fields with proper types
     internal: sanitizedOverride.internal || trusteeInput.internal,
+    assistant: sanitizedOverride.assistant,
     banks: sanitizedOverride.banks,
     software: sanitizedOverride.software,
     legacy: sanitizedOverride.legacy,

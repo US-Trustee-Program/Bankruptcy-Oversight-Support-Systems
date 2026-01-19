@@ -29,7 +29,6 @@ const PHONE_REQUIRED_WITH_EXTENSION_ERROR_REASON =
   'Phone number is required when extension is provided';
 
 export type TrusteeInternalFormData = {
-  name?: string;
   address1?: string;
   address2?: string;
   city?: string;
@@ -51,6 +50,18 @@ export type TrusteePublicFormData = {
   extension?: string;
   email?: string;
   website?: string;
+};
+
+export type TrusteeAssistantFormData = {
+  name?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  extension?: string;
+  email?: string;
 };
 
 const name = [
@@ -81,14 +92,6 @@ const website = [
   ),
 ];
 
-const addressSpec: ValidationSpec<TrusteeInternalFormData> = {
-  address1,
-  address2,
-  city,
-  state,
-  zipCode,
-};
-
 const phoneRequiredWithExtension: ValidatorFunction = (obj) => {
   const form = obj as TrusteeInternalFormData;
   if (form.extension && !form.phone) {
@@ -100,7 +103,14 @@ const phoneRequiredWithExtension: ValidatorFunction = (obj) => {
 };
 
 const completedAddressRequired: ValidatorFunction = (obj: unknown) => {
-  const form = obj as TrusteeInternalFormData;
+  const form = obj as TrusteeInternalFormData | TrusteeAssistantFormData;
+
+  const hasStartedAddress =
+    !!form.address1 || !!form.address2 || !!form.city || !!form.state || !!form.zipCode;
+
+  if (!hasStartedAddress) {
+    return VALID;
+  }
 
   const requiredFieldsSpec: Readonly<ValidationSpec<TrusteeInternalFormData>> = {
     address1: [V.minLength(1, ADDRESS_REQUIRED_ERROR_REASON)],
@@ -109,31 +119,18 @@ const completedAddressRequired: ValidatorFunction = (obj: unknown) => {
     zipCode: [V.minLength(1, ZIP_CODE_REQUIRED_ERROR_REASON)],
   };
 
-  const areAnyFieldsFilled = (form: TrusteeInternalFormData) => {
-    for (const key of Object.keys(addressSpec)) {
-      if (form[key as keyof TrusteeInternalFormData]) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  if (areAnyFieldsFilled(form)) {
-    const result = validateObject(requiredFieldsSpec, form);
-    if (result.valid) {
-      return VALID;
-    } else {
-      result.reasonMap = {
-        ...result.reasonMap,
-        $: {
-          reasonMap: result.reasonMap?.$?.reasonMap,
-          reasons: [...(result.reasonMap?.$?.reasons ?? []), PARTIAL_ADDRESS_ERROR_REASON],
-        },
-      };
-      return result;
-    }
-  } else {
+  const result = validateObject(requiredFieldsSpec, form);
+  if (result.valid) {
     return VALID;
+  } else {
+    result.reasonMap = {
+      ...result.reasonMap,
+      $: {
+        reasonMap: result.reasonMap?.$?.reasonMap,
+        reasons: [...(result.reasonMap?.$?.reasons ?? []), PARTIAL_ADDRESS_ERROR_REASON],
+      },
+    };
+    return result;
   }
 };
 
@@ -159,5 +156,18 @@ export const TRUSTEE_PUBLIC_SPEC: Readonly<ValidationSpec<TrusteePublicFormData>
   email,
   website,
   phone,
+  extension,
+};
+
+export const TRUSTEE_ASSISTANT_SPEC: Readonly<ValidationSpec<TrusteeAssistantFormData>> = {
+  $: [completedAddressRequired, phoneRequiredWithExtension],
+  name: [V.optional(...name)],
+  address1: [V.optional(...address1)],
+  address2,
+  city: [V.optional(...city)],
+  state: [V.optional(...state)],
+  zipCode: [V.optional(...zipCode)],
+  email: [V.optional(...email)],
+  phone: [V.optional(...phone)],
   extension,
 };

@@ -63,10 +63,16 @@ export function formatAppointmentType(appointmentType: AppointmentType): string 
 
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
 
+export type TrusteeAssistant = {
+  name: string;
+  contact: ContactInformation;
+};
+
 type TrusteeCore = {
   name: string;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
+  assistant?: TrusteeAssistant;
 };
 
 type TrusteeOptionalFields = {
@@ -129,6 +135,10 @@ export type TrusteeSoftwareHistory = AbstractTrusteeHistory<string, string> & {
   documentType: 'AUDIT_SOFTWARE';
 };
 
+export type TrusteeAssistantHistory = AbstractTrusteeHistory<TrusteeAssistant, TrusteeAssistant> & {
+  documentType: 'AUDIT_ASSISTANT';
+};
+
 type UserAndRole = { user: CamsUserReference; role: OversightRoleType };
 export type TrusteeOversightHistory = AbstractTrusteeHistory<
   UserAndRole | null,
@@ -158,6 +168,7 @@ export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
   | TrusteeInternalContactHistory
+  | TrusteeAssistantHistory
   | TrusteeBankHistory
   | TrusteeSoftwareHistory
   | TrusteeOversightHistory
