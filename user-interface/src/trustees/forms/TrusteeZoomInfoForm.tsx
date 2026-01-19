@@ -7,9 +7,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import React, { useState, useCallback } from 'react';
 import { Trustee } from '@common/cams/trustees';
-import { PHONE_REGEX, WEBSITE_RELAXED_REGEX } from '@common/cams/regex';
-
-const MEETING_ID_REGEX = /^\d{9,11}$/;
+import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZOOM_MEETING_ID_REGEX } from '@common/cams/regex';
 
 const fieldLabels: Record<string, string> = {
   link: 'Zoom Link',
@@ -31,7 +29,7 @@ const validators: Record<string, (value: string) => string | null> = {
   },
   meetingId: (value) => {
     if (!value.trim()) return `${fieldLabels.meetingId} is required`;
-    if (!MEETING_ID_REGEX.test(value)) return 'Must be 9 to 11 digits';
+    if (!ZOOM_MEETING_ID_REGEX.test(value)) return 'Must be 9 to 11 digits';
     return null;
   },
   passcode: (value) => {
