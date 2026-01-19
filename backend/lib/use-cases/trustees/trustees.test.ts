@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -66,7 +66,7 @@ describe('TrusteesUseCase tests', () => {
       const userRef = getCamsUserReference(context.session.user);
 
       const checkValidationSpy = vi.spyOn(
-        trusteesUseCase as unknown as { checkValidation: (result: unknown) => void },
+        trusteesUseCase as unknown as { checkValidation: Mock },
         'checkValidation',
       );
 
