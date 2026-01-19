@@ -35,7 +35,6 @@ const mockTrustee: Trustee = {
     email: 'john.doe.internal@example.com',
     website: 'https://internal.johndoe-trustee.com',
   },
-  assistant: null,
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2024-01-01T00:00:00Z',
 };

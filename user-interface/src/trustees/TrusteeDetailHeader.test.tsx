@@ -21,7 +21,6 @@ const mockTrustee: Trustee = {
     phone: { number: '555-123-4567', extension: '1234' },
     email: 'john.doe.public@example.com',
   },
-  assistant: null,
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2024-01-01T00:00:00Z',
 };

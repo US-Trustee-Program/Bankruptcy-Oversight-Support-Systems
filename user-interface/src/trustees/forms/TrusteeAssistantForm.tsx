@@ -25,7 +25,7 @@ import {
 } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
-const getInitialFormData = (assistant: TrusteeAssistant | null): TrusteeAssistantFormData => {
+const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
   if (!assistant) {
     return {
       name: undefined,
@@ -58,26 +58,26 @@ export function validateField(
   field: keyof TrusteeAssistantFormData,
   value: string | undefined,
   spec: Partial<typeof TRUSTEE_ASSISTANT_SPEC>,
-): ValidatorReasonMap | null {
+): ValidatorReasonMap | undefined {
   const valueToEval = value?.trim() || undefined;
 
   if (spec?.[field]) {
     const result = validateEach(spec[field], valueToEval);
     const validatorReasonMap: ValidatorReasonMap = {};
     if (result.valid) {
-      return null;
+      return undefined;
     } else {
       validatorReasonMap[field] = { reasons: result.reasons };
       return validatorReasonMap;
     }
-  } else {
-    return null;
   }
+
+  return undefined;
 }
 
-export type TrusteeAssistantFormProps = {
+type TrusteeAssistantFormProps = {
   trusteeId: string;
-  assistant?: TrusteeAssistant | null;
+  assistant?: TrusteeAssistant;
 };
 
 function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
@@ -91,9 +91,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<ValidatorReasonMap>({});
-  const [formData, setFormData] = useState<TrusteeAssistantFormData>(
-    getInitialFormData(assistant ?? null),
-  );
+  const [formData, setFormData] = useState<TrusteeAssistantFormData>(getInitialFormData(assistant));
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
 
@@ -103,7 +101,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const mapPayload = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
     // If name is empty, clear the entire assistant
     if (!formData.name?.trim()) {
-      return { assistant: null };
+      return { assistant: undefined };
     }
 
     return {
@@ -241,7 +239,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const validateFieldAndUpdate = (
     field: keyof TrusteeAssistantFormData,
     value: string | undefined,
-  ): ValidatorReasonMap | null => {
+  ): void => {
     const error = validateField(field, value, TRUSTEE_ASSISTANT_SPEC);
 
     setFieldErrors((prevErrors) => {
@@ -252,8 +250,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
         return rest;
       }
     });
-
-    return error;
   };
 
   const getFormData = (override?: {

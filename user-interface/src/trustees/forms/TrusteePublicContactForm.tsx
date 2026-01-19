@@ -33,20 +33,23 @@ const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePub
   };
 };
 
-export function validateField(field: keyof TrusteePublicFormData, value: string): string | null {
+export function validateField(
+  field: keyof TrusteePublicFormData,
+  value: string,
+): string | undefined {
   const stringValue = String(value);
   const trimmedValue = stringValue.trim();
 
   if ((field === 'extension' && !trimmedValue) || (field === 'website' && !trimmedValue)) {
-    return null;
+    return undefined;
   }
 
   if (TRUSTEE_PUBLIC_SPEC[field]) {
     const result = validateEach(TRUSTEE_PUBLIC_SPEC[field], trimmedValue);
-    return result.valid ? null : result.reasons!.join(' ');
-  } else {
-    return null;
+    return result.valid ? undefined : result.reasons!.join(' ');
   }
+
+  return undefined;
 }
 
 export type TrusteePublicContactFormProps = {
@@ -211,10 +214,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     return !!results.valid;
   };
 
-  const validateFieldAndUpdate = (
-    field: keyof TrusteePublicFormData,
-    value: string,
-  ): string | null => {
+  const validateFieldAndUpdate = (field: keyof TrusteePublicFormData, value: string): void => {
     const error = validateField(field, value);
 
     setFieldErrors((prevErrors) => {
@@ -225,8 +225,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
         return rest;
       }
     });
-
-    return error;
   };
 
   const updateField = (field: keyof TrusteePublicFormData, value: unknown) => {

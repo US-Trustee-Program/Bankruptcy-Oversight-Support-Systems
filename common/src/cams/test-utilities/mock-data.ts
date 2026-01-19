@@ -602,7 +602,6 @@ function getTrusteeInput(override: Partial<TrusteeInput> = {}): TrusteeInput {
   return {
     name: faker.person.fullName(),
     public: getContactInformation(),
-    assistant: null,
     ...override,
   };
 }
@@ -622,7 +621,6 @@ function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
     name: faker.person.fullName(),
     public: publicContact,
     internal: internalContact,
-    assistant: null,
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
     ...override,

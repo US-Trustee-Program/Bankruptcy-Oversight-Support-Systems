@@ -20,6 +20,21 @@ import { deepEqual } from '@common/object-equality';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
+/**
+ * Normalizes a value for audit history by converting null, undefined, or empty objects to undefined.
+ * This ensures audit records consistently represent "no value" as undefined rather than null or {}.
+ */
+function normalizeForAudit<T>(value: T | null | undefined): T | undefined {
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+  // Check if value is an empty object (but not an array or other object types)
+  if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
+    return undefined;
+  }
+  return value;
+}
+
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
 
@@ -207,10 +222,8 @@ export class TrusteesUseCase {
             {
               documentType: 'AUDIT_INTERNAL_CONTACT',
               trusteeId,
-              before: deepEqual(existingTrustee.internal, {})
-                ? undefined
-                : existingTrustee.internal,
-              after: deepEqual(updatedTrustee.internal, {}) ? undefined : updatedTrustee.internal,
+              before: normalizeForAudit(existingTrustee.internal),
+              after: normalizeForAudit(updatedTrustee.internal),
             },
             userReference,
           ),
@@ -251,10 +264,8 @@ export class TrusteesUseCase {
             {
               documentType: 'AUDIT_ASSISTANT',
               trusteeId,
-              before: deepEqual(existingTrustee.assistant, {})
-                ? undefined
-                : existingTrustee.assistant,
-              after: deepEqual(updatedTrustee.assistant, {}) ? undefined : updatedTrustee.assistant,
+              before: normalizeForAudit(existingTrustee.assistant),
+              after: normalizeForAudit(updatedTrustee.assistant),
             },
             userReference,
           ),
@@ -321,7 +332,7 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
-  assistant: [V.optional(V.nullable(V.spec(assistantSpec)))],
+  assistant: [V.optional(V.spec(assistantSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   software: [V.optional(V.length(0, 100))],
 };
