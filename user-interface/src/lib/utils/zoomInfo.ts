@@ -1,15 +1,4 @@
 /**
- * Copies text to the clipboard using the Clipboard API.
- * Silently fails if clipboard API is unavailable or rejects.
- * @param text - The text to copy to clipboard
- */
-export function copyToClipboard(text: string) {
-  navigator.clipboard?.writeText(text).catch(() => {
-    // Silently fail - clipboard API may be unavailable or reject (non-HTTPS, older browsers, etc.)
-  });
-}
-
-/**
  * Formats a Zoom meeting ID by inserting spaces for readability.
  * Expected format: XXX XXX XXXX (or XXX XXX XXXXX for 11-digit IDs)
  * @param meetingId - The meeting ID string (9-11 digits)
