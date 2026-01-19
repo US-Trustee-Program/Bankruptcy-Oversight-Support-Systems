@@ -40,6 +40,7 @@ export * from './date-helper';
 export * from './delay';
 export * from './feature-flags';
 export * from './name-helper';
+export * from './normalization';
 export * from './object-equality';
 
 // Export queue types
