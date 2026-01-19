@@ -1,23 +1,11 @@
 import { ZoomInfo } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import { copyToClipboard, formatMeetingId } from '@/lib/utils/zoomInfo';
 
 interface ZoomInfoCardProps {
   zoomInfo?: ZoomInfo;
   onEdit: () => void;
-}
-
-function copyToClipboard(text: string) {
-  navigator.clipboard?.writeText(text).catch(() => {
-    // Silently fail - clipboard API may be unavailable or reject (non-HTTPS, older browsers, etc.)
-  });
-}
-
-function formatMeetingId(meetingId: string): string {
-  if (meetingId.length >= 9 && meetingId.length <= 11) {
-    return `${meetingId.slice(0, 3)} ${meetingId.slice(3, 6)} ${meetingId.slice(6)}`;
-  }
-  return meetingId;
 }
 
 export default function ZoomInfoCard({ zoomInfo, onEdit }: Readonly<ZoomInfoCardProps>) {
