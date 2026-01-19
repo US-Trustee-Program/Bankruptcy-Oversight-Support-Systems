@@ -9,7 +9,6 @@ import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeAssistant } from '@common/cams/trustees';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
-import { TRUSTEE_ASSISTANT_SPEC } from './trusteeForms.types';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 
@@ -444,29 +443,29 @@ describe('TrusteeAssistantForm', () => {
 
   describe('validateField Helper Function', () => {
     test('should return undefined for valid field value', () => {
-      const result = validateField('name', 'Valid Name', TRUSTEE_ASSISTANT_SPEC);
+      const result = validateField('name', 'Valid Name');
       expect(result).toBeUndefined();
     });
 
-    test('should return error for invalid field value', () => {
-      const result = validateField('name', 'A'.repeat(51), TRUSTEE_ASSISTANT_SPEC);
+    test('should return error reasons for invalid field value', () => {
+      const result = validateField('name', 'A'.repeat(51));
       expect(result).toBeDefined();
-      expect(result?.name?.reasons).toContain('Max length 50 characters');
+      expect(result).toContain('Max length 50 characters');
     });
 
     test('should return undefined for field not in spec', () => {
       // @ts-expect-error Testing with invalid field name
-      const result = validateField('nonexistent', 'value', {});
+      const result = validateField('nonexistent', 'value');
       expect(result).toBeUndefined();
     });
 
     test('should handle undefined values', () => {
-      const result = validateField('name', undefined, TRUSTEE_ASSISTANT_SPEC);
+      const result = validateField('name', undefined);
       expect(result).toBeUndefined();
     });
 
     test('should trim whitespace before validation', () => {
-      const result = validateField('name', '   ', TRUSTEE_ASSISTANT_SPEC);
+      const result = validateField('name', '   ');
       expect(result).toBeUndefined();
     });
   });

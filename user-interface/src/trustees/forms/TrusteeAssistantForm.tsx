@@ -17,12 +17,7 @@ import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
 import { TRUSTEE_ASSISTANT_SPEC, TrusteeAssistantFormData } from './trusteeForms.types';
-import {
-  validateEach,
-  validateObject,
-  ValidationSpec,
-  ValidatorReasonMap,
-} from '@common/cams/validation';
+import { validateEach, validateObject, ValidatorReasonMap } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
@@ -57,22 +52,16 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
 export function validateField(
   field: keyof TrusteeAssistantFormData,
   value: string | undefined,
-  spec: Partial<typeof TRUSTEE_ASSISTANT_SPEC>,
-): ValidatorReasonMap | undefined {
+): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
+  const rules = TRUSTEE_ASSISTANT_SPEC[field];
 
-  if (spec?.[field]) {
-    const result = validateEach(spec[field], valueToEval);
-    const validatorReasonMap: ValidatorReasonMap = {};
-    if (result.valid) {
-      return undefined;
-    } else {
-      validatorReasonMap[field] = { reasons: result.reasons };
-      return validatorReasonMap;
-    }
+  if (!rules) {
+    return undefined;
   }
 
-  return undefined;
+  const result = validateEach(rules, valueToEval);
+  return result.valid ? undefined : result.reasons;
 }
 
 type TrusteeAssistantFormProps = {
@@ -124,24 +113,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
         },
       },
     } as Partial<TrusteeInput>;
-  };
-
-  const getDynamicSpec = (currentFormData: TrusteeAssistantFormData) => {
-    const spec: Partial<ValidationSpec<TrusteeAssistantFormData>> = {
-      ...TRUSTEE_ASSISTANT_SPEC,
-    };
-
-    const keys = Object.keys(spec) as Array<keyof TrusteeAssistantFormData>;
-    for (const key of keys) {
-      if ((key as unknown as string) === '$') {
-        continue;
-      }
-      if (!(key in currentFormData)) {
-        delete spec[key];
-      }
-    }
-
-    return spec;
   };
 
   const clearAddressErrorsIfAllEmpty = (
@@ -224,15 +195,17 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   };
 
   const validateFormAndUpdateErrors = (formData: TrusteeAssistantFormData): boolean => {
-    const spec = getDynamicSpec(formData);
-    const results = validateObject(spec, formData);
+    const results = validateObject(TRUSTEE_ASSISTANT_SPEC, formData);
+
     if (!results.valid && results.reasonMap) {
       setFieldErrors(results.reasonMap);
     }
+
     if (!results.valid && results.reasonMap?.$?.reasons) {
       setSaveAlert(results.reasonMap.$.reasons.join(' '));
       partialAddressAlertRef.current?.show();
     }
+
     return !!results.valid;
   };
 
@@ -240,15 +213,14 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     field: keyof TrusteeAssistantFormData,
     value: string | undefined,
   ): void => {
-    const error = validateField(field, value, TRUSTEE_ASSISTANT_SPEC);
+    const reasons = validateField(field, value);
 
     setFieldErrors((prevErrors) => {
-      if (error) {
-        return { ...prevErrors, ...error };
-      } else {
-        const { [field]: _, ...rest } = prevErrors;
-        return rest;
+      if (reasons && reasons.length) {
+        return { ...prevErrors, [field]: { reasons } };
       }
+      const { [field]: _, ...rest } = prevErrors;
+      return rest;
     });
   };
 
