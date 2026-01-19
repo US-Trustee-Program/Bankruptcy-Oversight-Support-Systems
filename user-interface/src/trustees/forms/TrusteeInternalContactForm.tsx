@@ -16,7 +16,7 @@ import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput } from '@common/cams/trustees';
 import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './trusteeForms.types';
-import { validateEach, validateObject, ValidatorReasonMap } from '@common/cams/validation';
+import { validateEach, validateObject } from '@common/cams/validation';
 import { ContactInformation } from '@common/cams/contact';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
@@ -38,22 +38,16 @@ const getInitialFormData = (
 export function validateField(
   field: keyof TrusteeInternalFormData,
   value: string | undefined,
-  spec: Partial<typeof TRUSTEE_INTERNAL_SPEC>,
-): ValidatorReasonMap | undefined {
+): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
+  const rules = TRUSTEE_INTERNAL_SPEC[field];
 
-  if (spec?.[field]) {
-    const result = validateEach(spec[field], valueToEval);
-    const validatorReasonMap: ValidatorReasonMap = {};
-    if (result.valid) {
-      return undefined;
-    } else {
-      validatorReasonMap[field] = { reasons: result.reasons };
-      return validatorReasonMap;
-    }
+  if (!rules) {
+    return undefined;
   }
 
-  return undefined;
+  const result = validateEach(rules, valueToEval);
+  return result.valid ? undefined : result.reasons;
 }
 
 export type TrusteeInternalContactFormProps = {
@@ -72,8 +66,10 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   const { cancelTo } = props;
 
+  type FieldErrors = Partial<Record<keyof TrusteeInternalFormData | '$', string[] | undefined>>;
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<ValidatorReasonMap>({});
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formData, setFormData] = useState<TrusteeInternalFormData>(
     getInitialFormData(props.trustee?.internal),
   );
@@ -155,13 +151,23 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
     const results = validateObject(TRUSTEE_INTERNAL_SPEC, formData);
+
     if (!results.valid && results.reasonMap) {
-      setFieldErrors(results.reasonMap);
+      setFieldErrors(
+        Object.fromEntries(
+          Object.entries(results.reasonMap).map(([k, v]) => [k, v?.reasons]),
+        ) as FieldErrors,
+      );
+
+      if (results.reasonMap?.$?.reasons) {
+        setSaveAlert(results.reasonMap.$.reasons.join(' '));
+        partialAddressAlertRef.current?.show();
+      }
+    } else {
+      setFieldErrors({});
+      setSaveAlert(null);
     }
-    if (!results.valid && results.reasonMap?.$?.reasons) {
-      setSaveAlert(results.reasonMap.$.reasons.join(' '));
-      partialAddressAlertRef.current?.show();
-    }
+
     return !!results.valid;
   };
 
@@ -169,15 +175,12 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     field: keyof TrusteeInternalFormData,
     value: string | undefined,
   ): void => {
-    const updatedFormData = getFormData({ name: field, value });
+    const reasons = validateField(field, value);
 
-    const results = validateObject(TRUSTEE_INTERNAL_SPEC, updatedFormData);
-
-    if (!results.valid && results.reasonMap) {
-      setFieldErrors(results.reasonMap);
-    } else {
-      setFieldErrors({});
-    }
+    setFieldErrors((prev) => ({
+      ...prev,
+      [field]: reasons,
+    }));
   };
 
   const getFormData = (override?: {
@@ -202,7 +205,8 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     }
 
     if (override) {
-      return { ...trimmedData, [override.name]: override.value } as TrusteeInternalFormData;
+      const trimmedOverride = override.value?.trim() || undefined;
+      return { ...trimmedData, [override.name]: trimmedOverride } as TrusteeInternalFormData;
     }
     return trimmedData;
   };
@@ -239,7 +243,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Address Line 1"
                 value={formData.address1}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['address1']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['address1']?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -252,7 +256,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Address Line 2"
                 value={formData.address2 || ''}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['address2']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['address2']?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -265,7 +269,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="City"
                 value={formData.city}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['city']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['city']?.join(' ')}
                 autoComplete="off"
               />
             </div>
@@ -279,7 +283,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 selections={formData.state ? [formData.state] : []}
                 onUpdateSelection={handleStateSelection}
                 autoComplete="off"
-                errorMessage={fieldErrors['state']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['state']?.join(' ')}
               ></UsStatesComboBox>
             </div>
 
@@ -291,7 +295,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="ZIP Code"
                 value={formData.zipCode}
                 onChange={handleZipCodeChange}
-                errorMessage={fieldErrors['zipCode']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['zipCode']?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Example: 12345"
               />
@@ -307,7 +311,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 name="phone"
                 label="Phone"
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['phone']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['phone']?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Example: 123-456-7890"
               />
@@ -318,7 +322,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Extension"
                 value={formData.extension || ''}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['extension']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['extension']?.join(' ')}
                 autoComplete="off"
                 ariaDescription="Up to 6 digits"
               />
@@ -332,7 +336,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
                 label="Email"
                 value={formData.email}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['email']?.reasons?.join(' ')}
+                errorMessage={fieldErrors['email']?.join(' ')}
                 type="email"
                 autoComplete="off"
               />
