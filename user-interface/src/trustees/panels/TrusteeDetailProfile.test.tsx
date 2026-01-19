@@ -42,6 +42,8 @@ const mockTrustee: Trustee = {
 const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
 const mockOnEditOtherInformation = vi.fn();
+const mockOnAddAssistant = vi.fn();
+const mockOnEditAssistant = vi.fn();
 
 function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
   const defaultProps: TrusteeDetailProfileProps = {
@@ -49,6 +51,8 @@ function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
     onEditPublicProfile: mockOnEditPublicProfile,
     onEditInternalProfile: mockOnEditInternalProfile,
     onEditOtherInformation: mockOnEditOtherInformation,
+    onAddAssistant: mockOnAddAssistant,
+    onEditAssistant: mockOnEditAssistant,
   };
 
   const renderProps = { ...defaultProps, ...props };
@@ -140,7 +144,10 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithoutInternal });
 
-    expect(screen.getByText('No information added.')).toBeInTheDocument();
+    const internalSection = screen
+      .getByText('Contact Information (USTP Internal)')
+      .closest('.trustee-internal-contact-information');
+    expect(internalSection).toHaveTextContent('No information added.');
   });
 
   test('should call onEditPublicProfile when public edit button is clicked', async () => {
@@ -276,7 +283,7 @@ describe('TrusteeDetailProfile', () => {
   test('should render edit button labels correctly', () => {
     renderWithProps({});
 
-    expect(screen.getAllByText('Edit')).toHaveLength(3); // Three edit buttons: Public, Other Information, Internal
+    expect(screen.getAllByText('Edit')).toHaveLength(4); // Four edit buttons: Public, Internal, Assistant, Other Information
   });
 
   test('should render bank information when banks are present', () => {
