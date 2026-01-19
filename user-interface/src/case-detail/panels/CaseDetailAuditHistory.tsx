@@ -45,8 +45,10 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
         <td data-testid={`previous-assignment-${idx}`}>
           {assignmentHistoryHasValue(history.before) ? (
             <>
-              {history.before.map((assignment, assignmentIdx) => (
-                <div key={assignmentIdx}>{assignment.name}</div>
+              {history.before.map((assignment) => (
+                <div key={assignment.id || `${assignment.userId}-${assignment.assignedOn}`}>
+                  {assignment.name}
+                </div>
               ))}
             </>
           ) : (
@@ -56,8 +58,10 @@ export default function CaseDetailAuditHistory(props: CaseDetailAuditHistoryProp
         <td data-testid={`new-assignment-${idx}`}>
           {assignmentHistoryHasValue(history.after) ? (
             <>
-              {history.after.map((assignment, assignmentIdx) => (
-                <div key={assignmentIdx}>{assignment.name}</div>
+              {history.after.map((assignment) => (
+                <div key={assignment.id || `${assignment.userId}-${assignment.assignedOn}`}>
+                  {assignment.name}
+                </div>
               ))}
             </>
           ) : (
