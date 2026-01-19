@@ -17,23 +17,9 @@ import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
 import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
+import { normalizeForUndefined } from '@common/normalization';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
-
-/**
- * Normalizes a value for audit history by converting null, undefined, or empty objects to undefined.
- * This ensures audit records consistently represent "no value" as undefined rather than null or {}.
- */
-function normalizeForAudit<T>(value: T | null | undefined): T | undefined {
-  if (value === null || value === undefined) {
-    return undefined;
-  }
-  // Check if value is an empty object (but not an array or other object types)
-  if (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0) {
-    return undefined;
-  }
-  return value;
-}
 
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
@@ -222,8 +208,8 @@ export class TrusteesUseCase {
             {
               documentType: 'AUDIT_INTERNAL_CONTACT',
               trusteeId,
-              before: normalizeForAudit(existingTrustee.internal),
-              after: normalizeForAudit(updatedTrustee.internal),
+              before: normalizeForUndefined(existingTrustee.internal),
+              after: normalizeForUndefined(updatedTrustee.internal),
             },
             userReference,
           ),
@@ -264,8 +250,8 @@ export class TrusteesUseCase {
             {
               documentType: 'AUDIT_ASSISTANT',
               trusteeId,
-              before: normalizeForAudit(existingTrustee.assistant),
-              after: normalizeForAudit(updatedTrustee.assistant),
+              before: normalizeForUndefined(existingTrustee.assistant),
+              after: normalizeForUndefined(updatedTrustee.assistant),
             },
             userReference,
           ),
