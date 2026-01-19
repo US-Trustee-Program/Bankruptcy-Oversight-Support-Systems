@@ -334,8 +334,8 @@ describe('TrusteeDetailScreen', () => {
     },
     {
       route: '/trustees/123/zoom/edit',
-      expectedSubheader: '',
-      description: 'should render empty subheader for /zoom/edit route',
+      expectedSubheader: 'Trustee',
+      description: 'should render subheader "Trustee" for /zoom/edit route',
       needsLocationState: false,
     },
     {
@@ -361,12 +361,7 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter([route]);
 
       await waitFor(() => {
-        if (expectedSubheader) {
-          expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
-        } else {
-          // For routes with empty subheader, verify page is loaded by checking for h1
-          expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-        }
+        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
       });
     },
   );
