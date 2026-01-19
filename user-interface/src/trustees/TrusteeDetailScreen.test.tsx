@@ -1,6 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi, beforeEach } from 'vitest';
-import { faker } from '@faker-js/faker';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import TrusteeDetailScreen from './TrusteeDetailScreen';
 import { Trustee } from '@common/cams/trustees';
@@ -233,7 +232,7 @@ describe('TrusteeDetailScreen', () => {
         link: 'https://us02web.zoom.us/j/1234567890',
         phone: '123-456-7890',
         meetingId: '1234567890',
-        passcode: faker.string.alphanumeric(10), // pragma: allowlist secret
+        passcode: MockData.randomAlphaNumeric(10),
       },
     };
 
@@ -267,7 +266,7 @@ describe('TrusteeDetailScreen', () => {
   });
 
   test('should display zoom info card when zoomInfo is provided', async () => {
-    const testPasscode = faker.string.alphanumeric(10); // pragma: allowlist secret
+    const testPasscode = MockData.randomAlphaNumeric(10);
     const mockTrusteeWithZoom = {
       ...mockTrustee,
       zoomInfo: {

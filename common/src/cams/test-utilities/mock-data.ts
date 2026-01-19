@@ -82,6 +82,10 @@ function randomInt(range: number) {
   return Math.floor(Math.random() * range);
 }
 
+function randomAlphaNumeric(length: number) {
+  return faker.string.alphanumeric(length);
+}
+
 function randomCaseNumber() {
   return '99-' + ('00000' + randomInt(99999)).slice(-5);
 }
@@ -1031,6 +1035,7 @@ function getPhoneNumber(): string {
 
 const MockData = {
   addAction,
+  randomAlphaNumeric,
   randomId,
   randomCaseId,
   randomCaseNumber,

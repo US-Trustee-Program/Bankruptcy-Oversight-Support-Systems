@@ -1,14 +1,14 @@
 import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { faker } from '@faker-js/faker';
 import ZoomInfoCard from './ZoomInfoCard';
 import { ZoomInfo } from '@common/cams/trustees';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('ZoomInfoCard', () => {
   let userEvent: CamsUserEvent;
   const mockOnEdit = vi.fn();
-  const testPasscode = faker.string.alphanumeric(10); // pragma: allowlist secret
+  const testPasscode = MockData.randomAlphaNumeric(10);
 
   beforeEach(() => {
     vi.clearAllMocks();
