@@ -1,10 +1,10 @@
-import natural from 'natural';
-import nameMatch from 'name-match';
+import * as natural from 'natural';
+import * as nameMatch from 'name-match';
 import { SyncedCase } from '../../../common/src/cams/cases';
 
 // Initialize phonetic algorithms
-const soundex = natural.SoundEx;
-const metaphone = natural.Metaphone;
+const soundexAlgorithm = new natural.SoundEx();
+const metaphoneAlgorithm = new natural.Metaphone();
 
 /**
  * Generate phonetic tokens for a given text using Soundex and Metaphone algorithms
@@ -21,13 +21,13 @@ export function generatePhoneticTokens(text: string | undefined): string[] {
 
   for (const word of words) {
     // Generate Soundex token
-    const soundexToken = soundex.process(word);
+    const soundexToken = soundexAlgorithm.process(word);
     if (soundexToken) {
       tokens.add(soundexToken);
     }
 
     // Generate Metaphone token
-    const metaphoneToken = metaphone.process(word);
+    const metaphoneToken = metaphoneAlgorithm.process(word);
     if (metaphoneToken) {
       tokens.add(metaphoneToken);
     }
@@ -53,13 +53,14 @@ export function expandQueryWithNicknames(searchQuery: string): string[] {
 
     // Use name-match to get nickname variations
     try {
-      const nicknames = nameMatch.getNicknames(word);
+      // @ts-expect-error - name-match types not available
+      const nicknames = nameMatch.nicknames?.(word) || nameMatch.default?.nicknames?.(word) || [];
       if (nicknames && Array.isArray(nicknames)) {
-        nicknames.forEach((nickname) => expandedNames.add(nickname.toLowerCase()));
+        nicknames.forEach((nickname: string) => expandedNames.add(nickname.toLowerCase()));
       }
-    } catch (error) {
+    } catch (_error) {
       // If name-match fails for a word, just use the original
-      console.warn(`Failed to get nicknames for ${word}:`, error);
+      // This is expected for non-name words
     }
   }
 

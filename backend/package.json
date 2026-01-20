@@ -33,7 +33,8 @@
     "start:dataflows": "(cd function-apps/dataflows && npm run start)",
     "start:express": "tsx --watch express/server.ts",
     "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest run",
-    "test:watch": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest watch"
+    "test:watch": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest watch",
+    "migrate:phonetic-tokens": "tsx ../scripts/migrations/add-phonetic-tokens.ts"
   },
   "dependencies": {
     "@azure/cosmos": "4.9.0",
@@ -49,7 +50,7 @@
     "jsonwebtoken": "9.0.2",
     "mongodb": "7.0.0",
     "mssql": "12.2.0",
-    "name-match": "1.0.9",
+    "name-match": "1.0.4",
     "natural": "8.1.0"
   },
   "devDependencies": {
