@@ -793,7 +793,7 @@ describe('Cases repository', () => {
       ]),
     });
 
-  test('should exclude cases with only closedDate when excludeClosedCases is true', async () => {
+  test('should exclude closed and dismissed cases when excludeClosedCases is true', async () => {
     const predicate: CasesSearchPredicate = {
       excludeClosedCases: true,
       limit: 25,
@@ -803,31 +803,6 @@ describe('Cases repository', () => {
     const paginateSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'paginate')
       .mockResolvedValue({ data: [] });
-
-    await repo.searchCases(predicate);
-
-    expect(paginateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        stages: expect.arrayContaining([
-          expect.objectContaining({
-            stage: 'MATCH',
-            values: expect.arrayContaining([expectExcludeClosedCasesCondition()]),
-          }),
-        ]),
-      }),
-    );
-  });
-
-  test('should exclude cases with only dismissedDate when excludeClosedCases is true', async () => {
-    const predicate: CasesSearchPredicate = {
-      excludeClosedCases: true,
-      limit: 25,
-      offset: 0,
-    };
-
-    const paginateSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
-      data: [],
-    });
 
     await repo.searchCases(predicate);
 

@@ -285,6 +285,22 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
+  private buildExcludeClosedCasesCondition(): ConditionOrConjunction<SyncedCase> {
+    const doc = using<SyncedCase>();
+
+    const buildFieldCondition = (fieldName: 'closedDate' | 'dismissedDate') =>
+      or(
+        doc(fieldName).notExists(),
+        and(
+          doc(fieldName).exists(),
+          doc('reopenedDate').exists(),
+          doc('reopenedDate').greaterThanOrEqual({ name: fieldName }),
+        ),
+      );
+
+    return and(buildFieldCondition('closedDate'), buildFieldCondition('dismissedDate'));
+  }
+
   addConditions(predicate: CasesSearchPredicate): ConditionOrConjunction<SyncedCase>[] {
     const doc = using<SyncedCase>();
     const conditions: ConditionOrConjunction<SyncedCase>[] = [];
@@ -311,26 +327,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
 
     if (predicate.excludeClosedCases === true) {
-      conditions.push(
-        and(
-          or(
-            doc('closedDate').notExists(),
-            and(
-              doc('closedDate').exists(),
-              doc('reopenedDate').exists(),
-              doc('reopenedDate').greaterThanOrEqual({ name: 'closedDate' }),
-            ),
-          ),
-          or(
-            doc('dismissedDate').notExists(),
-            and(
-              doc('dismissedDate').exists(),
-              doc('reopenedDate').exists(),
-              doc('reopenedDate').greaterThanOrEqual({ name: 'dismissedDate' }),
-            ),
-          ),
-        ),
-      );
+      conditions.push(this.buildExcludeClosedCasesCondition());
     }
     return conditions;
   }
