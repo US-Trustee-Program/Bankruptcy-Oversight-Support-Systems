@@ -3,6 +3,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
+import MeetingOfCreditorsInfoCard from './MeetingOfCreditorsInfoCard';
 
 export interface TrusteeDetailProfileProps {
   trustee: Trustee;
@@ -11,6 +12,7 @@ export interface TrusteeDetailProfileProps {
   onAddAssistant: () => void;
   onEditAssistant: () => void;
   onEditOtherInformation: () => void;
+  onEditZoomInfo: () => void;
 }
 
 export default function TrusteeDetailProfile({
@@ -20,6 +22,7 @@ export default function TrusteeDetailProfile({
   onAddAssistant,
   onEditAssistant,
   onEditOtherInformation,
+  onEditZoomInfo,
 }: Readonly<TrusteeDetailProfileProps>) {
   return (
     <div className="right-side-screen-content">
@@ -41,6 +44,7 @@ export default function TrusteeDetailProfile({
             <div className="trustee-name">{trustee.name}</div>
             <FormattedContact contact={trustee.public} testIdPrefix="trustee" />
           </div>
+          <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} onEdit={onEditZoomInfo} />
           <div className="trustee-other-information record-detail-card">
             <div className="title-bar">
               <h3>Other Information</h3>
@@ -57,15 +61,17 @@ export default function TrusteeDetailProfile({
             {trustee.banks &&
               trustee.banks.length > 0 &&
               trustee.banks.map((bank, index) => (
-                <div key={index} className="trustee-bank">
+                <div key={index} className="trustee-bank" data-testid={`trustee-bank-${index}`}>
                   Bank: {bank}
                 </div>
               ))}
             {trustee.software && (
-              <div className="trustee-software">Software: {trustee.software}</div>
+              <div className="trustee-software" data-testid="trustee-software">
+                Software: {trustee.software}
+              </div>
             )}
             {!trustee.software && (!trustee.banks || trustee.banks.length === 0) && (
-              <div>No information has been entered.</div>
+              <div data-testid="no-other-information">No information has been entered.</div>
             )}
           </div>
         </div>
@@ -91,7 +97,9 @@ export default function TrusteeDetailProfile({
                 <IconLabel icon="edit" label="Edit" />
               </Button>
             </div>
-            {!trustee.internal && <div>No information added.</div>}
+            {!trustee.internal && (
+              <div data-testid="no-internal-information">No information added.</div>
+            )}
             {!!trustee.internal && (
               <FormattedContact contact={trustee.internal} testIdPrefix="trustee-internal" />
             )}

@@ -1,7 +1,8 @@
-import { MockInstance } from 'vitest';
 import { copyCaseNumber, getCaseNumber } from './caseNumber';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { waitFor } from '@testing-library/react';
+import { copyStringToClipboard } from './clipBoard';
+
+vi.mock('./clipBoard');
 
 describe('Formatting case id', () => {
   test('Should get case number from case id', async () => {
@@ -26,35 +27,23 @@ describe('Formatting case id', () => {
   });
 });
 describe('Testing the clipboard with caseId', () => {
-  let writeTextMock: MockInstance<(data: string) => Promise<void>> = vi.fn().mockResolvedValue('');
   const testCaseDetail = MockData.getCaseDetail();
+
   beforeEach(() => {
-    if (!navigator.clipboard) {
-      Object.assign(navigator, {
-        clipboard: {
-          writeText: writeTextMock,
-        },
-      });
-    } else {
-      writeTextMock = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
-    }
+    vi.clearAllMocks();
   });
 
-  test('clicking copy button should write caseId to clipboard', async () => {
+  test('clicking copy button should call copyStringToClipboard with caseId', () => {
     copyCaseNumber(testCaseDetail.caseId);
-    await waitFor(() => {
-      expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
-    });
+    expect(copyStringToClipboard).toHaveBeenCalledWith(testCaseDetail.caseId);
   });
 
-  test('should only copy to clipboard if we have a valid case number', async () => {
+  test('should only call copyStringToClipboard if we have a valid case number', () => {
     copyCaseNumber('abcdefg#!@#$%');
-    expect(writeTextMock).not.toHaveBeenCalled();
+    expect(copyStringToClipboard).not.toHaveBeenCalled();
 
     copyCaseNumber(testCaseDetail.caseId);
-    await waitFor(() => {
-      expect(writeTextMock).toHaveBeenCalledWith(testCaseDetail.caseId);
-      expect(writeTextMock).toHaveBeenCalledTimes(1);
-    });
+    expect(copyStringToClipboard).toHaveBeenCalledWith(testCaseDetail.caseId);
+    expect(copyStringToClipboard).toHaveBeenCalledTimes(1);
   });
 });

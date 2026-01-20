@@ -666,12 +666,12 @@ describe('test cams combobox', () => {
     });
   });
 
-  test('Tabbing from another area of the screen to the combo box should first focus on the clear button, then the actual combo box input.', async () => {
+  test('Tabbing from another area of the screen to the combo box should first focus on the combo box input, then the clear button.', async () => {
     const ref = React.createRef<ComboBoxRef>();
     renderWithProps({ options: getDefaultOptions() }, ref);
     await toggleDropdown();
 
-    const button1 = document.querySelector('.button1');
+    const button1 = screen.getByRole('button', { name: 'button' });
 
     await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
     await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 1);
@@ -682,37 +682,31 @@ describe('test cams combobox', () => {
     const clearAllBtn = getClearAllButton();
     expect(clearAllBtn).toBeInTheDocument();
 
-    // this shouldn't be necessary as we've tested this elsewhere, but the dropdown isn't closing when clicking on button1
-    // so we're forcing closed.
-    toggleDropdown();
+    // Close the dropdown and wait for it to be fully closed
+    await toggleDropdown();
     await waitFor(() => {
       expect(isDropdownClosed()).toBeTruthy();
     });
 
-    await userEvent.click(button1!);
+    // Click button1 and explicitly set focus to it
+    await userEvent.click(button1);
     (button1 as HTMLButtonElement).focus();
-    await waitFor(() => {
-      expect(button1!).toHaveFocus();
-    });
+    expect(button1).toHaveFocus();
 
-    await waitFor(async () => {
-      await userEvent.tab();
-      expect(clearAllBtn).toHaveFocus();
-    });
+    // Tab to combobox container first (clear button comes after in DOM)
+    await userEvent.tab();
+    await expectInputContainerToHaveFocus();
 
-    await waitFor(async () => {
-      await userEvent.type(clearAllBtn!, '{Tab}');
-      await expectInputContainerToHaveFocus();
-    });
+    // Tab to clear button
+    await userEvent.tab();
+    expect(clearAllBtn).toHaveFocus();
 
     expect(isDropdownClosed()).toBeTruthy();
-    const container = await getComboInputContainer();
 
+    // Tab past the combobox to next input field
     await userEvent.tab();
-
-    await waitFor(() => {
-      expect(container).not.toHaveFocus();
-    });
+    const nextInput = screen.getByRole('textbox');
+    expect(nextInput).toHaveFocus();
   });
 
   test('should return selections in onUpdateSelection when a selection is made', async () => {
