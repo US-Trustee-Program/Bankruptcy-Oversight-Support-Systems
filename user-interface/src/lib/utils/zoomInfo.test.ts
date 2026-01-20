@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect } from 'vitest';
 import { formatMeetingId } from './zoomInfo';
 
 describe('zoomInfo', () => {
   describe('formatMeetingId', () => {
-    it('should format 10-digit meeting ID correctly', () => {
+    test('should format 10-digit meeting ID correctly', () => {
       const result = formatMeetingId('1234567890');
       expect(result).toBe('123 456 7890');
     });
