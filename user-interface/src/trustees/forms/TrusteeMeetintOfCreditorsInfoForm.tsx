@@ -1,0 +1,210 @@
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Input from '@/lib/components/uswds/Input';
+import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
+import Api2 from '@/lib/models/api2';
+import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
+import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
+import useDebounce from '@/lib/hooks/UseDebounce';
+import React, { useState, useCallback } from 'react';
+import { Trustee } from '@common/cams/trustees';
+import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZOOM_MEETING_ID_REGEX } from '@common/cams/regex';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+
+const fieldLabels: Record<string, string> = {
+  link: 'Zoom Link',
+  phone: 'Zoom Phone',
+  meetingId: 'Meeting ID',
+  passcode: 'Passcode', // pragma: allowlist secret
+};
+
+const validators: Record<string, (value: string) => string | null> = {
+  link: (value) => {
+    if (!value.trim()) return `${fieldLabels.link} is required`;
+    if (!WEBSITE_RELAXED_REGEX.test(value)) return FIELD_VALIDATION_MESSAGES.ZOOM_LINK;
+    if (value.length > 255) return FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH;
+    return null;
+  },
+  phone: (value) => {
+    if (!value.trim() || !PHONE_REGEX.test(value)) return FIELD_VALIDATION_MESSAGES.PHONE_NUMBER;
+    return null;
+  },
+  meetingId: (value) => {
+    if (!value.trim()) return `${fieldLabels.meetingId} is required`;
+    if (!ZOOM_MEETING_ID_REGEX.test(value)) return FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID;
+    return null;
+  },
+  passcode: (value) => {
+    if (!value.trim()) return `${fieldLabels.passcode} is required`;
+    return null;
+  },
+};
+
+const validateField = (fieldName: keyof typeof validators, value: string): string | null =>
+  validators[fieldName](value);
+
+type TrusteeZoomInfoFormProps = {
+  trustee: Trustee;
+};
+
+function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
+  const globalAlert = useGlobalAlert();
+  const debounce = useDebounce();
+  const { trustee } = props;
+  const trusteeId = trustee.trusteeId;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formState, setFormState] = useState({
+    link: trustee.zoomInfo?.link ?? '',
+    phone: trustee.zoomInfo?.phone ?? '',
+    meetingId: trustee.zoomInfo?.meetingId ?? '',
+    passcode: trustee.zoomInfo?.passcode ?? '', // pragma: allowlist secret
+  });
+
+  const navigate = useCamsNavigator();
+
+  const handleCancel = useCallback(() => {
+    navigate.navigateTo(`/trustees/${trusteeId}`);
+  }, [navigate, trusteeId]);
+
+  const createChangeHandler =
+    (fieldName: keyof typeof formState) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+
+      setFormState((prev) => ({ ...prev, [fieldName]: value }));
+
+      debounce(() => {
+        const error = validateField(fieldName, value);
+        setFieldErrors((prev) => {
+          if (error) {
+            return { ...prev, [fieldName]: error };
+          }
+          const { [fieldName]: _, ...rest } = prev;
+          return rest;
+        });
+      }, 300);
+    };
+
+  const validateAll = (state: typeof formState): Record<string, string> => {
+    const errors: Record<string, string> = {};
+    (Object.keys(state) as (keyof typeof formState)[]).forEach((field) => {
+      const error = validateField(field, state[field]);
+      if (error) errors[field] = error;
+    });
+    return errors;
+  };
+
+  async function handleSubmit(event?: React.MouseEvent<HTMLButtonElement>): Promise<void> {
+    event?.preventDefault();
+
+    if (!trusteeId?.trim()) {
+      globalAlert?.error('Cannot save zoom information: Trustee ID is missing');
+      return;
+    }
+
+    const errors = validateAll(formState);
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setFieldErrors({});
+    setIsSubmitting(true);
+    try {
+      const response = await Api2.patchTrustee(trusteeId, { zoomInfo: formState });
+      if (response?.data) {
+        navigate.navigateTo(`/trustees/${trusteeId}`);
+      }
+    } catch (e) {
+      globalAlert?.error(`Failed to update zoom information: ${(e as Error).message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const hasErrors = Object.keys(fieldErrors).length > 0;
+  const hasEmptyFields = Object.values(formState).some((v) => !v.trim());
+  const isSaveDisabled = isSubmitting || hasErrors || hasEmptyFields;
+
+  return (
+    <div className="trustee-zoom-info-form-screen">
+      <h3>Edit 341 meeting Information</h3>
+      <p>
+        A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required field.
+      </p>
+      <form data-testid="trustee-zoom-info-form">
+        <div className="form-container">
+          <div className="form-column">
+            <Input
+              id="trustee-zoom-link"
+              label="Zoom Link"
+              name="zoom-link"
+              value={formState.link}
+              onChange={createChangeHandler('link')}
+              data-testid="trustee-zoom-link-input"
+              required={true}
+              ariaDescription={[
+                'Copy and paste the entire zoom meeting URI here.',
+                'Example: https://us02web.zoom.us/j/0000000000',
+              ]}
+              errorMessage={fieldErrors.link}
+            />
+            <PhoneNumberInput
+              id="trustee-zoom-phone"
+              label="Zoom Phone"
+              name="zoom-phone"
+              value={formState.phone}
+              onChange={createChangeHandler('phone')}
+              data-testid="trustee-zoom-phone-input"
+              required={true}
+              errorMessage={fieldErrors.phone}
+            />
+            <Input
+              id="trustee-zoom-meeting-id"
+              label="Meeting ID"
+              name="zoom-meeting-id"
+              value={formState.meetingId}
+              onChange={createChangeHandler('meetingId')}
+              data-testid="trustee-zoom-meeting-id-input"
+              required={true}
+              errorMessage={fieldErrors.meetingId}
+            />
+            <Input
+              id="trustee-zoom-passcode"
+              label="Passcode"
+              name="zoom-passcode"
+              value={formState.passcode}
+              onChange={createChangeHandler('passcode')}
+              data-testid="trustee-zoom-passcode-input"
+              required={true}
+              errorMessage={fieldErrors.passcode}
+            />
+          </div>
+        </div>
+        <div className="grid-row margin-top-4">
+          <div className="grid-col-auto">
+            <Button
+              id="button-trustee-zoom-info-form-submit"
+              uswdsStyle={UswdsButtonStyle.Default}
+              onClick={handleSubmit}
+              disabled={isSaveDisabled}
+            >
+              Save
+            </Button>
+          </div>
+          <div className="grid-col-auto margin-top-auto margin-bottom-auto">
+            <Button
+              id="button-trustee-zoom-info-form-cancel"
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default TrusteeZoomInfoForm;
