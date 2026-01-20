@@ -70,10 +70,16 @@ export type ZoomInfo = {
   passcode: string;
 };
 
+export type TrusteeAssistant = {
+  name: string;
+  contact: ContactInformation;
+};
+
 type TrusteeCore = {
   name: string;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
+  assistant?: TrusteeAssistant;
 };
 
 type TrusteeOptionalFields = {
@@ -144,6 +150,10 @@ export type TrusteeZoomInfoHistory = AbstractTrusteeHistory<
   documentType: 'AUDIT_ZOOM_INFO';
 };
 
+export type TrusteeAssistantHistory = AbstractTrusteeHistory<TrusteeAssistant, TrusteeAssistant> & {
+  documentType: 'AUDIT_ASSISTANT';
+};
+
 type UserAndRole = { user: CamsUserReference; role: OversightRoleType };
 export type TrusteeOversightHistory = AbstractTrusteeHistory<
   UserAndRole | null,
@@ -173,6 +183,7 @@ export type TrusteeHistory =
   | TrusteeNameHistory
   | TrusteePublicContactHistory
   | TrusteeInternalContactHistory
+  | TrusteeAssistantHistory
   | TrusteeBankHistory
   | TrusteeSoftwareHistory
   | TrusteeZoomInfoHistory

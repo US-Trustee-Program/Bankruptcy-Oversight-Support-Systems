@@ -11,7 +11,7 @@ import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 
-import { Trustee, TrusteeInput } from '@common/cams/trustees';
+import { TrusteeInput } from '@common/cams/trustees';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteePublicFormData } from './trusteeForms.types';
@@ -278,29 +278,23 @@ describe('TrusteePublicContactForm Tests', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     const expectedPayload = {
-      ...existing,
+      name: existing.name,
       public: {
-        ...existing.public,
         address: {
-          ...existing.public.address,
           address1: newAddress1,
-          zipCode: newZip,
+          city: existing.public.address.city,
           state: 'CA',
+          zipCode: newZip,
+          countryCode: 'US',
         },
         phone: {
-          ...existing.public.phone,
           number: newPhone,
+          extension: existing.public.phone?.extension,
         },
         email: newEmail,
         website: 'example.com',
       },
-    } as Partial<Trustee>;
-    delete expectedPayload.id;
-    delete expectedPayload.trusteeId;
-    delete expectedPayload.public?.address.address2;
-    delete expectedPayload.public?.address.address3;
-    delete expectedPayload.updatedBy;
-    delete expectedPayload.updatedOn;
+    } as Partial<TrusteeInput>;
 
     expect(patchSpy).toHaveBeenCalledWith(existing.trusteeId, expectedPayload);
     expect(navigateTo).toHaveBeenCalledWith('/trustees/' + existing.trusteeId);
@@ -428,8 +422,8 @@ describe('TrusteePublicContactForm Tests', () => {
     });
   });
 
-  test('validateField returns null for a field not in spec (covers else branch)', () => {
+  test('validateField returns undefined for a field not in spec (covers else branch)', () => {
     const unknownField = 'notASpecField' as unknown as keyof TrusteePublicFormData;
-    expect(validateField(unknownField, 'some value')).toBeNull();
+    expect(validateField(unknownField, 'some value')).toBeUndefined();
   });
 });
