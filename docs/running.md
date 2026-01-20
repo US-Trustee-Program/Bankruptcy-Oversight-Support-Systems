@@ -178,6 +178,110 @@ CAMS_ENABLED_DATAFLOWS=SYNC_CASES,SYNC_OFFICE_STAFF,SYNC_ORDERS
 
 ?> Note that when you run `npm run start:api` or `npm run start:dataflows`, the script will copy `backend/.env` into the appropriate directory, quietly overwriting any changes made to previous copies. All changes should be handled in `backend/.env` to avoid frustration and misconfiguration.
 
+##### Local MongoDB Setup with Docker
+
+For local development, CAMS supports running MongoDB in a Docker container instead of connecting to Azure Cosmos DB. This provides faster development cycles, offline capability, and eliminates the risk of accidentally modifying shared development databases.
+
+###### Quick Start
+
+1. Ensure Docker and Docker Compose are installed on your system
+2. Start the local MongoDB container:
+   ```shell
+   npm run docker:up
+   ```
+3. Load seed data:
+   ```shell
+   npm run seed:local-db
+   ```
+4. Start the backend:
+   ```shell
+   npm run start:backend
+   ```
+
+###### Configuration
+
+The local MongoDB setup uses the following defaults:
+- **Host**: `localhost`
+- **Port**: `27017`
+- **Database**: `cams`
+- **Username**: `cams-admin`
+- **Password**: `cams-local-dev-password`
+
+Update your `backend/.env` file with the local connection string:
+
+```
+MONGO_CONNECTION_STRING=
+COSMOS_DATABASE_NAME=cams
+DATABASE_MOCK=false
+```
+
+A template configuration is available at `backend/.env.local.example`.
+
+###### Managing the Local Database
+
+**Start MongoDB:**
+```shell
+npm run docker:up
+```
+
+**Stop MongoDB (preserves data):**
+```shell
+npm run docker:down
+```
+
+**Stop MongoDB and delete all data:**
+```shell
+npm run docker:down:volumes
+```
+
+**View MongoDB logs:**
+```shell
+npm run docker:logs
+```
+
+**Reload seed data:**
+```shell
+npm run seed:local-db
+```
+
+###### Seed Data
+
+The seed data loader reuses the existing E2E test infrastructure and loads:
+- Cases from the DXTR database
+- Transfer and consolidation orders
+- Trustees
+- User groups
+- Office staff
+
+?> The seed script requires a connection to the DXTR SQL database. Ensure your DXTR credentials are configured in `backend/.env` before running `npm run seed:local-db`.
+
+###### Viewing Data
+
+You can connect to the local MongoDB using MongoDB Compass or mongosh:
+
+```shell
+mongosh "mongodb://localhost:27017/cams" -u cams-admin -p cams-local-dev-password --authenticationDatabase admin
+```
+
+###### Troubleshooting
+
+**MongoDB container won't start:**
+- Check if port 27017 is already in use: `lsof -i :27017`
+- Check Docker logs: `npm run docker:logs`
+
+**Seed data not loading:**
+- Ensure MongoDB is running: `docker ps | grep cams-mongodb`
+- Verify DXTR database credentials are correct in `backend/.env`
+- Check that `LOAD_E2E_DB` is in `CAMS_ENABLED_DATAFLOWS`
+
+**Connection refused errors:**
+- Wait a few seconds after `npm run docker:up` for MongoDB to fully start
+- Check MongoDB health: `docker inspect cams-mongodb | grep Health`
+
+###### Using Azure Cosmos DB Instead
+
+If you need to connect to Azure Cosmos DB for local development, simply update the `MONGO_CONNECTION_STRING` in `backend/.env` to your Azure Cosmos DB connection string. No code changes are required.
+
 ##### Cosmos Database
 
 To interact with the Cosmos database from your local machine you will need to set up access

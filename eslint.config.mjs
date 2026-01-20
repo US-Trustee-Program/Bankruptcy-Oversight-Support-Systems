@@ -47,6 +47,7 @@ const eslintConfig = [
       '**/coverage/**/*',
       '**/.*/**',
       '**/eslint*.config.mjs',
+      'ops/local-dev/mongo-init/**/*',
     ],
   },
   ...frontendSourceConfig,

@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: cams-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: cams
+      MONGO_INITDB_ROOT_USERNAME: cams-admin
+      MONGO_INITDB_ROOT_PASSWORD: cams-local-dev-password # pragma: allowlist secret
+    volumes:
+      - mongodb-data:/data/db
+      - ./ops/local-dev/mongo-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cams-network
+
+volumes:
+  mongodb-data:
+    driver: local
+
+networks:
+  cams-network:
+    driver: bridge

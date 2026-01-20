@@ -28,6 +28,7 @@
     "pack:all": "npm run pack:api && npm run pack:dataflows",
     "pack:api": "(cd function-apps/api && npm run pack)",
     "pack:dataflows": "(cd function-apps/dataflows && npm run pack)",
+    "seed:local": "npx tsx scripts/seed-local-db.ts",
     "start": "npm run start:api",
     "start:api": "(cd function-apps/api && npm run start)",
     "start:dataflows": "(cd function-apps/dataflows && npm run start)",

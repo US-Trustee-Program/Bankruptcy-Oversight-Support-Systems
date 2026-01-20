@@ -12,6 +12,49 @@ nationwide.
 
 [Learn More](https://www.justice.gov/ust/about-program)
 
+# Local Development
+
+CAMS supports local development with Docker-based MongoDB for faster iteration and offline development.
+
+## Quick Start
+
+```shell
+# One-time setup
+npm run docker:up          # Start local MongoDB
+npm run seed:local-db      # Load test data
+
+# Start development servers
+npm run start:backend      # Terminal 1
+npm run start:frontend     # Terminal 2
+```
+
+## Requirements
+
+- Node.js 18.13.0 or above
+- Docker and Docker Compose
+- Azure Functions Core Tools
+
+## Configuration
+
+Copy the environment template and configure your local settings:
+
+```shell
+cp backend/.env.local.example backend/.env
+```
+
+Update `backend/.env` with your DXTR database credentials (required for seed data).
+
+## Managing the Local Database
+
+```shell
+npm run docker:up              # Start MongoDB
+npm run docker:down            # Stop MongoDB (keeps data)
+npm run docker:down:volumes    # Stop and delete all data
+npm run seed:local-db          # Reload seed data
+```
+
+See [Running Documentation](docs/running.md) for detailed setup instructions and troubleshooting.
+
 # Further Documentation
 
 The majority of our documentation is located in the `docs` directory and

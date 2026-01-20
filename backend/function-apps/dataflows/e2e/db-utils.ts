@@ -7,14 +7,23 @@ import { CaseSyncEvent } from '@common/queue/dataflow-types';
 import { Trustee } from '@common/cams/trustees';
 
 /**
- * Deletes all documents from all collections in the MongoDB database for e2e testing.
+ * Deletes all documents from all collections in the MongoDB database for e2e testing or local development.
  */
 export async function clearAllCollections(context: ApplicationContext) {
   const dbName = context.config.documentDbConfig?.databaseName;
-  if (!dbName?.toLowerCase().includes('e2e')) {
-    throw new Error(`This dataflow must run against an e2e database. Database name: ${dbName}.`);
-  }
   const { connectionString } = context.config.documentDbConfig;
+
+  // Safety check: only allow e2e databases or local development databases
+  const isE2eDatabase = dbName?.toLowerCase().includes('e2e');
+  const isLocalDatabase =
+    connectionString?.includes('localhost') || connectionString?.includes('127.0.0.1');
+
+  if (!isE2eDatabase && !isLocalDatabase) {
+    throw new Error(
+      `This dataflow must run against an e2e database or local development database. ` +
+        `Database name: ${dbName}.`,
+    );
+  }
   const { DocumentClient } = await import('../../../lib/humble-objects/mongo-humble');
   const client = new DocumentClient(connectionString);
   const db = client.database(dbName);

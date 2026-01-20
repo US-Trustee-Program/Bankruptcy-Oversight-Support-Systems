@@ -15,6 +15,24 @@
         "**/.cache/**"
       ]
     },
+    "ops": {
+      "entry": [
+        "function-apps/**/*.function.ts",
+        "function-apps/dataflows/dataflows.ts",
+        "express/server.ts",
+        "**/*.test.ts"
+      ],
+      "project": ["**/*.ts"],
+      "ignore": [
+        "**/mongo-init/**",
+        "**/dist/**",
+        "**/coverage/**"
+      ],
+      "ignoreFiles": [
+        "function-apps/api/index.ts",
+        "lib/testing/mock-gateways/mock-oauth2-constants.ts"
+      ]
+    },
     "backend": {
       "entry": [
         "function-apps/**/*.function.ts",
