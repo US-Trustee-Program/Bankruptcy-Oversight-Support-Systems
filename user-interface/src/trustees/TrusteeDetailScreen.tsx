@@ -23,7 +23,7 @@ import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
 import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
-import TrusteeMeetintOfCreditorsInfoForm from './forms/TrusteeMeetintOfCreditorsInfoForm';
+import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -210,7 +210,7 @@ export default function TrusteeDetailScreen() {
     {
       path: 'zoom/edit',
       subHeading: 'Trustee',
-      content: <TrusteeMeetintOfCreditorsInfoForm trustee={trustee} />,
+      content: <TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />,
     },
     {
       path: 'appointments',

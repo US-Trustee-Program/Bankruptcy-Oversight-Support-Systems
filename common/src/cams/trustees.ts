@@ -5,6 +5,10 @@ import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
+import { ValidationSpec } from './validation';
+import V from './validators';
+import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZOOM_MEETING_ID_REGEX } from './regex';
+import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 
 export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
@@ -189,3 +193,14 @@ export type TrusteeHistory =
   | TrusteeZoomInfoHistory
   | TrusteeOversightHistory
   | TrusteeAppointmentHistory;
+
+export const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
+  link: [
+    V.minLength(1, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
+    V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
+    V.maxLength(255, FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH),
+  ],
+  phone: [V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER)],
+  meetingId: [V.matches(ZOOM_MEETING_ID_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID)],
+  passcode: [V.minLength(1, FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED)],
+};
