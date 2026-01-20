@@ -92,13 +92,13 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const mapPayload = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
     // If name is empty, clear the entire assistant
-    if (!formData.name?.trim()) {
+    if (!formData.name) {
       return { assistant: undefined };
     }
 
     return {
       assistant: {
-        name: formData.name.trim(),
+        name: formData.name,
         contact: {
           address:
             formData.address1 && formData.city && formData.state && formData.zipCode
