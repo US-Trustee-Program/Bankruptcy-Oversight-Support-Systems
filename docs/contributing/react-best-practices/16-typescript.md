@@ -220,8 +220,8 @@ interface TrusteeInput {
 const trusteeValidationSpec: ValidationSpec<TrusteeInput> = {
   firstName: [Validators.minLength(1, 'First name is required')],
   lastName: [Validators.minLength(1, 'Last name is required')],
-  email: [Validators.isEmailAddress],
-  phone: [Validators.optional(Validators.isPhoneNumber)],
+  email: [Validators.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL)],
+  phone: [Validators.optional(Validators.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER))],
 };
 
 // Use in action
@@ -279,11 +279,8 @@ function TrusteeForm() {
 - `minLength(min, reason?)` - Minimum length for strings/arrays
 - `maxLength(max, reason?)` - Maximum length for strings/arrays
 - `exactLength(len, reason?)` - Exact length requirement
-- `isEmailAddress` - Email format validation
-- `isPhoneNumber` - Phone number format (10 digits)
-- `isWebsiteAddress` - Website URL format
 - `isInSet(set, reason?)` - Value must be in allowed set
-- `matches(regex, reason?)` - Custom regex matching
+- `matches(regex, reason?)` - Custom regex matching (use with `EMAIL_REGEX`, `PHONE_REGEX`, etc. and `FIELD_VALIDATION_MESSAGES`)
 - `optional(...validators)` - Allows undefined values
 - `nullable(...validators)` - Allows null values
 - `arrayOf(...validators)` - Validates array elements

@@ -42,6 +42,7 @@ const mockTrustee: Trustee = {
 const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
 const mockOnEditOtherInformation = vi.fn();
+const onEditZoomInfo = vi.fn();
 const mockOnAddAssistant = vi.fn();
 const mockOnEditAssistant = vi.fn();
 
@@ -51,6 +52,7 @@ function renderWithProps(props?: Partial<TrusteeDetailProfileProps>) {
     onEditPublicProfile: mockOnEditPublicProfile,
     onEditInternalProfile: mockOnEditInternalProfile,
     onEditOtherInformation: mockOnEditOtherInformation,
+    onEditZoomInfo: onEditZoomInfo,
     onAddAssistant: mockOnAddAssistant,
     onEditAssistant: mockOnEditAssistant,
   };
@@ -144,6 +146,9 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithoutInternal });
 
+    expect(screen.getByTestId('no-internal-information')).toHaveTextContent(
+      'No information added.',
+    );
     const internalSection = screen
       .getByText('Contact Information (USTP Internal)')
       .closest('.trustee-internal-contact-information');
@@ -283,7 +288,7 @@ describe('TrusteeDetailProfile', () => {
   test('should render edit button labels correctly', () => {
     renderWithProps({});
 
-    expect(screen.getAllByText('Edit')).toHaveLength(4); // Four edit buttons: Public, Internal, Assistant, Other Information
+    expect(screen.getAllByText('Edit')).toHaveLength(5);
   });
 
   test('should render bank information when banks are present', () => {
@@ -294,8 +299,8 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithBanks });
 
-    expect(screen.getByText('Bank: First National Bank')).toBeInTheDocument();
-    expect(screen.getByText('Bank: Second Trust Bank')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-bank-0')).toHaveTextContent('Bank: First National Bank');
+    expect(screen.getByTestId('trustee-bank-1')).toHaveTextContent('Bank: Second Trust Bank');
   });
 
   test('should render single bank when only one bank is present', () => {
@@ -306,7 +311,7 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithOneBank });
 
-    expect(screen.getByText('Bank: Single Trust Bank')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-bank-0')).toHaveTextContent('Bank: Single Trust Bank');
   });
 
   test('should render "No information has been entered" when banks array is undefined', () => {
@@ -317,8 +322,10 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithoutBanks });
 
-    expect(screen.getByText('No information has been entered.')).toBeInTheDocument();
-    expect(screen.queryByText(/Bank: /)).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-other-information')).toHaveTextContent(
+      'No information has been entered.',
+    );
+    expect(screen.queryByTestId('trustee-bank-0')).not.toBeInTheDocument();
   });
 
   test('should render "No information has been entered" when banks array is empty', () => {
@@ -329,8 +336,10 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithEmptyBanks });
 
-    expect(screen.getByText('No information has been entered.')).toBeInTheDocument();
-    expect(screen.queryByText(/Bank: /)).not.toBeInTheDocument();
+    expect(screen.getByTestId('no-other-information')).toHaveTextContent(
+      'No information has been entered.',
+    );
+    expect(screen.queryByTestId('trustee-bank-0')).not.toBeInTheDocument();
   });
 
   test('should call onEditOtherInformation when other information edit button is clicked', async () => {
@@ -352,6 +361,8 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithSoftware });
 
-    expect(screen.getByText('Software: BestCase Trustee Software v2.1')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-software')).toHaveTextContent(
+      'Software: BestCase Trustee Software v2.1',
+    );
   });
 });

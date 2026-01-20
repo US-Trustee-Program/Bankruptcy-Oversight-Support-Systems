@@ -177,10 +177,12 @@ export function validateObject(spec: ValidationSpec<unknown>, obj: unknown): Val
 // Components use clean validation API
 import Validators from '@common/cams/validators';
 import { validateObject, ValidationSpec } from '@common/cams/validation';
+import { EMAIL_REGEX, PHONE_REGEX } from '@common/cams/regex';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 const spec: ValidationSpec<MyData> = {
-  email: [Validators.isEmailAddress],
-  phone: [Validators.optional(Validators.isPhoneNumber)],
+  email: [Validators.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL)],
+  phone: [Validators.optional(Validators.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER))],
 };
 
 const result = validateObject(spec, data);
