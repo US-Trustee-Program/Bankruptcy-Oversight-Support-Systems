@@ -19,6 +19,7 @@ import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './trusteeForms.t
 import { validateEach, validateObject } from '@common/cams/validation';
 import { ContactInformation } from '@common/cams/contact';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { normalizeFormData } from './trusteeForms.utils';
 
 const getInitialFormData = (
   info: Partial<ContactInformation> | undefined,
@@ -132,7 +133,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
 
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
-    const currentFormData = getFormData();
+    const currentFormData = normalizeFormData(formData);
 
     if (validateFormAndUpdateErrors(currentFormData)) {
       setIsSubmitting(true);
@@ -181,34 +182,6 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
       ...prev,
       [field]: reasons,
     }));
-  };
-
-  const getFormData = (override?: {
-    name: keyof TrusteeInternalFormData;
-    value: string | undefined;
-  }) => {
-    const trimmedData = {
-      ...formData,
-      address1: formData.address1?.trim(),
-      address2: formData.address2?.trim(),
-      city: formData.city?.trim(),
-      zipCode: formData.zipCode?.trim(),
-      phone: formData.phone?.trim(),
-      extension: formData.extension?.trim(),
-      email: formData.email?.trim(),
-    };
-
-    for (const key of Object.keys(trimmedData)) {
-      if (trimmedData[key as keyof TrusteeInternalFormData] === '') {
-        trimmedData[key as keyof TrusteeInternalFormData] = undefined;
-      }
-    }
-
-    if (override) {
-      const trimmedOverride = override.value?.trim() || undefined;
-      return { ...trimmedData, [override.name]: trimmedOverride } as TrusteeInternalFormData;
-    }
-    return trimmedData;
   };
 
   const updateField = (field: keyof TrusteeInternalFormData, value: unknown) => {
