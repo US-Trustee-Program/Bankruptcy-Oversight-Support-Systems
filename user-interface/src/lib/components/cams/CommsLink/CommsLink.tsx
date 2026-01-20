@@ -34,11 +34,14 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
   const { email, website, phone } = contact;
   const { number, extension } = phone ?? {};
 
-  const isValidEmail = Validators.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL)(email);
-  const isValidPhoneNumber = Validators.matches(
+  const isValidEmail: boolean = !!Validators.matches(
+    EMAIL_REGEX,
+    FIELD_VALIDATION_MESSAGES.EMAIL,
+  )(email).valid;
+  const isValidPhoneNumber: boolean = !!Validators.matches(
     PHONE_REGEX,
     FIELD_VALIDATION_MESSAGES.PHONE_NUMBER,
-  )(number);
+  )(number).valid;
 
   let href = '';
   let labelToUse = label ?? '';
