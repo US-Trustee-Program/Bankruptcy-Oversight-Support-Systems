@@ -6,41 +6,18 @@ import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import React, { useState, useCallback } from 'react';
-import { Trustee } from '@common/cams/trustees';
-import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZOOM_MEETING_ID_REGEX } from '@common/cams/regex';
-import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import { Trustee, zoomInfoSpec, ZoomInfo } from '@common/cams/trustees';
+import { validateEach } from '@common/cams/validation';
 
-const fieldLabels: Record<string, string> = {
-  link: 'Zoom Link',
-  phone: 'Zoom Phone',
-  meetingId: 'Meeting ID',
-  passcode: 'Passcode', // pragma: allowlist secret
+const validateField = (fieldName: keyof ZoomInfo, value: string): string | null => {
+  const validators = zoomInfoSpec[fieldName];
+  if (!validators) return null;
+
+  const result = validateEach(validators, value);
+  if (result.valid) return null;
+
+  return result.reasons?.[0] ?? 'Invalid value';
 };
-
-const validators: Record<string, (value: string) => string | null> = {
-  link: (value) => {
-    if (!value.trim()) return `${fieldLabels.link} is required`;
-    if (!WEBSITE_RELAXED_REGEX.test(value)) return FIELD_VALIDATION_MESSAGES.ZOOM_LINK;
-    if (value.length > 255) return FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH;
-    return null;
-  },
-  phone: (value) => {
-    if (!value.trim() || !PHONE_REGEX.test(value)) return FIELD_VALIDATION_MESSAGES.PHONE_NUMBER;
-    return null;
-  },
-  meetingId: (value) => {
-    if (!value.trim()) return `${fieldLabels.meetingId} is required`;
-    if (!ZOOM_MEETING_ID_REGEX.test(value)) return FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID;
-    return null;
-  },
-  passcode: (value) => {
-    if (!value.trim()) return `${fieldLabels.passcode} is required`;
-    return null;
-  },
-};
-
-const validateField = (fieldName: keyof typeof validators, value: string): string | null =>
-  validators[fieldName](value);
 
 type TrusteeZoomInfoFormProps = {
   trustee: Trustee;

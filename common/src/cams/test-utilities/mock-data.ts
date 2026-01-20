@@ -599,7 +599,9 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
     assistant: sanitizedOverride.assistant,
     banks: sanitizedOverride.banks,
     software: sanitizedOverride.software,
+    zoomInfo: sanitizedOverride.zoomInfo,
     legacy: sanitizedOverride.legacy,
+    ...override,
   };
 
   return result;
