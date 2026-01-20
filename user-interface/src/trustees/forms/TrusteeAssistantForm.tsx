@@ -19,6 +19,7 @@ import { TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
 import { TRUSTEE_ASSISTANT_SPEC, TrusteeAssistantFormData } from './trusteeForms.types';
 import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { normalizeFormData } from './trusteeForms.utils';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
   if (!assistant) {
@@ -91,13 +92,13 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const mapPayload = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
     // If name is empty, clear the entire assistant
-    if (!formData.name?.trim()) {
+    if (!formData.name) {
       return { assistant: undefined };
     }
 
     return {
       assistant: {
-        name: formData.name.trim(),
+        name: formData.name,
         contact: {
           address:
             formData.address1 && formData.city && formData.state && formData.zipCode
@@ -150,7 +151,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
-    const currentFormData = getFormData();
+    const currentFormData = normalizeFormData(formData);
 
     if (validateFormAndUpdateErrors(currentFormData)) {
       setIsSubmitting(true);
@@ -199,35 +200,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
       ...prev,
       [field]: reasons,
     }));
-  };
-
-  const getFormData = (override?: {
-    name: keyof TrusteeAssistantFormData;
-    value: string | undefined;
-  }) => {
-    const trimmedData = {
-      ...formData,
-      name: formData.name?.trim(),
-      address1: formData.address1?.trim(),
-      address2: formData.address2?.trim(),
-      city: formData.city?.trim(),
-      zipCode: formData.zipCode?.trim(),
-      phone: formData.phone?.trim(),
-      extension: formData.extension?.trim(),
-      email: formData.email?.trim(),
-    };
-
-    for (const key of Object.keys(trimmedData)) {
-      if (trimmedData[key as keyof TrusteeAssistantFormData] === '') {
-        trimmedData[key as keyof TrusteeAssistantFormData] = undefined;
-      }
-    }
-
-    if (override) {
-      const trimmedOverride = override.value?.trim() || undefined;
-      return { ...trimmedData, [override.name]: trimmedOverride } as TrusteeAssistantFormData;
-    }
-    return trimmedData;
   };
 
   const updateField = (field: keyof TrusteeAssistantFormData, value: unknown) => {
