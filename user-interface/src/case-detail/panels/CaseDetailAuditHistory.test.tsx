@@ -146,20 +146,27 @@ describe('audit history tests', () => {
       data: caseHistory,
     });
 
-    const expectedPrevious = assignmentBefore.map((n) => n.name).join('');
-    const expectedNew = assignmentAfter.map((n) => n.name).join('');
-
     render(<CaseDetailAuditHistory caseId={caseId} />);
 
     await waitFor(() => {
       const previousElement = screen.queryByTestId('previous-assignment-0');
       expect(previousElement).toBeInTheDocument();
-      expect(previousElement).toHaveTextContent(expectedPrevious);
     });
 
-    const newElement = screen.queryByTestId('new-assignment-0');
-    expect(newElement).toBeInTheDocument();
-    expect(newElement).toHaveTextContent(expectedNew);
+    const previousElement = screen.getByTestId('previous-assignment-0');
+    const newElement = screen.getByTestId('new-assignment-0');
+
+    const previousDivs = previousElement.querySelectorAll('div');
+    expect(previousDivs).toHaveLength(assignmentBefore.length);
+    assignmentBefore.forEach((assignment, idx) => {
+      expect(previousDivs[idx]).toHaveTextContent(assignment.name);
+    });
+
+    const newDivs = newElement.querySelectorAll('div');
+    expect(newDivs).toHaveLength(assignmentAfter.length);
+    assignmentAfter.forEach((assignment, idx) => {
+      expect(newDivs[idx]).toHaveTextContent(assignment.name);
+    });
 
     const dateElement = screen.queryByTestId('change-date-0');
     expect(dateElement).toBeInTheDocument();
