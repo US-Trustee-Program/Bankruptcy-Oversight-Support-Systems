@@ -124,5 +124,105 @@ describe('Export and Load Case Tests', () => {
       const actual = await ExportAndLoadCase.loadCase(context, event);
       expect(actual.error).toEqual(expect.objectContaining(expected));
     });
+
+    test('should add phonetic tokens to debtor name when loading case', async () => {
+      const bCase = MockData.getDxtrCase({
+        override: {
+          debtor: { name: 'Michael Johnson' },
+        },
+      });
+      const event = mockCaseSyncEvent({ bCase });
+
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      await ExportAndLoadCase.loadCase(context, event);
+
+      const syncedCase = syncSpy.mock.calls[0][0];
+      expect(syncedCase.debtor.phoneticTokens).toBeDefined();
+      expect(syncedCase.debtor.phoneticTokens.length).toBeGreaterThan(0);
+    });
+
+    test('should add phonetic tokens to joint debtor name when loading case', async () => {
+      const bCase = MockData.getDxtrCase({
+        override: {
+          debtor: { name: 'John Smith' },
+          jointDebtor: { name: 'Sarah Connor' },
+        },
+      });
+      const event = mockCaseSyncEvent({ bCase });
+
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      await ExportAndLoadCase.loadCase(context, event);
+
+      const syncedCase = syncSpy.mock.calls[0][0];
+      expect(syncedCase.debtor.phoneticTokens).toBeDefined();
+      expect(syncedCase.debtor.phoneticTokens.length).toBeGreaterThan(0);
+      expect(syncedCase.jointDebtor.phoneticTokens).toBeDefined();
+      expect(syncedCase.jointDebtor.phoneticTokens.length).toBeGreaterThan(0);
+    });
+
+    test('should handle case without debtor name gracefully', async () => {
+      const bCase = MockData.getDxtrCase({
+        override: {
+          debtor: { name: undefined },
+        },
+      });
+      const event = mockCaseSyncEvent({ bCase });
+
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      await ExportAndLoadCase.loadCase(context, event);
+
+      const syncedCase = syncSpy.mock.calls[0][0];
+      expect(syncedCase.debtor.phoneticTokens).toBeUndefined();
+    });
+  });
+
+  describe('exportAndLoad phonetic token generation', () => {
+    test('should add phonetic tokens to all cases during exportAndLoad', async () => {
+      const mockCaseDetails = MockData.getCaseDetail({
+        override: {
+          debtor: { name: 'Michael Johnson' },
+          jointDebtor: { name: 'Sarah Connor' },
+        },
+      });
+      const events = MockData.buildArray(mockCaseSyncEvent, 2);
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      await ExportAndLoadCase.exportAndLoad(context, events);
+
+      expect(syncSpy).toHaveBeenCalledTimes(events.length);
+
+      syncSpy.mock.calls.forEach((call) => {
+        const syncedCase = call[0];
+        expect(syncedCase.debtor.phoneticTokens).toBeDefined();
+        expect(syncedCase.debtor.phoneticTokens.length).toBeGreaterThan(0);
+        expect(syncedCase.jointDebtor.phoneticTokens).toBeDefined();
+        expect(syncedCase.jointDebtor.phoneticTokens.length).toBeGreaterThan(0);
+      });
+    });
+
+    test('should generate consistent phonetic tokens for same name', async () => {
+      const debtorName = 'John Smith';
+      const mockCaseDetails = MockData.getCaseDetail({
+        override: {
+          debtor: { name: debtorName },
+        },
+      });
+      const events = MockData.buildArray(mockCaseSyncEvent, 2);
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      await ExportAndLoadCase.exportAndLoad(context, events);
+
+      const firstCallTokens = syncSpy.mock.calls[0][0].debtor.phoneticTokens;
+      const secondCallTokens = syncSpy.mock.calls[1][0].debtor.phoneticTokens;
+
+      expect(firstCallTokens).toEqual(secondCallTokens);
+    });
   });
 });
