@@ -15,7 +15,7 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
   const VALID_ZOOM_INFO = {
     link: 'https://zoom.us/j/1234567890',
     phone: '555-123-4567',
-    meetingId: '123 456 7890',
+    meetingId: '1234567890',
     passcode: 'test123', // pragma: allowlist secret
   };
 
@@ -433,9 +433,7 @@ describe('TrusteeMeetingOfCreditorsInfoForm', () => {
       await userEvent.type(meetingIdInput, VALID_ZOOM_INFO.meetingId);
       await userEvent.type(passcodeInput, VALID_ZOOM_INFO.passcode);
 
-      const saveButton = screen.getByText('Save');
-
-      // Wait for save button to be enabled (debounce completes validation)
+      const saveButton = screen.getByTestId('button-button-trustee-zoom-info-form-submit');
       await waitFor(
         () => {
           expect(saveButton).toBeEnabled();
