@@ -753,6 +753,46 @@ describe('Cases repository', () => {
     );
   });
 
+  // Test helper functions for excludeClosedCases expectations
+  const expectExistsCondition = (field: string, exists: boolean) =>
+    expect.objectContaining({
+      condition: 'EXISTS',
+      leftOperand: { name: field },
+      rightOperand: exists,
+    });
+
+  const expectReopenedAfter = (field: 'closedDate' | 'dismissedDate') =>
+    expect.objectContaining({
+      conjunction: 'AND',
+      values: expect.arrayContaining([
+        expectExistsCondition(field, true),
+        expectExistsCondition('reopenedDate', true),
+        expect.objectContaining({
+          condition: 'GREATER_THAN_OR_EQUAL',
+          leftOperand: { name: 'reopenedDate' },
+          rightOperand: { name: field },
+        }),
+      ]),
+    });
+
+  const expectExcludeFieldOrReopenedAfter = (field: 'closedDate' | 'dismissedDate') =>
+    expect.objectContaining({
+      conjunction: 'OR',
+      values: expect.arrayContaining([
+        expectExistsCondition(field, false),
+        expectReopenedAfter(field),
+      ]),
+    });
+
+  const expectExcludeClosedCasesCondition = () =>
+    expect.objectContaining({
+      conjunction: 'AND',
+      values: expect.arrayContaining([
+        expectExcludeFieldOrReopenedAfter('closedDate'),
+        expectExcludeFieldOrReopenedAfter('dismissedDate'),
+      ]),
+    });
+
   test('should exclude cases with only closedDate when excludeClosedCases is true', async () => {
     const predicate: CasesSearchPredicate = {
       excludeClosedCases: true,
@@ -760,10 +800,9 @@ describe('Cases repository', () => {
       offset: 0,
     };
 
-    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [];
     const paginateSpy = vi
       .spyOn(MongoCollectionAdapter.prototype, 'paginate')
-      .mockResolvedValue({ data: expectedSyncedCaseArray });
+      .mockResolvedValue({ data: [] });
 
     await repo.searchCases(predicate);
 
@@ -772,34 +811,7 @@ describe('Cases repository', () => {
         stages: expect.arrayContaining([
           expect.objectContaining({
             stage: 'MATCH',
-            conjunction: 'AND',
-            values: expect.arrayContaining([
-              expect.objectContaining({
-                conjunction: 'AND',
-                values: expect.arrayContaining([
-                  expect.objectContaining({
-                    conjunction: 'OR',
-                    values: expect.arrayContaining([
-                      expect.objectContaining({
-                        condition: 'EXISTS',
-                        leftOperand: { name: 'closedDate' },
-                        rightOperand: false,
-                      }),
-                    ]),
-                  }),
-                  expect.objectContaining({
-                    conjunction: 'OR',
-                    values: expect.arrayContaining([
-                      expect.objectContaining({
-                        condition: 'EXISTS',
-                        leftOperand: { name: 'dismissedDate' },
-                        rightOperand: false,
-                      }),
-                    ]),
-                  }),
-                ]),
-              }),
-            ]),
+            values: expect.arrayContaining([expectExcludeClosedCasesCondition()]),
           }),
         ]),
       }),
@@ -824,24 +836,7 @@ describe('Cases repository', () => {
         stages: expect.arrayContaining([
           expect.objectContaining({
             stage: 'MATCH',
-            conjunction: 'AND',
-            values: expect.arrayContaining([
-              expect.objectContaining({
-                conjunction: 'AND',
-                values: expect.arrayContaining([
-                  expect.objectContaining({
-                    conjunction: 'OR',
-                    values: expect.arrayContaining([
-                      expect.objectContaining({
-                        condition: 'EXISTS',
-                        leftOperand: { name: 'dismissedDate' },
-                        rightOperand: false,
-                      }),
-                    ]),
-                  }),
-                ]),
-              }),
-            ]),
+            values: expect.arrayContaining([expectExcludeClosedCasesCondition()]),
           }),
         ]),
       }),
@@ -866,35 +861,11 @@ describe('Cases repository', () => {
         stages: expect.arrayContaining([
           expect.objectContaining({
             stage: 'MATCH',
-            conjunction: 'AND',
             values: expect.arrayContaining([
               expect.objectContaining({
-                conjunction: 'AND',
                 values: expect.arrayContaining([
                   expect.objectContaining({
-                    conjunction: 'OR',
-                    values: expect.arrayContaining([
-                      expect.objectContaining({
-                        conjunction: 'AND',
-                        values: expect.arrayContaining([
-                          expect.objectContaining({
-                            condition: 'EXISTS',
-                            leftOperand: { name: 'closedDate' },
-                            rightOperand: true,
-                          }),
-                          expect.objectContaining({
-                            condition: 'EXISTS',
-                            leftOperand: { name: 'reopenedDate' },
-                            rightOperand: true,
-                          }),
-                          expect.objectContaining({
-                            condition: 'GREATER_THAN_OR_EQUAL',
-                            leftOperand: { name: 'reopenedDate' },
-                            rightOperand: { name: 'closedDate' },
-                          }),
-                        ]),
-                      }),
-                    ]),
+                    values: expect.arrayContaining([expectReopenedAfter('closedDate')]),
                   }),
                 ]),
               }),
@@ -923,35 +894,11 @@ describe('Cases repository', () => {
         stages: expect.arrayContaining([
           expect.objectContaining({
             stage: 'MATCH',
-            conjunction: 'AND',
             values: expect.arrayContaining([
               expect.objectContaining({
-                conjunction: 'AND',
                 values: expect.arrayContaining([
                   expect.objectContaining({
-                    conjunction: 'OR',
-                    values: expect.arrayContaining([
-                      expect.objectContaining({
-                        conjunction: 'AND',
-                        values: expect.arrayContaining([
-                          expect.objectContaining({
-                            condition: 'EXISTS',
-                            leftOperand: { name: 'dismissedDate' },
-                            rightOperand: true,
-                          }),
-                          expect.objectContaining({
-                            condition: 'EXISTS',
-                            leftOperand: { name: 'reopenedDate' },
-                            rightOperand: true,
-                          }),
-                          expect.objectContaining({
-                            condition: 'GREATER_THAN_OR_EQUAL',
-                            leftOperand: { name: 'reopenedDate' },
-                            rightOperand: { name: 'dismissedDate' },
-                          }),
-                        ]),
-                      }),
-                    ]),
+                    values: expect.arrayContaining([expectReopenedAfter('dismissedDate')]),
                   }),
                 ]),
               }),
