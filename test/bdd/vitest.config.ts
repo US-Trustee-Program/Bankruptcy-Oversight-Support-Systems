@@ -17,6 +17,12 @@ export default defineConfig({
       ],
     }),
   ],
+  // Configure SSR externals for Node.js-only packages used in backend
+  ssr: {
+    noExternal: [],
+    // Don't try to bundle these Node.js packages for browser environment
+    external: ['natural', 'name-match'],
+  },
   test: {
     globals: true,
     environment: 'jsdom',
