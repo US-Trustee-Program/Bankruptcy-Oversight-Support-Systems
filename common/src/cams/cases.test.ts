@@ -42,6 +42,66 @@ describe('cases common functions tests', () => {
     expect(isCaseOpen({})).toBe(true);
   });
 
+  test('should return true for case with only dismissedDate', () => {
+    const casePartial = {
+      dismissedDate: '2024-01-01',
+    };
+    expect(isCaseClosed(casePartial)).toBe(true);
+    expect(isCaseOpen(casePartial)).toBe(false);
+  });
+
+  test('should return false for case dismissed but then reopened', () => {
+    const dismissedDate = '2024-01-01';
+    const reopenedDate = '2024-01-02';
+    const casePartial = {
+      dismissedDate,
+      reopenedDate,
+    };
+    expect(isCaseClosed(casePartial)).toBe(false);
+    expect(isCaseOpen(casePartial)).toBe(true);
+  });
+
+  test('should return true for case dismissed and then re-dismissed', () => {
+    const dismissedDate = '2024-01-01';
+    const reopenedDate = '2023-12-01';
+    const casePartial = {
+      dismissedDate,
+      reopenedDate,
+    };
+    expect(isCaseClosed(casePartial)).toBe(true);
+    expect(isCaseOpen(casePartial)).toBe(false);
+  });
+
+  test('should return true for case with both closedDate and dismissedDate', () => {
+    const casePartial = {
+      closedDate: '2024-01-01',
+      dismissedDate: '2024-01-15',
+    };
+    expect(isCaseClosed(casePartial)).toBe(true);
+    expect(isCaseOpen(casePartial)).toBe(false);
+  });
+
+  test('should return false when both closedDate and dismissedDate exist with reopenedDate after both', () => {
+    const casePartial = {
+      closedDate: '2024-01-01',
+      dismissedDate: '2024-01-05',
+      reopenedDate: '2024-02-01',
+    };
+    expect(isCaseClosed(casePartial)).toBe(false);
+    expect(isCaseOpen(casePartial)).toBe(true);
+  });
+
+  test('should return true when closedDate reopened but dismissedDate after reopenedDate', () => {
+    const casePartial = {
+      closedDate: '2024-01-01',
+      dismissedDate: '2024-03-01',
+      reopenedDate: '2024-02-01',
+    };
+    // Case was closed, then reopened, but then dismissed after reopening
+    expect(isCaseClosed(casePartial)).toBe(true);
+    expect(isCaseOpen(casePartial)).toBe(false);
+  });
+
   describe('getCaseIdParts', () => {
     test('should deconstruct a case id into a division code and case number', () => {
       const caseId = '000-11-22222';

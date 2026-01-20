@@ -125,8 +125,14 @@ export type SyncedCase = DxtrCase &
   };
 
 export function isCaseClosed<T extends ClosedDismissedReopened>(bCase: T) {
-  const { closedDate, reopenedDate } = bCase;
-  return closedDate ? (reopenedDate ? closedDate >= reopenedDate : true) : false;
+  const { closedDate, dismissedDate, reopenedDate } = bCase;
+  const isClosedByCourt = closedDate ? (reopenedDate ? closedDate >= reopenedDate : true) : false;
+  const isDismissedByCourt = dismissedDate
+    ? reopenedDate
+      ? dismissedDate >= reopenedDate
+      : true
+    : false;
+  return isClosedByCourt || isDismissedByCourt;
 }
 
 export function isCaseOpen<T extends ClosedDismissedReopened>(bCase: T) {

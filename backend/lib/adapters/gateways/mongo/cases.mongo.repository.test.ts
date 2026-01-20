@@ -563,29 +563,63 @@ describe('Cases repository', () => {
               rightOperand: divisionCodes,
             }),
             expect.objectContaining({
-              conjunction: 'OR',
+              conjunction: 'AND',
               values: expect.arrayContaining([
                 expect.objectContaining({
-                  condition: 'EXISTS',
-                  leftOperand: { name: 'closedDate' },
-                  rightOperand: false,
-                }),
-                expect.objectContaining({
-                  conjunction: 'AND',
+                  conjunction: 'OR',
                   values: expect.arrayContaining([
                     expect.objectContaining({
                       condition: 'EXISTS',
-                      leftOperand: { name: 'reopenedDate' },
-                      rightOperand: true,
+                      leftOperand: { name: 'closedDate' },
+                      rightOperand: false,
                     }),
+                    expect.objectContaining({
+                      conjunction: 'AND',
+                      values: expect.arrayContaining([
+                        expect.objectContaining({
+                          condition: 'EXISTS',
+                          leftOperand: { name: 'closedDate' },
+                          rightOperand: true,
+                        }),
+                        expect.objectContaining({
+                          condition: 'EXISTS',
+                          leftOperand: { name: 'reopenedDate' },
+                          rightOperand: true,
+                        }),
+                        expect.objectContaining({
+                          leftOperand: { name: 'reopenedDate' },
+                          rightOperand: { name: 'closedDate' },
+                        }),
+                      ]),
+                    }),
+                  ]),
+                }),
+                expect.objectContaining({
+                  conjunction: 'OR',
+                  values: expect.arrayContaining([
                     expect.objectContaining({
                       condition: 'EXISTS',
-                      leftOperand: { name: 'reopenedDate' },
-                      rightOperand: true,
+                      leftOperand: { name: 'dismissedDate' },
+                      rightOperand: false,
                     }),
                     expect.objectContaining({
-                      leftOperand: { name: 'reopenedDate' },
-                      rightOperand: { name: 'closedDate' },
+                      conjunction: 'AND',
+                      values: expect.arrayContaining([
+                        expect.objectContaining({
+                          condition: 'EXISTS',
+                          leftOperand: { name: 'dismissedDate' },
+                          rightOperand: true,
+                        }),
+                        expect.objectContaining({
+                          condition: 'EXISTS',
+                          leftOperand: { name: 'reopenedDate' },
+                          rightOperand: true,
+                        }),
+                        expect.objectContaining({
+                          leftOperand: { name: 'reopenedDate' },
+                          rightOperand: { name: 'dismissedDate' },
+                        }),
+                      ]),
                     }),
                   ]),
                 }),
@@ -716,6 +750,215 @@ describe('Cases repository', () => {
     });
     await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
       'Case Search requires a pagination predicate with a valid limit and offset',
+    );
+  });
+
+  test('should exclude cases with only closedDate when excludeClosedCases is true', async () => {
+    const predicate: CasesSearchPredicate = {
+      excludeClosedCases: true,
+      limit: 25,
+      offset: 0,
+    };
+
+    const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [];
+    const paginateSpy = vi
+      .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+      .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+    await repo.searchCases(predicate);
+
+    expect(paginateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stages: expect.arrayContaining([
+          expect.objectContaining({
+            stage: 'MATCH',
+            conjunction: 'AND',
+            values: expect.arrayContaining([
+              expect.objectContaining({
+                conjunction: 'AND',
+                values: expect.arrayContaining([
+                  expect.objectContaining({
+                    conjunction: 'OR',
+                    values: expect.arrayContaining([
+                      expect.objectContaining({
+                        condition: 'EXISTS',
+                        leftOperand: { name: 'closedDate' },
+                        rightOperand: false,
+                      }),
+                    ]),
+                  }),
+                  expect.objectContaining({
+                    conjunction: 'OR',
+                    values: expect.arrayContaining([
+                      expect.objectContaining({
+                        condition: 'EXISTS',
+                        leftOperand: { name: 'dismissedDate' },
+                        rightOperand: false,
+                      }),
+                    ]),
+                  }),
+                ]),
+              }),
+            ]),
+          }),
+        ]),
+      }),
+    );
+  });
+
+  test('should exclude cases with only dismissedDate when excludeClosedCases is true', async () => {
+    const predicate: CasesSearchPredicate = {
+      excludeClosedCases: true,
+      limit: 25,
+      offset: 0,
+    };
+
+    const paginateSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+      data: [],
+    });
+
+    await repo.searchCases(predicate);
+
+    expect(paginateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stages: expect.arrayContaining([
+          expect.objectContaining({
+            stage: 'MATCH',
+            conjunction: 'AND',
+            values: expect.arrayContaining([
+              expect.objectContaining({
+                conjunction: 'AND',
+                values: expect.arrayContaining([
+                  expect.objectContaining({
+                    conjunction: 'OR',
+                    values: expect.arrayContaining([
+                      expect.objectContaining({
+                        condition: 'EXISTS',
+                        leftOperand: { name: 'dismissedDate' },
+                        rightOperand: false,
+                      }),
+                    ]),
+                  }),
+                ]),
+              }),
+            ]),
+          }),
+        ]),
+      }),
+    );
+  });
+
+  test('should include cases with closedDate when reopenedDate is after closedDate', async () => {
+    const predicate: CasesSearchPredicate = {
+      excludeClosedCases: true,
+      limit: 25,
+      offset: 0,
+    };
+
+    const paginateSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+      data: [],
+    });
+
+    await repo.searchCases(predicate);
+
+    expect(paginateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stages: expect.arrayContaining([
+          expect.objectContaining({
+            stage: 'MATCH',
+            conjunction: 'AND',
+            values: expect.arrayContaining([
+              expect.objectContaining({
+                conjunction: 'AND',
+                values: expect.arrayContaining([
+                  expect.objectContaining({
+                    conjunction: 'OR',
+                    values: expect.arrayContaining([
+                      expect.objectContaining({
+                        conjunction: 'AND',
+                        values: expect.arrayContaining([
+                          expect.objectContaining({
+                            condition: 'EXISTS',
+                            leftOperand: { name: 'closedDate' },
+                            rightOperand: true,
+                          }),
+                          expect.objectContaining({
+                            condition: 'EXISTS',
+                            leftOperand: { name: 'reopenedDate' },
+                            rightOperand: true,
+                          }),
+                          expect.objectContaining({
+                            condition: 'GREATER_THAN_OR_EQUAL',
+                            leftOperand: { name: 'reopenedDate' },
+                            rightOperand: { name: 'closedDate' },
+                          }),
+                        ]),
+                      }),
+                    ]),
+                  }),
+                ]),
+              }),
+            ]),
+          }),
+        ]),
+      }),
+    );
+  });
+
+  test('should include cases with dismissedDate when reopenedDate is after dismissedDate', async () => {
+    const predicate: CasesSearchPredicate = {
+      excludeClosedCases: true,
+      limit: 25,
+      offset: 0,
+    };
+
+    const paginateSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
+      data: [],
+    });
+
+    await repo.searchCases(predicate);
+
+    expect(paginateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        stages: expect.arrayContaining([
+          expect.objectContaining({
+            stage: 'MATCH',
+            conjunction: 'AND',
+            values: expect.arrayContaining([
+              expect.objectContaining({
+                conjunction: 'AND',
+                values: expect.arrayContaining([
+                  expect.objectContaining({
+                    conjunction: 'OR',
+                    values: expect.arrayContaining([
+                      expect.objectContaining({
+                        conjunction: 'AND',
+                        values: expect.arrayContaining([
+                          expect.objectContaining({
+                            condition: 'EXISTS',
+                            leftOperand: { name: 'dismissedDate' },
+                            rightOperand: true,
+                          }),
+                          expect.objectContaining({
+                            condition: 'EXISTS',
+                            leftOperand: { name: 'reopenedDate' },
+                            rightOperand: true,
+                          }),
+                          expect.objectContaining({
+                            condition: 'GREATER_THAN_OR_EQUAL',
+                            leftOperand: { name: 'reopenedDate' },
+                            rightOperand: { name: 'dismissedDate' },
+                          }),
+                        ]),
+                      }),
+                    ]),
+                  }),
+                ]),
+              }),
+            ]),
+          }),
+        ]),
+      }),
     );
   });
 

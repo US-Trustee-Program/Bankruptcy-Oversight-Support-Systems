@@ -312,12 +312,22 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
     if (predicate.excludeClosedCases === true) {
       conditions.push(
-        or(
-          doc('closedDate').notExists(),
-          and(
-            doc('closedDate').exists(),
-            doc('reopenedDate').exists(),
-            doc('reopenedDate').greaterThanOrEqual({ name: 'closedDate' }),
+        and(
+          or(
+            doc('closedDate').notExists(),
+            and(
+              doc('closedDate').exists(),
+              doc('reopenedDate').exists(),
+              doc('reopenedDate').greaterThanOrEqual({ name: 'closedDate' }),
+            ),
+          ),
+          or(
+            doc('dismissedDate').notExists(),
+            and(
+              doc('dismissedDate').exists(),
+              doc('reopenedDate').exists(),
+              doc('reopenedDate').greaterThanOrEqual({ name: 'dismissedDate' }),
+            ),
           ),
         ),
       );
