@@ -19,6 +19,7 @@ import { Trustee, TrusteeHistory, TrusteeInput, ZoomInfo } from '@common/cams/tr
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import { normalizeForUndefined } from '@common/normalization';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
@@ -209,10 +210,8 @@ export class TrusteesUseCase {
             {
               documentType: 'AUDIT_INTERNAL_CONTACT',
               trusteeId,
-              before: deepEqual(existingTrustee.internal, {})
-                ? undefined
-                : existingTrustee.internal,
-              after: deepEqual(updatedTrustee.internal, {}) ? undefined : updatedTrustee.internal,
+              before: normalizeForUndefined(existingTrustee.internal),
+              after: normalizeForUndefined(updatedTrustee.internal),
             },
             userReference,
           ),
@@ -255,6 +254,20 @@ export class TrusteesUseCase {
               trusteeId,
               before: existingTrustee.zoomInfo,
               after: updatedTrustee.zoomInfo,
+            },
+            userReference,
+          ),
+        );
+      }
+
+      if (!deepEqual(existingTrustee.assistant, updatedTrustee.assistant)) {
+        await this.trusteesRepository.createTrusteeHistory(
+          createAuditRecord(
+            {
+              documentType: 'AUDIT_ASSISTANT',
+              trusteeId,
+              before: normalizeForUndefined(existingTrustee.assistant),
+              after: normalizeForUndefined(updatedTrustee.assistant),
             },
             userReference,
           ),
@@ -317,10 +330,16 @@ const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
   passcode: [V.minLength(1)],
 };
 
+const assistantSpec: ValidationSpec<{ name: string; contact: ContactInformation }> = {
+  name: [V.minLength(1)],
+  contact: [V.spec(contactInformationSpec)],
+};
+
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [V.minLength(1)],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
+  assistant: [V.optional(V.spec(assistantSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   software: [V.optional(V.length(0, 100))],
   zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
