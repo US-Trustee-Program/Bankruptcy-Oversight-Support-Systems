@@ -104,7 +104,6 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
 
   return (
     <div className="trustee-zoom-info-form-screen">
-      <h3>Edit 341 meeting Information</h3>
       <p>
         A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required field.
       </p>
@@ -119,8 +118,9 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
               onChange={createChangeHandler('link')}
               data-testid="trustee-zoom-link-input"
               required={true}
+              className="margin-top-0"
               ariaDescription={[
-                'Copy and paste the entire zoom meeting URI here.',
+                'Copy and paste the entire zoom meeting URL here.',
                 'Example: https://us02web.zoom.us/j/0000000000',
               ]}
               errorMessage={fieldErrors.link}
@@ -157,7 +157,7 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
             />
           </div>
         </div>
-        <div className="grid-row margin-top-4">
+        <div className="grid-row margin-top-5">
           <div className="grid-col-auto">
             <Button
               id="button-trustee-zoom-info-form-submit"
