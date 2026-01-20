@@ -19,6 +19,7 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignment } from '@common/cams/assignments';
+import { filterCasesByDebtorNameSimilarity, isPhoneticSearchEnabled } from './phonetic-utils';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -81,7 +82,31 @@ export default class CaseManagement {
         predicate.excludedCaseIds = consolidationMemberCaseIds;
       }
 
+      if (predicate.debtorName) {
+        context.logger.info(MODULE_NAME, 'Debtor name search criteria used');
+        // Note: We log that the criterion was used, NOT the actual name value
+      }
+
       const searchResult = await this.casesRepository.searchCases(predicate);
+
+      // Apply phonetic filtering if enabled and searching by name
+      if (predicate.debtorName && isPhoneticSearchEnabled(context?.config?.search)) {
+        const similarityThreshold = context?.config?.search?.phonetic?.similarityThreshold || 0.83;
+        const filtered = filterCasesByDebtorNameSimilarity(
+          searchResult.data,
+          predicate.debtorName,
+          similarityThreshold,
+        );
+
+        // Update metadata to reflect filtered count
+        searchResult.data = filtered;
+        searchResult.metadata.total = filtered.length;
+
+        context.logger.info(
+          MODULE_NAME,
+          `Phonetic search: ${searchResult.metadata.total} results after filtering`,
+        );
+      }
 
       const casesMap = new Map<string, ResourceActions<SyncedCase>>();
       const caseIds = [];
