@@ -68,3 +68,91 @@ Feature: Phonetic Debtor Name Search
     When I search for debtor name "Michael"
     Then I should only see exact substring matches for "Michael"
     And I should NOT see results for "Mike"
+
+  # Edge Cases and Error Handling
+
+  @edge-case
+  Scenario: Empty search query returns no results
+    When I search for debtor name ""
+    Then I should see a message indicating search criteria is required
+    And no results should be displayed
+
+  @edge-case
+  Scenario: Whitespace-only search query is treated as empty
+    When I search for debtor name "   "
+    Then I should see a message indicating search criteria is required
+    And no results should be displayed
+
+  @special-characters
+  Scenario: Names with apostrophes and hyphens are handled correctly
+    Given cases exist with names "O'Brien", "O'Brian", and "OBrien"
+    When I search for debtor name "O'Brien"
+    Then I should see all variations including "O'Brien", "O'Brian", and "OBrien"
+
+  @special-characters
+  Scenario: Names with hyphens match correctly
+    Given cases exist with names "Mary-Jane Smith" and "Mary Jane Smith"
+    When I search for debtor name "Mary-Jane"
+    Then I should see both "Mary-Jane Smith" and "Mary Jane Smith"
+
+  @unicode-characters
+  Scenario: Names with accented characters are normalized
+    Given cases exist with names "José Garcia" and "Jose Garcia"
+    When I search for debtor name "Jose"
+    Then I should see both "José Garcia" and "Jose Garcia"
+
+  @unicode-characters
+  Scenario: Names with umlauts are handled
+    Given a case exists with name "Müller"
+    When I search for debtor name "Muller"
+    Then I should see the case with "Müller"
+
+  @long-names
+  Scenario: Very long names are handled correctly
+    Given a case exists with a 100-character long debtor name
+    When I search for the first 20 characters of that name
+    Then I should see the case with the long name
+    And the search should complete within performance threshold
+
+  @single-character
+  Scenario: Single character search returns limited results
+    When I search for debtor name "J"
+    Then I should see results limited to prevent overwhelming the system
+    And the results should be the most relevant matches
+
+  @duplicate-names
+  Scenario: Duplicate names across different cases are all returned
+    Given 5 cases exist with debtor name "John Smith"
+    When I search for debtor name "John Smith"
+    Then I should see all 5 cases in the results
+    And they should be distinguishable by case ID
+
+  @multiple-spaces
+  Scenario: Multiple spaces in search query are normalized
+    When I search for debtor name "John    Smith"
+    Then I should see the same results as searching for "John Smith"
+
+  @name-with-title
+  Scenario: Names with titles are matched without titles
+    Given a case exists with debtor name "Dr. John Smith"
+    When I search for debtor name "John Smith"
+    Then I should see the case with "Dr. John Smith"
+
+  @no-vowels
+  Scenario: Names with consonant clusters work phonetically
+    Given cases exist with names "Schwartz" and "Swartz"
+    When I search for debtor name "Schwartz"
+    Then I should see both "Schwartz" and "Swartz"
+
+  @similarity-threshold
+  Scenario: Names below similarity threshold are excluded
+    Given a case exists with name "Johnson"
+    When I search for debtor name "Jackson"
+    Then I should NOT see "Johnson" in results
+    Because the similarity score is below the threshold
+
+  @query-longer-than-names
+  Scenario: Search query longer than any name in database
+    Given cases exist with short names
+    When I search for debtor name "ThisIsAVeryLongNameThatDoesNotExistAnywhere"
+    Then I should see a "No cases found" message
