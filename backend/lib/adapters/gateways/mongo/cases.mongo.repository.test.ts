@@ -719,6 +719,144 @@ describe('Cases repository', () => {
     );
   });
 
+  describe('phonetic search query generation', () => {
+    test('should successfully search with debtorName when phonetic search is enabled', async () => {
+      // Setup context with phonetic search enabled
+      const contextWithPhonetic = await createMockApplicationContext({
+        env: {
+          PHONETIC_SEARCH_ENABLED: 'true',
+        },
+      });
+      const repoWithPhonetic = CasesMongoRepository.getInstance(contextWithPhonetic);
+
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        debtorName: 'Michael Johnson',
+        limit: 25,
+        offset: 0,
+      };
+
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+      const result = await repoWithPhonetic.searchCases(predicate);
+
+      // Verify search completed successfully
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+
+      // Verify debtor.name is referenced in query (used in both phonetic and regex paths)
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).toContain('debtor.name');
+
+      repoWithPhonetic.release();
+      await closeDeferred(contextWithPhonetic);
+    });
+
+    test('should successfully search with debtorName when phonetic search is disabled', async () => {
+      // Setup context with phonetic search disabled (default)
+      const contextWithoutPhonetic = await createMockApplicationContext({
+        env: {
+          PHONETIC_SEARCH_ENABLED: 'false',
+        },
+      });
+      const repoWithoutPhonetic = CasesMongoRepository.getInstance(contextWithoutPhonetic);
+
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        debtorName: 'Michael Johnson',
+        limit: 25,
+        offset: 0,
+      };
+
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+      const result = await repoWithoutPhonetic.searchCases(predicate);
+
+      // Verify search completed successfully with regex-only path
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+
+      // Verify debtor.name is used in query
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).toContain('debtor.name');
+
+      repoWithoutPhonetic.release();
+      await closeDeferred(contextWithoutPhonetic);
+    });
+
+    test('should include both debtor and jointDebtor fields in search', async () => {
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        debtorName: 'Sarah Connor',
+        limit: 25,
+        offset: 0,
+      };
+
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+      const result = await repo.searchCases(predicate);
+
+      // Verify search completed successfully
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+
+      // Verify both debtor and jointDebtor fields are included in query
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).toContain('debtor');
+      expect(queryString).toContain('jointDebtor');
+    });
+
+    test('should search without debtorName field when not provided', async () => {
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        caseNumber: '00-00000',
+        // No debtorName
+        limit: 25,
+        offset: 0,
+      };
+
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+      const result = await repo.searchCases(predicate);
+
+      // Verify search completed successfully
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+
+      // Should include caseNumber in query
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).toContain('caseNumber');
+    });
+  });
+
   test('getConsolidationMemberCaseIds should throw error when find throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
