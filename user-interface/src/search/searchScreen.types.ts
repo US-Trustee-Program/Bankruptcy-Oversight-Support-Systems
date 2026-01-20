@@ -4,6 +4,7 @@ import V from '@common/cams/validators';
 
 export type SearchScreenFormData = {
   caseNumber?: string;
+  debtorName?: string;
   divisionCodes?: string[];
   chapters?: string[];
   excludeClosedCases?: boolean;
@@ -18,12 +19,13 @@ const atLeastOneSearchCriterion: ValidatorFunction = (obj: unknown) => {
   const form = obj as SearchScreenFormData;
 
   const hasCaseNumber = !!form.caseNumber;
+  const hasDebtorName = !!form.debtorName;
   const hasDivisionCodes = !!form.divisionCodes && form.divisionCodes.length > 0;
   const hasChapters = !!form.chapters && form.chapters.length > 0;
 
   // Include Closed Cases alone is not a valid search criterion
-  // User must have at least one of: case number, division codes, or chapters
-  if (!hasCaseNumber && !hasDivisionCodes && !hasChapters) {
+  // User must have at least one of: case number, debtor name, division codes, or chapters
+  if (!hasCaseNumber && !hasDebtorName && !hasDivisionCodes && !hasChapters) {
     return {
       reasonMap: {
         $: {

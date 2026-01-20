@@ -106,7 +106,15 @@ function SearchResults(props: SearchResultsProps) {
     }
     resetAlert();
 
-    trackSearchEvent(searchPredicate);
+    const searchMetadata = {
+      ...searchPredicate,
+      debtorNameUsed: !!searchPredicate.debtorName,
+      // Don't log the actual name, just whether it was used
+    };
+    if ('debtorName' in searchMetadata) {
+      delete searchMetadata.debtorName;
+    }
+    trackSearchEvent(searchMetadata);
     setIsSearching(true);
     if (onStartSearching) {
       onStartSearching();

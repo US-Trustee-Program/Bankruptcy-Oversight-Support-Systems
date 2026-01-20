@@ -6,6 +6,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
+import Input from '@/lib/components/uswds/Input';
 import Api2 from '@/lib/models/api2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
@@ -81,6 +82,7 @@ export default function SearchScreen() {
   const [activeElement, setActiveElement] = useState<Element | null>(null);
 
   const caseNumberInputRef = useRef<InputRef>(null);
+  const debtorNameInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
@@ -91,6 +93,7 @@ export default function SearchScreen() {
   const mapToFormData = (predicate: CasesSearchPredicate): SearchScreenFormData => {
     return {
       caseNumber: predicate.caseNumber,
+      debtorName: predicate.debtorName,
       divisionCodes: predicate.divisionCodes,
       chapters: predicate.chapters,
       excludeClosedCases: predicate.excludeClosedCases,
@@ -155,6 +158,7 @@ export default function SearchScreen() {
 
   function disableSearchForm(value: boolean) {
     caseNumberInputRef.current?.disable(value);
+    debtorNameInputRef.current?.disable(value);
     courtSelectionRef.current?.disable(value);
     chapterSelectionRef.current?.disable(value);
   }
@@ -189,6 +193,17 @@ export default function SearchScreen() {
     debounce(() => {
       setShowCaseNumberError(true);
     }, 300);
+  }
+
+  function handleDebtorNameChange(ev: ChangeEvent<HTMLInputElement>): void {
+    const debtorName = ev.target.value;
+    const newPredicate = { ...temporarySearchPredicate };
+    if (debtorName) {
+      newPredicate.debtorName = debtorName;
+    } else {
+      delete newPredicate.debtorName;
+    }
+    setTemporarySearchPredicate(newPredicate);
   }
 
   function handleCourtSelection(selection: ComboOption[]) {
@@ -292,6 +307,22 @@ export default function SearchScreen() {
                   aria-label="Find case by Case Number."
                   ref={caseNumberInputRef}
                   errorMessage={fieldErrors.caseNumber?.reasons?.[0]}
+                />
+              </div>
+            </div>
+            <div className="debtor-name-search form-field" data-testid="debtor-name-search">
+              <div className="usa-search usa-search--small">
+                <Input
+                  id="debtor-name-search-field"
+                  name="debtor-name-search"
+                  label="Debtor Name"
+                  autoComplete="off"
+                  onChange={handleDebtorNameChange}
+                  onFocus={handleFilterFormElementFocus}
+                  aria-label="Find case by Debtor Name."
+                  ref={debtorNameInputRef}
+                  value={temporarySearchPredicate.debtorName || ''}
+                  title="Search by the debtor's full or partial name (e.g., Smith, John)."
                 />
               </div>
             </div>

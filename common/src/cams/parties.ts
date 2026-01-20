@@ -22,7 +22,10 @@ export type Party = LegacyAddress & {
   email?: string;
 };
 
-export type Debtor = Party & TaxIds;
+export type Debtor = Party &
+  TaxIds & {
+    phoneticTokens?: string[];
+  };
 
 export type DebtorAttorney = Party & {
   office?: string;
