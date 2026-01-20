@@ -209,7 +209,7 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'zoom/edit',
-      subHeading: 'Trustee',
+      subHeading: 'Edit 341 Meeting Information',
       content: <TrusteeMeetingOfCreditorsInfoForm trustee={trustee} />,
     },
     {
