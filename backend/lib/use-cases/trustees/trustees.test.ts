@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -7,6 +7,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 describe('TrusteesUseCase tests', () => {
   let context: ApplicationContext;
@@ -65,9 +66,8 @@ describe('TrusteesUseCase tests', () => {
       const trustee = MockData.getTrusteeInput();
       const userRef = getCamsUserReference(context.session.user);
 
-      // Create a spy on the checkValidation method to ensure it's called and passes
       const checkValidationSpy = vi.spyOn(
-        trusteesUseCase as unknown as { checkValidation: vi.Mock },
+        trusteesUseCase as unknown as { checkValidation: Mock },
         'checkValidation',
       );
 
@@ -78,12 +78,11 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.createTrustee(context, trustee);
 
-      // Verify that checkValidation was called and completed successfully
       expect(checkValidationSpy).toHaveBeenCalledWith(expect.objectContaining({ valid: true }));
     });
 
     test('should throw BadRequestError for invalid trustee input', async () => {
-      const invalidTrustee = { ...MockData.getTrusteeInput(), name: '' }; // Invalid: empty name
+      const invalidTrustee = { ...MockData.getTrusteeInput(), name: '' };
 
       await expect(trusteesUseCase.createTrustee(context, invalidTrustee)).rejects.toThrow(
         BadRequestError,
@@ -388,7 +387,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should not create history when no fields change', async () => {
-      const updateData = { name: existingTrustee.name }; // Same name
+      const updateData = { name: existingTrustee.name };
       const updatedTrustee = { ...existingTrustee };
 
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(updatedTrustee);
@@ -403,7 +402,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should throw BadRequestError for invalid update data', async () => {
-      const invalidUpdateData = { name: '' }; // Invalid: empty name
+      const invalidUpdateData = { name: '' };
 
       await expect(
         trusteesUseCase.updateTrustee(context, trusteeId, invalidUpdateData),
@@ -428,7 +427,6 @@ describe('TrusteesUseCase tests', () => {
       const result = await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
 
       expect(result).toEqual(updatedTrustee);
-      // Verify that updateTrustee was called
       expect(MockMongoRepository.prototype.updateTrustee).toHaveBeenCalledWith(
         trusteeId,
         expect.any(Object),
@@ -466,8 +464,8 @@ describe('TrusteesUseCase tests', () => {
           email: null,
           phone: null,
         },
-        software: null, // Should be removed
-        banks: undefined, // Should be removed
+        software: null,
+        banks: undefined,
       };
       const updatedTrustee = { ...existingTrustee, name: 'Updated Name' };
       delete updatedTrustee.internal;
@@ -550,7 +548,6 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should handle empty internal contact object when updating from empty to populated', async () => {
-      // Set up existing trustee with empty internal contact
       const existingTrusteeWithEmptyInternal = {
         ...existingTrustee,
         internal: {},
@@ -575,14 +572,13 @@ describe('TrusteesUseCase tests', () => {
         expect.objectContaining({
           documentType: 'AUDIT_INTERNAL_CONTACT',
           trusteeId,
-          before: undefined, // Should be undefined for empty object
+          before: undefined,
           after: newInternalContact,
         }),
       );
     });
 
     test('should handle empty internal contact object when updating from populated to empty', async () => {
-      // Set up existing trustee with populated internal contact
       const existingInternalContact = MockData.getContactInformation();
       const existingTrusteeWithInternal = {
         ...existingTrustee,
@@ -608,9 +604,150 @@ describe('TrusteesUseCase tests', () => {
           documentType: 'AUDIT_INTERNAL_CONTACT',
           trusteeId,
           before: existingInternalContact,
-          after: undefined, // Should be undefined for empty object
+          after: undefined,
         }),
       );
+    });
+
+    describe('zoomInfoValidation', () => {
+      test('should update trustee with valid zoomInfo', async () => {
+        const updatedBy = getCamsUserReference(context.session.user);
+        const newZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '123-456-7890',
+          meetingId: '1234567890',
+          passcode: MockData.randomAlphaNumeric(10),
+        };
+        const updateData = { zoomInfo: newZoomInfo };
+        const updatedTrustee = { ...existingTrustee, zoomInfo: newZoomInfo };
+
+        const updateTrusteeSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+          .mockResolvedValue(updatedTrustee);
+        const historyCreateSpy = vi
+          .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+          .mockResolvedValue();
+
+        await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
+        expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
+        expect(historyCreateSpy).toHaveBeenCalledWith(
+          expect.objectContaining({
+            documentType: 'AUDIT_ZOOM_INFO',
+            trusteeId,
+            after: newZoomInfo,
+          }),
+        );
+      });
+
+      test('should throw BadRequestError for zoomInfo with invalid phone format', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '12345',
+          meetingId: '1234567890',
+          passcode: MockData.randomAlphaNumeric(10),
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+        );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.PHONE_NUMBER);
+      });
+
+      test('should throw BadRequestError for zoomInfo with invalid link', async () => {
+        const invalidZoomInfo = {
+          link: 'not-a-valid-url',
+          phone: '123-456-7890',
+          meetingId: '1234567890',
+          passcode: MockData.randomAlphaNumeric(10),
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+        );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_LINK);
+      });
+
+      test('should throw BadRequestError for zoomInfo with invalid meeting ID (too short)', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '123-456-7890',
+          meetingId: '12345678',
+          passcode: MockData.randomAlphaNumeric(10),
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+        );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
+      });
+
+      test('should throw BadRequestError for zoomInfo with invalid meeting ID (too long)', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '123-456-7890',
+          meetingId: '123456789012',
+          passcode: MockData.randomAlphaNumeric(10),
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+        );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
+      });
+
+      test('should throw BadRequestError for zoomInfo with non-numeric meeting ID', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/1234567890',
+          phone: '123-456-7890',
+          meetingId: 'INVALID',
+          passcode: MockData.randomAlphaNumeric(10),
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+        );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID);
+      });
+
+      test('should throw BadRequestError for zoomInfo with link exceeding max length', async () => {
+        const invalidZoomInfo = {
+          link: 'https://us02web.zoom.us/j/' + 'a'.repeat(300),
+          phone: '123-456-7890',
+          meetingId: '1234567890',
+          passcode: MockData.randomAlphaNumeric(10),
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        const error = await getTheThrownError(() =>
+          trusteesUseCase.updateTrustee(context, trusteeId, updateData),
+        );
+        expect(error.isCamsError).toBe(true);
+        expect(error.message).toContain(FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH);
+      });
+
+      test('should throw BadRequestError for zoomInfo with empty required fields', async () => {
+        const invalidZoomInfo = {
+          link: '',
+          phone: '123-456-7890',
+          meetingId: '1234567890',
+          passcode: MockData.randomAlphaNumeric(10),
+        };
+        const updateData = { zoomInfo: invalidZoomInfo };
+
+        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
+          BadRequestError,
+        );
+      });
     });
   });
 });

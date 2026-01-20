@@ -7,10 +7,10 @@ import {
 } from '@common/cams/regex';
 import { VALID, validateObject, ValidationSpec, ValidatorFunction } from '@common/cams/validation';
 import V from '@common/cams/validators';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 export const ADDRESS_REQUIRED_ERROR_REASON = 'Address is required';
 const ADDRESS_MAX_LENGTH_ERROR_REASON = 'Max length 40 characters';
-const ZIP_CODE_ERROR_REASON = 'Must be 5 or 9 digits';
 export const PARTIAL_ADDRESS_ERROR_REASON =
   'You have entered a partial address. Please complete or clear the address fields.';
 const TRUSTEE_NAME_REQUIRED_ERROR_REASON = 'Trustee name is required';
@@ -19,12 +19,7 @@ export const CITY_REQUIRED_ERROR_REASON = 'City is required';
 const CITY_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
 export const STATE_REQUIRED_ERROR_REASON = 'State is required';
 export const ZIP_CODE_REQUIRED_ERROR_REASON = 'ZIP Code is required';
-const EMAIL_INVALID_ERROR_REASON = 'Must be a valid email address';
 const EMAIL_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
-const PHONE_INVALID_ERROR_REASON = 'Must be a valid phone number';
-const EXTENSION_INVALID_ERROR_REASON = 'Must be 1 to 6 digits';
-const WEBSITE_INVALID_URL_ERROR_REASON = 'Website must be a valid URL';
-const WEBSITE_MAX_LENGTH_ERROR_REASON = 'Max length 255 characters';
 const PHONE_REQUIRED_WITH_EXTENSION_ERROR_REASON =
   'Phone number is required when extension is provided';
 
@@ -78,17 +73,19 @@ const city = [
   V.maxLength(50, CITY_MAX_LENGTH_ERROR_REASON),
 ];
 const state = [V.exactLength(2, STATE_REQUIRED_ERROR_REASON)];
-const zipCode = [V.matches(ZIP_REGEX, ZIP_CODE_ERROR_REASON)];
+const zipCode = [V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE)];
 const email = [
-  V.matches(EMAIL_REGEX, EMAIL_INVALID_ERROR_REASON),
+  V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL),
   V.maxLength(50, EMAIL_MAX_LENGTH_ERROR_REASON),
 ];
-const phone = [V.matches(PHONE_REGEX, PHONE_INVALID_ERROR_REASON)];
-const extension = [V.optional(V.matches(EXTENSION_REGEX, EXTENSION_INVALID_ERROR_REASON))];
+const phone = [V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER)];
+const extension = [
+  V.optional(V.matches(EXTENSION_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION)),
+];
 const website = [
   V.optional(
-    V.matches(WEBSITE_RELAXED_REGEX, WEBSITE_INVALID_URL_ERROR_REASON),
-    V.maxLength(255, WEBSITE_MAX_LENGTH_ERROR_REASON),
+    V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.WEBSITE),
+    V.maxLength(255, FIELD_VALIDATION_MESSAGES.WEBSITE_MAX_LENGTH),
   ),
 ];
 
