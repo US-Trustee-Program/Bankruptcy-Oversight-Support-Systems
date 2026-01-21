@@ -48,7 +48,6 @@ export default function MeetingOfCreditorsInfoCard({
             </a>
             <Button
               id="copy-zoom-link"
-              className="cams-icon-label"
               uswdsStyle={UswdsButtonStyle.Unstyled}
               aria-label="Copy Zoom link"
               title="Copy Zoom link"
