@@ -1051,19 +1051,23 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
   }, 30000);
 
   /**
-   * Scenario: Single character search returns limited results
+   * Scenario: Debtor name search requires minimum 2 characters
+   * GIVEN a user wants to search by debtor name only
+   * WHEN they enter only 1 character in debtor name
+   * THEN the search button should be disabled
+   * WHEN they enter 2 or more characters in debtor name
+   * THEN the search button should be enabled and search should work
    */
-  test('should handle single character searches', async () => {
-    const jCases = Array.from({ length: 10 }, (_, i) =>
-      createMockCaseWithPhoneticTokens(`24-200${String(i).padStart(2, '0')}`, `J${i} Smith`, [
-        'J000',
-        'S530',
-        'SM0',
-      ]),
-    );
+  test('should require at least 2 characters for debtor name search', async () => {
+    const johnCase = createMockCaseWithPhoneticTokens('24-00001', 'John Smith', [
+      'J500',
+      'JN',
+      'S530',
+      'SM0',
+    ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withSearchResults(jCases.slice(0, 5)) // Limit to 5 results
+      .withSearchResults([johnCase])
       .renderAt('/');
 
     await waitForAppLoad();
@@ -1078,22 +1082,100 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       { timeout: 5000 },
     );
 
-    const searchInput = await screen.findByLabelText(/debtor name/i);
-    await userEvent.type(searchInput, 'J'); // Single character search
-
     const searchButton = await screen.findByRole('button', { name: /search/i });
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+
+    // WHEN: Enter single character in debtor name field only
+    await userEvent.type(debtorNameInput, 'J');
+
+    // THEN: Search button should remain disabled (single character is insufficient)
+    expect(searchButton).toBeDisabled();
+
+    // WHEN: Add a second character to debtor name (now 2 characters total)
+    await userEvent.type(debtorNameInput, 'o');
+
+    // THEN: Search button should now be enabled (2 characters is sufficient)
+    await waitFor(() => {
+      expect(searchButton).not.toBeDisabled();
+    });
+
+    // Execute search and verify results using 2-character debtor name search
     await userEvent.click(searchButton);
 
     await waitFor(
       () => {
         const body = document.body.textContent || '';
-        // Should have some results, but limited
-        expect(body).toContain('Smith');
+        expect(body).toContain('24-00001');
+        expect(body).toContain('John Smith');
       },
       { timeout: 10000 },
     );
 
-    console.log('[TEST] ✓ Single character search handled');
+    console.log('[TEST] ✓ Minimum 2 character debtor name requirement enforced');
+  }, 30000);
+
+  /**
+   * Scenario: Single character debtor name ignored when other fields filled
+   * GIVEN a user has entered a single character in debtor name (insufficient)
+   * WHEN they also fill in another valid search field (like case number)
+   * THEN the search button should be enabled
+   * AND the search should execute using the other field, ignoring the single character debtor name
+   */
+  test('should ignore single character debtor name when other search criteria provided', async () => {
+    const testCase = createMockCaseWithPhoneticTokens('24-00001', 'John Smith', [
+      'J500',
+      'JN',
+      'S530',
+      'SM0',
+    ]);
+
+    await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withSearchResults([testCase])
+      .renderAt('/');
+
+    await waitForAppLoad();
+
+    const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
+    await userEvent.click(caseSearchLink);
+
+    await waitFor(
+      () => {
+        expect(document.body.textContent).toContain('Case Search');
+      },
+      { timeout: 5000 },
+    );
+
+    const searchButton = await screen.findByRole('button', { name: /search/i });
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+
+    // WHEN: Enter single character in debtor name field
+    await userEvent.type(debtorNameInput, 'J');
+
+    // THEN: Search button should be disabled (single character insufficient)
+    expect(searchButton).toBeDisabled();
+
+    // WHEN: Also fill in case number (another valid search field)
+    const caseNumberInput = await screen.findByLabelText(/case number/i);
+    await userEvent.type(caseNumberInput, '24-00001');
+
+    // THEN: Search button should now be enabled (case number is valid)
+    await waitFor(() => {
+      expect(searchButton).not.toBeDisabled();
+    });
+
+    // Execute search and verify it uses case number (ignores single character debtor name)
+    await userEvent.click(searchButton);
+
+    await waitFor(
+      () => {
+        const body = document.body.textContent || '';
+        expect(body).toContain('24-00001');
+        expect(body).toContain('John Smith');
+      },
+      { timeout: 10000 },
+    );
+
+    console.log('[TEST] ✓ Single character debtor name ignored when other fields filled');
   }, 30000);
 
   /**
