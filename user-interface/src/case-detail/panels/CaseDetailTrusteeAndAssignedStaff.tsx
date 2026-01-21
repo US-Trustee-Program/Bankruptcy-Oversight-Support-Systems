@@ -59,7 +59,6 @@ function CaseDetailTrusteeAndAssignedStaff(
                   openProps={{ bCase: caseDetail, callback: handleCaseAssignment }}
                   ariaLabel="Edit assigned staff"
                   title="Open Staff Assignment window"
-                  className="h3-icon-button"
                 >
                   <IconLabel icon="edit" label="Edit" />
                 </OpenModalButton>
