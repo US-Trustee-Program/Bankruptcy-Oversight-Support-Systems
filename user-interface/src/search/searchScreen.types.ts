@@ -12,6 +12,7 @@ export type SearchScreenFormData = {
 
 const CASE_NUMBER_INVALID_ERROR_REASON = 'Must be 7 digits';
 const AT_LEAST_ONE_SEARCH_CRITERION_ERROR_REASON = 'Please enter at least one search criterion';
+const DEBTOR_NAME_MIN_LENGTH = 2;
 
 const caseNumber = [V.matches(CASE_NUMBER_REGEX, CASE_NUMBER_INVALID_ERROR_REASON)];
 
@@ -19,7 +20,7 @@ const atLeastOneSearchCriterion: ValidatorFunction = (obj: unknown) => {
   const form = obj as SearchScreenFormData;
 
   const hasCaseNumber = !!form.caseNumber?.trim();
-  const hasDebtorName = !!form.debtorName?.trim();
+  const hasDebtorName = (form.debtorName?.trim().length ?? 0) >= DEBTOR_NAME_MIN_LENGTH;
   const hasDivisionCodes = !!form.divisionCodes && form.divisionCodes.length > 0;
   const hasChapters = !!form.chapters && form.chapters.length > 0;
 
