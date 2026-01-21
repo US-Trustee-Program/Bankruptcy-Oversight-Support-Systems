@@ -53,15 +53,17 @@ export default function ParalegalAssignmentSection(
       {paralegalAssignment ? (
         <div className="record-detail-card">
           <div className="title-bar">
-            <h3>Paralegal</h3>
-            <Button
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              aria-label="Edit trustee's assigned paralegal"
-              title="Edit trustee's assigned paralegal"
-              onClick={openAssignmentModal}
-            >
-              <IconLabel icon="edit" label="Edit" />
-            </Button>
+            <h3>
+              Paralegal
+              <Button
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                aria-label="Edit trustee's assigned paralegal"
+                title="Edit trustee's assigned paralegal"
+                onClick={openAssignmentModal}
+              >
+                <IconLabel icon="edit" label="Edit" />
+              </Button>
+            </h3>
           </div>
           <div className="assignment-display" data-testid="paralegal-assignments-display">
             <div className="trustee-paralegal-name">{paralegalAssignment.user.name}</div>
@@ -70,15 +72,17 @@ export default function ParalegalAssignmentSection(
       ) : (
         <div className="record-detail-card">
           <div className="title-bar">
-            <h3>Paralegal</h3>
-            <Button
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              aria-label="Add assigned paralegal to trustee"
-              title="Add assigned paralegal to trustee"
-              onClick={openAssignmentModal}
-            >
-              <IconLabel icon="add_circle" label="Add" />
-            </Button>
+            <h3>
+              Paralegal
+              <Button
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                aria-label="Add assigned paralegal to trustee"
+                title="Add assigned paralegal to trustee"
+                onClick={openAssignmentModal}
+              >
+                <IconLabel icon="add_circle" label="Add" />
+              </Button>
+            </h3>
           </div>
           <div className="no-assignment-state" data-testid="no-paralegal-assigned">
             No paralegal assigned
