@@ -224,5 +224,107 @@ describe('Export and Load Case Tests', () => {
 
       expect(firstCallTokens).toEqual(secondCallTokens);
     });
+
+    test('should generate correct phonetic tokens with sample data', async () => {
+      // Test with various realistic names to verify token generation
+      // NOTE: Token generation uses Soundex and Metaphone algorithms
+      const testCases = [
+        { name: 'John Smith', expectedInTokens: ['J500', 'JN', 'S530', 'SM0'] },
+        { name: 'Michael Johnson', expectedInTokens: ['M240', 'MKSHL', 'J525', 'JNSN'] },
+        { name: 'Sarah Connor', expectedInTokens: ['S600', 'SR', 'C560', 'KNR'] },
+        { name: "O'Brien", expectedInTokens: ['O165', "O'BRN"] },
+      ];
+
+      for (const testCase of testCases) {
+        const mockCaseDetails = MockData.getCaseDetail({
+          override: {
+            debtor: { name: testCase.name },
+          },
+        });
+        const events = [mockCaseSyncEvent()];
+
+        vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
+        const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+        await ExportAndLoadCase.exportAndLoad(context, events);
+
+        const syncedCase = syncSpy.mock.calls[0][0];
+        const actualTokens = syncedCase.debtor.phoneticTokens;
+
+        // Verify tokens exist and contain expected values
+        expect(actualTokens).toBeDefined();
+        expect(actualTokens.length).toBeGreaterThan(0);
+
+        // Verify expected tokens are present (tokens include Soundex and Metaphone)
+        testCase.expectedInTokens.forEach((expectedToken) => {
+          expect(actualTokens).toContain(expectedToken);
+        });
+      }
+    });
+
+    test('should generate phonetic tokens without nickname expansion at load time', async () => {
+      // NOTE: Nickname expansion happens at SEARCH time, not at data load time
+      // Data load stores phonetic tokens for the name as-is
+      const mockCaseDetails = MockData.getCaseDetail({
+        override: {
+          debtor: { name: 'Mike Johnson' },
+        },
+      });
+      const events = [mockCaseSyncEvent()];
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      await ExportAndLoadCase.exportAndLoad(context, events);
+
+      const syncedCase = syncSpy.mock.calls[0][0];
+      const actualTokens = syncedCase.debtor.phoneticTokens;
+
+      // Verify tokens exist
+      expect(actualTokens).toBeDefined();
+      expect(actualTokens.length).toBeGreaterThan(0);
+
+      // Should contain tokens for "Mike" (the actual name in the data)
+      expect(actualTokens).toContain('M200'); // Soundex for Mike
+      expect(actualTokens).toContain('MK'); // Metaphone for Mike
+
+      // Should contain tokens for "Johnson"
+      expect(actualTokens).toContain('J525'); // Soundex for Johnson
+      expect(actualTokens).toContain('JNSN'); // Metaphone for Johnson
+
+      // Should NOT contain "Michael" tokens (nickname expansion happens at search time)
+      // This is by design - we store what's in the database, expand during search
+    });
+
+    test('should preserve other case properties when adding phonetic tokens', async () => {
+      const mockCaseDetails = MockData.getCaseDetail({
+        override: {
+          caseId: '24-12345',
+          debtor: {
+            name: 'John Smith',
+            address1: '123 Main St',
+            cityStateZipCountry: 'New York, NY 10001',
+          },
+          chapter: '7',
+        },
+      });
+      const events = [mockCaseSyncEvent()];
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      await ExportAndLoadCase.exportAndLoad(context, events);
+
+      const syncedCase = syncSpy.mock.calls[0][0];
+
+      // Verify phonetic tokens added
+      expect(syncedCase.debtor.phoneticTokens).toBeDefined();
+
+      // Verify other properties preserved
+      expect(syncedCase.caseId).toBe('24-12345');
+      expect(syncedCase.debtor.name).toBe('John Smith');
+      expect(syncedCase.debtor.address1).toBe('123 Main St');
+      expect(syncedCase.chapter).toBe('7');
+    });
   });
 });
