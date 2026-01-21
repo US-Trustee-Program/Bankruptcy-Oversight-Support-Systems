@@ -11,11 +11,10 @@ import {
   PHONE_REGEX,
   WEBSITE_RELAXED_REGEX,
   ZIP_REGEX,
-  ZOOM_MEETING_ID_REGEX,
 } from '@common/cams/regex';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
-import { Trustee, TrusteeHistory, TrusteeInput, ZoomInfo } from '@common/cams/trustees';
+import { Trustee, TrusteeHistory, TrusteeInput, zoomInfoSpec } from '@common/cams/trustees';
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
@@ -317,17 +316,6 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
   phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
   email: [V.optional(V.nullable(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL_PROVIDED)))],
-};
-
-const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
-  link: [
-    V.minLength(1),
-    V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
-    V.maxLength(255, FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH),
-  ],
-  phone: [V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER)],
-  meetingId: [V.matches(ZOOM_MEETING_ID_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID)],
-  passcode: [V.minLength(1)],
 };
 
 const assistantSpec: ValidationSpec<{ name: string; contact: ContactInformation }> = {
