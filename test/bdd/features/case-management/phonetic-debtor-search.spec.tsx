@@ -530,7 +530,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
    * GIVEN the database contains a large number of cases
    * WHEN I search for debtor name "Smith"
    * THEN the search should complete within 250 milliseconds
-   * AND the results should be limited to the first 100 matches
+   * AND we are mocking 100 results returned from the backend
    *
    * This tests performance with indexed phonetic tokens
    */
@@ -661,15 +661,30 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
    */
 
   /**
-   * Scenario: Empty search query returns no results
+   * Scenario: Empty debtor name field is ignored when other search criteria present
    *
-   * WHEN I search for debtor name ""
-   * THEN I should see a message indicating search criteria is required
-   * AND no results should be displayed
+   * GIVEN search form requires at least one field to be filled
+   * WHEN all fields are empty
+   * THEN the search button should be disabled
+   * WHEN I fill in caseNumber but leave debtorName empty
+   * THEN the search button should be enabled
+   * AND the search should execute using caseNumber only (empty debtorName ignored)
+   * AND I should see the case matching the case number
+   *
+   * This tests that:
+   * 1. Search requires at least one field to be filled
+   * 2. Empty debtorName doesn't interfere with other search criteria
    */
-  test('should handle empty search query gracefully', async () => {
+  test('should ignore empty debtor name when other search criteria provided', async () => {
+    const mockCase = createMockCaseWithPhoneticTokens('24-00001', 'John Smith', [
+      'J500',
+      'JN',
+      'S530',
+      'SM0',
+    ]);
+
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withSearchResults([])
+      .withSearchResults([mockCase])
       .renderAt('/');
 
     await waitForAppLoad();
@@ -681,40 +696,58 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       expect(document.body.textContent).toContain('Case Search');
     });
 
-    // Try to search with empty string
+    // THEN: Search button should be disabled when all fields are empty
     const searchButton = await screen.findByRole('button', { name: /search/i });
+    expect(searchButton).toBeDisabled();
 
-    // Button should be disabled or show validation message
-    // This depends on UI implementation
-    const isDisabled = searchButton.hasAttribute('disabled');
+    // WHEN: Fill caseNumber but leave debtorName empty
+    const caseNumberInput = await screen.findByLabelText(/case number/i);
+    await userEvent.type(caseNumberInput, '24-00001');
 
-    if (!isDisabled) {
-      await userEvent.click(searchButton);
+    // THEN: Search button should now be enabled
+    await waitFor(() => {
+      expect(searchButton).not.toBeDisabled();
+    });
 
-      // Should show validation or no results
-      await waitFor(() => {
+    // Execute search
+    await userEvent.click(searchButton);
+
+    // THEN: Should find the case by case number (empty debtorName ignored)
+    await waitFor(
+      () => {
         const body = document.body.textContent || '';
-        expect(
-          body.includes('required') ||
-            body.includes('No cases found') ||
-            body.includes('Please enter'),
-        ).toBe(true);
-      });
-    }
+        expect(body).toContain('24-00001');
+        expect(body).toContain('John Smith');
+      },
+      { timeout: 10000 },
+    );
 
-    console.log('[TEST] ✓ Empty search handled gracefully');
+    console.log('[TEST] ✓ Empty debtor name ignored, search button enabled with valid criteria');
   }, 30000);
 
   /**
-   * Scenario: Whitespace-only search query behavior
+   * Scenario: Whitespace-only debtor name is treated as empty
    *
-   * NOTE: Current implementation treats whitespace as valid search input
-   * (validation uses !!form.debtorName which is truthy for "   ")
-   * This test validates the CURRENT behavior, not ideal behavior
+   * GIVEN search form requires at least one field to be filled
+   * WHEN I enter only whitespace in debtor name field
+   * THEN the search button should remain disabled (whitespace treated as empty)
+   * WHEN I also fill in case number with whitespace-only debtor name
+   * THEN the search button should be enabled
+   * AND the search should execute using case number only
+   * AND the whitespace-only debtor name should be ignored
+   *
+   * This tests that whitespace-only input is normalized to empty string
    */
-  test('should handle whitespace-only query', async () => {
+  test('should treat whitespace-only debtor name as empty', async () => {
+    const mockCase = createMockCaseWithPhoneticTokens('24-00001', 'John Smith', [
+      'J500',
+      'JN',
+      'S530',
+      'SM0',
+    ]);
+
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withSearchResults([])
+      .withSearchResults([mockCase])
       .renderAt('/');
 
     await waitForAppLoad();
@@ -729,25 +762,38 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       { timeout: 5000 },
     );
 
-    const searchInput = await screen.findByLabelText(/debtor name/i);
-    await userEvent.type(searchInput, '   ');
-
     const searchButton = await screen.findByRole('button', { name: /search/i });
+
+    // WHEN: Enter whitespace-only in debtor name field
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+    await userEvent.type(debtorNameInput, '   ');
+
+    // THEN: Search button should remain disabled (whitespace treated as empty)
+    expect(searchButton).toBeDisabled();
+
+    // WHEN: Also fill in case number
+    const caseNumberInput = await screen.findByLabelText(/case number/i);
+    await userEvent.type(caseNumberInput, '24-00001');
+
+    // THEN: Search button should be enabled (case number has value)
+    await waitFor(() => {
+      expect(searchButton).not.toBeDisabled();
+    });
+
+    // Execute search
     await userEvent.click(searchButton);
 
-    // Current behavior: whitespace is accepted as valid input
-    // Search executes and returns no results (empty array)
+    // THEN: Should find case by case number (whitespace-only debtor name ignored)
     await waitFor(
       () => {
         const body = document.body.textContent || '';
-        // Either shows "No cases found" or the search completes without validation error
-        // (Current validation doesn't trim whitespace, so "   " passes as valid)
-        expect(body.includes('No cases found') || body.includes('Case Search')).toBe(true);
+        expect(body).toContain('24-00001');
+        expect(body).toContain('John Smith');
       },
-      { timeout: 5000 },
+      { timeout: 10000 },
     );
 
-    console.log('[TEST] ✓ Whitespace-only query handled (current behavior: treated as valid)');
+    console.log('[TEST] ✓ Whitespace-only debtor name treated as empty, ignored in search');
   }, 30000);
 
   /**
