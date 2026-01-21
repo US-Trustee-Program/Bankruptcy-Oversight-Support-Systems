@@ -18,8 +18,8 @@ const caseNumber = [V.matches(CASE_NUMBER_REGEX, CASE_NUMBER_INVALID_ERROR_REASO
 const atLeastOneSearchCriterion: ValidatorFunction = (obj: unknown) => {
   const form = obj as SearchScreenFormData;
 
-  const hasCaseNumber = !!form.caseNumber;
-  const hasDebtorName = !!form.debtorName;
+  const hasCaseNumber = !!form.caseNumber?.trim();
+  const hasDebtorName = !!form.debtorName?.trim();
   const hasDivisionCodes = !!form.divisionCodes && form.divisionCodes.length > 0;
   const hasChapters = !!form.chapters && form.chapters.length > 0;
 
