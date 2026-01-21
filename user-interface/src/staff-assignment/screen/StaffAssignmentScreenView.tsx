@@ -37,11 +37,13 @@ export function StaffAssignmentScreenView(props: Readonly<StaffAssignmentScreenV
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-12">
           <div className="screen-heading">
-            <h1 data-testid="case-list-heading">{viewModel.screenTitle}</h1>
-            <ScreenInfoButton
-              infoModalRef={viewModel.infoModalRef}
-              modalId={viewModel.infoModalId}
-            />
+            <h1 data-testid="case-list-heading">
+              {viewModel.screenTitle}
+              <ScreenInfoButton
+                infoModalRef={viewModel.infoModalRef}
+                modalId={viewModel.infoModalId}
+              />
+            </h1>
           </div>
           {!viewModel.hasValidPermission && (
             <Stop

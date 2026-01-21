@@ -50,15 +50,17 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
       {attorneyAssignment ? (
         <div className="record-detail-card">
           <div className="title-bar">
-            <h3>Attorney</h3>
-            <Button
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              aria-label="Edit trustee's assigned attorney"
-              title="Edit trustee's assigned attorney"
-              onClick={openAssignmentModal}
-            >
-              <IconLabel icon="edit" label="Edit" />
-            </Button>
+            <h3>
+              Attorney
+              <Button
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                aria-label="Edit trustee's assigned attorney"
+                title="Edit trustee's assigned attorney"
+                onClick={openAssignmentModal}
+              >
+                <IconLabel icon="edit" label="Edit" />
+              </Button>
+            </h3>
           </div>
           <div className="assignment-display" data-testid="attorney-assignments-display">
             <div className="trustee-attorney-name">{attorneyAssignment.user.name}</div>
@@ -67,15 +69,17 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
       ) : (
         <div className="record-detail-card">
           <div className="title-bar">
-            <h3>Attorney</h3>
-            <Button
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              aria-label="Add assigned attorney to trustee"
-              title="Add assigned attorney to trustee"
-              onClick={openAssignmentModal}
-            >
-              <IconLabel icon="add_circle" label="Add" />
-            </Button>
+            <h3>
+              Attorney
+              <Button
+                uswdsStyle={UswdsButtonStyle.Unstyled}
+                aria-label="Add assigned attorney to trustee"
+                title="Add assigned attorney to trustee"
+                onClick={openAssignmentModal}
+              >
+                <IconLabel icon="add_circle" label="Add" />
+              </Button>
+            </h3>
           </div>
           <div className="no-assignment-state" data-testid="no-attorney-assigned">
             No attorney assigned
