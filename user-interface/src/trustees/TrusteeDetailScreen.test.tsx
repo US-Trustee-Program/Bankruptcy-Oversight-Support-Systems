@@ -320,8 +320,8 @@ describe('TrusteeDetailScreen', () => {
     },
     {
       route: '/trustees/123/zoom/edit',
-      expectedSubheader: 'Trustee',
-      description: 'should render subheader "Trustee" for /zoom/edit route',
+      expectedSubheader: 'Edit 341 Meeting Information',
+      description: 'should render subheader "Edit 341 Meeting Information" for /zoom/edit route',
       needsLocationState: false,
     },
     {
