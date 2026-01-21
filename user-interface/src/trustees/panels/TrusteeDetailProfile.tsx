@@ -30,16 +30,18 @@ export default function TrusteeDetailProfile({
         <div className="record-detail-card-list">
           <div className="trustee-contact-information record-detail-card">
             <div className="title-bar">
-              <h3>Trustee Overview (Public)</h3>
-              <Button
-                id="edit-public-profile"
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit trustee public overview information"
-                title="Edit trustee contact information"
-                onClick={onEditPublicProfile}
-              >
-                <IconLabel icon="edit" label="Edit" />
-              </Button>
+              <h3>
+                Trustee Overview (Public)
+                <Button
+                  id="edit-public-profile"
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  aria-label="Edit trustee public overview information"
+                  title="Edit trustee contact information"
+                  onClick={onEditPublicProfile}
+                >
+                  <IconLabel icon="edit" label="Edit" />
+                </Button>
+              </h3>
             </div>
             <div className="trustee-name">{trustee.name}</div>
             <FormattedContact contact={trustee.public} testIdPrefix="trustee" />
@@ -47,16 +49,18 @@ export default function TrusteeDetailProfile({
           <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} onEdit={onEditZoomInfo} />
           <div className="trustee-other-information record-detail-card">
             <div className="title-bar">
-              <h3>Other Information</h3>
-              <Button
-                id="edit-other-information"
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit other trustee information"
-                title="Edit other trustee information"
-                onClick={onEditOtherInformation}
-              >
-                <IconLabel icon="edit" label="Edit" />
-              </Button>
+              <h3>
+                Other Information
+                <Button
+                  id="edit-other-information"
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  aria-label="Edit other trustee information"
+                  title="Edit other trustee information"
+                  onClick={onEditOtherInformation}
+                >
+                  <IconLabel icon="edit" label="Edit" />
+                </Button>
+              </h3>
             </div>
             {trustee.banks &&
               trustee.banks.length > 0 &&
@@ -86,16 +90,18 @@ export default function TrusteeDetailProfile({
           ></Alert>
           <div className="trustee-internal-contact-information record-detail-card">
             <div className="title-bar">
-              <h3>Contact Information (USTP Internal)</h3>
-              <Button
-                id="edit-internal-profile"
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit trustee internal contact information"
-                title="Edit trustee contact information"
-                onClick={onEditInternalProfile}
-              >
-                <IconLabel icon="edit" label="Edit" />
-              </Button>
+              <h3>
+                Contact Information (USTP Internal)
+                <Button
+                  id="edit-internal-profile"
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  aria-label="Edit trustee internal contact information"
+                  title="Edit trustee contact information"
+                  onClick={onEditInternalProfile}
+                >
+                  <IconLabel icon="edit" label="Edit" />
+                </Button>
+              </h3>
             </div>
             {!trustee.internal && (
               <div data-testid="no-internal-information">No information added.</div>
@@ -106,16 +112,18 @@ export default function TrusteeDetailProfile({
           </div>
           <div className="trustee-assistant-information record-detail-card">
             <div className="title-bar">
-              <h3>Trustee Assistant (USTP Internal)</h3>
-              <Button
-                id="edit-assistant"
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit trustee assistant information"
-                title="Edit trustee assistant information"
-                onClick={trustee.assistant ? onEditAssistant : onAddAssistant}
-              >
-                <IconLabel icon="edit" label="Edit" />
-              </Button>
+              <h3>
+                Trustee Assistant (USTP Internal)
+                <Button
+                  id="edit-assistant"
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  aria-label="Edit trustee assistant information"
+                  title="Edit trustee assistant information"
+                  onClick={trustee.assistant ? onEditAssistant : onAddAssistant}
+                >
+                  <IconLabel icon="edit" label="Edit" />
+                </Button>
+              </h3>
             </div>
             {!trustee.assistant && <div>No information added.</div>}
             {!!trustee.assistant && (

@@ -45,8 +45,7 @@ jobs:
     name: Azure Infrastructure
     uses: ./.github/workflows/reusable-deploy.yml
     if:
-      ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && ${{
-      inputs.deployBicep == 'true' }}
+      ${{ ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && (inputs.deployBicep == 'true') }}
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}

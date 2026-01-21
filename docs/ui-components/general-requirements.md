@@ -47,3 +47,40 @@ underlined.
 
 SCSS that is needed to cover all UI (the exception to the above), should be placed in App.scss or
 index.css
+
+## Heading Tags with Icon Buttons
+
+When displaying icon buttons (edit, add, etc.) on the same line as heading tags (h1, h3), the buttons
+must be placed **inside** the heading tag as a child element for proper vertical alignment.
+
+### Correct Pattern
+
+```tsx
+<h3>
+  Section Title
+  <Button uswdsStyle={UswdsButtonStyle.Unstyled}>
+    <IconLabel icon="edit" label="Edit" />
+  </Button>
+</h3>
+```
+
+### Incorrect Pattern
+
+```tsx
+<!-- ❌ DO NOT DO THIS -->
+<div className="title-bar">
+  <h3>Section Title</h3>
+  <Button uswdsStyle={UswdsButtonStyle.Unstyled}>
+    <IconLabel icon="edit" label="Edit" />
+  </Button>
+</div>
+```
+
+### Rationale
+
+Placing the button inside the heading tag ensures proper vertical alignment between the text and icon
+button without requiring additional CSS adjustments. This pattern is used consistently throughout the
+application in:
+- Trustee detail panels (Attorney, Paralegal, Auditor assignments)
+- 341 Meeting information cards
+- Other record detail cards with inline edit buttons
