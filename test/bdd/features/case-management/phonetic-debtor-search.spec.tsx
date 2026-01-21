@@ -193,11 +193,12 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
    * and Jaro-Winkler similarity filtering
    */
   test('should find cases with phonetically similar names (Jon/John)', async () => {
-    // GIVEN: Cases with phonetically similar names
+    // GIVEN: Cases with phonetically similar names AND a false positive case (Jane)
     // NOTE: This test uses .withSearchResults() which mocks the repository layer,
     // bypassing the backend Jaro-Winkler filtering. It validates that:
     // 1. The UI correctly displays search results
     // 2. Phonetically similar names (Jon/John) are found
+    // 3. False positives (Jane) are excluded
     // The actual filtering logic is tested in unit tests (phonetic-utils.test.ts)
     const jonCase = createMockCaseWithPhoneticTokens('24-00007', 'Jon Smith', [
       'J500',
@@ -212,6 +213,8 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       ['J500', 'JN', 'S530', 'SM0'], // Same phonetic tokens as Jon
     );
 
+    // Mock returns Jon and John but NOT Jane (simulating backend Jaro-Winkler filtering)
+    // Backend would filter out Jane due to low similarity score
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
       .withSearchResults([jonCase, johnCase])
       .renderAt('/');
@@ -235,7 +238,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     const searchButton = await screen.findByRole('button', { name: /search/i });
     await userEvent.click(searchButton);
 
-    // THEN: Should see both Jon and John (phonetically similar)
+    // THEN: Should see both Jon and John (phonetically similar) but NOT Jane
     await waitFor(
       () => {
         const body = document.body.textContent || '';
@@ -248,11 +251,16 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
         // 2. "John Smith" (24-00008) - phonetically similar (same tokens: J500, JN, S530, SM0)
         expect(body).toContain('24-00008');
         expect(body).toContain('John Smith');
+
+        // 3. Should NOT include "Jane Doe" (24-00012) - different surname, low similarity
+        // Jane exists in dataset but filtered out by backend Jaro-Winkler similarity
+        expect(body).not.toContain('24-00012');
+        expect(body).not.toContain('Jane Doe');
       },
       { timeout: 10000 },
     );
 
-    console.log('[TEST] ✓ Phonetic matching works: Jon ≈ John');
+    console.log('[TEST] ✓ Phonetic matching works: Jon ≈ John (Jane excluded)');
   }, 30000);
 
   /**
@@ -374,12 +382,12 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
    * This tests that phonetic search includes joint debtors
    */
   test('should search joint debtor names', async () => {
-    // GIVEN: Case with joint debtor
+    // GIVEN: Case with primary debtor "John Connor" and joint debtor "Sarah Connor"
     const caseWithJointDebtor = createMockCaseWithPhoneticTokens(
       '24-00099',
-      'John Connor',
+      'John Connor', // PRIMARY DEBTOR (position 2 parameter)
       ['J500', 'JN', 'K560', 'KNR'],
-      'Sarah Connor',
+      'Sarah Connor', // JOINT DEBTOR (position 4 parameter)
       ['S600', 'SR', 'K560', 'KNR'],
     );
 
@@ -389,7 +397,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
 
     await waitForAppLoad();
 
-    // WHEN: Search for joint debtor "Sarah Connor"
+    // WHEN: Search for JOINT DEBTOR "Sarah Connor"
     const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
     await userEvent.click(caseSearchLink);
 
@@ -407,21 +415,28 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     await userEvent.click(searchButton);
 
     // THEN: Should find the case by searching for joint debtor name
+    // Results display PRIMARY DEBTOR (John), not joint debtor (Sarah)
     await waitFor(
       () => {
         const body = document.body.textContent || '';
-        // Should find the case (search by joint debtor works)
+
+        // Should find the case (searching by joint debtor name works)
         expect(body).toContain('24-00099');
-        // Primary debtor will be shown (caseTitle in UI)
+
+        // Should display PRIMARY DEBTOR in results (caseTitle in UI)
         expect(body).toContain('John Connor');
-        // Note: Joint debtor names are NOT displayed in search results UI
-        // The test validates that searching by joint debtor NAME finds the case,
-        // but the results table only shows the primary debtor name (caseTitle)
+
+        // Should NOT display JOINT DEBTOR in search results
+        // This confirms we're showing the primary debtor, not the joint debtor
+        // (Joint debtor names are not displayed in the results table UI)
+        expect(body).not.toContain('Sarah Connor');
       },
       { timeout: 10000 },
     );
 
-    console.log('[TEST] ✓ Joint debtor search works (found case by searching joint debtor)');
+    console.log(
+      '[TEST] ✓ Joint debtor search works (displays primary debtor John, not joint debtor Sarah)',
+    );
   }, 30000);
 
   /**
@@ -436,29 +451,38 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
   test.each([
     {
       searchName: 'Muhammad',
-      expectedCaseIds: ['24-00062', '24-00063'],
-      expectedNames: ['Muhammad Ali', 'Mohammed Ali'],
-      description: 'Muhammad/Mohammed variations',
+      cases: [
+        { caseId: '24-00062', name: 'Muhammad Ali', tokens: ['M530', 'MHMT', 'A400', 'AL'] },
+        { caseId: '24-00063', name: 'Mohammed Ali', tokens: ['M530', 'MHMT', 'A400', 'AL'] },
+      ],
+      description: 'Arabic: Muhammad/Mohammed variations',
+    },
+    {
+      searchName: 'José',
+      cases: [
+        { caseId: '24-00064', name: 'José Garcia', tokens: ['J200', 'HS', 'G620', 'KRS'] },
+        { caseId: '24-00065', name: 'Jose Garcia', tokens: ['J200', 'HS', 'G620', 'KRS'] },
+      ],
+      description: 'Spanish: José/Jose (accent variations)',
+    },
+    {
+      searchName: 'Zhang',
+      cases: [
+        { caseId: '24-00066', name: 'Zhang Wei', tokens: ['S520', 'SNK', 'W000', 'W'] },
+        { caseId: '24-00067', name: 'Chang Wei', tokens: ['S520', 'XNK', 'W000', 'W'] },
+      ],
+      description: 'Chinese: Zhang/Chang (romanization)',
     },
   ])(
     'should handle international name variations: $description',
-    async ({ searchName, expectedCaseIds, expectedNames }) => {
+    async ({ searchName, cases }) => {
       // GIVEN: Cases with international name variations
-      const muhammadCase = createMockCaseWithPhoneticTokens('24-00062', 'Muhammad Ali', [
-        'M530',
-        'MHMT',
-        'A400',
-        'AL',
-      ]);
-
-      const mohammedCase = createMockCaseWithPhoneticTokens(
-        '24-00063',
-        'Mohammed Ali',
-        ['M530', 'MHMT', 'A400', 'AL'], // Same phonetic tokens
+      const mockCases = cases.map((testCase) =>
+        createMockCaseWithPhoneticTokens(testCase.caseId, testCase.name, testCase.tokens),
       );
 
       await TestSetup.forUser(TestSessions.caseAssignmentManager())
-        .withSearchResults([muhammadCase, mohammedCase])
+        .withSearchResults(mockCases)
         .renderAt('/');
 
       await waitForAppLoad();
@@ -480,26 +504,22 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       const searchButton = await screen.findByRole('button', { name: /search/i });
       await userEvent.click(searchButton);
 
-      // THEN: Should find BOTH spelling variations
+      // THEN: Should find ALL spelling/romanization variations
       await waitFor(
         () => {
           const body = document.body.textContent || '';
 
           // Check all expected cases and names are found
-          expectedCaseIds.forEach((caseId) => {
-            expect(body).toContain(caseId);
-          });
-
-          expectedNames.forEach((name) => {
-            expect(body).toContain(name);
+          cases.forEach((testCase) => {
+            expect(body).toContain(testCase.caseId);
+            expect(body).toContain(testCase.name);
           });
         },
         { timeout: 10000 },
       );
 
-      console.log(
-        `[TEST] ✓ International name matching works: ${searchName} → ${expectedNames.join(', ')}`,
-      );
+      const expectedNames = cases.map((c) => c.name).join(', ');
+      console.log(`[TEST] ✓ International name matching works: ${searchName} → ${expectedNames}`);
     },
     30000,
   );
@@ -589,6 +609,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       'JNSN',
     ]);
 
+    // Mock returns only Michael (regex matches "Michael" substring, not "Mike")
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
       .withSearchResults([michaelCase])
       .renderAt('/');
@@ -616,14 +637,20 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     await waitFor(
       () => {
         const body = document.body.textContent || '';
+
+        // Should find exact match "Michael Johnson"
         expect(body).toContain('24-00001');
         expect(body).toContain('Michael Johnson');
-        // Should NOT find "Mike Johnson" when searching "Michael" with phonetic disabled
+
+        // Should NOT find "Mike Johnson" - regex doesn't match nickname
+        // Mike exists in dataset but excluded by regex-only search
+        expect(body).not.toContain('24-00002');
+        expect(body).not.toContain('Mike Johnson');
       },
       { timeout: 10000 },
     );
 
-    console.log('[TEST] ✓ Regex fallback works when phonetic search disabled');
+    console.log('[TEST] ✓ Regex fallback works (Michael found, Mike excluded)');
 
     // Re-enable for other tests
     process.env.PHONETIC_SEARCH_ENABLED = 'true';
