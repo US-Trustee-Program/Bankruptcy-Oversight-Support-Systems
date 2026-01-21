@@ -236,16 +236,3 @@ export function filterCasesByDebtorNameSimilarity(
   // Sort by score (highest first) and return cases
   return filteredCases.sort((a, b) => b.score - a.score).map((item) => item.case);
 }
-
-/**
- * Check if phonetic search should be used based on configuration
- * @param config The search configuration
- * @returns True if phonetic search is enabled
- */
-export function isPhoneticSearchEnabled(config?: { phonetic?: { enabled?: boolean } }): boolean {
-  // Default to false if no config provided
-  if (!config) return false;
-
-  // Check for phonetic search configuration
-  return config.phonetic?.enabled === true;
-}
