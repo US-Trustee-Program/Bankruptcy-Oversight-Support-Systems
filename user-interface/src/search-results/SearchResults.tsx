@@ -1,6 +1,6 @@
 import { useEffect, useState, type JSX } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { CaseBasics, SyncedCase } from '@common/cams/cases';
+import { CaseSummary, SyncedCase } from '@common/cams/cases';
 import Table, { TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -25,7 +25,13 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
   }, false);
 }
 
-const searchResultsHeaderLabels = ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
+const searchResultsHeaderLabels = [
+  'Case Number (Division)',
+  'Debtor Name',
+  'Case Title',
+  'Chapter',
+  'Case Filed',
+];
 
 export type SearchResultsHeaderProps = {
   id: string;
@@ -34,7 +40,7 @@ export type SearchResultsHeaderProps = {
 
 export type SearchResultsRowProps = TableRowProps & {
   idx: number;
-  bCase: CaseBasics;
+  bCase: CaseSummary;
   labels: string[];
 };
 
