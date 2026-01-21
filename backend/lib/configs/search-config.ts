@@ -3,8 +3,6 @@
  */
 
 export interface PhoneticSearchConfig {
-  /** Whether phonetic search is enabled */
-  enabled: boolean;
   /** Minimum similarity threshold for Jaro-Winkler matching (0.0 to 1.0) */
   similarityThreshold: number;
   /** Maximum number of results to return */
@@ -30,7 +28,6 @@ export interface SearchConfig {
 export function getSearchConfig(): SearchConfig {
   return {
     phonetic: {
-      enabled: process.env.PHONETIC_SEARCH_ENABLED?.toLowerCase() === 'true',
       similarityThreshold: parseFloat(process.env.PHONETIC_SIMILARITY_THRESHOLD || '0.83'),
       maxResults: parseInt(process.env.PHONETIC_MAX_RESULTS || '100', 10),
       algorithms: {

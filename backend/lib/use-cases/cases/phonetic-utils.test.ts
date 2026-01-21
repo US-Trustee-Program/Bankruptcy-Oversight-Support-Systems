@@ -5,7 +5,6 @@ import {
   generatePhoneticTokensWithNicknames,
   calculateJaroWinklerSimilarity,
   filterCasesByDebtorNameSimilarity,
-  isPhoneticSearchEnabled,
 } from './phonetic-utils';
 import { SyncedCase } from '@common/cams/cases';
 
@@ -209,37 +208,6 @@ describe('Phonetic Utilities', () => {
       const filtered2 = filterCasesByDebtorNameSimilarity(mockCases, 'john smith', 0.83);
 
       expect(filtered1).toEqual(filtered2);
-    });
-  });
-
-  describe('isPhoneticSearchEnabled', () => {
-    it('should return false when no config provided', () => {
-      expect(isPhoneticSearchEnabled()).toBe(false);
-      expect(isPhoneticSearchEnabled(null)).toBe(false);
-      expect(isPhoneticSearchEnabled(undefined)).toBe(false);
-    });
-
-    it('should return false when phonetic config is not present', () => {
-      const config = {};
-      expect(isPhoneticSearchEnabled(config)).toBe(false);
-    });
-
-    it('should return false when phonetic is disabled', () => {
-      const config = {
-        phonetic: {
-          enabled: false,
-        },
-      };
-      expect(isPhoneticSearchEnabled(config)).toBe(false);
-    });
-
-    it('should return true when phonetic is enabled', () => {
-      const config = {
-        phonetic: {
-          enabled: true,
-        },
-      };
-      expect(isPhoneticSearchEnabled(config)).toBe(true);
     });
   });
 

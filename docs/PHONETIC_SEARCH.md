@@ -25,18 +25,15 @@ The phonetic search feature enhances the debtor name search functionality by usi
 ### 4. Performance Optimizations
 - Indexed phonetic tokens in MongoDB for O(log n) lookups
 - Result limiting to prevent overwhelming the UI
-- Fallback to regex search when phonetic is disabled
+- Regex fallback for partial matches within phonetic search
 
 ## Configuration
 
 ### Environment Variables
 
-Add these variables to your `.env` file:
+Phonetic search is always enabled. You can optionally configure these parameters in your `.env` file:
 
 ```bash
-# Enable/disable phonetic search (default: false)
-PHONETIC_SEARCH_ENABLED=true
-
 # Minimum similarity threshold for Jaro-Winkler matching (default: 0.83)
 PHONETIC_SIMILARITY_THRESHOLD=0.83
 
@@ -76,13 +73,9 @@ The migration script will:
 - Create MongoDB indexes for optimized querying
 - Show progress and summary statistics
 
-### 3. Enable Phonetic Search
+### 3. Configuration (Optional)
 
-Set the environment variable to enable the feature:
-
-```bash
-export PHONETIC_SEARCH_ENABLED=true
-```
+Phonetic search is enabled by default. You can optionally adjust the similarity threshold or other parameters using environment variables as shown in the Configuration section above.
 
 ## Usage Examples
 
@@ -213,9 +206,9 @@ npm test -- --grep "Phonetic Debtor Name Search"
 ### Common Issues
 
 1. **Phonetic search not working**
-   - Check `PHONETIC_SEARCH_ENABLED=true` is set
    - Verify migration has been run
    - Check MongoDB indexes exist
+   - Ensure phonetic tokens are present in case documents
 
 2. **Too many/few results**
    - Adjust `PHONETIC_SIMILARITY_THRESHOLD`

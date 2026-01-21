@@ -40,8 +40,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
   beforeAll(async () => {
     await initializeTestServer();
 
-    // Enable phonetic search for these tests
-    process.env.PHONETIC_SEARCH_ENABLED = 'true';
+    // Configure phonetic search parameters
     process.env.PHONETIC_SIMILARITY_THRESHOLD = '0.83';
     process.env.PHONETIC_MAX_RESULTS = '100';
   });
@@ -50,7 +49,6 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     await cleanupTestServer();
 
     // Clean up environment
-    delete process.env.PHONETIC_SEARCH_ENABLED;
     delete process.env.PHONETIC_SIMILARITY_THRESHOLD;
     delete process.env.PHONETIC_MAX_RESULTS;
   });
@@ -586,74 +584,6 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     expect(searchTime).toBeLessThan(5000); // 5 seconds for full-stack test
 
     console.log(`[TEST] ✓ Search completed in ${searchTime.toFixed(0)}ms`);
-  }, 30000);
-
-  /**
-   * Scenario: System falls back to regex search if phonetic search is disabled
-   *
-   * GIVEN phonetic search is disabled in configuration
-   * WHEN I search for debtor name "Michael"
-   * THEN I should only see exact substring matches for "Michael"
-   * AND I should NOT see results for "Mike"
-   *
-   * This tests the fallback mechanism when phonetic search is disabled
-   */
-  test('should fall back to regex search when phonetic is disabled', async () => {
-    // GIVEN: Phonetic search disabled
-    process.env.PHONETIC_SEARCH_ENABLED = 'false';
-
-    const michaelCase = createMockCaseWithPhoneticTokens('24-00001', 'Michael Johnson', [
-      'M240',
-      'MXL',
-      'J525',
-      'JNSN',
-    ]);
-
-    // Mock returns only Michael (regex matches "Michael" substring, not "Mike")
-    await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withSearchResults([michaelCase])
-      .renderAt('/');
-
-    await waitForAppLoad();
-
-    // WHEN: Search for "Michael" with phonetic disabled
-    const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
-    await userEvent.click(caseSearchLink);
-
-    await waitFor(
-      () => {
-        expect(document.body.textContent).toContain('Case Search');
-      },
-      { timeout: 5000 },
-    );
-
-    const searchInput = await screen.findByLabelText(/debtor name/i);
-    await userEvent.type(searchInput, 'Michael');
-
-    const searchButton = await screen.findByRole('button', { name: /search/i });
-    await userEvent.click(searchButton);
-
-    // THEN: Should find "Michael" but NOT "Mike" (no nickname expansion with phonetic disabled)
-    await waitFor(
-      () => {
-        const body = document.body.textContent || '';
-
-        // Should find exact match "Michael Johnson"
-        expect(body).toContain('24-00001');
-        expect(body).toContain('Michael Johnson');
-
-        // Should NOT find "Mike Johnson" - regex doesn't match nickname
-        // Mike exists in dataset but excluded by regex-only search
-        expect(body).not.toContain('24-00002');
-        expect(body).not.toContain('Mike Johnson');
-      },
-      { timeout: 10000 },
-    );
-
-    console.log('[TEST] ✓ Regex fallback works (Michael found, Mike excluded)');
-
-    // Re-enable for other tests
-    process.env.PHONETIC_SEARCH_ENABLED = 'true';
   }, 30000);
 
   /**
