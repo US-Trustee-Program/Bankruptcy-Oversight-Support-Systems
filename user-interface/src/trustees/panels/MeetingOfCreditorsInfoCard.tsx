@@ -16,16 +16,18 @@ export default function MeetingOfCreditorsInfoCard({
   return (
     <div className="trustee-zoom-information record-detail-card" data-testid="zoom-info-card">
       <div className="title-bar">
-        <h3 data-testid="zoom-info-heading">341 Meeting</h3>
-        <Button
-          id="edit-zoom-info"
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          aria-label="Edit 341 meeting information"
-          title="Edit 341 meeting information"
-          onClick={onEdit}
-        >
-          <IconLabel icon="edit" label="Edit" />
-        </Button>
+        <h3 data-testid="zoom-info-heading">
+          341 Meeting
+          <Button
+            id="edit-zoom-info"
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+            aria-label="Edit 341 meeting information"
+            title="Edit 341 meeting information"
+            onClick={onEdit}
+          >
+            <IconLabel icon="edit" label="Edit" />
+          </Button>
+        </h3>
       </div>
       {!zoomInfo && (
         <div data-testid="zoom-info-empty-message">No information has been entered.</div>
