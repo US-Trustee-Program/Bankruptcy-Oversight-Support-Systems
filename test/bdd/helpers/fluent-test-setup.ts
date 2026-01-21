@@ -30,8 +30,10 @@
 
 import { vi } from 'vitest';
 import type { CamsSession } from '@common/cams/session';
-import type { CaseDetail, CaseSummary, CaseNote } from '@common/cams/cases';
+import type { CaseDetail, CaseSummary, CaseNote, SyncedCase } from '@common/cams/cases';
 import type { CaseAssignment } from '@common/cams/assignments';
+import type { CasesSearchPredicate } from '@common/api/search';
+import { generatePhoneticTokensWithNicknames } from '@backend/lib/use-cases/cases/phonetic-utils';
 import type {
   TransferFrom,
   TransferTo,
@@ -79,6 +81,8 @@ export class TestSetup {
   private cases: CaseDetail[] = [];
   private searchResults: CaseSummary[] = [];
   private searchResultsExplicitlySet: boolean = false;
+  private caseDataset: SyncedCase[] = [];
+  private caseDatasetExplicitlySet: boolean = false;
   private myAssignments: CaseSummary[] = [];
   private transfers: Transfer[] = [];
   private consolidations: Consolidation[] = [];
@@ -167,6 +171,33 @@ export class TestSetup {
   withSearchResults(results: CaseSummary[]): TestSetup {
     this.searchResults = results;
     this.searchResultsExplicitlySet = true;
+    return this;
+  }
+
+  /**
+   * Provide a searchable dataset of cases for phonetic search tests.
+   * The repository mock will filter this dataset based on search predicates,
+   * allowing the full search logic to execute (nickname expansion, phonetic tokens, Jaro-Winkler).
+   *
+   * Use this instead of withSearchResults() when you want to test the actual search logic
+   * rather than just displaying pre-filtered results.
+   *
+   * @param cases Array of SyncedCase objects with phonetic tokens
+   * @example
+   * ```typescript
+   * const michaelCase = createMockCaseWithPhoneticTokens('24-00001', 'Michael Johnson', [...]);
+   * const mikeCase = createMockCaseWithPhoneticTokens('24-00002', 'Mike Johnson', [...]);
+   * const janeCase = createMockCaseWithPhoneticTokens('24-00003', 'Jane Doe', [...]);
+   *
+   * await TestSetup
+   *   .forUser(TestSessions.caseAssignmentManager())
+   *   .withCaseDataset([michaelCase, mikeCase, janeCase])  // Unfiltered dataset
+   *   .renderAt('/');
+   * ```
+   */
+  withCaseDataset(cases: SyncedCase[]): TestSetup {
+    this.caseDataset = cases;
+    this.caseDatasetExplicitlySet = true;
     return this;
   }
 
@@ -523,14 +554,77 @@ export class TestSetup {
 
       // Cases repository - STATE AWARE for transfers/consolidations
       CasesMongoRepository: {
-        // Only mock searchCases if withSearchResults() was explicitly called
-        // This prevents accidental usage and makes tests explicit about their search data needs
-        searchCases: this.searchResultsExplicitlySet
-          ? vi.fn().mockResolvedValue({
-              metadata: { total: this.searchResults.length },
-              data: this.searchResults,
+        // Smart searchCases mock that implements actual filtering logic
+        searchCases: this.caseDatasetExplicitlySet
+          ? vi.fn().mockImplementation(async (predicate: CasesSearchPredicate) => {
+              let filtered = [...this.caseDataset];
+
+              // Apply debtor name filtering with phonetic token matching
+              if (predicate.debtorName) {
+                const searchTokens = generatePhoneticTokensWithNicknames(predicate.debtorName);
+                const searchRegex = new RegExp(predicate.debtorName, 'i');
+
+                filtered = filtered.filter((bCase) => {
+                  // Check debtor phonetic tokens
+                  const debtorTokensMatch =
+                    bCase.debtor?.phoneticTokens?.some((token) => searchTokens.includes(token)) ??
+                    false;
+
+                  // Check debtor name regex
+                  const debtorNameMatch = searchRegex.test(bCase.debtor?.name ?? '');
+
+                  // Check joint debtor phonetic tokens
+                  const jointDebtorTokensMatch =
+                    bCase.jointDebtor?.phoneticTokens?.some((token) =>
+                      searchTokens.includes(token),
+                    ) ?? false;
+
+                  // Check joint debtor name regex
+                  const jointDebtorNameMatch = searchRegex.test(bCase.jointDebtor?.name ?? '');
+
+                  // Match if ANY condition is true (OR logic, matching repository implementation)
+                  return (
+                    debtorTokensMatch ||
+                    debtorNameMatch ||
+                    jointDebtorTokensMatch ||
+                    jointDebtorNameMatch
+                  );
+                });
+              }
+
+              // Apply chapter filtering
+              if (predicate.chapters && predicate.chapters.length > 0) {
+                filtered = filtered.filter((bCase) => predicate.chapters!.includes(bCase.chapter));
+              }
+
+              // Apply division code filtering
+              if (predicate.divisionCodes && predicate.divisionCodes.length > 0) {
+                filtered = filtered.filter((bCase) =>
+                  predicate.divisionCodes!.includes(bCase.courtDivisionCode),
+                );
+              }
+
+              // Apply caseIds filtering
+              if (predicate.caseIds && predicate.caseIds.length > 0) {
+                filtered = filtered.filter((bCase) => predicate.caseIds!.includes(bCase.caseId));
+              }
+
+              // Apply pagination
+              const offset = predicate.offset || 0;
+              const limit = predicate.limit || filtered.length;
+              const paginated = filtered.slice(offset, offset + limit);
+
+              return {
+                metadata: { total: filtered.length },
+                data: paginated,
+              };
             })
-          : undefined,
+          : this.searchResultsExplicitlySet
+            ? vi.fn().mockResolvedValue({
+                metadata: { total: this.searchResults.length },
+                data: this.searchResults,
+              })
+            : undefined,
         // STATE AWARE: Read transfers from state
         getTransfers: vi.fn().mockImplementation(async (caseId: string) => {
           return state.getTransfers(caseId);

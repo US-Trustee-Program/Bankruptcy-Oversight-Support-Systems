@@ -6,7 +6,7 @@ import { TestSessions } from '../../fixtures/auth.fixtures';
 import { TestSetup, waitForAppLoad } from '../../helpers/fluent-test-setup';
 import { clearAllRepositorySpies } from '../../helpers/repository-spies';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { CaseSummary } from '@common/cams/cases';
+import { SyncedCase } from '@common/cams/cases';
 
 // ALWAYS import driver mocks
 import '../../helpers/driver-mocks';
@@ -67,8 +67,8 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     phoneticTokens: string[],
     jointDebtorName?: string,
     jointPhoneticTokens?: string[],
-  ): CaseSummary {
-    const baseMock = MockData.getCaseSummary({
+  ): SyncedCase {
+    const baseMock = MockData.getSyncedCase({
       override: {
         caseId,
         caseTitle: debtorName, // Update case title to match debtor name
@@ -119,11 +119,26 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       'JNSN',
     ]);
 
+    // Create unrelated cases to verify filtering actually works
+    const janeCase = createMockCaseWithPhoneticTokens('24-00003', 'Jane Doe', [
+      'J500',
+      'JN',
+      'D000',
+      'T',
+    ]);
+
+    const robertCase = createMockCaseWithPhoneticTokens('24-00004', 'Robert Smith', [
+      'R163',
+      'RBRT',
+      'S530',
+      'SM0',
+    ]);
+
     console.log('[TEST] Created mockCases with phonetic tokens');
 
-    // Set up test with both cases
+    // Set up test with searchable dataset (not pre-filtered)
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withSearchResults([michaelCase, mikeCase])
+      .withCaseDataset([michaelCase, mikeCase, janeCase, robertCase])
       .renderAt('/');
 
     await waitForAppLoad();
@@ -171,6 +186,12 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
         // 2. "Mike Johnson" (24-00002) - exact match
         expect(body).toContain('24-00002');
         expect(body).toContain('Mike Johnson');
+
+        // Should NOT find unrelated cases
+        expect(body).not.toContain('24-00003');
+        expect(body).not.toContain('Jane Doe');
+        expect(body).not.toContain('24-00004');
+        expect(body).not.toContain('Robert Smith');
       },
       { timeout: 10000 },
     );
@@ -192,12 +213,6 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
    */
   test('should find cases with phonetically similar names (Jon/John)', async () => {
     // GIVEN: Cases with phonetically similar names AND a false positive case (Jane)
-    // NOTE: This test uses .withSearchResults() which mocks the repository layer,
-    // bypassing the backend Jaro-Winkler filtering. It validates that:
-    // 1. The UI correctly displays search results
-    // 2. Phonetically similar names (Jon/John) are found
-    // 3. False positives (Jane) are excluded
-    // The actual filtering logic is tested in unit tests (phonetic-utils.test.ts)
     const jonCase = createMockCaseWithPhoneticTokens('24-00007', 'Jon Smith', [
       'J500',
       'JN',
@@ -211,10 +226,17 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       ['J500', 'JN', 'S530', 'SM0'], // Same phonetic tokens as Jon
     );
 
-    // Mock returns Jon and John but NOT Jane (simulating backend Jaro-Winkler filtering)
-    // Backend would filter out Jane due to low similarity score
+    // Jane has different phonetic tokens and should be filtered out
+    const janeCase = createMockCaseWithPhoneticTokens('24-00012', 'Jane Doe', [
+      'J500',
+      'JN',
+      'D000',
+      'T',
+    ]);
+
+    // Provide full dataset - phonetic filtering will select Jon/John and exclude Jane
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withSearchResults([jonCase, johnCase])
+      .withCaseDataset([jonCase, johnCase, janeCase])
       .renderAt('/');
 
     await waitForAppLoad();
@@ -272,7 +294,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
    * This tests prefix matching for partial name searches
    */
   test('should match partial names with prefix detection', async () => {
-    // GIVEN: Case with full name
+    // GIVEN: Case with full name and unrelated cases
     const johnSmithCase = createMockCaseWithPhoneticTokens('24-00008', 'John Smith', [
       'J500',
       'JN',
@@ -280,8 +302,23 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       'SM0',
     ]);
 
+    const janeCase = createMockCaseWithPhoneticTokens('24-00009', 'Jane Doe', [
+      'J500',
+      'JN',
+      'D000',
+      'T',
+    ]);
+
+    const robertCase = createMockCaseWithPhoneticTokens('24-00010', 'Robert Brown', [
+      'R163',
+      'RBRT',
+      'B650',
+      'BRN',
+    ]);
+
+    // Provide full dataset - regex matching will find John Smith for "john sm"
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withSearchResults([johnSmithCase])
+      .withCaseDataset([johnSmithCase, janeCase, robertCase])
       .renderAt('/');
 
     await waitForAppLoad();
@@ -309,6 +346,12 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
         const body = document.body.textContent || '';
         expect(body).toContain('24-00008');
         expect(body).toContain('John Smith');
+
+        // Should NOT find unrelated cases
+        expect(body).not.toContain('24-00009');
+        expect(body).not.toContain('Jane Doe');
+        expect(body).not.toContain('24-00010');
+        expect(body).not.toContain('Robert Brown');
       },
       { timeout: 10000 },
     );
@@ -326,7 +369,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
    * This tests case normalization in phonetic search
    */
   test('should perform case-insensitive searches', async () => {
-    // GIVEN: Case with mixed case name
+    // GIVEN: Case with mixed case name plus unrelated cases
     const michaelCase = createMockCaseWithPhoneticTokens('24-00001', 'Michael Johnson', [
       'M240',
       'MXL',
@@ -334,8 +377,15 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       'JNSN',
     ]);
 
+    const janeCase = createMockCaseWithPhoneticTokens('24-00002', 'Jane Doe', [
+      'J500',
+      'JN',
+      'D000',
+      'T',
+    ]);
+
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withSearchResults([michaelCase])
+      .withCaseDataset([michaelCase, janeCase])
       .renderAt('/');
 
     await waitForAppLoad();
@@ -380,7 +430,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
    * This tests that phonetic search includes joint debtors
    */
   test('should search joint debtor names', async () => {
-    // GIVEN: Case with primary debtor "John Connor" and joint debtor "Sarah Connor"
+    // GIVEN: Case with primary debtor "John Connor" and joint debtor "Sarah Connor" plus unrelated case
     const caseWithJointDebtor = createMockCaseWithPhoneticTokens(
       '24-00099',
       'John Connor', // PRIMARY DEBTOR (position 2 parameter)
@@ -389,8 +439,15 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       ['S600', 'SR', 'K560', 'KNR'],
     );
 
+    const unrelatedCase = createMockCaseWithPhoneticTokens('24-00100', 'Jane Doe', [
+      'J500',
+      'JN',
+      'D000',
+      'T',
+    ]);
+
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
-      .withSearchResults([caseWithJointDebtor])
+      .withCaseDataset([caseWithJointDebtor, unrelatedCase])
       .renderAt('/');
 
     await waitForAppLoad();
