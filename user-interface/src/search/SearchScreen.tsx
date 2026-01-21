@@ -198,7 +198,7 @@ export default function SearchScreen() {
   function handleDebtorNameChange(ev: ChangeEvent<HTMLInputElement>): void {
     const debtorName = ev.target.value;
     const newPredicate = { ...temporarySearchPredicate };
-    if (debtorName) {
+    if (debtorName.trim()) {
       newPredicate.debtorName = debtorName;
     } else {
       delete newPredicate.debtorName;
