@@ -911,18 +911,18 @@ export class TestSetup {
   }
 
   /**
-   * Set up feature flag spies to override the default flags defined in driver-mocks.
-   * This allows individual tests to enable specific feature flags.
-   *
-   * Uses spyOn to override the mocked LaunchDarkly modules that were hoisted in driver-mocks.
+   * Set up feature flags by spying on LaunchDarkly modules at runtime.
+   * This uses vi.spyOn() to mock the modules dynamically without vi.mock() hoisting issues.
    */
   private async setupFeatureFlagSpies(): Promise<void> {
-    // Spy on backend LaunchDarkly to return test-specific flags
-    const backendLD = await import('@launchdarkly/node-server-sdk');
+    console.log('[FEATURE FLAGS] Setting feature flags:', this.featureFlags);
 
-    // NOTE: This duplicates createMockLaunchDarklyClient from driver-mocks.ts
-    // We cannot import and use the helper here due to module loading order issues
-    // with dynamic imports. The helper is fine in hoisted vi.mock() calls.
+    // Spy on frontend LaunchDarkly useFlags hook
+    const frontendLD = await import('launchdarkly-react-client-sdk');
+    vi.spyOn(frontendLD, 'useFlags').mockReturnValue(this.featureFlags);
+
+    // Spy on backend LaunchDarkly init
+    const backendLD = await import('@launchdarkly/node-server-sdk');
     const mockClient = {
       waitForInitialization: vi.fn().mockResolvedValue(undefined),
       allFlagsState: vi.fn().mockResolvedValue({
@@ -937,9 +937,7 @@ export class TestSetup {
       vi.spyOn(backendLD.default, 'init').mockReturnValue(mockClient as never);
     }
 
-    // Spy on frontend LaunchDarkly to return test-specific flags
-    const frontendLD = await import('launchdarkly-react-client-sdk');
-    vi.spyOn(frontendLD, 'useFlags').mockReturnValue(this.featureFlags);
+    console.log('[FEATURE FLAGS] Feature flag spies set up successfully');
   }
 }
 
