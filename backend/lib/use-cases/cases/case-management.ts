@@ -19,7 +19,7 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignment } from '@common/cams/assignments';
-import { filterCasesByDebtorNameSimilarity } from './phonetic-utils';
+import { filterCasesByDebtorNameSimilarity, isPhoneticSearchEnabled } from './phonetic-utils';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -89,8 +89,8 @@ export default class CaseManagement {
 
       const searchResult = await this.casesRepository.searchCases(predicate);
 
-      // Apply phonetic filtering when searching by name
-      if (predicate.debtorName) {
+      // Apply phonetic filtering if enabled and searching by name
+      if (predicate.debtorName && isPhoneticSearchEnabled(context?.config?.search)) {
         const similarityThreshold = context?.config?.search?.phonetic?.similarityThreshold || 0.83;
         const filtered = filterCasesByDebtorNameSimilarity(
           searchResult.data,

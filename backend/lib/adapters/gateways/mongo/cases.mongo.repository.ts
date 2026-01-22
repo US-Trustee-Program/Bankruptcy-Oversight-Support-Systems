@@ -16,7 +16,10 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
-import { generatePhoneticTokensWithNicknames } from '../../../use-cases/cases/phonetic-utils';
+import {
+  generatePhoneticTokensWithNicknames,
+  isPhoneticSearchEnabled,
+} from '../../../use-cases/cases/phonetic-utils';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -296,21 +299,35 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
 
     if (predicate.debtorName) {
-      // Use phonetic search with tokens and nickname expansion
-      const tokens = generatePhoneticTokensWithNicknames(predicate.debtorName);
-      const debtorNameRegex = new RegExp(predicate.debtorName, 'i'); // case-insensitive
+      // Check if phonetic search is enabled in configuration
+      const phoneticEnabled = isPhoneticSearchEnabled(this.context?.config?.search);
 
-      // Combine phonetic token search with regex fallback for partial matches
-      conditions.push(
-        or(
-          // Phonetic token matching
-          doc('debtor.phoneticTokens').contains(tokens),
-          doc('jointDebtor.phoneticTokens').contains(tokens),
-          // Fallback to regex for partial matches
-          doc('debtor.name').regex(debtorNameRegex),
-          doc('jointDebtor.name').regex(debtorNameRegex),
-        ),
-      );
+      if (phoneticEnabled) {
+        // Phonetic search path: use phonetic tokens with nickname expansion
+        const tokens = generatePhoneticTokensWithNicknames(predicate.debtorName);
+        const debtorNameRegex = new RegExp(predicate.debtorName, 'i'); // case-insensitive
+
+        // Combine phonetic token search with regex fallback for partial matches
+        conditions.push(
+          or(
+            // Phonetic token matching
+            doc('debtor.phoneticTokens').contains(tokens),
+            doc('jointDebtor.phoneticTokens').contains(tokens),
+            // Fallback to regex for partial matches
+            doc('debtor.name').regex(debtorNameRegex),
+            doc('jointDebtor.name').regex(debtorNameRegex),
+          ),
+        );
+      } else {
+        // Existing regex-only path (unchanged)
+        const debtorNameRegex = new RegExp(predicate.debtorName, 'i'); // case-insensitive
+        conditions.push(
+          or(
+            doc('debtor.name').regex(debtorNameRegex),
+            doc('jointDebtor.name').regex(debtorNameRegex),
+          ),
+        );
+      }
     }
 
     if (predicate.caseIds) {
