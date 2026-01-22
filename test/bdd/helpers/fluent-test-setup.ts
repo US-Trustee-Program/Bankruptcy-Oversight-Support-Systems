@@ -32,8 +32,6 @@ import { vi } from 'vitest';
 import type { CamsSession } from '@common/cams/session';
 import type { CaseDetail, CaseSummary, CaseNote, SyncedCase } from '@common/cams/cases';
 import type { CaseAssignment } from '@common/cams/assignments';
-import type { CasesSearchPredicate } from '@common/api/search';
-import { generatePhoneticTokensWithNicknames } from '@backend/lib/use-cases/cases/phonetic-utils';
 import type {
   TransferFrom,
   TransferTo,
@@ -554,70 +552,12 @@ export class TestSetup {
 
       // Cases repository - STATE AWARE for transfers/consolidations
       CasesMongoRepository: {
-        // Smart searchCases mock that implements actual filtering logic
+        // Simple searchCases mock - returns dataset or results as-is
+        // Individual tests can override this with custom spy if they need filtering logic
         searchCases: this.caseDatasetExplicitlySet
-          ? vi.fn().mockImplementation(async (predicate: CasesSearchPredicate) => {
-              let filtered = [...this.caseDataset];
-
-              // Apply debtor name filtering with phonetic token matching
-              if (predicate.debtorName) {
-                const searchTokens = generatePhoneticTokensWithNicknames(predicate.debtorName);
-                const searchRegex = new RegExp(predicate.debtorName, 'i');
-
-                filtered = filtered.filter((bCase) => {
-                  // Check debtor phonetic tokens
-                  const debtorTokensMatch =
-                    bCase.debtor?.phoneticTokens?.some((token) => searchTokens.includes(token)) ??
-                    false;
-
-                  // Check debtor name regex
-                  const debtorNameMatch = searchRegex.test(bCase.debtor?.name ?? '');
-
-                  // Check joint debtor phonetic tokens
-                  const jointDebtorTokensMatch =
-                    bCase.jointDebtor?.phoneticTokens?.some((token) =>
-                      searchTokens.includes(token),
-                    ) ?? false;
-
-                  // Check joint debtor name regex
-                  const jointDebtorNameMatch = searchRegex.test(bCase.jointDebtor?.name ?? '');
-
-                  // Match if ANY condition is true (OR logic, matching repository implementation)
-                  return (
-                    debtorTokensMatch ||
-                    debtorNameMatch ||
-                    jointDebtorTokensMatch ||
-                    jointDebtorNameMatch
-                  );
-                });
-              }
-
-              // Apply chapter filtering
-              if (predicate.chapters && predicate.chapters.length > 0) {
-                filtered = filtered.filter((bCase) => predicate.chapters!.includes(bCase.chapter));
-              }
-
-              // Apply division code filtering
-              if (predicate.divisionCodes && predicate.divisionCodes.length > 0) {
-                filtered = filtered.filter((bCase) =>
-                  predicate.divisionCodes!.includes(bCase.courtDivisionCode),
-                );
-              }
-
-              // Apply caseIds filtering
-              if (predicate.caseIds && predicate.caseIds.length > 0) {
-                filtered = filtered.filter((bCase) => predicate.caseIds!.includes(bCase.caseId));
-              }
-
-              // Apply pagination
-              const offset = predicate.offset || 0;
-              const limit = predicate.limit || filtered.length;
-              const paginated = filtered.slice(offset, offset + limit);
-
-              return {
-                metadata: { total: filtered.length },
-                data: paginated,
-              };
+          ? vi.fn().mockResolvedValue({
+              metadata: { total: this.caseDataset.length },
+              data: this.caseDataset,
             })
           : this.searchResultsExplicitlySet
             ? vi.fn().mockResolvedValue({
