@@ -2,27 +2,10 @@ import { beforeAll, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import { MOCK_ISSUER } from '@backend/lib/testing/mock-gateways/mock-oauth2-constants.ts';
 
-// Mock Node.js-specific phonetic packages that can't run in jsdom environment
-// These are already tested in backend unit tests (phonetic-utils.test.ts)
-// For BDD tests, we mock at the repository level with pre-computed tokens
-vi.mock('../../../backend/lib/use-cases/cases/phonetic-utils', () => ({
-  generatePhoneticTokens: vi.fn((text: string) => {
-    // Simple mock that returns consistent tokens for testing
-    if (!text) return [];
-    return [text.substring(0, 4).toUpperCase()];
-  }),
-  expandQueryWithNicknames: vi.fn((query: string) => {
-    // Simple mock - just return the original query
-    return [query];
-  }),
-  generatePhoneticTokensWithNicknames: vi.fn((text: string) => {
-    if (!text) return [];
-    return [text.substring(0, 4).toUpperCase()];
-  }),
-  calculateJaroWinklerSimilarity: vi.fn(() => 0.9), // Always high similarity for tests
-  filterCasesByDebtorNameSimilarity: vi.fn((cases) => cases), // Pass through
-  isPhoneticSearchEnabled: vi.fn(() => true),
-}));
+// NOTE: We do NOT mock phonetic-utils here!
+// The phonetic functions run on the backend in Node.js, not in the browser/jsdom.
+// They have access to the native Node.js libraries (natural, soundex-code, etc.)
+// and should work fine in the BDD test environment.
 
 // Setup window configuration for React app AT MODULE LOAD TIME
 // This must happen BEFORE any UI modules are imported
