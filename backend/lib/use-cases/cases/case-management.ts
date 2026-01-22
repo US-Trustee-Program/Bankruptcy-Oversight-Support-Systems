@@ -90,7 +90,7 @@ export default class CaseManagement {
       const searchResult = await this.casesRepository.searchCases(predicate);
 
       // Apply phonetic filtering if enabled and searching by name
-      if (predicate.debtorName && isPhoneticSearchEnabled(context?.config?.search)) {
+      if (predicate.debtorName && isPhoneticSearchEnabled(context?.featureFlags)) {
         const similarityThreshold = context?.config?.search?.phonetic?.similarityThreshold || 0.83;
         const filtered = filterCasesByDebtorNameSimilarity(
           searchResult.data,
