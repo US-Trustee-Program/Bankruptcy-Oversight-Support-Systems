@@ -721,9 +721,11 @@ describe('Cases repository', () => {
 
   describe('phonetic search query generation', () => {
     test('should successfully search with debtorName using phonetic search', async () => {
-      // Setup context with phonetic search
+      // Setup context with phonetic search enabled
       const contextWithPhonetic = await createMockApplicationContext({
-        env: {},
+        env: {
+          PHONETIC_SEARCH_ENABLED: 'true',
+        },
       });
       const repoWithPhonetic = CasesMongoRepository.getInstance(contextWithPhonetic);
 
@@ -755,6 +757,46 @@ describe('Cases repository', () => {
 
       repoWithPhonetic.release();
       await closeDeferred(contextWithPhonetic);
+    });
+
+    test('should successfully search with debtorName when phonetic search is disabled', async () => {
+      // Setup context with phonetic search disabled (default)
+      const contextWithoutPhonetic = await createMockApplicationContext({
+        env: {
+          PHONETIC_SEARCH_ENABLED: 'false',
+        },
+      });
+      const repoWithoutPhonetic = CasesMongoRepository.getInstance(contextWithoutPhonetic);
+
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        debtorName: 'Michael Johnson',
+        limit: 25,
+        offset: 0,
+      };
+
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+      const result = await repoWithoutPhonetic.searchCases(predicate);
+
+      // Verify search completed successfully with regex-only path
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+
+      // Verify debtor.name is used in query but NOT phoneticTokens
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).toContain('debtor.name');
+      expect(queryString).not.toContain('phoneticTokens');
+
+      repoWithoutPhonetic.release();
+      await closeDeferred(contextWithoutPhonetic);
     });
 
     test('should include both debtor and jointDebtor fields in search', async () => {

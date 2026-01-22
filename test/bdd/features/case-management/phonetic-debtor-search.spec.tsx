@@ -40,7 +40,8 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
   beforeAll(async () => {
     await initializeTestServer();
 
-    // Configure phonetic search parameters
+    // Enable phonetic search feature and configure parameters
+    process.env.PHONETIC_SEARCH_ENABLED = 'true';
     process.env.PHONETIC_SIMILARITY_THRESHOLD = '0.83';
     process.env.PHONETIC_MAX_RESULTS = '100';
   });
@@ -1656,5 +1657,62 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     );
 
     console.log('[TEST] ✓ Long query handled gracefully');
+  }, 30000);
+
+  /**
+   * Scenario: Phonetic search is disabled by feature flag
+   * GIVEN phonetic search feature flag is disabled
+   * AND test cases exist with "Michael Johnson" and "Mike Johnson"
+   * WHEN searching for "Mike Johnson"
+   * THEN only exact regex matches should be returned
+   * AND phonetic filtering should NOT be applied
+   */
+  test('should NOT apply phonetic search when feature flag is disabled', async () => {
+    // Temporarily disable phonetic search
+    const originalFlag = process.env.PHONETIC_SEARCH_ENABLED;
+    process.env.PHONETIC_SEARCH_ENABLED = 'false';
+
+    try {
+      const cases = [
+        createMockCaseWithPhoneticTokens('24-90001', 'Mike Johnson', [
+          'M200',
+          'MK',
+          'J525',
+          'JNSN',
+        ]),
+        createMockCaseWithPhoneticTokens('24-90002', 'Michael Johnson', [
+          'M240',
+          'MXL',
+          'J525',
+          'JNSN',
+        ]),
+        createMockCaseWithPhoneticTokens('24-90003', 'Jane Doe', ['J500', 'JN', 'D000', 'T']),
+      ];
+
+      await TestSetup.forUser(TestSessions.caseAssignmentManager())
+        .withCaseDataset(cases)
+        .renderAt('/');
+
+      await waitForAppLoad();
+
+      const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
+      await userEvent.click(caseSearchLink);
+
+      await waitFor(
+        () => {
+          expect(document.body.textContent).toContain('Case Search');
+        },
+        { timeout: 5000 },
+      );
+
+      // Verify debtor name search field is NOT present when feature flag is disabled
+      const searchInput = screen.queryByLabelText(/debtor name/i);
+      expect(searchInput).toBeNull();
+
+      console.log('[TEST] ✓ Debtor name search field hidden when feature flag is disabled');
+    } finally {
+      // Restore original flag value
+      process.env.PHONETIC_SEARCH_ENABLED = originalFlag;
+    }
   }, 30000);
 });

@@ -5,8 +5,10 @@ import {
   generatePhoneticTokensWithNicknames,
   calculateJaroWinklerSimilarity,
   filterCasesByDebtorNameSimilarity,
+  isPhoneticSearchEnabled,
 } from './phonetic-utils';
 import { SyncedCase } from '@common/cams/cases';
+import { SearchConfig } from '../../configs/search-config';
 
 describe('Phonetic Utilities', () => {
   describe('generatePhoneticTokens', () => {
@@ -273,6 +275,49 @@ describe('Phonetic Utilities', () => {
 
       expect(names).toContain('Muhammad Ali');
       expect(names).toContain('Mohammed Ali'); // Should match both variations
+    });
+  });
+
+  describe('isPhoneticSearchEnabled', () => {
+    it('should return false when no config provided', () => {
+      expect(isPhoneticSearchEnabled()).toBe(false);
+      expect(isPhoneticSearchEnabled(null)).toBe(false);
+      expect(isPhoneticSearchEnabled(undefined)).toBe(false);
+    });
+
+    it('should return false when phonetic config is not present', () => {
+      const config = {} as SearchConfig;
+      expect(isPhoneticSearchEnabled(config)).toBe(false);
+    });
+
+    it('should return false when phonetic is disabled', () => {
+      const config: SearchConfig = {
+        phonetic: {
+          enabled: false,
+          similarityThreshold: 0.83,
+          maxResults: 100,
+          algorithms: {
+            soundex: true,
+            metaphone: true,
+          },
+        },
+      };
+      expect(isPhoneticSearchEnabled(config)).toBe(false);
+    });
+
+    it('should return true when phonetic is enabled', () => {
+      const config: SearchConfig = {
+        phonetic: {
+          enabled: true,
+          similarityThreshold: 0.83,
+          maxResults: 100,
+          algorithms: {
+            soundex: true,
+            metaphone: true,
+          },
+        },
+      };
+      expect(isPhoneticSearchEnabled(config)).toBe(true);
     });
   });
 });
