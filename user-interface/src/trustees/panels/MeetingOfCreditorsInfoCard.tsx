@@ -1,8 +1,10 @@
+import './MeetingOfCreditorsInfoCard.scss';
 import { ZoomInfo } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { formatMeetingId } from '@/lib/utils/zoomInfo';
 import { copyStringToClipboard } from '@/lib/utils/clipBoard';
+import Icon from '@/lib/components/uswds/Icon';
 
 interface ZoomInfoCardProps {
   zoomInfo?: ZoomInfo;
@@ -51,7 +53,7 @@ export default function MeetingOfCreditorsInfoCard({
               title="Copy Zoom link"
               onClick={() => copyStringToClipboard(zoomInfo.link)}
             >
-              <IconLabel icon="content_copy" label="" />
+              <Icon name="content_copy" />
             </Button>
           </div>
           <div className="zoom-phone" data-testid="zoom-phone">

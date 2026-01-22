@@ -157,27 +157,24 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
             />
           </div>
         </div>
-        <div className="grid-row margin-top-5">
-          <div className="grid-col-auto">
-            <Button
-              id="button-trustee-zoom-info-form-submit"
-              uswdsStyle={UswdsButtonStyle.Default}
-              onClick={handleSubmit}
-              disabled={isSaveDisabled}
-            >
-              Save
-            </Button>
-          </div>
-          <div className="grid-col-auto margin-top-auto margin-bottom-auto">
-            <Button
-              id="button-trustee-zoom-info-form-cancel"
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              onClick={handleCancel}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-          </div>
+        <div className="usa-button-group margin-top-5">
+          <Button
+            id="button-trustee-zoom-info-form-submit"
+            uswdsStyle={UswdsButtonStyle.Default}
+            onClick={handleSubmit}
+            disabled={isSaveDisabled}
+          >
+            Save
+          </Button>
+          <Button
+            className="spaced-button"
+            id="button-trustee-zoom-info-form-cancel"
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+            onClick={handleCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
         </div>
       </form>
     </div>
