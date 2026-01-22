@@ -28,6 +28,7 @@ import Checkbox from '@/lib/components/uswds/Checkbox';
 import { SEARCH_SCREEN_SPEC, SearchScreenFormData } from './searchScreen.types';
 import { validateObject, ValidatorReasonMap } from '@common/cams/validation';
 import useDebounce from '@/lib/hooks/UseDebounce';
+import useFeatureFlags, { PHONETIC_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -57,6 +58,9 @@ export function validateFormData(formData: SearchScreenFormData): {
 }
 
 export default function SearchScreen() {
+  const featureFlags = useFeatureFlags();
+  const phoneticSearchEnabled = featureFlags[PHONETIC_SEARCH_ENABLED] === true;
+
   const session = LocalStorage.getSession();
   const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
   const defaultDivisionCodes = userCourtDivisionCodes.length ? userCourtDivisionCodes : undefined;
@@ -311,22 +315,24 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
-            <div className="debtor-name-search form-field" data-testid="debtor-name-search">
-              <div className="usa-search usa-search--small">
-                <Input
-                  id="debtor-name-search-field"
-                  name="debtor-name-search"
-                  label="Debtor Name"
-                  autoComplete="off"
-                  onChange={handleDebtorNameChange}
-                  onFocus={handleFilterFormElementFocus}
-                  aria-label="Find case by Debtor Name."
-                  ref={debtorNameInputRef}
-                  value={temporarySearchPredicate.debtorName || ''}
-                  title="Search by the debtor's full or partial name (e.g., Smith, John)."
-                />
+            {phoneticSearchEnabled && (
+              <div className="debtor-name-search form-field" data-testid="debtor-name-search">
+                <div className="usa-search usa-search--small">
+                  <Input
+                    id="debtor-name-search-field"
+                    name="debtor-name-search"
+                    label="Debtor Name"
+                    autoComplete="off"
+                    onChange={handleDebtorNameChange}
+                    onFocus={handleFilterFormElementFocus}
+                    aria-label="Find case by Debtor Name."
+                    ref={debtorNameInputRef}
+                    value={temporarySearchPredicate.debtorName || ''}
+                    title="Search by the debtor's full or partial name (e.g., Smith, John)."
+                  />
+                </div>
               </div>
-            </div>
+            )}
             <div className="case-district-search form-field" data-testid="case-district-search">
               <div className="usa-search usa-search--small">
                 <ComboBox

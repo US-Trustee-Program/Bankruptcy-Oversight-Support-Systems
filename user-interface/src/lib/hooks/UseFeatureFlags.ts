@@ -11,6 +11,7 @@ export const SYSTEM_MAINTENANCE_BANNER = 'system-maintenance-banner';
 export const TRANSFER_ORDERS_ENABLED = 'transfer-orders-enabled';
 export const FORMAT_CASE_NOTES = 'format-case-notes';
 export const TRUSTEE_MANAGEMENT = 'trustee-management';
+export const PHONETIC_SEARCH_ENABLED = 'phonetic-search-enabled';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();

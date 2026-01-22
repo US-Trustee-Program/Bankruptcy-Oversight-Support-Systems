@@ -31,9 +31,12 @@ The phonetic search feature enhances the debtor name search functionality by usi
 
 ### Environment Variables
 
-Phonetic search is always enabled. You can optionally configure these parameters in your `.env` file:
+Phonetic search is controlled by a feature flag. Configure these parameters in your `.env` file:
 
 ```bash
+# Enable/disable phonetic search feature (default: false)
+PHONETIC_SEARCH_ENABLED=true
+
 # Minimum similarity threshold for Jaro-Winkler matching (default: 0.83)
 PHONETIC_SIMILARITY_THRESHOLD=0.83
 
@@ -73,9 +76,15 @@ The migration script will:
 - Create MongoDB indexes for optimized querying
 - Show progress and summary statistics
 
-### 3. Configuration (Optional)
+### 3. Enable Feature Flag
 
-Phonetic search is enabled by default. You can optionally adjust the similarity threshold or other parameters using environment variables as shown in the Configuration section above.
+To enable phonetic search, set the feature flag in your `.env` file:
+
+```bash
+PHONETIC_SEARCH_ENABLED=true
+```
+
+You can also adjust the similarity threshold or other parameters using environment variables as shown in the Configuration section above.
 
 ## Usage Examples
 
@@ -206,6 +215,7 @@ npm test -- --grep "Phonetic Debtor Name Search"
 ### Common Issues
 
 1. **Phonetic search not working**
+   - Verify `PHONETIC_SEARCH_ENABLED=true` is set in .env files
    - Verify migration has been run
    - Check MongoDB indexes exist
    - Ensure phonetic tokens are present in case documents
