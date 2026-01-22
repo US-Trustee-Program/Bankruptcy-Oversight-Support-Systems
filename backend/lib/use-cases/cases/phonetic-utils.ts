@@ -1,7 +1,7 @@
 import * as natural from 'natural';
 import * as nameMatch from 'name-match';
 import { SyncedCase } from '../../../common/src/cams/cases';
-import { SearchConfig } from '../../configs/search-config';
+import { FeatureFlagSet } from '../../adapters/types/basic';
 
 // Initialize phonetic algorithms
 const soundexAlgorithm = new natural.SoundEx();
@@ -239,10 +239,10 @@ export function filterCasesByDebtorNameSimilarity(
 }
 
 /**
- * Check if phonetic search is enabled in the configuration
- * @param searchConfig The search configuration object
+ * Check if phonetic search is enabled in the feature flags
+ * @param featureFlags The feature flags object from the application context
  * @returns True if phonetic search is enabled, false otherwise
  */
-export function isPhoneticSearchEnabled(searchConfig?: SearchConfig | null): boolean {
-  return searchConfig?.phonetic?.enabled === true;
+export function isPhoneticSearchEnabled(featureFlags?: FeatureFlagSet | null): boolean {
+  return featureFlags?.['phonetic-search-enabled'] === true;
 }

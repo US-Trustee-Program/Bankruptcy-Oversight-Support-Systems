@@ -40,8 +40,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
   beforeAll(async () => {
     await initializeTestServer();
 
-    // Enable phonetic search feature and configure parameters
-    process.env.PHONETIC_SEARCH_ENABLED = 'true';
+    // Configure phonetic search parameters (the feature flag will be set in each test)
     process.env.PHONETIC_SIMILARITY_THRESHOLD = '0.83';
     process.env.PHONETIC_MAX_RESULTS = '100';
   });
@@ -137,8 +136,9 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
 
     console.log('[TEST] Created mockCases with phonetic tokens');
 
-    // Set up test with searchable dataset (not pre-filtered)
+    // Set up test with searchable dataset (not pre-filtered) and enable phonetic search
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([michaelCase, mikeCase, janeCase, robertCase])
       .renderAt('/');
 
@@ -237,6 +237,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
 
     // Provide full dataset - phonetic filtering will select Jon/John and exclude Jane
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([jonCase, johnCase, janeCase])
       .renderAt('/');
 
@@ -321,6 +322,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
 
     // Provide full dataset - phonetic filtering will select Jon/John and exclude Jane
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([jonCase, johnCase, janeCase])
       .renderAt('/');
 
@@ -403,6 +405,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
 
     // Provide full dataset - regex matching will find John Smith for "john sm"
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([johnSmithCase, janeCase, robertCase])
       .renderAt('/');
 
@@ -470,6 +473,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([michaelCase, janeCase])
       .renderAt('/');
 
@@ -532,6 +536,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([caseWithJointDebtor, unrelatedCase])
       .renderAt('/');
 
@@ -630,6 +635,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
       ]);
 
       await TestSetup.forUser(TestSessions.caseAssignmentManager())
+        .withFeatureFlag('phonetic-search-enabled', true)
         .withCaseDataset([...mockCases, unrelatedCase])
         .renderAt('/');
 
@@ -704,6 +710,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ];
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([...mockCases, ...unrelatedCases])
       .renderAt('/');
 
@@ -782,6 +789,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([mockCase, unrelatedCase])
       .renderAt('/');
 
@@ -852,6 +860,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([mockCase, unrelatedCase])
       .renderAt('/');
 
@@ -933,6 +942,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([...cases, unrelatedCase])
       .renderAt('/');
 
@@ -1002,6 +1012,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([...cases, unrelatedCase])
       .renderAt('/');
 
@@ -1052,6 +1063,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([...cases, unrelatedCase])
       .renderAt('/');
 
@@ -1102,6 +1114,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([mullerCase, unrelatedCase])
       .renderAt('/');
 
@@ -1156,6 +1169,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([longCase, unrelatedCase])
       .renderAt('/');
 
@@ -1215,6 +1229,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([johnCase, unrelatedCase])
       .renderAt('/');
 
@@ -1292,6 +1307,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([johnCase, janeCase, unrelatedCase])
       .renderAt('/');
 
@@ -1361,6 +1377,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([...duplicateCases, unrelatedCase])
       .renderAt('/');
 
@@ -1417,6 +1434,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([johnCase, unrelatedCase])
       .renderAt('/');
 
@@ -1471,6 +1489,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([drCase, unrelatedCase])
       .renderAt('/');
 
@@ -1521,6 +1540,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ]);
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([...cases, unrelatedCase])
       .renderAt('/');
 
@@ -1578,6 +1598,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
 
     // Provide full dataset - Jaro-Winkler filtering will determine if Johnson is included
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset([johnsonCase, jacksonCase, unrelatedCase])
       .renderAt('/');
 
@@ -1627,6 +1648,7 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
     ];
 
     await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', true)
       .withCaseDataset(normalCases) // Dataset should filter to no results
       .renderAt('/');
 
@@ -1668,51 +1690,39 @@ describe('Feature: Phonetic Debtor Name Search (Full Stack)', () => {
    * AND phonetic filtering should NOT be applied
    */
   test('should NOT apply phonetic search when feature flag is disabled', async () => {
-    // Temporarily disable phonetic search
-    const originalFlag = process.env.PHONETIC_SEARCH_ENABLED;
-    process.env.PHONETIC_SEARCH_ENABLED = 'false';
+    const cases = [
+      createMockCaseWithPhoneticTokens('24-90001', 'Mike Johnson', ['M200', 'MK', 'J525', 'JNSN']),
+      createMockCaseWithPhoneticTokens('24-90002', 'Michael Johnson', [
+        'M240',
+        'MXL',
+        'J525',
+        'JNSN',
+      ]),
+      createMockCaseWithPhoneticTokens('24-90003', 'Jane Doe', ['J500', 'JN', 'D000', 'T']),
+    ];
 
-    try {
-      const cases = [
-        createMockCaseWithPhoneticTokens('24-90001', 'Mike Johnson', [
-          'M200',
-          'MK',
-          'J525',
-          'JNSN',
-        ]),
-        createMockCaseWithPhoneticTokens('24-90002', 'Michael Johnson', [
-          'M240',
-          'MXL',
-          'J525',
-          'JNSN',
-        ]),
-        createMockCaseWithPhoneticTokens('24-90003', 'Jane Doe', ['J500', 'JN', 'D000', 'T']),
-      ];
+    // Explicitly disable phonetic search feature flag
+    await TestSetup.forUser(TestSessions.caseAssignmentManager())
+      .withFeatureFlag('phonetic-search-enabled', false)
+      .withCaseDataset(cases)
+      .renderAt('/');
 
-      await TestSetup.forUser(TestSessions.caseAssignmentManager())
-        .withCaseDataset(cases)
-        .renderAt('/');
+    await waitForAppLoad();
 
-      await waitForAppLoad();
+    const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
+    await userEvent.click(caseSearchLink);
 
-      const caseSearchLink = await screen.findByRole('link', { name: /case search/i });
-      await userEvent.click(caseSearchLink);
+    await waitFor(
+      () => {
+        expect(document.body.textContent).toContain('Case Search');
+      },
+      { timeout: 5000 },
+    );
 
-      await waitFor(
-        () => {
-          expect(document.body.textContent).toContain('Case Search');
-        },
-        { timeout: 5000 },
-      );
+    // Verify debtor name search field is NOT present when feature flag is disabled
+    const searchInput = screen.queryByLabelText(/debtor name/i);
+    expect(searchInput).toBeNull();
 
-      // Verify debtor name search field is NOT present when feature flag is disabled
-      const searchInput = screen.queryByLabelText(/debtor name/i);
-      expect(searchInput).toBeNull();
-
-      console.log('[TEST] ✓ Debtor name search field hidden when feature flag is disabled');
-    } finally {
-      // Restore original flag value
-      process.env.PHONETIC_SEARCH_ENABLED = originalFlag;
-    }
+    console.log('[TEST] ✓ Debtor name search field hidden when feature flag is disabled');
   }, 30000);
 });
