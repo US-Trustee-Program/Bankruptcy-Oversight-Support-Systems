@@ -16,4 +16,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'format-case-notes': true,
   'view-trustee-on-case': true,
   'trustee-management': true,
+  'phonetic-search-enabled': true,
 };

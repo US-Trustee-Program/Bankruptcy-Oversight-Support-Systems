@@ -8,7 +8,7 @@ import {
   isPhoneticSearchEnabled,
 } from './phonetic-utils';
 import { SyncedCase } from '@common/cams/cases';
-import { SearchConfig } from '../../configs/search-config';
+import { FeatureFlagSet } from '../../adapters/types/basic';
 
 describe('Phonetic Utilities', () => {
   describe('generatePhoneticTokens', () => {
@@ -279,45 +279,29 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('isPhoneticSearchEnabled', () => {
-    it('should return false when no config provided', () => {
+    it('should return false when no feature flags provided', () => {
       expect(isPhoneticSearchEnabled()).toBe(false);
       expect(isPhoneticSearchEnabled(null)).toBe(false);
       expect(isPhoneticSearchEnabled(undefined)).toBe(false);
     });
 
-    it('should return false when phonetic config is not present', () => {
-      const config = {} as SearchConfig;
-      expect(isPhoneticSearchEnabled(config)).toBe(false);
+    it('should return false when phonetic-search-enabled flag is not present', () => {
+      const featureFlags: FeatureFlagSet = {};
+      expect(isPhoneticSearchEnabled(featureFlags)).toBe(false);
     });
 
-    it('should return false when phonetic is disabled', () => {
-      const config: SearchConfig = {
-        phonetic: {
-          enabled: false,
-          similarityThreshold: 0.83,
-          maxResults: 100,
-          algorithms: {
-            soundex: true,
-            metaphone: true,
-          },
-        },
+    it('should return false when phonetic-search-enabled is false', () => {
+      const featureFlags: FeatureFlagSet = {
+        'phonetic-search-enabled': false,
       };
-      expect(isPhoneticSearchEnabled(config)).toBe(false);
+      expect(isPhoneticSearchEnabled(featureFlags)).toBe(false);
     });
 
-    it('should return true when phonetic is enabled', () => {
-      const config: SearchConfig = {
-        phonetic: {
-          enabled: true,
-          similarityThreshold: 0.83,
-          maxResults: 100,
-          algorithms: {
-            soundex: true,
-            metaphone: true,
-          },
-        },
+    it('should return true when phonetic-search-enabled is true', () => {
+      const featureFlags: FeatureFlagSet = {
+        'phonetic-search-enabled': true,
       };
-      expect(isPhoneticSearchEnabled(config)).toBe(true);
+      expect(isPhoneticSearchEnabled(featureFlags)).toBe(true);
     });
   });
 });

@@ -299,8 +299,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
 
     if (predicate.debtorName) {
-      // Check if phonetic search is enabled in configuration
-      const phoneticEnabled = isPhoneticSearchEnabled(this.context?.config?.search);
+      // Check if phonetic search is enabled in feature flags
+      const phoneticEnabled = isPhoneticSearchEnabled(this.context?.featureFlags);
 
       if (phoneticEnabled) {
         // Phonetic search path: use phonetic tokens with nickname expansion
