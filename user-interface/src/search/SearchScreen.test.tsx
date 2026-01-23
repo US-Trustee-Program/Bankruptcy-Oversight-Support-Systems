@@ -1049,4 +1049,79 @@ describe('debtor name search', () => {
       expect((debtorNameInput as HTMLInputElement).value).toBe('');
     });
   });
+
+  test('should preserve single character input while typing', async () => {
+    renderWithFeatureFlag(true);
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+
+    // Type single character
+    await userEvent.type(debtorNameInput, 'J');
+
+    // Single character should be visible in the input
+    await waitFor(() => {
+      expect((debtorNameInput as HTMLInputElement).value).toBe('J');
+    });
+
+    // Type second character
+    await userEvent.type(debtorNameInput, 'o');
+
+    // Both characters should be visible
+    await waitFor(() => {
+      expect((debtorNameInput as HTMLInputElement).value).toBe('Jo');
+    });
+
+    // Continue typing
+    await userEvent.type(debtorNameInput, 'hn');
+
+    // Full name should be visible
+    await waitFor(() => {
+      expect((debtorNameInput as HTMLInputElement).value).toBe('John');
+    });
+  });
+
+  test('should validate debtor name has at least 2 characters', async () => {
+    renderWithFeatureFlag(true);
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+
+    // Type single character
+    await userEvent.type(debtorNameInput, 'J');
+
+    // Verify input shows the character
+    await waitFor(() => {
+      expect((debtorNameInput as HTMLInputElement).value).toBe('J');
+    });
+
+    // Verify validation state recognizes this as invalid
+    const formData = { debtorName: 'J' };
+    const validation = validateFormData(formData);
+    expect(validation.isValid).toBe(false);
+    expect(validation.fieldErrors.debtorName).toBeDefined();
+  });
+
+  test('should accept debtor name with 2+ characters', async () => {
+    renderWithFeatureFlag(true);
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+
+    // Type 2 characters
+    await userEvent.type(debtorNameInput, 'Jo');
+
+    // Verify validation state recognizes this as valid
+    const formData = { debtorName: 'Jo' };
+    const validation = validateFormData(formData);
+    expect(validation.isValid).toBe(true);
+    expect(validation.fieldErrors.debtorName).toBeUndefined();
+  });
+
+  test('should reject empty string after whitespace trim', async () => {
+    // Debtor name with only spaces should be treated as empty (valid, but not a search criterion)
+    const formData = { debtorName: '   ' };
+    const validation = validateFormData(formData);
+
+    // This should fail the "at least one criterion" check
+    expect(validation.isValid).toBe(false);
+    expect(validation.formValidationError).toBe('Please enter at least one search criterion');
+  });
 });

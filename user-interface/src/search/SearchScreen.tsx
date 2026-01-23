@@ -202,8 +202,8 @@ export default function SearchScreen() {
   function handleDebtorNameChange(ev: ChangeEvent<HTMLInputElement>): void {
     const debtorName = ev.target.value;
     const newPredicate = { ...temporarySearchPredicate };
-    // Require at least 2 non-whitespace characters for debtor name search
-    if (debtorName.trim().length >= 2) {
+
+    if (debtorName) {
       newPredicate.debtorName = debtorName;
     } else {
       delete newPredicate.debtorName;

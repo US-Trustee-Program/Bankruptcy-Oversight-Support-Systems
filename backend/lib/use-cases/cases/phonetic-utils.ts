@@ -50,19 +50,19 @@ export function expandQueryWithNicknames(searchQuery: string): string[] {
   const words = searchQuery.toLowerCase().trim().split(/\s+/);
 
   for (const word of words) {
-    // Add the original word
-    expandedNames.add(word);
-
-    // Use name-match to get nickname variations
+    // Use NameNormalizer to get nickname variations
     try {
-      // @ts-expect-error - name-match types not available
-      const nicknames = nameMatch.nicknames?.(word) || nameMatch.default?.nicknames?.(word) || [];
-      if (nicknames && Array.isArray(nicknames)) {
-        nicknames.forEach((nickname: string) => expandedNames.add(nickname.toLowerCase()));
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      const variations = (nameMatch.NameNormalizer?.getNameVariations?.(word) as string[]) ??
+        (nameMatch.default?.NameNormalizer?.getNameVariations?.(word) as string[]) ?? [word];
+
+      if (variations && Array.isArray(variations)) {
+        variations.forEach((variant: string) => expandedNames.add(variant.toLowerCase()));
       }
     } catch (_error) {
       // If name-match fails for a word, just use the original
       // This is expected for non-name words
+      expandedNames.add(word);
     }
   }
 
@@ -185,7 +185,7 @@ function isPrefixMatch(searchTerm: string, target: string): boolean {
 }
 
 /**
- * Calculate name match score using name-match library (nickname-aware)
+ * Calculate name match score using name-match library with true nickname expansion
  * @param searchQuery The search query
  * @param targetName The target name to compare against
  * @returns Match score between 0.0 and 1.0
@@ -198,17 +198,59 @@ function calculateNameMatchScore(searchQuery: string, targetName: string): numbe
 
     let maxScore = 0;
 
-    // Compare each query word against each target word to find best match
+    // Compare each query word against each target word using nickname expansion
     for (const queryWord of queryWords) {
+      // Get all nickname variations for the query word using NameNormalizer
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+      const variations = (nameMatch.NameNormalizer?.getNameVariations?.(queryWord) as string[]) ??
+        (nameMatch.default?.NameNormalizer?.getNameVariations?.(queryWord) as string[]) ?? [
+          queryWord,
+        ];
+
+      // Get phonetic codes for the query word
+      const queryPhoneticCodes = generatePhoneticTokens(queryWord);
+
       for (const targetWord of targetWords) {
-        // Use name-match library for nickname-aware matching
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-        const score =
-          nameMatch.match?.(queryWord, targetWord) ??
-          nameMatch.default?.match?.(queryWord, targetWord) ??
-          0;
-        const wordScore = typeof score === 'number' ? score : 0;
-        maxScore = Math.max(maxScore, wordScore);
+        // Check if target word matches any nickname variation (exact match)
+        const hasNicknameMatch = variations.some(
+          (variant: string) => variant.toLowerCase() === targetWord.toLowerCase(),
+        );
+
+        if (hasNicknameMatch) {
+          // Give high score for nickname matches
+          maxScore = Math.max(maxScore, 0.95);
+        } else {
+          // Calculate string similarity first
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+          const similarityScore =
+            nameMatch.match?.(queryWord, targetWord) ??
+            nameMatch.default?.match?.(queryWord, targetWord) ??
+            0;
+          const similarity = typeof similarityScore === 'number' ? similarityScore : 0;
+
+          // Only use phonetic matching for longer names (>=6 chars) with decent similarity (>=0.75)
+          // This handles international variations (Muhammad/Mohammed) while avoiding false positives (Jon/Jane)
+          const isLongEnoughForPhonetic = queryWord.length >= 6 && targetWord.length >= 6;
+          const hasSufficientSimilarity = similarity >= 0.75;
+
+          if (isLongEnoughForPhonetic && hasSufficientSimilarity) {
+            // Check if they share phonetic codes
+            const targetPhoneticCodes = generatePhoneticTokens(targetWord);
+            const hasPhoneticMatch = queryPhoneticCodes.some((code) =>
+              targetPhoneticCodes.includes(code),
+            );
+
+            if (hasPhoneticMatch) {
+              // Boost score for phonetic matches on longer international names
+              maxScore = Math.max(maxScore, 0.9);
+            } else {
+              maxScore = Math.max(maxScore, similarity);
+            }
+          } else {
+            // Use standard similarity score for short names
+            maxScore = Math.max(maxScore, similarity);
+          }
+        }
       }
     }
 
