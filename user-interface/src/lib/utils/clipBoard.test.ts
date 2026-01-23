@@ -1,4 +1,9 @@
-import { copyStringToClipboard } from './clipBoard';
+import { copyStringToClipboard, copyHTMLToClipboard } from './clipBoard';
+import {
+  mockClipboardWrite,
+  mockClipboardWriteRejection,
+  mockClipboardUndefined,
+} from '@/lib/testing/mock-clipboard';
 
 describe('clipboard utility tests', () => {
   let originalClipboard: Clipboard | undefined;
@@ -138,5 +143,139 @@ describe('clipboard utility tests', () => {
     copyStringToClipboard(specialString);
 
     expect(mockWriteText).toHaveBeenCalledWith(specialString);
+  });
+});
+
+describe('copyHTMLToClipboard tests', () => {
+  let originalClipboard: Clipboard | undefined;
+
+  beforeEach(() => {
+    originalClipboard = navigator.clipboard;
+    document.body.innerHTML = '';
+  });
+
+  afterEach(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: originalClipboard,
+      writable: true,
+      configurable: true,
+    });
+    vi.clearAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  test('should copy innerHTML by default when element exists', async () => {
+    const clipboardMock = mockClipboardWrite();
+
+    const testElement = document.createElement('div');
+    testElement.className = 'test-class';
+    testElement.innerHTML = '<p>Test content</p>';
+    document.body.appendChild(testElement);
+
+    await copyHTMLToClipboard('test-class');
+
+    expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
+    const clipboardItem = clipboardMock.mockWrite.mock.calls[0][0][0];
+    expect(clipboardItem).toBeInstanceOf(ClipboardItem);
+
+    // Verify both HTML and plain text types are present
+    expect(clipboardItem.types).toContain('text/html');
+    expect(clipboardItem.types).toContain('text/plain');
+
+    clipboardMock.restore();
+  });
+
+  test('should copy outerHTML when inner parameter is false', async () => {
+    const clipboardMock = mockClipboardWrite();
+
+    const testElement = document.createElement('div');
+    testElement.className = 'test-class';
+    testElement.innerHTML = '<p>Test content</p>';
+    document.body.appendChild(testElement);
+
+    await copyHTMLToClipboard('test-class', false);
+
+    expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
+    const clipboardItem = clipboardMock.mockWrite.mock.calls[0][0][0];
+
+    // Verify the ClipboardItem was created with both types
+    expect(clipboardItem).toBeInstanceOf(ClipboardItem);
+    expect(clipboardItem.types).toContain('text/html');
+    expect(clipboardItem.types).toContain('text/plain');
+
+    clipboardMock.restore();
+  });
+
+  test('should return early when element is not found', async () => {
+    const mockWrite = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        write: mockWrite,
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    await copyHTMLToClipboard('non-existent-class');
+
+    expect(mockWrite).not.toHaveBeenCalled();
+  });
+
+  test('should silently handle clipboard write rejection', async () => {
+    const clipboardMock = mockClipboardWriteRejection();
+
+    const testElement = document.createElement('div');
+    testElement.className = 'test-class';
+    testElement.innerHTML = '<p>Test content</p>';
+    document.body.appendChild(testElement);
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await copyHTMLToClipboard('test-class');
+
+    expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
+    expect(consoleSpy).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+    clipboardMock.restore();
+  });
+
+  test('should handle undefined clipboard API gracefully', async () => {
+    const clipboardMock = mockClipboardUndefined();
+
+    const testElement = document.createElement('div');
+    testElement.className = 'test-class';
+    testElement.innerHTML = '<p>Test content</p>';
+    document.body.appendChild(testElement);
+
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(copyHTMLToClipboard('test-class')).resolves.not.toThrow();
+
+    expect(consoleSpy).not.toHaveBeenCalled();
+
+    consoleSpy.mockRestore();
+    clipboardMock.restore();
+  });
+
+  test('should create ClipboardItem with both HTML and plain text types', async () => {
+    const clipboardMock = mockClipboardWrite();
+
+    const testElement = document.createElement('div');
+    testElement.className = 'test-class';
+    testElement.innerHTML = '<p>Line 1</p><p>Line 2</p>';
+    document.body.appendChild(testElement);
+
+    await copyHTMLToClipboard('test-class');
+
+    expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
+    const clipboardItem = clipboardMock.mockWrite.mock.calls[0][0][0];
+
+    // Verify both HTML and plain text types are present (our code creates Blobs for both)
+    expect(clipboardItem).toBeInstanceOf(ClipboardItem);
+    expect(clipboardItem.types).toContain('text/html');
+    expect(clipboardItem.types).toContain('text/plain');
+
+    clipboardMock.restore();
   });
 });
