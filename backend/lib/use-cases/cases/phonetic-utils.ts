@@ -6,7 +6,7 @@ import { FeatureFlagSet } from '../../adapters/types/basic';
 // Initialize phonetic algorithms
 const soundexAlgorithm = new natural.SoundEx();
 const metaphoneAlgorithm = new natural.Metaphone();
-const SIMILARITY_THRESHOLD = 0.83;
+export const SIMILARITY_THRESHOLD = 0.79;
 
 /**
  * Generate phonetic tokens for a given text using Soundex and Metaphone algorithms
@@ -228,10 +228,10 @@ function calculateNameMatchScore(searchQuery: string, targetName: string): numbe
             0;
           const similarity = typeof similarityScore === 'number' ? similarityScore : 0;
 
-          // Only use phonetic matching for longer names (>=6 chars) with decent similarity (>=0.75)
+          // Only use phonetic matching for longer names (>=6 chars) with similarity above threshold
           // This handles international variations (Muhammad/Mohammed) while avoiding false positives (Jon/Jane)
           const isLongEnoughForPhonetic = queryWord.length >= 6 && targetWord.length >= 6;
-          const hasSufficientSimilarity = similarity >= 0.75;
+          const hasSufficientSimilarity = similarity >= SIMILARITY_THRESHOLD;
 
           if (isLongEnoughForPhonetic && hasSufficientSimilarity) {
             // Check if they share phonetic codes
@@ -265,7 +265,7 @@ function calculateNameMatchScore(searchQuery: string, targetName: string): numbe
  * Filter cases by debtor name similarity using nickname-aware matching
  * @param cases Array of cases to filter
  * @param searchQuery The search query to match against
- * @param threshold Minimum similarity threshold (default 0.83 to accommodate nickname matching)
+ * @param threshold Minimum similarity threshold (default 0.79 to balance precision with international name variations)
  * @returns Filtered array of cases matching the similarity criteria
  */
 export function filterCasesByDebtorNameSimilarity(
