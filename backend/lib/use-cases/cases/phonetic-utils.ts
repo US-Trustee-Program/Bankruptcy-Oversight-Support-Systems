@@ -6,7 +6,7 @@ import { FeatureFlagSet } from '../../adapters/types/basic';
 // Initialize phonetic algorithms
 const soundexAlgorithm = new natural.SoundEx();
 const metaphoneAlgorithm = new natural.Metaphone();
-export const SIMILARITY_THRESHOLD = 0.79;
+export const SIMILARITY_THRESHOLD = 0.83;
 
 /**
  * Generate phonetic tokens for a given text using Soundex and Metaphone algorithms
@@ -185,78 +185,82 @@ function isPrefixMatch(searchTerm: string, target: string): boolean {
 }
 
 /**
- * Calculate name match score using name-match library with true nickname expansion
- * @param searchQuery The search query
- * @param targetName The target name to compare against
- * @returns Match score between 0.0 and 1.0
+ * Check if query word matches target word via nickname expansion (e.g., Mike → Michael)
+ */
+function isNicknameMatch(queryWord: string, targetWord: string): boolean {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    const variations = (nameMatch.NameNormalizer?.getNameVariations?.(queryWord) as string[]) ??
+      (nameMatch.default?.NameNormalizer?.getNameVariations?.(queryWord) as string[]) ?? [
+        queryWord,
+      ];
+
+    return variations.some((variant: string) => variant.toLowerCase() === targetWord.toLowerCase());
+  } catch (_error) {
+    return false;
+  }
+}
+
+/**
+ * Check if two words share phonetic codes via Soundex or Metaphone (e.g., Mohammed → Muhammad)
+ */
+function hasMatchingPhoneticCodes(queryWord: string, targetWord: string): boolean {
+  const queryPhoneticCodes = generatePhoneticTokens(queryWord);
+  const targetPhoneticCodes = generatePhoneticTokens(targetWord);
+
+  return queryPhoneticCodes.some((code) => targetPhoneticCodes.includes(code));
+}
+
+/**
+ * Get string similarity score using Jaro-Winkler algorithm
+ */
+function getStringSimilarity(queryWord: string, targetWord: string): number {
+  return calculateJaroWinklerSimilarity(queryWord, targetWord);
+}
+
+/**
+ * Calculate match score for a single word pair using three-tier matching:
+ * 1. Phonetic matching (0.90) - Mohammed → Muhammad (requires >=6 chars)
+ * 2. String similarity (variable) - Jon → John, filtered by 0.83 threshold to exclude Jon → Jane
+ * 3. Nickname matching (0.95) - Mike → Michael (checked last to boost scores)
+ */
+function calculateWordMatchScore(queryWord: string, targetWord: string): number {
+  let maxScore = 0;
+
+  const isLongEnoughForPhonetic = queryWord.length >= 6 && targetWord.length >= 6;
+  if (isLongEnoughForPhonetic && hasMatchingPhoneticCodes(queryWord, targetWord)) {
+    maxScore = Math.max(maxScore, 0.9);
+  }
+
+  const similarityScore = getStringSimilarity(queryWord, targetWord);
+  maxScore = Math.max(maxScore, similarityScore);
+
+  if (isNicknameMatch(queryWord, targetWord)) {
+    maxScore = Math.max(maxScore, 0.95);
+  }
+
+  return maxScore;
+}
+
+/**
+ * Calculate name match score using nickname, phonetic, and similarity matching
  */
 function calculateNameMatchScore(searchQuery: string, targetName: string): number {
   try {
-    // Split query and target into words for word-by-word comparison
     const queryWords = searchQuery.toLowerCase().trim().split(/\s+/);
     const targetWords = targetName.toLowerCase().trim().split(/\s+/);
 
     let maxScore = 0;
 
-    // Compare each query word against each target word using nickname expansion
     for (const queryWord of queryWords) {
-      // Get all nickname variations for the query word using NameNormalizer
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const variations = (nameMatch.NameNormalizer?.getNameVariations?.(queryWord) as string[]) ??
-        (nameMatch.default?.NameNormalizer?.getNameVariations?.(queryWord) as string[]) ?? [
-          queryWord,
-        ];
-
-      // Get phonetic codes for the query word
-      const queryPhoneticCodes = generatePhoneticTokens(queryWord);
-
       for (const targetWord of targetWords) {
-        // Check if target word matches any nickname variation (exact match)
-        const hasNicknameMatch = variations.some(
-          (variant: string) => variant.toLowerCase() === targetWord.toLowerCase(),
-        );
-
-        if (hasNicknameMatch) {
-          // Give high score for nickname matches
-          maxScore = Math.max(maxScore, 0.95);
-        } else {
-          // Calculate string similarity first
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-          const similarityScore =
-            nameMatch.match?.(queryWord, targetWord) ??
-            nameMatch.default?.match?.(queryWord, targetWord) ??
-            0;
-          const similarity = typeof similarityScore === 'number' ? similarityScore : 0;
-
-          // Only use phonetic matching for longer names (>=6 chars) with similarity above threshold
-          // This handles international variations (Muhammad/Mohammed) while avoiding false positives (Jon/Jane)
-          const isLongEnoughForPhonetic = queryWord.length >= 6 && targetWord.length >= 6;
-          const hasSufficientSimilarity = similarity >= SIMILARITY_THRESHOLD;
-
-          if (isLongEnoughForPhonetic && hasSufficientSimilarity) {
-            // Check if they share phonetic codes
-            const targetPhoneticCodes = generatePhoneticTokens(targetWord);
-            const hasPhoneticMatch = queryPhoneticCodes.some((code) =>
-              targetPhoneticCodes.includes(code),
-            );
-
-            if (hasPhoneticMatch) {
-              // Boost score for phonetic matches on longer international names
-              maxScore = Math.max(maxScore, 0.9);
-            } else {
-              maxScore = Math.max(maxScore, similarity);
-            }
-          } else {
-            // Use standard similarity score for short names
-            maxScore = Math.max(maxScore, similarity);
-          }
-        }
+        const wordScore = calculateWordMatchScore(queryWord, targetWord);
+        maxScore = Math.max(maxScore, wordScore);
       }
     }
 
     return maxScore;
   } catch (_error) {
-    // Fall back to Jaro-Winkler if name-match fails
     return calculateJaroWinklerSimilarity(searchQuery, targetName);
   }
 }
@@ -265,7 +269,7 @@ function calculateNameMatchScore(searchQuery: string, targetName: string): numbe
  * Filter cases by debtor name similarity using nickname-aware matching
  * @param cases Array of cases to filter
  * @param searchQuery The search query to match against
- * @param threshold Minimum similarity threshold (default 0.79 to balance precision with international name variations)
+ * @param threshold Minimum similarity threshold (default 0.83 to prevent false positives while allowing international variations)
  * @returns Filtered array of cases matching the similarity criteria
  */
 export function filterCasesByDebtorNameSimilarity(
