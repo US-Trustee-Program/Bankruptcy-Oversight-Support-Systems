@@ -27,27 +27,18 @@ class MockClipboardItem {
 }
 
 /**
- * Creates a mock clipboard with write and writeText methods for testing.
- * Also mocks ClipboardItem which is required for HTML clipboard operations.
- * Automatically restores the original clipboard when restore() is called.
- *
- * @example
- * ```ts
- * const clipboardMock = mockClipboardWrite();
- *
- * // Use in your test
- * await copyHTMLToClipboard('test-class');
- * expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
- *
- * // Clean up
- * clipboardMock.restore();
- * ```
+ * Internal helper to create clipboard mock with configurable behavior.
+ * Centralizes setup/teardown logic to reduce duplication.
  */
-export function mockClipboardWrite(): ClipboardMock {
+function createClipboardMock(
+  configureMocks: () => {
+    mockWrite: ReturnType<typeof vi.fn>;
+    mockWriteText: ReturnType<typeof vi.fn>;
+  },
+): ClipboardMock {
   const originalClipboard = navigator.clipboard;
   const originalClipboardItem = global.ClipboardItem;
-  const mockWrite = vi.fn().mockResolvedValue(undefined);
-  const mockWriteText = vi.fn().mockResolvedValue(undefined);
+  const { mockWrite, mockWriteText } = configureMocks();
 
   // Mock ClipboardItem if not available
   if (!global.ClipboardItem) {
@@ -84,6 +75,30 @@ export function mockClipboardWrite(): ClipboardMock {
 }
 
 /**
+ * Creates a mock clipboard with write and writeText methods for testing.
+ * Also mocks ClipboardItem which is required for HTML clipboard operations.
+ * Automatically restores the original clipboard when restore() is called.
+ *
+ * @example
+ * ```ts
+ * const clipboardMock = mockClipboardWrite();
+ *
+ * // Use in your test
+ * await copyHTMLToClipboard('test-class');
+ * expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
+ *
+ * // Clean up
+ * clipboardMock.restore();
+ * ```
+ */
+export function mockClipboardWrite(): ClipboardMock {
+  return createClipboardMock(() => ({
+    mockWrite: vi.fn().mockResolvedValue(undefined),
+    mockWriteText: vi.fn().mockResolvedValue(undefined),
+  }));
+}
+
+/**
  * Creates a mock clipboard that rejects operations for testing error handling.
  * Also mocks ClipboardItem which is required for HTML clipboard operations.
  *
@@ -103,43 +118,10 @@ export function mockClipboardWrite(): ClipboardMock {
 export function mockClipboardWriteRejection(
   errorMessage = 'Clipboard access denied',
 ): ClipboardMock {
-  const originalClipboard = navigator.clipboard;
-  const originalClipboardItem = global.ClipboardItem;
-  const mockWrite = vi.fn().mockRejectedValue(new Error(errorMessage));
-  const mockWriteText = vi.fn().mockRejectedValue(new Error(errorMessage));
-
-  // Mock ClipboardItem if not available
-  if (!global.ClipboardItem) {
-    global.ClipboardItem = MockClipboardItem as unknown as typeof ClipboardItem;
-  }
-
-  Object.defineProperty(navigator, 'clipboard', {
-    value: {
-      write: mockWrite,
-      writeText: mockWriteText,
-    },
-    writable: true,
-    configurable: true,
-  });
-
-  return {
-    mockWrite,
-    mockWriteText,
-    restore: () => {
-      Object.defineProperty(navigator, 'clipboard', {
-        value: originalClipboard,
-        writable: true,
-        configurable: true,
-      });
-
-      // Restore ClipboardItem
-      if (originalClipboardItem) {
-        global.ClipboardItem = originalClipboardItem;
-      } else {
-        delete (global as Record<string, unknown>).ClipboardItem;
-      }
-    },
-  };
+  return createClipboardMock(() => ({
+    mockWrite: vi.fn().mockRejectedValue(new Error(errorMessage)),
+    mockWriteText: vi.fn().mockRejectedValue(new Error(errorMessage)),
+  }));
 }
 
 /**
