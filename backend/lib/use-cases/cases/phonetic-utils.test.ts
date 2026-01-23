@@ -15,14 +15,14 @@ describe('Phonetic Utilities', () => {
   const SIMILARITY_THRESHOLD = 0.83;
 
   describe('generatePhoneticTokens', () => {
-    // Tests below just verify that natural.SoundEx and natural.Metaphone work - not our logic
-    it.skip('should generate phonetic tokens for a single word', () => {
+    // Tests below verify that natural.SoundEx and natural.Metaphone integration works correctly
+    it('should generate phonetic tokens for a single word', () => {
       const tokens = generatePhoneticTokens('Michael');
       expect(tokens).toContain('M240'); // Soundex for Michael
       expect(tokens).toContain('MKSHL'); // Metaphone for Michael
     });
 
-    it.skip('should generate phonetic tokens for multiple words', () => {
+    it('should generate phonetic tokens for multiple words', () => {
       const tokens = generatePhoneticTokens('John Smith');
       expect(tokens).toContain('J500'); // Soundex for John
       expect(tokens).toContain('JN'); // Metaphone for John
@@ -30,17 +30,17 @@ describe('Phonetic Utilities', () => {
       expect(tokens).toContain('SM0'); // Metaphone for Smith
     });
 
-    it.skip('should handle empty input', () => {
+    it('should handle empty input', () => {
       const tokens = generatePhoneticTokens('');
       expect(tokens).toEqual([]);
     });
 
-    it.skip('should handle undefined input', () => {
+    it('should handle undefined input', () => {
       const tokens = generatePhoneticTokens(undefined);
       expect(tokens).toEqual([]);
     });
 
-    it.skip('should handle names with special characters', () => {
+    it('should handle names with special characters', () => {
       const tokens = generatePhoneticTokens("O'Brien");
       expect(tokens.length).toBeGreaterThan(0);
     });
@@ -57,16 +57,17 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('expandQueryWithNicknames', () => {
-    // Tests below just verify that name-match.nicknames() works - not our logic
-    it.skip('should expand common nicknames', () => {
+    // Tests below verify that name-match NameNormalizer integration works correctly
+    it('should expand common nicknames', () => {
       const expanded = expandQueryWithNicknames('Mike');
       expect(expanded).toContain('mike');
-      // Note: actual nickname expansion depends on name-match library behavior
+      expect(expanded).toContain('michael'); // Mike should expand to include Michael
     });
 
-    it.skip('should include the original name', () => {
+    it('should include the original name', () => {
       const expanded = expandQueryWithNicknames('Michael');
       expect(expanded).toContain('michael');
+      expect(expanded).toContain('mike'); // Michael should expand to include Mike
     });
 
     it('should handle empty input', () => {
@@ -74,20 +75,22 @@ describe('Phonetic Utilities', () => {
       expect(expanded).toEqual([]);
     });
 
-    it.skip('should handle multiple words', () => {
+    it('should handle multiple words', () => {
       const expanded = expandQueryWithNicknames('Mike Johnson');
       expect(expanded).toContain('mike');
+      expect(expanded).toContain('michael'); // Mike expands
       expect(expanded).toContain('johnson');
     });
   });
 
   describe('generatePhoneticTokensWithNicknames', () => {
-    // Tests below just verify library combinations - not our business logic
-    it.skip('should combine nickname expansion with phonetic tokens', () => {
+    // Tests below verify library combination works correctly
+    it('should combine nickname expansion with phonetic tokens', () => {
       const tokens = generatePhoneticTokensWithNicknames('Mike');
-      // Should have tokens for both Mike and potential nicknames
+      // Should have tokens for both Mike and Michael (nickname)
       expect(tokens.length).toBeGreaterThan(0);
       expect(tokens).toContain('M200'); // Soundex for Mike
+      expect(tokens).toContain('M240'); // Soundex for Michael
     });
 
     it('should handle empty input', () => {
@@ -97,41 +100,40 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('calculateJaroWinklerSimilarity', () => {
-    // Tests below just verify Jaro-Winkler algorithm implementation - not our business logic
-    // Should use natural.JaroWinklerDistance instead of custom implementation
-    it.skip('should return 1.0 for identical strings', () => {
+    // Tests below verify our Jaro-Winkler implementation works correctly
+    it('should return 1.0 for identical strings', () => {
       const similarity = calculateJaroWinklerSimilarity('John', 'John');
       expect(similarity).toBe(1.0);
     });
 
-    it.skip('should return 0.0 for empty strings', () => {
+    it('should return 0.0 for empty strings', () => {
       const similarity = calculateJaroWinklerSimilarity('', '');
       expect(similarity).toBe(0.0);
     });
 
-    it.skip('should calculate similarity for similar names', () => {
+    it('should calculate similarity for similar names', () => {
       const similarity = calculateJaroWinklerSimilarity('Jon', 'John');
       expect(similarity).toBeGreaterThan(0.8); // Should be high similarity
       expect(similarity).toBeLessThan(1.0);
     });
 
-    it.skip('should calculate lower similarity for different names', () => {
+    it('should calculate lower similarity for different names', () => {
       const similarity = calculateJaroWinklerSimilarity('Jon', 'Jane');
       expect(similarity).toBeLessThan(0.8); // Should be lower similarity
     });
 
-    it.skip('should be case-insensitive', () => {
+    it('should be case-insensitive', () => {
       const similarity1 = calculateJaroWinklerSimilarity('JOHN', 'john');
       const similarity2 = calculateJaroWinklerSimilarity('John', 'John');
       expect(similarity1).toBe(similarity2);
     });
 
-    it.skip('should handle prefix matching well', () => {
+    it('should handle prefix matching well', () => {
       const similarity = calculateJaroWinklerSimilarity('John', 'Johnny');
       expect(similarity).toBeGreaterThan(0.85); // Jaro-Winkler favors prefix matches
     });
 
-    it.skip('should handle common misspellings', () => {
+    it('should handle common misspellings', () => {
       const similarity1 = calculateJaroWinklerSimilarity('Michael', 'Micheal');
       expect(similarity1).toBeGreaterThan(0.9); // Common misspelling should have high similarity
 
