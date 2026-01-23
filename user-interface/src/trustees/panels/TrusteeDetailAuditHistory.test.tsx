@@ -12,6 +12,8 @@ import {
   TrusteeSoftwareHistory,
   TrusteeOversightHistory,
   TrusteeAppointmentHistory,
+  TrusteeZoomInfoHistory,
+  ZoomInfo,
 } from '@common/cams/trustees';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { ContactInformation } from '@common/cams/contact';
@@ -1438,6 +1440,340 @@ describe('TrusteeDetailAuditHistory', () => {
     });
   });
 
+  describe('Zoom Info History Tests', () => {
+    const mockZoomInfo: ZoomInfo = {
+      link: 'https://zoom.us/j/123456789',
+      phone: '+1 555-123-4567',
+      meetingId: '123 456 789',
+      passcode: 'abc123',
+    };
+
+    const mockZoomInfoHistory: TrusteeZoomInfoHistory = {
+      id: 'audit-zoom-1',
+      trusteeId: 'audit-zoom-trustee',
+      documentType: 'AUDIT_ZOOM_INFO',
+      before: {
+        link: 'https://zoom.us/j/111111111',
+        phone: '+1 555-111-1111',
+        meetingId: '111 111 111',
+        passcode: 'old123',
+      },
+      after: mockZoomInfo,
+      updatedOn: '2024-01-23T10:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+    };
+
+    test('should display zoom info change history correctly', async () => {
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [mockZoomInfoHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check zoom info change row
+      expect(screen.getByTestId('change-type-zoom-info-0')).toHaveTextContent(
+        '341 Meeting Zoom Info',
+      );
+
+      // Check previous values
+      const previousZoomInfo = screen.getByTestId('previous-zoom-info-0');
+      expect(previousZoomInfo).toHaveTextContent('Link:');
+      expect(previousZoomInfo).toHaveTextContent('https://zoom.us/j/111111111');
+      expect(previousZoomInfo).toHaveTextContent('Phone:');
+      expect(previousZoomInfo).toHaveTextContent('+1 555-111-1111');
+      expect(previousZoomInfo).toHaveTextContent('Meeting ID:');
+      expect(previousZoomInfo).toHaveTextContent('111 111 111');
+      expect(previousZoomInfo).toHaveTextContent('Passcode:');
+      expect(previousZoomInfo).toHaveTextContent('old123');
+
+      // Check new values
+      const newZoomInfo = screen.getByTestId('new-zoom-info-0');
+      expect(newZoomInfo).toHaveTextContent('Link:');
+      expect(newZoomInfo).toHaveTextContent('https://zoom.us/j/123456789');
+      expect(newZoomInfo).toHaveTextContent('Phone:');
+      expect(newZoomInfo).toHaveTextContent('+1 555-123-4567');
+      expect(newZoomInfo).toHaveTextContent('Meeting ID:');
+      expect(newZoomInfo).toHaveTextContent('123 456 789');
+      expect(newZoomInfo).toHaveTextContent('Passcode:');
+      expect(newZoomInfo).toHaveTextContent('abc123');
+
+      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('SYSTEM');
+      expect(screen.getByTestId('change-date-0')).toHaveTextContent('01/23/2024');
+    });
+
+    test('should display (none) for undefined zoom info values', async () => {
+      const zoomInfoHistoryWithUndefined: TrusteeZoomInfoHistory = {
+        ...mockZoomInfoHistory,
+        before: undefined,
+        after: undefined,
+      };
+
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({
+        data: [zoomInfoHistoryWithUndefined],
+      });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-zoom-info-0')).toHaveTextContent('(none)');
+      expect(screen.getByTestId('new-zoom-info-0')).toHaveTextContent('(none)');
+    });
+
+    test('should display zoom info when previous is undefined (new zoom info)', async () => {
+      const zoomInfoHistoryFromUndefined: TrusteeZoomInfoHistory = {
+        ...mockZoomInfoHistory,
+        before: undefined,
+        after: mockZoomInfo,
+      };
+
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({
+        data: [zoomInfoHistoryFromUndefined],
+      });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('previous-zoom-info-0')).toHaveTextContent('(none)');
+
+      const newZoomInfo = screen.getByTestId('new-zoom-info-0');
+      expect(newZoomInfo).toHaveTextContent('https://zoom.us/j/123456789');
+      expect(newZoomInfo).toHaveTextContent('+1 555-123-4567');
+      expect(newZoomInfo).toHaveTextContent('123 456 789');
+      expect(newZoomInfo).toHaveTextContent('abc123');
+    });
+
+    test('should display zoom info when after is undefined (deleted zoom info)', async () => {
+      const zoomInfoHistoryToUndefined: TrusteeZoomInfoHistory = {
+        ...mockZoomInfoHistory,
+        before: mockZoomInfo,
+        after: undefined,
+      };
+
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({
+        data: [zoomInfoHistoryToUndefined],
+      });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      const previousZoomInfo = screen.getByTestId('previous-zoom-info-0');
+      expect(previousZoomInfo).toHaveTextContent('https://zoom.us/j/123456789');
+      expect(previousZoomInfo).toHaveTextContent('+1 555-123-4567');
+      expect(previousZoomInfo).toHaveTextContent('123 456 789');
+      expect(previousZoomInfo).toHaveTextContent('abc123');
+
+      expect(screen.getByTestId('new-zoom-info-0')).toHaveTextContent('(none)');
+    });
+
+    test('should render zoom info as description list with proper semantics', async () => {
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [mockZoomInfoHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check that description lists exist for accessibility
+      const previousZoomInfo = screen.getByTestId('previous-zoom-info-0');
+      const newZoomInfo = screen.getByTestId('new-zoom-info-0');
+
+      expect(previousZoomInfo.querySelector('dl')).toBeInTheDocument();
+      expect(newZoomInfo.querySelector('dl')).toBeInTheDocument();
+
+      // Check that definition terms (dt) and definitions (dd) exist
+      expect(previousZoomInfo.querySelectorAll('dt')).toHaveLength(4); // Link, Phone, Meeting ID, Passcode
+      expect(previousZoomInfo.querySelectorAll('dd')).toHaveLength(4);
+      expect(newZoomInfo.querySelectorAll('dt')).toHaveLength(4);
+      expect(newZoomInfo.querySelectorAll('dd')).toHaveLength(4);
+    });
+
+    test('should have proper ARIA labels for accessibility', async () => {
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [mockZoomInfoHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Check ARIA labels on table cells
+      const previousCell = screen.getByTestId('previous-zoom-info-0');
+      const newCell = screen.getByTestId('new-zoom-info-0');
+
+      expect(previousCell).toHaveAttribute('aria-label', 'Previous 341 meeting zoom information');
+      expect(newCell).toHaveAttribute('aria-label', 'New 341 meeting zoom information');
+    });
+
+    test('should handle missing updatedBy field in zoom info history', async () => {
+      const zoomInfoHistoryWithoutUpdatedBy: TrusteeZoomInfoHistory = {
+        ...mockZoomInfoHistory,
+        updatedBy: { id: '', name: '' }, // Empty user reference
+      };
+
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({
+        data: [zoomInfoHistoryWithoutUpdatedBy],
+      });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('changed-by-0')).toHaveTextContent('');
+    });
+
+    test('should display mixed history types including zoom info', async () => {
+      const mixedHistory = [mockNameHistory, mockPublicContactHistory, mockZoomInfoHistory];
+
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: mixedHistory });
+
+      renderWithProps({});
+
+      await screen.findByTestId('trustee-history-table');
+
+      // Check that all three types are rendered
+      expect(screen.getByText('Name')).toBeInTheDocument();
+      expect(screen.getByText('Public Contact')).toBeInTheDocument();
+      expect(screen.getByText('341 Meeting Zoom Info')).toBeInTheDocument();
+
+      // Verify zoom info history data is correct
+      const previousZoomInfo = screen.getByTestId('previous-zoom-info-0');
+      expect(previousZoomInfo).toHaveTextContent('https://zoom.us/j/111111111');
+      expect(previousZoomInfo).toHaveTextContent('old123');
+    });
+
+    test('should render ShowTrusteeZoomInfoHistory component in switch case', async () => {
+      vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [mockZoomInfoHistory] });
+
+      renderWithProps({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+      });
+
+      // Verify the component is rendered correctly
+      expect(screen.getByTestId('change-type-zoom-info-0')).toHaveTextContent(
+        '341 Meeting Zoom Info',
+      );
+      const zoomInfoRow = screen.getByTestId('change-type-zoom-info-0').closest('tr');
+      expect(zoomInfoRow).toBeInTheDocument();
+
+      // Verify the specific test IDs that ShowTrusteeZoomInfoHistory creates
+      expect(screen.getByTestId('previous-zoom-info-0')).toBeInTheDocument();
+      expect(screen.getByTestId('new-zoom-info-0')).toBeInTheDocument();
+      expect(screen.getByTestId('changed-by-0')).toBeInTheDocument();
+      expect(screen.getByTestId('change-date-0')).toBeInTheDocument();
+    });
+
+    describe('Zoom Info History Scenarios', () => {
+      const base = { ...mockZoomInfoHistory };
+
+      const scenarios = [
+        {
+          name: 'basic zoom info change',
+          override: {},
+          expectPrevLink: 'https://zoom.us/j/111111111',
+          expectPrevPasscode: 'old123',
+          expectNewLink: 'https://zoom.us/j/123456789',
+          expectNewPasscode: 'abc123',
+          expectChangedBy: 'SYSTEM',
+        },
+        {
+          name: 'no previous zoom info',
+          override: {
+            before: undefined,
+            after: mockZoomInfo,
+          },
+          expectPrev: '(none)',
+          expectNewLink: 'https://zoom.us/j/123456789',
+          expectNewPasscode: 'abc123',
+          expectChangedBy: 'SYSTEM',
+        },
+        {
+          name: 'no new zoom info',
+          override: {
+            before: mockZoomInfo,
+            after: undefined,
+          },
+          expectPrevLink: 'https://zoom.us/j/123456789',
+          expectPrevPasscode: 'abc123',
+          expectNew: '(none)',
+          expectChangedBy: 'SYSTEM',
+        },
+        {
+          name: 'both zoom info values undefined',
+          override: { before: undefined, after: undefined },
+          expectPrev: '(none)',
+          expectNew: '(none)',
+          expectChangedBy: 'SYSTEM',
+        },
+        {
+          name: 'missing updatedBy',
+          override: { updatedBy: { id: '', name: '' } },
+          expectPrevLink: 'https://zoom.us/j/111111111',
+          expectPrevPasscode: 'old123',
+          expectNewLink: 'https://zoom.us/j/123456789',
+          expectNewPasscode: 'abc123',
+          expectChangedBy: '',
+        },
+      ];
+
+      test.each(scenarios)(
+        'should display zoom info history with $name',
+        async ({
+          override,
+          expectPrev,
+          expectNew,
+          expectPrevLink,
+          expectPrevPasscode,
+          expectNewLink,
+          expectNewPasscode,
+          expectChangedBy,
+        }) => {
+          vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({
+            data: [{ ...base, ...override }],
+          });
+          renderWithProps({});
+          await screen.findByTestId('trustee-history-table');
+
+          const prevEl = screen.getByTestId('previous-zoom-info-0');
+          const newEl = screen.getByTestId('new-zoom-info-0');
+          const changedByEl = screen.getByTestId('changed-by-0');
+
+          // Helper to assert either (none) or zoom info details
+          if (expectPrev) {
+            expect(prevEl).toHaveTextContent(expectPrev);
+          } else {
+            expect(prevEl).toHaveTextContent(expectPrevLink!);
+            expect(prevEl).toHaveTextContent(expectPrevPasscode!);
+          }
+
+          if (expectNew) {
+            expect(newEl).toHaveTextContent(expectNew);
+          } else {
+            expect(newEl).toHaveTextContent(expectNewLink!);
+            expect(newEl).toHaveTextContent(expectNewPasscode!);
+          }
+
+          expect(changedByEl).toHaveTextContent(expectChangedBy);
+        },
+      );
+    });
+  });
+
   describe('RenderTrusteeHistory Integration Tests', () => {
     test('should render all history types through RenderTrusteeHistory component', async () => {
       const mockBankHistory = {
@@ -1476,6 +1812,26 @@ describe('TrusteeDetailAuditHistory', () => {
         updatedBy: SYSTEM_USER_REFERENCE,
       };
 
+      const mockZoomInfoHistory: TrusteeZoomInfoHistory = {
+        id: 'audit-zoom-1',
+        trusteeId: 'trustee-1',
+        documentType: 'AUDIT_ZOOM_INFO',
+        before: {
+          link: 'https://zoom.us/j/111111111',
+          phone: '+1 555-111-1111',
+          meetingId: '111 111 111',
+          passcode: 'old123',
+        },
+        after: {
+          link: 'https://zoom.us/j/999999999',
+          phone: '+1 555-999-9999',
+          meetingId: '999 999 999',
+          passcode: 'new456',
+        },
+        updatedOn: '2024-01-23T10:00:00Z',
+        updatedBy: SYSTEM_USER_REFERENCE,
+      };
+
       const allHistoryTypes = [
         mockNameHistory,
         mockPublicContactHistory,
@@ -1483,6 +1839,7 @@ describe('TrusteeDetailAuditHistory', () => {
         mockBankHistory,
         mockSoftwareHistory,
         mockOversightHistory,
+        mockZoomInfoHistory,
       ];
 
       vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: allHistoryTypes });
@@ -1498,12 +1855,16 @@ describe('TrusteeDetailAuditHistory', () => {
       expect(screen.getByText('Bank(s)')).toBeInTheDocument();
       expect(screen.getByText('Software')).toBeInTheDocument();
       expect(screen.getByText('Oversight')).toBeInTheDocument();
+      expect(screen.getByText('341 Meeting Zoom Info')).toBeInTheDocument();
 
       // Verify that each component renders its specific data correctly
-      expect(screen.getByTestId('previous-name-5')).toHaveTextContent('John Smith');
-      expect(screen.getByTestId('previous-banks-2')).toHaveTextContent('Bank A');
-      expect(screen.getByTestId('previous-software-1')).toHaveTextContent('Software A');
-      expect(screen.getByTestId('previous-oversight-0')).toHaveTextContent('Attorney A');
+      expect(screen.getByTestId('previous-name-6')).toHaveTextContent('John Smith');
+      expect(screen.getByTestId('previous-banks-3')).toHaveTextContent('Bank A');
+      expect(screen.getByTestId('previous-software-2')).toHaveTextContent('Software A');
+      expect(screen.getByTestId('previous-oversight-1')).toHaveTextContent('Attorney A');
+      expect(screen.getByTestId('previous-zoom-info-0')).toHaveTextContent(
+        'https://zoom.us/j/111111111',
+      );
     });
 
     test('should handle switch case default correctly for unknown document types', async () => {

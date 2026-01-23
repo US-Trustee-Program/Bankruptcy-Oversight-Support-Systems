@@ -13,7 +13,9 @@ import {
   TrusteeSoftwareHistory,
   TrusteeOversightHistory,
   TrusteeAppointmentHistory,
+  TrusteeZoomInfoHistory,
   getAppointmentDetails,
+  ZoomInfo,
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
@@ -149,6 +151,62 @@ function ShowTrusteeSoftwareHistory(props: ShowTrusteeSoftwareHistoryProps) {
   );
 }
 
+function ZoomInfoDisplay({ zoomInfo }: Readonly<{ zoomInfo?: ZoomInfo }>) {
+  if (!zoomInfo) {
+    return <>(none)</>;
+  }
+  return (
+    <dl className="usa-list--unstyled">
+      <dt>
+        <strong>Link:</strong>
+      </dt>
+      <dd>{zoomInfo.link}</dd>
+      <dt>
+        <strong>Phone:</strong>
+      </dt>
+      <dd>{zoomInfo.phone}</dd>
+      <dt>
+        <strong>Meeting ID:</strong>
+      </dt>
+      <dd>{zoomInfo.meetingId}</dd>
+      <dt>
+        <strong>Passcode:</strong>
+      </dt>
+      <dd>{zoomInfo.passcode}</dd>
+    </dl>
+  );
+}
+
+type ShowTrusteeZoomInfoHistoryProps = Readonly<{
+  history: TrusteeZoomInfoHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeZoomInfoHistory(props: ShowTrusteeZoomInfoHistoryProps) {
+  const { history, idx } = props;
+
+  return (
+    <tr>
+      <td data-testid={`change-type-zoom-info-${idx}`}>341 Meeting Zoom Info</td>
+      <td
+        data-testid={`previous-zoom-info-${idx}`}
+        aria-label="Previous 341 meeting zoom information"
+      >
+        <ZoomInfoDisplay zoomInfo={history.before} />
+      </td>
+      <td data-testid={`new-zoom-info-${idx}`} aria-label="New 341 meeting zoom information">
+        <ZoomInfoDisplay zoomInfo={history.after} />
+      </td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
 type ShowTrusteeOversightHistoryProps = Readonly<{
   history: TrusteeOversightHistory;
   idx: number;
@@ -249,6 +307,14 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
           case 'AUDIT_SOFTWARE':
             return (
               <ShowTrusteeSoftwareHistory
+                key={`${history.trusteeId}-${idx}`}
+                history={history}
+                idx={idx}
+              />
+            );
+          case 'AUDIT_ZOOM_INFO':
+            return (
+              <ShowTrusteeZoomInfoHistory
                 key={`${history.trusteeId}-${idx}`}
                 history={history}
                 idx={idx}
