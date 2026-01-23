@@ -219,21 +219,17 @@ function getStringSimilarity(queryWord: string, targetWord: string): number {
 }
 
 /**
- * Calculate match score for a single word pair using three-tier matching:
- * 1. Phonetic matching (0.90) - Mohammed → Muhammad (requires >=6 chars)
- * 2. String similarity (variable) - Jon → John, filtered by 0.83 threshold to exclude Jon → Jane
- * 3. Nickname matching (0.95) - Mike → Michael (checked last to boost scores)
+ * Calculate match score for a single word pair:
+ * 1. If phonetic codes match → use Jaro-Winkler similarity (filters Jon/Jane via 0.75 < 0.83)
+ * 2. Check nickname match regardless → returns 0.95 (Mike → Michael)
+ * 3. Return max score (or 0 if neither matched, prevents Mike → Miller)
  */
 function calculateWordMatchScore(queryWord: string, targetWord: string): number {
   let maxScore = 0;
 
-  const isLongEnoughForPhonetic = queryWord.length >= 6 && targetWord.length >= 6;
-  if (isLongEnoughForPhonetic && hasMatchingPhoneticCodes(queryWord, targetWord)) {
-    maxScore = Math.max(maxScore, 0.9);
+  if (hasMatchingPhoneticCodes(queryWord, targetWord)) {
+    maxScore = getStringSimilarity(queryWord, targetWord);
   }
-
-  const similarityScore = getStringSimilarity(queryWord, targetWord);
-  maxScore = Math.max(maxScore, similarityScore);
 
   if (isNicknameMatch(queryWord, targetWord)) {
     maxScore = Math.max(maxScore, 0.95);

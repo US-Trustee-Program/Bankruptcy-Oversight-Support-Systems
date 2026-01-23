@@ -27,6 +27,7 @@ import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { CaseConsolidationHistory, CaseHistory } from '@common/cams/history';
 import { randomUUID } from 'crypto';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { generatePhoneticTokens } from '../../../use-cases/cases/phonetic-utils';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
@@ -725,7 +726,6 @@ describe('Cases repository', () => {
 
   describe('phonetic search query generation', () => {
     test('should successfully search with debtorName using phonetic search', async () => {
-      // Setup context with phonetic search enabled
       const contextWithPhonetic = await createMockApplicationContext({
         env: {
           PHONETIC_SEARCH_ENABLED: 'true',
@@ -740,22 +740,25 @@ describe('Cases repository', () => {
         offset: 0,
       };
 
-      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
-        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
-      ];
+      const mockCase = MockData.getSyncedCase({ override: { caseId: caseId1 } });
+      mockCase.debtor = {
+        ...mockCase.debtor,
+        name: 'Michael Johnson',
+        phoneticTokens: generatePhoneticTokens('Michael Johnson'),
+      };
 
-      const paginateSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
-        .mockResolvedValue({ data: expectedSyncedCaseArray });
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [mockCase];
+
+      const aggregateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
+        .mockResolvedValue(expectedSyncedCaseArray);
 
       const result = await repoWithPhonetic.searchCases(predicate);
 
-      // Verify search completed successfully
-      expect(paginateSpy).toHaveBeenCalled();
+      expect(aggregateSpy).toHaveBeenCalled();
       expect(result.data).toEqual(expectedSyncedCaseArray);
 
-      // Verify debtor.name is referenced in query (used in both phonetic and regex paths)
-      const actualQuery = paginateSpy.mock.calls[0][0];
+      const actualQuery = aggregateSpy.mock.calls[0][0];
       const queryString = JSON.stringify(actualQuery);
       expect(queryString).toContain('debtor.name');
 
