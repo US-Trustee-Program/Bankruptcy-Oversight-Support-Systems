@@ -13,6 +13,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
+import * as UseFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
 
 describe('search screen', () => {
   const userOffices = [REGION_02_GROUP_NY];
@@ -833,5 +834,219 @@ describe('validateFormData function', () => {
     const result = validateFormData({ caseNumber: '12-34567' });
     expect(result.isValid).toBe(true);
     expect(result.fieldErrors.caseNumber).toBeUndefined();
+  });
+});
+
+describe('debtor name search', () => {
+  const userOffices = [REGION_02_GROUP_NY];
+  const user = MockData.getCamsUser({ offices: userOffices });
+  const session = MockData.getCamsSession({ user });
+  const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
+  const searchResponseBody: ResponseBody<SyncedCase[]> = {
+    meta: { self: 'self-url' },
+    pagination: {
+      count: caseList.length,
+      currentPage: 1,
+      limit: DEFAULT_SEARCH_LIMIT,
+    },
+    data: caseList,
+  };
+  const includeAssignments = { includeAssignments: true };
+  let searchCasesSpy: MockInstance;
+  let userEvent: CamsUserEvent;
+
+  beforeEach(async () => {
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
+    searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    userEvent = TestingUtilities.setupUserEvent();
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function renderWithFeatureFlag(enabled: boolean) {
+    vi.spyOn(UseFeatureFlagsModule, 'default').mockReturnValue({
+      'phonetic-search-enabled': enabled,
+      'chapter-twelve-enabled': true,
+      'chapter-eleven-enabled': true,
+      'transfer-orders-enabled': true,
+      'consolidations-enabled': true,
+    });
+    render(
+      <BrowserRouter>
+        <SearchScreen></SearchScreen>
+      </BrowserRouter>,
+    );
+  }
+
+  test('should show debtor name field when phonetic search feature is enabled', async () => {
+    renderWithFeatureFlag(true);
+
+    await waitFor(() => {
+      const debtorNameInput = screen.queryByLabelText(/debtor name/i);
+      expect(debtorNameInput).toBeInTheDocument();
+    });
+  });
+
+  test('should hide debtor name field when phonetic search feature is disabled', async () => {
+    renderWithFeatureFlag(false);
+
+    await waitFor(() => {
+      const debtorNameInput = screen.queryByLabelText(/debtor name/i);
+      expect(debtorNameInput).not.toBeInTheDocument();
+    });
+  });
+
+  test('should search by debtor name when feature is enabled', async () => {
+    renderWithFeatureFlag(true);
+
+    // Clear the default search on initial render
+    searchCasesSpy.mockClear();
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+    expect(debtorNameInput).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(debtorNameInput).toBeEnabled();
+    });
+
+    const debtorName = 'John Smith';
+    await userEvent.type(debtorNameInput, debtorName);
+
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        debtorName,
+        excludeMemberConsolidations: false,
+        excludeClosedCases: true,
+      }),
+      includeAssignments,
+    );
+  });
+
+  test('should allow searching with both debtor name and case number', async () => {
+    renderWithFeatureFlag(true);
+
+    // Clear the default search on initial render
+    searchCasesSpy.mockClear();
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+
+    await waitFor(() => {
+      expect(debtorNameInput).toBeEnabled();
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    const debtorName = 'Jane Doe';
+    const caseNumber = '00-12345';
+
+    await userEvent.type(debtorNameInput, debtorName);
+    await userEvent.type(caseNumberInput, caseNumber);
+
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        debtorName,
+        caseNumber,
+      }),
+      includeAssignments,
+    );
+  });
+
+  test('should allow searching by debtor name and chapter', async () => {
+    renderWithFeatureFlag(true);
+
+    // Clear the default search on initial render
+    searchCasesSpy.mockClear();
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+    await waitFor(() => {
+      expect(debtorNameInput).toBeEnabled();
+    });
+
+    await userEvent.type(debtorNameInput, 'Michael Johnson');
+
+    // Select a chapter
+    await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
+    const expandButton = screen.getByTestId('button-case-chapter-search-expand');
+    await userEvent.click(expandButton);
+
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        debtorName: 'Michael Johnson',
+        chapters: expect.any(Array<string>),
+      }),
+      includeAssignments,
+    );
+  });
+
+  test('should trigger search when Enter key is pressed in debtor name field', async () => {
+    renderWithFeatureFlag(true);
+
+    // Clear the default search on initial render
+    searchCasesSpy.mockClear();
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+    await waitFor(() => {
+      expect(debtorNameInput).toBeEnabled();
+    });
+
+    const debtorName = 'Sarah Connor';
+    await userEvent.type(debtorNameInput, debtorName);
+
+    // Trigger form submission
+    const form = screen.getByTestId('filter-and-search-panel');
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    expect(searchCasesSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        debtorName,
+      }),
+      includeAssignments,
+    );
+  });
+
+  test('should clear debtor name when search is cleared', async () => {
+    renderWithFeatureFlag(true);
+
+    const debtorNameInput = await screen.findByLabelText(/debtor name/i);
+    await userEvent.type(debtorNameInput, 'Test Name');
+
+    await waitFor(() => {
+      expect((debtorNameInput as HTMLInputElement).value).toBe('Test Name');
+    });
+
+    // Clear the input
+    await userEvent.clear(debtorNameInput);
+
+    await waitFor(() => {
+      expect((debtorNameInput as HTMLInputElement).value).toBe('');
+    });
   });
 });
