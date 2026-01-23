@@ -184,16 +184,51 @@ function isPrefixMatch(searchTerm: string, target: string): boolean {
 }
 
 /**
- * Filter cases by debtor name similarity using Jaro-Winkler algorithm
+ * Calculate name match score using name-match library (nickname-aware)
+ * @param searchQuery The search query
+ * @param targetName The target name to compare against
+ * @returns Match score between 0.0 and 1.0
+ */
+function calculateNameMatchScore(searchQuery: string, targetName: string): number {
+  try {
+    // Split query and target into words for word-by-word comparison
+    const queryWords = searchQuery.toLowerCase().trim().split(/\s+/);
+    const targetWords = targetName.toLowerCase().trim().split(/\s+/);
+
+    let maxScore = 0;
+
+    // Compare each query word against each target word to find best match
+    for (const queryWord of queryWords) {
+      for (const targetWord of targetWords) {
+        // Use name-match library for nickname-aware matching
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+        const score =
+          nameMatch.match?.(queryWord, targetWord) ??
+          nameMatch.default?.match?.(queryWord, targetWord) ??
+          0;
+        const wordScore = typeof score === 'number' ? score : 0;
+        maxScore = Math.max(maxScore, wordScore);
+      }
+    }
+
+    return maxScore;
+  } catch (_error) {
+    // Fall back to Jaro-Winkler if name-match fails
+    return calculateJaroWinklerSimilarity(searchQuery, targetName);
+  }
+}
+
+/**
+ * Filter cases by debtor name similarity using nickname-aware matching
  * @param cases Array of cases to filter
  * @param searchQuery The search query to match against
- * @param threshold Minimum similarity threshold (default 0.83)
+ * @param threshold Minimum similarity threshold (default 0.75 to accommodate nickname matching)
  * @returns Filtered array of cases matching the similarity criteria
  */
 export function filterCasesByDebtorNameSimilarity(
   cases: SyncedCase[],
   searchQuery: string,
-  threshold: number = 0.83,
+  threshold: number = 0.75,
 ): SyncedCase[] {
   if (!searchQuery || !cases || cases.length === 0) return cases;
 
@@ -205,6 +240,11 @@ export function filterCasesByDebtorNameSimilarity(
 
     // Check debtor name
     if (caseItem.debtor?.name) {
+      // Use name-match for nickname-aware matching
+      const nameMatchScore = calculateNameMatchScore(normalizedQuery, caseItem.debtor.name);
+      maxScore = Math.max(maxScore, nameMatchScore);
+
+      // Also use Jaro-Winkler as fallback
       const debtorScore = calculateJaroWinklerSimilarity(normalizedQuery, caseItem.debtor.name);
       maxScore = Math.max(maxScore, debtorScore);
 
@@ -216,6 +256,11 @@ export function filterCasesByDebtorNameSimilarity(
 
     // Check joint debtor name
     if (caseItem.jointDebtor?.name) {
+      // Use name-match for nickname-aware matching
+      const nameMatchScore = calculateNameMatchScore(normalizedQuery, caseItem.jointDebtor.name);
+      maxScore = Math.max(maxScore, nameMatchScore);
+
+      // Also use Jaro-Winkler as fallback
       const jointDebtorScore = calculateJaroWinklerSimilarity(
         normalizedQuery,
         caseItem.jointDebtor.name,
