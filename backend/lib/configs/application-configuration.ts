@@ -4,7 +4,6 @@ import { DocumentDbConfig, IDbConfig } from '../adapters/types/database';
 import { AuthorizationConfig, UserGroupGatewayConfig } from '../adapters/types/authorization';
 import { getAuthorizationConfig } from './authorization-configuration';
 import { getUserGroupGatewayConfig } from './user-groups-gateway-configuration';
-import { SearchConfig, getSearchConfig } from './search-config';
 
 dotenv.config();
 
@@ -17,7 +16,6 @@ export class ApplicationConfiguration {
   public readonly featureFlagKey: string;
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
-  public readonly search: SearchConfig;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -28,7 +26,6 @@ export class ApplicationConfiguration {
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
     this.userGroupGatewayConfig = getUserGroupGatewayConfig();
-    this.search = getSearchConfig();
   }
 
   private getAppServerConfig(): ServerType {

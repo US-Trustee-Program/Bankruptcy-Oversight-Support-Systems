@@ -536,6 +536,128 @@ describe('Phonetic Utilities', () => {
     });
   });
 
+  describe('International names with accents', () => {
+    it('should match Spanish/Portuguese names with and without accents', () => {
+      const cases: SyncedCase[] = [
+        {
+          caseId: '001',
+          debtor: {
+            name: 'José Garcia',
+            phoneticTokens: generatePhoneticTokens('José Garcia'),
+          },
+          documentType: 'SYNCED_CASE',
+        } as SyncedCase,
+        {
+          caseId: '002',
+          debtor: {
+            name: 'Jose Garcia',
+            phoneticTokens: generatePhoneticTokens('Jose Garcia'),
+          },
+          documentType: 'SYNCED_CASE',
+        } as SyncedCase,
+      ];
+
+      // Search for José (with accent) should find both José and Jose
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jose', SIMILARITY_THRESHOLD);
+      expect(filtered).toHaveLength(2);
+      const names = filtered.map((c) => c.debtor?.name);
+      expect(names).toContain('José Garcia');
+      expect(names).toContain('Jose Garcia');
+    });
+  });
+
+  describe('Misspellings', () => {
+    it('should match common misspellings of names', () => {
+      const cases: SyncedCase[] = [
+        {
+          caseId: '001',
+          debtor: {
+            name: 'Michael Smith',
+            phoneticTokens: generatePhoneticTokens('Michael Smith'),
+          },
+          documentType: 'SYNCED_CASE',
+        } as SyncedCase,
+        {
+          caseId: '002',
+          debtor: {
+            name: 'Micheal Johnson',
+            phoneticTokens: generatePhoneticTokens('Micheal Johnson'),
+          },
+          documentType: 'SYNCED_CASE',
+        } as SyncedCase,
+      ];
+
+      // Search for "Micheal" (common typo) should find both Michael and Micheal
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Micheal', SIMILARITY_THRESHOLD);
+      expect(filtered).toHaveLength(2);
+      const names = filtered.map((c) => c.debtor?.name);
+      expect(names).toContain('Michael Smith');
+      expect(names).toContain('Micheal Johnson');
+    });
+
+    it('should match common misspellings of nicknames', () => {
+      const cases: SyncedCase[] = [
+        {
+          caseId: '001',
+          debtor: {
+            name: 'Michael Smith',
+            phoneticTokens: generatePhoneticTokens('Michael Smith'),
+          },
+          documentType: 'SYNCED_CASE',
+        } as SyncedCase,
+        {
+          caseId: '002',
+          debtor: {
+            name: 'Micheal Johnson',
+            phoneticTokens: generatePhoneticTokens('Micheal Johnson'),
+          },
+          documentType: 'SYNCED_CASE',
+        } as SyncedCase,
+      ];
+
+      // Search for "Micheal" (common typo) should find both Michael and Micheal
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'myke', SIMILARITY_THRESHOLD);
+      expect(filtered).toHaveLength(2);
+      const names = filtered.map((c) => c.debtor?.name);
+      expect(names).toContain('Michael Smith');
+      expect(names).toContain('Micheal Johnson');
+    });
+  });
+
+  describe('Hyphenated and compound names', () => {
+    it('should match hyphenated names with and without hyphens', () => {
+      const cases: SyncedCase[] = [
+        {
+          caseId: '001',
+          debtor: {
+            name: 'Jean-Pierre Moreau',
+            phoneticTokens: generatePhoneticTokens('Jean-Pierre Moreau'),
+          },
+          documentType: 'SYNCED_CASE',
+        } as SyncedCase,
+        {
+          caseId: '002',
+          debtor: {
+            name: 'Jean Pierre Moreau',
+            phoneticTokens: generatePhoneticTokens('Jean Pierre Moreau'),
+          },
+          documentType: 'SYNCED_CASE',
+        } as SyncedCase,
+      ];
+
+      // Search for "Jean-Pierre" should find both hyphenated and non-hyphenated
+      const filtered = filterCasesByDebtorNameSimilarity(
+        cases,
+        'Jean-Pierre',
+        SIMILARITY_THRESHOLD,
+      );
+      expect(filtered).toHaveLength(2);
+      const names = filtered.map((c) => c.debtor?.name);
+      expect(names).toContain('Jean-Pierre Moreau');
+      expect(names).toContain('Jean Pierre Moreau');
+    });
+  });
+
   describe('isPhoneticSearchEnabled', () => {
     it('should return false when no feature flags provided', () => {
       expect(isPhoneticSearchEnabled()).toBe(false);
