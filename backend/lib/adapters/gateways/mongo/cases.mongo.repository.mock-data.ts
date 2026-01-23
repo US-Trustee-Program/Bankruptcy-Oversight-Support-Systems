@@ -68,11 +68,16 @@ function createCase(
  * - Mike/Michael nickname matches
  * - Bob/Robert nickname matches
  * - Jane cases (false positive edge cases)
+ * - International name variations (Muhammad/Mohammed, José/Jose, etc.)
+ * - Misspelled nicknames (Myke, Micheal, etc.)
+ * - Asian name variations (Li Wei/Wei Li, Kim Min-Jung/Minjung, etc.)
+ * - Eastern European variations (Alexander/Aleksandr/Sasha, Stefan/Stephen, etc.)
+ * - Hyphenated/compound names (Jean-Pierre/Jean Pierre, Mary-Anne/Mary Anne, etc.)
  * - Various chapters (7, 11, 12, 13, 15)
  * - Open and closed cases
  * - Different court divisions
  *
- * Total: 56 cases covering all edge cases
+ * Total: 108 cases covering all edge cases
  */
 export const mockPhoneticSearchCases: SyncedCase[] = [
   // ===== Jon/John Phonetic Matches (Chapter 7) =====
@@ -158,6 +163,76 @@ export const mockPhoneticSearchCases: SyncedCase[] = [
   createCase('24-00114', 'Michael', '11', '081'),
   createCase('24-00115', 'Bob', '13', '081'),
   createCase('24-00116', 'Robert', '13', '081'),
+
+  // ===== International Name Variations - Muhammad/Mohammed =====
+  createCase('24-00120', 'Muhammad Ali', '7', '081'),
+  createCase('24-00121', 'Mohammed Ali', '7', '081'),
+  createCase('24-00122', 'Mohamed Hassan', '11', '081'),
+  createCase('24-00123', 'Mohammad Rahman', '13', '081'),
+  createCase('24-00124', 'Muhammed Ibrahim', '15', '081'),
+  createCase('24-00125', 'Mohamad Khan', '7', '081'),
+
+  // ===== Spanish/Portuguese Name Variations =====
+  createCase('24-00130', 'José Garcia', '7', '081'),
+  createCase('24-00131', 'Jose Garcia', '7', '081'), // Without accent
+  createCase('24-00132', 'João Silva', '11', '081'),
+  createCase('24-00133', 'Joao Silva', '11', '081'), // Without accent
+  createCase('24-00134', 'Andrés Martinez', '13', '081'),
+  createCase('24-00135', 'Andres Martinez', '13', '081'), // Without accent
+
+  // ===== French Name Variations =====
+  createCase('24-00140', 'François Dupont', '7', '081'),
+  createCase('24-00141', 'Francois Dupont', '7', '081'), // Without cedilla
+  createCase('24-00142', 'René Laurent', '11', '081'),
+  createCase('24-00143', 'Rene Laurent', '11', '081'), // Without accent
+
+  // ===== Scandinavian Name Variations =====
+  createCase('24-00150', 'Søren Nielsen', '13', '081'),
+  createCase('24-00151', 'Soren Nielsen', '13', '081'), // Without slash-o
+  createCase('24-00152', 'Bjørn Hansen', '15', '081'),
+  createCase('24-00153', 'Bjorn Hansen', '15', '081'), // Without slash-o
+
+  // ===== Misspelled Nicknames =====
+  createCase('24-00160', 'Myke Johnson', '7', '081'), // Misspelled Mike
+  createCase('24-00161', 'Micheal Smith', '11', '081'), // Common typo for Michael
+  createCase('24-00162', 'Robbie Taylor', '13', '081'), // Variant of Robert/Bob
+  createCase('24-00163', 'Billy Brown', '15', '081'), // Variant of William/Bill
+  createCase('24-00164', 'Willy Anderson', '7', '081'), // Another William variant
+  createCase('24-00165', 'Johnathan Davis', '11', '081'), // Common typo for Jonathan
+  createCase('24-00166', 'Jon Smith', '13', '081'), // Jon vs John
+
+  // ===== Asian Name Variations =====
+  createCase('24-00170', 'Li Wei', '7', '081'),
+  createCase('24-00171', 'Wei Li', '7', '081'), // Reversed order
+  createCase('24-00172', 'Kim Min-Jung', '11', '081'),
+  createCase('24-00173', 'Kim Minjung', '11', '081'), // Without hyphen
+  createCase('24-00174', 'Nguyen Van Tran', '13', '081'),
+  createCase('24-00175', 'Nguyen Tran', '13', '081'), // Without middle name
+
+  // ===== Eastern European Variations =====
+  createCase('24-00180', 'Alexander Petrov', '7', '081'),
+  createCase('24-00181', 'Aleksandr Petrov', '7', '081'), // Russian spelling
+  createCase('24-00182', 'Sasha Petrov', '7', '081'), // Nickname for Alexander
+  createCase('24-00183', 'Stefan Ivanov', '11', '081'),
+  createCase('24-00184', 'Stephen Ivanov', '11', '081'), // English spelling
+  createCase('24-00185', 'Dmitri Volkov', '13', '081'),
+  createCase('24-00186', 'Dmitry Volkov', '13', '081'), // Alternative spelling
+
+  // ===== Hyphenated/Compound Names =====
+  createCase('24-00190', 'Jean-Pierre Moreau', '7', '081'),
+  createCase('24-00191', 'Jean Pierre Moreau', '7', '081'), // Without hyphen
+  createCase('24-00192', 'Mary-Anne Wilson', '11', '081'),
+  createCase('24-00193', 'Mary Anne Wilson', '11', '081'), // Without hyphen
+  createCase('24-00194', 'Ann-Marie Thompson', '13', '081'),
+  createCase('24-00195', 'Anne Marie Thompson', '13', '081'), // Variant spelling
+
+  // ===== False Positive Edge Cases - Jose =====
+  createCase('24-00200', 'Jose Rodriguez', '7', '081'), // Should NOT match Jon/John
+  createCase('24-00201', 'Jose Martinez', '11', '081'), // Should NOT match Jon/John
+
+  // ===== False Positive Edge Cases - Miller =====
+  createCase('24-00210', 'Miller Johnson', '13', '081'), // Should NOT match Mike
+  createCase('24-00211', 'James Miller', '15', '081'), // Miller as last name
 ];
 
 /**
