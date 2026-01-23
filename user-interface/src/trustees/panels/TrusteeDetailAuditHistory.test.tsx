@@ -143,6 +143,101 @@ describe('TrusteeDetailAuditHistory', () => {
     expect(screen.getByTestId('change-date-0')).toHaveTextContent('01/16/2024');
   });
 
+  test('should display company name in public contact history when provided', async () => {
+    const contactHistoryWithCompanyName = createMockPublicContactHistory({
+      before: {
+        email: 'old@company.com',
+        phone: { number: '555-111-2222' },
+        address: {
+          address1: '100 Company St',
+          city: 'Old Town',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        companyName: 'Old Company LLC',
+      },
+      after: {
+        email: 'new@company.com',
+        phone: { number: '555-333-4444' },
+        address: {
+          address1: '200 Business Ave',
+          city: 'New City',
+          state: 'CA',
+          zipCode: '90001',
+          countryCode: 'US',
+        },
+        companyName: 'New Company Inc',
+      },
+    });
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({
+      data: [contactHistoryWithCompanyName],
+    });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check company name elements using CSS classes
+    const previousContact = screen.getByTestId('previous-contact-0');
+    const newContact = screen.getByTestId('new-contact-0');
+
+    expect(previousContact.querySelector('.company-name')).toHaveTextContent('Old Company LLC');
+    expect(previousContact.querySelector('.address1')).toHaveTextContent('100 Company St');
+    expect(previousContact.querySelector('.email')).toHaveTextContent('old@company.com');
+
+    expect(newContact.querySelector('.company-name')).toHaveTextContent('New Company Inc');
+    expect(newContact.querySelector('.address1')).toHaveTextContent('200 Business Ave');
+    expect(newContact.querySelector('.email')).toHaveTextContent('new@company.com');
+  });
+
+  test('should not display company name element when not provided in contact history', async () => {
+    const contactHistoryWithoutCompanyName = createMockPublicContactHistory({
+      before: {
+        email: 'test@example.com',
+        phone: { number: '555-123-4567' },
+        address: {
+          address1: '123 Test St',
+          city: 'Test City',
+          state: 'TX',
+          zipCode: '12345',
+          countryCode: 'US',
+        },
+      },
+      after: {
+        email: 'updated@example.com',
+        phone: { number: '555-987-6543' },
+        address: {
+          address1: '456 Updated St',
+          city: 'Updated City',
+          state: 'CA',
+          zipCode: '54321',
+          countryCode: 'US',
+        },
+      },
+    });
+
+    vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({
+      data: [contactHistoryWithoutCompanyName],
+    });
+
+    renderWithProps({});
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-history-table')).toBeInTheDocument();
+    });
+
+    // Check that company name elements are not present
+    const previousContact = screen.getByTestId('previous-contact-0');
+    const newContact = screen.getByTestId('new-contact-0');
+
+    expect(previousContact.querySelector('.company-name')).not.toBeInTheDocument();
+    expect(newContact.querySelector('.company-name')).not.toBeInTheDocument();
+  });
+
   test('should display internal contact change history correctly', async () => {
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [mockInternalContactHistory] });
 

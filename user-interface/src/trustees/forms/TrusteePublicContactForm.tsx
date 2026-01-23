@@ -22,6 +22,7 @@ import { normalizeFormData } from './trusteeForms.utils';
 const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePublicFormData => {
   return {
     name: info?.name,
+    companyName: info?.public?.companyName,
     address1: info?.public?.address?.address1,
     address2: info?.public?.address?.address2,
     city: info?.public?.address?.city,
@@ -41,7 +42,11 @@ export function validateField(
   const stringValue = String(value);
   const trimmedValue = stringValue.trim();
 
-  if ((field === 'extension' && !trimmedValue) || (field === 'website' && !trimmedValue)) {
+  if (
+    (field === 'extension' && !trimmedValue) ||
+    (field === 'website' && !trimmedValue) ||
+    (field === 'companyName' && !trimmedValue)
+  ) {
     return undefined;
   }
 
@@ -96,6 +101,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
         phone: { number: formData.phone, extension: formData.extension },
         email: formData.email,
         ...(formData.website && formData.website.length > 0 && { website: formData.website }),
+        ...(formData.companyName &&
+          formData.companyName.length > 0 && { companyName: formData.companyName }),
       },
     } as TrusteeInput;
   };
@@ -259,6 +266,20 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 errorMessage={fieldErrors['name']}
                 autoComplete="off"
                 {...isRequired('name')}
+              />
+            </div>
+
+            <div className="field-group">
+              <Input
+                id="trustee-company-name"
+                className="trustee-company-name-input"
+                name="companyName"
+                label="Company Name"
+                value={formData.companyName || ''}
+                onChange={handleFieldChange}
+                errorMessage={fieldErrors['companyName']}
+                autoComplete="off"
+                {...isRequired('companyName')}
               />
             </div>
 

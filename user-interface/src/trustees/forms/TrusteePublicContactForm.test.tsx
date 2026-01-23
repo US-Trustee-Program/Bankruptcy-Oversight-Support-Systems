@@ -426,4 +426,139 @@ describe('TrusteePublicContactForm Tests', () => {
     const unknownField = 'notASpecField' as unknown as keyof TrusteePublicFormData;
     expect(validateField(unknownField, 'some value')).toBeUndefined();
   });
+
+  test('should include company name in payload when provided', async () => {
+    const postSpy = vi
+      .spyOn(Api2, 'postTrustee')
+      .mockResolvedValue({ data: MockData.getTrustee() });
+
+    renderWithProps();
+
+    await waitFor(() => {
+      const nameInput = screen.getByTestId('trustee-name');
+      expect(nameInput).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByTestId('trustee-name');
+    const companyNameInput = screen.getByTestId('trustee-company-name');
+    const address1Input = screen.getByTestId('trustee-address1');
+    const cityInput = screen.getByTestId('trustee-city');
+    const zipInput = screen.getByTestId('trustee-zip');
+    const phoneInput = screen.getByTestId('trustee-phone');
+    const emailInput = screen.getByTestId('trustee-email');
+
+    const trusteeName = 'Test Trustee';
+    await userEvent.type(nameInput, trusteeName);
+    const companyName = 'Test Company LLC';
+    await userEvent.type(companyNameInput, companyName);
+    const address1 = '123 Main St';
+    await userEvent.type(address1Input, address1);
+    const city = 'Test City';
+    await userEvent.type(cityInput, city);
+    const zip = '90210';
+    await userEvent.type(zipInput, zip);
+    const phoneNumber = '555-123-4567';
+    await userEvent.type(phoneInput, phoneNumber);
+    const email = 'test@example.com';
+    await userEvent.type(emailInput, email);
+
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    const expectedPayload = {
+      name: trusteeName,
+      public: {
+        address: {
+          address1,
+          city,
+          state: 'CA',
+          zipCode: zip,
+          countryCode: 'US',
+        },
+        phone: {
+          number: phoneNumber,
+          extension: undefined,
+        },
+        email,
+        companyName,
+      },
+    } as Partial<TrusteeInput>;
+
+    expect(postSpy).toHaveBeenCalledWith(expectedPayload);
+  });
+
+  test('should allow company name to be empty (optional field)', async () => {
+    const postSpy = vi
+      .spyOn(Api2, 'postTrustee')
+      .mockResolvedValue({ data: MockData.getTrustee() });
+
+    renderWithProps();
+
+    await waitFor(() => {
+      const nameInput = screen.getByTestId('trustee-name');
+      expect(nameInput).toBeInTheDocument();
+    });
+
+    const nameInput = screen.getByTestId('trustee-name');
+    const address1Input = screen.getByTestId('trustee-address1');
+    const cityInput = screen.getByTestId('trustee-city');
+    const zipInput = screen.getByTestId('trustee-zip');
+    const phoneInput = screen.getByTestId('trustee-phone');
+    const emailInput = screen.getByTestId('trustee-email');
+
+    const trusteeName = 'Test Trustee';
+    await userEvent.type(nameInput, trusteeName);
+    // Leave company name empty
+    const address1 = '123 Main St';
+    await userEvent.type(address1Input, address1);
+    const city = 'Test City';
+    await userEvent.type(cityInput, city);
+    const zip = '90210';
+    await userEvent.type(zipInput, zip);
+    const phoneNumber = '555-123-4567';
+    await userEvent.type(phoneInput, phoneNumber);
+    const email = 'test@example.com';
+    await userEvent.type(emailInput, email);
+
+    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    expect(postSpy).toHaveBeenCalled();
+    const payload = postSpy.mock.calls[0][0] as Partial<TrusteeInput>;
+    expect(payload.public?.companyName).toBeUndefined();
+  });
+
+  test('should validate company name max length of 100 characters', () => {
+    const validCompanyName = 'A'.repeat(100);
+    const invalidCompanyName = 'A'.repeat(101);
+
+    expect(validateField('companyName', validCompanyName)).toBeUndefined();
+    expect(validateField('companyName', invalidCompanyName)).toBeTruthy();
+  });
+
+  test('should render company name field and allow editing', async () => {
+    const existing = MockData.getTrustee();
+    existing.public.companyName = 'Original Company';
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: `/trustees/${existing.trusteeId}`,
+      trusteeId: existing.trusteeId,
+      trustee: existing,
+    });
+
+    await waitFor(() => {
+      const companyNameInput = screen.getByTestId('trustee-company-name');
+      expect(companyNameInput).toBeInTheDocument();
+      expect(companyNameInput).toHaveValue('Original Company');
+    });
+
+    const companyNameInput = screen.getByTestId('trustee-company-name');
+    await userEvent.clear(companyNameInput);
+    await userEvent.type(companyNameInput, 'Updated Company Name');
+
+    expect(companyNameInput).toHaveValue('Updated Company Name');
+  });
 });
