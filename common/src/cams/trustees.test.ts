@@ -5,7 +5,13 @@ import {
   formatAppointmentType,
   AppointmentChapterType,
   AppointmentType,
+  addressSpec,
+  phoneSpec,
+  contactInformationSpec,
+  internalContactInformationSpec,
 } from './trustees';
+import { validateObject } from './validation';
+import { Address, ContactInformation, PhoneNumber } from './contact';
 
 describe('trustees', () => {
   test('TRUSTEE_STATUS_VALUES', () => {
@@ -63,5 +69,370 @@ describe('trustees', () => {
         ).toBe(expected);
       },
     );
+  });
+
+  describe('Validation Specs', () => {
+    describe('addressSpec', () => {
+      test('should validate a valid address', () => {
+        const validAddress: Address = {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '12345',
+          countryCode: 'US',
+        };
+
+        const result = validateObject(addressSpec, validAddress);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate address with address2 and address3', () => {
+        const validAddress: Address = {
+          address1: '123 Main St',
+          address2: 'Apt 4B',
+          address3: 'Building C',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '12345',
+          countryCode: 'US',
+        };
+
+        const result = validateObject(addressSpec, validAddress);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate address with 9-digit zip code', () => {
+        const validAddress: Address = {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '12345-6789',
+          countryCode: 'US',
+        };
+
+        const result = validateObject(addressSpec, validAddress);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should reject address with empty address1', () => {
+        const invalidAddress: Address = {
+          address1: '',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '12345',
+          countryCode: 'US',
+        };
+
+        const result = validateObject(addressSpec, invalidAddress);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject address with invalid state length', () => {
+        const invalidAddress: Address = {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NYC',
+          zipCode: '12345',
+          countryCode: 'US',
+        };
+
+        const result = validateObject(addressSpec, invalidAddress);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject address with invalid zip code format', () => {
+        const invalidAddress: Address = {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '1234',
+          countryCode: 'US',
+        };
+
+        const result = validateObject(addressSpec, invalidAddress);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject address with address2 exceeding max length', () => {
+        const invalidAddress: Address = {
+          address1: '123 Main St',
+          address2: 'A'.repeat(51),
+          city: 'New York',
+          state: 'NY',
+          zipCode: '12345',
+          countryCode: 'US',
+        };
+
+        const result = validateObject(addressSpec, invalidAddress);
+        expect(result.valid).toBeFalsy();
+      });
+    });
+
+    describe('phoneSpec', () => {
+      test('should validate a valid phone number without extension', () => {
+        const validPhone: PhoneNumber = {
+          number: '123-456-7890',
+        };
+
+        const result = validateObject(phoneSpec, validPhone);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate a valid phone number with extension', () => {
+        const validPhone: PhoneNumber = {
+          number: '123-456-7890',
+          extension: '1234',
+        };
+
+        const result = validateObject(phoneSpec, validPhone);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate phone with country code', () => {
+        const validPhone: PhoneNumber = {
+          number: '1-123-456-7890',
+        };
+
+        const result = validateObject(phoneSpec, validPhone);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should reject invalid phone number format', () => {
+        const invalidPhone: PhoneNumber = {
+          number: '12345',
+        };
+
+        const result = validateObject(phoneSpec, invalidPhone);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject extension exceeding max length', () => {
+        const invalidPhone: PhoneNumber = {
+          number: '123-456-7890',
+          extension: '1234567',
+        };
+
+        const result = validateObject(phoneSpec, invalidPhone);
+        expect(result.valid).toBeFalsy();
+      });
+    });
+
+    describe('contactInformationSpec', () => {
+      test('should validate complete contact information', () => {
+        const validContact: ContactInformation = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          phone: {
+            number: '123-456-7890',
+            extension: '123',
+          },
+          email: 'test@example.com',
+          website: 'https://example.com',
+          companyName: 'Test Company',
+        };
+
+        const result = validateObject(contactInformationSpec, validContact);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate contact with only required address', () => {
+        const validContact: ContactInformation = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+        };
+
+        const result = validateObject(contactInformationSpec, validContact);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate contact with website without protocol', () => {
+        const validContact: ContactInformation = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          website: 'example.com',
+        };
+
+        const result = validateObject(contactInformationSpec, validContact);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should reject contact with invalid email', () => {
+        const invalidContact: ContactInformation = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          email: 'invalid-email',
+        };
+
+        const result = validateObject(contactInformationSpec, invalidContact);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject contact with website exceeding max length', () => {
+        const invalidContact: ContactInformation = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          website: 'https://example.com/' + 'a'.repeat(250),
+        };
+
+        const result = validateObject(contactInformationSpec, invalidContact);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should validate contact with company name containing only letters and spaces', () => {
+        const validContact: ContactInformation = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          companyName: 'Test Company Name',
+        };
+
+        const result = validateObject(contactInformationSpec, validContact);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should reject contact with company name containing numbers', () => {
+        const invalidContact: ContactInformation = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          companyName: 'Test123 Company',
+        };
+
+        const result = validateObject(contactInformationSpec, invalidContact);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject contact with company name exceeding max length', () => {
+        const invalidContact: ContactInformation = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          companyName: 'A'.repeat(51),
+        };
+
+        const result = validateObject(contactInformationSpec, invalidContact);
+        expect(result.valid).toBeFalsy();
+      });
+    });
+
+    describe('internalContactInformationSpec', () => {
+      test('should validate complete internal contact information', () => {
+        const validContact: ContactInformation = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          phone: {
+            number: '123-456-7890',
+          },
+          email: 'internal@example.com',
+        };
+
+        const result = validateObject(internalContactInformationSpec, validContact);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate internal contact with null address', () => {
+        const validContact: Partial<ContactInformation> = {
+          address: null as unknown as Address,
+          phone: {
+            number: '123-456-7890',
+          },
+          email: 'internal@example.com',
+        };
+
+        const result = validateObject(internalContactInformationSpec, validContact);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate internal contact with null phone', () => {
+        const validContact: Partial<ContactInformation> = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          phone: null as unknown as PhoneNumber,
+          email: 'internal@example.com',
+        };
+
+        const result = validateObject(internalContactInformationSpec, validContact);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate internal contact with null email', () => {
+        const validContact: Partial<ContactInformation> = {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US',
+          },
+          email: null as unknown as string,
+        };
+
+        const result = validateObject(internalContactInformationSpec, validContact);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate empty internal contact', () => {
+        const validContact: Partial<ContactInformation> = {};
+
+        const result = validateObject(internalContactInformationSpec, validContact);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should reject internal contact with invalid email when provided', () => {
+        const invalidContact: Partial<ContactInformation> = {
+          email: 'invalid-email',
+        };
+
+        const result = validateObject(internalContactInformationSpec, invalidContact);
+        expect(result.valid).toBeFalsy();
+      });
+    });
   });
 });

@@ -1,13 +1,21 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { LegacyAddress } from './parties';
-import { ContactInformation } from './contact';
+import { Address, ContactInformation, PhoneNumber } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
 import { ValidationSpec } from './validation';
 import V from './validators';
-import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZOOM_MEETING_ID_REGEX } from './regex';
+import {
+  COMPANY_NAME_REGEX,
+  EMAIL_REGEX,
+  EXTENSION_REGEX,
+  PHONE_REGEX,
+  WEBSITE_RELAXED_REGEX,
+  ZIP_REGEX,
+  ZOOM_MEETING_ID_REGEX,
+} from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 
 export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
@@ -193,6 +201,45 @@ export type TrusteeHistory =
   | TrusteeZoomInfoHistory
   | TrusteeOversightHistory
   | TrusteeAppointmentHistory;
+
+export const addressSpec: ValidationSpec<Address> = {
+  address1: [V.minLength(1)],
+  address2: [V.optional(V.maxLength(50))],
+  address3: [V.optional(V.maxLength(50))],
+  city: [V.minLength(1)],
+  state: [V.exactLength(2)],
+  zipCode: [V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE)],
+  countryCode: [V.exactLength(2)],
+};
+
+export const phoneSpec: ValidationSpec<PhoneNumber> = {
+  number: [V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER)],
+  extension: [V.optional(V.matches(EXTENSION_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION))],
+};
+
+export const contactInformationSpec: ValidationSpec<ContactInformation> = {
+  address: [V.spec(addressSpec)],
+  phone: [V.optional(V.spec(phoneSpec))],
+  email: [V.optional(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL))],
+  website: [
+    V.optional(
+      V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.WEBSITE),
+      V.maxLength(255, FIELD_VALIDATION_MESSAGES.WEBSITE_MAX_LENGTH),
+    ),
+  ],
+  companyName: [
+    V.optional(
+      V.matches(COMPANY_NAME_REGEX, FIELD_VALIDATION_MESSAGES.COMPANY_NAME),
+      V.maxLength(50, 'Max length 50 characters'),
+    ),
+  ],
+};
+
+export const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
+  address: [V.optional(V.nullable(V.spec(addressSpec)))],
+  phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
+  email: [V.optional(V.nullable(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL_PROVIDED)))],
+};
 
 export const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
   link: [
