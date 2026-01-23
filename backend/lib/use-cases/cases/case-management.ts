@@ -19,7 +19,11 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignment } from '@common/cams/assignments';
-import { filterCasesByDebtorNameSimilarity, isPhoneticSearchEnabled } from './phonetic-utils';
+import {
+  filterCasesByDebtorNameSimilarity,
+  isPhoneticSearchEnabled,
+  SIMILARITY_THRESHOLD,
+} from './phonetic-utils';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -91,8 +95,9 @@ export default class CaseManagement {
 
       // Apply phonetic filtering if enabled and searching by name
       if (predicate.debtorName && isPhoneticSearchEnabled(context?.featureFlags)) {
-        // Default threshold of 0.83 prevents false positives (Jon/Jane, Jon/Jose)
-        const similarityThreshold = context?.config?.search?.phonetic?.similarityThreshold || 0.83;
+        // Default threshold prevents false positives while allowing international variations
+        const similarityThreshold =
+          context?.config?.search?.phonetic?.similarityThreshold || SIMILARITY_THRESHOLD;
         const filtered = filterCasesByDebtorNameSimilarity(
           searchResult.data,
           predicate.debtorName,

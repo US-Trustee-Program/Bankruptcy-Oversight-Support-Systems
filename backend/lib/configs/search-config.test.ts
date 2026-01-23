@@ -16,10 +16,10 @@ describe('Search Config', () => {
 
   describe('getSearchConfig', () => {
     describe('phonetic search configuration', () => {
-      it('should return default similarity threshold of 0.83', () => {
+      it('should return default similarity threshold of 0.79', () => {
         delete process.env.PHONETIC_SIMILARITY_THRESHOLD;
         const config = getSearchConfig();
-        expect(config.phonetic.similarityThreshold).toBe(0.83);
+        expect(config.phonetic.similarityThreshold).toBe(0.79);
       });
 
       it('should use custom similarity threshold from environment', () => {
