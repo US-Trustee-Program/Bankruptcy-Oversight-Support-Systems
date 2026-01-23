@@ -50,6 +50,10 @@ describe('Cases repository', () => {
   const { and } = QueryBuilder;
 
   beforeEach(async () => {
+    // Disable mock phonetic search data for all tests
+    // This ensures tests verify actual query generation logic
+    delete process.env.MOCK_PHONETIC_SEARCH_DATA;
+
     context = await createMockApplicationContext();
     repo = CasesMongoRepository.getInstance(context);
   });

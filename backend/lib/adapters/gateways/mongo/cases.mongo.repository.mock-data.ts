@@ -14,7 +14,7 @@
  */
 
 import { SyncedCase } from '@common/cams/cases';
-import { generatePhoneticTokens } from '../../../use-cases/cases/phonetic-utils';
+import { generatePhoneticTokensWithNicknames } from '../../../use-cases/cases/phonetic-utils';
 
 /**
  * Helper to create a mock case with phonetic tokens
@@ -43,7 +43,7 @@ function createCase(
       name: debtorName,
       address1: '123 Main St',
       cityStateZipCountry: 'New York, NY 10001',
-      phoneticTokens: generatePhoneticTokens(debtorName),
+      phoneticTokens: generatePhoneticTokensWithNicknames(debtorName),
     },
     documentType: 'SYNCED_CASE',
   } as SyncedCase;
@@ -53,7 +53,7 @@ function createCase(
       name: jointDebtorName,
       address1: '123 Main St',
       cityStateZipCountry: 'New York, NY 10001',
-      phoneticTokens: generatePhoneticTokens(jointDebtorName),
+      phoneticTokens: generatePhoneticTokensWithNicknames(jointDebtorName),
     };
   }
 
