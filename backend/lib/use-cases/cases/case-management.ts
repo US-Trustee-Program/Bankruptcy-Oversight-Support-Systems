@@ -91,8 +91,8 @@ export default class CaseManagement {
 
       // Apply phonetic filtering if enabled and searching by name
       if (predicate.debtorName && isPhoneticSearchEnabled(context?.featureFlags)) {
-        // Lower threshold to 0.75 to accommodate nickname matching (e.g., Mike → Michael scores 0.77)
-        const similarityThreshold = context?.config?.search?.phonetic?.similarityThreshold || 0.75;
+        // Default threshold of 0.83 prevents false positives (Jon/Jane, Jon/Jose)
+        const similarityThreshold = context?.config?.search?.phonetic?.similarityThreshold || 0.83;
         const filtered = filterCasesByDebtorNameSimilarity(
           searchResult.data,
           predicate.debtorName,
