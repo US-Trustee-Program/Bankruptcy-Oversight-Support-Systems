@@ -6,10 +6,18 @@ export function copyStringToClipboard(str: string): void {
   }
 }
 
-export async function copyHTMLToClipboard(className: string, inner: boolean = true): Promise<void> {
-  const element = document.querySelector<HTMLElement>(`.${className}`);
-  if (!element) return;
-
+/**
+ * Copies an HTMLElement's content to the clipboard with both HTML and plain text formats.
+ * Core utility that operates directly on an element.
+ *
+ * @param element - The HTMLElement to copy
+ * @param options - Configuration options
+ * @param options.inner - If true, copies innerHTML; if false, copies outerHTML (default: true)
+ */
+export async function copyElementHTMLToClipboard(
+  element: HTMLElement,
+  { inner = true }: { inner?: boolean } = {},
+): Promise<void> {
   try {
     // Get the HTML and plain text versions
     const htmlContent = inner ? element.innerHTML : element.outerHTML;
@@ -32,4 +40,21 @@ export async function copyHTMLToClipboard(className: string, inner: boolean = tr
   } catch (_e) {
     // Silently fail - clipboard API may be unavailable or reject (non-HTTPS, older browsers, etc.)
   }
+}
+
+/**
+ * Convenience wrapper that finds an element by class name and copies its content to clipboard.
+ *
+ * @param className - The class name to search for (without the leading dot)
+ * @param options - Configuration options
+ * @param options.inner - If true, copies innerHTML; if false, copies outerHTML (default: true)
+ */
+export async function copyHTMLToClipboard(
+  className: string,
+  options: { inner?: boolean } = {},
+): Promise<void> {
+  const element = document.querySelector<HTMLElement>(`.${className}`);
+  if (!element) return;
+
+  await copyElementHTMLToClipboard(element, options);
 }
