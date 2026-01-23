@@ -17,8 +17,10 @@ import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
 import {
+  filterCasesByDebtorNameSimilarity,
   generatePhoneticTokensWithNicknames,
   isPhoneticSearchEnabled,
+  SIMILARITY_THRESHOLD,
 } from '../../../use-cases/cases/phonetic-utils';
 // TODO: CAMS-376 - Remove these imports after database backfill is complete
 import { shouldUseMockData, getMockPhoneticSearchCases } from './cases.mongo.repository.mock-data';
@@ -366,32 +368,81 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
       // TODO: CAMS-376 - Remove this entire block after database backfill is complete
-      // DEVELOPMENT MOCK: Return mock data if MOCK_PHONETIC_SEARCH_DATA=true
-      // This is a temporary workaround because existing cases don't have phoneticTokens
       if (shouldUseMockData()) {
-        const mockCases = getMockPhoneticSearchCases();
+        let mockCases = getMockPhoneticSearchCases();
         this.context.logger.warn(
           MODULE_NAME,
           `[DEV MOCK] Using ${mockCases.length} mock cases for phonetic search testing. Set MOCK_PHONETIC_SEARCH_DATA=false to use real database.`,
         );
+
+        if (predicate.debtorName && isPhoneticSearchEnabled(this.context?.featureFlags)) {
+          const similarityThreshold =
+            this.context?.config?.search?.phonetic?.similarityThreshold || SIMILARITY_THRESHOLD;
+          mockCases = filterCasesByDebtorNameSimilarity(
+            mockCases,
+            predicate.debtorName,
+            similarityThreshold,
+          );
+          this.context.logger.debug(
+            MODULE_NAME,
+            `[DEV MOCK] Phonetic filtering: ${mockCases.length} results (threshold: ${similarityThreshold})`,
+          );
+        }
+
+        const start = predicate.offset || 0;
+        const end = start + (predicate.limit || 25);
+        const paginatedResults = mockCases.slice(start, end);
+
         return {
           metadata: { total: mockCases.length },
-          data: mockCases,
+          data: paginatedResults,
         };
       }
-      // END TODO: CAMS-376
 
       if (predicate.includeOnlyUnassigned) {
         return await this.searchForUnassignedCases(predicate);
       }
-      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
       const conditions = this.addConditions(predicate);
 
       if (!hasRequiredSearchFields(predicate)) {
         throw new CamsError(MODULE_NAME, {
           message: 'Case Search requires a pagination predicate with a valid limit and offset',
         });
+      }
+
+      const phoneticEnabled =
+        predicate.debtorName && isPhoneticSearchEnabled(this.context?.featureFlags);
+
+      if (phoneticEnabled) {
+        const spec = pipeline(
+          match(and(...conditions)),
+          sort(descending(dateFiled), descending(caseNumber)),
+        );
+        const allResults = await this.getAdapter<SyncedCase>().aggregate(spec);
+
+        const similarityThreshold =
+          this.context?.config?.search?.phonetic?.similarityThreshold || SIMILARITY_THRESHOLD;
+        const filteredResults = filterCasesByDebtorNameSimilarity(
+          allResults,
+          predicate.debtorName,
+          similarityThreshold,
+        );
+
+        this.context.logger.debug(
+          MODULE_NAME,
+          `Phonetic search: ${allResults.length} results before filtering, ${filteredResults.length} after (threshold: ${similarityThreshold})`,
+        );
+
+        const start = predicate.offset || 0;
+        const end = start + (predicate.limit || 25);
+        const paginatedResults = filteredResults.slice(start, end);
+
+        return {
+          metadata: { total: filteredResults.length },
+          data: paginatedResults,
+        };
       }
 
       const spec = pipeline(
