@@ -29,7 +29,7 @@ export function getSearchConfig(): SearchConfig {
   return {
     phonetic: {
       // Lower threshold to 0.75 to accommodate nickname matching (e.g., Mike → Michael scores 0.77)
-      similarityThreshold: parseFloat(process.env.PHONETIC_SIMILARITY_THRESHOLD || '0.75'),
+      similarityThreshold: parseFloat(process.env.PHONETIC_SIMILARITY_THRESHOLD || '0.83'),
       maxResults: parseInt(process.env.PHONETIC_MAX_RESULTS || '100', 10),
       algorithms: {
         soundex: process.env.PHONETIC_USE_SOUNDEX?.toLowerCase() !== 'false', // Default true

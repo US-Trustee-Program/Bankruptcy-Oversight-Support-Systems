@@ -6,6 +6,7 @@ import { FeatureFlagSet } from '../../adapters/types/basic';
 // Initialize phonetic algorithms
 const soundexAlgorithm = new natural.SoundEx();
 const metaphoneAlgorithm = new natural.Metaphone();
+const SIMILARITY_THRESHOLD = 0.83;
 
 /**
  * Generate phonetic tokens for a given text using Soundex and Metaphone algorithms
@@ -222,13 +223,13 @@ function calculateNameMatchScore(searchQuery: string, targetName: string): numbe
  * Filter cases by debtor name similarity using nickname-aware matching
  * @param cases Array of cases to filter
  * @param searchQuery The search query to match against
- * @param threshold Minimum similarity threshold (default 0.75 to accommodate nickname matching)
+ * @param threshold Minimum similarity threshold (default 0.83 to accommodate nickname matching)
  * @returns Filtered array of cases matching the similarity criteria
  */
 export function filterCasesByDebtorNameSimilarity(
   cases: SyncedCase[],
   searchQuery: string,
-  threshold: number = 0.75,
+  threshold: number = SIMILARITY_THRESHOLD,
 ): SyncedCase[] {
   if (!searchQuery || !cases || cases.length === 0) return cases;
 

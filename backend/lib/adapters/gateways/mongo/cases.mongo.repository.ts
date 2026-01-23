@@ -20,6 +20,8 @@ import {
   generatePhoneticTokensWithNicknames,
   isPhoneticSearchEnabled,
 } from '../../../use-cases/cases/phonetic-utils';
+// TODO: CAMS-376 - Remove these imports after database backfill is complete
+import { shouldUseMockData, getMockPhoneticSearchCases } from './cases.mongo.repository.mock-data';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -363,6 +365,22 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
+      // TODO: CAMS-376 - Remove this entire block after database backfill is complete
+      // DEVELOPMENT MOCK: Return mock data if MOCK_PHONETIC_SEARCH_DATA=true
+      // This is a temporary workaround because existing cases don't have phoneticTokens
+      if (shouldUseMockData()) {
+        const mockCases = getMockPhoneticSearchCases();
+        this.context.logger.warn(
+          MODULE_NAME,
+          `[DEV MOCK] Using ${mockCases.length} mock cases for phonetic search testing. Set MOCK_PHONETIC_SEARCH_DATA=false to use real database.`,
+        );
+        return {
+          metadata: { total: mockCases.length },
+          data: mockCases,
+        };
+      }
+      // END TODO: CAMS-376
+
       if (predicate.includeOnlyUnassigned) {
         return await this.searchForUnassignedCases(predicate);
       }
