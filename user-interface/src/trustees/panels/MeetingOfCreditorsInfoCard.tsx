@@ -1,3 +1,4 @@
+import './MeetingOfCreditorsInfoCard.scss';
 import { ZoomInfo } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
@@ -71,12 +72,13 @@ export default function MeetingOfCreditorsInfoCard({
           </div>
           <Button
             id="copy-meeting-of-creditors-info"
-            uswdsStyle={UswdsButtonStyle.Unstyled}
+            uswdsStyle={UswdsButtonStyle.Outline}
             aria-label="Copy Meeting of Creditors info"
             title="Copy Meeting of Creditors info"
             onClick={() => copyHTMLToClipboard('meeting-of-creditors-info-details')}
           >
             <Icon name="content_copy" />
+            Copy Zoom Info
           </Button>
         </div>
       )}
