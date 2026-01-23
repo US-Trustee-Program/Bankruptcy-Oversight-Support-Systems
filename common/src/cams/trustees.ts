@@ -251,3 +251,18 @@ export const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
   meetingId: [V.matches(ZOOM_MEETING_ID_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID)],
   passcode: [V.minLength(1, FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED)],
 };
+
+export const assistantSpec: ValidationSpec<TrusteeAssistant> = {
+  name: [V.minLength(1)],
+  contact: [V.spec(contactInformationSpec)],
+};
+
+export const trusteeSpec: ValidationSpec<TrusteeInput> = {
+  name: [V.minLength(1)],
+  public: [V.optional(V.spec(contactInformationSpec))],
+  internal: [V.optional(V.spec(internalContactInformationSpec))],
+  assistant: [V.optional(V.spec(assistantSpec))],
+  banks: [V.optional(V.arrayOf(V.length(1, 100)))],
+  software: [V.optional(V.length(0, 100))],
+  zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
+};

@@ -9,6 +9,10 @@ import {
   phoneSpec,
   contactInformationSpec,
   internalContactInformationSpec,
+  assistantSpec,
+  trusteeSpec,
+  TrusteeAssistant,
+  TrusteeInput,
 } from './trustees';
 import { validateObject } from './validation';
 import { Address, ContactInformation, PhoneNumber } from './contact';
@@ -432,6 +436,328 @@ describe('trustees', () => {
 
         const result = validateObject(internalContactInformationSpec, invalidContact);
         expect(result.valid).toBeFalsy();
+      });
+    });
+
+    describe('assistantSpec', () => {
+      test('should validate complete assistant information', () => {
+        const validAssistant: TrusteeAssistant = {
+          name: 'John Doe',
+          contact: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '12345',
+              countryCode: 'US',
+            },
+            phone: {
+              number: '123-456-7890',
+            },
+            email: 'assistant@example.com',
+          },
+        };
+
+        const result = validateObject(assistantSpec, validAssistant);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate assistant with minimal contact information', () => {
+        const validAssistant: TrusteeAssistant = {
+          name: 'Jane Smith',
+          contact: {
+            address: {
+              address1: '456 Oak Ave',
+              city: 'Boston',
+              state: 'MA',
+              zipCode: '02101',
+              countryCode: 'US',
+            },
+          },
+        };
+
+        const result = validateObject(assistantSpec, validAssistant);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should reject assistant with empty name', () => {
+        const invalidAssistant: TrusteeAssistant = {
+          name: '',
+          contact: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '12345',
+              countryCode: 'US',
+            },
+          },
+        };
+
+        const result = validateObject(assistantSpec, invalidAssistant);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject assistant with invalid contact information', () => {
+        const invalidAssistant: TrusteeAssistant = {
+          name: 'John Doe',
+          contact: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '1234', // Invalid zip code
+              countryCode: 'US',
+            },
+          },
+        };
+
+        const result = validateObject(assistantSpec, invalidAssistant);
+        expect(result.valid).toBeFalsy();
+      });
+    });
+
+    describe('trusteeSpec', () => {
+      test('should validate complete trustee information', () => {
+        const validTrustee: TrusteeInput = {
+          name: 'Smith Trustee Services',
+          public: {
+            address: {
+              address1: '789 Business Blvd',
+              city: 'Chicago',
+              state: 'IL',
+              zipCode: '60601',
+              countryCode: 'US',
+            },
+            phone: {
+              number: '312-555-1234',
+              extension: '100',
+            },
+            email: 'info@smithtrustee.com',
+            website: 'https://smithtrustee.com',
+            companyName: 'Smith Trustee Services',
+          },
+          internal: {
+            address: {
+              address1: '789 Business Blvd',
+              city: 'Chicago',
+              state: 'IL',
+              zipCode: '60601',
+              countryCode: 'US',
+            },
+            email: 'internal@smithtrustee.com',
+          },
+          assistant: {
+            name: 'Mary Johnson',
+            contact: {
+              address: {
+                address1: '789 Business Blvd',
+                city: 'Chicago',
+                state: 'IL',
+                zipCode: '60601',
+                countryCode: 'US',
+              },
+              email: 'mary@smithtrustee.com',
+            },
+          },
+          banks: ['Bank of America', 'Chase', 'Wells Fargo'],
+          software: 'BestCase',
+          zoomInfo: {
+            link: 'https://zoom.us/j/123456789',
+            phone: '312-555-5678',
+            meetingId: '12345678901',
+            passcode: 'secret123',
+          },
+        };
+
+        const result = validateObject(trusteeSpec, validTrustee);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should validate trustee with only required fields', () => {
+        const validTrustee: TrusteeInput = {
+          name: 'Minimal Trustee',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US',
+            },
+          },
+        };
+
+        const result = validateObject(trusteeSpec, validTrustee);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should reject trustee with empty name', () => {
+        const invalidTrustee: TrusteeInput = {
+          name: '',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US',
+            },
+          },
+        };
+
+        const result = validateObject(trusteeSpec, invalidTrustee);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject trustee with invalid public contact', () => {
+        const invalidTrustee: TrusteeInput = {
+          name: 'Invalid Public Trustee',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '123', // Invalid zip code
+              countryCode: 'US',
+            },
+          },
+        };
+
+        const result = validateObject(trusteeSpec, invalidTrustee);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject trustee with invalid internal contact', () => {
+        const invalidTrustee: TrusteeInput = {
+          name: 'Invalid Internal Trustee',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US',
+            },
+          },
+          internal: {
+            email: 'not-an-email',
+          },
+        };
+
+        const result = validateObject(trusteeSpec, invalidTrustee);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject trustee with invalid assistant', () => {
+        const invalidTrustee: TrusteeInput = {
+          name: 'Invalid Assistant Trustee',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US',
+            },
+          },
+          assistant: {
+            name: '', // Invalid empty name
+            contact: {
+              address: {
+                address1: '123 Main St',
+                city: 'New York',
+                state: 'NY',
+                zipCode: '10001',
+                countryCode: 'US',
+              },
+            },
+          },
+        };
+
+        const result = validateObject(trusteeSpec, invalidTrustee);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject trustee with bank name exceeding max length', () => {
+        const invalidTrustee: TrusteeInput = {
+          name: 'Invalid Banks Trustee',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US',
+            },
+          },
+          banks: ['A'.repeat(101)], // Exceeds max length of 100
+        };
+
+        const result = validateObject(trusteeSpec, invalidTrustee);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject trustee with software exceeding max length', () => {
+        const invalidTrustee: TrusteeInput = {
+          name: 'Invalid Software Trustee',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US',
+            },
+          },
+          software: 'A'.repeat(101), // Exceeds max length of 100
+        };
+
+        const result = validateObject(trusteeSpec, invalidTrustee);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should reject trustee with invalid zoomInfo', () => {
+        const invalidTrustee: TrusteeInput = {
+          name: 'Invalid Zoom Trustee',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US',
+            },
+          },
+          zoomInfo: {
+            link: 'not-a-url',
+            phone: '123-456-7890',
+            meetingId: '12345678901',
+            passcode: 'secret',
+          },
+        };
+
+        const result = validateObject(trusteeSpec, invalidTrustee);
+        expect(result.valid).toBeFalsy();
+      });
+
+      test('should validate trustee with null zoomInfo', () => {
+        const validTrustee: TrusteeInput = {
+          name: 'Null Zoom Trustee',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US',
+            },
+          },
+          zoomInfo: null,
+        };
+
+        const result = validateObject(trusteeSpec, validTrustee);
+        expect(result.valid).toBe(true);
       });
     });
   });
