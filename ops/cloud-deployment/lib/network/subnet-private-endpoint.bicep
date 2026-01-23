@@ -6,11 +6,7 @@ param location string = resourceGroup().location
 @description('Resource id of existing service to be linked')
 param privateLinkServiceId string
 
-@description('Group for private link service')
-@allowed([
-  'sites'
-  'vault'
-])
+@description('Group for private link service (e.g., sites, sites-{slotName}, vault)')
 param privateLinkGroup string
 
 param privateEndpointSubnetId string
@@ -22,6 +18,9 @@ param privateDnsZoneSubscriptionId string
 param privateDnsZoneResourceGroup string
 
 param privateDnsZoneId string = ''
+
+@description('Name for the DNS zone group (default: "default", use "zone-group" for slots to match existing infrastructure)')
+param dnsZoneGroupName string = 'default'
 
 resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-02-01' = {
   name: 'pep-${stackName}'
@@ -58,7 +57,7 @@ resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing 
 var dnsZoneId = empty(privateDnsZoneId) ? privateDnsZone.id : privateDnsZoneId
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-02-01' = {
   parent: privateEndpoint
-  name: 'default'
+  name: dnsZoneGroupName
   properties: {
     privateDnsZoneConfigs: [
       {
