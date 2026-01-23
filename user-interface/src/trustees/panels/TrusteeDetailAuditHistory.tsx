@@ -157,21 +157,13 @@ function ZoomInfoDisplay({ zoomInfo }: Readonly<{ zoomInfo?: ZoomInfo }>) {
   }
   return (
     <dl className="usa-list--unstyled">
-      <dt>
-        <strong>Link:</strong>
-      </dt>
+      <dt>Link:</dt>
       <dd>{zoomInfo.link}</dd>
-      <dt>
-        <strong>Phone:</strong>
-      </dt>
+      <dt>Phone:</dt>
       <dd>{zoomInfo.phone}</dd>
-      <dt>
-        <strong>Meeting ID:</strong>
-      </dt>
+      <dt>Meeting ID:</dt>
       <dd>{zoomInfo.meetingId}</dd>
-      <dt>
-        <strong>Passcode:</strong>
-      </dt>
+      <dt>Passcode:</dt>
       <dd>{zoomInfo.passcode}</dd>
     </dl>
   );
