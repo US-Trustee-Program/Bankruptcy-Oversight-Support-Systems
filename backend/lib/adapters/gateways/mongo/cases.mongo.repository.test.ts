@@ -760,12 +760,9 @@ describe('Cases repository', () => {
     });
 
     test('should successfully search with debtorName when phonetic search is disabled', async () => {
-      // Setup context with phonetic search disabled (default)
-      const contextWithoutPhonetic = await createMockApplicationContext({
-        env: {
-          PHONETIC_SEARCH_ENABLED: 'false',
-        },
-      });
+      // Setup context with phonetic search disabled
+      const contextWithoutPhonetic = await createMockApplicationContext();
+      contextWithoutPhonetic.featureFlags['phonetic-search-enabled'] = false;
       const repoWithoutPhonetic = CasesMongoRepository.getInstance(contextWithoutPhonetic);
 
       const predicate: CasesSearchPredicate = {

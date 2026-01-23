@@ -32,7 +32,7 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
         </span>
       </TableRowData>
       <TableRowData dataLabel={labels[1]}>
-        {formatDebtorNames(bCase.debtor.name, bCase.jointDebtor?.name)}
+        {formatDebtorNames(bCase.debtor?.name ?? '', bCase.jointDebtor?.name)}
       </TableRowData>
       <TableRowData dataLabel={labels[2]}>{bCase.caseTitle}</TableRowData>
       <TableRowData dataLabel={labels[3]}>{bCase.chapter}</TableRowData>
