@@ -1,4 +1,3 @@
-import './MeetingOfCreditorsInfoCard.scss';
 import { ZoomInfo } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
