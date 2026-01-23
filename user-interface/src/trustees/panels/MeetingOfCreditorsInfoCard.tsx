@@ -10,15 +10,6 @@ interface ZoomInfoCardProps {
   onEdit: () => void;
 }
 
-function copyMeetingInfoToClipboard() {
-  const meetingInfoContents: HTMLElement | null = document.querySelector<HTMLElement>(
-    '.meeting-of-creditors-info-details',
-  );
-  if (meetingInfoContents) {
-    copyHTMLToClipboard('meeting-of-creditors-info-details');
-  }
-}
-
 export default function MeetingOfCreditorsInfoCard({
   zoomInfo,
   onEdit,
@@ -83,7 +74,7 @@ export default function MeetingOfCreditorsInfoCard({
             uswdsStyle={UswdsButtonStyle.Unstyled}
             aria-label="Copy Meeting of Creditors info"
             title="Copy Meeting of Creditors info"
-            onClick={() => copyMeetingInfoToClipboard()}
+            onClick={() => copyHTMLToClipboard('meeting-of-creditors-info-details')}
           >
             <Icon name="content_copy" />
           </Button>
