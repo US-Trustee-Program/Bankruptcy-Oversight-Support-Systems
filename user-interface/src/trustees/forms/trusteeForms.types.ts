@@ -1,4 +1,5 @@
 import {
+  COMPANY_NAME_REGEX,
   EMAIL_REGEX,
   EXTENSION_REGEX,
   PHONE_REGEX,
@@ -15,7 +16,7 @@ export const PARTIAL_ADDRESS_ERROR_REASON =
   'You have entered a partial address. Please complete or clear the address fields.';
 const TRUSTEE_NAME_REQUIRED_ERROR_REASON = 'Trustee name is required';
 const TRUSTEE_NAME_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
-const COMPANY_NAME_MAX_LENGTH_ERROR_REASON = 'Max length 100 characters';
+const COMPANY_NAME_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
 export const CITY_REQUIRED_ERROR_REASON = 'City is required';
 const CITY_MAX_LENGTH_ERROR_REASON = 'Max length 50 characters';
 export const STATE_REQUIRED_ERROR_REASON = 'State is required';
@@ -65,7 +66,12 @@ const name = [
   V.minLength(1, TRUSTEE_NAME_REQUIRED_ERROR_REASON),
   V.maxLength(50, TRUSTEE_NAME_MAX_LENGTH_ERROR_REASON),
 ];
-const companyName = [V.optional(V.maxLength(100, COMPANY_NAME_MAX_LENGTH_ERROR_REASON))];
+const companyName = [
+  V.optional(
+    V.matches(COMPANY_NAME_REGEX, FIELD_VALIDATION_MESSAGES.COMPANY_NAME),
+    V.maxLength(50, COMPANY_NAME_MAX_LENGTH_ERROR_REASON),
+  ),
+];
 const address1 = [
   V.minLength(1, ADDRESS_REQUIRED_ERROR_REASON),
   V.maxLength(40, ADDRESS_MAX_LENGTH_ERROR_REASON),

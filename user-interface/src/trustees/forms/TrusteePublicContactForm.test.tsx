@@ -530,12 +530,16 @@ describe('TrusteePublicContactForm Tests', () => {
     expect(payload.public?.companyName).toBeUndefined();
   });
 
-  test('should validate company name max length of 100 characters', () => {
-    const validCompanyName = 'A'.repeat(100);
-    const invalidCompanyName = 'A'.repeat(101);
+  test('should validate company name max length of 50 characters and text only', () => {
+    const validCompanyName = 'A'.repeat(50);
+    const invalidCompanyName = 'A'.repeat(51);
+    const invalidWithNumbers = 'Company123';
+    const invalidWithSpecialChars = 'Company@LLC';
 
     expect(validateField('companyName', validCompanyName)).toBeUndefined();
     expect(validateField('companyName', invalidCompanyName)).toBeTruthy();
+    expect(validateField('companyName', invalidWithNumbers)).toBeTruthy();
+    expect(validateField('companyName', invalidWithSpecialChars)).toBeTruthy();
   });
 
   test('should render company name field and allow editing', async () => {

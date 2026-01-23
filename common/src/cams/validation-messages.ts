@@ -17,4 +17,5 @@ export const FIELD_VALIDATION_MESSAGES = {
   ZOOM_LINK_MAX_LENGTH: 'Max length 255 characters',
   ZOOM_MEETING_ID: 'Must be 9 to 11 digits',
   PASSCODE_REQUIRED: 'Passcode is required',
+  COMPANY_NAME: 'Must contain only letters and spaces',
 } as const;
