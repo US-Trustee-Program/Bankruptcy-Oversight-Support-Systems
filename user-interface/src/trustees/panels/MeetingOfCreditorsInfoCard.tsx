@@ -56,14 +56,21 @@ export default function MeetingOfCreditorsInfoCard({
                 rel="noopener noreferrer"
                 className="usa-link comms-link"
                 data-testid="zoom-link"
+                aria-label={`Zoom Link: ${zoomInfo.link}`}
               >
                 <IconLabel icon="launch" label="Zoom Link" location="left" />
               </a>
+              <span className="usa-sr-only">{`: ${zoomInfo.link}`}</span>
             </div>
             <div className="zoom-phone" data-testid="zoom-phone">
-              <a href={`tel:${zoomInfo.phone}`} className="usa-link comms-link">
-                <IconLabel icon="phone" label={zoomInfo.phone} location="left" />
+              <a
+                href={`tel:${zoomInfo.phone}`}
+                className="usa-link comms-link"
+                aria-label={`Phone: ${zoomInfo.phone}`}
+              >
+                <IconLabel icon="phone" label="Phone" location="left" />
               </a>
+              <span className="usa-sr-only">{`: ${zoomInfo.phone}`}</span>
             </div>
             <div className="zoom-meeting-id" data-testid="zoom-meeting-id">
               Meeting ID: {formatMeetingId(zoomInfo.meetingId)}
