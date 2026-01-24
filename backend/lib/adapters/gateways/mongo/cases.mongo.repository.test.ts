@@ -766,6 +766,65 @@ describe('Cases repository', () => {
       await closeDeferred(contextWithPhonetic);
     });
 
+    test('should apply phonetic filtering when combined with other search fields', async () => {
+      const contextWithPhonetic = await createMockApplicationContext({
+        env: {
+          PHONETIC_SEARCH_ENABLED: 'true',
+        },
+      });
+      const repoWithPhonetic = CasesMongoRepository.getInstance(contextWithPhonetic);
+
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        divisionCodes: ['081'],
+        debtorName: 'John',
+        limit: 25,
+        offset: 0,
+      };
+
+      const mockCase1 = MockData.getSyncedCase({
+        override: {
+          caseId: '001',
+          chapter: '15',
+          courtDivisionCode: '081',
+        },
+      });
+      mockCase1.debtor = {
+        ...mockCase1.debtor,
+        name: 'John Smith',
+        phoneticTokens: generatePhoneticTokens('John Smith'),
+      };
+
+      const mockCase2 = MockData.getSyncedCase({
+        override: {
+          caseId: '002',
+          chapter: '15',
+          courtDivisionCode: '081',
+        },
+      });
+      mockCase2.debtor = {
+        ...mockCase2.debtor,
+        name: 'Jane Doe',
+        phoneticTokens: generatePhoneticTokens('Jane Doe'),
+      };
+
+      const allMockCases = [mockCase1, mockCase2];
+
+      const aggregateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
+        .mockResolvedValue(allMockCases);
+
+      const result = await repoWithPhonetic.searchCases(predicate);
+
+      expect(aggregateSpy).toHaveBeenCalled();
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0].debtor.name).toBe('John Smith');
+      expect(result.metadata.total).toBe(1);
+
+      repoWithPhonetic.release();
+      await closeDeferred(contextWithPhonetic);
+    });
+
     test('should successfully search with debtorName when phonetic search is disabled', async () => {
       // Setup context with phonetic search disabled
       const contextWithoutPhonetic = await createMockApplicationContext();
