@@ -55,6 +55,20 @@ function skip(
     return func(value) ? VALID : validateEach(validators, value);
   };
 }
+
+/**
+ * Creates a validator function that trims string values before applying other validators.
+ * This is useful for fields where leading/trailing whitespace should be ignored during validation.
+ *
+ * @param {...ValidatorFunction[]} validators - Variable number of validator functions to apply to the trimmed value
+ * @returns {ValidatorFunction} A validator function that trims strings before validation
+ */
+function trimmed(...validators: ValidatorFunction[]): ValidatorFunction {
+  return (value: unknown): ValidatorResult => {
+    const trimmedValue = typeof value === 'string' ? value.trim() : value;
+    return validateEach(validators, trimmedValue);
+  };
+}
 /**
  * Creates a validator function that treats null values as valid and applies other validators otherwise.
  * This allows for nullable fields in validation schemas where null values are acceptable.
@@ -399,6 +413,7 @@ const Validators = {
   optional,
   skip,
   spec,
+  trimmed,
 };
 
 export default Validators;

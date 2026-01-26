@@ -16,13 +16,11 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
+// TODO: CAMS-376 - Remove these imports after database backfill is complete
 import {
   filterCasesByDebtorNameSimilarity,
-  generatePhoneticTokensWithNicknames,
-  isPhoneticSearchEnabled,
   SIMILARITY_THRESHOLD,
 } from '../../../use-cases/cases/phonetic-utils';
-// TODO: CAMS-376 - Remove these imports after database backfill is complete
 import { shouldUseMockData, getMockPhoneticSearchCases } from './cases.mongo.repository.mock-data';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
@@ -307,28 +305,18 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
 
     if (predicate.debtorName) {
-      // Check if phonetic search is enabled in feature flags
-      const phoneticEnabled = isPhoneticSearchEnabled(this.context?.featureFlags);
+      const debtorNameRegex = new RegExp(predicate.debtorName, 'i');
 
-      if (phoneticEnabled) {
-        // Phonetic search path: use phonetic tokens with nickname expansion
-        const tokens = generatePhoneticTokensWithNicknames(predicate.debtorName);
-        const debtorNameRegex = new RegExp(predicate.debtorName, 'i'); // case-insensitive
-
-        // Combine phonetic token search with regex fallback for partial matches
+      if (predicate.phoneticTokens && predicate.phoneticTokens.length > 0) {
         conditions.push(
           or(
-            // Phonetic token matching
-            doc('debtor.phoneticTokens').contains(tokens),
-            doc('jointDebtor.phoneticTokens').contains(tokens),
-            // Fallback to regex for partial matches
+            doc('debtor.phoneticTokens').contains(predicate.phoneticTokens),
+            doc('jointDebtor.phoneticTokens').contains(predicate.phoneticTokens),
             doc('debtor.name').regex(debtorNameRegex),
             doc('jointDebtor.name').regex(debtorNameRegex),
           ),
         );
       } else {
-        // Existing regex-only path (unchanged)
-        const debtorNameRegex = new RegExp(predicate.debtorName, 'i'); // case-insensitive
         conditions.push(
           or(
             doc('debtor.name').regex(debtorNameRegex),
@@ -383,17 +371,19 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           `[DEV MOCK] Using ${mockCases.length} mock cases for phonetic search testing. Set MOCK_PHONETIC_SEARCH_DATA=false to use real database.`,
         );
 
-        if (predicate.debtorName && isPhoneticSearchEnabled(this.context?.featureFlags)) {
-          const similarityThreshold =
-            this.context?.config?.search?.phonetic?.similarityThreshold || SIMILARITY_THRESHOLD;
+        if (
+          predicate.phoneticTokens &&
+          predicate.phoneticTokens.length > 0 &&
+          predicate.debtorName
+        ) {
           mockCases = filterCasesByDebtorNameSimilarity(
             mockCases,
             predicate.debtorName,
-            similarityThreshold,
+            SIMILARITY_THRESHOLD,
           );
           this.context.logger.debug(
             MODULE_NAME,
-            `[DEV MOCK] Phonetic filtering: ${mockCases.length} results (threshold: ${similarityThreshold})`,
+            `[DEV MOCK] Phonetic filtering: ${mockCases.length} results (threshold: ${SIMILARITY_THRESHOLD})`,
           );
         }
 
@@ -420,51 +410,14 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         });
       }
 
-      const phoneticEnabled =
-        predicate.debtorName && isPhoneticSearchEnabled(this.context?.featureFlags);
-
-      if (phoneticEnabled) {
-        const spec = pipeline(
-          match(and(...conditions)),
-          sort(descending(dateFiled), descending(caseNumber)),
-          paginate(0, PHONETIC_SEARCH_MAX_FETCH),
-        );
-        const initialResults = await this.getAdapter<SyncedCase>().paginate(spec);
-
-        const similarityThreshold =
-          this.context?.config?.search?.phonetic?.similarityThreshold || SIMILARITY_THRESHOLD;
-        const filteredResults = filterCasesByDebtorNameSimilarity(
-          initialResults.data,
-          predicate.debtorName,
-          similarityThreshold,
-        );
-
-        this.context.logger.debug(
-          MODULE_NAME,
-          `Phonetic search: ${initialResults.data.length} results before filtering, ${filteredResults.length} after (threshold: ${similarityThreshold})`,
-        );
-
-        if (initialResults.data.length >= PHONETIC_SEARCH_MAX_FETCH) {
-          this.context.logger.warn(
-            MODULE_NAME,
-            `Phonetic search hit max fetch limit of ${PHONETIC_SEARCH_MAX_FETCH}. Some results may be excluded. Consider narrowing search criteria.`,
-          );
-        }
-
-        const start = predicate.offset || 0;
-        const end = start + (predicate.limit || 25);
-        const paginatedResults = filteredResults.slice(start, end);
-
-        return {
-          metadata: { total: filteredResults.length },
-          data: paginatedResults,
-        };
-      }
+      const usePhoneticMode = predicate.phoneticTokens && predicate.phoneticTokens.length > 0;
+      const fetchLimit = usePhoneticMode ? PHONETIC_SEARCH_MAX_FETCH : predicate.limit;
+      const fetchOffset = usePhoneticMode ? 0 : predicate.offset;
 
       const spec = pipeline(
         match(and(...conditions)),
         sort(descending(dateFiled), descending(caseNumber)),
-        paginate(predicate.offset, predicate.limit),
+        paginate(fetchOffset, fetchLimit),
       );
 
       return await this.getAdapter<SyncedCase>().paginate(spec);

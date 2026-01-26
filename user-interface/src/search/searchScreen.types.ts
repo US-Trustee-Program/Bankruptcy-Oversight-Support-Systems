@@ -13,25 +13,12 @@ export type SearchScreenFormData = {
 const CASE_NUMBER_INVALID_ERROR_REASON = 'Must be 7 digits';
 const AT_LEAST_ONE_SEARCH_CRITERION_ERROR_REASON = 'Please enter at least one search criterion';
 const DEBTOR_NAME_MIN_LENGTH = 2;
-const DEBTOR_NAME_TOO_SHORT_ERROR_REASON = 'Debtor name must be at least 2 characters';
+const DEBTOR_NAME_TOO_SHORT_ERROR_REASON = 'Must be at least 2 characters';
 
 const caseNumber = [V.matches(CASE_NUMBER_REGEX, CASE_NUMBER_INVALID_ERROR_REASON)];
 
-const debtorName: ValidatorFunction[] = [
-  (value: unknown) => {
-    const name = value as string | undefined;
-    // If debtor name is provided (not empty), it must be at least 2 characters
-    if (name && name.trim().length > 0 && name.trim().length < DEBTOR_NAME_MIN_LENGTH) {
-      return {
-        reasonMap: {
-          debtorName: {
-            reasons: [DEBTOR_NAME_TOO_SHORT_ERROR_REASON],
-          },
-        },
-      };
-    }
-    return VALID;
-  },
+const debtorName = [
+  V.trimmed(V.minLength(DEBTOR_NAME_MIN_LENGTH, DEBTOR_NAME_TOO_SHORT_ERROR_REASON)),
 ];
 
 const atLeastOneSearchCriterion: ValidatorFunction = (obj: unknown) => {
