@@ -5,15 +5,17 @@ import {
   formatAppointmentType,
   AppointmentChapterType,
   AppointmentType,
+  TrusteeAssistant,
+  TrusteeInput,
+} from './trustees';
+import {
   addressSpec,
   phoneSpec,
   contactInformationSpec,
   internalContactInformationSpec,
   assistantSpec,
   trusteeSpec,
-  TrusteeAssistant,
-  TrusteeInput,
-} from './trustees';
+} from './trustees-validators';
 import { validateObject } from './validation';
 import { Address, ContactInformation, PhoneNumber } from './contact';
 
