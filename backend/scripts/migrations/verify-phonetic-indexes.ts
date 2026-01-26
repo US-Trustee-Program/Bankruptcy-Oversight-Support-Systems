@@ -129,8 +129,7 @@ async function explainQuery(
 
     // Calculate efficiency
     if (executionStats.nReturned > 0) {
-      const efficiency =
-        (executionStats.nReturned / executionStats.totalDocsExamined) * 100;
+      const efficiency = (executionStats.nReturned / executionStats.totalDocsExamined) * 100;
       console.log(`     Query Efficiency: ${efficiency.toFixed(2)}%`);
 
       if (efficiency < 50) {
@@ -216,7 +215,7 @@ async function showIndexStats(collection: Collection) {
         console.log(`    ${indexName}: ${((size as number) / 1024).toFixed(2)} KB`);
       });
     }
-  } catch (error) {
+  } catch (_error) {
     console.log('  ⚠️  Could not retrieve collection stats');
   }
 }

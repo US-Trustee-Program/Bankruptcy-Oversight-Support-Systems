@@ -35,7 +35,7 @@ function generatePhoneticTokens(text: string | undefined): string[] {
   if (!text) return [];
 
   const normalizedText = text.toLowerCase().trim();
-  const words = normalizedText.split(/\s+/).filter(word => word.length > 0);
+  const words = normalizedText.split(/\s+/).filter((word) => word.length > 0);
   const tokens = new Set<string>();
 
   for (const word of words) {
@@ -111,7 +111,7 @@ async function addPhoneticTokensToExistingCases() {
       const bulkOperations = [];
 
       for (const caseDoc of cases) {
-        const updates: any = {};
+        const updates: Record<string, string[]> = {};
         let hasUpdates = false;
 
         // Check if phonetic tokens already exist (skip if already migrated)
@@ -143,8 +143,8 @@ async function addPhoneticTokensToExistingCases() {
           bulkOperations.push({
             updateOne: {
               filter: { _id: caseDoc._id },
-              update: { $set: updates }
-            }
+              update: { $set: updates },
+            },
           });
         }
       }
@@ -153,7 +153,9 @@ async function addPhoneticTokensToExistingCases() {
       if (bulkOperations.length > 0) {
         const result = await collection.bulkWrite(bulkOperations);
         updatedCount += result.modifiedCount;
-        console.log(`📝 Batch ${Math.floor(processedCount / batchSize) + 1}: Updated ${result.modifiedCount} documents`);
+        console.log(
+          `📝 Batch ${Math.floor(processedCount / batchSize) + 1}: Updated ${result.modifiedCount} documents`,
+        );
       }
 
       processedCount += cases.length;
@@ -174,14 +176,14 @@ async function addPhoneticTokensToExistingCases() {
     try {
       await collection.createIndex({ 'debtor.phoneticTokens': 1 });
       console.log('✅ Created index on debtor.phoneticTokens');
-    } catch (error) {
+    } catch (_error) {
       console.log('⚠️  Index on debtor.phoneticTokens may already exist');
     }
 
     try {
       await collection.createIndex({ 'jointDebtor.phoneticTokens': 1 });
       console.log('✅ Created index on jointDebtor.phoneticTokens');
-    } catch (error) {
+    } catch (_error) {
       console.log('⚠️  Index on jointDebtor.phoneticTokens may already exist');
     }
 
@@ -189,15 +191,14 @@ async function addPhoneticTokensToExistingCases() {
     try {
       await collection.createIndex({
         'debtor.phoneticTokens': 1,
-        'jointDebtor.phoneticTokens': 1
+        'jointDebtor.phoneticTokens': 1,
       });
       console.log('✅ Created compound index on phonetic tokens');
-    } catch (error) {
+    } catch (_error) {
       console.log('⚠️  Compound index may already exist');
     }
 
     console.log('\n✅ Migration completed successfully!');
-
   } catch (error) {
     console.error('\n❌ Migration failed:', error);
     process.exit(1);

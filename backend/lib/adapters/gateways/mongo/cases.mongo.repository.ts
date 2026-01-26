@@ -28,6 +28,10 @@ import { shouldUseMockData, getMockPhoneticSearchCases } from './cases.mongo.rep
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
+// Maximum number of results to fetch before phonetic similarity filtering
+// This prevents memory issues while allowing enough results for accurate filtering
+const PHONETIC_SEARCH_MAX_FETCH = 2000;
+
 const { and, or, using } = QueryBuilder;
 const {
   addFields,
@@ -367,7 +371,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
-      // TODO: CAMS-376 - Remove this entire block after database backfill is complete
+      // TODO: CAMS-376 - Remove this entire block after:
+      // 1. This branch is merged to main
+      // 2. Migration script (npm run migrate:phonetic-tokens) is run in all environments
+      // 3. New cases are being loaded with phoneticTokens via the dataflow
+      // 4. Verify phoneticTokens exist in production: db.cases.findOne({ 'debtor.phoneticTokens': { $exists: true } })
       if (shouldUseMockData()) {
         let mockCases = getMockPhoneticSearchCases();
         this.context.logger.warn(
@@ -419,21 +427,29 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         const spec = pipeline(
           match(and(...conditions)),
           sort(descending(dateFiled), descending(caseNumber)),
+          paginate(0, PHONETIC_SEARCH_MAX_FETCH),
         );
-        const allResults = await this.getAdapter<SyncedCase>().aggregate(spec);
+        const initialResults = await this.getAdapter<SyncedCase>().paginate(spec);
 
         const similarityThreshold =
           this.context?.config?.search?.phonetic?.similarityThreshold || SIMILARITY_THRESHOLD;
         const filteredResults = filterCasesByDebtorNameSimilarity(
-          allResults,
+          initialResults.data,
           predicate.debtorName,
           similarityThreshold,
         );
 
         this.context.logger.debug(
           MODULE_NAME,
-          `Phonetic search: ${allResults.length} results before filtering, ${filteredResults.length} after (threshold: ${similarityThreshold})`,
+          `Phonetic search: ${initialResults.data.length} results before filtering, ${filteredResults.length} after (threshold: ${similarityThreshold})`,
         );
+
+        if (initialResults.data.length >= PHONETIC_SEARCH_MAX_FETCH) {
+          this.context.logger.warn(
+            MODULE_NAME,
+            `Phonetic search hit max fetch limit of ${PHONETIC_SEARCH_MAX_FETCH}. Some results may be excluded. Consider narrowing search criteria.`,
+          );
+        }
 
         const start = predicate.offset || 0;
         const end = start + (predicate.limit || 25);

@@ -79,7 +79,7 @@ function createCase(
  *
  * Total: 108 cases covering all edge cases
  */
-export const mockPhoneticSearchCases: SyncedCase[] = [
+const mockPhoneticSearchCases: SyncedCase[] = [
   // ===== Jon/John Phonetic Matches (Chapter 7) =====
   createCase('24-00001', 'Jon Smith', '7', '081'),
   createCase('24-00002', 'John Smith', '7', '081'),

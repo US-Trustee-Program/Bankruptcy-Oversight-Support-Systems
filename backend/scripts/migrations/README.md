@@ -20,6 +20,10 @@ Adds phonetic tokens to existing cases in MongoDB for fuzzy name searching.
 ```bash
 # From project root
 npm run migrate:phonetic-tokens
+
+# Or from backend directory
+cd backend
+npm run migrate:phonetic-tokens
 ```
 
 **Required Environment Variables**:
@@ -71,6 +75,10 @@ Verifies that phonetic search indexes exist and measures their performance.
 **Usage**:
 ```bash
 # From project root
+npm run verify:phonetic-indexes
+
+# Or from backend directory
+cd backend
 npm run verify:phonetic-indexes
 ```
 
@@ -296,6 +304,6 @@ For issues or questions:
 
 ## Related Documentation
 
-- [Phonetic Search Indexes Documentation](../../docs/operations/phonetic-search-indexes.md)
-- [Database Operations Guide](../../docs/operations/README.md)
-- [Architecture Documentation](../../docs/architecture/README.md)
+- [Phonetic Search Indexes Documentation](../../../docs/operations/phonetic-search-indexes.md)
+- [Database Operations Guide](../../../docs/operations/README.md)
+- [Architecture Documentation](../../../docs/architecture/README.md)
