@@ -16,7 +16,7 @@ import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import * as Validation from '@common/cams/validation';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { TRUSTEE_INTERNAL_SPEC } from '@common/cams/trustees';
+import { trusteeInternalSpec } from '@common/cams/trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 const ADDRESS_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED;
@@ -545,7 +545,7 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const result = validateField('address1', '  abc  ');
 
-    expect(spy).toHaveBeenCalledWith(TRUSTEE_INTERNAL_SPEC.address1, 'abc');
+    expect(spy).toHaveBeenCalledWith(trusteeInternalSpec.address1, 'abc');
     expect(result).toBeUndefined();
   });
 
@@ -563,17 +563,17 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     validateField('city', '   ');
 
-    expect(spy2).toHaveBeenCalledWith(TRUSTEE_INTERNAL_SPEC.city, undefined);
+    expect(spy2).toHaveBeenCalledWith(trusteeInternalSpec.city, undefined);
   });
 
   test('getDynamicSpec removes spec keys that are not present in form data (covers delete path)', async () => {
-    (TRUSTEE_INTERNAL_SPEC as unknown as Record<string, unknown[]>).__extra_temp_key = [];
+    (trusteeInternalSpec as unknown as Record<string, unknown[]>).__extra_temp_key = [];
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'spec-rem-1' });
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    delete (TRUSTEE_INTERNAL_SPEC as unknown as Record<string, unknown[]>).__extra_temp_key;
+    delete (trusteeInternalSpec as unknown as Record<string, unknown[]>).__extra_temp_key;
   });
 
   test('shows saving state while awaiting patchTrustee', async () => {
