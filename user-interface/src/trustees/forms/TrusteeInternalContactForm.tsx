@@ -14,8 +14,11 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeInput } from '@common/cams/trustees';
-import { TRUSTEE_INTERNAL_SPEC, TrusteeInternalFormData } from './trusteeForms.types';
+import {
+  TrusteeInput,
+  TRUSTEE_INTERNAL_SPEC,
+  TrusteeInternalFormData,
+} from '@common/cams/trustees';
 import { validateEach, validateObject } from '@common/cams/validation';
 import { ContactInformation } from '@common/cams/contact';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';

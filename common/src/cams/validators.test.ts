@@ -2,6 +2,26 @@ import { describe, test, expect } from 'vitest';
 import { ValidationSpec, validateObject, VALID, ValidatorResult } from './validation';
 import Validators from './validators';
 
+// Constants for generic auto-generated validator messages
+const MIN_LENGTH_1_CHAR = 'Min length 1 character';
+const MIN_LENGTH_5_CHARS = 'Min length 5 characters';
+const MIN_LENGTH_6_CHARS = 'Min length 6 characters';
+const MIN_LENGTH_10_CHARS = 'Min length 10 characters';
+const MAX_LENGTH_4_CHARS = 'Max length 4 characters';
+const BETWEEN_1_AND_2_SELECTIONS = 'Must be between 1 and 2 selections';
+const BETWEEN_2_AND_4_CHARS = 'Must be between 2 and 4 characters';
+const BETWEEN_3_AND_10_SELECTIONS = 'Must be between 3 and 10 selections';
+const BETWEEN_6_AND_10_CHARS = 'Must be between 6 and 10 characters';
+const EXACTLY_3_CHARS = 'Should be 3 characters in length';
+const EXACTLY_10_CHARS = 'Should be 10 characters in length';
+
+// Constants for other repeated validation messages
+const MUST_BE_VALID_DATE = 'Must be a valid date';
+const MUST_BE_YYYY_MM_DD_FORMAT = 'Must be in YYYY-MM-DD format';
+const VALUE_IS_NOT_AN_ARRAY = 'Value is not an array';
+const VALUE_DOES_NOT_HAVE_LENGTH = 'Value does not have a length';
+const MUST_NOT_BE_SET = 'Must not be set';
+
 type TestPerson = {
   name?: string;
   email?: string;
@@ -23,13 +43,13 @@ describe('validators', () => {
         description: 'should return invalid for string one character shorter than minimum length',
         minLength: 6,
         value: 'hello',
-        expected: { reasons: ['Must contain at least 6 characters'] },
+        expected: { reasons: [MIN_LENGTH_6_CHARS] },
       },
       {
         description: 'should return invalid for empty string when minimum is greater than 0',
         minLength: 1,
         value: '',
-        expected: { reasons: ['Must contain at least 1 characters'] },
+        expected: { reasons: [MIN_LENGTH_1_CHAR] },
       },
       {
         description: 'should return valid for empty string when minimum is 0',
@@ -41,7 +61,7 @@ describe('validators', () => {
         description: 'should return invalid for non-string values',
         minLength: 3,
         value: 123,
-        expected: { reasons: ['Value does not have a length'] },
+        expected: { reasons: [VALUE_DOES_NOT_HAVE_LENGTH] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -62,7 +82,7 @@ describe('validators', () => {
         description: 'should return invalid for string longer than maximum length',
         maxLength: 4,
         value: 'hello',
-        expected: { reasons: ['Must contain at most 4 characters'] },
+        expected: { reasons: [MAX_LENGTH_4_CHARS] },
       },
       {
         description: 'should return valid for empty string',
@@ -74,7 +94,7 @@ describe('validators', () => {
         description: 'should return invalid for non-string values',
         maxLength: 5,
         value: 123,
-        expected: { reasons: ['Value does not have a length'] },
+        expected: { reasons: [VALUE_DOES_NOT_HAVE_LENGTH] },
       },
       {
         description: 'should return invalid for null values',
@@ -117,14 +137,14 @@ describe('validators', () => {
         min: 6,
         max: 10,
         value: 'hello',
-        expected: { reasons: ['Must contain between 6 and 10 characters'] },
+        expected: { reasons: [BETWEEN_6_AND_10_CHARS] },
       },
       {
         description: 'should return invalid for string one character longer than maximum length',
         min: 2,
         max: 4,
         value: 'hello',
-        expected: { reasons: ['Must contain between 2 and 4 characters'] },
+        expected: { reasons: [BETWEEN_2_AND_4_CHARS] },
       },
       {
         description: 'should return valid for array within length bounds',
@@ -138,21 +158,21 @@ describe('validators', () => {
         min: 3,
         max: 10,
         value: ['a', 'b'],
-        expected: { reasons: ['Must contain between 3 and 10 selections'] },
+        expected: { reasons: [BETWEEN_3_AND_10_SELECTIONS] },
       },
       {
         description: 'should return invalid for array longer than maximum',
         min: 1,
         max: 2,
         value: ['a', 'b', 'c'],
-        expected: { reasons: ['Must contain between 1 and 2 selections'] },
+        expected: { reasons: [BETWEEN_1_AND_2_SELECTIONS] },
       },
       {
         description: 'should return invalid for non-string, non-array values',
         min: 1,
         max: 5,
         value: 123,
-        expected: { reasons: ['Value does not have a length'] },
+        expected: { reasons: [VALUE_DOES_NOT_HAVE_LENGTH] },
       },
       {
         description: 'should return invalid for null values',
@@ -354,7 +374,7 @@ describe('validators', () => {
         value: { name: 'Jo', email: 'invalid-email' },
         expected: {
           reasonMap: {
-            name: { reasons: ['Must contain at least 5 characters'] },
+            name: { reasons: [MIN_LENGTH_5_CHARS] },
           },
         },
       },
@@ -388,7 +408,7 @@ describe('validators', () => {
         expected: {
           reasonMap: {
             name: {
-              reasons: ['Must contain at least 10 characters', 'Must match the pattern /^[A-Z]/'],
+              reasons: [MIN_LENGTH_10_CHARS, 'Must match the pattern /^[A-Z]/'],
             },
           },
         },
@@ -435,7 +455,7 @@ describe('validators', () => {
       expect(validator({ name: 'Valid' })).toEqual(VALID);
       expect(validator({ name: '' })).toEqual({
         reasonMap: {
-          name: { reasons: ['Must contain at least 1 characters'] },
+          name: { reasons: [MIN_LENGTH_1_CHAR] },
         },
       });
     });
@@ -467,11 +487,11 @@ describe('validators', () => {
         }),
       ).toEqual({
         reasonMap: {
-          name: { reasons: ['Must contain at least 1 characters'] },
+          name: { reasons: [MIN_LENGTH_1_CHAR] },
           profile: {
             reasonMap: {
               age: { reasons: ['Age must be a number'] },
-              city: { reasons: ['Must contain at least 1 characters'] },
+              city: { reasons: [MIN_LENGTH_1_CHAR] },
             },
           },
         },
@@ -494,17 +514,17 @@ describe('validators', () => {
       {
         description: 'should return invalid for any other values',
         value: 'some value',
-        expected: { reasons: ['Must not be set'] },
+        expected: { reasons: [MUST_NOT_BE_SET] },
       },
       {
         description: 'should return invalid for empty string',
         value: '',
-        expected: { reasons: ['Must not be set'] },
+        expected: { reasons: [MUST_NOT_BE_SET] },
       },
       {
         description: 'should return invalid for number values',
         value: 0,
-        expected: { reasons: ['Must not be set'] },
+        expected: { reasons: [MUST_NOT_BE_SET] },
       },
     ];
 
@@ -525,13 +545,13 @@ describe('validators', () => {
         description: 'should return invalid for string shorter than exact length',
         length: 10,
         value: 'hello',
-        expected: { reasons: ['Must contain exactly 10 characters'] },
+        expected: { reasons: [EXACTLY_10_CHARS] },
       },
       {
         description: 'should return invalid for string longer than exact length',
         length: 3,
         value: 'hello',
-        expected: { reasons: ['Must contain exactly 3 characters'] },
+        expected: { reasons: [EXACTLY_3_CHARS] },
       },
       {
         description: 'should return valid for array with exact length',
@@ -580,31 +600,31 @@ describe('validators', () => {
         description: 'should return invalid for non-array values',
         validators: [Validators.minLength(1)],
         value: 'not an array',
-        expected: { reasons: ['Value is not an array'] },
+        expected: { reasons: [VALUE_IS_NOT_AN_ARRAY] },
       },
       {
         description: 'should return invalid for null values',
         validators: [Validators.minLength(1)],
         value: null,
-        expected: { reasons: ['Value is not an array'] },
+        expected: { reasons: [VALUE_IS_NOT_AN_ARRAY] },
       },
       {
         description: 'should return invalid for undefined values',
         validators: [Validators.minLength(1)],
         value: undefined,
-        expected: { reasons: ['Value is not an array'] },
+        expected: { reasons: [VALUE_IS_NOT_AN_ARRAY] },
       },
       {
         description: 'should return invalid for numeric values',
         validators: [Validators.minLength(1)],
         value: 123,
-        expected: { reasons: ['Value is not an array'] },
+        expected: { reasons: [VALUE_IS_NOT_AN_ARRAY] },
       },
       {
         description: 'should return single error for array with one invalid element',
         validators: [Validators.minLength(5)],
         value: ['hello', 'hi', 'world'],
-        expected: { reasons: ['Element at index 1: Must contain at least 5 characters'] },
+        expected: { reasons: [`Element at index 1: ${MIN_LENGTH_5_CHARS}`] },
       },
       {
         description: 'should return all errors for array with multiple invalid elements',
@@ -612,8 +632,8 @@ describe('validators', () => {
         value: ['hello', 'hi', 'ok', 'world'],
         expected: {
           reasons: [
-            'Element at index 1: Must contain at least 5 characters',
-            'Element at index 2: Must contain at least 5 characters',
+            `Element at index 1: ${MIN_LENGTH_5_CHARS}`,
+            `Element at index 2: ${MIN_LENGTH_5_CHARS}`,
           ],
         },
       },
@@ -632,8 +652,8 @@ describe('validators', () => {
         value: ['Hi', 'ok'],
         expected: {
           reasons: [
-            'Element at index 0: Must contain at least 5 characters',
-            'Element at index 1: Must contain at least 5 characters',
+            `Element at index 0: ${MIN_LENGTH_5_CHARS}`,
+            `Element at index 1: ${MIN_LENGTH_5_CHARS}`,
             'Element at index 1: Must start with uppercase',
           ],
         },
@@ -686,7 +706,7 @@ describe('validators', () => {
         validators: [Validators.optional(Validators.minLength(5))],
         value: ['hello', 'hi', undefined, 'world'],
         expected: {
-          reasons: ['Element at index 1: Must contain at least 5 characters'],
+          reasons: [`Element at index 1: ${MIN_LENGTH_5_CHARS}`],
         },
       },
       {
@@ -707,8 +727,8 @@ describe('validators', () => {
         ],
         expected: {
           reasons: [
-            'Element at index 1: Element at index 0: Must contain at least 5 characters',
-            'Element at index 1: Element at index 1: Must contain at least 5 characters',
+            `Element at index 1: Element at index 0: ${MIN_LENGTH_5_CHARS}`,
+            `Element at index 1: Element at index 1: ${MIN_LENGTH_5_CHARS}`,
           ],
         },
       },
@@ -726,9 +746,9 @@ describe('validators', () => {
 
       expect(result).toEqual({
         reasons: [
-          'Element at index 0: Must contain at least 10 characters',
-          'Element at index 1: Must contain at least 10 characters',
-          'Element at index 2: Must contain at least 10 characters',
+          `Element at index 0: ${MIN_LENGTH_10_CHARS}`,
+          `Element at index 1: ${MIN_LENGTH_10_CHARS}`,
+          `Element at index 2: ${MIN_LENGTH_10_CHARS}`,
         ],
       });
     });
@@ -748,8 +768,8 @@ describe('validators', () => {
 
       expect(result.valid).not.toBe(true);
       expect(result.reasons).toHaveLength(1000);
-      expect(result.reasons![0]).toBe('Element at index 0: Must contain at least 1 characters');
-      expect(result.reasons![999]).toBe('Element at index 999: Must contain at least 1 characters');
+      expect(result.reasons![0]).toBe('Element at index 0: Min length 1 character');
+      expect(result.reasons![999]).toBe('Element at index 999: Min length 1 character');
     });
   });
 
@@ -768,27 +788,27 @@ describe('validators', () => {
       {
         description: 'should return invalid for non-leap year Feb 29',
         value: '2023-02-29',
-        expected: { reasons: ['Must be a valid date'] },
+        expected: { reasons: [MUST_BE_VALID_DATE] },
       },
       {
         description: 'should return invalid for incomplete date',
         value: '2024-01',
-        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+        expected: { reasons: [MUST_BE_YYYY_MM_DD_FORMAT] },
       },
       {
         description: 'should return invalid for wrong format',
         value: '01/15/2024',
-        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+        expected: { reasons: [MUST_BE_YYYY_MM_DD_FORMAT] },
       },
       {
         description: 'should return invalid for invalid month',
         value: '2024-13-01',
-        expected: { reasons: ['Must be a valid date'] },
+        expected: { reasons: [MUST_BE_VALID_DATE] },
       },
       {
         description: 'should return invalid for invalid day',
         value: '2024-01-32',
-        expected: { reasons: ['Must be a valid date'] },
+        expected: { reasons: [MUST_BE_VALID_DATE] },
       },
       {
         description: 'should return invalid for non-string value',
@@ -803,7 +823,7 @@ describe('validators', () => {
       {
         description: 'should return invalid for empty string',
         value: '',
-        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+        expected: { reasons: [MUST_BE_YYYY_MM_DD_FORMAT] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -865,7 +885,7 @@ describe('validators', () => {
         min: '2024-01-01',
         max: '2024-12-31',
         value: '01/15/2024',
-        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+        expected: { reasons: [MUST_BE_YYYY_MM_DD_FORMAT] },
       },
       {
         description: 'should return valid when no min or max specified',
@@ -910,7 +930,7 @@ describe('validators', () => {
         description: 'should return invalid for invalid date format',
         compareDate: '2024-06-15',
         value: 'invalid',
-        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+        expected: { reasons: [MUST_BE_YYYY_MM_DD_FORMAT] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -950,7 +970,7 @@ describe('validators', () => {
         description: 'should return invalid for invalid date format',
         compareDate: '2024-06-15',
         value: 'invalid',
-        expected: { reasons: ['Must be in YYYY-MM-DD format'] },
+        expected: { reasons: [MUST_BE_YYYY_MM_DD_FORMAT] },
       },
     ];
     test.each(testCases)('$description', (testCase) => {
@@ -1014,7 +1034,7 @@ describe('validators', () => {
 
     test('should return invalid for invalid date format', () => {
       const validator = Validators.futureDateWithinYears(5);
-      expect(validator('invalid')).toEqual({ reasons: ['Must be in YYYY-MM-DD format'] });
+      expect(validator('invalid')).toEqual({ reasons: [MUST_BE_YYYY_MM_DD_FORMAT] });
     });
   });
 });

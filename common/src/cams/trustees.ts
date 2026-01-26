@@ -5,7 +5,7 @@ import { Address, ContactInformation, PhoneNumber } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
-import { ValidationSpec } from './validation';
+import { ValidationSpec, ValidatorFunction, ValidatorResult, validateObject } from './validation';
 import V from './validators';
 import {
   COMPANY_NAME_REGEX,
@@ -203,11 +203,11 @@ export type TrusteeHistory =
   | TrusteeAppointmentHistory;
 
 export const addressSpec: ValidationSpec<Address> = {
-  address1: [V.minLength(1)],
-  address2: [V.optional(V.maxLength(50))],
-  address3: [V.optional(V.maxLength(50))],
-  city: [V.minLength(1)],
-  state: [V.exactLength(2)],
+  address1: [V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED), V.maxLength(40)],
+  address2: [V.optional(V.maxLength(40))],
+  address3: [V.optional(V.maxLength(40))],
+  city: [V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED), V.maxLength(50)],
+  state: [V.exactLength(2, FIELD_VALIDATION_MESSAGES.STATE_REQUIRED)],
   zipCode: [V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE)],
   countryCode: [V.exactLength(2)],
 };
@@ -220,7 +220,7 @@ export const phoneSpec: ValidationSpec<PhoneNumber> = {
 export const contactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.spec(addressSpec)],
   phone: [V.optional(V.spec(phoneSpec))],
-  email: [V.optional(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL))],
+  email: [V.optional(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL), V.maxLength(50))],
   website: [
     V.optional(
       V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.WEBSITE),
@@ -230,7 +230,7 @@ export const contactInformationSpec: ValidationSpec<ContactInformation> = {
   companyName: [
     V.optional(
       V.matches(COMPANY_NAME_REGEX, FIELD_VALIDATION_MESSAGES.COMPANY_NAME),
-      V.maxLength(50, 'Max length 50 characters'),
+      V.maxLength(50),
     ),
   ],
 };
@@ -257,12 +257,155 @@ export const assistantSpec: ValidationSpec<TrusteeAssistant> = {
   contact: [V.spec(contactInformationSpec)],
 };
 
+// Custom validator functions for trustee forms
+const completedAddressRequired: ValidatorFunction = (obj: unknown): ValidatorResult => {
+  const form = obj as {
+    address1?: string;
+    address2?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+  };
+
+  const hasStartedAddress =
+    !!form.address1 || !!form.address2 || !!form.city || !!form.state || !!form.zipCode;
+
+  if (!hasStartedAddress) {
+    return { valid: true };
+  }
+
+  const requiredFieldsSpec: Readonly<ValidationSpec<typeof form>> = {
+    address1: [V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED)],
+    city: [V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED)],
+    state: [V.minLength(1, FIELD_VALIDATION_MESSAGES.STATE_REQUIRED)],
+    zipCode: [V.minLength(1, FIELD_VALIDATION_MESSAGES.ZIP_CODE_REQUIRED)],
+  };
+
+  const result = validateObject(requiredFieldsSpec, form);
+  if (result.valid) {
+    return { valid: true };
+  } else {
+    result.reasonMap = {
+      ...result.reasonMap,
+      $: {
+        reasonMap: result.reasonMap?.$?.reasonMap,
+        reasons: [
+          ...(result.reasonMap?.$?.reasons ?? []),
+          FIELD_VALIDATION_MESSAGES.PARTIAL_ADDRESS,
+        ],
+      },
+    };
+    return result;
+  }
+};
+
+const phoneRequiredWithExtension: ValidatorFunction = (obj): ValidatorResult => {
+  const form = obj as { phone?: string; extension?: string };
+  if (form.extension && !form.phone) {
+    return {
+      reasonMap: { phone: { reasons: [FIELD_VALIDATION_MESSAGES.PHONE_REQUIRED_WITH_EXTENSION] } },
+    };
+  }
+  return { valid: true };
+};
+
 export const trusteeSpec: ValidationSpec<TrusteeInput> = {
-  name: [V.minLength(1)],
+  name: [V.minLength(1, 'Trustee name is required'), V.maxLength(50)],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
   assistant: [V.optional(V.spec(assistantSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   software: [V.optional(V.length(0, 100))],
   zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
+};
+
+// Form-specific validation specs for frontend use
+export type TrusteePublicFormData = {
+  name?: string;
+  companyName?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  extension?: string;
+  email?: string;
+  website?: string;
+};
+
+export type TrusteeInternalFormData = {
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  extension?: string;
+  email?: string;
+};
+
+export type TrusteeAssistantFormData = {
+  name?: string;
+  address1?: string;
+  address2?: string;
+  city?: string;
+  state?: string;
+  zipCode?: string;
+  phone?: string;
+  extension?: string;
+  email?: string;
+};
+
+export const TRUSTEE_PUBLIC_SPEC: Readonly<ValidationSpec<TrusteePublicFormData>> = {
+  name: [V.minLength(1, 'Trustee name is required'), V.maxLength(50)],
+  companyName: [
+    V.optional(
+      V.matches(COMPANY_NAME_REGEX, FIELD_VALIDATION_MESSAGES.COMPANY_NAME),
+      V.maxLength(50),
+    ),
+  ],
+  address1: [V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED), V.maxLength(40)],
+  address2: [V.optional(V.maxLength(40))],
+  city: [V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED), V.maxLength(50)],
+  state: [V.exactLength(2, FIELD_VALIDATION_MESSAGES.STATE_REQUIRED)],
+  zipCode: [V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE)],
+  email: [V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL), V.maxLength(50)],
+  website: [
+    V.optional(
+      V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.WEBSITE),
+      V.maxLength(255, FIELD_VALIDATION_MESSAGES.WEBSITE_MAX_LENGTH),
+    ),
+  ],
+  phone: [V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER)],
+  extension: [V.optional(V.matches(EXTENSION_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION))],
+};
+
+export const TRUSTEE_INTERNAL_SPEC: Readonly<ValidationSpec<TrusteeInternalFormData>> = {
+  $: [completedAddressRequired, phoneRequiredWithExtension],
+  address1: [
+    V.optional(V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED), V.maxLength(40)),
+  ],
+  address2: [V.optional(V.maxLength(40))],
+  city: [V.optional(V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED), V.maxLength(50))],
+  state: [V.optional(V.exactLength(2, FIELD_VALIDATION_MESSAGES.STATE_REQUIRED))],
+  zipCode: [V.optional(V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE))],
+  email: [V.optional(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL), V.maxLength(50))],
+  phone: [V.optional(V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER))],
+  extension: [V.optional(V.matches(EXTENSION_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION))],
+};
+
+export const TRUSTEE_ASSISTANT_SPEC: Readonly<ValidationSpec<TrusteeAssistantFormData>> = {
+  $: [completedAddressRequired, phoneRequiredWithExtension],
+  name: [V.optional(V.minLength(1, 'Trustee name is required'), V.maxLength(50))],
+  address1: [
+    V.optional(V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED), V.maxLength(40)),
+  ],
+  address2: [V.optional(V.maxLength(40))],
+  city: [V.optional(V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED), V.maxLength(50))],
+  state: [V.optional(V.exactLength(2, FIELD_VALIDATION_MESSAGES.STATE_REQUIRED))],
+  zipCode: [V.optional(V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE))],
+  email: [V.optional(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL), V.maxLength(50))],
+  phone: [V.optional(V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER))],
+  extension: [V.optional(V.matches(EXTENSION_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION))],
 };

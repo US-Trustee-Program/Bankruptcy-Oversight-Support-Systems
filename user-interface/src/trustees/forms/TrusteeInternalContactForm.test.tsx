@@ -16,14 +16,14 @@ import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import * as Validation from '@common/cams/validation';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
-import {
-  ADDRESS_REQUIRED_ERROR_REASON,
-  CITY_REQUIRED_ERROR_REASON,
-  PARTIAL_ADDRESS_ERROR_REASON,
-  STATE_REQUIRED_ERROR_REASON,
-  ZIP_CODE_REQUIRED_ERROR_REASON,
-  TRUSTEE_INTERNAL_SPEC,
-} from '@/trustees/forms/trusteeForms.types';
+import { TRUSTEE_INTERNAL_SPEC } from '@common/cams/trustees';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+
+const ADDRESS_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED;
+const CITY_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.CITY_REQUIRED;
+const PARTIAL_ADDRESS_ERROR_REASON = FIELD_VALIDATION_MESSAGES.PARTIAL_ADDRESS;
+const STATE_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.STATE_REQUIRED;
+const ZIP_CODE_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ZIP_CODE_REQUIRED;
 
 function renderWithProps(
   props: TrusteeInternalContactFormProps = {

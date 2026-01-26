@@ -323,6 +323,43 @@ describe('trustee-appointments', () => {
         const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
         expect(result.valid).toBe(true);
       });
+
+      test('should pass validation when chapter is missing', () => {
+        const appointment = {
+          ...validAppointment,
+          chapter: undefined,
+        } as unknown as TrusteeAppointmentInput;
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should pass validation when appointmentType is missing', () => {
+        const appointment = {
+          ...validAppointment,
+          appointmentType: undefined,
+        } as unknown as TrusteeAppointmentInput;
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should pass validation when status is missing', () => {
+        const appointment = {
+          ...validAppointment,
+          status: undefined,
+        } as unknown as TrusteeAppointmentInput;
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should pass validation when chapter and appointmentType are missing', () => {
+        const appointment = {
+          ...validAppointment,
+          chapter: undefined,
+          appointmentType: undefined,
+        } as unknown as TrusteeAppointmentInput;
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
     });
   });
 });
