@@ -69,7 +69,8 @@ async function addPhoneticTokensToExistingCases() {
   }
 
   console.log('🔄 Starting phonetic tokens migration...');
-  console.log(`📊 Database: ${databaseName}`);
+  // Do not log database name to prevent information disclosure
+  console.log('📊 Processing database...');
 
   let client: MongoClient | null = null;
 
