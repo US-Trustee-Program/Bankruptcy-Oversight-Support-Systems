@@ -779,6 +779,7 @@ describe('Cases repository', () => {
         chapters: ['15'],
         divisionCodes: ['081'],
         debtorName: 'John',
+        phoneticTokens: generatePhoneticTokens('John'),
         limit: 25,
         offset: 0,
       };
@@ -809,12 +810,13 @@ describe('Cases repository', () => {
         phoneticTokens: generatePhoneticTokens('Jane Doe'),
       };
 
-      const allMockCases = [mockCase1, mockCase2];
+      // Only return cases that match the phonetic tokens (John matches John Smith, not Jane Doe)
+      const filteredMockCases = [mockCase1];
 
       // Phonetic search uses paginate() not aggregate() after performance optimization
       const paginateSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'paginate')
-        .mockResolvedValue({ data: allMockCases, metadata: { total: 2 } });
+        .mockResolvedValue({ data: filteredMockCases, metadata: { total: 1 } });
 
       const result = await repoWithPhonetic.searchCases(predicate);
 
