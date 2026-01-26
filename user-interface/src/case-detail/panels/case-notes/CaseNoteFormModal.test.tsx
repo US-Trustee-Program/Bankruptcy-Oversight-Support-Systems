@@ -15,7 +15,6 @@ import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import MockData from '@common/cams/test-utilities/mock-data';
 import LocalStorage from '@/lib/utils/local-storage';
 import { getCamsUserReference } from '@common/cams/session';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { randomUUID } from 'crypto';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
@@ -151,7 +150,6 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
 const MODAL_ID = 'modal-case-note-form';
 const MODAL_WRAPPER_ID = `modal-${MODAL_ID}`;
 const TITLE_INPUT_ID = 'case-note-title-input';
-const CONTENT_INPUT_SELECTOR = '#textarea-note-content';
 const RICH_TEXT_CONTENT_INPUT_SELECTOR = '.editor-container .editor-content';
 const OPEN_BUTTON_ID = 'open-modal-button';
 const CANCEL_BUTTON_ID = `button-${MODAL_ID}-cancel-button`;
@@ -159,10 +157,9 @@ const SUBMIT_BUTTON_ID = `button-${MODAL_ID}-submit-button`;
 const ERROR_MESSAGE = 'There was a problem submitting the case note.';
 const TEST_CASE_ID = '000-11-22222';
 
-// Helper function to get the correct content input based on feature flag
-const getContentInput = (isFeatureEnabled: boolean = true) => {
-  const selector = isFeatureEnabled ? RICH_TEXT_CONTENT_INPUT_SELECTOR : CONTENT_INPUT_SELECTOR;
-  return document.querySelector(selector);
+// Helper function to get the content input
+const getContentInput = () => {
+  return document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
 };
 
 /**
@@ -223,10 +220,6 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     vi.resetModules();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({ expiresAfter: 1, value: {} });
-    const mockFeatureFlags = {
-      [FeatureFlagHook.FORMAT_CASE_NOTES]: true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   afterEach(() => {
@@ -489,54 +482,40 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(clearFormSpy).toHaveBeenCalled();
   });
 
-  const featureFlagCases: { enabled: boolean; initialContent: string }[] = [
-    { enabled: false, initialContent: 'Initial Content' },
-    { enabled: true, initialContent: '<p>Initial Content</p>' },
-  ];
+  test('should initialize form with provided values', async () => {
+    const initialTitle = 'Initial Title';
+    const initialContent = '<p>Initial Content</p>';
 
-  test.each(featureFlagCases)(
-    `should initialize form with provided values when RTE enabled = $enabled`,
-    async (args) => {
-      const initialTitle = 'Initial Title';
-      const { enabled, initialContent } = args;
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(
+      modalRef,
+      {},
+      {
+        caseId: TEST_CASE_ID,
+        title: initialTitle,
+        content: initialContent,
+        initialTitle: initialTitle,
+        initialContent: initialContent,
+        mode: 'create',
+      },
+    );
 
-      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-        [FeatureFlagHook.FORMAT_CASE_NOTES]: enabled,
-      });
+    expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
 
-      const modalRef = React.createRef<CaseNoteFormModalRef>();
-      renderComponent(
-        modalRef,
-        {},
-        {
-          caseId: TEST_CASE_ID,
-          title: initialTitle,
-          content: initialContent,
-          initialTitle: initialTitle,
-          initialContent: initialContent,
-          mode: 'create',
-        },
-      );
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
 
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = getContentInput();
+
+    expect(contentInput).toBeInTheDocument();
+    expect(contentInput?.innerHTML).toEqual(initialContent);
+    expect(titleInput).toHaveValue(initialTitle);
+
+    await waitFor(() => {
       expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
-
-      const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-      await userEvent.click(openButton);
-
-      const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-      const contentInput = getContentInput(enabled);
-
-      expect(contentInput).toBeInTheDocument();
-
-      const content = enabled ? contentInput?.innerHTML : contentInput?.textContent;
-      expect(content).toEqual(initialContent);
-      expect(titleInput).toHaveValue(initialTitle);
-
-      await waitFor(() => {
-        expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
-      });
-    },
-  );
+    });
+  });
 
   test('should disable Save button unless both Title and Content have non-empty values', async () => {
     const modalRef = React.createRef<CaseNoteFormModalRef>();
