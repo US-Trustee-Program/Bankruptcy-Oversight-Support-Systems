@@ -22,21 +22,38 @@ function formatDebtorNames(debtorName: string, jointDebtorName?: string): JSX.El
 }
 
 export function SearchResultsRow(props: SearchResultsRowProps) {
-  const { bCase, labels, ...otherProps } = props;
+  const { bCase, labels, phoneticSearchEnabled = false, ...otherProps } = props;
 
-  return (
-    <TableRow {...otherProps}>
-      <TableRowData dataLabel={labels[0]}>
-        <span className="no-wrap">
-          <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
-        </span>
-      </TableRowData>
-      <TableRowData dataLabel={labels[1]}>{bCase.caseTitle}</TableRowData>
-      <TableRowData dataLabel={labels[2]}>
-        {formatDebtorNames(bCase.debtor?.name ?? '', bCase.jointDebtor?.name)}
-      </TableRowData>
-      <TableRowData dataLabel={labels[3]}>{bCase.chapter}</TableRowData>
-      <TableRowData dataLabel={labels[4]}>{formatDate(bCase.dateFiled)}</TableRowData>
-    </TableRow>
-  );
+  if (phoneticSearchEnabled) {
+    // With Debtor Name column
+    return (
+      <TableRow {...otherProps}>
+        <TableRowData dataLabel={labels[0]}>
+          <span className="no-wrap">
+            <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
+          </span>
+        </TableRowData>
+        <TableRowData dataLabel={labels[1]}>{bCase.caseTitle}</TableRowData>
+        <TableRowData dataLabel={labels[2]}>
+          {formatDebtorNames(bCase.debtor?.name ?? '', bCase.jointDebtor?.name)}
+        </TableRowData>
+        <TableRowData dataLabel={labels[3]}>{bCase.chapter}</TableRowData>
+        <TableRowData dataLabel={labels[4]}>{formatDate(bCase.dateFiled)}</TableRowData>
+      </TableRow>
+    );
+  } else {
+    // Without Debtor Name column
+    return (
+      <TableRow {...otherProps}>
+        <TableRowData dataLabel={labels[0]}>
+          <span className="no-wrap">
+            <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
+          </span>
+        </TableRowData>
+        <TableRowData dataLabel={labels[1]}>{bCase.caseTitle}</TableRowData>
+        <TableRowData dataLabel={labels[2]}>{bCase.chapter}</TableRowData>
+        <TableRowData dataLabel={labels[3]}>{formatDate(bCase.dateFiled)}</TableRowData>
+      </TableRow>
+    );
+  }
 }

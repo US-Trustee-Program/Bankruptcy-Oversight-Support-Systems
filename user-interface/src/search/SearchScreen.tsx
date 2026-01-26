@@ -429,6 +429,7 @@ export default function SearchScreen() {
             <SearchResults
               id="search-results"
               searchPredicate={searchPredicate}
+              phoneticSearchEnabled={phoneticSearchEnabled}
               onStartSearching={setStartSearching}
               onEndSearching={setEndSearching}
               header={SearchResultsHeader}
