@@ -25,28 +25,23 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
   }, false);
 }
 
-const searchResultsHeaderLabels = [
-  'Case Number (Division)',
-  'Case Title',
-  'Debtor Name',
-  'Chapter',
-  'Case Filed',
-];
-
 export type SearchResultsHeaderProps = {
   id: string;
   labels: string[];
+  phoneticSearchEnabled?: boolean;
 };
 
 export type SearchResultsRowProps = TableRowProps & {
   idx: number;
   bCase: CaseSummary;
   labels: string[];
+  phoneticSearchEnabled?: boolean;
 };
 
 export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   id: string;
   searchPredicate: CasesSearchPredicate;
+  phoneticSearchEnabled?: boolean;
   onStartSearching?: () => void;
   onEndSearching?: () => void;
   noResultsMessage?: string;
@@ -59,6 +54,7 @@ function SearchResults(props: SearchResultsProps) {
   const {
     id,
     searchPredicate: searchPredicateProp,
+    phoneticSearchEnabled = false,
     onStartSearching,
     onEndSearching,
     noResultsMessage: noResultsMessageProp,
@@ -74,6 +70,11 @@ function SearchResults(props: SearchResultsProps) {
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
+
+  // Build column labels dynamically based on whether phonetic search is enabled
+  const searchResultsHeaderLabels = phoneticSearchEnabled
+    ? ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed']
+    : ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
 
   const pagination: PaginationModel | undefined = searchResults?.pagination;
 
@@ -201,10 +202,22 @@ function SearchResults(props: SearchResultsProps) {
             title="Search results"
             caption={`${new Intl.NumberFormat('en-US').format(totalCount)} ${totalCount === 1 ? 'case' : 'cases'}`}
           >
-            <Header id={id} labels={searchResultsHeaderLabels} />
+            <Header
+              id={id}
+              labels={searchResultsHeaderLabels}
+              phoneticSearchEnabled={phoneticSearchEnabled}
+            />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
-                return <Row bCase={bCase} labels={searchResultsHeaderLabels} idx={idx} key={idx} />;
+                return (
+                  <Row
+                    bCase={bCase}
+                    labels={searchResultsHeaderLabels}
+                    phoneticSearchEnabled={phoneticSearchEnabled}
+                    idx={idx}
+                    key={idx}
+                  />
+                );
               })}
             </TableBody>
           </Table>
