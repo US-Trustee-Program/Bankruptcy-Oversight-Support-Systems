@@ -309,52 +309,38 @@ describe('trustees', () => {
         expect(result.valid).toBeFalsy();
       });
 
-      test('should validate contact with company name containing only letters and spaces', () => {
-        const validContact: ContactInformation = {
-          address: {
-            address1: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '12345',
-            countryCode: 'US',
-          },
-          companyName: 'Test Company Name',
-        };
+      describe('company name', () => {
+        test('should validate contact with company name containing alphanumeric and special characters', () => {
+          const validContact: ContactInformation = {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '12345',
+              countryCode: 'US',
+            },
+            companyName: "ABC Corp. & Co., Inc. - 123's Best!",
+          };
 
-        const result = validateObject(contactInformationSpec, validContact);
-        expect(result.valid).toBe(true);
-      });
+          const result = validateObject(contactInformationSpec, validContact);
+          expect(result.valid).toBe(true);
+        });
 
-      test('should reject contact with company name containing numbers', () => {
-        const invalidContact: ContactInformation = {
-          address: {
-            address1: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '12345',
-            countryCode: 'US',
-          },
-          companyName: 'Test123 Company',
-        };
+        test('should reject contact with company name exceeding max length', () => {
+          const invalidContact: ContactInformation = {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '12345',
+              countryCode: 'US',
+            },
+            companyName: 'A'.repeat(51),
+          };
 
-        const result = validateObject(contactInformationSpec, invalidContact);
-        expect(result.valid).toBeFalsy();
-      });
-
-      test('should reject contact with company name exceeding max length', () => {
-        const invalidContact: ContactInformation = {
-          address: {
-            address1: '123 Main St',
-            city: 'New York',
-            state: 'NY',
-            zipCode: '12345',
-            countryCode: 'US',
-          },
-          companyName: 'A'.repeat(51),
-        };
-
-        const result = validateObject(contactInformationSpec, invalidContact);
-        expect(result.valid).toBeFalsy();
+          const result = validateObject(contactInformationSpec, invalidContact);
+          expect(result.valid).toBeFalsy();
+        });
       });
     });
 

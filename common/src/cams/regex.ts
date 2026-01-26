@@ -24,8 +24,6 @@ export const WEBSITE_RELAXED_REGEX =
 
 export const CASE_NUMBER_REGEX = /^\d{2}-\d{5}$/;
 
-export const COMPANY_NAME_REGEX = /^[a-zA-Z\s]+$/;
-
 /**
  * Checks if a string contains any protocol pattern (e.g., ftp:, mailto:, etc.)
  * @param str - The string to check

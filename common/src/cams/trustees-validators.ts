@@ -1,7 +1,6 @@
 import { ValidationSpec, ValidatorFunction, ValidatorResult, validateObject } from './validation';
 import V from './validators';
 import {
-  COMPANY_NAME_REGEX,
   EMAIL_REGEX,
   EXTENSION_REGEX,
   PHONE_REGEX,
@@ -26,12 +25,7 @@ import {
 
 export const trusteeName = [V.minLength(1, 'Trustee name is required'), V.maxLength(50)];
 
-export const companyName = [
-  V.optional(
-    V.matches(COMPANY_NAME_REGEX, FIELD_VALIDATION_MESSAGES.COMPANY_NAME),
-    V.maxLength(50),
-  ),
-];
+export const companyName = [V.optional(V.maxLength(50))];
 
 export const addressLine1 = [
   V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED),
