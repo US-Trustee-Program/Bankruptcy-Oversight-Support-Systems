@@ -15,12 +15,8 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import {
-  TrusteeInput,
-  TrusteeAssistant,
-  TRUSTEE_ASSISTANT_SPEC,
-  TrusteeAssistantFormData,
-} from '@common/cams/trustees';
+import { TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
+import { trusteeAssistantSpec, TrusteeAssistantFormData } from '@common/cams/trustees-validators';
 import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
@@ -59,7 +55,7 @@ export function validateField(
   value: string | undefined,
 ): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
-  const rules = TRUSTEE_ASSISTANT_SPEC[field];
+  const rules = trusteeAssistantSpec[field];
 
   if (!rules) {
     return undefined;
@@ -173,7 +169,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   };
 
   const validateFormAndUpdateErrors = (formData: TrusteeAssistantFormData): boolean => {
-    const results = validateObject(TRUSTEE_ASSISTANT_SPEC, formData);
+    const results = validateObject(trusteeAssistantSpec, formData);
 
     if (!results.valid && results.reasonMap) {
       setFieldErrors(

@@ -14,7 +14,8 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeInput, TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from '@common/cams/trustees';
+import { TrusteeInput } from '@common/cams/trustees';
+import { trusteePublicSpec, TrusteePublicFormData } from '@common/cams/trustees-validators';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
 import { normalizeFormData } from './trusteeForms.utils';
 
@@ -49,8 +50,8 @@ export function validateField(
     return undefined;
   }
 
-  if (TRUSTEE_PUBLIC_SPEC[field]) {
-    const result = validateEach(TRUSTEE_PUBLIC_SPEC[field], trimmedValue);
+  if (trusteePublicSpec[field]) {
+    const result = validateEach(trusteePublicSpec[field], trimmedValue);
     return result.valid ? undefined : result.reasons!.join(' ');
   }
 
@@ -185,7 +186,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   }, [navigate, cancelTo]);
 
   const validateFormAndUpdateErrors = (formData: TrusteePublicFormData): boolean => {
-    const results = validateObject(TRUSTEE_PUBLIC_SPEC, formData);
+    const results = validateObject(trusteePublicSpec, formData);
     if (!results.valid && results.reasonMap) {
       const newFieldErrors = Object.fromEntries(
         Object.entries(flattenReasonMap(results.reasonMap)).map(([jsonPath, reasons]) => {

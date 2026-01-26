@@ -29,6 +29,7 @@ export * from './cams/sanitization';
 export * from './cams/session';
 export * from './cams/test-utilities/mock-data';
 export * from './cams/trustees';
+export * from './cams/trustees-validators';
 export * from './cams/us-states';
 export * from './cams/users';
 export * from './cams/utilities';

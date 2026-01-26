@@ -14,11 +14,8 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import {
-  TrusteeInput,
-  TRUSTEE_INTERNAL_SPEC,
-  TrusteeInternalFormData,
-} from '@common/cams/trustees';
+import { TrusteeInput } from '@common/cams/trustees';
+import { trusteeInternalSpec, TrusteeInternalFormData } from '@common/cams/trustees-validators';
 import { validateEach, validateObject } from '@common/cams/validation';
 import { ContactInformation } from '@common/cams/contact';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -44,7 +41,7 @@ export function validateField(
   value: string | undefined,
 ): string[] | undefined {
   const valueToEval = value?.trim() || undefined;
-  const rules = TRUSTEE_INTERNAL_SPEC[field];
+  const rules = trusteeInternalSpec[field];
 
   if (!rules) {
     return undefined;
@@ -154,7 +151,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   };
 
   const validateFormAndUpdateErrors = (formData: TrusteeInternalFormData): boolean => {
-    const results = validateObject(TRUSTEE_INTERNAL_SPEC, formData);
+    const results = validateObject(trusteeInternalSpec, formData);
 
     if (!results.valid && results.reasonMap) {
       setFieldErrors(
