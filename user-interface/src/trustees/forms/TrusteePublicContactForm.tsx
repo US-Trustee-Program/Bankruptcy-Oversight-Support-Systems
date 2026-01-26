@@ -87,6 +87,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   // TODO: 12/17/25 This method returns partial but the return value is 'as TrusteeInput' in the submit handler. Let's fix that.
   // maybe use 'satisfies' operator, but we'll need to adjust the mapPayload return type accordingly.
   const mapPayload = (formData: TrusteePublicFormData): Partial<TrusteeInput> => {
+    const trimmedCompanyName = formData.companyName?.trim();
+
     return {
       name: formData.name,
       public: {
@@ -101,8 +103,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
         phone: { number: formData.phone, extension: formData.extension },
         email: formData.email,
         ...(formData.website && formData.website.length > 0 && { website: formData.website }),
-        ...(formData.companyName &&
-          formData.companyName.length > 0 && { companyName: formData.companyName }),
+        ...(trimmedCompanyName && { companyName: trimmedCompanyName }),
       },
     } as TrusteeInput;
   };
@@ -279,7 +280,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['companyName']}
                 autoComplete="off"
-                {...isRequired('companyName')}
               />
             </div>
 

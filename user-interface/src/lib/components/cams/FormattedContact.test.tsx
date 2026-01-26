@@ -18,6 +18,8 @@ describe('FormattedAddress component', () => {
       extension: '123',
     },
     email: 'john.doe@example.com',
+    website: 'https://www.example.com',
+    companyName: 'Example Company LLC',
   };
 
   const renderComponent = (props: FormattedContactProps) => {
@@ -34,6 +36,9 @@ describe('FormattedAddress component', () => {
   describe('when contact is provided', () => {
     test('should render complete contact information with all fields', () => {
       renderComponent({ contact: mockFullContact, testIdPrefix: 'test' });
+
+      // Company name
+      expect(screen.getByTestId('test-company-name')).toHaveTextContent('Example Company LLC');
 
       // Address fields
       expect(screen.getByTestId('test-street-address')).toHaveTextContent('123 Main St');
@@ -54,6 +59,9 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('test-email')).toBeInTheDocument();
       const emailLink = screen.getByRole('link', { name: /john\.doe@example\.com/ });
       expect(emailLink).toHaveAttribute('href', 'mailto:john.doe@example.com');
+
+      // Website
+      expect(screen.getByTestId('test-website')).toBeInTheDocument();
     });
 
     test('should render contact with partial address information', () => {
@@ -513,7 +521,7 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('empty-company-email')).toBeInTheDocument();
     });
 
-    test('should generate correct testId when testIdPrefix is provided', () => {
+    test('should generate correct testId when testIdPrefix is provided and have correct CSS class', () => {
       const contactWithCompanyName: ContactInformation = {
         address: {
           address1: '123 TestId St',
@@ -525,73 +533,21 @@ describe('FormattedAddress component', () => {
         companyName: 'TestId Company Inc',
       };
 
-      renderComponent({ contact: contactWithCompanyName, testIdPrefix: 'custom-prefix' });
+      const { rerender } = renderComponent({
+        contact: contactWithCompanyName,
+        testIdPrefix: 'custom-prefix',
+      });
 
-      expect(screen.getByTestId('custom-prefix-company-name')).toBeInTheDocument();
-    });
+      const companyElementWithPrefix = screen.getByTestId('custom-prefix-company-name');
+      expect(companyElementWithPrefix).toBeInTheDocument();
+      expect(companyElementWithPrefix).toHaveClass('company-name');
 
-    test('should not have testId when testIdPrefix is not provided', () => {
-      const contactWithCompanyName: ContactInformation = {
-        address: {
-          address1: '123 No TestId St',
-          city: 'Seattle',
-          state: 'WA',
-          zipCode: '98101',
-          countryCode: 'US',
-        },
-        companyName: 'No TestId Company',
-      };
+      // Re-render without testIdPrefix to verify no testId is present
+      rerender(<FormattedContact contact={contactWithCompanyName} />);
 
-      renderComponent({ contact: contactWithCompanyName });
-
-      const companyElement = screen.getByText('No TestId Company').closest('.company-name');
+      const companyElement = screen.getByText('TestId Company Inc').closest('.company-name');
       expect(companyElement).not.toHaveAttribute('data-testid');
-    });
-
-    test('should have correct CSS class for company name element', () => {
-      const contactWithCompanyName: ContactInformation = {
-        address: {
-          address1: '123 CSS Class St',
-          city: 'Miami',
-          state: 'FL',
-          zipCode: '33101',
-          countryCode: 'US',
-        },
-        companyName: 'CSS Test Company',
-      };
-
-      renderComponent({ contact: contactWithCompanyName });
-
-      const companyElement = screen.getByText('CSS Test Company').closest('.company-name');
       expect(companyElement).toHaveClass('company-name');
-    });
-
-    test('should render company name along with all other contact fields', () => {
-      const fullContactWithCompany: ContactInformation = {
-        address: {
-          address1: '456 Full St',
-          address2: 'Suite 200',
-          city: 'Los Angeles',
-          state: 'CA',
-          zipCode: '90001',
-          countryCode: 'US',
-        },
-        phone: {
-          number: '555-999-8888',
-          extension: '456',
-        },
-        email: 'full@company.com',
-        website: 'https://www.fullcompany.com',
-        companyName: 'Full Service Company LLC',
-      };
-
-      renderComponent({ contact: fullContactWithCompany, testIdPrefix: 'full' });
-
-      expect(screen.getByTestId('full-company-name')).toHaveTextContent('Full Service Company LLC');
-      expect(screen.getByTestId('full-street-address')).toHaveTextContent('456 Full St');
-      expect(screen.getByTestId('full-phone-number')).toBeInTheDocument();
-      expect(screen.getByTestId('full-email')).toBeInTheDocument();
-      expect(screen.getByTestId('full-website')).toBeInTheDocument();
     });
   });
 });

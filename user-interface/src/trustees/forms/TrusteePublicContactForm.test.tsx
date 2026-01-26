@@ -209,6 +209,7 @@ describe('TrusteePublicContactForm Tests', () => {
         },
         email,
         website: undefined,
+        companyName: undefined,
       },
     } as Partial<TrusteeInput>;
 
@@ -485,48 +486,6 @@ describe('TrusteePublicContactForm Tests', () => {
     } as Partial<TrusteeInput>;
 
     expect(postSpy).toHaveBeenCalledWith(expectedPayload);
-  });
-
-  test('should allow company name to be empty (optional field)', async () => {
-    const postSpy = vi
-      .spyOn(Api2, 'postTrustee')
-      .mockResolvedValue({ data: MockData.getTrustee() });
-
-    renderWithProps();
-
-    await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
-    });
-
-    const nameInput = screen.getByTestId('trustee-name');
-    const address1Input = screen.getByTestId('trustee-address1');
-    const cityInput = screen.getByTestId('trustee-city');
-    const zipInput = screen.getByTestId('trustee-zip');
-    const phoneInput = screen.getByTestId('trustee-phone');
-    const emailInput = screen.getByTestId('trustee-email');
-
-    const trusteeName = 'Test Trustee';
-    await userEvent.type(nameInput, trusteeName);
-    // Leave company name empty
-    const address1 = '123 Main St';
-    await userEvent.type(address1Input, address1);
-    const city = 'Test City';
-    await userEvent.type(cityInput, city);
-    const zip = '90210';
-    await userEvent.type(zipInput, zip);
-    const phoneNumber = '555-123-4567';
-    await userEvent.type(phoneInput, phoneNumber);
-    const email = 'test@example.com';
-    await userEvent.type(emailInput, email);
-
-    await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
-
-    await userEvent.click(screen.getByRole('button', { name: /save/i }));
-
-    expect(postSpy).toHaveBeenCalled();
-    const payload = postSpy.mock.calls[0][0] as Partial<TrusteeInput>;
-    expect(payload.public?.companyName).toBeUndefined();
   });
 
   test('should validate company name max length of 50 characters and text only', () => {

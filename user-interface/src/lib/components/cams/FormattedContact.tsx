@@ -8,10 +8,11 @@ const formatCompanyName = (
   _showLinks: boolean,
   getTestId: (s: string) => string | undefined,
 ): React.ReactNode | undefined => {
-  if (contact.companyName) {
+  const trimmedCompanyName = contact.companyName?.trim();
+  if (trimmedCompanyName) {
     return (
-      <div key="company-name" className="company-name" data-testid={getTestId('company-name')}>
-        {contact.companyName}
+      <div className="company-name" data-testid={getTestId('company-name')}>
+        {trimmedCompanyName}
       </div>
     );
   }

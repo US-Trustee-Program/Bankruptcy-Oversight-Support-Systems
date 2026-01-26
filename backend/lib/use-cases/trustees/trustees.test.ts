@@ -1,4 +1,4 @@
-import { vi, Mock } from 'vitest';
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -12,6 +12,9 @@ import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 describe('TrusteesUseCase tests', () => {
   let context: ApplicationContext;
   let trusteesUseCase: TrusteesUseCase;
+
+  const TEST_COMPANY_NAME = 'Test Company LLC';
+  const UPDATED_COMPANY_NAME = 'Updated Company LLC';
 
   describe('createTrustee', () => {
     beforeEach(async () => {
@@ -62,30 +65,11 @@ describe('TrusteesUseCase tests', () => {
       );
     });
 
-    test('should create a trustee with valid input (covers validation pass path)', async () => {
-      const trustee = MockData.getTrusteeInput();
-      const userRef = getCamsUserReference(context.session.user);
-
-      const checkValidationSpy = vi.spyOn(
-        trusteesUseCase as unknown as { checkValidation: Mock },
-        'checkValidation',
-      );
-
-      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(
-        MockData.getTrustee({ ...trustee, createdBy: userRef, updatedBy: userRef }),
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue();
-
-      await trusteesUseCase.createTrustee(context, trustee);
-
-      expect(checkValidationSpy).toHaveBeenCalledWith(expect.objectContaining({ valid: true }));
-    });
-
     test('should create a trustee with company name in public contact information', async () => {
       const trusteeWithCompany = MockData.getTrusteeInput({
         public: {
           ...MockData.getTrusteeInput().public,
-          companyName: 'Test Company LLC',
+          companyName: TEST_COMPANY_NAME,
         },
       });
       const userRef = getCamsUserReference(context.session.user);
@@ -101,11 +85,11 @@ describe('TrusteesUseCase tests', () => {
 
       const actual = await trusteesUseCase.createTrustee(context, trusteeWithCompany);
 
-      expect(actual.public.companyName).toEqual('Test Company LLC');
+      expect(actual.public.companyName).toEqual(TEST_COMPANY_NAME);
       expect(MockMongoRepository.prototype.createTrustee).toHaveBeenCalledWith(
         expect.objectContaining({
           public: expect.objectContaining({
-            companyName: 'Test Company LLC',
+            companyName: TEST_COMPANY_NAME,
           }),
         }),
         userRef,
@@ -351,7 +335,7 @@ describe('TrusteesUseCase tests', () => {
       const updatedBy = getCamsUserReference(context.session.user);
       const newPublicContact = {
         ...MockData.getContactInformation(),
-        companyName: 'Updated Company LLC',
+        companyName: UPDATED_COMPANY_NAME,
       };
       const updateData = { public: newPublicContact };
       const updatedTrustee = { ...existingTrustee, public: newPublicContact };
@@ -365,7 +349,7 @@ describe('TrusteesUseCase tests', () => {
 
       await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
 
-      expect(updatedTrustee.public.companyName).toEqual('Updated Company LLC');
+      expect(updatedTrustee.public.companyName).toEqual(UPDATED_COMPANY_NAME);
       expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
       expect(historyCreateSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -373,7 +357,7 @@ describe('TrusteesUseCase tests', () => {
           trusteeId,
           before: existingTrustee.public,
           after: expect.objectContaining({
-            companyName: 'Updated Company LLC',
+            companyName: UPDATED_COMPANY_NAME,
           }),
         }),
       );
