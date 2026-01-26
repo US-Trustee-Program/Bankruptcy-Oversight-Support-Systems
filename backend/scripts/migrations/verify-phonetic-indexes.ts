@@ -235,7 +235,8 @@ async function verifyPhoneticIndexes() {
 
   console.log('🔍 Phonetic Search Index Verification');
   console.log('='.repeat(60));
-  console.log(`📊 Database: ${databaseName}\n`);
+  // Do not log database name to prevent information disclosure
+  console.log('📊 Verifying database indexes...\n');
 
   let client: MongoClient | null = null;
 
