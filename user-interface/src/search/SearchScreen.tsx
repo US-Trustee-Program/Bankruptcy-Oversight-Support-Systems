@@ -76,6 +76,7 @@ export default function SearchScreen() {
     useState<CasesSearchPredicate>(defaultSearchPredicate);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
   const [showCaseNumberError, setShowCaseNumberError] = useState<boolean>(false);
+  const [showDebtorNameError, setShowDebtorNameError] = useState<boolean>(false);
   const [hasAttemptedSearch, setHasAttemptedSearch] = useState<boolean>(false);
 
   const infoModalRef = useRef(null);
@@ -111,14 +112,22 @@ export default function SearchScreen() {
     return validateFormData(formData);
   }, [temporarySearchPredicate]);
 
-  // Only show case number error after user has finished typing (controlled by debounce)
+  // Only show field errors after user has finished typing (controlled by debounce)
   const fieldErrors: ValidatorReasonMap = useMemo(() => {
     const errors: ValidatorReasonMap = {};
     if (showCaseNumberError && currentValidation.fieldErrors.caseNumber) {
       errors.caseNumber = currentValidation.fieldErrors.caseNumber;
     }
+    if (showDebtorNameError && currentValidation.fieldErrors.debtorName) {
+      errors.debtorName = currentValidation.fieldErrors.debtorName;
+    }
     return errors;
-  }, [showCaseNumberError, currentValidation.fieldErrors.caseNumber]);
+  }, [
+    showCaseNumberError,
+    showDebtorNameError,
+    currentValidation.fieldErrors.caseNumber,
+    currentValidation.fieldErrors.debtorName,
+  ]);
 
   const getChapters = useCallback(() => {
     const chapterArray: ComboOption[] = [];
@@ -201,14 +210,25 @@ export default function SearchScreen() {
 
   function handleDebtorNameChange(ev: ChangeEvent<HTMLInputElement>): void {
     const debtorName = ev.target.value;
-    const newPredicate = { ...temporarySearchPredicate };
 
-    if (debtorName) {
-      newPredicate.debtorName = debtorName;
-    } else {
-      delete newPredicate.debtorName;
+    if (temporarySearchPredicate.debtorName != debtorName) {
+      const newPredicate = { ...temporarySearchPredicate };
+
+      if (debtorName) {
+        newPredicate.debtorName = debtorName;
+      } else {
+        delete newPredicate.debtorName;
+      }
+      setTemporarySearchPredicate(newPredicate);
     }
-    setTemporarySearchPredicate(newPredicate);
+
+    // Hide validation errors while user is typing
+    setShowDebtorNameError(false);
+
+    // Show validation errors after user has finished typing (debounced)
+    debounce(() => {
+      setShowDebtorNameError(true);
+    }, 300);
   }
 
   function handleCourtSelection(selection: ComboOption[]) {
@@ -328,7 +348,7 @@ export default function SearchScreen() {
                     aria-label="Find case by Debtor Name."
                     ref={debtorNameInputRef}
                     value={temporarySearchPredicate.debtorName || ''}
-                    title="Search by the debtor's full or partial name (e.g., Smith, John)."
+                    errorMessage={fieldErrors.debtorName?.reasons?.[0]}
                   />
                 </div>
               </div>

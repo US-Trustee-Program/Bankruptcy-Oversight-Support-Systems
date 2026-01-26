@@ -19,6 +19,11 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignment } from '@common/cams/assignments';
+import {
+  generatePhoneticTokensWithNicknames,
+  filterCasesByDebtorNameSimilarity,
+  SIMILARITY_THRESHOLD,
+} from './phonetic-utils';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -81,12 +86,37 @@ export default class CaseManagement {
         predicate.excludedCaseIds = consolidationMemberCaseIds;
       }
 
+      const phoneticSearchEnabled = context.featureFlags?.['phonetic-search-enabled'] === true;
+      const augmentedPredicate = { ...predicate };
+
       if (predicate.debtorName) {
         context.logger.info(MODULE_NAME, 'Debtor name search criteria used');
-        // Note: We log that the criterion was used, NOT the actual name value
+
+        if (phoneticSearchEnabled) {
+          augmentedPredicate.phoneticTokens = generatePhoneticTokensWithNicknames(
+            predicate.debtorName,
+          );
+        }
       }
 
-      const searchResult = await this.casesRepository.searchCases(predicate);
+      let searchResult = await this.casesRepository.searchCases(augmentedPredicate);
+
+      if (predicate.debtorName && phoneticSearchEnabled && augmentedPredicate.phoneticTokens) {
+        const filteredCases = filterCasesByDebtorNameSimilarity(
+          searchResult.data,
+          predicate.debtorName,
+          SIMILARITY_THRESHOLD,
+        );
+
+        const start = predicate.offset || 0;
+        const end = start + (predicate.limit || 25);
+        const paginatedCases = filteredCases.slice(start, end);
+
+        searchResult = {
+          metadata: { total: filteredCases.length },
+          data: paginatedCases,
+        };
+      }
 
       const casesMap = new Map<string, ResourceActions<SyncedCase>>();
       const caseIds = [];
