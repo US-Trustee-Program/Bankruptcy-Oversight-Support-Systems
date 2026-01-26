@@ -27,8 +27,8 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
 
 const searchResultsHeaderLabels = [
   'Case Number (Division)',
-  'Debtor Name',
   'Case Title',
+  'Debtor Name',
   'Chapter',
   'Case Filed',
 ];

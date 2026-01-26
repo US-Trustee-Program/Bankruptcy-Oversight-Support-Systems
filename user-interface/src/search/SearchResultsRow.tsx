@@ -31,10 +31,10 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
           <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
         </span>
       </TableRowData>
-      <TableRowData dataLabel={labels[1]}>
+      <TableRowData dataLabel={labels[1]}>{bCase.caseTitle}</TableRowData>
+      <TableRowData dataLabel={labels[2]}>
         {formatDebtorNames(bCase.debtor?.name ?? '', bCase.jointDebtor?.name)}
       </TableRowData>
-      <TableRowData dataLabel={labels[2]}>{bCase.caseTitle}</TableRowData>
       <TableRowData dataLabel={labels[3]}>{bCase.chapter}</TableRowData>
       <TableRowData dataLabel={labels[4]}>{formatDate(bCase.dateFiled)}</TableRowData>
     </TableRow>
