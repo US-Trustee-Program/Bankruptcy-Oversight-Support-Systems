@@ -449,7 +449,7 @@ describe('TrusteePublicContactForm Tests', () => {
 
     const trusteeName = 'Test Trustee';
     await userEvent.type(nameInput, trusteeName);
-    const companyName = 'Test Company LLC';
+    const companyName = "ABC Corp. & Co., Inc. - 123's Best!";
     await userEvent.type(companyNameInput, companyName);
     const address1 = '123 Main St';
     await userEvent.type(address1Input, address1);
@@ -488,16 +488,12 @@ describe('TrusteePublicContactForm Tests', () => {
     expect(postSpy).toHaveBeenCalledWith(expectedPayload);
   });
 
-  test('should validate company name max length of 50 characters and text only', () => {
+  test('should validate company name with alphanumeric and special characters, max length 50', () => {
     const validCompanyName = 'A'.repeat(50);
     const invalidCompanyName = 'A'.repeat(51);
-    const invalidWithNumbers = 'Company123';
-    const invalidWithSpecialChars = 'Company@LLC';
 
     expect(validateField('companyName', validCompanyName)).toBeUndefined();
     expect(validateField('companyName', invalidCompanyName)).toBeTruthy();
-    expect(validateField('companyName', invalidWithNumbers)).toBeTruthy();
-    expect(validateField('companyName', invalidWithSpecialChars)).toBeTruthy();
   });
 
   test('should render company name field and allow editing', async () => {
