@@ -14,8 +14,8 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeInput } from '@common/cams/trustees';
-import { trusteePublicSpec, TrusteePublicFormData } from '@common/cams/trustees-validators';
+import { TrusteeInput, TrusteePublicFormData } from '@common/cams/trustees';
+import { trusteePublicSpec } from '@common/cams/trustees-validators';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
 import { normalizeFormData } from './trusteeForms.utils';
 

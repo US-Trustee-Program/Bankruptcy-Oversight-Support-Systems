@@ -11,7 +11,14 @@ import {
 } from './regex';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { Address, ContactInformation, PhoneNumber } from './contact';
-import { TrusteeInput, TrusteeAssistant, ZoomInfo } from './trustees';
+import {
+  TrusteeInput,
+  TrusteeAssistant,
+  ZoomInfo,
+  TrusteePublicFormData,
+  TrusteeInternalFormData,
+  TrusteeAssistantFormData,
+} from './trustees';
 
 // ============================================================================
 // FIELD VALIDATORS (Foundational domain validators)
@@ -197,43 +204,6 @@ const phoneRequiredWithExtension: ValidatorFunction = (obj): ValidatorResult => 
 // ============================================================================
 // FORM-SPECIFIC VALIDATION SPECS (Frontend forms)
 // ============================================================================
-
-export type TrusteePublicFormData = {
-  name?: string;
-  companyName?: string;
-  address1?: string;
-  address2?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  phone?: string;
-  extension?: string;
-  email?: string;
-  website?: string;
-};
-
-export type TrusteeInternalFormData = {
-  address1?: string;
-  address2?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  phone?: string;
-  extension?: string;
-  email?: string;
-};
-
-export type TrusteeAssistantFormData = {
-  name?: string;
-  address1?: string;
-  address2?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  phone?: string;
-  extension?: string;
-  email?: string;
-};
 
 export const trusteePublicSpec: Readonly<ValidationSpec<TrusteePublicFormData>> = {
   name: trusteeName,
