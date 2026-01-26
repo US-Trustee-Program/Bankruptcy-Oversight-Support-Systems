@@ -12,6 +12,11 @@ import { formatDate, formatDateTime } from '@/lib/utils/datetime';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { Cacheable } from '@/lib/utils/local-cache';
 import { CaseNoteInput } from '@common/cams/cases';
+import useFeatureFlags, { PHONETIC_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+
+// Mock the UseFeatureFlags hook
+vi.mock('@/lib/hooks/UseFeatureFlags');
+const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 describe('MyCasesScreen', () => {
   const user: CamsUser = MockData.getCamsUser({});
@@ -26,6 +31,10 @@ describe('MyCasesScreen', () => {
 
   beforeEach(() => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+    // Mock the feature flag to return true by default for the phonetic search
+    mockUseFeatureFlags.mockReturnValue({
+      [PHONETIC_SEARCH_ENABLED]: true,
+    });
   });
 
   afterEach(() => {
@@ -98,6 +107,38 @@ describe('MyCasesScreen', () => {
     const expectedDiv = '<div />';
     expect(body?.childNodes.length).toEqual(1);
     expect(body?.childNodes[0]).toContainHTML(expectedDiv);
+  });
+
+  test('should render a list of cases without debtor name column when phonetic search is disabled', async () => {
+    // Mock the feature flag to return false for phonetic search
+    mockUseFeatureFlags.mockReturnValue({
+      [PHONETIC_SEARCH_ENABLED]: false,
+    });
+
+    const expectedData = MockData.buildArray(MockData.getSyncedCase, 3);
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      data: expectedData,
+    });
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      const loadingIndicator = screen.queryByTestId('loading-indicator');
+      expect(loadingIndicator).not.toBeInTheDocument();
+    });
+
+    const tableData = document.querySelectorAll('table tbody td');
+
+    let dIndex = 0;
+    for (let i = 0; i < 3; i++) {
+      expect(tableData![dIndex++]).toHaveTextContent(
+        `${getCaseNumber(expectedData[i].caseId)} (${expectedData[i].courtDivisionName})`,
+      );
+      expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].caseTitle);
+      // No debtor name column when phonetic search is disabled
+      expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].chapter);
+      expect(tableData![dIndex++]).toHaveTextContent(formatDate(expectedData[i].dateFiled));
+    }
   });
 
   const now = new Date().toISOString();
