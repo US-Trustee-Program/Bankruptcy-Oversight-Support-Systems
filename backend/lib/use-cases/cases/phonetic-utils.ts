@@ -1,6 +1,6 @@
 import * as natural from 'natural';
 import * as nameMatch from 'name-match';
-import { SyncedCase } from '../../../common/src/cams/cases';
+import { SyncedCase } from '@common/cams/cases';
 import { FeatureFlagSet } from '../../adapters/types/basic';
 
 // Initialize phonetic algorithms

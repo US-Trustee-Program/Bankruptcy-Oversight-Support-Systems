@@ -76,8 +76,8 @@ describe('MyCasesScreen', () => {
       expect(tableData![dIndex++]).toHaveTextContent(
         `${getCaseNumber(expectedData[i].caseId)} (${expectedData[i].courtDivisionName})`,
       );
-      expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].debtor?.name ?? '');
       expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].caseTitle);
+      expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].debtor?.name ?? '');
       expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].chapter);
       expect(tableData![dIndex++]).toHaveTextContent(formatDate(expectedData[i].dateFiled));
     }

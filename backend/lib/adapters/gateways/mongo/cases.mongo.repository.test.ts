@@ -749,16 +749,17 @@ describe('Cases repository', () => {
 
       const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [mockCase];
 
-      const aggregateSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
-        .mockResolvedValue(expectedSyncedCaseArray);
+      // Phonetic search uses paginate() not aggregate() after performance optimization
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray, metadata: { total: 1 } });
 
       const result = await repoWithPhonetic.searchCases(predicate);
 
-      expect(aggregateSpy).toHaveBeenCalled();
+      expect(paginateSpy).toHaveBeenCalled();
       expect(result.data).toEqual(expectedSyncedCaseArray);
 
-      const actualQuery = aggregateSpy.mock.calls[0][0];
+      const actualQuery = paginateSpy.mock.calls[0][0];
       const queryString = JSON.stringify(actualQuery);
       expect(queryString).toContain('debtor.name');
 
@@ -810,13 +811,14 @@ describe('Cases repository', () => {
 
       const allMockCases = [mockCase1, mockCase2];
 
-      const aggregateSpy = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
-        .mockResolvedValue(allMockCases);
+      // Phonetic search uses paginate() not aggregate() after performance optimization
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: allMockCases, metadata: { total: 2 } });
 
       const result = await repoWithPhonetic.searchCases(predicate);
 
-      expect(aggregateSpy).toHaveBeenCalled();
+      expect(paginateSpy).toHaveBeenCalled();
       expect(result.data).toHaveLength(1);
       expect(result.data[0].debtor.name).toBe('John Smith');
       expect(result.metadata.total).toBe(1);
