@@ -387,6 +387,29 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           );
         }
 
+        // Apply other search filters to mock data
+        if (predicate.chapters && predicate.chapters.length > 0) {
+          mockCases = mockCases.filter((c) => predicate.chapters!.includes(c.chapter));
+        }
+
+        if (predicate.divisionCodes && predicate.divisionCodes.length > 0) {
+          mockCases = mockCases.filter((c) =>
+            predicate.divisionCodes!.includes(c.courtDivisionCode),
+          );
+        }
+
+        if (predicate.caseNumber) {
+          mockCases = mockCases.filter((c) => c.caseNumber === predicate.caseNumber);
+        }
+
+        if (predicate.caseIds && predicate.caseIds.length > 0) {
+          mockCases = mockCases.filter((c) => predicate.caseIds!.includes(c.caseId));
+        }
+
+        if (predicate.excludeClosedCases) {
+          mockCases = mockCases.filter((c) => !c.closedDate);
+        }
+
         const start = predicate.offset || 0;
         const end = start + (predicate.limit || 25);
         const paginatedResults = mockCases.slice(start, end);
