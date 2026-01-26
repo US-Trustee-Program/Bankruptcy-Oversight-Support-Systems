@@ -25,9 +25,12 @@ import React from 'react';
 import { Cacheable } from '@/lib/utils/local-cache';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
+import useFeatureFlags, { PHONETIC_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
+  const featureFlags = useFeatureFlags();
+  const phoneticSearchEnabled = featureFlags[PHONETIC_SEARCH_ENABLED] === true;
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -191,6 +194,7 @@ export const MyCasesScreen = () => {
           <SearchResults
             id="search-results"
             searchPredicate={searchPredicate}
+            phoneticSearchEnabled={phoneticSearchEnabled}
             noResultsMessage="No cases currently assigned."
             header={MyCasesResultsHeader}
             row={MyCasesResultsRow}
