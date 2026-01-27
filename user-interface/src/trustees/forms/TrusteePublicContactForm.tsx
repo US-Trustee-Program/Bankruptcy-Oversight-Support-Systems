@@ -15,13 +15,14 @@ import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput } from '@common/cams/trustees';
-import { TRUSTEE_PUBLIC_SPEC, TrusteePublicFormData } from './trusteeForms.types';
+import { TrusteePublicFormData, trusteePublicSpec } from './trusteeForms.types';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
 import { normalizeFormData } from './trusteeForms.utils';
 
 const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePublicFormData => {
   return {
     name: info?.name,
+    companyName: info?.public?.companyName,
     address1: info?.public?.address?.address1,
     address2: info?.public?.address?.address2,
     city: info?.public?.address?.city,
@@ -41,12 +42,16 @@ export function validateField(
   const stringValue = String(value);
   const trimmedValue = stringValue.trim();
 
-  if ((field === 'extension' && !trimmedValue) || (field === 'website' && !trimmedValue)) {
+  if (
+    (field === 'extension' && !trimmedValue) ||
+    (field === 'website' && !trimmedValue) ||
+    (field === 'companyName' && !trimmedValue)
+  ) {
     return undefined;
   }
 
-  if (TRUSTEE_PUBLIC_SPEC[field]) {
-    const result = validateEach(TRUSTEE_PUBLIC_SPEC[field], trimmedValue);
+  if (trusteePublicSpec[field]) {
+    const result = validateEach(trusteePublicSpec[field], trimmedValue);
     return result.valid ? undefined : result.reasons!.join(' ');
   }
 
@@ -82,6 +87,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   // TODO: 12/17/25 This method returns partial but the return value is 'as TrusteeInput' in the submit handler. Let's fix that.
   // maybe use 'satisfies' operator, but we'll need to adjust the mapPayload return type accordingly.
   const mapPayload = (formData: TrusteePublicFormData): Partial<TrusteeInput> => {
+    const trimmedCompanyName = formData.companyName?.trim();
+
     return {
       name: formData.name,
       public: {
@@ -96,6 +103,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
         phone: { number: formData.phone, extension: formData.extension },
         email: formData.email,
         ...(formData.website && formData.website.length > 0 && { website: formData.website }),
+        ...(trimmedCompanyName && { companyName: trimmedCompanyName }),
       },
     } as TrusteeInput;
   };
@@ -179,7 +187,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   }, [navigate, cancelTo]);
 
   const validateFormAndUpdateErrors = (formData: TrusteePublicFormData): boolean => {
-    const results = validateObject(TRUSTEE_PUBLIC_SPEC, formData);
+    const results = validateObject(trusteePublicSpec, formData);
     if (!results.valid && results.reasonMap) {
       const newFieldErrors = Object.fromEntries(
         Object.entries(flattenReasonMap(results.reasonMap)).map(([jsonPath, reasons]) => {
@@ -259,6 +267,19 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 errorMessage={fieldErrors['name']}
                 autoComplete="off"
                 {...isRequired('name')}
+              />
+            </div>
+
+            <div className="field-group">
+              <Input
+                id="trustee-company-name"
+                className="trustee-company-name-input"
+                name="companyName"
+                label="Company Name"
+                value={formData.companyName || ''}
+                onChange={handleFieldChange}
+                errorMessage={fieldErrors['companyName']}
+                autoComplete="off"
               />
             </div>
 
