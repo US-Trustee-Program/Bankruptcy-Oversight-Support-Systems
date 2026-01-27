@@ -232,7 +232,7 @@ describe('Export and Load Case Tests', () => {
         { name: 'John Smith', expectedInTokens: ['J500', 'JN', 'S530', 'SM0'] },
         { name: 'Michael Johnson', expectedInTokens: ['M240', 'MKSHL', 'J525', 'JNSN'] },
         { name: 'Sarah Connor', expectedInTokens: ['S600', 'SR', 'C560', 'KNR'] },
-        { name: "O'Brien", expectedInTokens: ['O165', "O'BRN"] },
+        { name: "O'Brien", expectedInTokens: ['O165', 'OBRN'] },
       ];
 
       for (const testCase of testCases) {
