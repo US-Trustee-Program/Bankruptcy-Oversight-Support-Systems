@@ -1,6 +1,5 @@
 import { vi } from 'vitest';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { SyncedCase } from '@common/cams/cases';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import { getCamsError } from '../../common-errors/error-utilities';
@@ -93,19 +92,25 @@ describe('Export and Load Case Tests', () => {
     test('should persist a SyncedCase', async () => {
       const bCase = MockData.getDxtrCase();
       const event = mockCaseSyncEvent({ bCase });
-      const expected: SyncedCase = {
-        ...bCase,
-        documentType: 'SYNCED_CASE',
-        updatedBy: SYSTEM_USER_REFERENCE,
-        updatedOn: expect.any(String),
-        createdBy: SYSTEM_USER_REFERENCE,
-        createdOn: expect.any(String),
-      };
 
       const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
 
       await ExportAndLoadCase.loadCase(context, event);
-      expect(syncSpy).toHaveBeenCalledWith(expected);
+
+      expect(syncSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...bCase,
+          debtor: expect.objectContaining({
+            ...bCase.debtor,
+            phoneticTokens: expect.any(Array),
+          }),
+          documentType: 'SYNCED_CASE',
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: expect.any(String),
+          createdBy: SYSTEM_USER_REFERENCE,
+          createdOn: expect.any(String),
+        }),
+      );
     });
 
     test('should return an error on the event', async () => {
