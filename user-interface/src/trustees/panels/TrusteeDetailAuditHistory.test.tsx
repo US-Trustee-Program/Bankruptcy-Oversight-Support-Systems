@@ -1773,7 +1773,6 @@ describe('TrusteeDetailAuditHistory', () => {
  */
 
 // Base zoom info templates
-// TODO change this out to use passcode mocker
 const BASE_ZOOM_INFO: ZoomInfo = {
   link: 'https://zoom.us/j/123456789',
   phone: '+1 555-123-4567',
@@ -1781,7 +1780,6 @@ const BASE_ZOOM_INFO: ZoomInfo = {
   passcode: MockData.randomAlphaNumeric(10),
 };
 
-// TODO change this out to use passcode mocker
 const BASE_ZOOM_INFO_BEFORE: ZoomInfo = {
   link: 'https://zoom.us/j/111111111',
   phone: '+1 555-111-1111',
