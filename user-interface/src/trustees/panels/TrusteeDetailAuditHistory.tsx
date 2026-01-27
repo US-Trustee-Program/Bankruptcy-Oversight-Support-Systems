@@ -37,7 +37,7 @@ function ShowTrusteeNameHistory(props: ShowTrusteeNameHistoryProps) {
   const { history, idx } = props;
   return (
     <tr>
-      <td>Name</td>
+      <td data-testid={`change-type-name-${idx}`}>Name</td>
       <td data-testid={`previous-name-${idx}`}>{history.before || '(none)'}</td>
       <td data-testid={`new-name-${idx}`}>{history.after || '(none)'}</td>
       <td data-testid={`changed-by-${idx}`}>
@@ -59,10 +59,12 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   const { history, idx } = props;
   const changeType =
     history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'Public Contact' : 'Internal Contact';
+  const testIdSuffix =
+    history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'public-contact' : 'internal-contact';
 
   return (
     <tr>
-      <td>{changeType}</td>
+      <td data-testid={`change-type-${testIdSuffix}-${idx}`}>{changeType}</td>
       <td data-testid={`previous-contact-${idx}`}>
         <FormattedContact
           contact={history.before}
@@ -112,7 +114,7 @@ function ShowTrusteeBankHistory(props: ShowTrusteeBankHistoryProps) {
 
   return (
     <tr>
-      <td>Bank(s)</td>
+      <td data-testid={`change-type-banks-${idx}`}>Bank(s)</td>
       <td data-testid={`previous-banks-${idx}`}>
         <BankList banks={history.before} />
       </td>
@@ -361,7 +363,7 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
 
   return (
     <div className="trustee-audit-history">
-      <h3>Change History</h3>
+      <h3 data-testid="change-history-heading">Change History</h3>
       {isAuditHistoryLoading && <LoadingIndicator />}
       {!isAuditHistoryLoading && (
         <>
