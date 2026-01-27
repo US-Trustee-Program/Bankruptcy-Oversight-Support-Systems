@@ -18,6 +18,7 @@ import {
 } from './trustees-validators';
 import { validateObject } from './validation';
 import { Address, ContactInformation, PhoneNumber } from './contact';
+import MockData from './test-utilities/mock-data';
 
 describe('trustees', () => {
   test('TRUSTEE_STATUS_VALUES', () => {
@@ -554,7 +555,7 @@ describe('trustees', () => {
             link: 'https://zoom.us/j/123456789',
             phone: '312-555-5678',
             meetingId: '12345678901',
-            passcode: 'secret123',
+            passcode: MockData.randomAlphaNumeric(10),
           },
         };
 
@@ -721,7 +722,7 @@ describe('trustees', () => {
             link: 'not-a-url',
             phone: '123-456-7890',
             meetingId: '12345678901',
-            passcode: 'secret',
+            passcode: MockData.randomAlphaNumeric(10),
           },
         };
 
