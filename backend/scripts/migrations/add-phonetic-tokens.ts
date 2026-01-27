@@ -17,9 +17,22 @@
  * 5. Create indexes for efficient phonetic search
  */
 
-import { MongoClient, Db, Collection } from 'mongodb';
+import { MongoClient, Db, Collection, FindCursor } from 'mongodb';
 import * as dotenv from 'dotenv';
 import * as natural from 'natural';
+
+// Type definition for case documents
+interface CaseDocument {
+  _id: string;
+  debtor?: {
+    name?: string;
+    phoneticTokens?: string[];
+  };
+  jointDebtor?: {
+    name?: string;
+    phoneticTokens?: string[];
+  };
+}
 
 // Load environment variables
 dotenv.config();
@@ -73,6 +86,7 @@ async function addPhoneticTokensToExistingCases() {
   console.log('📊 Processing database...');
 
   let client: MongoClient | null = null;
+  let cursor: FindCursor | null = null;
 
   try {
     // Connect to MongoDB
@@ -98,13 +112,30 @@ async function addPhoneticTokensToExistingCases() {
     let updatedCount = 0;
     let skipCount = 0;
 
-    while (processedCount < totalCount) {
-      // Fetch batch of documents
-      const cases = await collection
-        .find({ documentType: 'SYNCED_CASE' })
-        .skip(processedCount)
-        .limit(batchSize)
-        .toArray();
+    // Use cursor-based iteration for better performance on large collections
+    // Also add projection to only fetch the fields we need
+    cursor = collection
+      .find({ documentType: 'SYNCED_CASE' })
+      .project({
+        _id: 1,
+        'debtor.name': 1,
+        'debtor.phoneticTokens': 1,
+        'jointDebtor.name': 1,
+        'jointDebtor.phoneticTokens': 1,
+      })
+      .batchSize(batchSize);
+
+    while (await cursor.hasNext()) {
+      // Build a batch of documents
+      const cases: CaseDocument[] = [];
+      let batchCount = 0;
+
+      while (batchCount < batchSize && (await cursor.hasNext())) {
+        const doc = await cursor.next();
+        if (!doc) break;
+        cases.push(doc);
+        batchCount++;
+      }
 
       if (cases.length === 0) break;
 
@@ -204,6 +235,10 @@ async function addPhoneticTokensToExistingCases() {
     console.error('\n❌ Migration failed:', error);
     process.exit(1);
   } finally {
+    // Close the cursor if it exists
+    if (cursor) {
+      await cursor.close();
+    }
     // Close the connection
     if (client) {
       await client.close();

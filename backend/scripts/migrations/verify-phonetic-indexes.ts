@@ -196,12 +196,12 @@ async function testPhoneticSearchPerformance(collection: Collection) {
 /**
  * Show index statistics
  */
-async function showIndexStats(collection: Collection) {
+async function showIndexStats(_collection: Collection, db: Db) {
   console.log('\n\n📈 Index Statistics\n');
   console.log('='.repeat(60));
 
   try {
-    const stats = await collection.stats();
+    const stats = await db.command({ collStats: 'cases', indexDetails: true });
 
     console.log(`Collection: cases`);
     console.log(`  Total Documents: ${stats.count}`);
@@ -222,8 +222,9 @@ async function showIndexStats(collection: Collection) {
 
 /**
  * Main verification function
+ * Returns exit code: 0 for success, 1 for failure
  */
-async function verifyPhoneticIndexes() {
+async function verifyPhoneticIndexes(): Promise<number> {
   const connectionString = process.env.MONGO_CONNECTION_STRING;
   const databaseName = process.env.COSMOS_DATABASE_NAME;
 
@@ -254,11 +255,11 @@ async function verifyPhoneticIndexes() {
 
     if (!indexesExist) {
       console.log('\n❌ Cannot proceed with performance tests - indexes missing');
-      process.exit(1);
+      return 1;
     }
 
     // Show index statistics
-    await showIndexStats(collection);
+    await showIndexStats(collection, db);
 
     // Test query performance
     await testPhoneticSearchPerformance(collection);
@@ -266,9 +267,11 @@ async function verifyPhoneticIndexes() {
     console.log('\n\n' + '='.repeat(60));
     console.log('✅ Verification completed successfully!');
     console.log('='.repeat(60) + '\n');
+
+    return 0; // Success
   } catch (error) {
     console.error('\n❌ Verification failed:', error);
-    process.exit(1);
+    return 1; // Failure
   } finally {
     // Close the connection
     if (client) {
@@ -280,9 +283,11 @@ async function verifyPhoneticIndexes() {
 
 // Run the verification
 verifyPhoneticIndexes()
-  .then(() => {
-    console.log('🎉 Index verification finished successfully\n');
-    process.exit(0);
+  .then((exitCode) => {
+    if (exitCode === 0) {
+      console.log('🎉 Index verification finished successfully\n');
+    }
+    process.exit(exitCode);
   })
   .catch((error) => {
     console.error('💥 Unexpected error:', error);
