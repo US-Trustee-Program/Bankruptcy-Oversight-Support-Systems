@@ -102,43 +102,6 @@ export type Trustee = TrusteeData &
 
 export type TrusteeInput = TrusteeCore & NullableOptionalFields<TrusteeOptionalFields>;
 
-export type TrusteePublicFormData = {
-  name?: string;
-  companyName?: string;
-  address1?: string;
-  address2?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  phone?: string;
-  extension?: string;
-  email?: string;
-  website?: string;
-};
-
-export type TrusteeInternalFormData = {
-  address1?: string;
-  address2?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  phone?: string;
-  extension?: string;
-  email?: string;
-};
-
-export type TrusteeAssistantFormData = {
-  name?: string;
-  address1?: string;
-  address2?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  phone?: string;
-  extension?: string;
-  email?: string;
-};
-
 export type TrusteeOversightAssignment = Auditable &
   Identifiable & {
     trusteeId: string;

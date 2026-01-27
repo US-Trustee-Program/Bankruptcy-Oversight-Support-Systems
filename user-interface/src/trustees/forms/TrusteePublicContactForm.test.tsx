@@ -11,7 +11,8 @@ import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 
-import { TrusteeInput, TrusteePublicFormData } from '@common/cams/trustees';
+import { TrusteeInput } from '@common/cams/trustees';
+import { TrusteePublicFormData } from './trusteeForms.types';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
 import * as Validation from '@common/cams/validation';

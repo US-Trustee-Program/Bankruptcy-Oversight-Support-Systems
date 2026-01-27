@@ -5,13 +5,75 @@ import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
-import { trusteeSpec } from '@common/cams/trustees-validators';
+import { Trustee, TrusteeHistory, TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
+import {
+  trusteeName,
+  companyName,
+  addressLine1,
+  addressLine2,
+  addressLine3,
+  city,
+  state,
+  zipCode,
+  countryCode,
+  phoneNumber,
+  phoneExtension,
+  email,
+  website,
+  zoomInfoSpec,
+  assistantName,
+} from '@common/cams/trustees-validators';
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
 import { normalizeForUndefined } from '@common/normalization';
+import V from '@common/cams/validators';
+import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
+
+const addressSpec: ValidationSpec<Address> = {
+  address1: addressLine1,
+  address2: addressLine2,
+  address3: addressLine3,
+  city,
+  state,
+  zipCode,
+  countryCode,
+};
+
+const phoneSpec: ValidationSpec<PhoneNumber> = {
+  number: phoneNumber,
+  extension: phoneExtension,
+};
+
+const contactInformationSpec: ValidationSpec<ContactInformation> = {
+  address: [V.spec(addressSpec)],
+  phone: [V.optional(V.spec(phoneSpec))],
+  email: [V.optional(...email)],
+  website,
+  companyName,
+};
+
+const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
+  address: [V.optional(V.nullable(V.spec(addressSpec)))],
+  phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
+  email: [V.optional(V.nullable(...email))],
+};
+
+const assistantSpec: ValidationSpec<TrusteeAssistant> = {
+  name: assistantName,
+  contact: [V.spec(contactInformationSpec)],
+};
+
+const trusteeSpec: ValidationSpec<TrusteeInput> = {
+  name: trusteeName,
+  public: [V.optional(V.spec(contactInformationSpec))],
+  internal: [V.optional(V.spec(internalContactInformationSpec))],
+  assistant: [V.optional(V.spec(assistantSpec))],
+  banks: [V.optional(V.arrayOf(V.length(1, 100)))],
+  software: [V.optional(V.length(0, 100))],
+  zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
+};
 
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;

@@ -16,7 +16,7 @@ import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import * as Validation from '@common/cams/validation';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { trusteeInternalSpec } from '@common/cams/trustees-validators';
+import { trusteeInternalSpec } from './trusteeForms.types';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 const ADDRESS_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED;
