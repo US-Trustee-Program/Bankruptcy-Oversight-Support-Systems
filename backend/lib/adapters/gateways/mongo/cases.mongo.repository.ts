@@ -16,12 +16,7 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
-// TODO: CAMS-376 - Remove these imports after database backfill is complete
-import {
-  filterCasesByDebtorNameSimilarity,
-  generateDebtorNameRegexPattern,
-} from '../../../use-cases/cases/phonetic-utils';
-import { shouldUseMockData, getMockPhoneticSearchCases } from './cases.mongo.repository.mock-data';
+import { generateDebtorNameRegexPattern } from '../../../use-cases/cases/phonetic-utils';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -359,63 +354,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
-      // TODO: CAMS-376 - Remove this entire block after:
-      // 1. This branch is merged to main
-      // 2. Migration script (npm run migrate:phonetic-tokens) is run in all environments
-      // 3. New cases are being loaded with phoneticTokens via the dataflow
-      // 4. Verify phoneticTokens exist in production: db.cases.findOne({ 'debtor.phoneticTokens': { $exists: true } })
-      if (shouldUseMockData()) {
-        let mockCases = getMockPhoneticSearchCases();
-        this.context.logger.warn(
-          MODULE_NAME,
-          `[DEV MOCK] Using ${mockCases.length} mock cases for phonetic search testing. Set MOCK_PHONETIC_SEARCH_DATA=false to use real database.`,
-        );
-
-        if (
-          predicate.phoneticTokens &&
-          predicate.phoneticTokens.length > 0 &&
-          predicate.debtorName
-        ) {
-          mockCases = filterCasesByDebtorNameSimilarity(mockCases, predicate.debtorName);
-          this.context.logger.debug(
-            MODULE_NAME,
-            `[DEV MOCK] Phonetic filtering: ${mockCases.length} results (threshold: 0.83)`,
-          );
-        }
-
-        // Apply other search filters to mock data
-        if (predicate.chapters && predicate.chapters.length > 0) {
-          mockCases = mockCases.filter((c) => predicate.chapters!.includes(c.chapter));
-        }
-
-        if (predicate.divisionCodes && predicate.divisionCodes.length > 0) {
-          mockCases = mockCases.filter((c) =>
-            predicate.divisionCodes!.includes(c.courtDivisionCode),
-          );
-        }
-
-        if (predicate.caseNumber) {
-          mockCases = mockCases.filter((c) => c.caseNumber === predicate.caseNumber);
-        }
-
-        if (predicate.caseIds && predicate.caseIds.length > 0) {
-          mockCases = mockCases.filter((c) => predicate.caseIds!.includes(c.caseId));
-        }
-
-        if (predicate.excludeClosedCases) {
-          mockCases = mockCases.filter((c) => !c.closedDate);
-        }
-
-        const start = predicate.offset || 0;
-        const end = start + (predicate.limit || 25);
-        const paginatedResults = mockCases.slice(start, end);
-
-        return {
-          metadata: { total: mockCases.length },
-          data: paginatedResults,
-        };
-      }
-
       if (predicate.includeOnlyUnassigned) {
         return await this.searchForUnassignedCases(predicate);
       }

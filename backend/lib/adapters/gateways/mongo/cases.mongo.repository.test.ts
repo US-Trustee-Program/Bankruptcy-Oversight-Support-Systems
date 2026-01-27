@@ -51,10 +51,6 @@ describe('Cases repository', () => {
   const { and } = QueryBuilder;
 
   beforeEach(async () => {
-    // Disable mock phonetic search data for all tests
-    // This ensures tests verify actual query generation logic
-    delete process.env.MOCK_PHONETIC_SEARCH_DATA;
-
     context = await createMockApplicationContext();
     repo = CasesMongoRepository.getInstance(context);
   });
@@ -893,52 +889,6 @@ describe('Cases repository', () => {
       const queryString = JSON.stringify(actualQuery);
       expect(queryString).toContain('debtor');
       expect(queryString).toContain('jointDebtor');
-    });
-
-    test('should apply multiple filters correctly with mock data', async () => {
-      // Test that mock data respects all search criteria, not just debtor name
-      const contextWithMock = await createMockApplicationContext({
-        env: {
-          MOCK_PHONETIC_SEARCH_DATA: 'true',
-        },
-      });
-      const repoWithMock = CasesMongoRepository.getInstance(contextWithMock);
-
-      // First get all results for chapter 11
-      const predicateChapterOnly: CasesSearchPredicate = {
-        chapters: ['11'],
-        limit: 100,
-        offset: 0,
-      };
-
-      const chapterOnlyResult = await repoWithMock.searchCases(predicateChapterOnly);
-      const chapter11Count = chapterOnlyResult.data.length;
-
-      // Now search with both debtor name and chapter
-      const predicateBoth: CasesSearchPredicate = {
-        debtorName: 'John',
-        chapters: ['11'],
-        limit: 100,
-        offset: 0,
-      };
-
-      const bothResult = await repoWithMock.searchCases(predicateBoth);
-
-      // All results should have chapter 11
-      bothResult.data.forEach((caseItem) => {
-        expect(caseItem.chapter).toBe('11');
-      });
-
-      // Should have fewer results than chapter-only search (unless all chapter 11 cases have "John")
-      expect(bothResult.data.length).toBeLessThanOrEqual(chapter11Count);
-
-      // Verify at least that filtering is working (we should still have valid chapter 11 results if any exist)
-      const hasResults = bothResult.data.length > 0;
-      const firstIsChapter11 = hasResults ? bothResult.data[0].chapter === '11' : true;
-      expect(firstIsChapter11).toBe(true);
-
-      repoWithMock.release();
-      await closeDeferred(contextWithMock);
     });
 
     test('should search without debtorName field when not provided', async () => {

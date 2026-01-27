@@ -10,7 +10,7 @@ const metaphone = new natural.Metaphone();
 // Jaro-Winkler similarity threshold for matching names
 // Lowered from 0.85 to 0.83 to support nickname matching (Mike/Michael)
 // while still filtering false positives (Jon/Jane at 0.78)
-export const SIMILARITY_THRESHOLD = 0.83;
+const SIMILARITY_THRESHOLD = 0.83;
 
 /**
  * Generates phonetic tokens (Soundex + Metaphone) for a text string.
