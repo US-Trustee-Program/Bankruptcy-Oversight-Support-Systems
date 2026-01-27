@@ -98,9 +98,12 @@ export default class CaseManagement {
         }
       }
 
-      let searchResult = await this.casesRepository.searchCases(augmentedPredicate);
+      let searchResult: CamsPaginationResponse<ResourceActions<SyncedCase>>;
 
       if (predicate.debtorName && phoneticSearchEnabled && augmentedPredicate.phoneticTokens) {
+        searchResult =
+          await this.casesRepository.searchCasesForPhoneticFiltering(augmentedPredicate);
+
         const filteredCases = filterCasesByDebtorNameSimilarity(
           searchResult.data,
           predicate.debtorName,
@@ -114,6 +117,8 @@ export default class CaseManagement {
           metadata: { total: filteredCases.length },
           data: paginatedCases,
         };
+      } else {
+        searchResult = await this.casesRepository.searchCases(augmentedPredicate);
       }
 
       const casesMap = new Map<string, ResourceActions<SyncedCase>>();
