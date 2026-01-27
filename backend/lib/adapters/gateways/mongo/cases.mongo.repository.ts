@@ -19,7 +19,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 // TODO: CAMS-376 - Remove these imports after database backfill is complete
 import {
   filterCasesByDebtorNameSimilarity,
-  SIMILARITY_THRESHOLD,
+  generateDebtorNameRegexPattern,
 } from '../../../use-cases/cases/phonetic-utils';
 import { shouldUseMockData, getMockPhoneticSearchCases } from './cases.mongo.repository.mock-data';
 
@@ -305,7 +305,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
 
     if (predicate.debtorName) {
-      const debtorNameRegex = new RegExp(predicate.debtorName, 'i');
+      const debtorNameRegex = generateDebtorNameRegexPattern(predicate.debtorName);
 
       if (predicate.phoneticTokens && predicate.phoneticTokens.length > 0) {
         conditions.push(
@@ -376,14 +376,10 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           predicate.phoneticTokens.length > 0 &&
           predicate.debtorName
         ) {
-          mockCases = filterCasesByDebtorNameSimilarity(
-            mockCases,
-            predicate.debtorName,
-            SIMILARITY_THRESHOLD,
-          );
+          mockCases = filterCasesByDebtorNameSimilarity(mockCases, predicate.debtorName);
           this.context.logger.debug(
             MODULE_NAME,
-            `[DEV MOCK] Phonetic filtering: ${mockCases.length} results (threshold: ${SIMILARITY_THRESHOLD})`,
+            `[DEV MOCK] Phonetic filtering: ${mockCases.length} results (threshold: 0.83)`,
           );
         }
 

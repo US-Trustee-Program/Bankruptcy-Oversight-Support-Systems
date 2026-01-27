@@ -3,16 +3,13 @@ import {
   generatePhoneticTokens,
   expandQueryWithNicknames,
   generatePhoneticTokensWithNicknames,
-  calculateJaroWinklerSimilarity,
   filterCasesByDebtorNameSimilarity,
-  isPhoneticSearchEnabled,
 } from './phonetic-utils';
 import { SyncedCase } from '@common/cams/cases';
 import { FeatureFlagSet } from '../../adapters/types/basic';
 
 describe('Phonetic Utilities', () => {
   // Standard similarity threshold for phonetic/nickname matching
-  const SIMILARITY_THRESHOLD = 0.83;
 
   describe('generatePhoneticTokens', () => {
     // Tests below verify that natural.SoundEx and natural.Metaphone integration works correctly
@@ -215,7 +212,7 @@ describe('Phonetic Utilities', () => {
         } as SyncedCase,
       ];
 
-      const filtered = filterCasesByDebtorNameSimilarity(phonetics, 'Jon', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(phonetics, 'Jon');
       const filteredNames = filtered.map((c) => c.debtor?.name);
 
       expect(filteredNames).toContain('Jon'); // Exact match
@@ -224,28 +221,20 @@ describe('Phonetic Utilities', () => {
     });
 
     it('should include joint debtor names in search', () => {
-      const filtered = filterCasesByDebtorNameSimilarity(mockCases, 'Sarah', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(mockCases, 'Sarah');
       expect(filtered).toHaveLength(1);
       expect(filtered[0].jointDebtor?.name).toBe('Sarah Connor');
     });
 
     it('should handle partial name matching', () => {
-      const filtered = filterCasesByDebtorNameSimilarity(
-        mockCases,
-        'John Sm',
-        SIMILARITY_THRESHOLD,
-      );
+      const filtered = filterCasesByDebtorNameSimilarity(mockCases, 'John Sm');
       const filteredNames = filtered.map((c) => c.debtor?.name);
 
       expect(filteredNames).toContain('John Smith'); // Prefix match
     });
 
     it('should sort results by similarity score', () => {
-      const filtered = filterCasesByDebtorNameSimilarity(
-        mockCases,
-        'John Smith',
-        SIMILARITY_THRESHOLD,
-      );
+      const filtered = filterCasesByDebtorNameSimilarity(mockCases, 'John Smith');
 
       // Exact match should be first (or very close match like "Jon Smith")
       const topNames = filtered.slice(0, 2).map((c) => c.debtor?.name);
@@ -255,26 +244,18 @@ describe('Phonetic Utilities', () => {
     });
 
     it('should return all cases if no search query', () => {
-      const filtered = filterCasesByDebtorNameSimilarity(mockCases, '', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(mockCases, '');
       expect(filtered).toEqual(mockCases);
     });
 
     it('should handle empty case array', () => {
-      const filtered = filterCasesByDebtorNameSimilarity([], 'John', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity([], 'John');
       expect(filtered).toEqual([]);
     });
 
     it('should be case-insensitive', () => {
-      const filtered1 = filterCasesByDebtorNameSimilarity(
-        mockCases,
-        'JOHN SMITH',
-        SIMILARITY_THRESHOLD,
-      );
-      const filtered2 = filterCasesByDebtorNameSimilarity(
-        mockCases,
-        'john smith',
-        SIMILARITY_THRESHOLD,
-      );
+      const filtered1 = filterCasesByDebtorNameSimilarity(mockCases, 'JOHN SMITH');
+      const filtered2 = filterCasesByDebtorNameSimilarity(mockCases, 'john smith');
 
       expect(filtered1).toEqual(filtered2);
     });
@@ -294,11 +275,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // When searching for "Mike", should find "Michael"
-      const filtered = filterCasesByDebtorNameSimilarity(
-        cases,
-        'Mike Johnson',
-        SIMILARITY_THRESHOLD,
-      );
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Mike Johnson');
       expect(filtered).toHaveLength(1);
       expect(filtered[0].debtor?.name).toBe('Michael Johnson');
     });
@@ -316,7 +293,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // Search with DIFFERENT last name to ensure phonetic matching works
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jon Davis', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jon Davis');
       expect(filtered).toHaveLength(1);
       expect(filtered[0].debtor?.name).toBe('John Williams');
     });
@@ -333,7 +310,7 @@ describe('Phonetic Utilities', () => {
         } as SyncedCase,
       ];
 
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jon', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jon');
       expect(filtered).toHaveLength(0); // Jane should not match Jon
     });
 
@@ -357,7 +334,7 @@ describe('Phonetic Utilities', () => {
         } as SyncedCase,
       ];
 
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Muhammad', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Muhammad');
       const names = filtered.map((c) => c.debtor?.name);
 
       expect(names).toContain('Muhammad Ali');
@@ -378,7 +355,7 @@ describe('Phonetic Utilities', () => {
         } as SyncedCase,
       ];
 
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jon', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jon');
       expect(filtered).toHaveLength(0); // Jose should not match Jon
     });
 
@@ -394,7 +371,7 @@ describe('Phonetic Utilities', () => {
         } as SyncedCase,
       ];
 
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'John', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'John');
       expect(filtered).toHaveLength(0); // Jose should not match John
     });
 
@@ -418,7 +395,7 @@ describe('Phonetic Utilities', () => {
         } as SyncedCase,
       ];
 
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jose', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jose');
       const names = filtered.map((c) => c.debtor?.name);
 
       expect(names).not.toContain('Jon Smith'); // Jon should not match Jose
@@ -445,7 +422,7 @@ describe('Phonetic Utilities', () => {
         } as SyncedCase,
       ];
 
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Mike', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Mike');
       expect(filtered).toHaveLength(0); // Miller should not match Mike
     });
   });
@@ -464,7 +441,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // Search with DIFFERENT last name to test pure nickname matching
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Bob Davis', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Bob Davis');
       expect(filtered).toHaveLength(1);
       expect(filtered[0].debtor?.name).toBe('Robert Smith');
     });
@@ -482,11 +459,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // Search with DIFFERENT last name to test pure nickname matching
-      const filtered = filterCasesByDebtorNameSimilarity(
-        cases,
-        'Robert Williams',
-        SIMILARITY_THRESHOLD,
-      );
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Robert Williams');
       expect(filtered).toHaveLength(1);
       expect(filtered[0].debtor?.name).toBe('Bob Johnson');
     });
@@ -504,11 +477,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // Search with DIFFERENT last name to test pure nickname matching
-      const filtered = filterCasesByDebtorNameSimilarity(
-        cases,
-        'Bill Garcia',
-        SIMILARITY_THRESHOLD,
-      );
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Bill Garcia');
       expect(filtered).toHaveLength(1);
       expect(filtered[0].debtor?.name).toBe('William Brown');
     });
@@ -526,11 +495,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // Search with DIFFERENT last name to test pure nickname matching
-      const filtered = filterCasesByDebtorNameSimilarity(
-        cases,
-        'William Martinez',
-        SIMILARITY_THRESHOLD,
-      );
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'William Martinez');
       expect(filtered).toHaveLength(1);
       expect(filtered[0].debtor?.name).toBe('Bill Anderson');
     });
@@ -558,7 +523,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // Search for José (with accent) should find both José and Jose
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jose', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jose');
       expect(filtered).toHaveLength(2);
       const names = filtered.map((c) => c.debtor?.name);
       expect(names).toContain('José Garcia');
@@ -588,7 +553,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // Search for "Micheal" (common typo) should find both Michael and Micheal
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Micheal', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Micheal');
       expect(filtered).toHaveLength(2);
       const names = filtered.map((c) => c.debtor?.name);
       expect(names).toContain('Michael Smith');
@@ -624,7 +589,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // Search for "myke" (phonetic spelling of Mike) should find Mike via phonetic match
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'myke', SIMILARITY_THRESHOLD);
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'myke');
       expect(filtered.length).toBeGreaterThanOrEqual(1);
       const names = filtered.map((c) => c.debtor?.name);
       expect(names).toContain('Mike Smith');
@@ -653,11 +618,7 @@ describe('Phonetic Utilities', () => {
       ];
 
       // Search for "Jean-Pierre" should find both hyphenated and non-hyphenated
-      const filtered = filterCasesByDebtorNameSimilarity(
-        cases,
-        'Jean-Pierre',
-        SIMILARITY_THRESHOLD,
-      );
+      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jean-Pierre');
       expect(filtered).toHaveLength(2);
       const names = filtered.map((c) => c.debtor?.name);
       expect(names).toContain('Jean-Pierre Moreau');

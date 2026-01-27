@@ -1,117 +1,153 @@
 import * as natural from 'natural';
-import * as nameMatch from 'name-match';
 import { SyncedCase } from '@common/cams/cases';
-import { FeatureFlagSet } from '../../adapters/types/basic';
+// @ts-expect-error - name-match doesn't have TypeScript definitions
+import { getNameVariations } from 'name-match/src/name-normalizer';
 
-// Initialize phonetic algorithms
-const soundexAlgorithm = new natural.SoundEx();
-const metaphoneAlgorithm = new natural.Metaphone();
+// Initialize phonetic processors
+const soundex = new natural.SoundEx();
+const metaphone = new natural.Metaphone();
+
+// Jaro-Winkler similarity threshold for matching names
+// Lowered from 0.85 to 0.83 to support nickname matching (Mike/Michael)
+// while still filtering false positives (Jon/Jane at 0.78)
 export const SIMILARITY_THRESHOLD = 0.83;
 
 /**
- * Generate phonetic tokens for a given text using Soundex and Metaphone algorithms
- * @param text The text to generate phonetic tokens for
- * @returns Array of phonetic tokens
+ * Generates phonetic tokens (Soundex + Metaphone) for a text string.
+ * Tokenizes by whitespace and generates phonetic codes for each word.
+ *
+ * @param text - The text string (e.g., "John Doe")
+ * @returns Array of unique phonetic codes (e.g., ["J500", "JN", "D000", "T"])
  */
-export function generatePhoneticTokens(text: string | undefined): string[] {
-  if (!text) return [];
-
-  // Normalize and tokenize text
-  const normalizedText = text.toLowerCase().trim();
-  const words = normalizedText.split(/\s+/).filter((word) => word.length > 0);
-  const tokens = new Set<string>();
-
-  for (const word of words) {
-    // Generate Soundex token
-    const soundexToken = soundexAlgorithm.process(word);
-    if (soundexToken) {
-      tokens.add(soundexToken);
-    }
-
-    // Generate Metaphone token
-    const metaphoneToken = metaphoneAlgorithm.process(word);
-    if (metaphoneToken) {
-      tokens.add(metaphoneToken);
-    }
+export function generatePhoneticTokens(text: string): string[] {
+  if (!text || text.trim().length === 0) {
+    return [];
   }
+
+  const tokens: Set<string> = new Set();
+
+  // Normalize: uppercase, remove special characters except spaces
+  const normalized = text
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z\s]/g, '');
+
+  // Split into words
+  const words = normalized.split(/\s+/).filter((word) => word.length > 0);
+
+  // Generate phonetic codes for each word
+  words.forEach((word) => {
+    try {
+      // Soundex (4-character code)
+      const soundexCode = soundex.process(word);
+      if (soundexCode) tokens.add(soundexCode);
+
+      // Metaphone (variable-length code)
+      const metaphoneCode = metaphone.process(word);
+      if (metaphoneCode) tokens.add(metaphoneCode);
+    } catch {
+      // Silently skip words that can't be processed (e.g., numbers, special characters)
+    }
+  });
 
   return Array.from(tokens);
 }
 
 /**
- * Expand search query with nickname variations using name-match library
- * @param searchQuery The search query to expand
- * @returns Array of name variations including nicknames
+ * Expands a search query with nickname variations.
+ * For example: "Mike Johnson" → ["mike", "michael", "mikey", "mick", "johnson"]
+ *
+ * @param searchQuery - The search query (e.g., "Mike Johnson")
+ * @returns Array of unique words including all nickname variations
  */
 export function expandQueryWithNicknames(searchQuery: string): string[] {
-  if (!searchQuery) return [];
-
-  const expandedNames = new Set<string>();
-  const words = searchQuery.toLowerCase().trim().split(/\s+/);
-
-  for (const word of words) {
-    // Use NameNormalizer to get nickname variations
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-      const variations = (nameMatch.NameNormalizer?.getNameVariations?.(word) as string[]) ??
-        (nameMatch.default?.NameNormalizer?.getNameVariations?.(word) as string[]) ?? [word];
-
-      if (variations && Array.isArray(variations)) {
-        variations.forEach((variant: string) => expandedNames.add(variant.toLowerCase()));
-      }
-    } catch (_error) {
-      // If name-match fails for a word, just use the original
-      // This is expected for non-name words
-      expandedNames.add(word);
-    }
+  if (!searchQuery || searchQuery.trim().length === 0) {
+    return [];
   }
 
-  return Array.from(expandedNames);
+  const words = searchQuery.trim().split(/\s+/);
+  const expandedWords = new Set<string>();
+
+  words.forEach((word) => {
+    // Get all name variations for this word (includes original + nicknames)
+    const variations = getNameVariations(word) as string[];
+
+    // Add all variations, splitting multi-word variations if needed
+    variations.forEach((variation: string) => {
+      variation.split(' ').forEach((w) => {
+        if (w.length > 0) {
+          expandedWords.add(w.toLowerCase());
+        }
+      });
+    });
+  });
+
+  return Array.from(expandedWords);
 }
 
 /**
- * Generate phonetic tokens combined with nickname expansion
- * @param text The text to process
- * @returns Array of all phonetic tokens including nickname variations
+ * Generates phonetic tokens for a search query with nickname expansion.
+ * Expands the query with nickname variations, then generates phonetic codes for all variations.
+ * For example: "Mike Johnson" → expands to ["mike", "michael", "mikey", "mick", "johnson"]
+ *              → generates tokens for all variations
+ *
+ * @param searchQuery - The search query (e.g., "Mike Johnson")
+ * @returns Array of unique phonetic codes for query + nickname variations
  */
-export function generatePhoneticTokensWithNicknames(text: string): string[] {
-  if (!text) return [];
-
-  const tokens = new Set<string>();
-
-  // Get nickname variations
-  const expandedWords = expandQueryWithNicknames(text);
-
-  // Generate phonetic tokens for each variation
-  for (const word of expandedWords) {
-    const wordTokens = generatePhoneticTokens(word);
-    wordTokens.forEach((token) => tokens.add(token));
+export function generatePhoneticTokensWithNicknames(searchQuery: string): string[] {
+  if (!searchQuery || searchQuery.trim().length === 0) {
+    return [];
   }
 
-  // Also include phonetic tokens for the full original text
-  const fullTextTokens = generatePhoneticTokens(text);
-  fullTextTokens.forEach((token) => tokens.add(token));
+  // Expand query with nickname variations
+  const expandedWords = expandQueryWithNicknames(searchQuery);
 
-  return Array.from(tokens);
+  // Generate phonetic tokens for all expanded words
+  const allTokens = new Set<string>();
+  expandedWords.forEach((word) => {
+    const tokens = generatePhoneticTokens(word);
+    tokens.forEach((token) => allTokens.add(token));
+  });
+
+  return Array.from(allTokens);
+}
+
+/**
+ * Generates a regex pattern for word-level prefix matching on debtor names.
+ * Splits the search query into words and creates a pattern that matches any word
+ * starting with any of the query words (case-insensitive).
+ * For example: "mike sm" → /\b(mike|sm)/i which matches "Michael Smith", "Mike Anderson", etc.
+ *
+ * @param searchQuery - The search query (e.g., "mike sm")
+ * @returns RegExp for word-level prefix matching
+ */
+export function generateDebtorNameRegexPattern(searchQuery: string): RegExp {
+  if (!searchQuery || searchQuery.trim().length === 0) {
+    return new RegExp('');
+  }
+
+  const queryWords = searchQuery
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+  return new RegExp(`\\b(${queryWords.join('|')})`, 'i');
 }
 
 /**
  * Calculate match score for a query word against a name word.
- * Matching order: direct match -> phonetic code -> nickname match -> similarity score
+ * Matching order: direct match → phonetic code → nickname match → similarity score
  *
- * @param queryWord Single word from search query
- * @param nameWord Single word from debtor name
+ * @param queryWord - Single word from search query (normalized)
+ * @param nameWord - Single word from debtor name (normalized)
  * @returns Score between 0.0 and 1.0 (1.0 = exact match)
  */
 function calculateWordMatchScore(queryWord: string, nameWord: string): number {
-  const normalizedQuery = queryWord.toLowerCase();
-  const normalizedName = nameWord.toLowerCase();
-
   // 1. Direct match - exact or prefix
-  if (normalizedQuery === normalizedName) {
+  if (queryWord === nameWord) {
     return 1.0;
   }
-  if (normalizedName.startsWith(normalizedQuery)) {
+  if (nameWord.startsWith(queryWord)) {
     return 0.9;
   }
 
@@ -122,7 +158,7 @@ function calculateWordMatchScore(queryWord: string, nameWord: string): number {
 
   if (hasPhoneticMatch) {
     // Use Jaro-Winkler to filter false positives (e.g., Jon/Jane)
-    const similarity = natural.JaroWinklerDistance(normalizedQuery, normalizedName);
+    const similarity = natural.JaroWinklerDistance(queryWord, nameWord);
     if (similarity >= SIMILARITY_THRESHOLD) {
       return similarity;
     }
@@ -130,11 +166,7 @@ function calculateWordMatchScore(queryWord: string, nameWord: string): number {
 
   // 3. Nickname match (e.g., Mike → Michael)
   try {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
-    const variations = (nameMatch.NameNormalizer?.getNameVariations?.(queryWord) as string[]) ??
-      (nameMatch.default?.NameNormalizer?.getNameVariations?.(queryWord) as string[]) ?? [
-        queryWord,
-      ];
+    const variations = getNameVariations(queryWord) as string[];
 
     for (const variation of variations) {
       // Variation might be multi-word (e.g., "Billy Bob"), split and check each
@@ -142,22 +174,22 @@ function calculateWordMatchScore(queryWord: string, nameWord: string): number {
 
       for (const varWord of variationWords) {
         // Exact match with nickname variation
-        if (normalizedName === varWord) {
+        if (nameWord === varWord) {
           return 0.95;
         }
 
         // Prefix match with nickname variation
-        if (normalizedName.startsWith(varWord)) {
+        if (nameWord.startsWith(varWord)) {
           return 0.9;
         }
       }
     }
-  } catch (_error) {
+  } catch {
     // If nickname expansion fails, continue to final fallback
   }
 
   // 4. Final fallback - Jaro-Winkler similarity with original query word
-  const directSimilarity = natural.JaroWinklerDistance(normalizedQuery, normalizedName);
+  const directSimilarity = natural.JaroWinklerDistance(queryWord, nameWord);
   return directSimilarity >= SIMILARITY_THRESHOLD ? directSimilarity : 0;
 }
 
@@ -165,12 +197,12 @@ function calculateWordMatchScore(queryWord: string, nameWord: string): number {
  * Calculate name match score using direct, phonetic, nickname, and similarity matching.
  * Compares each query word against each name word and returns the best score.
  *
- * @param searchQuery Full search query (e.g., "Mike Smith")
- * @param targetName Full debtor name (e.g., "Michael Smith")
+ * @param normalizedQuery - Normalized search query (e.g., "mike smith")
+ * @param targetName - Full debtor name (e.g., "Michael Smith")
  * @returns Best match score between 0.0 and 1.0
  */
-function calculateNameMatchScore(searchQuery: string, targetName: string): number {
-  const queryWords = searchQuery.toLowerCase().trim().split(/\s+/);
+function calculateNameMatchScore(normalizedQuery: string, targetName: string): number {
+  const queryWords = normalizedQuery.split(/\s+/);
   const targetWords = targetName.toLowerCase().trim().split(/\s+/);
 
   let maxScore = 0;
@@ -187,16 +219,17 @@ function calculateNameMatchScore(searchQuery: string, targetName: string): numbe
 }
 
 /**
- * Filter cases by debtor name similarity using nickname-aware matching
- * @param cases Array of cases to filter
- * @param searchQuery The search query to match against
- * @param threshold Minimum similarity threshold (default 0.83 to prevent false positives while allowing international variations)
- * @returns Filtered array of cases matching the similarity criteria, sorted by match score
+ * Filters cases based on similarity between search query and debtor names.
+ * This is applied AFTER the phonetic database query to refine results.
+ * Results are sorted by similarity score (best matches first).
+ *
+ * @param cases - Cases returned from phonetic database query
+ * @param searchQuery - User's search input
+ * @returns Filtered and sorted cases where debtor or joint debtor name matches the search query
  */
 export function filterCasesByDebtorNameSimilarity(
   cases: SyncedCase[],
   searchQuery: string,
-  threshold: number = SIMILARITY_THRESHOLD,
 ): SyncedCase[] {
   if (!searchQuery || !cases || cases.length === 0) return cases;
 
@@ -218,21 +251,12 @@ export function filterCasesByDebtorNameSimilarity(
       maxScore = Math.max(maxScore, jointDebtorScore);
     }
 
-    // Include case if it meets the threshold
-    if (maxScore >= threshold) {
+    // Include case if it meets the SIMILARITY_THRESHOLD
+    if (maxScore >= SIMILARITY_THRESHOLD) {
       filteredCases.push({ case: caseItem, score: maxScore });
     }
   }
 
   // Sort by score (highest first) and return cases
   return filteredCases.sort((a, b) => b.score - a.score).map((item) => item.case);
-}
-
-/**
- * Check if phonetic search is enabled in the feature flags
- * @param featureFlags The feature flags object from the application context
- * @returns True if phonetic search is enabled, false otherwise
- */
-export function isPhoneticSearchEnabled(featureFlags?: FeatureFlagSet | null): boolean {
-  return featureFlags?.['phonetic-search-enabled'] === true;
 }
