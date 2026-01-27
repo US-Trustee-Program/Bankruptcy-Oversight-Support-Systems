@@ -11,16 +11,23 @@ const MODULE_NAME = 'EXPORT-AND-LOAD';
 /**
  * Add phonetic tokens to a case's debtor and joint debtor names
  * @param bCase The case to add phonetic tokens to
- * @returns The case with phonetic tokens added
+ * @returns A new case object with phonetic tokens added (immutable)
  */
 function addPhoneticTokens(bCase: SyncedCase): SyncedCase {
+  const result: SyncedCase = { ...bCase };
+
   if (bCase.debtor?.name) {
-    bCase.debtor.phoneticTokens = generatePhoneticTokens(bCase.debtor.name);
+    result.debtor = { ...bCase.debtor, phoneticTokens: generatePhoneticTokens(bCase.debtor.name) };
   }
+
   if (bCase.jointDebtor?.name) {
-    bCase.jointDebtor.phoneticTokens = generatePhoneticTokens(bCase.jointDebtor.name);
+    result.jointDebtor = {
+      ...bCase.jointDebtor,
+      phoneticTokens: generatePhoneticTokens(bCase.jointDebtor.name),
+    };
   }
-  return bCase;
+
+  return result;
 }
 
 async function exportAndLoad(
@@ -32,7 +39,7 @@ async function exportAndLoad(
   for (const event of events) {
     try {
       event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
-      const caseWithPhoneticTokens = addPhoneticTokens({ ...event.bCase });
+      const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
       await repo.syncDxtrCase(
         createAuditRecord<SyncedCase>({ ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' }),
       );
