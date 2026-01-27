@@ -16,14 +16,14 @@ import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import * as Validation from '@common/cams/validation';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
-import {
-  ADDRESS_REQUIRED_ERROR_REASON,
-  CITY_REQUIRED_ERROR_REASON,
-  PARTIAL_ADDRESS_ERROR_REASON,
-  STATE_REQUIRED_ERROR_REASON,
-  ZIP_CODE_REQUIRED_ERROR_REASON,
-  TRUSTEE_INTERNAL_SPEC,
-} from '@/trustees/forms/trusteeForms.types';
+import { trusteeInternalSpec } from './trusteeForms.types';
+import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+
+const ADDRESS_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED;
+const CITY_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.CITY_REQUIRED;
+const PARTIAL_ADDRESS_ERROR_REASON = FIELD_VALIDATION_MESSAGES.PARTIAL_ADDRESS;
+const STATE_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.STATE_REQUIRED;
+const ZIP_CODE_REQUIRED_ERROR_REASON = FIELD_VALIDATION_MESSAGES.ZIP_CODE_REQUIRED;
 
 function renderWithProps(
   props: TrusteeInternalContactFormProps = {
@@ -348,19 +348,16 @@ describe('TrusteeInternalContactForm Tests', () => {
       internal: {},
     } as Partial<Trustee>;
 
-    const addressErrorMessage = ADDRESS_REQUIRED_ERROR_REASON;
-    const cityErrorMessage = CITY_REQUIRED_ERROR_REASON;
-    const stateErrorMessage = STATE_REQUIRED_ERROR_REASON;
-    const zipErrorMessage = ZIP_CODE_REQUIRED_ERROR_REASON;
-
     vi.spyOn(DebounceModule, 'default').mockReturnValue(immediateDebounce);
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'abc', trustee: startingState });
 
-    expect(screen.queryByText(addressErrorMessage)).not.toBeInTheDocument();
-    expect(screen.queryByText(cityErrorMessage)).not.toBeInTheDocument();
-    expect(screen.queryByText(stateErrorMessage)).not.toBeInTheDocument();
-    expect(screen.queryByText(zipErrorMessage)).not.toBeInTheDocument();
+    expect(
+      document.getElementById('trustee-address1-input__error-message'),
+    ).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-city-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-state-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
 
     const addr2 = screen.getByTestId('trustee-address2');
     const extension = screen.getByTestId('trustee-extension');
@@ -368,20 +365,30 @@ describe('TrusteeInternalContactForm Tests', () => {
     await userEvent.type(extension, '1234');
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(screen.queryByText(addressErrorMessage)).toBeInTheDocument();
-    expect(screen.queryByText(cityErrorMessage)).toBeInTheDocument();
-    expect(screen.queryByText(stateErrorMessage)).toBeInTheDocument();
-    expect(screen.queryByText(zipErrorMessage)).toBeInTheDocument();
+    const address1Error = document.getElementById('trustee-address1-input__error-message');
+    expect(address1Error).toBeInTheDocument();
+    expect(address1Error).toHaveTextContent(ADDRESS_REQUIRED_ERROR_REASON);
+    const cityError = document.getElementById('trustee-city-input__error-message');
+    expect(cityError).toBeInTheDocument();
+    expect(cityError).toHaveTextContent(CITY_REQUIRED_ERROR_REASON);
+    const stateError = document.getElementById('trustee-state-input__error-message');
+    expect(stateError).toBeInTheDocument();
+    expect(stateError).toHaveTextContent(STATE_REQUIRED_ERROR_REASON);
+    const zipError = document.getElementById('trustee-zip-input__error-message');
+    expect(zipError).toBeInTheDocument();
+    expect(zipError).toHaveTextContent(ZIP_CODE_REQUIRED_ERROR_REASON);
 
     await userEvent.clear(addr2);
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
-      expect(screen.queryByText(addressErrorMessage)).not.toBeInTheDocument();
+      expect(
+        document.getElementById('trustee-address1-input__error-message'),
+      ).not.toBeInTheDocument();
     });
-    expect(screen.queryByText(cityErrorMessage)).not.toBeInTheDocument();
-    expect(screen.queryByText(stateErrorMessage)).not.toBeInTheDocument();
-    expect(screen.queryByText(zipErrorMessage)).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-city-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-state-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
   });
 
   test('should display partial address alert on save when address is incomplete', async () => {
@@ -411,33 +418,41 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     // Per-field validation doesn't show group-level errors immediately
     // Address field is optional, so no error appears until submit
-    expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
+    expect(
+      document.getElementById('trustee-address1-input__error-message'),
+    ).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     // On submit, full form validation runs and shows partial address error
     expect(screen.queryByText(PARTIAL_ADDRESS_ERROR_REASON)).toBeInTheDocument();
-    expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).toBeInTheDocument();
+    const address1Error = document.getElementById('trustee-address1-input__error-message');
+    expect(address1Error).toBeInTheDocument();
+    expect(address1Error).toHaveTextContent(ADDRESS_REQUIRED_ERROR_REASON);
 
     await userEvent.clear(city);
 
     // Per-field validation doesn't show group-level errors immediately
-    expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-city-input__error-message')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).toBeInTheDocument();
-    expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
+    const cityError = document.getElementById('trustee-city-input__error-message');
+    expect(cityError).toBeInTheDocument();
+    expect(cityError).toHaveTextContent(CITY_REQUIRED_ERROR_REASON);
+    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
 
     await userEvent.clear(zip);
 
     // Per-field validation doesn't show group-level errors immediately
-    expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).toBeInTheDocument();
-    expect(screen.queryByText(STATE_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
+    const zipError = document.getElementById('trustee-zip-input__error-message');
+    expect(zipError).toBeInTheDocument();
+    expect(zipError).toHaveTextContent(ZIP_CODE_REQUIRED_ERROR_REASON);
+    expect(document.getElementById('trustee-state-input__error-message')).not.toBeInTheDocument();
 
     await TestingUtilities.clearComboBoxSelection('trustee-state');
 
@@ -446,10 +461,12 @@ describe('TrusteeInternalContactForm Tests', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     // Now that all address fields are empty (valid state), errors should clear
-    expect(screen.queryByText(ADDRESS_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
-    expect(screen.queryByText(CITY_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
-    expect(screen.queryByText(STATE_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
-    expect(screen.queryByText(ZIP_CODE_REQUIRED_ERROR_REASON)).not.toBeInTheDocument();
+    expect(
+      document.getElementById('trustee-address1-input__error-message'),
+    ).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-city-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-state-input__error-message')).not.toBeInTheDocument();
+    expect(document.getElementById('trustee-zip-input__error-message')).not.toBeInTheDocument();
   });
 
   test('edit internal should send null for optional fields when deleted', async () => {
@@ -527,14 +544,18 @@ describe('TrusteeInternalContactForm Tests', () => {
     await userEvent.type(addr1, 'x');
 
     await waitFor(() => {
-      expect(screen.queryByText('bad')).toBeInTheDocument();
+      const errorElement = document.getElementById('trustee-address1-input__error-message');
+      expect(errorElement).toBeInTheDocument();
+      expect(errorElement).toHaveTextContent('bad');
     });
 
     await userEvent.clear(addr1);
     await userEvent.type(addr1, 'ok');
 
     await waitFor(() => {
-      expect(screen.queryByText('bad')).not.toBeInTheDocument();
+      expect(
+        document.getElementById('trustee-address1-input__error-message'),
+      ).not.toBeInTheDocument();
     });
 
     expect(validateSpy).toHaveBeenCalled();
@@ -545,7 +566,7 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     const result = validateField('address1', '  abc  ');
 
-    expect(spy).toHaveBeenCalledWith(TRUSTEE_INTERNAL_SPEC.address1, 'abc');
+    expect(spy).toHaveBeenCalledWith(trusteeInternalSpec.address1, 'abc');
     expect(result).toBeUndefined();
   });
 
@@ -563,17 +584,17 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     validateField('city', '   ');
 
-    expect(spy2).toHaveBeenCalledWith(TRUSTEE_INTERNAL_SPEC.city, undefined);
+    expect(spy2).toHaveBeenCalledWith(trusteeInternalSpec.city, undefined);
   });
 
   test('getDynamicSpec removes spec keys that are not present in form data (covers delete path)', async () => {
-    (TRUSTEE_INTERNAL_SPEC as unknown as Record<string, unknown[]>).__extra_temp_key = [];
+    (trusteeInternalSpec as unknown as Record<string, unknown[]>).__extra_temp_key = [];
 
     renderWithProps({ cancelTo: '/trustees', trusteeId: 'spec-rem-1' });
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    delete (TRUSTEE_INTERNAL_SPEC as unknown as Record<string, unknown[]>).__extra_temp_key;
+    delete (trusteeInternalSpec as unknown as Record<string, unknown[]>).__extra_temp_key;
   });
 
   test('shows saving state while awaiting patchTrustee', async () => {
@@ -617,10 +638,18 @@ describe('TrusteeInternalContactForm Tests', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    expect(screen.queryByText('addr2 error')).toBeInTheDocument();
-    expect(screen.queryByText('phone error')).toBeInTheDocument();
-    expect(screen.queryByText('ext error')).toBeInTheDocument();
-    expect(screen.queryByText('email error')).toBeInTheDocument();
+    const address2Error = document.getElementById('trustee-address2-input__error-message');
+    expect(address2Error).toBeInTheDocument();
+    expect(address2Error).toHaveTextContent('addr2 error');
+    const phoneError = document.getElementById('trustee-phone-input__error-message');
+    expect(phoneError).toBeInTheDocument();
+    expect(phoneError).toHaveTextContent('phone error');
+    const extensionError = document.getElementById('trustee-extension-input__error-message');
+    expect(extensionError).toBeInTheDocument();
+    expect(extensionError).toHaveTextContent('ext error');
+    const emailError = document.getElementById('trustee-email-input__error-message');
+    expect(emailError).toBeInTheDocument();
+    expect(emailError).toHaveTextContent('email error');
   });
 
   test('renders submit and cancel buttons (covers submit/cancel JSX region)', () => {

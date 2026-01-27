@@ -147,6 +147,17 @@ function hasLength(value: unknown): value is { length: number } {
  * @param {string} [reason] - Optional custom error message to display when validation fails
  * @returns {ValidatorFunction} A validator function that checks length within the specified range
  */
+/**
+ * Helper function to pluralize a unit based on count.
+ *
+ * @param {number} count - The count to determine pluralization
+ * @param {string} unit - The singular form of the unit
+ * @returns {string} The unit with 's' appended if count is not 1
+ */
+function pluralize(count: number, unit: string): string {
+  return count === 1 ? unit : unit + 's';
+}
+
 function length(min: number, max: number, reason?: string): ValidatorFunction {
   return (value: unknown): ValidatorResult => {
     if (hasLength(value)) {
@@ -158,18 +169,22 @@ function length(min: number, max: number, reason?: string): ValidatorFunction {
         return { reasons: [reason] };
       }
 
-      let rangeText = `between ${min} and ${max}`;
+      const unitText = typeof value === 'string' ? 'character' : 'selection';
+
+      // Generate UX-approved messages
       if (min === 0) {
-        rangeText = `at most ${max}`;
+        // maxLength case
+        return { reasons: [`Max length ${max} ${pluralize(max, unitText)}`] };
       } else if (max === Infinity) {
-        rangeText = `at least ${min}`;
+        // minLength case
+        return { reasons: [`Min length ${min} ${pluralize(min, unitText)}`] };
       } else if (min === max) {
-        rangeText = `exactly ${min}`;
+        // exactLength case
+        return { reasons: [`Should be ${min} ${pluralize(min, unitText)} in length`] };
+      } else {
+        // range case
+        return { reasons: [`Must be between ${min} and ${max} ${pluralize(max, unitText)}`] };
       }
-
-      const unitText = typeof value === 'string' ? 'characters' : 'selections';
-
-      return { reasons: [`Must contain ${rangeText} ${unitText}`] };
     }
 
     if (value === null) {
