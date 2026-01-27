@@ -37,10 +37,8 @@ describe('FormattedAddress component', () => {
     test('should render complete contact information with all fields', () => {
       renderComponent({ contact: mockFullContact, testIdPrefix: 'test' });
 
-      // Company name
       expect(screen.getByTestId('test-company-name')).toHaveTextContent('Example Company LLC');
 
-      // Address fields
       expect(screen.getByTestId('test-street-address')).toHaveTextContent('123 Main St');
       expect(screen.getByTestId('test-street-address-line-2')).toHaveTextContent('Suite 100');
       expect(screen.getByTestId('test-street-address-line-3')).toHaveTextContent('Floor 2');
@@ -48,19 +46,15 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('test-state')).toHaveTextContent(', NY');
       expect(screen.getByTestId('test-zip-code')).toBeInTheDocument();
 
-      // Check that the zip code element exists and verify its content more flexibly
       const zipElement = screen.getByTestId('test-zip-code');
       expect(zipElement.textContent).toContain('10001');
 
-      // Phone with extension
       expect(screen.getByTestId('test-phone-number')).toHaveTextContent('555-123-4567 ext. 123');
 
-      // Email as link (default behavior)
       expect(screen.getByTestId('test-email')).toBeInTheDocument();
       const emailLink = screen.getByRole('link', { name: /john\.doe@example\.com/ });
       expect(emailLink).toHaveAttribute('href', 'mailto:john.doe@example.com');
 
-      // Website
       expect(screen.getByTestId('test-website')).toBeInTheDocument();
     });
 
@@ -216,7 +210,6 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('zip-only-state')).toHaveTextContent('');
       expect(screen.getByTestId('zip-only-zip-code')).toBeInTheDocument();
 
-      // Check that the zip code element exists and verify its content more flexibly
       const zipElement = screen.getByTestId('zip-only-zip-code');
       expect(zipElement.textContent).toContain('90210');
     });
@@ -542,7 +535,6 @@ describe('FormattedAddress component', () => {
       expect(companyElementWithPrefix).toBeInTheDocument();
       expect(companyElementWithPrefix).toHaveClass('company-name');
 
-      // Re-render without testIdPrefix to verify no testId is present
       rerender(<FormattedContact contact={contactWithCompanyName} />);
 
       const companyElement = screen.getByText('TestId Company Inc').closest('.company-name');

@@ -2,18 +2,26 @@ import { describe, test, expect } from 'vitest';
 import { ValidationSpec, validateObject, VALID, ValidatorResult } from './validation';
 import Validators from './validators';
 
-// Constants for generic auto-generated validator messages
-const MIN_LENGTH_1_CHAR = 'Min length 1 character';
-const MIN_LENGTH_5_CHARS = 'Min length 5 characters';
-const MIN_LENGTH_6_CHARS = 'Min length 6 characters';
-const MIN_LENGTH_10_CHARS = 'Min length 10 characters';
-const MAX_LENGTH_4_CHARS = 'Max length 4 characters';
-const BETWEEN_1_AND_2_SELECTIONS = 'Must be between 1 and 2 selections';
-const BETWEEN_2_AND_4_CHARS = 'Must be between 2 and 4 characters';
-const BETWEEN_3_AND_10_SELECTIONS = 'Must be between 3 and 10 selections';
-const BETWEEN_6_AND_10_CHARS = 'Must be between 6 and 10 characters';
-const EXACTLY_3_CHARS = 'Should be 3 characters in length';
-const EXACTLY_10_CHARS = 'Should be 10 characters in length';
+// Helper functions for generic auto-generated validator messages
+function minLength(n: number): string {
+  return `Min length ${n} character${n === 1 ? '' : 's'}`;
+}
+
+function maxLength(n: number): string {
+  return `Max length ${n} characters`;
+}
+
+const SELECTIONS = true;
+const CHARACTERS = false;
+
+function betweenLength(min: number, max: number, isArray: boolean): string {
+  const unit = isArray ? 'selections' : 'characters';
+  return `Must be between ${min} and ${max} ${unit}`;
+}
+
+function exactLength(n: number): string {
+  return `Should be ${n} characters in length`;
+}
 
 // Constants for other repeated validation messages
 const MUST_BE_VALID_DATE = 'Must be a valid date';
@@ -43,13 +51,13 @@ describe('validators', () => {
         description: 'should return invalid for string one character shorter than minimum length',
         minLength: 6,
         value: 'hello',
-        expected: { reasons: [MIN_LENGTH_6_CHARS] },
+        expected: { reasons: [minLength(6)] },
       },
       {
         description: 'should return invalid for empty string when minimum is greater than 0',
         minLength: 1,
         value: '',
-        expected: { reasons: [MIN_LENGTH_1_CHAR] },
+        expected: { reasons: [minLength(1)] },
       },
       {
         description: 'should return valid for empty string when minimum is 0',
@@ -82,7 +90,7 @@ describe('validators', () => {
         description: 'should return invalid for string longer than maximum length',
         maxLength: 4,
         value: 'hello',
-        expected: { reasons: [MAX_LENGTH_4_CHARS] },
+        expected: { reasons: [maxLength(4)] },
       },
       {
         description: 'should return valid for empty string',
@@ -137,14 +145,14 @@ describe('validators', () => {
         min: 6,
         max: 10,
         value: 'hello',
-        expected: { reasons: [BETWEEN_6_AND_10_CHARS] },
+        expected: { reasons: [betweenLength(6, 10, CHARACTERS)] },
       },
       {
         description: 'should return invalid for string one character longer than maximum length',
         min: 2,
         max: 4,
         value: 'hello',
-        expected: { reasons: [BETWEEN_2_AND_4_CHARS] },
+        expected: { reasons: [betweenLength(2, 4, CHARACTERS)] },
       },
       {
         description: 'should return valid for array within length bounds',
@@ -158,14 +166,14 @@ describe('validators', () => {
         min: 3,
         max: 10,
         value: ['a', 'b'],
-        expected: { reasons: [BETWEEN_3_AND_10_SELECTIONS] },
+        expected: { reasons: [betweenLength(3, 10, SELECTIONS)] },
       },
       {
         description: 'should return invalid for array longer than maximum',
         min: 1,
         max: 2,
         value: ['a', 'b', 'c'],
-        expected: { reasons: [BETWEEN_1_AND_2_SELECTIONS] },
+        expected: { reasons: [betweenLength(1, 2, SELECTIONS)] },
       },
       {
         description: 'should return invalid for non-string, non-array values',
@@ -374,7 +382,7 @@ describe('validators', () => {
         value: { name: 'Jo', email: 'invalid-email' },
         expected: {
           reasonMap: {
-            name: { reasons: [MIN_LENGTH_5_CHARS] },
+            name: { reasons: [minLength(5)] },
           },
         },
       },
@@ -408,7 +416,7 @@ describe('validators', () => {
         expected: {
           reasonMap: {
             name: {
-              reasons: [MIN_LENGTH_10_CHARS, 'Must match the pattern /^[A-Z]/'],
+              reasons: [minLength(10), 'Must match the pattern /^[A-Z]/'],
             },
           },
         },
@@ -455,7 +463,7 @@ describe('validators', () => {
       expect(validator({ name: 'Valid' })).toEqual(VALID);
       expect(validator({ name: '' })).toEqual({
         reasonMap: {
-          name: { reasons: [MIN_LENGTH_1_CHAR] },
+          name: { reasons: [minLength(1)] },
         },
       });
     });
@@ -487,11 +495,11 @@ describe('validators', () => {
         }),
       ).toEqual({
         reasonMap: {
-          name: { reasons: [MIN_LENGTH_1_CHAR] },
+          name: { reasons: [minLength(1)] },
           profile: {
             reasonMap: {
               age: { reasons: ['Age must be a number'] },
-              city: { reasons: [MIN_LENGTH_1_CHAR] },
+              city: { reasons: [minLength(1)] },
             },
           },
         },
@@ -545,13 +553,13 @@ describe('validators', () => {
         description: 'should return invalid for string shorter than exact length',
         length: 10,
         value: 'hello',
-        expected: { reasons: [EXACTLY_10_CHARS] },
+        expected: { reasons: [exactLength(10)] },
       },
       {
         description: 'should return invalid for string longer than exact length',
         length: 3,
         value: 'hello',
-        expected: { reasons: [EXACTLY_3_CHARS] },
+        expected: { reasons: [exactLength(3)] },
       },
       {
         description: 'should return valid for array with exact length',
@@ -624,17 +632,14 @@ describe('validators', () => {
         description: 'should return single error for array with one invalid element',
         validators: [Validators.minLength(5)],
         value: ['hello', 'hi', 'world'],
-        expected: { reasons: [`Element at index 1: ${MIN_LENGTH_5_CHARS}`] },
+        expected: { reasons: [`Element at index 1: ${minLength(5)}`] },
       },
       {
         description: 'should return all errors for array with multiple invalid elements',
         validators: [Validators.minLength(5)],
         value: ['hello', 'hi', 'ok', 'world'],
         expected: {
-          reasons: [
-            `Element at index 1: ${MIN_LENGTH_5_CHARS}`,
-            `Element at index 2: ${MIN_LENGTH_5_CHARS}`,
-          ],
+          reasons: [`Element at index 1: ${minLength(5)}`, `Element at index 2: ${minLength(5)}`],
         },
       },
       {
@@ -652,8 +657,8 @@ describe('validators', () => {
         value: ['Hi', 'ok'],
         expected: {
           reasons: [
-            `Element at index 0: ${MIN_LENGTH_5_CHARS}`,
-            `Element at index 1: ${MIN_LENGTH_5_CHARS}`,
+            `Element at index 0: ${minLength(5)}`,
+            `Element at index 1: ${minLength(5)}`,
             'Element at index 1: Must start with uppercase',
           ],
         },
@@ -706,7 +711,7 @@ describe('validators', () => {
         validators: [Validators.optional(Validators.minLength(5))],
         value: ['hello', 'hi', undefined, 'world'],
         expected: {
-          reasons: [`Element at index 1: ${MIN_LENGTH_5_CHARS}`],
+          reasons: [`Element at index 1: ${minLength(5)}`],
         },
       },
       {
@@ -727,8 +732,8 @@ describe('validators', () => {
         ],
         expected: {
           reasons: [
-            `Element at index 1: Element at index 0: ${MIN_LENGTH_5_CHARS}`,
-            `Element at index 1: Element at index 1: ${MIN_LENGTH_5_CHARS}`,
+            `Element at index 1: Element at index 0: ${minLength(5)}`,
+            `Element at index 1: Element at index 1: ${minLength(5)}`,
           ],
         },
       },
@@ -746,9 +751,9 @@ describe('validators', () => {
 
       expect(result).toEqual({
         reasons: [
-          `Element at index 0: ${MIN_LENGTH_10_CHARS}`,
-          `Element at index 1: ${MIN_LENGTH_10_CHARS}`,
-          `Element at index 2: ${MIN_LENGTH_10_CHARS}`,
+          `Element at index 0: ${minLength(10)}`,
+          `Element at index 1: ${minLength(10)}`,
+          `Element at index 2: ${minLength(10)}`,
         ],
       });
     });
