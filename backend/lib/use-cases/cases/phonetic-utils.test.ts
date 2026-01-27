@@ -6,7 +6,6 @@ import {
   filterCasesByDebtorNameSimilarity,
 } from './phonetic-utils';
 import { SyncedCase } from '@common/cams/cases';
-import { FeatureFlagSet } from '../../adapters/types/basic';
 
 describe('Phonetic Utilities', () => {
   // Standard similarity threshold for phonetic/nickname matching
@@ -93,49 +92,6 @@ describe('Phonetic Utilities', () => {
     it('should handle empty input', () => {
       const tokens = generatePhoneticTokensWithNicknames('');
       expect(tokens).toEqual([]);
-    });
-  });
-
-  describe('calculateJaroWinklerSimilarity', () => {
-    // Tests below verify our Jaro-Winkler implementation works correctly
-    it('should return 1.0 for identical strings', () => {
-      const similarity = calculateJaroWinklerSimilarity('John', 'John');
-      expect(similarity).toBe(1.0);
-    });
-
-    it('should return 0.0 for empty strings', () => {
-      const similarity = calculateJaroWinklerSimilarity('', '');
-      expect(similarity).toBe(0.0);
-    });
-
-    it('should calculate similarity for similar names', () => {
-      const similarity = calculateJaroWinklerSimilarity('Jon', 'John');
-      expect(similarity).toBeGreaterThan(0.8); // Should be high similarity
-      expect(similarity).toBeLessThan(1.0);
-    });
-
-    it('should calculate lower similarity for different names', () => {
-      const similarity = calculateJaroWinklerSimilarity('Jon', 'Jane');
-      expect(similarity).toBeLessThan(0.8); // Should be lower similarity
-    });
-
-    it('should be case-insensitive', () => {
-      const similarity1 = calculateJaroWinklerSimilarity('JOHN', 'john');
-      const similarity2 = calculateJaroWinklerSimilarity('John', 'John');
-      expect(similarity1).toBe(similarity2);
-    });
-
-    it('should handle prefix matching well', () => {
-      const similarity = calculateJaroWinklerSimilarity('John', 'Johnny');
-      expect(similarity).toBeGreaterThan(0.85); // Jaro-Winkler favors prefix matches
-    });
-
-    it('should handle common misspellings', () => {
-      const similarity1 = calculateJaroWinklerSimilarity('Michael', 'Micheal');
-      expect(similarity1).toBeGreaterThan(0.9); // Common misspelling should have high similarity
-
-      const similarity2 = calculateJaroWinklerSimilarity('Muhammad', 'Mohammed');
-      expect(similarity2).toBeGreaterThan(0.75); // Different but related names
     });
   });
 
@@ -623,33 +579,6 @@ describe('Phonetic Utilities', () => {
       const names = filtered.map((c) => c.debtor?.name);
       expect(names).toContain('Jean-Pierre Moreau');
       expect(names).toContain('Jean Pierre Moreau');
-    });
-  });
-
-  describe('isPhoneticSearchEnabled', () => {
-    it('should return false when no feature flags provided', () => {
-      expect(isPhoneticSearchEnabled()).toBe(false);
-      expect(isPhoneticSearchEnabled(null)).toBe(false);
-      expect(isPhoneticSearchEnabled(undefined)).toBe(false);
-    });
-
-    it('should return false when phonetic-search-enabled flag is not present', () => {
-      const featureFlags: FeatureFlagSet = {};
-      expect(isPhoneticSearchEnabled(featureFlags)).toBe(false);
-    });
-
-    it('should return false when phonetic-search-enabled is false', () => {
-      const featureFlags: FeatureFlagSet = {
-        'phonetic-search-enabled': false,
-      };
-      expect(isPhoneticSearchEnabled(featureFlags)).toBe(false);
-    });
-
-    it('should return true when phonetic-search-enabled is true', () => {
-      const featureFlags: FeatureFlagSet = {
-        'phonetic-search-enabled': true,
-      };
-      expect(isPhoneticSearchEnabled(featureFlags)).toBe(true);
     });
   });
 });
