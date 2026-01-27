@@ -14,7 +14,6 @@ import { Cacheable } from '@/lib/utils/local-cache';
 import { CaseNoteInput } from '@common/cams/cases';
 import useFeatureFlags, { PHONETIC_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
-// Mock the UseFeatureFlags hook
 vi.mock('@/lib/hooks/UseFeatureFlags');
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
@@ -31,7 +30,6 @@ describe('MyCasesScreen', () => {
 
   beforeEach(() => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
-    // Mock the feature flag to return true by default for the phonetic search
     mockUseFeatureFlags.mockReturnValue({
       [PHONETIC_SEARCH_ENABLED]: true,
     });
@@ -110,7 +108,6 @@ describe('MyCasesScreen', () => {
   });
 
   test('should render a list of cases without debtor name column when phonetic search is disabled', async () => {
-    // Mock the feature flag to return false for phonetic search
     mockUseFeatureFlags.mockReturnValue({
       [PHONETIC_SEARCH_ENABLED]: false,
     });
@@ -135,7 +132,6 @@ describe('MyCasesScreen', () => {
         `${getCaseNumber(expectedData[i].caseId)} (${expectedData[i].courtDivisionName})`,
       );
       expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].caseTitle);
-      // No debtor name column when phonetic search is disabled
       expect(tableData![dIndex++]).toHaveTextContent(expectedData[i].chapter);
       expect(tableData![dIndex++]).toHaveTextContent(formatDate(expectedData[i].dateFiled));
     }

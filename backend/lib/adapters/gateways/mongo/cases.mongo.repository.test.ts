@@ -745,7 +745,6 @@ describe('Cases repository', () => {
 
       const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [mockCase];
 
-      // Phonetic search uses paginate() not aggregate() after performance optimization
       const paginateSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'paginate')
         .mockResolvedValue({ data: expectedSyncedCaseArray, metadata: { total: 1 } });
@@ -806,10 +805,8 @@ describe('Cases repository', () => {
         phoneticTokens: generatePhoneticTokens('Jane Doe'),
       };
 
-      // Only return cases that match the phonetic tokens (John matches John Smith, not Jane Doe)
       const filteredMockCases = [mockCase1];
 
-      // Phonetic search uses paginate() not aggregate() after performance optimization
       const paginateSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'paginate')
         .mockResolvedValue({ data: filteredMockCases, metadata: { total: 1 } });
@@ -826,7 +823,6 @@ describe('Cases repository', () => {
     });
 
     test('should successfully search with debtorName when phonetic search is disabled', async () => {
-      // Setup context with phonetic search disabled
       const contextWithoutPhonetic = await createMockApplicationContext();
       contextWithoutPhonetic.featureFlags['phonetic-search-enabled'] = false;
       const repoWithoutPhonetic = CasesMongoRepository.getInstance(contextWithoutPhonetic);
@@ -848,11 +844,9 @@ describe('Cases repository', () => {
 
       const result = await repoWithoutPhonetic.searchCases(predicate);
 
-      // Verify search completed successfully with regex-only path
       expect(paginateSpy).toHaveBeenCalled();
       expect(result.data).toEqual(expectedSyncedCaseArray);
 
-      // Verify debtor.name is used in query but NOT phoneticTokens
       const actualQuery = paginateSpy.mock.calls[0][0];
       const queryString = JSON.stringify(actualQuery);
       expect(queryString).toContain('debtor.name');
@@ -880,11 +874,9 @@ describe('Cases repository', () => {
 
       const result = await repo.searchCases(predicate);
 
-      // Verify search completed successfully
       expect(paginateSpy).toHaveBeenCalled();
       expect(result.data).toEqual(expectedSyncedCaseArray);
 
-      // Verify both debtor and jointDebtor fields are included in query
       const actualQuery = paginateSpy.mock.calls[0][0];
       const queryString = JSON.stringify(actualQuery);
       expect(queryString).toContain('debtor');
@@ -895,7 +887,6 @@ describe('Cases repository', () => {
       const predicate: CasesSearchPredicate = {
         chapters: ['15'],
         caseNumber: '00-00000',
-        // No debtorName
         limit: 25,
         offset: 0,
       };
@@ -910,11 +901,9 @@ describe('Cases repository', () => {
 
       const result = await repo.searchCases(predicate);
 
-      // Verify search completed successfully
       expect(paginateSpy).toHaveBeenCalled();
       expect(result.data).toEqual(expectedSyncedCaseArray);
 
-      // Should include caseNumber in query
       const actualQuery = paginateSpy.mock.calls[0][0];
       const queryString = JSON.stringify(actualQuery);
       expect(queryString).toContain('caseNumber');

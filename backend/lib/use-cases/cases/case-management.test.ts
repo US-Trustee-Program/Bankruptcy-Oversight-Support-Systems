@@ -482,7 +482,6 @@ describe('Case management tests', () => {
           }),
         ];
 
-        // Setup context with phonetic search enabled via env vars
         const contextWithPhonetic = await createMockApplicationContext({
           env: {
             STARTING_MONTH: '-6',
@@ -505,8 +504,6 @@ describe('Case management tests', () => {
 
         const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
 
-        // Phonetic filtering should have been applied
-        // filterCasesByDebtorNameSimilarity will filter based on Jaro-Winkler similarity
         expect(result.data.length).toBeLessThanOrEqual(mockCases.length);
         expect(result.metadata.total).toBe(result.data.length);
       });
@@ -521,7 +518,6 @@ describe('Case management tests', () => {
           }),
         ];
 
-        // Setup context with phonetic search disabled via env vars
         const contextWithoutPhonetic = await createMockApplicationContext({
           env: {
             STARTING_MONTH: '-6',
@@ -547,7 +543,6 @@ describe('Case management tests', () => {
           false,
         );
 
-        // Should return all cases without filtering
         expect(result.data.length).toBe(mockCases.length);
         expect(result.metadata.total).toBe(mockCases.length);
       });
@@ -558,7 +553,6 @@ describe('Case management tests', () => {
           MockData.getSyncedCase({ override: { caseId: '002' } }),
         ];
 
-        // Setup context with phonetic search enabled
         const contextWithPhonetic = await createMockApplicationContext({
           env: {
             STARTING_MONTH: '-6',
@@ -576,12 +570,10 @@ describe('Case management tests', () => {
         const predicate: CasesSearchPredicate = {
           ...basePredicate,
           caseNumber: '001',
-          // No debtorName
         };
 
         const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
 
-        // Should return all cases without filtering since debtorName is not present
         expect(result.data.length).toBe(mockCases.length);
         expect(result.metadata.total).toBe(mockCases.length);
       });
@@ -596,7 +588,7 @@ describe('Case management tests', () => {
           }),
         ];
 
-        const customThreshold = 0.95; // Very strict threshold
+        const customThreshold = 0.95;
         const contextWithCustomThreshold = await createMockApplicationContext({
           env: {
             STARTING_MONTH: '-6',
@@ -623,8 +615,6 @@ describe('Case management tests', () => {
           false,
         );
 
-        // With very strict threshold, "Jon Smith" might be filtered out
-        // We're just verifying the filtering was applied with custom threshold
         expect(result.metadata.total).toBe(result.data.length);
       });
 
@@ -663,7 +653,6 @@ describe('Case management tests', () => {
 
         const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
 
-        // Verify that metadata.total matches the filtered data length
         expect(result.metadata.total).toBe(result.data.length);
         expect(result.data.length).toBeLessThanOrEqual(mockCases.length);
       });

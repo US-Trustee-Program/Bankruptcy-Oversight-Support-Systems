@@ -8,22 +8,19 @@ import {
 import { SyncedCase } from '@common/cams/cases';
 
 describe('Phonetic Utilities', () => {
-  // Standard similarity threshold for phonetic/nickname matching
-
   describe('generatePhoneticTokens', () => {
-    // Tests below verify that natural.SoundEx and natural.Metaphone integration works correctly
     it('should generate phonetic tokens for a single word', () => {
       const tokens = generatePhoneticTokens('Michael');
-      expect(tokens).toContain('M240'); // Soundex for Michael
-      expect(tokens).toContain('MKSHL'); // Metaphone for Michael
+      expect(tokens).toContain('M240');
+      expect(tokens).toContain('MKSHL');
     });
 
     it('should generate phonetic tokens for multiple words', () => {
       const tokens = generatePhoneticTokens('John Smith');
-      expect(tokens).toContain('J500'); // Soundex for John
-      expect(tokens).toContain('JN'); // Metaphone for John
-      expect(tokens).toContain('S530'); // Soundex for Smith
-      expect(tokens).toContain('SM0'); // Metaphone for Smith
+      expect(tokens).toContain('J500');
+      expect(tokens).toContain('JN');
+      expect(tokens).toContain('S530');
+      expect(tokens).toContain('SM0');
     });
 
     it('should handle empty input', () => {
@@ -46,24 +43,22 @@ describe('Phonetic Utilities', () => {
       const tokens2 = generatePhoneticTokens('michael');
       const tokens3 = generatePhoneticTokens('  Michael  ');
 
-      // All should produce the same tokens
       expect(tokens1).toEqual(tokens2);
       expect(tokens2).toEqual(tokens3);
     });
   });
 
   describe('expandQueryWithNicknames', () => {
-    // Tests below verify that name-match NameNormalizer integration works correctly
     it('should expand common nicknames', () => {
       const expanded = expandQueryWithNicknames('Mike');
       expect(expanded).toContain('mike');
-      expect(expanded).toContain('michael'); // Mike should expand to include Michael
+      expect(expanded).toContain('michael');
     });
 
     it('should include the original name', () => {
       const expanded = expandQueryWithNicknames('Michael');
       expect(expanded).toContain('michael');
-      expect(expanded).toContain('mike'); // Michael should expand to include Mike
+      expect(expanded).toContain('mike');
     });
 
     it('should handle empty input', () => {
@@ -74,19 +69,17 @@ describe('Phonetic Utilities', () => {
     it('should handle multiple words', () => {
       const expanded = expandQueryWithNicknames('Mike Johnson');
       expect(expanded).toContain('mike');
-      expect(expanded).toContain('michael'); // Mike expands
+      expect(expanded).toContain('michael');
       expect(expanded).toContain('johnson');
     });
   });
 
   describe('generatePhoneticTokensWithNicknames', () => {
-    // Tests below verify library combination works correctly
     it('should combine nickname expansion with phonetic tokens', () => {
       const tokens = generatePhoneticTokensWithNicknames('Mike');
-      // Should have tokens for both Mike and Michael (nickname)
       expect(tokens.length).toBeGreaterThan(0);
-      expect(tokens).toContain('M200'); // Soundex for Mike
-      expect(tokens).toContain('M240'); // Soundex for Michael
+      expect(tokens).toContain('M200');
+      expect(tokens).toContain('M240');
     });
 
     it('should handle empty input', () => {
@@ -148,8 +141,6 @@ describe('Phonetic Utilities', () => {
     ];
 
     it('should filter cases by phonetic similarity (first names only)', () => {
-      // Test with ONLY first names to ensure phonetic matching works
-      // without relying on shared last names to pass threshold
       const phonetics: SyncedCase[] = [
         {
           caseId: '001',
@@ -171,9 +162,9 @@ describe('Phonetic Utilities', () => {
       const filtered = filterCasesByDebtorNameSimilarity(phonetics, 'Jon');
       const filteredNames = filtered.map((c) => c.debtor?.name);
 
-      expect(filteredNames).toContain('Jon'); // Exact match
-      expect(filteredNames).toContain('John'); // Phonetic match (jon->john = 0.84 or 0.93)
-      expect(filteredNames).not.toContain('Jane'); // Not similar (jon->jane < 0.83)
+      expect(filteredNames).toContain('Jon');
+      expect(filteredNames).toContain('John');
+      expect(filteredNames).not.toContain('Jane');
     });
 
     it('should include joint debtor names in search', () => {
@@ -186,16 +177,14 @@ describe('Phonetic Utilities', () => {
       const filtered = filterCasesByDebtorNameSimilarity(mockCases, 'John Sm');
       const filteredNames = filtered.map((c) => c.debtor?.name);
 
-      expect(filteredNames).toContain('John Smith'); // Prefix match
+      expect(filteredNames).toContain('John Smith');
     });
 
     it('should sort results by similarity score', () => {
       const filtered = filterCasesByDebtorNameSimilarity(mockCases, 'John Smith');
 
-      // Exact match should be first (or very close match like "Jon Smith")
       const topNames = filtered.slice(0, 2).map((c) => c.debtor?.name);
       expect(topNames).toContain('John Smith');
-      // Both Jon Smith and John Smith should score high and be in top results
       expect(topNames).toContain('Jon Smith');
     });
 

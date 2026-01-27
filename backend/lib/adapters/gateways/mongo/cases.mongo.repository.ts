@@ -21,8 +21,6 @@ import { generateDebtorNameRegexPattern } from '../../../use-cases/cases/phoneti
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-// Maximum number of results to fetch before phonetic similarity filtering
-// This prevents memory issues while allowing enough results for accurate filtering
 const PHONETIC_SEARCH_MAX_FETCH = 2000;
 
 const { and, or, using } = QueryBuilder;

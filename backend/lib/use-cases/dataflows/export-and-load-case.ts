@@ -32,7 +32,6 @@ async function exportAndLoad(
   for (const event of events) {
     try {
       event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
-      // Add phonetic tokens before syncing
       const caseWithPhoneticTokens = addPhoneticTokens({ ...event.bCase });
       await repo.syncDxtrCase(
         createAuditRecord<SyncedCase>({ ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' }),
@@ -68,7 +67,6 @@ async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
 async function loadCase(context: ApplicationContext, event: CaseSyncEvent) {
   try {
     const casesRepo = factory.getCasesRepository(context);
-    // Add phonetic tokens before syncing
     const caseWithPhoneticTokens = addPhoneticTokens({ ...event.bCase });
     const synced = createAuditRecord<SyncedCase>({
       ...caseWithPhoneticTokens,

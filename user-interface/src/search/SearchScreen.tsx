@@ -105,14 +105,11 @@ export default function SearchScreen() {
     };
   };
 
-  // Derive validation state from temporarySearchPredicate
-  // This ensures button disabled state and validation are always in sync
   const currentValidation = useMemo(() => {
     const formData = mapToFormData(temporarySearchPredicate);
     return validateFormData(formData);
   }, [temporarySearchPredicate]);
 
-  // Only show field errors after user has finished typing (controlled by debounce)
   const fieldErrors: ValidatorReasonMap = useMemo(() => {
     const errors: ValidatorReasonMap = {};
     if (showCaseNumberError && currentValidation.fieldErrors.caseNumber) {
@@ -199,10 +196,8 @@ export default function SearchScreen() {
       setTemporarySearchPredicate(newPredicate);
     }
 
-    // Hide validation errors while user is typing
     setShowCaseNumberError(false);
 
-    // Show validation errors after user has finished typing (debounced)
     debounce(() => {
       setShowCaseNumberError(true);
     }, 300);
@@ -222,10 +217,8 @@ export default function SearchScreen() {
       setTemporarySearchPredicate(newPredicate);
     }
 
-    // Hide validation errors while user is typing
     setShowDebtorNameError(false);
 
-    // Show validation errors after user has finished typing (debounced)
     debounce(() => {
       setShowDebtorNameError(true);
     }, 300);

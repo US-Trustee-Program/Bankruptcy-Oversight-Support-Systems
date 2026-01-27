@@ -7,7 +7,6 @@ import { TestSetup, waitForAppLoad } from '../../helpers/fluent-test-setup';
 import { clearAllRepositorySpies } from '../../helpers/repository-spies';
 import MockData from '@common/cams/test-utilities/mock-data';
 
-// ALWAYS import driver mocks
 import '../../helpers/driver-mocks';
 
 /**
