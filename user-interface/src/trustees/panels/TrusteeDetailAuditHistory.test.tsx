@@ -18,6 +18,7 @@ import {
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { ContactInformation } from '@common/cams/contact';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 describe('TrusteeDetailAuditHistory', () => {
   const mockTrusteeId = '12345';
@@ -1677,7 +1678,7 @@ describe('TrusteeDetailAuditHistory', () => {
           link: 'https://zoom.us/j/999999999',
           phone: '+1 555-999-9999',
           meetingId: '999 999 999',
-          passcode: 'new456',
+          passcode: MockData.randomAlphaNumeric(10),
         },
       });
 
@@ -1772,18 +1773,20 @@ describe('TrusteeDetailAuditHistory', () => {
  */
 
 // Base zoom info templates
+// TODO change this out to use passcode mocker
 const BASE_ZOOM_INFO: ZoomInfo = {
   link: 'https://zoom.us/j/123456789',
   phone: '+1 555-123-4567',
   meetingId: '123 456 789',
-  passcode: 'abc123',
+  passcode: MockData.randomAlphaNumeric(10),
 };
 
+// TODO change this out to use passcode mocker
 const BASE_ZOOM_INFO_BEFORE: ZoomInfo = {
   link: 'https://zoom.us/j/111111111',
   phone: '+1 555-111-1111',
   meetingId: '111 111 111',
-  passcode: 'old123',
+  passcode: MockData.randomAlphaNumeric(10),
 };
 
 // Base contact information templates
