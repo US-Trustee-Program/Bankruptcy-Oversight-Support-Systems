@@ -71,7 +71,6 @@ function SearchResults(props: SearchResultsProps) {
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
 
-  // Build column labels dynamically based on whether phonetic search is enabled
   const searchResultsHeaderLabels = phoneticSearchEnabled
     ? ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed']
     : ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
@@ -116,7 +115,6 @@ function SearchResults(props: SearchResultsProps) {
     const searchMetadata = {
       ...searchPredicate,
       debtorNameUsed: !!searchPredicate.debtorName,
-      // Don't log the actual name, just whether it was used
     };
     if ('debtorName' in searchMetadata) {
       delete searchMetadata.debtorName;

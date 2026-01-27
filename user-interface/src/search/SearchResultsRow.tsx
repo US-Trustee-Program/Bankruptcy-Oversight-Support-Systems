@@ -4,10 +4,6 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
 
-/**
- * Format debtor names for display in search results
- * Shows both debtor and joint debtor with role labels if both exist
- */
 function formatDebtorNames(debtorName: string, jointDebtorName?: string): JSX.Element {
   if (!jointDebtorName) {
     return <>{debtorName}</>;
@@ -25,7 +21,6 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
   const { bCase, labels, phoneticSearchEnabled = false, ...otherProps } = props;
 
   if (phoneticSearchEnabled) {
-    // With Debtor Name column
     return (
       <TableRow {...otherProps}>
         <TableRowData dataLabel={labels[0]}>
@@ -42,7 +37,6 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
       </TableRow>
     );
   } else {
-    // Without Debtor Name column
     return (
       <TableRow {...otherProps}>
         <TableRowData dataLabel={labels[0]}>

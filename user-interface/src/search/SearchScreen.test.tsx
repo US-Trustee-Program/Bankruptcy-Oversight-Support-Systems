@@ -902,7 +902,6 @@ describe('debtor name search', () => {
   test('should search by debtor name when feature is enabled', async () => {
     renderWithFeatureFlag(true);
 
-    // Clear the default search on initial render
     searchCasesSpy.mockClear();
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
@@ -935,7 +934,6 @@ describe('debtor name search', () => {
   test('should allow searching with both debtor name and case number', async () => {
     renderWithFeatureFlag(true);
 
-    // Clear the default search on initial render
     searchCasesSpy.mockClear();
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
@@ -971,7 +969,6 @@ describe('debtor name search', () => {
   test('should allow searching by debtor name and chapter', async () => {
     renderWithFeatureFlag(true);
 
-    // Clear the default search on initial render
     searchCasesSpy.mockClear();
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
@@ -981,7 +978,6 @@ describe('debtor name search', () => {
 
     await userEvent.type(debtorNameInput, 'Michael Johnson');
 
-    // Select a chapter
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
     await userEvent.click(expandButton);
@@ -1005,7 +1001,6 @@ describe('debtor name search', () => {
   test('should trigger search when Enter key is pressed in debtor name field', async () => {
     renderWithFeatureFlag(true);
 
-    // Clear the default search on initial render
     searchCasesSpy.mockClear();
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
@@ -1016,7 +1011,6 @@ describe('debtor name search', () => {
     const debtorName = 'Sarah Connor';
     await userEvent.type(debtorNameInput, debtorName);
 
-    // Trigger form submission
     const form = screen.getByTestId('filter-and-search-panel');
     fireEvent.submit(form);
 
@@ -1042,7 +1036,6 @@ describe('debtor name search', () => {
       expect((debtorNameInput as HTMLInputElement).value).toBe('Test Name');
     });
 
-    // Clear the input
     await userEvent.clear(debtorNameInput);
 
     await waitFor(() => {
@@ -1055,10 +1048,8 @@ describe('debtor name search', () => {
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
 
-    // Type single character
     await userEvent.type(debtorNameInput, 'J');
 
-    // Single character should be visible in the input
     await waitFor(() => {
       expect((debtorNameInput as HTMLInputElement).value).toBe('J');
     });
@@ -1066,15 +1057,12 @@ describe('debtor name search', () => {
     // Type second character
     await userEvent.type(debtorNameInput, 'o');
 
-    // Both characters should be visible
     await waitFor(() => {
       expect((debtorNameInput as HTMLInputElement).value).toBe('Jo');
     });
 
-    // Continue typing
     await userEvent.type(debtorNameInput, 'hn');
 
-    // Full name should be visible
     await waitFor(() => {
       expect((debtorNameInput as HTMLInputElement).value).toBe('John');
     });
@@ -1085,15 +1073,12 @@ describe('debtor name search', () => {
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
 
-    // Type single character
     await userEvent.type(debtorNameInput, 'J');
 
-    // Verify input shows the character
     await waitFor(() => {
       expect((debtorNameInput as HTMLInputElement).value).toBe('J');
     });
 
-    // Verify validation state recognizes this as invalid
     const formData = { debtorName: 'J' };
     const validation = validateFormData(formData);
     expect(validation.isValid).toBe(false);
@@ -1105,10 +1090,8 @@ describe('debtor name search', () => {
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
 
-    // Type 2 characters
     await userEvent.type(debtorNameInput, 'Jo');
 
-    // Verify validation state recognizes this as valid
     const formData = { debtorName: 'Jo' };
     const validation = validateFormData(formData);
     expect(validation.isValid).toBe(true);
@@ -1116,11 +1099,9 @@ describe('debtor name search', () => {
   });
 
   test('should reject empty string after whitespace trim', async () => {
-    // Debtor name with only spaces should be treated as empty (valid, but not a search criterion)
     const formData = { debtorName: '   ' };
     const validation = validateFormData(formData);
 
-    // This should fail the "at least one criterion" check
     expect(validation.isValid).toBe(false);
     expect(validation.formValidationError).toBe('Please enter at least one search criterion');
   });
