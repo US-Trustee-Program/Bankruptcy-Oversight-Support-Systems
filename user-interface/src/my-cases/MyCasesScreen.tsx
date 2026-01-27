@@ -153,8 +153,10 @@ export const MyCasesScreen = () => {
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-12">
           <div className="screen-heading">
-            <h1 data-testid="case-list-heading">{screenTitle}</h1>
-            <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
+            <h1 data-testid="case-list-heading">
+              {screenTitle}
+              <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
+            </h1>
             {draftNotesCaseIds.length > 0 && (
               <div data-testid="draft-notes-alert-test-id">
                 <Alert

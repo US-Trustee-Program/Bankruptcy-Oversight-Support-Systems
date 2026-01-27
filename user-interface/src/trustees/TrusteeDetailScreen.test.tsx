@@ -59,8 +59,6 @@ const mockCourts = MockData.getCourts().filter(
   (c) => c.courtDivisionCode === '071' || c.courtDivisionCode === '091',
 );
 
-// We'll use spies on Api2 methods instead of creating our own mocks
-
 describe('TrusteeDetailScreen', () => {
   const mockNavigate = vi.fn();
 
@@ -75,14 +73,11 @@ describe('TrusteeDetailScreen', () => {
   };
 
   beforeEach(() => {
-    // Set up global alert spy
     TestingUtilities.spyOnGlobalAlert();
 
-    // Set up router mocks
     mockUseParams.mockReturnValue({ trusteeId: '123' });
     mockUseNavigate.mockReturnValue(mockNavigate);
 
-    // Clear function mocks
     mockOnEditPublicProfile.mockClear();
     mockOnEditInternalProfile.mockClear();
   });
@@ -131,7 +126,6 @@ describe('TrusteeDetailScreen', () => {
           zipCode: '',
           countryCode: 'US',
         },
-        // omit email intentionally
       },
     });
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({
@@ -209,20 +203,104 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    // Test public edit button
     const publicEditButton = screen.getByTestId('button-edit-public-profile');
     publicEditButton.click();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/public');
 
-    // Test internal edit button
     const internalEditButton = screen.getByTestId('button-edit-internal-profile');
     internalEditButton.click();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/contact/edit/internal');
 
-    // Test other info edit button
     const otherInfoEditButton = screen.getByTestId('button-edit-other-information');
     otherInfoEditButton.click();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/other/edit');
+  });
+
+  test('should navigate to zoom edit route when edit zoom info button is clicked', async () => {
+    const mockTrusteeWithZoom = {
+      ...mockTrustee,
+      zoomInfo: {
+        link: 'https://us02web.zoom.us/j/1234567890',
+        phone: '123-456-7890',
+        meetingId: '1234567890',
+        passcode: MockData.randomAlphaNumeric(10),
+      },
+    };
+
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrusteeWithZoom });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+    });
+
+    const zoomEditButton = screen.getByTestId('button-edit-zoom-info');
+    zoomEditButton.click();
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/zoom/edit');
+  });
+
+  test('should pass onEditZoomInfo handler to TrusteeDetailProfile', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('button-edit-zoom-info')).toBeInTheDocument();
+  });
+
+  test('should display zoom info card when zoomInfo is provided', async () => {
+    const testPasscode = MockData.randomAlphaNumeric(10);
+    const mockTrusteeWithZoom = {
+      ...mockTrustee,
+      zoomInfo: {
+        link: 'https://us02web.zoom.us/j/1234567890',
+        phone: '123-456-7890',
+        meetingId: '1234567890',
+        passcode: testPasscode,
+      },
+    };
+
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrusteeWithZoom });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
+    expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
+    expect(screen.getByTestId('zoom-link')).toHaveAttribute(
+      'href',
+      'https://us02web.zoom.us/j/1234567890',
+    );
+    expect(screen.getByTestId('zoom-phone')).toHaveTextContent('123-456-7890');
+    expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 123 456 7890');
+    expect(screen.getByTestId('zoom-passcode')).toHaveTextContent(`Passcode: ${testPasscode}`);
+  });
+
+  test('should display "No information" message when zoomInfo is not provided', async () => {
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-detail-screen')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
+    expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
+    expect(screen.getByTestId('zoom-info-empty-message')).toHaveTextContent(
+      'No information has been entered.',
+    );
   });
 
   test.each([
@@ -239,6 +317,12 @@ describe('TrusteeDetailScreen', () => {
       description: 'should render subheader "Trustee" for /audit-history route',
       needsLocationState: false,
       needsHistoryMock: true,
+    },
+    {
+      route: '/trustees/123/zoom/edit',
+      expectedSubheader: 'Edit 341 Meeting Information',
+      description: 'should render subheader "Edit 341 Meeting Information" for /zoom/edit route',
+      needsLocationState: false,
     },
     {
       route: '/trustees/123',

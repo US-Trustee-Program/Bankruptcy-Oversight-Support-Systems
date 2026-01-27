@@ -221,205 +221,6 @@ describe('validators', () => {
     });
   });
 
-  describe('isEmailAddress', () => {
-    const testCases = [
-      {
-        description: 'should return valid for properly formatted email',
-        value: 'test@example.com',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for email with subdomain',
-        value: 'user@mail.example.com',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for email with numbers',
-        value: 'user123@example123.com',
-        expected: VALID,
-      },
-      {
-        description: 'should return invalid for email without @ symbol',
-        value: 'userexample.com',
-        expected: { reasons: ['Must be a valid email address'] },
-      },
-      {
-        description: 'should return invalid for email without domain',
-        value: 'user@',
-        expected: { reasons: ['Must be a valid email address'] },
-      },
-      {
-        description: 'should return invalid for email without username',
-        value: '@example.com',
-        expected: { reasons: ['Must be a valid email address'] },
-      },
-      {
-        description: 'should return invalid for email with spaces',
-        value: 'user @example.com',
-        expected: { reasons: ['Must be a valid email address'] },
-      },
-      {
-        description: 'should return invalid for empty string',
-        value: '',
-        expected: { reasons: ['Must be a valid email address'] },
-      },
-      {
-        description: 'should return invalid for non-string values',
-        value: 123,
-        expected: { reasons: ['Must be a valid email address'] },
-      },
-    ];
-    test.each(testCases)('$description', (testCase) => {
-      expect(Validators.isEmailAddress(testCase.value)).toEqual(testCase.expected);
-    });
-  });
-
-  describe('isPhoneNumber', () => {
-    const testCases = [
-      {
-        description: 'should return valid for a hyphenated 10-digit phone number',
-        value: '123-456-7890',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for another hyphenated 10-digit phone number',
-        value: '987-654-3210',
-        expected: VALID,
-      },
-      {
-        description: 'should return invalid for phone number with less than 10 digits',
-        value: '123456789',
-        expected: { reasons: ['Must be a valid phone number'] },
-      },
-      {
-        description: 'should return invalid for phone number with more than 10 digits',
-        value: '12345678901',
-        expected: { reasons: ['Must be a valid phone number'] },
-      },
-      {
-        description: 'should return invalid for phone number with spaces',
-        value: '123 456 7890',
-        expected: { reasons: ['Must be a valid phone number'] },
-      },
-      {
-        description: 'should return invalid for phone number with parentheses',
-        value: '(123) 456-7890',
-        expected: { reasons: ['Must be a valid phone number'] },
-      },
-      {
-        description: 'should return invalid for phone number with letters',
-        value: 'abc',
-        expected: { reasons: ['Must be a valid phone number'] },
-      },
-      {
-        description: 'should return invalid for empty string',
-        value: '',
-        expected: { reasons: ['Must be a valid phone number'] },
-      },
-      {
-        description: 'should return invalid for non-string values',
-        value: 1234567890,
-        expected: { reasons: ['Must be a valid phone number'] },
-      },
-    ];
-    test.each(testCases)('$description', (testCase) => {
-      expect(Validators.isPhoneNumber(testCase.value)).toEqual(testCase.expected);
-    });
-  });
-
-  describe('isWebsiteAddress', () => {
-    const testCases = [
-      {
-        description: 'should return valid for properly formatted http website',
-        value: 'http://www.example.com',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for properly formatted https website',
-        value: 'https://www.example.com',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for website without www',
-        value: 'https://example.com',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for website with subdomain',
-        value: 'https://mail.example.com',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for website with path',
-        value: 'https://www.example.com/path/to/page',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for website with query parameters',
-        value: 'https://www.example.com/search?q=test&sort=name',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for website with fragment',
-        value: 'https://www.example.com/page#section',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for website with port number',
-        value: 'https://www.example.com:8080',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for Chapter 13 trustee website example',
-        value: 'https://www.ch13-trustee.com',
-        expected: VALID,
-      },
-      {
-        description: 'should return valid for trustee website with hyphen',
-        value: 'https://jane-smith-trustee.com',
-        expected: VALID,
-      },
-      {
-        description: 'should return invalid for website without protocol',
-        value: 'www.example.com',
-        expected: { reasons: ['Must be a valid website address'] },
-      },
-      {
-        description: 'should return invalid for website with only protocol',
-        value: 'https://',
-        expected: { reasons: ['Must be a valid website address'] },
-      },
-      {
-        description: 'should return invalid for website without domain',
-        value: 'https://www',
-        expected: { reasons: ['Must be a valid website address'] },
-      },
-      {
-        description: 'should return invalid for website with invalid protocol',
-        value: 'ftp://www.example.com',
-        expected: { reasons: ['Must be a valid website address'] },
-      },
-      {
-        description: 'should return invalid for website with spaces',
-        value: 'https://www.example .com',
-        expected: { reasons: ['Must be a valid website address'] },
-      },
-      {
-        description: 'should return invalid for empty string',
-        value: '',
-        expected: { reasons: ['Must be a valid website address'] },
-      },
-      {
-        description: 'should return invalid for non-string values',
-        value: 123,
-        expected: { reasons: ['Must be a valid website address'] },
-      },
-    ];
-    test.each(testCases)('$description', (testCase) => {
-      expect(Validators.isWebsiteAddress(testCase.value)).toEqual(testCase.expected);
-    });
-  });
-
   describe('isInSet', () => {
     const testCases = [
       {
@@ -541,7 +342,6 @@ describe('validators', () => {
         description: 'should return valid for object that passes all validations',
         spec: {
           name: [Validators.minLength(1)],
-          email: [Validators.isEmailAddress],
         },
         value: { name: 'John', email: 'john@example.com' },
         expected: VALID,
@@ -550,13 +350,11 @@ describe('validators', () => {
         description: 'should return invalid with reasons for object that fails validation',
         spec: {
           name: [Validators.minLength(5)],
-          email: [Validators.isEmailAddress],
         },
         value: { name: 'Jo', email: 'invalid-email' },
         expected: {
           reasonMap: {
             name: { reasons: ['Must contain at least 5 characters'] },
-            email: { reasons: ['Must be a valid email address'] },
           },
         },
       },
@@ -564,48 +362,11 @@ describe('validators', () => {
         description: 'should handle empty object with required fields',
         spec: {
           name: [Validators.minLength(1)],
-          email: [Validators.isEmailAddress],
         },
         value: {},
         expected: {
           reasonMap: {
             name: { reasons: ['Value is undefined'] },
-            email: { reasons: ['Must be a valid email address'] },
-          },
-        },
-      },
-      {
-        description: 'should validate object with optional fields when present',
-        spec: {
-          name: [Validators.minLength(1)],
-          email: [Validators.optional(Validators.isEmailAddress)],
-          phone: [Validators.optional(Validators.isPhoneNumber)],
-        },
-        value: { name: 'Alice', email: 'alice@example.com', phone: '123-456-7890' },
-        expected: VALID,
-      },
-      {
-        description: 'should validate object with optional fields when missing',
-        spec: {
-          name: [Validators.minLength(1)],
-          email: [Validators.optional(Validators.isEmailAddress)],
-          phone: [Validators.optional(Validators.isPhoneNumber)],
-        },
-        value: { name: 'Bob' },
-        expected: VALID,
-      },
-      {
-        description: 'should handle mixed validation results with optional fields',
-        spec: {
-          name: [Validators.minLength(3)],
-          email: [Validators.optional(Validators.isEmailAddress)],
-          phone: [Validators.optional(Validators.isPhoneNumber)],
-        },
-        value: { name: 'Al', email: 'invalid-email', phone: '123-456-7890' },
-        expected: {
-          reasonMap: {
-            name: { reasons: ['Must contain at least 3 characters'] },
-            email: { reasons: ['Must be a valid email address'] },
           },
         },
       },
@@ -613,7 +374,6 @@ describe('validators', () => {
         description: 'should work with complex validation rules',
         spec: {
           name: [Validators.minLength(2), Validators.maxLength(50)],
-          email: [Validators.isEmailAddress],
           code: [Validators.isInSet(['A', 'B', 'C'])],
         },
         value: { name: 'Charlie', email: 'charlie@test.com', code: 'B' },
@@ -876,37 +636,6 @@ describe('validators', () => {
             'Element at index 1: Must contain at least 5 characters',
             'Element at index 1: Must start with uppercase',
           ],
-        },
-      },
-      {
-        description: 'should work with email validation',
-        validators: [Validators.isEmailAddress],
-        value: ['test@example.com', 'user@domain.org'],
-        expected: VALID,
-      },
-      {
-        description: 'should return errors for invalid emails',
-        validators: [Validators.isEmailAddress],
-        value: ['test@example.com', 'invalid-email', 'another@valid.com', 'also-invalid'],
-        expected: {
-          reasons: [
-            'Element at index 1: Must be a valid email address',
-            'Element at index 3: Must be a valid email address',
-          ],
-        },
-      },
-      {
-        description: 'should work with phone number validation',
-        validators: [Validators.isPhoneNumber],
-        value: ['123-456-7890', '987-654-3210'],
-        expected: VALID,
-      },
-      {
-        description: 'should return errors for invalid phone numbers',
-        validators: [Validators.isPhoneNumber],
-        value: ['123-456-7890', '123456', '987-654-3210'],
-        expected: {
-          reasons: ['Element at index 1: Must be a valid phone number'],
         },
       },
       {

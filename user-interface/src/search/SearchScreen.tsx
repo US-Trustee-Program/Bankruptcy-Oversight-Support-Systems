@@ -304,8 +304,10 @@ export default function SearchScreen() {
       <DocumentTitle name="Case Search" />
       <div className="grid-row grid-gap-lg">
         <div className="grid-col-12">
-          <h1>Case Search</h1>
-          <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
+          <h1>
+            Case Search
+            <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
+          </h1>
         </div>
       </div>
       <div className="grid-row grid-gap-lg search-pane">
