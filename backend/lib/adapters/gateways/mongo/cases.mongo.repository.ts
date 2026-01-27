@@ -358,6 +358,20 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
+    return this.executeCaseSearch(predicate, predicate.offset, predicate.limit);
+  }
+
+  async searchCasesForPhoneticFiltering(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
+    return this.executeCaseSearch(predicate, 0, PHONETIC_SEARCH_MAX_FETCH);
+  }
+
+  private async executeCaseSearch(
+    predicate: CasesSearchPredicate,
+    offset: number,
+    limit: number,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
       if (predicate.includeOnlyUnassigned) {
         return await this.searchForUnassignedCases(predicate);
@@ -372,21 +386,17 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         });
       }
 
-      const usePhoneticMode = predicate.phoneticTokens && predicate.phoneticTokens.length > 0;
-      const fetchLimit = usePhoneticMode ? PHONETIC_SEARCH_MAX_FETCH : predicate.limit;
-      const fetchOffset = usePhoneticMode ? 0 : predicate.offset;
-
       const spec = pipeline(
         match(and(...conditions)),
         sort(descending(dateFiled), descending(caseNumber)),
-        paginate(fetchOffset, fetchLimit),
+        paginate(offset, limit),
       );
 
       return await this.getAdapter<SyncedCase>().paginate(spec);
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          message: `Failed to retrieve member consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          message: `Failed to retrieve cases${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
           module: MODULE_NAME,
         },
       });
