@@ -22,7 +22,6 @@ import { CaseAssignment } from '@common/cams/assignments';
 import {
   generatePhoneticTokensWithNicknames,
   filterCasesByDebtorNameSimilarity,
-  SIMILARITY_THRESHOLD,
 } from './phonetic-utils';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
@@ -105,7 +104,6 @@ export default class CaseManagement {
         const filteredCases = filterCasesByDebtorNameSimilarity(
           searchResult.data,
           predicate.debtorName,
-          SIMILARITY_THRESHOLD,
         );
 
         const start = predicate.offset || 0;
