@@ -520,6 +520,22 @@ module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   }
 }
 
+module apiSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
+  name: '${apiFunctionName}-${slotName}-pep-module'
+  scope: resourceGroup(virtualNetworkResourceGroupName)
+  params: {
+    privateLinkGroup: 'sites-${slotName}'
+    stackName: 'stg-${apiFunctionName}'
+    dnsZoneGroupName: isUstpDeployment ? 'zone-group' : 'default'
+    location: location
+    privateLinkServiceId: apiFunctionApp.id
+    privateEndpointSubnetId: privateEndpointSubnetId
+    privateDnsZoneName: privateDnsZoneName
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+  }
+}
+
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
 

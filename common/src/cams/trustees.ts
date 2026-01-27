@@ -5,6 +5,10 @@ import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
+import { ValidationSpec } from './validation';
+import V from './validators';
+import { PHONE_REGEX, WEBSITE_RELAXED_REGEX, ZOOM_MEETING_ID_REGEX } from './regex';
+import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 
 export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
@@ -63,6 +67,13 @@ export function formatAppointmentType(appointmentType: AppointmentType): string 
 
 export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
 
+export type ZoomInfo = {
+  link: string;
+  phone: string;
+  meetingId: string;
+  passcode: string;
+};
+
 export type TrusteeAssistant = {
   name: string;
   contact: ContactInformation;
@@ -78,6 +89,7 @@ type TrusteeCore = {
 type TrusteeOptionalFields = {
   banks?: string[];
   software?: string;
+  zoomInfo?: ZoomInfo;
 };
 
 type TrusteeData = TrusteeCore & TrusteeOptionalFields;
@@ -135,6 +147,13 @@ export type TrusteeSoftwareHistory = AbstractTrusteeHistory<string, string> & {
   documentType: 'AUDIT_SOFTWARE';
 };
 
+export type TrusteeZoomInfoHistory = AbstractTrusteeHistory<
+  ZoomInfo | undefined,
+  ZoomInfo | undefined
+> & {
+  documentType: 'AUDIT_ZOOM_INFO';
+};
+
 export type TrusteeAssistantHistory = AbstractTrusteeHistory<TrusteeAssistant, TrusteeAssistant> & {
   documentType: 'AUDIT_ASSISTANT';
 };
@@ -171,5 +190,17 @@ export type TrusteeHistory =
   | TrusteeAssistantHistory
   | TrusteeBankHistory
   | TrusteeSoftwareHistory
+  | TrusteeZoomInfoHistory
   | TrusteeOversightHistory
   | TrusteeAppointmentHistory;
+
+export const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
+  link: [
+    V.minLength(1, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
+    V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
+    V.maxLength(255, FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH),
+  ],
+  phone: [V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER)],
+  meetingId: [V.matches(ZOOM_MEETING_ID_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_MEETING_ID)],
+  passcode: [V.minLength(1, FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED)],
+};

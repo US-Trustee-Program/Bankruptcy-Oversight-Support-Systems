@@ -1,4 +1,3 @@
-import { EMAIL_REGEX, PHONE_REGEX, WEBSITE_REGEX } from './regex';
 import {
   ValidatorFunction,
   ValidatorResult,
@@ -228,36 +227,6 @@ function matches(regex: RegExp, reason?: string): ValidatorFunction {
 }
 
 /**
- * Validates whether a value is a valid email address format.
- *
- * @param {unknown} value - The value to be validated as an email address
- * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
- */
-function isEmailAddress(value: unknown): ValidatorResult {
-  return matches(EMAIL_REGEX, 'Must be a valid email address')(value);
-}
-
-/**
- * Validates whether a value is a valid website address format.
- *
- * @param {unknown} value - The value to be validated as a website address
- * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
- */
-function isWebsiteAddress(value: unknown): ValidatorResult {
-  return matches(WEBSITE_REGEX, 'Must be a valid website address')(value);
-}
-
-/**
- * Validates whether a value is a valid 10-digit phone number format.
- *
- * @param {unknown} value - The value to be validated as a phone number
- * @returns {ValidatorResult} Object containing validation status and reason for failure if invalid
- */
-function isPhoneNumber(value: unknown): ValidatorResult {
-  return matches(PHONE_REGEX, 'Must be a valid phone number')(value);
-}
-
-/**
  * Validates whether a value is a valid date in YYYY-MM-DD format.
  * Checks both format and if the date is actually valid (e.g., not Feb 30).
  *
@@ -399,10 +368,7 @@ const Validators = {
   dateMinMax,
   exactLength,
   futureDateWithinYears,
-  isEmailAddress,
-  isPhoneNumber,
   isValidDate,
-  isWebsiteAddress,
   isInSet,
   length,
   matches,

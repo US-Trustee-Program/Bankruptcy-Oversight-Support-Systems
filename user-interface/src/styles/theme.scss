@@ -1,8 +1,19 @@
 $cams-theme-background: white;
 
+/* If we change the size of any H tags, we need to make sure we change the alignment of the
+   Icon Buttons that are used often in H1 and H3 tags. Icon Button classes for those are
+   defined below.
+*/
 h1 {
   font-size: 2.5rem;
   margin: 1rem 0;
+
+  button.usa-button--unstyled {
+    position: relative;
+    top: -2px;
+    vertical-align: bottom;
+    padding-left: 0.5rem;
+  }
 }
 
 h2 {
@@ -16,6 +27,12 @@ h3 {
   line-height: 1.5;
   font-size: 1.375rem;
   font-weight: 700;
+
+  button.usa-button--unstyled {
+    position: relative;
+    vertical-align: bottom;
+    padding-left: 0.25rem;
+  }
 }
 
 h4 {
@@ -35,4 +52,11 @@ h6 {
   margin: 0;
   font-size: 0.8125rem;
   font-weight: 700;
+}
+
+.screen-heading {
+  h1 {
+    display: inline-block;
+    margin-right: 1rem;
+  }
 }

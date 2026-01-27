@@ -189,6 +189,38 @@ describe('Input additional coverage tests', () => {
     expect(inputEl).toHaveAttribute('aria-describedby', expect.stringContaining('input-hint-'));
   });
 
+  test('should handle ariaDescription as array with multiple lines', () => {
+    const descriptionArray = ['First line of description', 'Second line of description'];
+    render(
+      <Input id="test-aria-array" ariaDescription={descriptionArray} onChange={mockOnChange} />,
+    );
+
+    const inputEl = screen.getByTestId('test-aria-array');
+    const hintEl = document.querySelector('.usa-hint');
+
+    expect(hintEl).toBeInTheDocument();
+    expect(hintEl).toHaveTextContent('First line of description');
+    expect(hintEl).toHaveTextContent('Second line of description');
+
+    const brElements = hintEl?.querySelectorAll('br');
+    expect(brElements).toHaveLength(1);
+
+    expect(inputEl).toHaveAttribute('aria-describedby', expect.stringContaining('input-hint-'));
+  });
+
+  test('should not render hint div for empty array', () => {
+    const descriptionArray: string[] = [];
+    render(
+      <Input id="test-aria-empty" ariaDescription={descriptionArray} onChange={mockOnChange} />,
+    );
+
+    const inputEl = screen.getByTestId('test-aria-empty');
+    const hintEl = document.querySelector('.usa-hint');
+
+    expect(hintEl).not.toBeInTheDocument();
+    expect(inputEl).not.toHaveAttribute('aria-describedby');
+  });
+
   test('calls onChange when user types and updates value', async () => {
     const handleChange = vi.fn();
     render(<Input id="change-id" label="Change" onChange={handleChange} />);
