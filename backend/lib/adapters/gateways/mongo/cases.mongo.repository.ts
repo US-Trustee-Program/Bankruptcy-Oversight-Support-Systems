@@ -192,6 +192,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   async getAllCaseHistory(documentType: string): Promise<CaseHistory[]> {
     const doc = using<CaseHistory>();
     try {
+      // @ts-expect-error - documentType string parameter is valid but doesn't match strict Field type
       const query = doc('documentType').equals(documentType);
       const adapter = this.getAdapter<CaseHistory>();
       return await adapter.find(query);
@@ -303,16 +304,22 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       if (predicate.phoneticTokens && predicate.phoneticTokens.length > 0) {
         conditions.push(
           or(
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
             doc('debtor.phoneticTokens').contains(predicate.phoneticTokens),
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
             doc('jointDebtor.phoneticTokens').contains(predicate.phoneticTokens),
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
             doc('debtor.name').regex(debtorNameRegex),
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
             doc('jointDebtor.name').regex(debtorNameRegex),
           ),
         );
       } else {
         conditions.push(
           or(
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
             doc('debtor.name').regex(debtorNameRegex),
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
             doc('jointDebtor.name').regex(debtorNameRegex),
           ),
         );
