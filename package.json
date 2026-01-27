@@ -45,7 +45,9 @@
     "test:watch": "npm run test:watch --workspaces --if-present",
     "test:watch:backend": "npm run test:watch --workspace=backend",
     "test:watch:common": "npm run test:watch --workspace=common",
-    "test:watch:user-interface": "npm run test:watch --workspace=user-interface"
+    "test:watch:user-interface": "npm run test:watch --workspace=user-interface",
+    "migrate:phonetic-tokens": "npm run migrate:phonetic-tokens --workspace=backend",
+    "verify:phonetic-indexes": "npm run verify:phonetic-indexes --workspace=backend"
   },
   "devDependencies": {
     "@eslint/js": "10.0.0",
