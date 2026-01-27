@@ -347,28 +347,4 @@ export const TestScenarios = {
       }),
       after: createPartialContactInfo({}),
     }),
-
-  undefinedPhone: () =>
-    createMockPublicContactHistory({
-      before: {
-        email: 'test@example.com',
-        phone: undefined,
-        address: {
-          address1: '123 Test St',
-          city: 'Test City',
-          state: 'TX',
-          zipCode: '12345',
-          countryCode: 'US',
-        },
-      } as ContactInformation,
-      after: createPartialContactInfo({}),
-    }),
-
-  phoneNoExtensionUndefined: () =>
-    createMockPublicContactHistory({
-      before: createPartialContactInfo({
-        phone: { number: '555-999-8888', extension: undefined },
-      }),
-      after: createPartialContactInfo({}),
-    }),
 };
