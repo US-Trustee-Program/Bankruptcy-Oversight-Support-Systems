@@ -12,7 +12,7 @@ import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gate
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '@common/cams/cases';
-import { CasesSearchPredicate } from '@common/api/search';
+import { CasesSearchPredicate, PHONETIC_SEARCH_MAX_FETCH } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
@@ -20,9 +20,6 @@ import { generateDebtorNameRegexPattern } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
-
-// This is an arbitrary safeguard to prevent excessive data retrieval during debtor name searches.
-const PHONETIC_SEARCH_MAX_FETCH = 20000;
 
 const { and, or, using } = QueryBuilder;
 const {

@@ -2,7 +2,7 @@ import { useEffect, useState, type JSX } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { CaseSummary, SyncedCase } from '@common/cams/cases';
 import Table, { TableBody, TableRowProps } from '@/lib/components/uswds/Table';
-import { CasesSearchPredicate } from '@common/api/search';
+import { CasesSearchPredicate, PHONETIC_SEARCH_MAX_FETCH } from '@common/api/search';
 import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -150,6 +150,11 @@ function SearchResults(props: SearchResultsProps) {
   }, [searchPredicate]);
 
   const totalCount = searchResults?.pagination?.totalCount ?? 0;
+  const isLimitReached = totalCount >= PHONETIC_SEARCH_MAX_FETCH;
+  const displayCount = isLimitReached
+    ? `${new Intl.NumberFormat('en-US').format(PHONETIC_SEARCH_MAX_FETCH)}+`
+    : new Intl.NumberFormat('en-US').format(totalCount);
+
   return (
     <div {...otherProps} className="search-results">
       {alertInfo && (
@@ -192,13 +197,27 @@ function SearchResults(props: SearchResultsProps) {
       )}
       {!isSearching && !emptyResponse && (
         <div>
+          {isLimitReached && (
+            <div className="search-alert">
+              <Alert
+                id="search-limit-alert"
+                className="measure-6"
+                message={`Showing first ${new Intl.NumberFormat('en-US').format(PHONETIC_SEARCH_MAX_FETCH)} cases.`}
+                type={UswdsAlertStyle.Info}
+                show={true}
+                slim={true}
+                inline={true}
+                role="alert"
+              ></Alert>
+            </div>
+          )}
           <Table
             id={id}
             className="case-list"
             scrollable="true"
             uswdsStyle={['striped']}
             title="Search results"
-            caption={`${new Intl.NumberFormat('en-US').format(totalCount)} ${totalCount === 1 ? 'case' : 'cases'}`}
+            caption={`${displayCount} ${totalCount === 1 ? 'case' : 'cases'}`}
           >
             <Header
               id={id}
