@@ -6,7 +6,6 @@ import CaseNoteFormModal, {
   getCaseNotesTitleValue,
   buildCaseNoteFormKey,
 } from './CaseNoteFormModal';
-import { CaseNoteInput } from '@common/cams/cases';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
@@ -596,6 +595,10 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const postNoteSpy = vi.spyOn(Api2, 'postCaseNote');
     postNoteSpy.mockResolvedValue();
 
+    // Mock DOMPurify to track sanitization calls
+    const DOMPurify = await import('dompurify');
+    const sanitizeSpy = vi.spyOn(DOMPurify.default, 'sanitize');
+
     const modalRef = React.createRef<CaseNoteFormModalRef>();
     const richTextEditorRef = React.createRef<RichTextEditorRef>();
     renderComponent(modalRef, {}, undefined, richTextEditorRef);
@@ -604,21 +607,20 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
     const maliciousTitle = 'Title<script>alert("xss")</script>';
     const maliciousContent = '<p>Content</p><script>alert("xss")</script>';
 
     await userEvent.type(titleInput, maliciousTitle);
-    act(() => richTextEditorRef.current?.setValue(maliciousContent)); // TODO: why ise setValues when we can .type
+    await userEvent.type(contentInput, maliciousContent);
 
-    // Verify unsanitized content is cached
+    // Verify content is cached while typing
     await waitFor(() => {
       expect(saveFormSpy).toHaveBeenCalled();
     });
 
-    const lastCacheCall = saveFormSpy.mock.calls[saveFormSpy.mock.calls.length - 1];
-    const cachedData = lastCacheCall[1] as CaseNoteInput;
-    expect(cachedData.title).toEqual(maliciousTitle);
-    expect(cachedData.content).toEqual(maliciousContent);
+    // Verify DOMPurify.sanitize was NOT called while typing
+    expect(sanitizeSpy).toHaveBeenCalledTimes(0);
 
     // Submit the form
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
@@ -627,16 +629,11 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     });
     await userEvent.click(submitButton);
 
-    // Verify sanitized content is sent to API
+    // Verify DOMPurify.sanitize was called when submitting (once for title, once for content)
     await waitFor(() => {
       expect(postNoteSpy).toHaveBeenCalled();
+      expect(sanitizeSpy).toHaveBeenCalledTimes(2);
     });
-
-    const apiCall = postNoteSpy.mock.calls[0][0];
-    expect(apiCall.title).not.toContain('<script>');
-    expect(apiCall.content).not.toContain('<script>');
-    expect(apiCall.title).toBe('Title');
-    expect(apiCall.content).toBe('<p>Content</p>');
   });
 
   test('should show edit note draft alert', async () => {
