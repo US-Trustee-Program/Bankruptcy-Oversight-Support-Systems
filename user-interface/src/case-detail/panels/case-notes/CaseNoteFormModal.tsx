@@ -160,8 +160,8 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
   function updateFormCache() {
     saveFormData({
       caseId: modalOpenOptions.caseId,
-      title: getCaseNotesTitleValue(titleInputRef.current),
-      content: getCaseNotesRichTextContentValue(richTextRef.current),
+      title: titleInputRef.current?.getValue() ?? '',
+      content: richTextRef.current?.getHtml() ?? '',
     });
   }
 
