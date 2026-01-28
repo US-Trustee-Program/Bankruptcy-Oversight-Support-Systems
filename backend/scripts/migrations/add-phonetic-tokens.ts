@@ -19,7 +19,7 @@
 
 import { MongoClient, Db, Collection, FindCursor } from 'mongodb';
 import * as dotenv from 'dotenv';
-import * as natural from 'natural';
+import { generatePhoneticTokens } from '../../lib/adapters/utils/phonetic-helper';
 
 // Type definition for case documents
 interface CaseDocument {
@@ -36,37 +36,6 @@ interface CaseDocument {
 
 // Load environment variables
 dotenv.config();
-
-// Initialize phonetic algorithms
-const soundexAlgorithm = new natural.SoundEx();
-const metaphoneAlgorithm = new natural.Metaphone();
-
-/**
- * Generate phonetic tokens for a given text using Soundex and Metaphone algorithms
- */
-function generatePhoneticTokens(text: string | undefined): string[] {
-  if (!text) return [];
-
-  const normalizedText = text.toLowerCase().trim();
-  const words = normalizedText.split(/\s+/).filter((word) => word.length > 0);
-  const tokens = new Set<string>();
-
-  for (const word of words) {
-    // Generate Soundex token
-    const soundexToken = soundexAlgorithm.process(word);
-    if (soundexToken) {
-      tokens.add(soundexToken);
-    }
-
-    // Generate Metaphone token
-    const metaphoneToken = metaphoneAlgorithm.process(word);
-    if (metaphoneToken) {
-      tokens.add(metaphoneToken);
-    }
-  }
-
-  return Array.from(tokens);
-}
 
 /**
  * Main migration function
