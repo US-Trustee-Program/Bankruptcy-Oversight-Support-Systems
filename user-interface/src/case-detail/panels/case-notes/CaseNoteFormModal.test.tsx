@@ -15,7 +15,6 @@ import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import MockData from '@common/cams/test-utilities/mock-data';
 import LocalStorage from '@/lib/utils/local-storage';
 import { getCamsUserReference } from '@common/cams/session';
-import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { randomUUID } from 'crypto';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
@@ -44,6 +43,7 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
       ref: React.Ref<RichTextEditorRef>,
     ) => {
       const [content, setContent] = React.useState('<p><br class="ProseMirror-trailingBreak"></p>');
+      const contentRef = React.useRef(content);
       const [disabled, setDisabled] = React.useState(props.disabled || false);
 
       // Helper function to check if content is effectively empty
@@ -58,23 +58,28 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
 
       React.useImperativeHandle(ref, () => ({
         clearValue: () => {
-          setContent('<p><br class="ProseMirror-trailingBreak"></p>');
+          const emptyContent = '<p><br class="ProseMirror-trailingBreak"></p>';
+          contentRef.current = emptyContent;
+          setContent(emptyContent);
           props.onChange?.('');
         },
-        getValue: () => content,
-        getHtml: () => (isEmptyContent(content) ? '' : content),
+        getValue: () => contentRef.current,
+        getHtml: () => (isEmptyContent(contentRef.current) ? '' : contentRef.current),
         setValue: (value: string) => {
           if (!value || value.trim() === '') {
             const emptyContent = '<p><br class="ProseMirror-trailingBreak"></p>';
+            contentRef.current = emptyContent;
             setContent(emptyContent);
             props.onChange?.(emptyContent);
           } else if (value.startsWith('<')) {
             // Already HTML formatted
+            contentRef.current = value;
             setContent(value);
             props.onChange?.(value);
           } else {
             // Plain text - wrap in p tag like rich text editor does
             const wrappedContent = `<p>${value}</p>`;
+            contentRef.current = wrappedContent;
             setContent(wrappedContent);
             props.onChange?.(wrappedContent);
           }
@@ -87,8 +92,13 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
         setDisabled(props.disabled || false);
       }, [props.disabled]);
 
+      React.useEffect(() => {
+        contentRef.current = content;
+      }, [content]);
+
       const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
         const newContent = e.currentTarget.innerHTML;
+        contentRef.current = newContent;
         setContent(newContent);
         props.onChange?.(newContent);
       };
@@ -151,19 +161,12 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
 const MODAL_ID = 'modal-case-note-form';
 const MODAL_WRAPPER_ID = `modal-${MODAL_ID}`;
 const TITLE_INPUT_ID = 'case-note-title-input';
-const CONTENT_INPUT_SELECTOR = '#textarea-note-content';
-const RICH_TEXT_CONTENT_INPUT_SELECTOR = '.editor-container .editor-content';
+const RICH_TEXT_CONTENT_INPUT_ID = 'editor-content';
 const OPEN_BUTTON_ID = 'open-modal-button';
 const CANCEL_BUTTON_ID = `button-${MODAL_ID}-cancel-button`;
 const SUBMIT_BUTTON_ID = `button-${MODAL_ID}-submit-button`;
 const ERROR_MESSAGE = 'There was a problem submitting the case note.';
 const TEST_CASE_ID = '000-11-22222';
-
-// Helper function to get the correct content input based on feature flag
-const getContentInput = (isFeatureEnabled: boolean = true) => {
-  const selector = isFeatureEnabled ? RICH_TEXT_CONTENT_INPUT_SELECTOR : CONTENT_INPUT_SELECTOR;
-  return document.querySelector(selector);
-};
 
 /**
  * NOTE: We mock RichTextEditor to avoid jsdom/ProseMirror compatibility issues.
@@ -223,10 +226,6 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     vi.resetModules();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({ expiresAfter: 1, value: {} });
-    const mockFeatureFlags = {
-      [FeatureFlagHook.FORMAT_CASE_NOTES]: true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
   });
 
   afterEach(() => {
@@ -339,9 +338,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(modal).toHaveClass('is-visible');
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = getContentInput();
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await userEvent.type(contentInput, 'Test Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
@@ -359,9 +358,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = getContentInput();
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await userEvent.type(contentInput, 'Test Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -399,7 +398,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = getContentInput();
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
     await userEvent.clear(titleInput);
     // For RichTextEditor, we need to clear content differently
     if (contentInput?.querySelector('.ProseMirror')) {
@@ -407,10 +406,10 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       await userEvent.keyboard('{Control}a');
       await userEvent.keyboard('{Delete}');
     } else {
-      await userEvent.clear(contentInput!);
+      await userEvent.clear(contentInput);
     }
     await userEvent.type(titleInput, 'Edited Title');
-    await userEvent.type(contentInput!, 'Edited Content');
+    await userEvent.type(contentInput, 'Edited Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -437,9 +436,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = getContentInput();
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await userEvent.type(contentInput, 'Test Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -459,9 +458,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = getContentInput();
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
     await userEvent.type(titleInput, 'Draft Title');
-    await userEvent.type(contentInput!, 'Draft Content');
+    await userEvent.type(contentInput, 'Draft Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
@@ -479,9 +478,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = getContentInput();
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await userEvent.type(contentInput, 'Test Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
@@ -489,54 +488,40 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(clearFormSpy).toHaveBeenCalled();
   });
 
-  const featureFlagCases: { enabled: boolean; initialContent: string }[] = [
-    { enabled: false, initialContent: 'Initial Content' },
-    { enabled: true, initialContent: '<p>Initial Content</p>' },
-  ];
+  test('should initialize form with provided values', async () => {
+    const initialTitle = 'Initial Title';
+    const initialContent = '<p>Initial Content</p>';
 
-  test.each(featureFlagCases)(
-    `should initialize form with provided values when RTE enabled = $enabled`,
-    async (args) => {
-      const initialTitle = 'Initial Title';
-      const { enabled, initialContent } = args;
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(
+      modalRef,
+      {},
+      {
+        caseId: TEST_CASE_ID,
+        title: initialTitle,
+        content: initialContent,
+        initialTitle: initialTitle,
+        initialContent: initialContent,
+        mode: 'create',
+      },
+    );
 
-      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
-        [FeatureFlagHook.FORMAT_CASE_NOTES]: enabled,
-      });
+    expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
 
-      const modalRef = React.createRef<CaseNoteFormModalRef>();
-      renderComponent(
-        modalRef,
-        {},
-        {
-          caseId: TEST_CASE_ID,
-          title: initialTitle,
-          content: initialContent,
-          initialTitle: initialTitle,
-          initialContent: initialContent,
-          mode: 'create',
-        },
-      );
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
 
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
+
+    expect(contentInput).toBeInTheDocument();
+    expect(contentInput.innerHTML).toEqual(initialContent);
+    expect(titleInput).toHaveValue(initialTitle);
+
+    await waitFor(() => {
       expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
-
-      const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-      await userEvent.click(openButton);
-
-      const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-      const contentInput = getContentInput(enabled);
-
-      expect(contentInput).toBeInTheDocument();
-
-      const content = enabled ? contentInput?.innerHTML : contentInput?.textContent;
-      expect(content).toEqual(initialContent);
-      expect(titleInput).toHaveValue(initialTitle);
-
-      await waitFor(() => {
-        expect(screen.getByTestId(SUBMIT_BUTTON_ID)).toBeDisabled();
-      });
-    },
-  );
+    });
+  });
 
   test('should disable Save button unless both Title and Content have non-empty values', async () => {
     const modalRef = React.createRef<CaseNoteFormModalRef>();
@@ -605,6 +590,52 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     });
   });
 
+  test('should cache unsanitized content while typing but send sanitized content to API', async () => {
+    const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
+    const postNoteSpy = vi.spyOn(Api2, 'postCaseNote');
+    postNoteSpy.mockResolvedValue();
+
+    // Mock DOMPurify to track sanitization calls
+    const DOMPurify = await import('dompurify');
+    const sanitizeSpy = vi.spyOn(DOMPurify.default, 'sanitize');
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    renderComponent(modalRef, {}, undefined, richTextEditorRef);
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
+    const maliciousTitle = 'Title<script>alert("xss")</script>';
+    const maliciousContent = '<p>Content</p><script>alert("xss")</script>';
+
+    await userEvent.type(titleInput, maliciousTitle);
+    await userEvent.type(contentInput, maliciousContent);
+
+    // Verify content is cached while typing
+    await waitFor(() => {
+      expect(saveFormSpy).toHaveBeenCalled();
+    });
+
+    // Verify DOMPurify.sanitize was NOT called while typing
+    expect(sanitizeSpy).toHaveBeenCalledTimes(0);
+
+    // Submit the form
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+    await userEvent.click(submitButton);
+
+    // Verify DOMPurify.sanitize was called when submitting (once for title, once for content)
+    await waitFor(() => {
+      expect(postNoteSpy).toHaveBeenCalled();
+      expect(sanitizeSpy).toHaveBeenCalledTimes(2);
+    });
+  });
+
   test('should show edit note draft alert', async () => {
     const saveFormSpy = vi.spyOn(LocalFormCache, 'saveForm');
     const noteId = randomUUID();
@@ -626,10 +657,10 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = getContentInput();
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
     await userEvent.clear(titleInput);
     await userEvent.type(titleInput, 'Edited Title');
-    await userEvent.type(contentInput!, 'Edited Content');
+    await userEvent.type(contentInput, 'Edited Content');
 
     expect(saveFormSpy).toHaveBeenCalled();
 
@@ -648,12 +679,12 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = getContentInput();
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
     const newTitle = 'New Note Title';
     const newContent = 'New Note Content';
 
     await userEvent.type(titleInput, newTitle);
-    await userEvent.type(contentInput!, newContent);
+    await userEvent.type(contentInput, newContent);
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -664,7 +695,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     // Check that form data is cleared
     expect(screen.getByTestId(TITLE_INPUT_ID)).toHaveValue('');
     // Check the editor content is cleared to empty state
-    expect(getContentInput()?.innerHTML).toBe('<p><br class="ProseMirror-trailingBreak"></p>');
+    expect(screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID).innerHTML).toBe(
+      '<p><br class="ProseMirror-trailingBreak"></p>',
+    );
   });
 
   test('getCaseNotesInputValue should default to empty string if no ref passed', () => {
