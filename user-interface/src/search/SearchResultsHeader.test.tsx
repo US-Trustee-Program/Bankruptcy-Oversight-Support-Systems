@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { SearchResultsHeader } from './SearchResultsHeader';
-import { describe, it, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 
 describe('SearchResultsHeader', () => {
-  it('should render all columns when debtor name column is shown', () => {
+  test('should render all columns when debtor name column is shown', () => {
     const labels = ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed'];
 
     render(
@@ -14,14 +14,16 @@ describe('SearchResultsHeader', () => {
       </table>,
     );
 
-    expect(screen.getByText('Case Number (Division)')).toBeInTheDocument();
-    expect(screen.getByText('Case Title')).toBeInTheDocument();
-    expect(screen.getByText('Debtor Name')).toBeInTheDocument();
-    expect(screen.getByText('Chapter')).toBeInTheDocument();
-    expect(screen.getByText('Case Filed')).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Case Number (Division)' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Case Title' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Debtor Name' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Chapter' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Case Filed' })).toBeInTheDocument();
   });
 
-  it('should not render Debtor Name column when debtor name column is hidden', () => {
+  test('should not render Debtor Name column when debtor name column is hidden', () => {
     const labels = ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
 
     render(
@@ -32,10 +34,12 @@ describe('SearchResultsHeader', () => {
       </table>,
     );
 
-    expect(screen.getByText('Case Number (Division)')).toBeInTheDocument();
-    expect(screen.getByText('Case Title')).toBeInTheDocument();
-    expect(screen.queryByText('Debtor Name')).not.toBeInTheDocument();
-    expect(screen.getByText('Chapter')).toBeInTheDocument();
-    expect(screen.getByText('Case Filed')).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Case Number (Division)' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Case Title' })).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Debtor Name' })).not.toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Chapter' })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Case Filed' })).toBeInTheDocument();
   });
 });

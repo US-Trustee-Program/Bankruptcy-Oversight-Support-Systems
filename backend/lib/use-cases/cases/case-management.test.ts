@@ -20,6 +20,35 @@ import { ConsolidationTo } from '@common/cams/events';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 
+async function createCaseManagementTestContext(options: {
+  user: CamsUser;
+  phoneticSearchEnabled?: boolean;
+  phoneticSimilarityThreshold?: string;
+  env?: Record<string, string>;
+}) {
+  const { user, phoneticSearchEnabled = false, phoneticSimilarityThreshold, env = {} } = options;
+
+  const baseEnv: Record<string, string> = {
+    STARTING_MONTH: '-6',
+    ...env,
+  };
+
+  if (phoneticSearchEnabled) {
+    baseEnv.PHONETIC_SEARCH_ENABLED = 'true';
+    if (phoneticSimilarityThreshold) {
+      baseEnv.PHONETIC_SIMILARITY_THRESHOLD = phoneticSimilarityThreshold;
+    }
+  }
+
+  const context = await createMockApplicationContext({ env: baseEnv });
+  context.featureFlags['phonetic-search-enabled'] = phoneticSearchEnabled;
+  context.session = await createMockApplicationContextSession({ user });
+
+  const useCase = new CaseManagement(context);
+
+  return { context, useCase };
+}
+
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
 const currentDate = new Date().toISOString();
@@ -482,16 +511,12 @@ describe('Case management tests', () => {
           }),
         ];
 
-        const contextWithPhonetic = await createMockApplicationContext({
-          env: {
-            STARTING_MONTH: '-6',
-            PHONETIC_SEARCH_ENABLED: 'true',
-            PHONETIC_SIMILARITY_THRESHOLD: '0.83',
-          },
-        });
-        contextWithPhonetic.featureFlags['phonetic-search-enabled'] = true;
-        contextWithPhonetic.session = await createMockApplicationContextSession({ user });
-        const useCaseWithPhonetic = new CaseManagement(contextWithPhonetic);
+        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: true,
+            phoneticSimilarityThreshold: '0.83',
+          });
 
         vi.spyOn(
           useCaseWithPhonetic.casesRepository,
@@ -522,15 +547,11 @@ describe('Case management tests', () => {
           }),
         ];
 
-        const contextWithoutPhonetic = await createMockApplicationContext({
-          env: {
-            STARTING_MONTH: '-6',
-            PHONETIC_SEARCH_ENABLED: 'false',
-          },
-        });
-        contextWithoutPhonetic.featureFlags['phonetic-search-enabled'] = false;
-        contextWithoutPhonetic.session = await createMockApplicationContextSession({ user });
-        const useCaseWithoutPhonetic = new CaseManagement(contextWithoutPhonetic);
+        const { context: contextWithoutPhonetic, useCase: useCaseWithoutPhonetic } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: false,
+          });
 
         vi.spyOn(useCaseWithoutPhonetic.casesRepository, 'searchCases').mockResolvedValue({
           metadata: { total: mockCases.length },
@@ -558,15 +579,11 @@ describe('Case management tests', () => {
           MockData.getSyncedCase({ override: { caseId: '002' } }),
         ];
 
-        const contextWithPhonetic = await createMockApplicationContext({
-          env: {
-            STARTING_MONTH: '-6',
-            PHONETIC_SEARCH_ENABLED: 'true',
-          },
-        });
-        contextWithPhonetic.featureFlags['phonetic-search-enabled'] = true;
-        contextWithPhonetic.session = await createMockApplicationContextSession({ user });
-        const useCaseWithPhonetic = new CaseManagement(contextWithPhonetic);
+        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: true,
+          });
 
         vi.spyOn(useCaseWithPhonetic.casesRepository, 'searchCases').mockResolvedValue({
           metadata: { total: mockCases.length },
@@ -595,16 +612,12 @@ describe('Case management tests', () => {
         ];
 
         const customThreshold = 0.95;
-        const contextWithCustomThreshold = await createMockApplicationContext({
-          env: {
-            STARTING_MONTH: '-6',
-            PHONETIC_SEARCH_ENABLED: 'true',
-            PHONETIC_SIMILARITY_THRESHOLD: customThreshold.toString(),
-          },
-        });
-        contextWithCustomThreshold.featureFlags['phonetic-search-enabled'] = true;
-        contextWithCustomThreshold.session = await createMockApplicationContextSession({ user });
-        const useCaseWithCustomThreshold = new CaseManagement(contextWithCustomThreshold);
+        const { context: contextWithCustomThreshold, useCase: useCaseWithCustomThreshold } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: true,
+            phoneticSimilarityThreshold: customThreshold.toString(),
+          });
 
         vi.spyOn(
           useCaseWithCustomThreshold.casesRepository,
@@ -641,16 +654,12 @@ describe('Case management tests', () => {
           }),
         ];
 
-        const contextWithPhonetic = await createMockApplicationContext({
-          env: {
-            STARTING_MONTH: '-6',
-            PHONETIC_SEARCH_ENABLED: 'true',
-            PHONETIC_SIMILARITY_THRESHOLD: '0.83',
-          },
-        });
-        contextWithPhonetic.featureFlags['phonetic-search-enabled'] = true;
-        contextWithPhonetic.session = await createMockApplicationContextSession({ user });
-        const useCaseWithPhonetic = new CaseManagement(contextWithPhonetic);
+        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: true,
+            phoneticSimilarityThreshold: '0.83',
+          });
 
         vi.spyOn(
           useCaseWithPhonetic.casesRepository,

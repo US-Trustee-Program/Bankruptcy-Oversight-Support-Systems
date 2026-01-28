@@ -61,31 +61,6 @@ export default class CaseManagement {
     return !!(predicate.debtorName && phoneticSearchEnabled);
   }
 
-  private getPredicateFieldNames(predicate: CasesSearchPredicate): string[] {
-    const fieldNames: string[] = [];
-    // Exclude fields that are not user-visible search criteria
-    const excludeFields = [
-      'limit',
-      'offset',
-      'caseIds',
-      'excludedCaseIds',
-      'assignments',
-      'excludeMemberConsolidations',
-    ];
-
-    for (const key in predicate) {
-      if (
-        Object.prototype.hasOwnProperty.call(predicate, key) &&
-        predicate[key] !== undefined &&
-        !excludeFields.includes(key)
-      ) {
-        fieldNames.push(key);
-      }
-    }
-
-    return fieldNames;
-  }
-
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
@@ -131,9 +106,11 @@ export default class CaseManagement {
         searchResult =
           await this.casesRepository.searchCasesForPhoneticFiltering(augmentedPredicate);
 
+        const threshold = context.config.phoneticSimilarityThreshold;
         const filteredCases = filterCasesByDebtorNameSimilarity(
           searchResult.data,
           predicate.debtorName,
+          threshold,
         );
 
         const start = predicate.offset || 0;
