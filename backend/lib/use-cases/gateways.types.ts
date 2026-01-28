@@ -160,6 +160,8 @@ export interface AcmsGateway {
   getMigrationCaseCount(context: ApplicationContext);
 }
 
+export type CaseHistoryDocumentType = 'AUDIT_ASSIGNMENT' | 'AUDIT_TRANSFER' | 'AUDIT_CONSOLIDATION';
+
 export interface CasesRepository extends Releasable {
   createTransferFrom(reference: TransferFrom): Promise<TransferFrom>;
   createTransferTo(reference: TransferTo): Promise<TransferTo>;
@@ -168,7 +170,7 @@ export interface CasesRepository extends Releasable {
   createConsolidationFrom(reference: ConsolidationFrom): Promise<ConsolidationFrom>;
   getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
-  getAllCaseHistory(documentType: string): Promise<CaseHistory[]>;
+  getAllCaseHistory(documentType: CaseHistoryDocumentType): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
   updateCaseHistory(history: CaseHistory): Promise<void>;
   syncDxtrCase(bCase: SyncedCase): Promise<void>;

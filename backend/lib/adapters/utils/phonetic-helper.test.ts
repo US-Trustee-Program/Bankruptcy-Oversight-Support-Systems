@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, test, expect } from 'vitest';
 import {
   generatePhoneticTokens,
   expandQueryWithNicknames,
@@ -9,13 +9,13 @@ import { SyncedCase } from '@common/cams/cases';
 
 describe('Phonetic Utilities', () => {
   describe('generatePhoneticTokens', () => {
-    it('should generate phonetic tokens for a single word', () => {
+    test('should generate phonetic tokens for a single word', () => {
       const tokens = generatePhoneticTokens('Michael');
       expect(tokens).toContain('M240');
       expect(tokens).toContain('MKSHL');
     });
 
-    it('should generate phonetic tokens for multiple words', () => {
+    test('should generate phonetic tokens for multiple words', () => {
       const tokens = generatePhoneticTokens('John Smith');
       expect(tokens).toContain('J500');
       expect(tokens).toContain('JN');
@@ -23,22 +23,23 @@ describe('Phonetic Utilities', () => {
       expect(tokens).toContain('SM0');
     });
 
-    it('should handle empty input', () => {
+    test('should handle empty input', () => {
       const tokens = generatePhoneticTokens('');
       expect(tokens).toEqual([]);
     });
 
-    it('should handle undefined input', () => {
+    test('should handle undefined input', () => {
       const tokens = generatePhoneticTokens(undefined);
       expect(tokens).toEqual([]);
     });
 
-    it('should handle names with special characters', () => {
+    test('should handle names with special characters', () => {
       const tokens = generatePhoneticTokens("O'Brien");
-      expect(tokens.length).toBeGreaterThan(0);
+      expect(tokens).toContain('O165');
+      expect(tokens).toContain('OBRN');
     });
 
-    it('should normalize case and trim whitespace', () => {
+    test('should normalize case and trim whitespace', () => {
       const tokens1 = generatePhoneticTokens('MICHAEL');
       const tokens2 = generatePhoneticTokens('michael');
       const tokens3 = generatePhoneticTokens('  Michael  ');
@@ -49,24 +50,24 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('expandQueryWithNicknames', () => {
-    it('should expand common nicknames', () => {
+    test('should expand common nicknames', () => {
       const expanded = expandQueryWithNicknames('Mike');
       expect(expanded).toContain('mike');
       expect(expanded).toContain('michael');
     });
 
-    it('should include the original name', () => {
+    test('should include the original name', () => {
       const expanded = expandQueryWithNicknames('Michael');
       expect(expanded).toContain('michael');
       expect(expanded).toContain('mike');
     });
 
-    it('should handle empty input', () => {
+    test('should handle empty input', () => {
       const expanded = expandQueryWithNicknames('');
       expect(expanded).toEqual([]);
     });
 
-    it('should handle multiple words', () => {
+    test('should handle multiple words', () => {
       const expanded = expandQueryWithNicknames('Mike Johnson');
       expect(expanded).toContain('mike');
       expect(expanded).toContain('michael');
@@ -75,14 +76,14 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('generatePhoneticTokensWithNicknames', () => {
-    it('should combine nickname expansion with phonetic tokens', () => {
+    test('should combine nickname expansion with phonetic tokens', () => {
       const tokens = generatePhoneticTokensWithNicknames('Mike');
       expect(tokens.length).toBeGreaterThan(0);
       expect(tokens).toContain('M200');
       expect(tokens).toContain('M240');
     });
 
-    it('should handle empty input', () => {
+    test('should handle empty input', () => {
       const tokens = generatePhoneticTokensWithNicknames('');
       expect(tokens).toEqual([]);
     });
@@ -140,7 +141,7 @@ describe('Phonetic Utilities', () => {
       } as SyncedCase,
     ];
 
-    it('should filter cases by phonetic similarity (first names only)', () => {
+    test('should filter cases by phonetic similarity (first names only)', () => {
       const phonetics: SyncedCase[] = [
         {
           caseId: '001',
@@ -167,20 +168,20 @@ describe('Phonetic Utilities', () => {
       expect(filteredNames).not.toContain('Jane');
     });
 
-    it('should include joint debtor names in search', () => {
+    test('should include joint debtor names in search', () => {
       const filtered = filterCasesByDebtorNameSimilarity(mockCases, 'Sarah');
       expect(filtered).toHaveLength(1);
       expect(filtered[0].jointDebtor?.name).toBe('Sarah Connor');
     });
 
-    it('should handle partial name matching', () => {
+    test('should handle partial name matching', () => {
       const filtered = filterCasesByDebtorNameSimilarity(mockCases, 'John Sm');
       const filteredNames = filtered.map((c) => c.debtor?.name);
 
       expect(filteredNames).toContain('John Smith');
     });
 
-    it('should sort results by similarity score', () => {
+    test('should sort results by similarity score', () => {
       const filtered = filterCasesByDebtorNameSimilarity(mockCases, 'John Smith');
 
       const topNames = filtered.slice(0, 2).map((c) => c.debtor?.name);
@@ -188,17 +189,17 @@ describe('Phonetic Utilities', () => {
       expect(topNames).toContain('Jon Smith');
     });
 
-    it('should return all cases if no search query', () => {
+    test('should return all cases if no search query', () => {
       const filtered = filterCasesByDebtorNameSimilarity(mockCases, '');
       expect(filtered).toEqual(mockCases);
     });
 
-    it('should handle empty case array', () => {
+    test('should handle empty case array', () => {
       const filtered = filterCasesByDebtorNameSimilarity([], 'John');
       expect(filtered).toEqual([]);
     });
 
-    it('should be case-insensitive', () => {
+    test('should be case-insensitive', () => {
       const filtered1 = filterCasesByDebtorNameSimilarity(mockCases, 'JOHN SMITH');
       const filtered2 = filterCasesByDebtorNameSimilarity(mockCases, 'john smith');
 
@@ -207,7 +208,7 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('Integration scenarios', () => {
-    it('should handle nickname matching (Mike -> Michael)', () => {
+    test('should handle nickname matching (Mike -> Michael)', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -219,13 +220,12 @@ describe('Phonetic Utilities', () => {
         } as SyncedCase,
       ];
 
-      // When searching for "Mike", should find "Michael"
       const filtered = filterCasesByDebtorNameSimilarity(cases, 'Mike Johnson');
       expect(filtered).toHaveLength(1);
       expect(filtered[0].debtor?.name).toBe('Michael Johnson');
     });
 
-    it('should handle phonetic matching (Jon -> John)', () => {
+    test('should handle phonetic matching (Jon -> John)', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -243,7 +243,7 @@ describe('Phonetic Utilities', () => {
       expect(filtered[0].debtor?.name).toBe('John Williams');
     });
 
-    it('should filter out false positives (Jon != Jane)', () => {
+    test('should filter out false positives (Jon != Jane)', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -256,10 +256,10 @@ describe('Phonetic Utilities', () => {
       ];
 
       const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jon');
-      expect(filtered).toHaveLength(0); // Jane should not match Jon
+      expect(filtered).toHaveLength(0);
     });
 
-    it('should handle international name variations', () => {
+    test('should handle international name variations', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -288,7 +288,7 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('Edge case false positives (discovered during manual testing)', () => {
-    it('should NOT match Jose when searching for Jon', () => {
+    test('should NOT match Jose when searching for Jon', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -304,7 +304,7 @@ describe('Phonetic Utilities', () => {
       expect(filtered).toHaveLength(0); // Jose should not match Jon
     });
 
-    it('should NOT match Jose when searching for John', () => {
+    test('should NOT match Jose when searching for John', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -320,7 +320,7 @@ describe('Phonetic Utilities', () => {
       expect(filtered).toHaveLength(0); // Jose should not match John
     });
 
-    it('should NOT match Jon when searching for Jose', () => {
+    test('should NOT match Jon when searching for Jose', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -347,7 +347,7 @@ describe('Phonetic Utilities', () => {
       expect(names).not.toContain('John Davis'); // John should not match Jose
     });
 
-    it('should NOT match Miller when searching for Mike', () => {
+    test('should NOT match Miller when searching for Mike', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -373,7 +373,7 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('Nickname matching - Bob/Robert and Bill/William', () => {
-    it('should match Robert when searching for Bob (different last names)', () => {
+    test('should match Robert when searching for Bob (different last names)', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -391,7 +391,7 @@ describe('Phonetic Utilities', () => {
       expect(filtered[0].debtor?.name).toBe('Robert Smith');
     });
 
-    it('should match Bob when searching for Robert (different last names)', () => {
+    test('should match Bob when searching for Robert (different last names)', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -409,7 +409,7 @@ describe('Phonetic Utilities', () => {
       expect(filtered[0].debtor?.name).toBe('Bob Johnson');
     });
 
-    it('should match William when searching for Bill (different last names)', () => {
+    test('should match William when searching for Bill (different last names)', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -427,7 +427,7 @@ describe('Phonetic Utilities', () => {
       expect(filtered[0].debtor?.name).toBe('William Brown');
     });
 
-    it('should match Bill when searching for William (different last names)', () => {
+    test('should match Bill when searching for William (different last names)', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -447,7 +447,7 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('International names with accents', () => {
-    it('should match Spanish/Portuguese names with and without accents', () => {
+    test('should match Spanish/Portuguese names with and without accents', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -477,7 +477,7 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('Misspellings', () => {
-    it('should match common misspellings of names', () => {
+    test('should match common misspellings of names', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -505,7 +505,7 @@ describe('Phonetic Utilities', () => {
       expect(names).toContain('Micheal Johnson');
     });
 
-    it('should match common misspellings via phonetic codes', () => {
+    test('should match common misspellings via phonetic codes', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',
@@ -542,7 +542,7 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('Hyphenated and compound names', () => {
-    it('should match hyphenated names with and without hyphens', () => {
+    test('should match hyphenated names with and without hyphens', () => {
       const cases: SyncedCase[] = [
         {
           caseId: '001',

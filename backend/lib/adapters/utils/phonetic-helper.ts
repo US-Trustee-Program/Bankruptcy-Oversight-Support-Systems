@@ -25,8 +25,8 @@ export function generatePhoneticTokens(text: string): string[] {
 
   const normalized = text
     .trim()
-    .toUpperCase()
-    .replace(/[^A-Z\s]/g, '');
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '');
 
   const words = normalized.split(/\s+/).filter((word) => word.length > 0);
 

@@ -8,7 +8,11 @@ import {
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '@common/cams/history';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
-import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';
+import {
+  CamsPaginationResponse,
+  CaseHistoryDocumentType,
+  CasesRepository,
+} from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '@common/cams/cases';
@@ -187,10 +191,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async getAllCaseHistory(documentType: string): Promise<CaseHistory[]> {
+  async getAllCaseHistory(documentType: CaseHistoryDocumentType): Promise<CaseHistory[]> {
     const doc = using<CaseHistory>();
     try {
-      // @ts-expect-error - documentType string parameter is valid but doesn't match strict Field type
       const query = doc('documentType').equals(documentType);
       const adapter = this.getAdapter<CaseHistory>();
       return await adapter.find(query);
