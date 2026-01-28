@@ -29,6 +29,7 @@ export type SearchResultsHeaderProps = {
   id: string;
   labels: string[];
   phoneticSearchEnabled?: boolean;
+  showDebtorNameColumn?: boolean;
 };
 
 export type SearchResultsRowProps = TableRowProps & {
@@ -36,12 +37,14 @@ export type SearchResultsRowProps = TableRowProps & {
   bCase: CaseSummary;
   labels: string[];
   phoneticSearchEnabled?: boolean;
+  showDebtorNameColumn?: boolean;
 };
 
 export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   id: string;
   searchPredicate: CasesSearchPredicate;
   phoneticSearchEnabled?: boolean;
+  showDebtorNameColumn?: boolean;
   onStartSearching?: () => void;
   onEndSearching?: () => void;
   noResultsMessage?: string;
@@ -55,6 +58,7 @@ function SearchResults(props: SearchResultsProps) {
     id,
     searchPredicate: searchPredicateProp,
     phoneticSearchEnabled = false,
+    showDebtorNameColumn = false,
     onStartSearching,
     onEndSearching,
     noResultsMessage: noResultsMessageProp,
@@ -71,7 +75,7 @@ function SearchResults(props: SearchResultsProps) {
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
 
-  const searchResultsHeaderLabels = phoneticSearchEnabled
+  const searchResultsHeaderLabels = showDebtorNameColumn
     ? ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed']
     : ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
 
@@ -223,6 +227,7 @@ function SearchResults(props: SearchResultsProps) {
               id={id}
               labels={searchResultsHeaderLabels}
               phoneticSearchEnabled={phoneticSearchEnabled}
+              showDebtorNameColumn={showDebtorNameColumn}
             />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
@@ -231,6 +236,7 @@ function SearchResults(props: SearchResultsProps) {
                     bCase={bCase}
                     labels={searchResultsHeaderLabels}
                     phoneticSearchEnabled={phoneticSearchEnabled}
+                    showDebtorNameColumn={showDebtorNameColumn}
                     idx={idx}
                     key={idx}
                   />

@@ -3,13 +3,13 @@ import { SearchResultsHeader } from './SearchResultsHeader';
 import { describe, it, expect } from 'vitest';
 
 describe('SearchResultsHeader', () => {
-  it('should render all columns when phonetic search is enabled', () => {
+  it('should render all columns when debtor name column is shown', () => {
     const labels = ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed'];
 
     render(
       <table>
         <thead>
-          <SearchResultsHeader id="test-header" labels={labels} phoneticSearchEnabled={true} />
+          <SearchResultsHeader id="test-header" labels={labels} showDebtorNameColumn={true} />
         </thead>
       </table>,
     );
@@ -21,13 +21,13 @@ describe('SearchResultsHeader', () => {
     expect(screen.getByText('Case Filed')).toBeInTheDocument();
   });
 
-  it('should not render Debtor Name column when phonetic search is disabled', () => {
+  it('should not render Debtor Name column when debtor name column is hidden', () => {
     const labels = ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
 
     render(
       <table>
         <thead>
-          <SearchResultsHeader id="test-header" labels={labels} phoneticSearchEnabled={false} />
+          <SearchResultsHeader id="test-header" labels={labels} showDebtorNameColumn={false} />
         </thead>
       </table>,
     );

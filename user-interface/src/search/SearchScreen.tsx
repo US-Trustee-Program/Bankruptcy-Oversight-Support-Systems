@@ -28,7 +28,10 @@ import Checkbox from '@/lib/components/uswds/Checkbox';
 import { SEARCH_SCREEN_SPEC, SearchScreenFormData } from './searchScreen.types';
 import { validateObject, ValidatorReasonMap } from '@common/cams/validation';
 import useDebounce from '@/lib/hooks/UseDebounce';
-import useFeatureFlags, { PHONETIC_SEARCH_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  PHONETIC_SEARCH_ENABLED,
+  SHOW_DEBTOR_NAME_COLUMN,
+} from '@/lib/hooks/UseFeatureFlags';
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -60,6 +63,7 @@ export function validateFormData(formData: SearchScreenFormData): {
 export default function SearchScreen() {
   const featureFlags = useFeatureFlags();
   const phoneticSearchEnabled = featureFlags[PHONETIC_SEARCH_ENABLED] === true;
+  const showDebtorNameColumn = featureFlags[SHOW_DEBTOR_NAME_COLUMN] === true;
 
   const session = LocalStorage.getSession();
   const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
@@ -445,6 +449,7 @@ export default function SearchScreen() {
               id="search-results"
               searchPredicate={searchPredicate}
               phoneticSearchEnabled={phoneticSearchEnabled}
+              showDebtorNameColumn={showDebtorNameColumn}
               onStartSearching={setStartSearching}
               onEndSearching={setEndSearching}
               header={SearchResultsHeader}
