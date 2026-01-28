@@ -54,6 +54,38 @@ export default class CaseManagement {
     this.casesRepository = factory.getCasesRepository(applicationContext);
   }
 
+  private shouldUsePhoneticSearch(
+    predicate: CasesSearchPredicate,
+    phoneticSearchEnabled: boolean,
+  ): boolean {
+    return !!(predicate.debtorName && phoneticSearchEnabled);
+  }
+
+  private getPredicateFieldNames(predicate: CasesSearchPredicate): string[] {
+    const fieldNames: string[] = [];
+    // Exclude fields that are not user-visible search criteria
+    const excludeFields = [
+      'limit',
+      'offset',
+      'caseIds',
+      'excludedCaseIds',
+      'assignments',
+      'excludeMemberConsolidations',
+    ];
+
+    for (const key in predicate) {
+      if (
+        Object.prototype.hasOwnProperty.call(predicate, key) &&
+        predicate[key] !== undefined &&
+        !excludeFields.includes(key)
+      ) {
+        fieldNames.push(key);
+      }
+    }
+
+    return fieldNames;
+  }
+
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
@@ -86,21 +118,16 @@ export default class CaseManagement {
       }
 
       const phoneticSearchEnabled = context.featureFlags?.['phonetic-search-enabled'] === true;
+      const usePhoneticSearch = this.shouldUsePhoneticSearch(predicate, phoneticSearchEnabled);
       const augmentedPredicate = { ...predicate };
-
-      if (predicate.debtorName) {
-        context.logger.info(MODULE_NAME, 'Debtor name search criteria used');
-
-        if (phoneticSearchEnabled) {
-          augmentedPredicate.phoneticTokens = generatePhoneticTokensWithNicknames(
-            predicate.debtorName,
-          );
-        }
-      }
 
       let searchResult: CamsPaginationResponse<ResourceActions<SyncedCase>>;
 
-      if (predicate.debtorName && phoneticSearchEnabled && augmentedPredicate.phoneticTokens) {
+      if (usePhoneticSearch) {
+        augmentedPredicate.phoneticTokens = generatePhoneticTokensWithNicknames(
+          predicate.debtorName,
+        );
+
         searchResult =
           await this.casesRepository.searchCasesForPhoneticFiltering(augmentedPredicate);
 
@@ -119,6 +146,15 @@ export default class CaseManagement {
         };
       } else {
         searchResult = await this.casesRepository.searchCases(augmentedPredicate);
+      }
+
+      // Log debtor name search with predicates and results
+      if (predicate.debtorName) {
+        const predicatesUsed = this.getPredicateFieldNames(augmentedPredicate);
+        context.logger.info(MODULE_NAME, 'Debtor name search', {
+          predicatesUsed,
+          casesFound: searchResult.metadata.total,
+        });
       }
 
       const casesMap = new Map<string, ResourceActions<SyncedCase>>();
