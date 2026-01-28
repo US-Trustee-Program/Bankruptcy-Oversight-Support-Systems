@@ -27,7 +27,7 @@ import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { CaseConsolidationHistory, CaseHistory } from '@common/cams/history';
 import { randomUUID } from 'crypto';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { generatePhoneticTokens } from '../../../use-cases/cases/phonetic-utils';
+import { generatePhoneticTokens } from '../../utils/phonetic-helper';
 
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;

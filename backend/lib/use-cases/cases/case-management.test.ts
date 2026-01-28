@@ -671,55 +671,5 @@ describe('Case management tests', () => {
         expect(result.data.length).toBeLessThanOrEqual(mockCases.length);
       });
     });
-
-    describe('debtor name search logging', () => {
-      test('should log which predicates were used and case count when searching by debtor name', async () => {
-        const mockCases = [
-          MockData.getSyncedCase({
-            override: { caseId: '001', debtor: { name: 'John Smith' } },
-          }),
-          MockData.getSyncedCase({
-            override: { caseId: '002', debtor: { name: 'Jane Smith' } },
-          }),
-        ];
-
-        const testContext = await createMockApplicationContext({
-          env: {
-            STARTING_MONTH: '-6',
-            PHONETIC_SEARCH_ENABLED: 'false',
-          },
-        });
-        testContext.featureFlags['phonetic-search-enabled'] = false;
-        testContext.session = await createMockApplicationContextSession({ user });
-        const testUseCase = new CaseManagement(testContext);
-
-        vi.spyOn(testUseCase.casesRepository, 'searchCases').mockResolvedValue({
-          metadata: { total: mockCases.length },
-          data: mockCases,
-        });
-
-        const loggerInfoSpy = vi.spyOn(testContext.logger, 'info');
-
-        const predicate: CasesSearchPredicate = {
-          ...basePredicate,
-          debtorName: 'Smith',
-        };
-
-        const result = await testUseCase.searchCases(testContext, predicate, false);
-
-        expect(result.data.length).toBe(mockCases.length);
-        expect(result.metadata.total).toBe(mockCases.length);
-
-        // Verify the logger was called with the enhanced information
-        expect(loggerInfoSpy).toHaveBeenCalledWith(
-          'CASE-MANAGEMENT-USE-CASE',
-          'Debtor name search',
-          expect.objectContaining({
-            predicatesUsed: expect.arrayContaining(['debtorName', 'chapters']),
-            casesFound: 2,
-          }),
-        );
-      });
-    });
   });
 });

@@ -4,7 +4,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { CaseSyncEvent } from '@common/queue/dataflow-types';
-import { generatePhoneticTokens } from '../cases/phonetic-utils';
+import { generatePhoneticTokens } from '../../adapters/utils/phonetic-helper';
 
 const MODULE_NAME = 'EXPORT-AND-LOAD';
 

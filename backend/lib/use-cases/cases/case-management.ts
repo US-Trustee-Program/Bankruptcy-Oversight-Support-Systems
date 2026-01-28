@@ -22,7 +22,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import {
   generatePhoneticTokensWithNicknames,
   filterCasesByDebtorNameSimilarity,
-} from './phonetic-utils';
+} from '../../adapters/utils/phonetic-helper';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -146,15 +146,6 @@ export default class CaseManagement {
         };
       } else {
         searchResult = await this.casesRepository.searchCases(augmentedPredicate);
-      }
-
-      // Log debtor name search with predicates and results
-      if (predicate.debtorName) {
-        const predicatesUsed = this.getPredicateFieldNames(augmentedPredicate);
-        context.logger.info(MODULE_NAME, 'Debtor name search', {
-          predicatesUsed,
-          casesFound: searchResult.metadata.total,
-        });
       }
 
       const casesMap = new Map<string, ResourceActions<SyncedCase>>();

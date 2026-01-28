@@ -4,7 +4,7 @@ import {
   expandQueryWithNicknames,
   generatePhoneticTokensWithNicknames,
   filterCasesByDebtorNameSimilarity,
-} from './phonetic-utils';
+} from './phonetic-helper';
 import { SyncedCase } from '@common/cams/cases';
 
 describe('Phonetic Utilities', () => {

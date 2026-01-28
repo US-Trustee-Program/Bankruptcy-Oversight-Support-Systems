@@ -11,7 +11,7 @@
  */
 
 import { SyncedCase } from '@common/cams/cases';
-import { generatePhoneticTokens } from '../../../backend/lib/use-cases/cases/phonetic-utils';
+import { generatePhoneticTokens } from '../../../backend/lib/adapters/utils/phonetic-helper';
 
 /**
  * Helper to create a mock case with phonetic tokens
