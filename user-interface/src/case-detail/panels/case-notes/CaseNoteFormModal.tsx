@@ -157,19 +157,11 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
     toggleButtonOnDirtyForm(initialTitle, initialContent);
   }
 
-  function handleTitleChange(event: React.ChangeEvent<HTMLInputElement>) {
-    saveFormData({
-      caseId: modalOpenOptions.caseId,
-      title: event?.target.value,
-      content: richTextRef.current?.getHtml() ?? '',
-    });
-  }
-
-  function handleRichTextContentChange(value: string) {
+  function updateFormCache() {
     saveFormData({
       caseId: modalOpenOptions.caseId,
       title: getCaseNotesTitleValue(titleInputRef.current),
-      content: value,
+      content: getCaseNotesRichTextContentValue(richTextRef.current),
     });
   }
 
@@ -362,7 +354,7 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             label="Note Title"
             required={true}
             includeClearButton={true}
-            onChange={handleTitleChange}
+            onChange={updateFormCache}
             autoComplete="off"
             ref={titleInputRef}
           />
@@ -370,7 +362,7 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
             id="case-note-editor"
             label="Note Text"
             required={true}
-            onChange={handleRichTextContentChange}
+            onChange={updateFormCache}
             ref={props.RichTextEditorRef || richTextContentInputRef}
           />
         </div>
