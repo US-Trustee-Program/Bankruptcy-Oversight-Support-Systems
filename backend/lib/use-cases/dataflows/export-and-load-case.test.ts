@@ -131,9 +131,10 @@ describe('Export and Load Case Tests', () => {
     });
 
     test('should add phonetic tokens to debtor name when loading case', async () => {
+      const debtorName = 'Michael Johnson';
       const bCase = MockData.getDxtrCase({
         override: {
-          debtor: { name: 'Michael Johnson' },
+          debtor: { name: debtorName },
         },
       });
       const event = mockCaseSyncEvent({ bCase });
@@ -145,13 +146,18 @@ describe('Export and Load Case Tests', () => {
       const syncedCase = syncSpy.mock.calls[0][0];
       expect(syncedCase.debtor.phoneticTokens).toBeDefined();
       expect(syncedCase.debtor.phoneticTokens.length).toBeGreaterThan(0);
+      expect(syncedCase.debtor.phoneticTokens).toContain('M240');
+      expect(syncedCase.debtor.phoneticTokens).toContain('MKSHL');
+      expect(syncedCase.debtor.phoneticTokens).toContain('J525');
     });
 
     test('should add phonetic tokens to joint debtor name when loading case', async () => {
+      const debtorName = 'John Smith';
+      const jointDebtorName = 'Sarah Connor';
       const bCase = MockData.getDxtrCase({
         override: {
-          debtor: { name: 'John Smith' },
-          jointDebtor: { name: 'Sarah Connor' },
+          debtor: { name: debtorName },
+          jointDebtor: { name: jointDebtorName },
         },
       });
       const event = mockCaseSyncEvent({ bCase });
@@ -163,8 +169,11 @@ describe('Export and Load Case Tests', () => {
       const syncedCase = syncSpy.mock.calls[0][0];
       expect(syncedCase.debtor.phoneticTokens).toBeDefined();
       expect(syncedCase.debtor.phoneticTokens.length).toBeGreaterThan(0);
+      expect(syncedCase.debtor.phoneticTokens).toContain('J500');
+
       expect(syncedCase.jointDebtor.phoneticTokens).toBeDefined();
       expect(syncedCase.jointDebtor.phoneticTokens.length).toBeGreaterThan(0);
+      expect(syncedCase.jointDebtor.phoneticTokens).toContain('S600');
     });
 
     test('should handle case without debtor name gracefully', async () => {

@@ -7,11 +7,15 @@ import { getNameVariations } from 'name-match/src/name-normalizer';
 const soundex = new natural.SoundEx();
 const metaphone = new natural.Metaphone();
 
-const SIMILARITY_THRESHOLD = 0.83;
+const DEFAULT_SIMILARITY_THRESHOLD = 0.83;
 
 /**
  * Generates phonetic tokens (Soundex + Metaphone) for a text string.
  * Tokenizes by whitespace and generates phonetic codes for each word.
+ *
+ * Note: This function normalizes to UPPERCASE because Soundex and Metaphone
+ * algorithms expect uppercase input. Other functions in this module use lowercase
+ * for string comparison operations (exact match, prefix match, similarity scoring).
  *
  * @param text - The text string (e.g., "John Doe")
  * @returns Array of unique phonetic codes (e.g., ["J500", "JN", "D000", "T"])
@@ -61,15 +65,19 @@ export function expandQueryWithNicknames(searchQuery: string): string[] {
   const expandedWords = new Set<string>();
 
   words.forEach((word) => {
-    const variations = getNameVariations(word) as string[];
+    try {
+      const variations = getNameVariations(word) as string[];
 
-    variations.forEach((variation: string) => {
-      variation.split(' ').forEach((w) => {
-        if (w.length > 0) {
-          expandedWords.add(w.toLowerCase());
-        }
+      variations.forEach((variation: string) => {
+        variation.split(' ').forEach((w) => {
+          if (w.length > 0) {
+            expandedWords.add(w.toLowerCase());
+          }
+        });
       });
-    });
+    } catch {
+      expandedWords.add(word.toLowerCase());
+    }
   });
 
   return Array.from(expandedWords);
@@ -128,9 +136,14 @@ export function generateDebtorNameRegexPattern(searchQuery: string): RegExp {
  *
  * @param queryWord - Single word from search query (normalized)
  * @param nameWord - Single word from debtor name (normalized)
+ * @param threshold - Minimum similarity threshold
  * @returns Score between 0.0 and 1.0 (1.0 = exact match)
  */
-function calculateWordMatchScore(queryWord: string, nameWord: string): number {
+function calculateWordMatchScore(
+  queryWord: string,
+  nameWord: string,
+  threshold: number = DEFAULT_SIMILARITY_THRESHOLD,
+): number {
   if (queryWord === nameWord) {
     return 1.0;
   }
@@ -144,7 +157,7 @@ function calculateWordMatchScore(queryWord: string, nameWord: string): number {
 
   if (hasPhoneticMatch) {
     const similarity = natural.JaroWinklerDistance(queryWord, nameWord);
-    if (similarity >= SIMILARITY_THRESHOLD) {
+    if (similarity >= threshold) {
       return similarity;
     }
   }
@@ -170,7 +183,7 @@ function calculateWordMatchScore(queryWord: string, nameWord: string): number {
   }
 
   const directSimilarity = natural.JaroWinklerDistance(queryWord, nameWord);
-  return directSimilarity >= SIMILARITY_THRESHOLD ? directSimilarity : 0;
+  return directSimilarity >= threshold ? directSimilarity : 0;
 }
 
 /**
@@ -179,9 +192,14 @@ function calculateWordMatchScore(queryWord: string, nameWord: string): number {
  *
  * @param normalizedQuery - Normalized search query (e.g., "mike smith")
  * @param targetName - Full debtor name (e.g., "Michael Smith")
+ * @param threshold - Minimum similarity threshold
  * @returns Best match score between 0.0 and 1.0
  */
-function calculateNameMatchScore(normalizedQuery: string, targetName: string): number {
+function calculateNameMatchScore(
+  normalizedQuery: string,
+  targetName: string,
+  threshold: number = DEFAULT_SIMILARITY_THRESHOLD,
+): number {
   const queryWords = normalizedQuery.split(/\s+/);
   const targetWords = targetName.toLowerCase().trim().split(/\s+/);
 
@@ -189,7 +207,7 @@ function calculateNameMatchScore(normalizedQuery: string, targetName: string): n
 
   for (const queryWord of queryWords) {
     for (const targetWord of targetWords) {
-      const wordScore = calculateWordMatchScore(queryWord, targetWord);
+      const wordScore = calculateWordMatchScore(queryWord, targetWord, threshold);
       maxScore = Math.max(maxScore, wordScore);
     }
   }
@@ -204,11 +222,13 @@ function calculateNameMatchScore(normalizedQuery: string, targetName: string): n
  *
  * @param cases - Cases returned from phonetic database query
  * @param searchQuery - User's search input
+ * @param threshold - Minimum similarity threshold
  * @returns Filtered and sorted cases where debtor or joint debtor name matches the search query
  */
 export function filterCasesByDebtorNameSimilarity(
   cases: SyncedCase[],
   searchQuery: string,
+  threshold: number = DEFAULT_SIMILARITY_THRESHOLD,
 ): SyncedCase[] {
   if (!searchQuery || !cases || cases.length === 0) return cases;
 
@@ -219,16 +239,20 @@ export function filterCasesByDebtorNameSimilarity(
     let maxScore = 0;
 
     if (caseItem.debtor?.name) {
-      const debtorScore = calculateNameMatchScore(normalizedQuery, caseItem.debtor.name);
+      const debtorScore = calculateNameMatchScore(normalizedQuery, caseItem.debtor.name, threshold);
       maxScore = Math.max(maxScore, debtorScore);
     }
 
     if (caseItem.jointDebtor?.name) {
-      const jointDebtorScore = calculateNameMatchScore(normalizedQuery, caseItem.jointDebtor.name);
+      const jointDebtorScore = calculateNameMatchScore(
+        normalizedQuery,
+        caseItem.jointDebtor.name,
+        threshold,
+      );
       maxScore = Math.max(maxScore, jointDebtorScore);
     }
 
-    if (maxScore >= SIMILARITY_THRESHOLD) {
+    if (maxScore >= threshold) {
       filteredCases.push({ case: caseItem, score: maxScore });
     }
   }
