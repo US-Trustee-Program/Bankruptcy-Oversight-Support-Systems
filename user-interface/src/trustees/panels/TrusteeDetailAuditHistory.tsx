@@ -13,7 +13,9 @@ import {
   TrusteeSoftwareHistory,
   TrusteeOversightHistory,
   TrusteeAppointmentHistory,
+  TrusteeZoomInfoHistory,
   getAppointmentDetails,
+  ZoomInfo,
 } from '@common/cams/trustees';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
@@ -35,7 +37,7 @@ function ShowTrusteeNameHistory(props: ShowTrusteeNameHistoryProps) {
   const { history, idx } = props;
   return (
     <tr>
-      <td>Name</td>
+      <td data-testid={`change-type-name-${idx}`}>Name</td>
       <td data-testid={`previous-name-${idx}`}>{history.before || '(none)'}</td>
       <td data-testid={`new-name-${idx}`}>{history.after || '(none)'}</td>
       <td data-testid={`changed-by-${idx}`}>
@@ -57,10 +59,12 @@ function ShowTrusteeContactHistory(props: ShowTrusteeContactHistoryProps) {
   const { history, idx } = props;
   const changeType =
     history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'Public Contact' : 'Internal Contact';
+  const testIdSuffix =
+    history.documentType === 'AUDIT_PUBLIC_CONTACT' ? 'public-contact' : 'internal-contact';
 
   return (
     <tr>
-      <td>{changeType}</td>
+      <td data-testid={`change-type-${testIdSuffix}-${idx}`}>{changeType}</td>
       <td data-testid={`previous-contact-${idx}`}>
         <FormattedContact
           contact={history.before}
@@ -110,7 +114,7 @@ function ShowTrusteeBankHistory(props: ShowTrusteeBankHistoryProps) {
 
   return (
     <tr>
-      <td>Bank(s)</td>
+      <td data-testid={`change-type-banks-${idx}`}>Bank(s)</td>
       <td data-testid={`previous-banks-${idx}`}>
         <BankList banks={history.before} />
       </td>
@@ -139,6 +143,54 @@ function ShowTrusteeSoftwareHistory(props: ShowTrusteeSoftwareHistoryProps) {
       <td data-testid={`change-type-software-${idx}`}>Software</td>
       <td data-testid={`previous-software-${idx}`}>{history.before || '(none)'}</td>
       <td data-testid={`new-software-${idx}`}>{history.after || '(none)'}</td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
+function ZoomInfoDisplay({ zoomInfo }: Readonly<{ zoomInfo?: ZoomInfo }>) {
+  if (!zoomInfo) {
+    return <>(none)</>;
+  }
+  return (
+    <dl className="usa-list--unstyled">
+      <dt>Link:</dt>
+      <dd>{zoomInfo.link}</dd>
+      <dt>Phone:</dt>
+      <dd>{zoomInfo.phone}</dd>
+      <dt>Meeting ID:</dt>
+      <dd>{zoomInfo.meetingId}</dd>
+      <dt>Passcode:</dt>
+      <dd>{zoomInfo.passcode}</dd>
+    </dl>
+  );
+}
+
+type ShowTrusteeZoomInfoHistoryProps = Readonly<{
+  history: TrusteeZoomInfoHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeZoomInfoHistory(props: ShowTrusteeZoomInfoHistoryProps) {
+  const { history, idx } = props;
+
+  return (
+    <tr>
+      <td data-testid={`change-type-zoom-info-${idx}`}>341 Meeting Zoom Info</td>
+      <td
+        data-testid={`previous-zoom-info-${idx}`}
+        aria-label="Previous 341 meeting zoom information"
+      >
+        <ZoomInfoDisplay zoomInfo={history.before} />
+      </td>
+      <td data-testid={`new-zoom-info-${idx}`} aria-label="New 341 meeting zoom information">
+        <ZoomInfoDisplay zoomInfo={history.after} />
+      </td>
       <td data-testid={`changed-by-${idx}`}>
         {history.updatedBy && <>{history.updatedBy.name}</>}
       </td>
@@ -254,6 +306,14 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
                 idx={idx}
               />
             );
+          case 'AUDIT_ZOOM_INFO':
+            return (
+              <ShowTrusteeZoomInfoHistory
+                key={`${history.trusteeId}-${idx}`}
+                history={history}
+                idx={idx}
+              />
+            );
           case 'AUDIT_OVERSIGHT':
             return (
               <ShowTrusteeOversightHistory
@@ -303,7 +363,7 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
 
   return (
     <div className="trustee-audit-history">
-      <h3>Change History</h3>
+      <h3 data-testid="change-history-heading">Change History</h3>
       {isAuditHistoryLoading && <LoadingIndicator />}
       {!isAuditHistoryLoading && (
         <>
