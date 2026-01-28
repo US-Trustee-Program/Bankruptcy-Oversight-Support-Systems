@@ -28,6 +28,8 @@ interface RichTextEditorRef {
   focus: () => void;
 }
 
+const RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID = 'editor-content';
+
 vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
   const React = await vi.importActual<typeof import('react')>('react');
   const MockRichTextEditor = React.forwardRef(
@@ -129,7 +131,7 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
           ),
           React.createElement('div', {
             className: 'editor-content editor',
-            'data-testid': 'editor-content',
+            'data-testid': RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID,
             contentEditable: !disabled,
             onInput: handleInput,
             dangerouslySetInnerHTML: { __html: content },
@@ -150,7 +152,6 @@ vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
 const MODAL_ID = 'modal-case-note-form';
 const MODAL_WRAPPER_ID = `modal-${MODAL_ID}`;
 const TITLE_INPUT_ID = 'case-note-title-input';
-const RICH_TEXT_CONTENT_INPUT_SELECTOR = '.editor-container .editor-content';
 const OPEN_BUTTON_ID = 'open-modal-button';
 const CANCEL_BUTTON_ID = `button-${MODAL_ID}-cancel-button`;
 const SUBMIT_BUTTON_ID = `button-${MODAL_ID}-submit-button`;
@@ -327,9 +328,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(modal).toHaveClass('is-visible');
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await userEvent.type(contentInput, 'Test Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
@@ -347,9 +348,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await userEvent.type(contentInput, 'Test Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -387,7 +388,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID);
     await userEvent.clear(titleInput);
     // For RichTextEditor, we need to clear content differently
     if (contentInput?.querySelector('.ProseMirror')) {
@@ -395,10 +396,10 @@ describe('CaseNoteFormModal - Simple Tests', () => {
       await userEvent.keyboard('{Control}a');
       await userEvent.keyboard('{Delete}');
     } else {
-      await userEvent.clear(contentInput!);
+      await userEvent.clear(contentInput);
     }
     await userEvent.type(titleInput, 'Edited Title');
-    await userEvent.type(contentInput!, 'Edited Content');
+    await userEvent.type(contentInput, 'Edited Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -425,9 +426,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await userEvent.type(contentInput, 'Test Content');
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -447,9 +448,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID);
     await userEvent.type(titleInput, 'Draft Title');
-    await userEvent.type(contentInput!, 'Draft Content');
+    await userEvent.type(contentInput, 'Draft Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
@@ -467,9 +468,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID);
     await userEvent.type(titleInput, 'Test Title');
-    await userEvent.type(contentInput!, 'Test Content');
+    await userEvent.type(contentInput, 'Test Content');
 
     const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
     await userEvent.click(cancelButton);
@@ -501,10 +502,10 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID);
 
     expect(contentInput).toBeInTheDocument();
-    expect(contentInput?.innerHTML).toEqual(initialContent);
+    expect(contentInput.innerHTML).toEqual(initialContent);
     expect(titleInput).toHaveValue(initialTitle);
 
     await waitFor(() => {
@@ -600,10 +601,10 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID);
     await userEvent.clear(titleInput);
     await userEvent.type(titleInput, 'Edited Title');
-    await userEvent.type(contentInput!, 'Edited Content');
+    await userEvent.type(contentInput, 'Edited Content');
 
     expect(saveFormSpy).toHaveBeenCalled();
 
@@ -622,12 +623,12 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     await userEvent.click(openButton);
 
     const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR);
+    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID);
     const newTitle = 'New Note Title';
     const newContent = 'New Note Content';
 
     await userEvent.type(titleInput, newTitle);
-    await userEvent.type(contentInput!, newContent);
+    await userEvent.type(contentInput, newContent);
 
     const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
     await userEvent.click(submitButton);
@@ -638,7 +639,7 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     // Check that form data is cleared
     expect(screen.getByTestId(TITLE_INPUT_ID)).toHaveValue('');
     // Check the editor content is cleared to empty state
-    expect(document.querySelector(RICH_TEXT_CONTENT_INPUT_SELECTOR)?.innerHTML).toBe(
+    expect(screen.getByTestId(RICH_TEXT_CONTENT_INPUT_DATA_TEST_ID).innerHTML).toBe(
       '<p><br class="ProseMirror-trailingBreak"></p>',
     );
   });
