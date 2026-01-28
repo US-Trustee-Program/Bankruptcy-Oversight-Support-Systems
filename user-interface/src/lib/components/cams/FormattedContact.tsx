@@ -3,6 +3,21 @@ import React, { JSX } from 'react';
 import { ContactInformation } from '@common/cams/contact';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 
+const formatCompanyName = (
+  contact: Partial<ContactInformation>,
+  _showLinks: boolean,
+  getTestId: (s: string) => string | undefined,
+): React.ReactNode | undefined => {
+  const trimmedCompanyName = contact.companyName?.trim();
+  if (trimmedCompanyName) {
+    return (
+      <div className="company-name" data-testid={getTestId('company-name')}>
+        {trimmedCompanyName}
+      </div>
+    );
+  }
+};
+
 const formatAddress = (
   contact: Partial<ContactInformation>,
   _showLinks: boolean,
@@ -118,7 +133,7 @@ export default function FormattedContact(props: Readonly<FormattedContactProps>)
     return <>(none)</>;
   }
 
-  const formatters = [formatAddress, formatPhone, formatEmail, formatWebsite];
+  const formatters = [formatCompanyName, formatAddress, formatPhone, formatEmail, formatWebsite];
   const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
 
   const children = formatters.reduce((acc, formatter) => {

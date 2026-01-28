@@ -4,6 +4,7 @@ import MeetingOfCreditorsInfoCard from './MeetingOfCreditorsInfoCard';
 import { ZoomInfo } from '@common/cams/trustees';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { mockClipboardWrite, mockClipboardUndefined } from '@/lib/testing/mock-clipboard';
 
 describe('MeetingOfCreditorsInfoCard', () => {
   let userEvent: CamsUserEvent;
@@ -108,11 +109,40 @@ describe('MeetingOfCreditorsInfoCard', () => {
     expect(editButton).toHaveAttribute('title', 'Edit 341 meeting information');
   });
 
-  test('should render copy button for zoom link', () => {
+  test('should render copy button for meeting info', () => {
     render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} onEdit={mockOnEdit} />);
 
-    const copyButton = screen.getByRole('button', { name: 'Copy Zoom link' });
+    const copyButton = screen.getByRole('button', { name: 'Copy Meeting of Creditors info' });
     expect(copyButton).toBeInTheDocument();
-    expect(copyButton).toHaveAttribute('id', 'copy-zoom-link');
+    expect(copyButton).toHaveAttribute('id', 'copy-meeting-of-creditors-info');
+  });
+
+  test('should call copyHTMLToClipboard when copy button is clicked', async () => {
+    const clipboardMock = mockClipboardWrite();
+
+    render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} onEdit={mockOnEdit} />);
+
+    // Verify the element with the class exists in the DOM
+    const meetingInfoElement = document.querySelector('.meeting-of-creditors-info-details');
+    expect(meetingInfoElement).toBeInTheDocument();
+
+    const copyButton = screen.getByRole('button', { name: 'Copy Meeting of Creditors info' });
+    await userEvent.click(copyButton);
+
+    expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
+
+    clipboardMock.restore();
+  });
+
+  test('should not throw error when clipboard API is unavailable', async () => {
+    const clipboardMock = mockClipboardUndefined();
+
+    render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} onEdit={mockOnEdit} />);
+
+    const copyButton = screen.getByRole('button', { name: 'Copy Meeting of Creditors info' });
+
+    await expect(userEvent.click(copyButton)).resolves.not.toThrow();
+
+    clipboardMock.restore();
   });
 });

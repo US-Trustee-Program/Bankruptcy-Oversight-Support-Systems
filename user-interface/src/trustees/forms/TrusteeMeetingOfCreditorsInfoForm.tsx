@@ -6,7 +6,8 @@ import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import useDebounce from '@/lib/hooks/UseDebounce';
 import React, { useState, useCallback } from 'react';
-import { Trustee, zoomInfoSpec, ZoomInfo } from '@common/cams/trustees';
+import { Trustee, ZoomInfo } from '@common/cams/trustees';
+import { zoomInfoSpec } from '@common/cams/trustees-validators';
 import { validateEach } from '@common/cams/validation';
 
 const validateField = (fieldName: keyof ZoomInfo, value: string): string | null => {
