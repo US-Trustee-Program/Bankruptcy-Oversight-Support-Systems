@@ -1,4 +1,5 @@
 import './TrusteeContactForm.scss';
+import './TrusteePublicContactForm.scss';
 import React, { useState, useCallback } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';

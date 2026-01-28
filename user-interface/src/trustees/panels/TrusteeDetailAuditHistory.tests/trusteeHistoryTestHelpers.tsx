@@ -62,7 +62,7 @@ const BASE_INTERNAL_CONTACT: ContactInformation = {
   },
 };
 
-export let mockIdCounter = 1;
+let mockIdCounter = 1;
 
 // Test Helpers
 export function renderWithProps(props?: Partial<TrusteeDetailAuditHistoryProps>) {
