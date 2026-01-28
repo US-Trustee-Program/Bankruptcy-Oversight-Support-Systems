@@ -8,6 +8,7 @@ import {
   TrusteePublicContactHistory,
 } from '@common/cams/trustees';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { ContactInformation } from '@common/cams/contact';
 import {
   MOCK_TRUSTEE_ID,
   renderWithProps,
@@ -15,8 +16,152 @@ import {
   createMockNameHistory,
   createMockPublicContactHistory,
   createMockInternalContactHistory,
-  TestScenarios,
 } from './trusteeHistoryTestHelpers';
+
+function createPartialContactInfo(fields: Partial<ContactInformation>): ContactInformation {
+  const base: ContactInformation = {
+    address: {
+      address1: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      countryCode: 'US',
+    },
+  };
+
+  if (fields.phone) {
+    base.phone = fields.phone;
+  }
+  if (fields.address) {
+    base.address = { ...base.address, ...fields.address };
+  }
+  if (fields.email) {
+    base.email = fields.email;
+  }
+
+  return base;
+}
+
+const TestScenarios = {
+  emailOnly: () =>
+    createMockPublicContactHistory({
+      before: createPartialContactInfo({
+        email: 'email@example.com',
+      }),
+      after: createPartialContactInfo({
+        phone: { number: '555-123-4567' },
+      }),
+    }),
+
+  undefinedAddress: () =>
+    createMockPublicContactHistory({
+      before: {
+        email: 'test@example.com',
+        phone: { number: '555-123-4567' },
+      } as ContactInformation,
+      after: createPartialContactInfo({}),
+    }),
+
+  phoneNoExtension: () =>
+    createMockPublicContactHistory({
+      before: createPartialContactInfo({
+        phone: { number: '555-123-4567' },
+      }),
+      after: createPartialContactInfo({
+        phone: { number: '555-987-6543' },
+      }),
+    }),
+
+  emptyContact: () =>
+    createMockPublicContactHistory({
+      before: undefined,
+      after: undefined,
+    }),
+
+  emptyName: () =>
+    createMockNameHistory({
+      before: undefined,
+      after: undefined,
+    }),
+
+  emptyStringName: () =>
+    createMockNameHistory({
+      before: '',
+      after: '',
+    }),
+
+  addressPartial: () =>
+    createMockPublicContactHistory({
+      before: createPartialContactInfo({
+        address: {
+          address1: '123 Main St',
+          city: '',
+          state: '',
+          zipCode: '12345',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+    }),
+
+  addressComplete: () =>
+    createMockPublicContactHistory({
+      before: createPartialContactInfo({
+        address: {
+          address1: '123 Main St',
+          address2: 'Suite 200',
+          address3: 'Building A',
+          city: 'Test City',
+          state: 'TX',
+          zipCode: '78901',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+    }),
+
+  cityAndState: () =>
+    createMockPublicContactHistory({
+      before: createPartialContactInfo({
+        address: {
+          address1: '',
+          city: 'Los Angeles',
+          state: 'CA',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+    }),
+
+  stateOnly: () =>
+    createMockPublicContactHistory({
+      before: createPartialContactInfo({
+        address: {
+          address1: '',
+          city: '',
+          state: 'FL',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+    }),
+
+  cityOnly: () =>
+    createMockPublicContactHistory({
+      before: createPartialContactInfo({
+        address: {
+          address1: '',
+          city: 'Chicago',
+          state: '',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      }),
+      after: createPartialContactInfo({}),
+    }),
+};
 
 describe('TrusteeDetailAuditHistory - Core Tests', () => {
   beforeEach(() => {

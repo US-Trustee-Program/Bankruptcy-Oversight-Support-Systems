@@ -1,16 +1,24 @@
 import { screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import Api2 from '@/lib/models/api2';
+import { ZoomInfo } from '@common/cams/trustees';
 import {
   BASE_ZOOM_INFO,
   BASE_ZOOM_INFO_BEFORE,
   renderWithProps,
   renderHistoryAndWaitForTable,
-  expectZoomInfoValues,
   createMockNameHistory,
   createMockPublicContactHistory,
   createMockZoomInfoHistory,
 } from './trusteeHistoryTestHelpers';
+
+function expectZoomInfoValues(testId: string, info: ZoomInfo) {
+  const el = screen.getByTestId(testId);
+  expect(el).toHaveTextContent(info.link);
+  expect(el).toHaveTextContent(info.phone);
+  expect(el).toHaveTextContent(info.meetingId);
+  expect(el).toHaveTextContent(info.passcode);
+}
 
 describe('TrusteeDetailAuditHistory - Zoom Info History Tests', () => {
   beforeEach(() => {
