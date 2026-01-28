@@ -427,4 +427,52 @@ describe('TrusteeDetailScreen', () => {
 
     expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
   });
+
+  test('should navigate to assistant create route when assistant button is clicked and no assistant exists', async () => {
+    const trusteeWithoutAssistant = { ...mockTrustee, assistant: undefined };
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithoutAssistant });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+    });
+
+    const assistantButton = screen.getByTestId('button-edit-assistant');
+    assistantButton.click();
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/assistant/create');
+  });
+
+  test('should navigate to assistant edit route when assistant button is clicked and assistant exists', async () => {
+    const trusteeWithAssistant = {
+      ...mockTrustee,
+      assistant: {
+        name: 'Jane Smith',
+        contact: {
+          email: 'jane.smith@example.com',
+          phone: { number: '555-987-6543' },
+          address: {
+            address1: '456 Oak St',
+            city: 'Springfield',
+            state: 'IL',
+            zipCode: '62701',
+            countryCode: 'US' as const,
+          },
+        },
+      },
+    };
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithAssistant });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+    });
+
+    const assistantButton = screen.getByTestId('button-edit-assistant');
+    assistantButton.click();
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/assistant/edit');
+  });
 });

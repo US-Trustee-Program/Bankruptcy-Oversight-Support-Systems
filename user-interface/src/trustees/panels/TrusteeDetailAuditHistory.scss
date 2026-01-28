@@ -6,4 +6,24 @@
       }
     }
   }
+
+  // Zoom info description list styling
+  dl {
+    margin: 0;
+
+    dt {
+      display: inline;
+      margin-right: 0.25rem;
+    }
+
+    dd {
+      display: inline;
+      margin: 0 0 0.5rem 0;
+
+      &::after {
+        content: "";
+        display: block;
+      }
+    }
+  }
 }
