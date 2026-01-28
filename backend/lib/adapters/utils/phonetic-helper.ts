@@ -1,6 +1,7 @@
 import * as natural from 'natural';
 import { SyncedCase } from '@common/cams/cases';
-// @ts-expect-error - name-match doesn't have TypeScript definitions
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore - name-match doesn't have TypeScript definitions
 import { getNameVariations } from 'name-match/src/name-normalizer';
 
 const soundex = new natural.SoundEx();
