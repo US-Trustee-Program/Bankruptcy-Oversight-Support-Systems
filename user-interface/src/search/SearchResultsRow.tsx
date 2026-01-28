@@ -18,7 +18,7 @@ function formatDebtorNames(debtorName: string, jointDebtorName?: string): JSX.El
 }
 
 export function SearchResultsRow(props: SearchResultsRowProps) {
-  const { bCase, labels, phoneticSearchEnabled = false, ...otherProps } = props;
+  const { bCase, labels, showDebtorNameColumn = false, ...otherProps } = props;
 
   const caseNumberCell = (
     <TableRowData key="case-number" dataLabel={labels[0]}>
@@ -41,18 +41,18 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
   );
 
   const chapterCell = (
-    <TableRowData key="chapter" dataLabel={labels[phoneticSearchEnabled ? 3 : 2]}>
+    <TableRowData key="chapter" dataLabel={labels[showDebtorNameColumn ? 3 : 2]}>
       {bCase.chapter}
     </TableRowData>
   );
 
   const dateFiledCell = (
-    <TableRowData key="date-filed" dataLabel={labels[phoneticSearchEnabled ? 4 : 3]}>
+    <TableRowData key="date-filed" dataLabel={labels[showDebtorNameColumn ? 4 : 3]}>
       {formatDate(bCase.dateFiled)}
     </TableRowData>
   );
 
-  const cells = phoneticSearchEnabled
+  const cells = showDebtorNameColumn
     ? [caseNumberCell, caseTitleCell, debtorNameCell, chapterCell, dateFiledCell]
     : [caseNumberCell, caseTitleCell, chapterCell, dateFiledCell];
 
