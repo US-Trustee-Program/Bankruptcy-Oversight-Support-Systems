@@ -100,7 +100,7 @@ describe('validation', () => {
       expect(validateObject(testSpec, testObj)).toEqual({
         reasonMap: {
           $: { reasons: ['At least a phone or email address is required'] },
-          firstName: { reasons: ['Must contain at least 10 characters'] },
+          firstName: { reasons: ['Min length 10 characters'] },
         },
       });
     });
@@ -140,7 +140,7 @@ describe('validation', () => {
             },
           },
           email: { reasons: ['At least a phone or email address is required'] },
-          firstName: { reasons: ['Must contain at least 10 characters'] },
+          firstName: { reasons: ['Min length 10 characters'] },
         },
       });
     });
