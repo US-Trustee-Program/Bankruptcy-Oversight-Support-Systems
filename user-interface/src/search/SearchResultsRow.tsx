@@ -20,34 +20,41 @@ function formatDebtorNames(debtorName: string, jointDebtorName?: string): JSX.El
 export function SearchResultsRow(props: SearchResultsRowProps) {
   const { bCase, labels, phoneticSearchEnabled = false, ...otherProps } = props;
 
-  if (phoneticSearchEnabled) {
-    return (
-      <TableRow {...otherProps}>
-        <TableRowData dataLabel={labels[0]}>
-          <span className="no-wrap">
-            <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
-          </span>
-        </TableRowData>
-        <TableRowData dataLabel={labels[1]}>{bCase.caseTitle}</TableRowData>
-        <TableRowData dataLabel={labels[2]}>
-          {formatDebtorNames(bCase.debtor?.name ?? '', bCase.jointDebtor?.name)}
-        </TableRowData>
-        <TableRowData dataLabel={labels[3]}>{bCase.chapter}</TableRowData>
-        <TableRowData dataLabel={labels[4]}>{formatDate(bCase.dateFiled)}</TableRowData>
-      </TableRow>
-    );
-  } else {
-    return (
-      <TableRow {...otherProps}>
-        <TableRowData dataLabel={labels[0]}>
-          <span className="no-wrap">
-            <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
-          </span>
-        </TableRowData>
-        <TableRowData dataLabel={labels[1]}>{bCase.caseTitle}</TableRowData>
-        <TableRowData dataLabel={labels[2]}>{bCase.chapter}</TableRowData>
-        <TableRowData dataLabel={labels[3]}>{formatDate(bCase.dateFiled)}</TableRowData>
-      </TableRow>
-    );
-  }
+  const caseNumberCell = (
+    <TableRowData key="case-number" dataLabel={labels[0]}>
+      <span className="no-wrap">
+        <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
+      </span>
+    </TableRowData>
+  );
+
+  const caseTitleCell = (
+    <TableRowData key="case-title" dataLabel={labels[1]}>
+      {bCase.caseTitle}
+    </TableRowData>
+  );
+
+  const debtorNameCell = (
+    <TableRowData key="debtor-name" dataLabel={labels[2]}>
+      {formatDebtorNames(bCase.debtor?.name ?? '', bCase.jointDebtor?.name)}
+    </TableRowData>
+  );
+
+  const chapterCell = (
+    <TableRowData key="chapter" dataLabel={labels[phoneticSearchEnabled ? 3 : 2]}>
+      {bCase.chapter}
+    </TableRowData>
+  );
+
+  const dateFiledCell = (
+    <TableRowData key="date-filed" dataLabel={labels[phoneticSearchEnabled ? 4 : 3]}>
+      {formatDate(bCase.dateFiled)}
+    </TableRowData>
+  );
+
+  const cells = phoneticSearchEnabled
+    ? [caseNumberCell, caseTitleCell, debtorNameCell, chapterCell, dateFiledCell]
+    : [caseNumberCell, caseTitleCell, chapterCell, dateFiledCell];
+
+  return <TableRow {...otherProps}>{cells}</TableRow>;
 }
