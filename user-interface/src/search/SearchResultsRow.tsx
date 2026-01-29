@@ -18,7 +18,13 @@ function formatDebtorNames(debtorName: string, jointDebtorName?: string): JSX.El
 }
 
 export function SearchResultsRow(props: SearchResultsRowProps) {
-  const { bCase, labels, showDebtorNameColumn = false, ...otherProps } = props;
+  const {
+    bCase,
+    labels,
+    showDebtorNameColumn = false,
+    phoneticSearchEnabled,
+    ...otherProps
+  } = props;
 
   const caseNumberCell = (
     <TableRowData key="case-number" dataLabel={labels[0]}>
