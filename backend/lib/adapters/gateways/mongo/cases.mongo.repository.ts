@@ -8,14 +8,19 @@ import {
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '@common/cams/history';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
-import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';
+import {
+  CamsPaginationResponse,
+  CaseHistoryDocumentType,
+  CasesRepository,
+} from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '@common/cams/cases';
-import { CasesSearchPredicate } from '@common/api/search';
+import { CasesSearchPredicate, PHONETIC_SEARCH_MAX_FETCH } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
+import { generateDebtorNameRegexPattern } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -186,7 +191,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async getAllCaseHistory(documentType: string): Promise<CaseHistory[]> {
+  async getAllCaseHistory(documentType: CaseHistoryDocumentType): Promise<CaseHistory[]> {
     const doc = using<CaseHistory>();
     try {
       const query = doc('documentType').equals(documentType);
@@ -294,6 +299,34 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       conditions.push(doc('caseNumber').equals(predicate.caseNumber));
     }
 
+    if (predicate.debtorName) {
+      const debtorNameRegex = generateDebtorNameRegexPattern(predicate.debtorName);
+
+      if (predicate.phoneticTokens && predicate.phoneticTokens.length > 0) {
+        conditions.push(
+          or(
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+            doc('debtor.phoneticTokens').contains(predicate.phoneticTokens),
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+            doc('jointDebtor.phoneticTokens').contains(predicate.phoneticTokens),
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+            doc('debtor.name').regex(debtorNameRegex),
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+            doc('jointDebtor.name').regex(debtorNameRegex),
+          ),
+        );
+      } else {
+        conditions.push(
+          or(
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+            doc('debtor.name').regex(debtorNameRegex),
+            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+            doc('jointDebtor.name').regex(debtorNameRegex),
+          ),
+        );
+      }
+    }
+
     if (predicate.caseIds) {
       conditions.push(doc('caseId').contains(predicate.caseIds));
     }
@@ -326,12 +359,26 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
+    return this.executeCaseSearch(predicate, predicate.offset, predicate.limit);
+  }
+
+  async searchCasesForPhoneticFiltering(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
+    return this.executeCaseSearch(predicate, 0, PHONETIC_SEARCH_MAX_FETCH);
+  }
+
+  private async executeCaseSearch(
+    predicate: CasesSearchPredicate,
+    offset: number,
+    limit: number,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
       if (predicate.includeOnlyUnassigned) {
         return await this.searchForUnassignedCases(predicate);
       }
-      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
       const conditions = this.addConditions(predicate);
 
       if (!hasRequiredSearchFields(predicate)) {
@@ -343,14 +390,14 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const spec = pipeline(
         match(and(...conditions)),
         sort(descending(dateFiled), descending(caseNumber)),
-        paginate(predicate.offset, predicate.limit),
+        paginate(offset, limit),
       );
 
       return await this.getAdapter<SyncedCase>().paginate(spec);
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          message: `Failed to retrieve member consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          message: `Failed to retrieve cases${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
           module: MODULE_NAME,
         },
       });

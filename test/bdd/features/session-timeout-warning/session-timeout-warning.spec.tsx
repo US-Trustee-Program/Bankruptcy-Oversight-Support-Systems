@@ -1,4 +1,4 @@
-import { screen, fireEvent, waitFor } from '@testing-library/react';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, test, expect, vi, beforeAll, afterAll, afterEach } from 'vitest';
 import LocalStorage from '@/lib/utils/local-storage';
 import { AUTH_EXPIRY_WARNING, SESSION_TIMEOUT } from '@/login/session-timer';
@@ -64,7 +64,9 @@ describe('Feature: Session Timeout Warning', () => {
     await waitForAppLoad();
 
     // ACT: Emit AUTH_EXPIRY_WARNING event to trigger modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
 
     // ASSERT: Modal should appear
     await waitFor(() => {
@@ -110,7 +112,9 @@ describe('Feature: Session Timeout Warning', () => {
     await waitForAppLoad();
 
     // ARRANGE: Show the modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
     await waitFor(() => {
       const modal = screen.getByTestId('modal-session-timeout-warning');
       expect(modal).toBeInTheDocument();
@@ -149,7 +153,9 @@ describe('Feature: Session Timeout Warning', () => {
       .mockReturnValue(NOW - TIME_INACTIVE);
 
     // ARRANGE: Show the modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
     await waitFor(() => {
       const modal = screen.getByTestId('modal-session-timeout-warning');
       expect(modal).toBeInTheDocument();
@@ -244,7 +250,9 @@ describe('Feature: Session Timeout Warning', () => {
     await waitForAppLoad();
 
     // ARRANGE: Show the modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
     await waitFor(() => {
       const modal = screen.getByTestId('modal-session-timeout-warning');
       expect(modal).toBeInTheDocument();
@@ -277,7 +285,9 @@ describe('Feature: Session Timeout Warning', () => {
     await waitForAppLoad();
 
     // ARRANGE: Show the modal
-    window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(AUTH_EXPIRY_WARNING));
+    });
     await waitFor(() => {
       const modal = screen.getByTestId('modal-session-timeout-warning');
       expect(modal).toBeInTheDocument();
@@ -310,7 +320,9 @@ describe('Feature: Session Timeout Warning', () => {
     await waitForAppLoad();
 
     // ACT: Emit SESSION_TIMEOUT event (simulating automatic timeout)
-    window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
+    act(() => {
+      window.dispatchEvent(new CustomEvent(SESSION_TIMEOUT));
+    });
 
     // ASSERT: User should be redirected to logout page
     await waitFor(() => {

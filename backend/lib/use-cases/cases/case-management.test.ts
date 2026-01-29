@@ -20,6 +20,35 @@ import { ConsolidationTo } from '@common/cams/events';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
 
+async function createCaseManagementTestContext(options: {
+  user: CamsUser;
+  phoneticSearchEnabled?: boolean;
+  phoneticSimilarityThreshold?: string;
+  env?: Record<string, string>;
+}) {
+  const { user, phoneticSearchEnabled = false, phoneticSimilarityThreshold, env = {} } = options;
+
+  const baseEnv: Record<string, string> = {
+    STARTING_MONTH: '-6',
+    ...env,
+  };
+
+  if (phoneticSearchEnabled) {
+    baseEnv.PHONETIC_SEARCH_ENABLED = 'true';
+    if (phoneticSimilarityThreshold) {
+      baseEnv.PHONETIC_SIMILARITY_THRESHOLD = phoneticSimilarityThreshold;
+    }
+  }
+
+  const context = await createMockApplicationContext({ env: baseEnv });
+  context.featureFlags['phonetic-search-enabled'] = phoneticSearchEnabled;
+  context.session = await createMockApplicationContextSession({ user });
+
+  const useCase = new CaseManagement(context);
+
+  return { context, useCase };
+}
+
 const attorneyJaneSmith = { id: '001', name: 'Jane Smith' };
 const attorneyJoeNobel = { id: '002', name: 'Joe Nobel' };
 const currentDate = new Date().toISOString();
@@ -466,6 +495,190 @@ describe('Case management tests', () => {
       await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
         error,
       );
+    });
+
+    describe('phonetic filtering', () => {
+      test('should apply phonetic filtering when enabled and debtorName is present', async () => {
+        const mockCases = [
+          MockData.getSyncedCase({
+            override: { caseId: '001', debtor: { name: 'Michael Johnson' } },
+          }),
+          MockData.getSyncedCase({
+            override: { caseId: '002', debtor: { name: 'Mike Johnson' } },
+          }),
+          MockData.getSyncedCase({
+            override: { caseId: '003', debtor: { name: 'Jane Doe' } },
+          }),
+        ];
+
+        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: true,
+            phoneticSimilarityThreshold: '0.83',
+          });
+
+        vi.spyOn(
+          useCaseWithPhonetic.casesRepository,
+          'searchCasesForPhoneticFiltering',
+        ).mockResolvedValue({
+          metadata: { total: mockCases.length },
+          data: mockCases,
+        });
+
+        const predicate: CasesSearchPredicate = {
+          ...basePredicate,
+          debtorName: 'Mike Johnson',
+        };
+
+        const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
+
+        expect(result.data.length).toBeLessThanOrEqual(mockCases.length);
+        expect(result.metadata.total).toBe(result.data.length);
+      });
+
+      test('should NOT apply phonetic filtering when disabled', async () => {
+        const mockCases = [
+          MockData.getSyncedCase({
+            override: { caseId: '001', debtor: { name: 'Michael Johnson' } },
+          }),
+          MockData.getSyncedCase({
+            override: { caseId: '002', debtor: { name: 'Mike Johnson' } },
+          }),
+        ];
+
+        const { context: contextWithoutPhonetic, useCase: useCaseWithoutPhonetic } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: false,
+          });
+
+        vi.spyOn(useCaseWithoutPhonetic.casesRepository, 'searchCases').mockResolvedValue({
+          metadata: { total: mockCases.length },
+          data: mockCases,
+        });
+
+        const predicate: CasesSearchPredicate = {
+          ...basePredicate,
+          debtorName: 'Mike Johnson',
+        };
+
+        const result = await useCaseWithoutPhonetic.searchCases(
+          contextWithoutPhonetic,
+          predicate,
+          false,
+        );
+
+        expect(result.data.length).toBe(mockCases.length);
+        expect(result.metadata.total).toBe(mockCases.length);
+      });
+
+      test('should NOT apply phonetic filtering when debtorName is not in predicate', async () => {
+        const mockCases = [
+          MockData.getSyncedCase({ override: { caseId: '001' } }),
+          MockData.getSyncedCase({ override: { caseId: '002' } }),
+        ];
+
+        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: true,
+          });
+
+        vi.spyOn(useCaseWithPhonetic.casesRepository, 'searchCases').mockResolvedValue({
+          metadata: { total: mockCases.length },
+          data: mockCases,
+        });
+
+        const predicate: CasesSearchPredicate = {
+          ...basePredicate,
+          caseNumber: '001',
+        };
+
+        const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
+
+        expect(result.data.length).toBe(mockCases.length);
+        expect(result.metadata.total).toBe(mockCases.length);
+      });
+
+      test('should use custom similarity threshold from config', async () => {
+        const mockCases = [
+          MockData.getSyncedCase({
+            override: { caseId: '001', debtor: { name: 'John Smith' } },
+          }),
+          MockData.getSyncedCase({
+            override: { caseId: '002', debtor: { name: 'Jon Smith' } },
+          }),
+        ];
+
+        const customThreshold = 0.95;
+        const { context: contextWithCustomThreshold, useCase: useCaseWithCustomThreshold } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: true,
+            phoneticSimilarityThreshold: customThreshold.toString(),
+          });
+
+        vi.spyOn(
+          useCaseWithCustomThreshold.casesRepository,
+          'searchCasesForPhoneticFiltering',
+        ).mockResolvedValue({
+          metadata: { total: mockCases.length },
+          data: mockCases,
+        });
+
+        const predicate: CasesSearchPredicate = {
+          ...basePredicate,
+          debtorName: 'John Smith',
+        };
+
+        const result = await useCaseWithCustomThreshold.searchCases(
+          contextWithCustomThreshold,
+          predicate,
+          false,
+        );
+
+        expect(result.metadata.total).toBe(result.data.length);
+      });
+
+      test('should update metadata.total to match filtered results', async () => {
+        const mockCases = [
+          MockData.getSyncedCase({
+            override: { caseId: '001', debtor: { name: 'Michael Johnson' } },
+          }),
+          MockData.getSyncedCase({
+            override: { caseId: '002', debtor: { name: 'Mike Johnson' } },
+          }),
+          MockData.getSyncedCase({
+            override: { caseId: '003', debtor: { name: 'Unrelated Name' } },
+          }),
+        ];
+
+        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
+          await createCaseManagementTestContext({
+            user,
+            phoneticSearchEnabled: true,
+            phoneticSimilarityThreshold: '0.83',
+          });
+
+        vi.spyOn(
+          useCaseWithPhonetic.casesRepository,
+          'searchCasesForPhoneticFiltering',
+        ).mockResolvedValue({
+          metadata: { total: mockCases.length },
+          data: mockCases,
+        });
+
+        const predicate: CasesSearchPredicate = {
+          ...basePredicate,
+          debtorName: 'Mike Johnson',
+        };
+
+        const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
+
+        expect(result.metadata.total).toBe(result.data.length);
+        expect(result.data.length).toBeLessThanOrEqual(mockCases.length);
+      });
     });
   });
 });

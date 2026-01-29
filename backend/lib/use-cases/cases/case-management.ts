@@ -19,6 +19,10 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignment } from '@common/cams/assignments';
+import {
+  generatePhoneticTokensWithNicknames,
+  filterCasesByDebtorNameSimilarity,
+} from '../../adapters/utils/phonetic-helper';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -48,6 +52,13 @@ export default class CaseManagement {
     this.casesGateway = casesGateway ? casesGateway : factory.getCasesGateway(applicationContext);
     this.officesGateway = factory.getOfficesGateway(applicationContext);
     this.casesRepository = factory.getCasesRepository(applicationContext);
+  }
+
+  private shouldUsePhoneticSearch(
+    predicate: CasesSearchPredicate,
+    phoneticSearchEnabled: boolean,
+  ): boolean {
+    return !!(predicate.debtorName && phoneticSearchEnabled);
   }
 
   public async searchCases(
@@ -81,7 +92,38 @@ export default class CaseManagement {
         predicate.excludedCaseIds = consolidationMemberCaseIds;
       }
 
-      const searchResult = await this.casesRepository.searchCases(predicate);
+      const phoneticSearchEnabled = context.featureFlags?.['phonetic-search-enabled'] === true;
+      const usePhoneticSearch = this.shouldUsePhoneticSearch(predicate, phoneticSearchEnabled);
+      const augmentedPredicate = { ...predicate };
+
+      let searchResult: CamsPaginationResponse<ResourceActions<SyncedCase>>;
+
+      if (usePhoneticSearch) {
+        augmentedPredicate.phoneticTokens = generatePhoneticTokensWithNicknames(
+          predicate.debtorName,
+        );
+
+        searchResult =
+          await this.casesRepository.searchCasesForPhoneticFiltering(augmentedPredicate);
+
+        const threshold = context.config.phoneticSimilarityThreshold;
+        const filteredCases = filterCasesByDebtorNameSimilarity(
+          searchResult.data,
+          predicate.debtorName,
+          threshold,
+        );
+
+        const start = predicate.offset || 0;
+        const end = start + (predicate.limit || 25);
+        const paginatedCases = filteredCases.slice(start, end);
+
+        searchResult = {
+          metadata: { total: filteredCases.length },
+          data: paginatedCases,
+        };
+      } else {
+        searchResult = await this.casesRepository.searchCases(augmentedPredicate);
+      }
 
       const casesMap = new Map<string, ResourceActions<SyncedCase>>();
       const caseIds = [];

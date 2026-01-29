@@ -15,4 +15,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'privileged-identity-management': true,
   'view-trustee-on-case': true,
   'trustee-management': true,
+  'phonetic-search-enabled': true,
 };
