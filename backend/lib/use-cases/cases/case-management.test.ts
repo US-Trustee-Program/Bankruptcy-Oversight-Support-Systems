@@ -158,14 +158,9 @@ describe('Case management tests', () => {
         offices: [userOffice],
         roles: [],
       };
-      const applicationContext = await createMockApplicationContext({
-        env: {
-          STARTING_MONTH: '-6',
-        },
-      });
-      applicationContext.session = await createMockApplicationContextSession({ user });
+      const { context } = await createCaseManagementTestContext({ user });
 
-      const officeDetail = applicationContext.session.user.offices[0];
+      const officeDetail = context.session.user.offices[0];
       const caseNumber = '00-00000';
       const bCase = MockData.getCaseDetail({
         override: {
@@ -174,7 +169,7 @@ describe('Case management tests', () => {
         },
       });
 
-      const actual = getAction(applicationContext, bCase);
+      const actual = getAction(context, bCase);
       expect(actual).toEqual([]);
     });
 
@@ -185,14 +180,9 @@ describe('Case management tests', () => {
         offices: [],
         roles: [CamsRole.CaseAssignmentManager],
       };
-      const applicationContext = await createMockApplicationContext({
-        env: {
-          STARTING_MONTH: '-6',
-        },
-      });
-      applicationContext.session = await createMockApplicationContextSession({ user });
+      const { context } = await createCaseManagementTestContext({ user });
 
-      const officeDetail = applicationContext.session.user.offices[0];
+      const officeDetail = context.session.user.offices[0];
       const caseNumber = '00-00000';
       const bCase = MockData.getCaseDetail({
         override: {
@@ -201,7 +191,7 @@ describe('Case management tests', () => {
         },
       });
 
-      const actual = getAction(applicationContext, bCase);
+      const actual = getAction(context, bCase);
       expect(actual).toEqual([]);
     });
   });
