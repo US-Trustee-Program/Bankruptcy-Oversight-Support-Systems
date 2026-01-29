@@ -288,71 +288,41 @@ describe('Phonetic Utilities', () => {
   });
 
   describe('Edge case false positives (discovered during manual testing)', () => {
-    test('should NOT match Jose when searching for Jon', () => {
-      const cases: SyncedCase[] = [
-        {
-          caseId: '001',
-          debtor: {
-            name: 'Jose Garcia',
-            phoneticTokens: generatePhoneticTokens('Jose Garcia'),
-          },
-          documentType: 'SYNCED_CASE',
-        } as SyncedCase,
-      ];
+    test.each([
+      {
+        testName: 'should NOT match Jose when searching for Jon',
+        searchQuery: 'Jon',
+        caseNames: ['Jose Garcia'],
+        expectedNotToMatch: ['Jose Garcia'],
+      },
+      {
+        testName: 'should NOT match Jon when searching for Jose',
+        searchQuery: 'Jose',
+        caseNames: ['Jon Smith', 'John Davis'],
+        expectedNotToMatch: ['Jon Smith', 'John Davis'],
+      },
+      {
+        testName: 'should NOT match Miller when searching for Mike',
+        searchQuery: 'Mike',
+        caseNames: ['James Miller', 'Miller Johnson'],
+        expectedNotToMatch: ['James Miller', 'Miller Johnson'],
+      },
+    ])('$testName', ({ searchQuery, caseNames, expectedNotToMatch }) => {
+      const cases: SyncedCase[] = caseNames.map((name, index) => ({
+        caseId: `00${index + 1}`,
+        debtor: {
+          name,
+          phoneticTokens: generatePhoneticTokens(name),
+        },
+        documentType: 'SYNCED_CASE',
+      })) as SyncedCase[];
 
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jon');
-      expect(filtered).toHaveLength(0);
-    });
+      const filtered = filterCasesByDebtorNameSimilarity(cases, searchQuery);
+      const matchedNames = filtered.map((c) => c.debtor?.name);
 
-    test('should NOT match Jon when searching for Jose', () => {
-      const cases: SyncedCase[] = [
-        {
-          caseId: '001',
-          debtor: {
-            name: 'Jon Smith',
-            phoneticTokens: generatePhoneticTokens('Jon Smith'),
-          },
-          documentType: 'SYNCED_CASE',
-        } as SyncedCase,
-        {
-          caseId: '002',
-          debtor: {
-            name: 'John Davis',
-            phoneticTokens: generatePhoneticTokens('John Davis'),
-          },
-          documentType: 'SYNCED_CASE',
-        } as SyncedCase,
-      ];
-
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Jose');
-      const names = filtered.map((c) => c.debtor?.name);
-
-      expect(names).not.toContain('Jon Smith');
-      expect(names).not.toContain('John Davis');
-    });
-
-    test('should NOT match Miller when searching for Mike', () => {
-      const cases: SyncedCase[] = [
-        {
-          caseId: '001',
-          debtor: {
-            name: 'James Miller',
-            phoneticTokens: generatePhoneticTokens('James Miller'),
-          },
-          documentType: 'SYNCED_CASE',
-        } as SyncedCase,
-        {
-          caseId: '002',
-          debtor: {
-            name: 'Miller Johnson',
-            phoneticTokens: generatePhoneticTokens('Miller Johnson'),
-          },
-          documentType: 'SYNCED_CASE',
-        } as SyncedCase,
-      ];
-
-      const filtered = filterCasesByDebtorNameSimilarity(cases, 'Mike');
-      expect(filtered).toHaveLength(0);
+      expectedNotToMatch.forEach((name) => {
+        expect(matchedNames).not.toContain(name);
+      });
     });
   });
 
