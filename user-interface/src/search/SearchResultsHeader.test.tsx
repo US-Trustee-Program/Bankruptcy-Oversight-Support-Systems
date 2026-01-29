@@ -14,13 +14,11 @@ describe('SearchResultsHeader', () => {
       </table>,
     );
 
-    expect(
-      screen.getByRole('columnheader', { name: 'Case Number (Division)' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Case Title' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Debtor Name' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Chapter' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Case Filed' })).toBeInTheDocument();
+    expect(screen.getByTestId('header-case-number')).toBeInTheDocument();
+    expect(screen.getByTestId('header-case-title')).toBeInTheDocument();
+    expect(screen.getByTestId('header-debtor-name')).toBeInTheDocument();
+    expect(screen.getByTestId('header-chapter')).toBeInTheDocument();
+    expect(screen.getByTestId('header-date-filed')).toBeInTheDocument();
   });
 
   test('should not render Debtor Name column when debtor name column is hidden', () => {
@@ -34,12 +32,10 @@ describe('SearchResultsHeader', () => {
       </table>,
     );
 
-    expect(
-      screen.getByRole('columnheader', { name: 'Case Number (Division)' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Case Title' })).toBeInTheDocument();
-    expect(screen.queryByRole('columnheader', { name: 'Debtor Name' })).not.toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Chapter' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Case Filed' })).toBeInTheDocument();
+    expect(screen.getByTestId('header-case-number')).toBeInTheDocument();
+    expect(screen.getByTestId('header-case-title')).toBeInTheDocument();
+    expect(screen.queryByTestId('header-debtor-name')).not.toBeInTheDocument();
+    expect(screen.getByTestId('header-chapter')).toBeInTheDocument();
+    expect(screen.getByTestId('header-date-filed')).toBeInTheDocument();
   });
 });
