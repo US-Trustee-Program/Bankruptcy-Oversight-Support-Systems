@@ -4,9 +4,6 @@ import { PaginationParameters } from './pagination';
 export const DEFAULT_SEARCH_LIMIT = 25;
 export const DEFAULT_SEARCH_OFFSET = 0;
 
-// This is an arbitrary safeguard to prevent excessive data retrieval during debtor name searches.
-export const PHONETIC_SEARCH_MAX_FETCH = 10000;
-
 export type SearchPredicate = PaginationParameters;
 
 export function setPaginationDefaults<P extends SearchPredicate = SearchPredicate>(predicate: P) {

@@ -2,7 +2,9 @@ import { useEffect, useState, type JSX } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { CaseSummary, SyncedCase } from '@common/cams/cases';
 import Table, { TableBody, TableRowProps } from '@/lib/components/uswds/Table';
-import { CasesSearchPredicate, PHONETIC_SEARCH_MAX_FETCH } from '@common/api/search';
+import { CasesSearchPredicate } from '@common/api/search';
+
+const SEARCH_RESULTS_WARNING_THRESHOLD = 10000;
 import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -154,9 +156,9 @@ function SearchResults(props: SearchResultsProps) {
   }, [searchPredicate]);
 
   const totalCount = searchResults?.pagination?.totalCount ?? 0;
-  const isLimitReached = totalCount >= PHONETIC_SEARCH_MAX_FETCH;
+  const isLimitReached = totalCount >= SEARCH_RESULTS_WARNING_THRESHOLD;
   const displayCount = isLimitReached
-    ? `${new Intl.NumberFormat('en-US').format(PHONETIC_SEARCH_MAX_FETCH)}+`
+    ? `${new Intl.NumberFormat('en-US').format(SEARCH_RESULTS_WARNING_THRESHOLD)}+`
     : new Intl.NumberFormat('en-US').format(totalCount);
 
   return (
@@ -206,7 +208,7 @@ function SearchResults(props: SearchResultsProps) {
               <Alert
                 id="search-limit-alert"
                 className="measure-6"
-                message={`Showing first ${new Intl.NumberFormat('en-US').format(PHONETIC_SEARCH_MAX_FETCH)} cases.`}
+                message={`Showing first ${new Intl.NumberFormat('en-US').format(SEARCH_RESULTS_WARNING_THRESHOLD)} cases.`}
                 type={UswdsAlertStyle.Info}
                 show={true}
                 slim={true}
