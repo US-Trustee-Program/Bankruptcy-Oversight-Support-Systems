@@ -119,6 +119,96 @@ function toMongoProjectInclude(stage: IncludeFields) {
   return { $project: fields };
 }
 
+function partitionSearchTokens(searchTokens: string[]): {
+  bigrams: string[];
+  phonetics: string[];
+} {
+  return {
+    bigrams: searchTokens.filter((t) => !isPhoneticToken(t)),
+    phonetics: searchTokens.filter((t) => isPhoneticToken(t)),
+  };
+}
+
+function buildMatchCountExpression(tokens: string[], documentField: string): object {
+  return {
+    $size: {
+      $setIntersection: [tokens, { $ifNull: [`$${documentField}`, []] }],
+    },
+  };
+}
+
+function buildWeightedScoreExpression(
+  bigramField: string,
+  phoneticField: string,
+  bigramWeight: number,
+  phoneticWeight: number,
+): object {
+  return {
+    $add: [
+      { $multiply: [`$${bigramField}`, bigramWeight] },
+      { $multiply: [`$${phoneticField}`, phoneticWeight] },
+    ],
+  };
+}
+
+interface FieldScoreResult {
+  expressions: Record<string, object>;
+  tempFieldNames: string[];
+}
+
+function buildFieldScoreExpressions(
+  targetFields: string[],
+  bigrams: string[],
+  phonetics: string[],
+  bigramWeight: number,
+  phoneticWeight: number,
+): FieldScoreResult {
+  const expressions: Record<string, object> = {};
+  const tempFieldNames: string[] = [];
+
+  targetFields.forEach((field, idx) => {
+    const bigramField = `_bigramMatches_${idx}`;
+    const phoneticField = `_phoneticMatches_${idx}`;
+    const scoreField = `_score_${idx}`;
+    tempFieldNames.push(bigramField, phoneticField, scoreField);
+
+    expressions[bigramField] = buildMatchCountExpression(bigrams, field);
+    expressions[phoneticField] = buildMatchCountExpression(phonetics, field);
+    expressions[scoreField] = buildWeightedScoreExpression(
+      bigramField,
+      phoneticField,
+      bigramWeight,
+      phoneticWeight,
+    );
+  });
+
+  return { expressions, tempFieldNames };
+}
+
+function buildMaxScoreExpression(
+  outputField: string,
+  targetFields: string[],
+): Record<string, object> {
+  return {
+    [outputField]: {
+      $max: targetFields.map((_, idx) => `$_score_${idx}`),
+    },
+    bigramMatchCount: {
+      $max: targetFields.map((_, idx) => `$_bigramMatches_${idx}`),
+    },
+  };
+}
+
+function buildCleanupProjection(tempFieldNames: string[]): Record<string, number> {
+  return tempFieldNames.reduce(
+    (acc, field) => {
+      acc[field] = 0;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+}
+
 /**
  * Renders a SCORE stage to MongoDB aggregation pipeline stages.
  *
@@ -160,59 +250,19 @@ function toMongoProjectInclude(stage: IncludeFields) {
 function toMongoScore(stage: Score): object[] {
   const { searchTokens, targetFields, outputField, bigramWeight, phoneticWeight } = stage;
 
-  const queryBigrams = searchTokens.filter((t) => !isPhoneticToken(t));
-  const queryPhonetics = searchTokens.filter((t) => isPhoneticToken(t));
-
-  const fieldScoreExpressions: Record<string, object> = {};
-  const tempFieldNames: string[] = [];
-
-  targetFields.forEach((field, idx) => {
-    const bigramField = `_bigramMatches_${idx}`;
-    const phoneticField = `_phoneticMatches_${idx}`;
-    const scoreField = `_score_${idx}`;
-    tempFieldNames.push(bigramField, phoneticField, scoreField);
-
-    fieldScoreExpressions[bigramField] = {
-      $size: {
-        $setIntersection: [queryBigrams, { $ifNull: [`$${field}`, []] }],
-      },
-    };
-
-    fieldScoreExpressions[phoneticField] = {
-      $size: {
-        $setIntersection: [queryPhonetics, { $ifNull: [`$${field}`, []] }],
-      },
-    };
-
-    fieldScoreExpressions[scoreField] = {
-      $add: [
-        { $multiply: [`$${bigramField}`, bigramWeight] },
-        { $multiply: [`$${phoneticField}`, phoneticWeight] },
-      ],
-    };
-  });
-
-  const maxScoreExpression = {
-    [outputField]: {
-      $max: targetFields.map((_, idx) => `$_score_${idx}`),
-    },
-    bigramMatchCount: {
-      $max: targetFields.map((_, idx) => `$_bigramMatches_${idx}`),
-    },
-  };
-
-  const cleanupProjection = tempFieldNames.reduce(
-    (acc, field) => {
-      acc[field] = 0;
-      return acc;
-    },
-    {} as Record<string, number>,
+  const { bigrams, phonetics } = partitionSearchTokens(searchTokens);
+  const { expressions, tempFieldNames } = buildFieldScoreExpressions(
+    targetFields,
+    bigrams,
+    phonetics,
+    bigramWeight,
+    phoneticWeight,
   );
 
   return [
-    { $addFields: fieldScoreExpressions },
-    { $addFields: maxScoreExpression },
-    { $project: cleanupProjection },
+    { $addFields: expressions },
+    { $addFields: buildMaxScoreExpression(outputField, targetFields) },
+    { $project: buildCleanupProjection(tempFieldNames) },
   ];
 }
 
