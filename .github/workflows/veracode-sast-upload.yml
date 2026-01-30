@@ -19,7 +19,7 @@ jobs:
         run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
 
       - name: Veracode Upload And Scan
-        uses: veracode/veracode-uploadandscan-action@4e085f49ae0fba919fa0fb27cb1d4262284d9243 # 0.2.10
+        uses: veracode/veracode-uploadandscan-action@ddca86b1d1d45639d1c414003f3495f71851cfe2 # 0.2.11
         with:
           appname: "CAMS"
           createprofile: false
