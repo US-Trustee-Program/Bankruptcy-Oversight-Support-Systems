@@ -28,6 +28,36 @@ import { CaseConsolidationHistory, CaseHistory } from '@common/cams/history';
 import { randomUUID } from 'crypto';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
+/**
+ * Helper to test that repository methods properly wrap and re-throw adapter errors.
+ *
+ * @param adapterMethod - The MongoCollectionAdapter method to mock (e.g., 'find', 'insertOne')
+ * @param repoCall - Function that calls the repository method being tested
+ * @param expectedMessages - Error messages expected in the camsStack (in order)
+ */
+async function expectAdapterErrorToBeWrapped(
+  adapterMethod: keyof MongoCollectionAdapter<unknown>,
+  repoCall: () => Promise<unknown>,
+  expectedMessages: string[],
+) {
+  vi.spyOn(
+    MongoCollectionAdapter.prototype,
+    adapterMethod as keyof MongoCollectionAdapter<unknown>,
+  ).mockRejectedValue(new Error('test error'));
+
+  await expect(repoCall).rejects.toThrow(
+    expect.objectContaining({
+      message: 'Unknown Error',
+      camsStack: expect.arrayContaining(
+        expectedMessages.map((message) => ({
+          module: expect.anything(),
+          message,
+        })),
+      ),
+    }),
+  );
+}
+
 describe('Cases repository', () => {
   let repo: CasesMongoRepository;
   let context: ApplicationContext;
@@ -88,19 +118,11 @@ describe('Cases repository', () => {
   });
 
   test('getTransfers should catch errors thrown by adapter.find', async () => {
-    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
+    expect.assertions(1);
     const caseId = '123-12-12345';
-    await expect(async () => await repo.getTransfers(caseId)).rejects.toThrow(
-      expect.objectContaining({
-        message: 'Unknown Error',
-        camsStack: expect.arrayContaining([
-          {
-            module: expect.anything(),
-            message: `Failed to get transfers for ${caseId}.`,
-          },
-        ]),
-      }),
-    );
+    await expectAdapterErrorToBeWrapped('find', () => repo.getTransfers(caseId), [
+      `Failed to get transfers for ${caseId}.`,
+    ]);
   });
 
   test('should getConsolidation', async () => {
@@ -129,19 +151,11 @@ describe('Cases repository', () => {
   });
 
   test('should throw error in getConsolidation when find throws', async () => {
-    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
+    expect.assertions(1);
     const caseId = '111-82-80331';
-    await expect(async () => await repo.getConsolidation(caseId)).rejects.toThrow(
-      expect.objectContaining({
-        message: 'Unknown Error',
-        camsStack: expect.arrayContaining([
-          {
-            module: expect.anything(),
-            message: `Failed to retrieve consolidation for ${caseId}.`,
-          },
-        ]),
-      }),
-    );
+    await expectAdapterErrorToBeWrapped('find', () => repo.getConsolidation(caseId), [
+      `Failed to retrieve consolidation for ${caseId}.`,
+    ]);
   });
 
   test('should getCaseHistory', async () => {
@@ -169,40 +183,19 @@ describe('Cases repository', () => {
   });
 
   test('should throw error in getCaseHistory when find throws', async () => {
-    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('some error'));
+    expect.assertions(1);
     const caseId = '111-82-80331';
-    await expect(async () => await repo.getCaseHistory(caseId)).rejects.toThrow(
-      expect.objectContaining({
-        message: 'Unknown Error',
-        camsStack: expect.arrayContaining([
-          {
-            module: expect.anything(),
-            message: `Failed to get case history for ${caseId}.`,
-          },
-        ]),
-      }),
-    );
+    await expectAdapterErrorToBeWrapped('find', () => repo.getCaseHistory(caseId), [
+      `Failed to get case history for ${caseId}.`,
+    ]);
   });
 
   test('createTransferTo should catch errors thrown by adapter.insertOne', async () => {
-    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
-      new Error('test error'),
-    );
-    await expect(async () => await repo.createTransferTo(transferOut)).rejects.toThrow(
-      expect.objectContaining({
-        message: 'Unknown Error',
-        camsStack: expect.arrayContaining([
-          {
-            module: expect.anything(),
-            message: 'Failed to create item.',
-          },
-          {
-            module: expect.anything(),
-            message: `Failed to create transferTo for: ${transferOut.caseId}.`,
-          },
-        ]),
-      }),
-    );
+    expect.assertions(1);
+    await expectAdapterErrorToBeWrapped('insertOne', () => repo.createTransferTo(transferOut), [
+      'Failed to create item.',
+      `Failed to create transferTo for: ${transferOut.caseId}.`,
+    ]);
   });
 
   test('should createTransferTo', async () => {
@@ -215,24 +208,11 @@ describe('Cases repository', () => {
   });
 
   test('createTransferFrom should catch errors thrown by adapter.insertOne', async () => {
-    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
-      new Error('test error'),
-    );
-    await expect(async () => await repo.createTransferFrom(transferIn)).rejects.toThrow(
-      expect.objectContaining({
-        message: 'Unknown Error',
-        camsStack: expect.arrayContaining([
-          {
-            module: expect.anything(),
-            message: 'Failed to create item.',
-          },
-          {
-            module: expect.anything(),
-            message: `Failed to create transferFrom for: ${transferIn.caseId}.`,
-          },
-        ]),
-      }),
-    );
+    expect.assertions(1);
+    await expectAdapterErrorToBeWrapped('insertOne', () => repo.createTransferFrom(transferIn), [
+      'Failed to create item.',
+      `Failed to create transferFrom for: ${transferIn.caseId}.`,
+    ]);
   });
 
   test('should createTransferFrom', async () => {
@@ -256,24 +236,15 @@ describe('Cases repository', () => {
   });
 
   test('createConsolidationTo should catch errors thrown by adapter.insertOne', async () => {
-    const consolidaitonTo = MockData.getConsolidationTo();
-    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
-      new Error('test error'),
-    );
-    await expect(async () => await repo.createConsolidationTo(consolidaitonTo)).rejects.toThrow(
-      expect.objectContaining({
-        message: 'Unknown Error',
-        camsStack: expect.arrayContaining([
-          {
-            module: expect.anything(),
-            message: 'Failed to create item.',
-          },
-          {
-            module: expect.anything(),
-            message: `Failed to create consolidationTo for: ${consolidaitonTo.caseId}.`,
-          },
-        ]),
-      }),
+    expect.assertions(1);
+    const consolidationTo = MockData.getConsolidationTo();
+    await expectAdapterErrorToBeWrapped(
+      'insertOne',
+      () => repo.createConsolidationTo(consolidationTo),
+      [
+        'Failed to create item.',
+        `Failed to create consolidationTo for: ${consolidationTo.caseId}.`,
+      ],
     );
   });
 
@@ -288,25 +259,15 @@ describe('Cases repository', () => {
   });
 
   test('createConsolidationFrom should catch errors thrown by adapter.insertOne', async () => {
+    expect.assertions(1);
     const consolidationFrom = MockData.getConsolidationFrom();
-
-    vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
-      new Error('test error'),
-    );
-    await expect(async () => await repo.createConsolidationFrom(consolidationFrom)).rejects.toThrow(
-      expect.objectContaining({
-        message: 'Unknown Error',
-        camsStack: expect.arrayContaining([
-          {
-            module: expect.anything(),
-            message: 'Failed to create item.',
-          },
-          {
-            module: expect.anything(),
-            message: `Failed to create consolidationFrom for: ${consolidationFrom.caseId}.`,
-          },
-        ]),
-      }),
+    await expectAdapterErrorToBeWrapped(
+      'insertOne',
+      () => repo.createConsolidationFrom(consolidationFrom),
+      [
+        'Failed to create item.',
+        `Failed to create consolidationFrom for: ${consolidationFrom.caseId}.`,
+      ],
     );
   });
 

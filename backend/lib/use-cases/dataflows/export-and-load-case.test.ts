@@ -239,37 +239,32 @@ describe('Export and Load Case Tests', () => {
       expect(firstCallTokens).toEqual(secondCallTokens);
     });
 
-    test('should generate correct phonetic tokens with sample data', async () => {
-      const testCases = [
-        { name: 'John Smith', expectedInTokens: ['J500', 'JN', 'S530', 'SM0'] },
-        { name: 'Michael Johnson', expectedInTokens: ['M240', 'MKSHL', 'J525', 'JNSN'] },
-        { name: 'Sarah Connor', expectedInTokens: ['S600', 'SR', 'C560', 'KNR'] },
-        { name: "O'Brien", expectedInTokens: ['O165', 'OBRN'] },
-      ];
+    test.each([
+      { name: 'John Smith', expectedTokens: ['J500', 'JN', 'S530', 'SM0'] },
+      { name: 'Michael Johnson', expectedTokens: ['M240', 'MKSHL', 'J525', 'JNSN'] },
+      { name: 'Sarah Connor', expectedTokens: ['S600', 'SR', 'C560', 'KNR'] },
+      { name: "O'Brien", expectedTokens: ['O165', 'OBRN'] },
+    ])('should generate correct phonetic tokens for "$name"', async ({ name, expectedTokens }) => {
+      const mockCaseDetails = MockData.getCaseDetail({
+        override: {
+          debtor: { name },
+        },
+      });
+      const events = [mockCaseSyncEvent()];
 
-      for (const testCase of testCases) {
-        const mockCaseDetails = MockData.getCaseDetail({
-          override: {
-            debtor: { name: testCase.name },
-          },
-        });
-        const events = [mockCaseSyncEvent()];
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
 
-        vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(mockCaseDetails);
-        const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      await ExportAndLoadCase.exportAndLoad(context, events);
 
-        await ExportAndLoadCase.exportAndLoad(context, events);
+      const syncedCase = syncSpy.mock.calls[0][0];
+      const actualTokens = syncedCase.debtor.phoneticTokens;
 
-        const syncedCase = syncSpy.mock.calls[0][0];
-        const actualTokens = syncedCase.debtor.phoneticTokens;
-
-        expect(actualTokens).toBeDefined();
-        expect(actualTokens.length).toBeGreaterThan(0);
-
-        testCase.expectedInTokens.forEach((expectedToken) => {
-          expect(actualTokens).toContain(expectedToken);
-        });
-      }
+      expect(actualTokens).toBeDefined();
+      expect(actualTokens.length).toBeGreaterThan(0);
+      expectedTokens.forEach((expectedToken) => {
+        expect(actualTokens).toContain(expectedToken);
+      });
     });
 
     test('should generate both bigrams and phonetic tokens at load time', async () => {
