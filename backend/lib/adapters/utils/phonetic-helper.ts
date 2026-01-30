@@ -198,25 +198,3 @@ export function generatePhoneticTokensWithNicknames(searchQuery: string): string
 
   return Array.from(allTokens);
 }
-
-/**
- * Generates a regex pattern for word-level prefix matching on debtor names.
- * Splits the search query into words and creates a pattern that matches any word
- * starting with any of the query words (case-insensitive).
- * For example: "mike sm" → /\b(mike|sm)/i which matches "Michael Smith", "Mike Anderson", etc.
- *
- * @param searchQuery - The search query (e.g., "mike sm")
- * @returns RegExp for word-level prefix matching
- */
-export function generateDebtorNameRegexPattern(searchQuery: string): RegExp {
-  if (!searchQuery || searchQuery.trim().length === 0) {
-    return new RegExp('');
-  }
-
-  const queryWords = searchQuery
-    .trim()
-    .split(/\s+/)
-    .map((word) => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-
-  return new RegExp(`\\b(${queryWords.join('|')})`, 'i');
-}

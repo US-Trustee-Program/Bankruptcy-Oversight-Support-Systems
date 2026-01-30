@@ -505,7 +505,7 @@ describe('Case management tests', () => {
           });
 
         const hybridSearchSpy = vi
-          .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithHybridScoring')
+          .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithPhoneticTokens')
           .mockResolvedValue({
             metadata: { total: mockCases.length },
             data: mockCases,
@@ -604,7 +604,7 @@ describe('Case management tests', () => {
           });
 
         const hybridSearchSpy = vi
-          .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithHybridScoring')
+          .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithPhoneticTokens')
           .mockResolvedValue({
             metadata: { total: mockCases.length },
             data: mockCases,
@@ -639,7 +639,7 @@ describe('Case management tests', () => {
 
         vi.spyOn(
           useCaseWithPhonetic.casesRepository,
-          'searchCasesWithHybridScoring',
+          'searchCasesWithPhoneticTokens',
         ).mockResolvedValue({
           metadata: { total: mockCases.length },
           data: mockCases,
