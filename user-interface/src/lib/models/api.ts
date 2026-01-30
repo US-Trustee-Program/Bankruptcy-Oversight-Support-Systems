@@ -2,6 +2,9 @@ import { httpDelete, httpGet, httpPatch, httpPost, httpPut } from '../utils/http
 import { ObjectKeyVal } from '../type-declarations/basic';
 import { ResponseBody } from '@common/api/response';
 import getApiConfiguration from '@/configuration/apiConfiguration';
+import { sanitizeDeep } from '@common/cams/sanitization';
+import { getAppInsights } from '../hooks/UseApplicationInsights';
+import { SeverityLevel } from '@microsoft/applicationinsights-web';
 
 const beforeHooks: (() => Promise<void>)[] = [];
 const afterHooks: ((response: Response) => Promise<void>)[] = [];
@@ -74,7 +77,24 @@ export default class Api {
       const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
 
-      const response = await httpPost({ url: Api.host + pathStr, body, headers: this.headers });
+      const { appInsights } = getAppInsights();
+      const sanitizedBody = sanitizeDeep(body, true, (invalidString) => {
+        appInsights.trackTrace({
+          message: 'Sanitization stripped potentially malicious content',
+          severityLevel: SeverityLevel.Warning,
+          properties: {
+            endpoint: path,
+            strippedContent: invalidString,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      });
+
+      const response = await httpPost({
+        url: Api.host + pathStr,
+        body: sanitizedBody,
+        headers: this.headers,
+      });
       await this.executeAfterHooks(response);
 
       if (response.ok) {
@@ -151,7 +171,25 @@ export default class Api {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpPatch({ url: Api.host + pathStr, body, headers: this.headers });
+
+      const { appInsights } = getAppInsights();
+      const sanitizedBody = sanitizeDeep(body, true, (invalidString) => {
+        appInsights.trackTrace({
+          message: 'Sanitization stripped potentially malicious content',
+          severityLevel: SeverityLevel.Warning,
+          properties: {
+            endpoint: path,
+            strippedContent: invalidString,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      });
+
+      const response = await httpPatch({
+        url: Api.host + pathStr,
+        body: sanitizedBody,
+        headers: this.headers,
+      });
       await this.executeAfterHooks(response);
 
       if (response.ok) {
@@ -175,7 +213,25 @@ export default class Api {
       await this.executeBeforeHooks();
       const apiOptions = this.getQueryStringsToPassThrough(window.location.search, options);
       const pathStr = Api.createPath(path, apiOptions);
-      const response = await httpPut({ url: Api.host + pathStr, body, headers: this.headers });
+
+      const { appInsights } = getAppInsights();
+      const sanitizedBody = sanitizeDeep(body, true, (invalidString) => {
+        appInsights.trackTrace({
+          message: 'Sanitization stripped potentially malicious content',
+          severityLevel: SeverityLevel.Warning,
+          properties: {
+            endpoint: path,
+            strippedContent: invalidString,
+            timestamp: new Date().toISOString(),
+          },
+        });
+      });
+
+      const response = await httpPut({
+        url: Api.host + pathStr,
+        body: sanitizedBody,
+        headers: this.headers,
+      });
       await this.executeAfterHooks(response);
 
       if (response.ok) {
