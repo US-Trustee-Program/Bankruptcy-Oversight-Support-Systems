@@ -27,6 +27,7 @@ const TEST_TRUSTEE_ID = 'trustee-123';
 
 const VALID_ASSISTANT: TrusteeAssistant = {
   name: 'Jane Assistant',
+  title: 'Senior Assistant',
   contact: {
     address: {
       address1: '123 Main St',
@@ -113,6 +114,7 @@ describe('TrusteeAssistantForm', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       expect(screen.getByTestId('assistant-name')).toBeInTheDocument();
+      expect(screen.getByTestId('assistant-title')).toBeInTheDocument();
       expect(screen.getByTestId('assistant-address1')).toBeInTheDocument();
       expect(screen.getByTestId('assistant-address2')).toBeInTheDocument();
       expect(screen.getByTestId('assistant-city')).toBeInTheDocument();
@@ -134,6 +136,7 @@ describe('TrusteeAssistantForm', () => {
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistant: VALID_ASSISTANT });
 
       expect(screen.getByDisplayValue('Jane Assistant')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Senior Assistant')).toBeInTheDocument();
       expect(screen.getByDisplayValue('123 Main St')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Suite 100')).toBeInTheDocument();
       expect(screen.getByDisplayValue('New York')).toBeInTheDocument();
@@ -160,6 +163,22 @@ describe('TrusteeAssistantForm', () => {
       const nameInput = screen.getByTestId('assistant-name');
       const longName = 'A'.repeat(51);
       await userEvent.type(nameInput, longName);
+
+      await waitFor(
+        () => {
+          const errorMessage = screen.queryByText(/Max length 50 characters/i);
+          expect(errorMessage).toBeInTheDocument();
+        },
+        { timeout: 1000 },
+      );
+    });
+
+    test('should validate title max length', async () => {
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+
+      const titleInput = screen.getByTestId('assistant-title');
+      const longTitle = 'A'.repeat(51);
+      await userEvent.type(titleInput, longTitle);
 
       await waitFor(
         () => {
@@ -377,6 +396,7 @@ describe('TrusteeAssistantForm', () => {
 
       // Fill in all fields including complete address
       await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+      await userEvent.type(screen.getByTestId('assistant-title'), 'Lead Assistant');
       await userEvent.type(screen.getByTestId('assistant-address1'), '456 Test St');
       await userEvent.type(screen.getByTestId('assistant-address2'), 'Suite 200');
       await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
@@ -403,6 +423,7 @@ describe('TrusteeAssistantForm', () => {
           expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
           expect(callArgs[1].assistant).toBeDefined();
           expect(callArgs[1].assistant!.name).toBe('Test Assistant');
+          expect(callArgs[1].assistant!.title).toBe('Lead Assistant');
           expect(callArgs[1].assistant!.contact.address!.address1).toBe('456 Test St');
           expect(callArgs[1].assistant!.contact.address!.address2).toBe('Suite 200');
           expect(callArgs[1].assistant!.contact.address!.city).toBe('TestCity');
