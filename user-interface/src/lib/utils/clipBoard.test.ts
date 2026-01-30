@@ -176,7 +176,7 @@ describe('copyHTMLToClipboard tests', () => {
     testElement.innerHTML = '<p>Test content</p>';
     document.body.appendChild(testElement);
 
-    await copyHTMLToClipboard('test-class');
+    await copyHTMLToClipboard('.test-class');
 
     expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
     const clipboardItem = clipboardMock.mockWrite.mock.calls[0][0][0];
@@ -197,7 +197,7 @@ describe('copyHTMLToClipboard tests', () => {
     testElement.innerHTML = '<p>Test content</p>';
     document.body.appendChild(testElement);
 
-    await copyHTMLToClipboard('test-class', { inner: false });
+    await copyHTMLToClipboard('.test-class', { inner: false });
 
     expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
     const clipboardItem = clipboardMock.mockWrite.mock.calls[0][0][0];
@@ -235,7 +235,7 @@ describe('copyHTMLToClipboard tests', () => {
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    await copyHTMLToClipboard('test-class');
+    await copyHTMLToClipboard('.test-class');
 
     expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
     expect(consoleSpy).not.toHaveBeenCalled();
@@ -254,7 +254,7 @@ describe('copyHTMLToClipboard tests', () => {
 
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    await expect(copyHTMLToClipboard('test-class')).resolves.not.toThrow();
+    await expect(copyHTMLToClipboard('.test-class')).resolves.not.toThrow();
 
     expect(consoleSpy).not.toHaveBeenCalled();
 
@@ -270,7 +270,7 @@ describe('copyHTMLToClipboard tests', () => {
     testElement.innerHTML = '<p>Line 1</p><p>Line 2</p>';
     document.body.appendChild(testElement);
 
-    await copyHTMLToClipboard('test-class');
+    await copyHTMLToClipboard('.test-class');
 
     expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
     const clipboardItem = clipboardMock.mockWrite.mock.calls[0][0][0];
