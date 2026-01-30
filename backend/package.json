@@ -43,7 +43,7 @@
     "@launchdarkly/node-server-sdk": "9.10.5",
     "@okta/jwt-verifier": "4.0.2",
     "@okta/okta-sdk-nodejs": "7.3.0",
-    "applicationinsights": "3.12.1",
+    "applicationinsights": "3.13.0",
     "dotenv": "17.2.3",
     "express": "5.2.1",
     "jsonwebtoken": "9.0.3",
