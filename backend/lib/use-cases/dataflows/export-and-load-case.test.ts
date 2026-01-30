@@ -272,7 +272,7 @@ describe('Export and Load Case Tests', () => {
       }
     });
 
-    test('should generate phonetic tokens without nickname expansion at load time', async () => {
+    test('should generate both bigrams and phonetic tokens at load time', async () => {
       const mockCaseDetails = MockData.getCaseDetail({
         override: {
           debtor: { name: 'Mike Johnson' },
@@ -296,6 +296,13 @@ describe('Export and Load Case Tests', () => {
 
       expect(actualTokens).toContain('J525');
       expect(actualTokens).toContain('JNSN');
+
+      expect(actualTokens).toContain('mi');
+      expect(actualTokens).toContain('ik');
+      expect(actualTokens).toContain('ke');
+      expect(actualTokens).toContain('jo');
+      expect(actualTokens).toContain('oh');
+      expect(actualTokens).toContain('hn');
     });
 
     test('should preserve other case properties when adding phonetic tokens', async () => {

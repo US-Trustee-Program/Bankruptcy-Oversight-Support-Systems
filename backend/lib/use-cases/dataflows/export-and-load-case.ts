@@ -4,26 +4,28 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { CaseSyncEvent } from '@common/queue/dataflow-types';
-import { generatePhoneticTokens } from '../../adapters/utils/phonetic-helper';
+import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
 
 const MODULE_NAME = 'EXPORT-AND-LOAD';
 
 /**
- * Add phonetic tokens to a case's debtor and joint debtor names
- * @param bCase The case to add phonetic tokens to
- * @returns A new case object with phonetic tokens added (immutable)
+ * Add search tokens (bigrams + phonetic codes) to a case's debtor and joint debtor names.
+ * Bigrams are lowercase 2-char n-grams for substring matching.
+ * Phonetic codes are uppercase Soundex + Metaphone for variant spelling matching.
+ * @param bCase The case to add search tokens to
+ * @returns A new case object with search tokens added (immutable)
  */
 function addPhoneticTokens(bCase: SyncedCase): SyncedCase {
   const result: SyncedCase = { ...bCase };
 
   if (bCase.debtor?.name) {
-    result.debtor = { ...bCase.debtor, phoneticTokens: generatePhoneticTokens(bCase.debtor.name) };
+    result.debtor = { ...bCase.debtor, phoneticTokens: generateSearchTokens(bCase.debtor.name) };
   }
 
   if (bCase.jointDebtor?.name) {
     result.jointDebtor = {
       ...bCase.jointDebtor,
-      phoneticTokens: generatePhoneticTokens(bCase.jointDebtor.name),
+      phoneticTokens: generateSearchTokens(bCase.jointDebtor.name),
     };
   }
 
