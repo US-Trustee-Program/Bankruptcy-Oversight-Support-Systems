@@ -25,6 +25,7 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
   if (!assistant) {
     return {
       name: undefined,
+      title: undefined,
       address1: undefined,
       address2: undefined,
       city: undefined,
@@ -39,6 +40,7 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
   const contact = assistant.contact;
   return {
     name: assistant.name,
+    title: assistant.title,
     address1: contact.address?.address1,
     address2: contact.address?.address2,
     city: contact.address?.city,
@@ -99,6 +101,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     return {
       assistant: {
         name: formData.name,
+        ...(formData.title && { title: formData.title }),
         contact: {
           address:
             formData.address1 && formData.city && formData.state && formData.zipCode
@@ -247,6 +250,20 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 value={formData.name}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['name']?.join(' ')}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="field-group">
+              <Input
+                id="assistant-title"
+                data-testid="assistant-title"
+                className="assistant-title-input"
+                name="title"
+                label="Title"
+                value={formData.title || ''}
+                onChange={handleFieldChange}
+                errorMessage={fieldErrors['title']?.join(' ')}
                 autoComplete="off"
               />
             </div>

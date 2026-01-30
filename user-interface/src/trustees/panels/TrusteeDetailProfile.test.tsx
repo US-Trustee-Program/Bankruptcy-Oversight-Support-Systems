@@ -365,4 +365,75 @@ describe('TrusteeDetailProfile', () => {
       'Software: BestCase Trustee Software v2.1',
     );
   });
+
+  test('should render assistant information with title', () => {
+    const trusteeWithAssistant = {
+      ...mockTrustee,
+      assistant: {
+        name: 'Jane Assistant',
+        title: 'Senior Assistant',
+        contact: {
+          address: {
+            address1: '789 Assistant St',
+            city: 'Assistant City',
+            state: 'TX',
+            zipCode: '78901',
+            countryCode: 'US',
+          },
+          phone: { number: '555-111-2222', extension: '456' },
+          email: 'jane.assistant@example.com',
+        },
+      },
+    };
+
+    renderWithProps({ trustee: trusteeWithAssistant });
+
+    expect(screen.getByTestId('assistant-name')).toHaveTextContent('Jane Assistant');
+    expect(screen.getByTestId('assistant-title')).toHaveTextContent('Senior Assistant');
+    expect(screen.getByTestId('trustee-assistant-street-address')).toHaveTextContent(
+      '789 Assistant St',
+    );
+    expect(screen.getByTestId('trustee-assistant-city')).toHaveTextContent('Assistant City');
+    expect(screen.getByTestId('trustee-assistant-phone-number')).toHaveTextContent(
+      '555-111-2222 ext. 456',
+    );
+  });
+
+  test('should render assistant information without title', () => {
+    const trusteeWithAssistantNoTitle = {
+      ...mockTrustee,
+      assistant: {
+        name: 'Jane Assistant',
+        contact: {
+          address: {
+            address1: '789 Assistant St',
+            city: 'Assistant City',
+            state: 'TX',
+            zipCode: '78901',
+            countryCode: 'US',
+          },
+          phone: { number: '555-111-2222' },
+          email: 'jane.assistant@example.com',
+        },
+      },
+    };
+
+    renderWithProps({ trustee: trusteeWithAssistantNoTitle });
+
+    expect(screen.getByTestId('assistant-name')).toHaveTextContent('Jane Assistant');
+    expect(screen.queryByTestId('assistant-title')).not.toBeInTheDocument();
+  });
+
+  test('should show "No information added" when assistant is missing', () => {
+    const trusteeWithoutAssistant = {
+      ...mockTrustee,
+      assistant: undefined,
+    };
+
+    renderWithProps({ trustee: trusteeWithoutAssistant });
+
+    expect(screen.getByTestId('no-assistant-information')).toHaveTextContent(
+      'No information added.',
+    );
+  });
 });
