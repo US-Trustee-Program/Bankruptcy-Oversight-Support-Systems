@@ -180,6 +180,9 @@ export interface CasesRepository extends Releasable {
   searchCasesForPhoneticFiltering(
     predicate: CasesSearchPredicate,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
+  searchCasesWithHybridScoring(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
   getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
   updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;

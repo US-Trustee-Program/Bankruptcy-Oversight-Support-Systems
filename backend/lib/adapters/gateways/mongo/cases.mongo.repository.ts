@@ -20,7 +20,7 @@ import { CasesSearchPredicate, PHONETIC_SEARCH_MAX_FETCH } from '@common/api/sea
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
-import { generateDebtorNameRegexPattern } from '../../utils/phonetic-helper';
+import { generateDebtorNameRegexPattern, generateQueryTokens } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -35,6 +35,7 @@ const {
   match,
   paginate,
   pipeline,
+  score,
   sort,
   source,
 } = QueryPipeline;
@@ -366,6 +367,88 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     predicate: CasesSearchPredicate,
   ): Promise<CamsPaginationResponse<SyncedCase>> {
     return this.executeCaseSearch(predicate, 0, PHONETIC_SEARCH_MAX_FETCH);
+  }
+
+  async searchCasesWithHybridScoring(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
+    try {
+      if (!predicate.debtorName) {
+        return this.searchCases(predicate);
+      }
+
+      if (!hasRequiredSearchFields(predicate)) {
+        throw new CamsError(MODULE_NAME, {
+          message: 'Case Search requires a pagination predicate with a valid limit and offset',
+        });
+      }
+
+      const searchTokens = generateQueryTokens(predicate.debtorName);
+      if (searchTokens.length === 0) {
+        return { metadata: { total: 0 }, data: [] };
+      }
+
+      const doc = using<SyncedCase>();
+      const conditions: ConditionOrConjunction<SyncedCase>[] = [];
+      conditions.push(doc('documentType').equals('SYNCED_CASE'));
+
+      conditions.push(
+        or(
+          // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+          doc('debtor.phoneticTokens').contains(searchTokens),
+          // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+          doc('jointDebtor.phoneticTokens').contains(searchTokens),
+        ),
+      );
+
+      if (predicate.divisionCodes?.length > 0) {
+        conditions.push(doc('courtDivisionCode').contains(predicate.divisionCodes));
+      }
+
+      if (predicate.chapters?.length > 0) {
+        conditions.push(doc('chapter').contains(predicate.chapters));
+      }
+
+      if (predicate.excludeClosedCases === true) {
+        conditions.push(
+          or(
+            doc('closedDate').notExists(),
+            and(
+              doc('closedDate').exists(),
+              doc('reopenedDate').exists(),
+              doc('reopenedDate').greaterThanOrEqual({ name: 'closedDate' }),
+            ),
+          ),
+        );
+      }
+
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
+
+      const spec = pipeline(
+        match(and(...conditions)),
+        score(
+          searchTokens,
+          ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+          'matchScore',
+          3,
+          10,
+        ),
+        match(
+          using<SyncedCase & { bigramMatchCount: number }>()('bigramMatchCount').greaterThan(0),
+        ),
+        sort(descending({ name: 'matchScore' }), descending(dateFiled), descending(caseNumber)),
+        paginate(predicate.offset, predicate.limit),
+      );
+
+      return await this.getAdapter<SyncedCase>().paginate(spec);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to search cases with hybrid scoring for "${predicate.debtorName}".`,
+          module: MODULE_NAME,
+        },
+      });
+    }
   }
 
   private async executeCaseSearch(

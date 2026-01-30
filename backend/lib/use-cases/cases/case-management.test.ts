@@ -488,7 +488,7 @@ describe('Case management tests', () => {
     });
 
     describe('phonetic filtering', () => {
-      test('should apply phonetic filtering when enabled and debtorName is present', async () => {
+      test('should apply hybrid search when enabled and debtorName is present', async () => {
         const mockCases = [
           MockData.getSyncedCase({
             override: { caseId: '001', debtor: { name: 'Michael Johnson' } },
@@ -496,25 +496,20 @@ describe('Case management tests', () => {
           MockData.getSyncedCase({
             override: { caseId: '002', debtor: { name: 'Mike Johnson' } },
           }),
-          MockData.getSyncedCase({
-            override: { caseId: '003', debtor: { name: 'Jane Doe' } },
-          }),
         ];
 
         const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
           await createCaseManagementTestContext({
             user,
             phoneticSearchEnabled: true,
-            phoneticSimilarityThreshold: '0.83',
           });
 
-        vi.spyOn(
-          useCaseWithPhonetic.casesRepository,
-          'searchCasesForPhoneticFiltering',
-        ).mockResolvedValue({
-          metadata: { total: mockCases.length },
-          data: mockCases,
-        });
+        const hybridSearchSpy = vi
+          .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithHybridScoring')
+          .mockResolvedValue({
+            metadata: { total: mockCases.length },
+            data: mockCases,
+          });
 
         const predicate: CasesSearchPredicate = {
           ...basePredicate,
@@ -523,8 +518,9 @@ describe('Case management tests', () => {
 
         const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
 
-        expect(result.data.length).toBeLessThanOrEqual(mockCases.length);
-        expect(result.metadata.total).toBe(result.data.length);
+        expect(hybridSearchSpy).toHaveBeenCalledWith(predicate);
+        expect(result.data.length).toBe(mockCases.length);
+        expect(result.metadata.total).toBe(mockCases.length);
       });
 
       test('should NOT apply phonetic filtering when disabled', async () => {
@@ -591,7 +587,7 @@ describe('Case management tests', () => {
         expect(result.metadata.total).toBe(mockCases.length);
       });
 
-      test('should use custom similarity threshold from config', async () => {
+      test('should use hybrid search for phonetic variant matching', async () => {
         const mockCases = [
           MockData.getSyncedCase({
             override: { caseId: '001', debtor: { name: 'John Smith' } },
@@ -601,37 +597,31 @@ describe('Case management tests', () => {
           }),
         ];
 
-        const customThreshold = 0.95;
-        const { context: contextWithCustomThreshold, useCase: useCaseWithCustomThreshold } =
+        const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
           await createCaseManagementTestContext({
             user,
             phoneticSearchEnabled: true,
-            phoneticSimilarityThreshold: customThreshold.toString(),
           });
 
-        vi.spyOn(
-          useCaseWithCustomThreshold.casesRepository,
-          'searchCasesForPhoneticFiltering',
-        ).mockResolvedValue({
-          metadata: { total: mockCases.length },
-          data: mockCases,
-        });
+        const hybridSearchSpy = vi
+          .spyOn(useCaseWithPhonetic.casesRepository, 'searchCasesWithHybridScoring')
+          .mockResolvedValue({
+            metadata: { total: mockCases.length },
+            data: mockCases,
+          });
 
         const predicate: CasesSearchPredicate = {
           ...basePredicate,
           debtorName: 'John Smith',
         };
 
-        const result = await useCaseWithCustomThreshold.searchCases(
-          contextWithCustomThreshold,
-          predicate,
-          false,
-        );
+        const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
 
-        expect(result.metadata.total).toBe(result.data.length);
+        expect(hybridSearchSpy).toHaveBeenCalledWith(predicate);
+        expect(result.metadata.total).toBe(mockCases.length);
       });
 
-      test('should update metadata.total to match filtered results', async () => {
+      test('should return database-scored results with correct metadata', async () => {
         const mockCases = [
           MockData.getSyncedCase({
             override: { caseId: '001', debtor: { name: 'Michael Johnson' } },
@@ -639,21 +629,17 @@ describe('Case management tests', () => {
           MockData.getSyncedCase({
             override: { caseId: '002', debtor: { name: 'Mike Johnson' } },
           }),
-          MockData.getSyncedCase({
-            override: { caseId: '003', debtor: { name: 'Unrelated Name' } },
-          }),
         ];
 
         const { context: contextWithPhonetic, useCase: useCaseWithPhonetic } =
           await createCaseManagementTestContext({
             user,
             phoneticSearchEnabled: true,
-            phoneticSimilarityThreshold: '0.83',
           });
 
         vi.spyOn(
           useCaseWithPhonetic.casesRepository,
-          'searchCasesForPhoneticFiltering',
+          'searchCasesWithHybridScoring',
         ).mockResolvedValue({
           metadata: { total: mockCases.length },
           data: mockCases,
@@ -666,8 +652,8 @@ describe('Case management tests', () => {
 
         const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);
 
-        expect(result.metadata.total).toBe(result.data.length);
-        expect(result.data.length).toBeLessThanOrEqual(mockCases.length);
+        expect(result.metadata.total).toBe(mockCases.length);
+        expect(result.data.length).toBe(mockCases.length);
       });
     });
   });

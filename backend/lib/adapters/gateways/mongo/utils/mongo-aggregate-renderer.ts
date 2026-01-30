@@ -7,8 +7,10 @@ import {
   Join,
   Paginate,
   Pipeline,
+  Score,
   Sort,
 } from '../../../../query/query-pipeline';
+import { isPhoneticToken } from '../../../utils/phonetic-helper';
 import { toMongoQuery } from './mongo-query-renderer';
 import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
 import {
@@ -117,6 +119,103 @@ function toMongoProjectInclude(stage: IncludeFields) {
   return { $project: fields };
 }
 
+/**
+ * Renders a SCORE stage to MongoDB aggregation pipeline stages.
+ *
+ * Generates 3 MongoDB stages that compute a weighted match score:
+ *
+ * 1. $addFields - For each targetField, computes:
+ *    - Bigram match count: number of lowercase tokens (e.g., "jo", "hn") found in document
+ *    - Phonetic match count: number of uppercase tokens (e.g., "JN", "J500") found in document
+ *    - Field score: (bigramMatches × bigramWeight) + (phoneticMatches × phoneticWeight)
+ *
+ * 2. $addFields - Computes:
+ *    - outputField: max score across all target fields (handles both debtor and jointDebtor)
+ *    - bigramMatchCount: max bigram matches across all target fields (for filtering)
+ *
+ * 3. $project - Removes temporary computation fields
+ *
+ * The bigramMatchCount field enables filtering to require at least one bigram match,
+ * preventing phonetic-only matches (e.g., "John" → "Jane") while still allowing
+ * nickname matches that share bigrams (e.g., "Mike" → "Michael" via shared "mi").
+ *
+ * @example
+ * // Search query: "John" → searchTokens = ["jo", "oh", "hn", "J500", "JN"]
+ * // Document has: { debtor: { phoneticTokens: ["jo", "oh", "hn", "J500", "JN", "S530", "SM0", "sm", "mi", "it", "th"] } }
+ * //   (stored tokens include both bigrams and phonetic codes for "John Smith")
+ * // Matching: 3 bigrams match (jo, oh, hn), 2 phonetics match (J500, JN)
+ * // Result: matchScore = (3 × 3) + (2 × 10) = 29, bigramMatchCount = 3
+ *
+ * @example
+ * // Search query: "John" → searchTokens = ["jo", "oh", "hn", "J500", "JN"]
+ * // Document has: { debtor: { phoneticTokens: ["ja", "an", "ne", "J500", "JN"] } }
+ * //   (stored tokens for "Jane" - shares phonetic codes but different bigrams)
+ * // Matching: 0 bigrams match, 2 phonetics match (J500, JN)
+ * // Result: matchScore = (0 × 3) + (2 × 10) = 20, bigramMatchCount = 0
+ * // "Jane" is filtered out because bigramMatchCount = 0
+ *
+ * @param stage - The Score stage configuration
+ * @returns Array of 3 MongoDB aggregation stage objects
+ */
+function toMongoScore(stage: Score): object[] {
+  const { searchTokens, targetFields, outputField, bigramWeight, phoneticWeight } = stage;
+
+  const queryBigrams = searchTokens.filter((t) => !isPhoneticToken(t));
+  const queryPhonetics = searchTokens.filter((t) => isPhoneticToken(t));
+
+  const fieldScoreExpressions: Record<string, object> = {};
+  const tempFieldNames: string[] = [];
+
+  targetFields.forEach((field, idx) => {
+    const bigramField = `_bigramMatches_${idx}`;
+    const phoneticField = `_phoneticMatches_${idx}`;
+    const scoreField = `_score_${idx}`;
+    tempFieldNames.push(bigramField, phoneticField, scoreField);
+
+    fieldScoreExpressions[bigramField] = {
+      $size: {
+        $setIntersection: [queryBigrams, { $ifNull: [`$${field}`, []] }],
+      },
+    };
+
+    fieldScoreExpressions[phoneticField] = {
+      $size: {
+        $setIntersection: [queryPhonetics, { $ifNull: [`$${field}`, []] }],
+      },
+    };
+
+    fieldScoreExpressions[scoreField] = {
+      $add: [
+        { $multiply: [`$${bigramField}`, bigramWeight] },
+        { $multiply: [`$${phoneticField}`, phoneticWeight] },
+      ],
+    };
+  });
+
+  const maxScoreExpression = {
+    [outputField]: {
+      $max: targetFields.map((_, idx) => `$_score_${idx}`),
+    },
+    bigramMatchCount: {
+      $max: targetFields.map((_, idx) => `$_bigramMatches_${idx}`),
+    },
+  };
+
+  const cleanupProjection = tempFieldNames.reduce(
+    (acc, field) => {
+      acc[field] = 0;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+
+  return [
+    { $addFields: fieldScoreExpressions },
+    { $addFields: maxScoreExpression },
+    { $project: cleanupProjection },
+  ];
+}
+
 function toMongoFilterCondition<T = unknown>(query: ConditionOrConjunction<T>) {
   if (isCondition(query)) {
     return translateCondition(query);
@@ -155,7 +254,7 @@ const mapCondition: { [key: string]: string } = {
 };
 
 function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
-  return pipeline.stages.map((stage) => {
+  return pipeline.stages.flatMap((stage) => {
     if (stage.stage === 'SORT') {
       return toMongoAggregateSort(stage);
     }
@@ -180,6 +279,9 @@ function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
     if (stage.stage === 'GROUP') {
       return toMongoGroup(stage);
     }
+    if (stage.stage === 'SCORE') {
+      return toMongoScore(stage);
+    }
   });
 }
 
@@ -191,6 +293,7 @@ const MongoAggregateRenderer = {
   toMongoGroup,
   toMongoProjectExclude,
   toMongoProjectInclude,
+  toMongoScore,
   toMongoFilterCondition,
   translateCondition,
   toMongoAggregate,

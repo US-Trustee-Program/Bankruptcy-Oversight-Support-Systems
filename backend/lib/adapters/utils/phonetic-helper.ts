@@ -50,6 +50,100 @@ export function generatePhoneticTokens(text: string): string[] {
 }
 
 /**
+ * Generates bigrams (2-character n-grams) for a text string.
+ * Bigrams enable substring/prefix matching in database queries.
+ * For example: "John" → ["jo", "oh", "hn"]
+ *
+ * @param text - The text string (e.g., "John Smith")
+ * @returns Array of unique lowercase bigrams
+ */
+export function generateBigrams(text: string): string[] {
+  if (!text || text.trim().length === 0) {
+    return [];
+  }
+
+  const bigrams = new Set<string>();
+
+  const normalized = text
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '');
+
+  const words = normalized.split(/\s+/).filter((word) => word.length >= 2);
+
+  words.forEach((word) => {
+    for (let i = 0; i <= word.length - 2; i++) {
+      bigrams.add(word.substring(i, i + 2));
+    }
+  });
+
+  return Array.from(bigrams);
+}
+
+/**
+ * Determines if a token is a phonetic token (Soundex or Metaphone).
+ * Phonetic tokens are uppercase alphanumeric strings with length > 1.
+ * Bigrams are lowercase, so this distinguishes between the two types.
+ *
+ * @param token - The token to check
+ * @returns True if the token is a phonetic token
+ */
+export function isPhoneticToken(token: string): boolean {
+  return token.length > 1 && /^[A-Z0-9]+$/.test(token);
+}
+
+/**
+ * Generates search tokens combining bigrams and phonetic codes.
+ * This is used when storing/indexing names for hybrid search.
+ * - Bigrams (lowercase): Enable substring matching
+ * - Phonetic tokens (uppercase): Enable variant spelling matching
+ *
+ * For example: "John Smith" → ["jo", "oh", "hn", "sm", "mi", "it", "th", "J500", "JN", "S530", "SM0"]
+ *
+ * @param text - The text string (e.g., "John Smith")
+ * @returns Array of unique tokens (bigrams lowercase, phonetics uppercase)
+ */
+export function generateSearchTokens(text: string): string[] {
+  if (!text || text.trim().length === 0) {
+    return [];
+  }
+
+  const tokens = new Set<string>();
+
+  generateBigrams(text).forEach((bigram) => tokens.add(bigram));
+  generatePhoneticTokens(text).forEach((phoneticToken) => tokens.add(phoneticToken));
+
+  return Array.from(tokens);
+}
+
+/**
+ * Generates query tokens for searching, with nickname expansion.
+ * Expands the query with nickname variations, then generates both
+ * bigrams and phonetic tokens for comprehensive matching.
+ *
+ * For example: "Mike Smith" → expands "Mike" to ["mike", "michael", ...]
+ *              → generates bigrams and phonetics for all variations
+ *
+ * @param searchQuery - The search query (e.g., "Mike Smith")
+ * @returns Array of unique tokens for query matching
+ */
+export function generateQueryTokens(searchQuery: string): string[] {
+  if (!searchQuery || searchQuery.trim().length === 0) {
+    return [];
+  }
+
+  const tokens = new Set<string>();
+  const expandedWords = expandQueryWithNicknames(searchQuery);
+
+  expandedWords.forEach((word) => {
+    generateBigrams(word).forEach((bigram) => tokens.add(bigram));
+    generatePhoneticTokens(word).forEach((phoneticToken) => tokens.add(phoneticToken));
+  });
+
+  return Array.from(tokens);
+}
+
+/**
  * Expands a search query with nickname variations.
  * For example: "Mike Johnson" → ["mike", "michael", "mikey", "mick", "johnson"]
  *

@@ -118,6 +118,15 @@ export function isSort(obj: unknown): obj is Sort {
   return typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
 }
 
+export type Score = {
+  stage: 'SCORE';
+  searchTokens: string[];
+  targetFields: string[];
+  outputField: string;
+  bigramWeight: number;
+  phoneticWeight: number;
+};
+
 export type Stage<T = never> =
   | Paginate
   | Sort
@@ -126,7 +135,8 @@ export type Stage<T = never> =
   | AddFields<T>
   | ExcludeFields
   | IncludeFields
-  | Group;
+  | Group
+  | Score;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
   return typeof obj === 'object' && 'stages' in obj;
@@ -225,6 +235,23 @@ function first(field: Field, as: Field): First {
   return { accumulator: 'FIRST', as: { name: as.name }, field: { name: field.name } };
 }
 
+function score(
+  searchTokens: string[],
+  targetFields: string[],
+  outputField: string,
+  bigramWeight: number = 3,
+  phoneticWeight: number = 10,
+): Score {
+  return {
+    stage: 'SCORE',
+    searchTokens,
+    targetFields,
+    outputField,
+    bigramWeight,
+    phoneticWeight,
+  };
+}
+
 const QueryPipeline = {
   addFields,
   additionalField,
@@ -239,6 +266,7 @@ const QueryPipeline = {
   match,
   paginate,
   pipeline,
+  score,
   sort,
   source,
 };

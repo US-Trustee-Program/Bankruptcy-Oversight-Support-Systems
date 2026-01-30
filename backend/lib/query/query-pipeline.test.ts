@@ -22,6 +22,7 @@ const {
   additionalField,
   count,
   first,
+  score,
 } = QueryPipeline;
 
 describe('Query Pipeline', () => {
@@ -307,6 +308,40 @@ describe('Query Pipeline', () => {
       const actual = first(field, as);
 
       expect(actual).toEqual(expected);
+    });
+  });
+
+  describe('score', () => {
+    test('should create a score stage with all parameters', () => {
+      const searchTokens = ['jo', 'hn', 'JN', 'J500'];
+      const targetFields = ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'];
+      const outputField = 'matchScore';
+      const bigramWeight = 3;
+      const phoneticWeight = 10;
+
+      const expected = {
+        stage: 'SCORE',
+        searchTokens,
+        targetFields,
+        outputField,
+        bigramWeight,
+        phoneticWeight,
+      };
+
+      const actual = score(searchTokens, targetFields, outputField, bigramWeight, phoneticWeight);
+
+      expect(actual).toEqual(expected);
+    });
+
+    test('should use default weights when not provided', () => {
+      const searchTokens = ['jo', 'JN'];
+      const targetFields = ['debtor.phoneticTokens'];
+      const outputField = 'matchScore';
+
+      const actual = score(searchTokens, targetFields, outputField);
+
+      expect(actual.bigramWeight).toEqual(3);
+      expect(actual.phoneticWeight).toEqual(10);
     });
   });
 });
