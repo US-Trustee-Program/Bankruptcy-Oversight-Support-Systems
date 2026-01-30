@@ -113,6 +113,11 @@ backend/dev-users.json
 .gitmodules
 .ustp-cams-fdp
 
+# Other USTP Repos
+.cams-gists
+.ado-mirror
+.threat-model
+
 # Python (docs tooling and caches)
 dev-tools/.venv-docs/
 dev-tools/.venv/
