@@ -1,9 +1,7 @@
 {
   "enabled": true,
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
+  "extends": ["config:recommended"],
   "timezone": "America/New_York",
   "prConcurrentLimit": 10,
   "branchConcurrentLimit": 5,
@@ -36,19 +34,19 @@
     {
       "description": "First-party GitHub Actions with digest pinning and 14-day wait",
       "matchManagers": ["github-actions"],
-      "matchPackagePatterns": ["^actions/", "^github/"],
       "pinDigests": true,
       "minimumReleaseAge": "14 days",
-      "groupName": "GitHub first-party actions"
+      "groupName": "GitHub first-party actions",
+      "matchPackageNames": ["/^actions//", "/^github//"]
     },
     {
       "description": "Third-party GitHub Actions with digest pinning, 30-day wait, and separate PRs",
       "matchManagers": ["github-actions"],
-      "excludePackagePatterns": ["^actions/", "^github/"],
       "pinDigests": true,
       "minimumReleaseAge": "30 days",
       "groupName": null,
-      "automerge": false
+      "automerge": false,
+      "matchPackageNames": ["!/^actions//", "!/^github//"]
     },
     {
       "description": "Require 30-day wait for x.0.0 major versions",
