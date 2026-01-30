@@ -177,9 +177,6 @@ export interface CasesRepository extends Releasable {
   searchCases(
     predicate: CasesSearchPredicate,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
-  searchCasesForPhoneticFiltering(
-    predicate: CasesSearchPredicate,
-  ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
   searchCasesWithHybridScoring(
     predicate: CasesSearchPredicate,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;

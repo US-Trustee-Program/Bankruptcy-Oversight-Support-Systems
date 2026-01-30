@@ -148,10 +148,6 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  searchCasesForPhoneticFiltering(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
-    throw new Error('Method not implemented.');
-  }
-
   searchCasesWithHybridScoring(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
     throw new Error('Method not implemented.');
   }

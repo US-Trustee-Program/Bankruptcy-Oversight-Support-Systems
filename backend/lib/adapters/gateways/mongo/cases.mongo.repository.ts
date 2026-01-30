@@ -16,7 +16,7 @@ import {
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '@common/cams/cases';
-import { CasesSearchPredicate, PHONETIC_SEARCH_MAX_FETCH } from '@common/api/search';
+import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
@@ -361,12 +361,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
     return this.executeCaseSearch(predicate, predicate.offset, predicate.limit);
-  }
-
-  async searchCasesForPhoneticFiltering(
-    predicate: CasesSearchPredicate,
-  ): Promise<CamsPaginationResponse<SyncedCase>> {
-    return this.executeCaseSearch(predicate, 0, PHONETIC_SEARCH_MAX_FETCH);
   }
 
   async searchCasesWithHybridScoring(
