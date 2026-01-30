@@ -1395,5 +1395,90 @@ describe('Test DXTR Gateway', () => {
         latestSyncDate: startDate,
       });
     });
+
+    test('should return cases updated via LAST_UPDATE_DATE (existing behavior)', async () => {
+      const mockResults = makeQueryResults([
+        { caseId: '081-20-10508' },
+        { caseId: '081-21-12345' },
+      ]);
+      querySpy.mockResolvedValue(mockResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01');
+      expect(result).toEqual(['081-20-10508', '081-21-12345']);
+    });
+
+    test('should include cases with terminal transactions after start date', async () => {
+      const mockResults = makeQueryResults([
+        { caseId: '081-20-10508' }, // From AO_TX branch
+      ]);
+      querySpy.mockResolvedValue(mockResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01');
+      expect(result).toContain('081-20-10508');
+      expect(querySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.stringContaining('UNION'),
+        expect.anything(),
+      );
+    });
+
+    test('UNION should deduplicate cases found in both branches', async () => {
+      // Mock returns same case from both branches
+      const mockResults = makeQueryResults([{ caseId: '081-20-10508' }]);
+      querySpy.mockResolvedValue(mockResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, '2024-01-01');
+      expect(result).toEqual(['081-20-10508']); // Only once
+    });
+  });
+
+  describe('getCasesWithTerminalTransactionBlindSpot', () => {
+    test('should return cases with TX_DATE > LAST_UPDATE_DATE', async () => {
+      const mockResults = makeQueryResults([
+        { caseId: '081-20-10508' },
+        { caseId: '081-21-12345' },
+      ]);
+      querySpy.mockResolvedValue(mockResults);
+
+      const result = await testCasesDxtrGateway.getCasesWithTerminalTransactionBlindSpot(
+        applicationContext,
+        '2018-01-01',
+      );
+
+      expect(result).toEqual(['081-20-10508', '081-21-12345']);
+      expect(querySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.stringContaining('TX.TX_DATE > C.LAST_UPDATE_DATE'),
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'cutoffDate', value: '2018-01-01' }),
+        ]),
+      );
+    });
+
+    test('should include all terminal transaction codes', async () => {
+      querySpy.mockResolvedValue(makeQueryResults([]));
+
+      await testCasesDxtrGateway.getCasesWithTerminalTransactionBlindSpot(
+        applicationContext,
+        '2018-01-01',
+      );
+
+      const query = querySpy.mock.calls[0][2];
+      expect(query).toContain("TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')");
+    });
+
+    test('should filter by TX_TYPE = O', async () => {
+      querySpy.mockResolvedValue(makeQueryResults([]));
+
+      await testCasesDxtrGateway.getCasesWithTerminalTransactionBlindSpot(
+        applicationContext,
+        '2018-01-01',
+      );
+
+      const query = querySpy.mock.calls[0][2];
+      expect(query).toContain("TX.TX_TYPE = 'O'");
+    });
   });
 });

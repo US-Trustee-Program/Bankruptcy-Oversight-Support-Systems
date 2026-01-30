@@ -560,6 +560,56 @@ class CasesDxtrGateway implements CasesInterface {
       FROM AO_CS C
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       WHERE C.LAST_UPDATE_DATE AT TIME ZONE 'UTC' > @start
+
+      UNION
+
+      SELECT CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId
+      FROM [dbo].[AO_TX] TX
+      JOIN AO_CS C ON TX.CS_CASEID = C.CASE_ID AND TX.COURT_ID = C.COURT_ID
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      WHERE TX.TX_TYPE = 'O'
+        AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
+        AND TX.TX_DATE AT TIME ZONE 'UTC' > @start
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      params,
+    );
+
+    const results = handleQueryResult<CaseIdRecord[]>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.getUpdatedCaseIdsCallback,
+    );
+
+    return results.map((record) => record.caseId);
+  }
+
+  async getCasesWithTerminalTransactionBlindSpot(
+    context: ApplicationContext,
+    cutoffDate: string,
+  ): Promise<string[]> {
+    const params: DbTableFieldSpec[] = [];
+    params.push({
+      name: 'cutoffDate',
+      type: mssql.DateTime,
+      value: cutoffDate,
+    });
+
+    const query = `
+      SELECT DISTINCT CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId
+      FROM [dbo].[AO_TX] TX
+      JOIN AO_CS C ON TX.CS_CASEID = C.CASE_ID AND TX.COURT_ID = C.COURT_ID
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      WHERE TX.TX_TYPE = 'O'
+        AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
+        AND TX.TX_DATE > C.LAST_UPDATE_DATE
+        AND TX.TX_DATE >= @cutoffDate
+      WHERE C.LAST_UPDATE_DATE AT TIME ZONE 'UTC' > @start
       ORDER BY C.LAST_UPDATE_DATE DESC, C.CASE_ID DESC
     `;
 
