@@ -275,7 +275,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-address1-input"
                 name="address1"
                 label="Address Line 1"
-                required
                 value={formData.address1}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['address1']?.join(' ')}
@@ -302,7 +301,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-city-input"
                 name="city"
                 label="City"
-                required
                 value={formData.city}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['city']?.join(' ')}
@@ -316,7 +314,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-state-input"
                 name="state"
                 label="State"
-                required
                 selections={formData.state ? [formData.state] : []}
                 onUpdateSelection={handleStateSelection}
                 autoComplete="off"
@@ -330,7 +327,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-zip-input"
                 name="zipCode"
                 label="Zip Code"
-                required
                 value={formData.zipCode}
                 onChange={handleZipCodeChange}
                 errorMessage={fieldErrors['zipCode']?.join(' ')}
@@ -348,7 +344,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-phone-input"
                 name="phone"
                 label="Phone"
-                required
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['phone']?.join(' ')}
                 autoComplete="off"
@@ -372,7 +367,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-email-input"
                 name="email"
                 label="Email"
-                required
                 value={formData.email}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['email']?.join(' ')}
