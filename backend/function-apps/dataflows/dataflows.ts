@@ -10,6 +10,7 @@ import MigrateAssignees from './migrations/migrate-assignees';
 import MigrateCases from './migrations/migrate-cases';
 import MigrateChildCasesToMemberCases from './migrations/migrate-childcases-to-membercases';
 import MigrateConsolidations from './migrations/migrate-consolidations';
+import ResyncTerminalTransactionCases from './migrations/resync-terminal-transaction-cases';
 import SyncCases from './import/sync-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
@@ -104,6 +105,7 @@ dataflows.register(
   MigrateCases,
   MigrateChildCasesToMemberCases,
   MigrateConsolidations,
+  ResyncTerminalTransactionCases,
   SyncCases,
   SyncOfficeStaff,
   SyncOrders,
