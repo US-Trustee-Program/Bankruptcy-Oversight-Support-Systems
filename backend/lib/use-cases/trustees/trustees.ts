@@ -4,23 +4,76 @@ import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
-import V from '@common/cams/validators';
-import {
-  EMAIL_REGEX,
-  EXTENSION_REGEX,
-  PHONE_REGEX,
-  WEBSITE_RELAXED_REGEX,
-  ZIP_REGEX,
-} from '@common/cams/regex';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
-import { Trustee, TrusteeHistory, TrusteeInput, zoomInfoSpec } from '@common/cams/trustees';
+import { Trustee, TrusteeHistory, TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
+import {
+  trusteeName,
+  companyName,
+  addressLine1,
+  addressLine2,
+  addressLine3,
+  city,
+  state,
+  zipCode,
+  countryCode,
+  phoneNumber,
+  phoneExtension,
+  email,
+  website,
+  zoomInfoSpec,
+  assistantName,
+} from '@common/cams/trustees-validators';
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
-import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 import { normalizeForUndefined } from '@common/normalization';
+import V from '@common/cams/validators';
+import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
 
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
+
+const addressSpec: ValidationSpec<Address> = {
+  address1: addressLine1,
+  address2: addressLine2,
+  address3: addressLine3,
+  city,
+  state,
+  zipCode,
+  countryCode,
+};
+
+const phoneSpec: ValidationSpec<PhoneNumber> = {
+  number: phoneNumber,
+  extension: phoneExtension,
+};
+
+const contactInformationSpec: ValidationSpec<ContactInformation> = {
+  address: [V.spec(addressSpec)],
+  phone: [V.optional(V.spec(phoneSpec))],
+  email: [V.optional(...email)],
+  website,
+  companyName,
+};
+
+const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
+  address: [V.optional(V.nullable(V.spec(addressSpec)))],
+  phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
+  email: [V.optional(V.nullable(...email))],
+};
+
+const assistantSpec: ValidationSpec<TrusteeAssistant> = {
+  name: assistantName,
+  contact: [V.spec(contactInformationSpec)],
+};
+
+const trusteeSpec: ValidationSpec<TrusteeInput> = {
+  name: trusteeName,
+  public: [V.optional(V.spec(contactInformationSpec))],
+  internal: [V.optional(V.spec(internalContactInformationSpec))],
+  assistant: [V.optional(V.spec(assistantSpec))],
+  banks: [V.optional(V.arrayOf(V.length(1, 100)))],
+  software: [V.optional(V.length(0, 100))],
+  zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
+};
 
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
@@ -284,54 +337,6 @@ export class TrusteesUseCase {
     }
   }
 }
-
-const addressSpec: ValidationSpec<Address> = {
-  address1: [V.minLength(1)],
-  address2: [V.optional(V.maxLength(50))],
-  address3: [V.optional(V.maxLength(50))],
-  city: [V.minLength(1)],
-  state: [V.exactLength(2)],
-  zipCode: [V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE)],
-  countryCode: [V.exactLength(2)],
-};
-
-const phoneSpec: ValidationSpec<PhoneNumber> = {
-  number: [V.matches(PHONE_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_NUMBER)],
-  extension: [V.optional(V.matches(EXTENSION_REGEX, FIELD_VALIDATION_MESSAGES.PHONE_EXTENSION))],
-};
-
-const contactInformationSpec: ValidationSpec<ContactInformation> = {
-  address: [V.spec(addressSpec)],
-  phone: [V.optional(V.spec(phoneSpec))],
-  email: [V.optional(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL))],
-  website: [
-    V.optional(
-      V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.WEBSITE),
-      V.maxLength(255, FIELD_VALIDATION_MESSAGES.WEBSITE_MAX_LENGTH),
-    ),
-  ],
-};
-
-const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
-  address: [V.optional(V.nullable(V.spec(addressSpec)))],
-  phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
-  email: [V.optional(V.nullable(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL_PROVIDED)))],
-};
-
-const assistantSpec: ValidationSpec<{ name: string; contact: ContactInformation }> = {
-  name: [V.minLength(1)],
-  contact: [V.spec(contactInformationSpec)],
-};
-
-const trusteeSpec: ValidationSpec<TrusteeInput> = {
-  name: [V.minLength(1)],
-  public: [V.optional(V.spec(contactInformationSpec))],
-  internal: [V.optional(V.spec(internalContactInformationSpec))],
-  assistant: [V.optional(V.spec(assistantSpec))],
-  banks: [V.optional(V.arrayOf(V.length(1, 100)))],
-  software: [V.optional(V.length(0, 100))],
-  zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
-};
 
 function patchTrustee(
   current: Readonly<Trustee>,
