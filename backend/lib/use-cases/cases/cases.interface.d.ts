@@ -28,6 +28,11 @@ export interface CasesInterface {
 
   getUpdatedCaseIds(applicationContext: ApplicationContext, start: string): Promise<UpdatedCaseIds>;
 
+  getCasesWithTerminalTransactionBlindSpot(
+    context: ApplicationContext,
+    cutoffDate: string,
+  ): Promise<string[]>;
+
   findTransactionIdRangeForDate(
     context: ApplicationContext,
     findDate: string,

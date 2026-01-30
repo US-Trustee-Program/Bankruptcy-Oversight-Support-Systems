@@ -132,6 +132,13 @@ export class CasesLocalGateway implements CasesInterface {
     return { caseIds: [], latestSyncDate: start };
   }
 
+  public async getCasesWithTerminalTransactionBlindSpot(
+    _context: ApplicationContext,
+    _cutoffDate: string,
+  ): Promise<string[]> {
+    throw new Error('Not implemented');
+  }
+
   public async findTransactionIdRangeForDate(
     _context: ApplicationContext,
     _findDate: string,
