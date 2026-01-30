@@ -1,6 +1,9 @@
 import { ObjectKeyVal } from '../type-declarations/basic';
 import Api, { addApiAfterHook, addApiBeforeHook } from './api';
 import * as httpAdapter from '../utils/http.adapter';
+import * as UseApplicationInsights from '../hooks/UseApplicationInsights';
+import { ApplicationInsights } from '@microsoft/applicationinsights-web';
+import { ReactPlugin } from '@microsoft/applicationinsights-react-js';
 import { vi } from 'vitest';
 
 describe('Specific tests for the API model', () => {
@@ -303,5 +306,110 @@ describe('Specific tests for the API model', () => {
     };
     const options = Api.getQueryStringsToPassThrough(search, passedOptions);
     expect(options).toEqual(expectedOptions);
+  });
+
+  describe('Sanitization', () => {
+    test('POST should sanitize body and log stripped content to Application Insights before sending to backend', async () => {
+      const mockTrackTrace = vi.fn();
+      const mockAppInsights = {
+        trackTrace: mockTrackTrace,
+      } as Partial<ApplicationInsights> as ApplicationInsights;
+      const mockReactPlugin = {} as Partial<ReactPlugin> as ReactPlugin;
+
+      vi.spyOn(UseApplicationInsights, 'getAppInsights').mockReturnValue({
+        appInsights: mockAppInsights,
+        reactPlugin: mockReactPlugin,
+      });
+      const payload = { name: 'John', script: '<script>alert("xss")</script>' };
+      const mockHttpPost = vi.fn().mockResolvedValue({
+        text: () => Promise.resolve(JSON.stringify({ success: true })),
+        ok: true,
+      });
+      vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
+
+      await Api.post('/some/path', payload);
+
+      expect(mockTrackTrace).toHaveBeenCalledWith({
+        message: 'Sanitization stripped potentially malicious content',
+        severityLevel: 2,
+        properties: {
+          endpoint: '/some/path',
+          strippedContent: '<script>alert("xss")</script>',
+          timestamp: expect.any(String),
+        },
+      });
+      const [[callArgs]] = mockHttpPost.mock.calls;
+      expect(callArgs.body.script).toBe('');
+      expect(callArgs.body.name).toBe('John');
+    });
+
+    test('PATCH should sanitize body and strip invalid input silently', async () => {
+      const payload = { bio: '$where: function() { return true; }', age: 30 };
+      const mockHttpPatch = vi.fn().mockResolvedValue({
+        text: () => Promise.resolve(JSON.stringify({ success: true })),
+        ok: true,
+      });
+      vi.spyOn(httpAdapter, 'httpPatch').mockImplementation(mockHttpPatch);
+
+      await Api.patch('/some/path', payload);
+
+      const [[callArgs]] = mockHttpPatch.mock.calls;
+      expect(callArgs.body.bio).toBe('');
+      expect(callArgs.body.age).toBe(30);
+    });
+
+    test('PUT should sanitize body and strip invalid input silently', async () => {
+      const payload = { comment: 'eval("dangerous")', rating: 5 };
+      const mockHttpPut = vi.fn().mockResolvedValue({
+        text: () => Promise.resolve(JSON.stringify({ success: true })),
+        ok: true,
+      });
+      vi.spyOn(httpAdapter, 'httpPut').mockImplementation(mockHttpPut);
+
+      await Api.put('/some/path', payload);
+
+      const [[callArgs]] = mockHttpPut.mock.calls;
+      expect(callArgs.body.comment).toBe('');
+      expect(callArgs.body.rating).toBe(5);
+    });
+
+    test('POST should sanitize nested objects and arrays', async () => {
+      const payload = {
+        user: {
+          name: 'John',
+          bio: '<script>bad</script>',
+        },
+        tags: ['safe', 'document.write("test")'],
+      };
+      const mockHttpPost = vi.fn().mockResolvedValue({
+        text: () => Promise.resolve(JSON.stringify({ success: true })),
+        ok: true,
+      });
+      vi.spyOn(httpAdapter, 'httpPost').mockImplementation(mockHttpPost);
+
+      await Api.post('/some/path', payload);
+
+      const [[callArgs]] = mockHttpPost.mock.calls;
+      expect(callArgs.body.user.name).toBe('John');
+      expect(callArgs.body.user.bio).toBe('');
+      expect(callArgs.body.tags).toEqual(['safe', '']);
+    });
+
+    test('POST should handle SanitizationError for max depth exceeded', async () => {
+      const deepObject = Array.from({ length: 60 }, () => ({})).reduce(
+        (acc, _) => ({ nested: acc }),
+        { value: 'deep' },
+      );
+
+      await expect(Api.post('/some/path', deepObject)).rejects.toThrow('500 Error - Server Error');
+    });
+
+    test('POST should handle SanitizationError for max key count exceeded', async () => {
+      const largeObject = Object.fromEntries(
+        Array.from({ length: 1100 }, (_, i) => [`key${i}`, `value${i}`]),
+      );
+
+      await expect(Api.post('/some/path', largeObject)).rejects.toThrow('500 Error - Server Error');
+    });
   });
 });

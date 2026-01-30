@@ -73,3 +73,142 @@ export function sanitizeUrl(dirty: string): string {
 
   return validUrlPattern.test(dirty) ? dirty : '';
 }
+
+export interface SanitizeDeepOptions {
+  scrubUnicode?: boolean;
+  maxObjectDepth?: number;
+  maxObjectKeyCount?: number;
+  onInvalidInput?: (input: string) => string | never;
+  onDepthExceeded?: (depth: number, max: number) => void | never;
+  onKeyCountExceeded?: (count: number, max: number) => void | never;
+}
+
+export interface SanitizeDeepResult<T> {
+  value: T;
+  metadata: {
+    totalDepth: number;
+    totalKeyCount: number;
+    strippedCount: number;
+  };
+}
+
+export class SanitizationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SanitizationError';
+  }
+}
+
+export function sanitizeDeepCore<T>(
+  input: T,
+  options: SanitizeDeepOptions = {},
+): SanitizeDeepResult<T> {
+  const seen = new WeakMap();
+  const scrubUnicode = options.scrubUnicode ?? true;
+  const maxObjectDepth = options.maxObjectDepth ?? 50;
+  const maxObjectKeyCount = options.maxObjectKeyCount ?? 1000;
+  let totalDepth = 0;
+  let totalKeyCount = 0;
+  let strippedCount = 0;
+
+  const _sanitize = (input: unknown, depth: number, scrubUnicode: boolean): unknown => {
+    totalDepth = depth;
+    if (depth > maxObjectDepth) {
+      options.onDepthExceeded?.(depth, maxObjectDepth);
+      return input;
+    }
+
+    if (typeof input === 'string') {
+      if (!isValidUserInput(input)) {
+        strippedCount++;
+        const result = options.onInvalidInput?.(input);
+        return result !== undefined ? result : input;
+      }
+      if (scrubUnicode) {
+        return filterToExtendedAscii(input);
+      }
+    }
+    if (Array.isArray(input)) {
+      return input.map((item) => _sanitize(item, depth + 1, scrubUnicode)) as unknown as T;
+    }
+    if (input && typeof input === 'object') {
+      if (input instanceof Date) {
+        return input;
+      }
+
+      const keyCount = Object.keys(input).length;
+      totalKeyCount += keyCount;
+      if (keyCount > maxObjectKeyCount) {
+        options.onKeyCountExceeded?.(keyCount, maxObjectKeyCount);
+      }
+
+      if (seen.has(input)) {
+        return seen.get(input);
+      }
+
+      const result: Record<string, unknown> = {};
+      seen.set(input, result);
+      for (const [key, value] of Object.entries(input)) {
+        result[key] = _sanitize(value, depth + 1, scrubUnicode);
+      }
+      return result as T;
+    }
+    return input;
+  };
+
+  const sanitizedContent = _sanitize(input, 0, scrubUnicode) as T;
+
+  return {
+    value: sanitizedContent,
+    metadata: {
+      totalDepth,
+      totalKeyCount,
+      strippedCount,
+    },
+  };
+}
+
+/**
+ * Sanitizes user input deeply by recursively validating strings against injection patterns.
+ *
+ * IMPORTANT: Regex Pattern False Positives
+ * The validation patterns in isValidUserInput() are intentionally broad to prevent
+ * injection attacks, but may flag legitimate user input in edge cases.
+ *
+ * Examples of potential false positives:
+ * - "document.f" (ends sentence with "document.") matches JAVASCRIPT_INJECTED_PATTERN
+ * - "find: the answer" may match MONGO_CONSOLE_INJECTED_PATTERN if formatted certain ways
+ * - Technical discussions about MongoDB or JavaScript may trigger patterns
+ *
+ * FUTURE REFINEMENT: Consider adding more context requirements (word boundaries,
+ * require opening parentheses for function calls) to reduce false positives while
+ * maintaining security. Track user complaints via Application Insights logging.
+ *
+ * Current patterns in isValidUserInput():
+ * - MONGO_CONSOLE_INJECTED_PATTERN: db.*, mongo.*, find, insert, update, delete, etc.
+ * - JAVASCRIPT_INJECTED_PATTERN: script tags, fetch(), eval(), window.*, document.*
+ * - MONGO_QUERY_INJECTED_PATTERN: $eq, $ne, $gt, $where, $and, $or, etc.
+ */
+export function sanitizeDeep<T>(
+  input: T,
+  scrubUnicode: boolean = true,
+  onStripped?: (invalidString: string) => void,
+): T {
+  const result = sanitizeDeepCore(input, {
+    scrubUnicode,
+    maxObjectDepth: 50,
+    maxObjectKeyCount: 1000,
+    onInvalidInput: (invalidString) => {
+      onStripped?.(invalidString);
+      return '';
+    },
+    onDepthExceeded: (depth, max) => {
+      throw new SanitizationError(`Max depth exceeded: ${depth} > ${max}`);
+    },
+    onKeyCountExceeded: (count, max) => {
+      throw new SanitizationError(`Max key count exceeded: ${count} > ${max}`);
+    },
+  });
+
+  return result.value;
+}
