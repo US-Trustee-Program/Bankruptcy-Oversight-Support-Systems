@@ -25,16 +25,16 @@
   "devDependencies": {
     "@eslint/js": "10.0.0",
     "@faker-js/faker": "9.9.0",
-    "@types/node": "24.10.1",
-    "@typescript-eslint/parser": "8.48.1",
-    "dependency-cruiser": "17.3.2",
-    "eslint": "9.39.1",
+    "@types/node": "24.10.9",
+    "@typescript-eslint/parser": "8.53.0",
+    "dependency-cruiser": "17.3.6",
+    "eslint": "9.39.2",
     "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-prettier": "5.5.4",
-    "prettier": "3.7.4",
+    "eslint-plugin-prettier": "5.5.5",
+    "prettier": "3.8.0",
     "ts-node": "10.9.2",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.48.1",
+    "typescript-eslint": "8.53.0",
     "vitest": "3.2.4"
   }
 }

@@ -15,6 +15,21 @@
   },
   "packageRules": [
     {
+      "description": "Group React packages that must have matching versions",
+      "matchPackageNames": ["react", "react-dom"],
+      "groupName": "react"
+    },
+    {
+      "description": "Group Vite and related build tools for consistent versions across workspaces",
+      "matchPackageNames": ["vite", "@vitejs/plugin-react"],
+      "groupName": "vite"
+    },
+    {
+      "description": "Group Application Insights packages",
+      "matchPackageNames": ["applicationinsights", "@microsoft/applicationinsights-react-js", "@microsoft/applicationinsights-web"],
+      "groupName": "applicationinsights"
+    },
+    {
       "description": "Automatically pin dependency ranges to exact versions",
       "matchUpdateTypes": ["pin"],
       "enabled": true,

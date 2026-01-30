@@ -12,19 +12,19 @@
   "dependencies": {
     "@azure/cosmos": "4.9.0",
     "@azure/identity": "4.13.0",
-    "@types/node": "24.10.1",
+    "@types/node": "24.10.9",
     "tsx": "4.21.0"
   },
   "type": "module",
   "devDependencies": {
     "@eslint/js": "10.0.0",
-    "eslint": "9.39.1",
+    "eslint": "9.39.2",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import": "2.32.0",
-    "eslint-plugin-n": "17.23.1",
-    "eslint-plugin-prettier": "5.5.4",
+    "eslint-plugin-n": "17.23.2",
+    "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-promise": "7.2.1",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.48.1"
+    "typescript-eslint": "8.53.0"
   }
 }
