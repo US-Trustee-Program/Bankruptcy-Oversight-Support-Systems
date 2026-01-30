@@ -47,6 +47,13 @@
       "enabled": false
     },
     {
+      "description": "Disable Node.js Docker image updates in build Dockerfiles - version pinned to match .nvmrc",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["node"],
+      "matchFileNames": ["backend/Dockerfile.build", ".github/docker/Dockerfile.build-and-test"],
+      "enabled": false
+    },
+    {
       "description": "First-party GitHub Actions with digest pinning and 14-day wait",
       "matchManagers": ["github-actions"],
       "pinDigests": true,
