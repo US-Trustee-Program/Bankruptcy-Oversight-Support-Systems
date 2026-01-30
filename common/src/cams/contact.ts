@@ -25,4 +25,5 @@ export type ContactInformation = {
   phone?: PhoneNumber;
   email?: string;
   website?: string;
+  companyName?: string;
 };

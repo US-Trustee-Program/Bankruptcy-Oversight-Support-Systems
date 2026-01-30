@@ -13,7 +13,6 @@ export const testFeatureFlags: FeatureFlagSet = {
   'transfer-orders-enabled': true,
   'consolidations-enabled': true,
   'privileged-identity-management': true,
-  'format-case-notes': true,
   'view-trustee-on-case': true,
   'trustee-management': true,
   'phonetic-search-enabled': true,

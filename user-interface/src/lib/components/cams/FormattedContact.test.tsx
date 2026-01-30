@@ -18,6 +18,8 @@ describe('FormattedAddress component', () => {
       extension: '123',
     },
     email: 'john.doe@example.com',
+    website: 'https://www.example.com',
+    companyName: 'Example Company LLC',
   };
 
   const renderComponent = (props: FormattedContactProps) => {
@@ -35,7 +37,8 @@ describe('FormattedAddress component', () => {
     test('should render complete contact information with all fields', () => {
       renderComponent({ contact: mockFullContact, testIdPrefix: 'test' });
 
-      // Address fields
+      expect(screen.getByTestId('test-company-name')).toHaveTextContent('Example Company LLC');
+
       expect(screen.getByTestId('test-street-address')).toHaveTextContent('123 Main St');
       expect(screen.getByTestId('test-street-address-line-2')).toHaveTextContent('Suite 100');
       expect(screen.getByTestId('test-street-address-line-3')).toHaveTextContent('Floor 2');
@@ -43,17 +46,16 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('test-state')).toHaveTextContent(', NY');
       expect(screen.getByTestId('test-zip-code')).toBeInTheDocument();
 
-      // Check that the zip code element exists and verify its content more flexibly
       const zipElement = screen.getByTestId('test-zip-code');
       expect(zipElement.textContent).toContain('10001');
 
-      // Phone with extension
       expect(screen.getByTestId('test-phone-number')).toHaveTextContent('555-123-4567 ext. 123');
 
-      // Email as link (default behavior)
       expect(screen.getByTestId('test-email')).toBeInTheDocument();
       const emailLink = screen.getByRole('link', { name: /john\.doe@example\.com/ });
       expect(emailLink).toHaveAttribute('href', 'mailto:john.doe@example.com');
+
+      expect(screen.getByTestId('test-website')).toBeInTheDocument();
     });
 
     test('should render contact with partial address information', () => {
@@ -208,7 +210,6 @@ describe('FormattedAddress component', () => {
       expect(screen.getByTestId('zip-only-state')).toHaveTextContent('');
       expect(screen.getByTestId('zip-only-zip-code')).toBeInTheDocument();
 
-      // Check that the zip code element exists and verify its content more flexibly
       const zipElement = screen.getByTestId('zip-only-zip-code');
       expect(zipElement.textContent).toContain('90210');
     });
@@ -455,6 +456,90 @@ describe('FormattedAddress component', () => {
 
       const cityStateZipContainer = screen.getByTestId('layout-city').parentElement;
       expect(cityStateZipContainer).toHaveClass('city-state-zip');
+    });
+  });
+
+  describe('company name display', () => {
+    test('should render company name when provided', () => {
+      const contactWithCompanyName: ContactInformation = {
+        address: {
+          address1: '123 Company St',
+          city: 'Chicago',
+          state: 'IL',
+          zipCode: '60601',
+          countryCode: 'US',
+        },
+        companyName: 'Test Company LLC',
+      };
+
+      renderComponent({ contact: contactWithCompanyName, testIdPrefix: 'company' });
+
+      expect(screen.getByTestId('company-company-name')).toHaveTextContent('Test Company LLC');
+    });
+
+    test('should not render company name element when company name is undefined', () => {
+      const contactWithoutCompanyName: ContactInformation = {
+        address: {
+          address1: '123 No Company St',
+          city: 'Denver',
+          state: 'CO',
+          zipCode: '80202',
+          countryCode: 'US',
+        },
+        email: 'no-company@example.com',
+      };
+
+      renderComponent({ contact: contactWithoutCompanyName, testIdPrefix: 'no-company' });
+
+      expect(screen.queryByTestId('no-company-company-name')).not.toBeInTheDocument();
+      expect(screen.getByTestId('no-company-email')).toBeInTheDocument();
+    });
+
+    test('should not render company name element when company name is empty string', () => {
+      const contactWithEmptyCompanyName: ContactInformation = {
+        address: {
+          address1: '123 Empty Company St',
+          city: 'Phoenix',
+          state: 'AZ',
+          zipCode: '85001',
+          countryCode: 'US',
+        },
+        companyName: '',
+        email: 'empty-company@example.com',
+      };
+
+      renderComponent({ contact: contactWithEmptyCompanyName, testIdPrefix: 'empty-company' });
+
+      expect(screen.queryByTestId('empty-company-company-name')).not.toBeInTheDocument();
+      expect(screen.getByTestId('empty-company-email')).toBeInTheDocument();
+    });
+
+    test('should generate correct testId when testIdPrefix is provided and have correct CSS class', () => {
+      const contactWithCompanyName: ContactInformation = {
+        address: {
+          address1: '123 TestId St',
+          city: 'Portland',
+          state: 'OR',
+          zipCode: '97201',
+          countryCode: 'US',
+        },
+        companyName: 'TestId Company Inc',
+      };
+
+      const { rerender } = renderComponent({
+        contact: contactWithCompanyName,
+        testIdPrefix: 'custom-prefix',
+      });
+
+      const companyElementWithPrefix = screen.getByTestId('custom-prefix-company-name');
+      expect(companyElementWithPrefix).toBeInTheDocument();
+      expect(companyElementWithPrefix).toHaveClass('company-name');
+
+      rerender(<FormattedContact contact={contactWithCompanyName} />);
+
+      const companyElement = screen.getByText('TestId Company Inc').closest('.company-name');
+      expect(companyElement).not.toHaveAttribute('data-testid');
+      expect(companyElement).toHaveClass('company-name');
     });
   });
 });
