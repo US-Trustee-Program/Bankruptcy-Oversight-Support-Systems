@@ -1,6 +1,11 @@
-import { beforeAll } from 'vitest';
+import { beforeAll, vi } from 'vitest';
 import '@testing-library/jest-dom';
 import { MOCK_ISSUER } from '@backend/lib/testing/mock-gateways/mock-oauth2-constants.ts';
+
+// NOTE: We do NOT mock phonetic-utils here!
+// The phonetic functions run on the backend in Node.js, not in the browser/jsdom.
+// They have access to the native Node.js libraries (natural, soundex-code, etc.)
+// and should work fine in the BDD test environment.
 
 // Setup window configuration for React app AT MODULE LOAD TIME
 // This must happen BEFORE any UI modules are imported
@@ -14,6 +19,7 @@ window.CAMS_CONFIGURATION = {
   CAMS_LOGIN_PROVIDER_CONFIG: `issuer=${MOCK_ISSUER}|clientId=test-client-id|redirectUri=http://localhost:4000/login-callback`,
   CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING: '',
   CAMS_DISABLE_LOCAL_CACHE: 'true', // Disable caching in tests
+  CAMS_FEATURE_FLAG_CLIENT_ID: 'test-client-id', // Enable feature flag mocking via withFeatureFlag()
   // Point API client to test server on port 4000
   CAMS_BASE_PATH: '/api',
   CAMS_SERVER_HOSTNAME: 'localhost',

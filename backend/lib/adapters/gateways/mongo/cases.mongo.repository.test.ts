@@ -719,6 +719,132 @@ describe('Cases repository', () => {
     );
   });
 
+  describe('searchCases query generation', () => {
+    test('should search with caseNumber when provided', async () => {
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        caseNumber: '00-00000',
+        limit: 25,
+        offset: 0,
+      };
+
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+      const result = await repo.searchCases(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).toContain('caseNumber');
+    });
+  });
+
+  describe('searchCasesWithPhoneticTokens', () => {
+    test('should include phoneticTokens matching when debtorName is provided', async () => {
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'John Smith',
+        limit: 25,
+        offset: 0,
+      };
+
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray, metadata: { total: 1 } });
+
+      const result = await repo.searchCasesWithPhoneticTokens(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).toContain('debtor.phoneticTokens');
+      expect(queryString).toContain('jointDebtor.phoneticTokens');
+    });
+
+    test('should apply other filters via addConditions when combined with debtorName', async () => {
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'John',
+        chapters: ['15'],
+        divisionCodes: ['081'],
+        caseNumber: '00-12345',
+        limit: 25,
+        offset: 0,
+      };
+
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray, metadata: { total: 1 } });
+
+      const result = await repo.searchCasesWithPhoneticTokens(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).toContain('phoneticTokens');
+      expect(queryString).toContain('chapter');
+      expect(queryString).toContain('courtDivisionCode');
+      expect(queryString).toContain('caseNumber');
+    });
+
+    test('should fall back to searchCases when debtorName is not provided', async () => {
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        limit: 25,
+        offset: 0,
+      };
+
+      const expectedSyncedCaseArray: ResourceActions<SyncedCase>[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+      const result = await repo.searchCasesWithPhoneticTokens(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).not.toContain('phoneticTokens');
+      expect(queryString).toContain('chapter');
+    });
+
+    test('should return empty results when search tokens cannot be generated', async () => {
+      const predicate: CasesSearchPredicate = {
+        debtorName: '   ',
+        limit: 25,
+        offset: 0,
+      };
+
+      const result = await repo.searchCasesWithPhoneticTokens(predicate);
+
+      expect(result.data).toEqual([]);
+      expect(result.metadata.total).toBe(0);
+    });
+  });
+
   test('getConsolidationMemberCaseIds should throw error when find throws error', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],

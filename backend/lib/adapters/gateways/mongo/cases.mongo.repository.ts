@@ -8,7 +8,11 @@ import {
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '@common/cams/history';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
-import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';
+import {
+  CamsPaginationResponse,
+  CaseHistoryDocumentType,
+  CasesRepository,
+} from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '@common/cams/cases';
@@ -16,6 +20,7 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
+import { generateQueryTokens } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -30,6 +35,7 @@ const {
   match,
   paginate,
   pipeline,
+  score,
   sort,
   source,
 } = QueryPipeline;
@@ -186,7 +192,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async getAllCaseHistory(documentType: string): Promise<CaseHistory[]> {
+  async getAllCaseHistory(documentType: CaseHistoryDocumentType): Promise<CaseHistory[]> {
     const doc = using<CaseHistory>();
     try {
       const query = doc('documentType').equals(documentType);
@@ -326,12 +332,97 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
+    return this.executeCaseSearch(predicate, predicate.offset, predicate.limit);
+  }
+
+  /**
+   * Searches cases using phonetic token matching for debtor name similarity.
+   *
+   * This method generates phonetic tokens (bigrams and phonetic codes) from the
+   * search query and matches them against pre-computed tokens stored on case documents.
+   * Results are scored based on token overlap and sorted by match score (descending),
+   * then by date filed and case number.
+   *
+   * Scoring weights:
+   * - Bigram matches: 3 points each (character-level similarity)
+   * - Phonetic code matches: 10 points each (sound-based similarity)
+   *
+   * Falls back to regular searchCases when no debtorName is provided.
+   *
+   * @param predicate - Search criteria including debtorName for phonetic matching
+   * @returns Paginated cases sorted by phonetic match score
+   */
+  async searchCasesWithPhoneticTokens(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
+    try {
+      if (!predicate.debtorName) {
+        return this.searchCases(predicate);
+      }
+
+      if (!hasRequiredSearchFields(predicate)) {
+        throw new CamsError(MODULE_NAME, {
+          message: 'Case Search requires a pagination predicate with a valid limit and offset',
+        });
+      }
+
+      const searchTokens = generateQueryTokens(predicate.debtorName);
+      if (searchTokens.length === 0) {
+        return { metadata: { total: 0 }, data: [] };
+      }
+
+      const doc = using<SyncedCase>();
+      const conditions = this.addConditions(predicate);
+
+      conditions.push(
+        or(
+          // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+          doc('debtor.phoneticTokens').contains(searchTokens),
+          // @ts-expect-error - nested field path not in type definition but valid for MongoDB
+          doc('jointDebtor.phoneticTokens').contains(searchTokens),
+        ),
+      );
+
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
+
+      const spec = pipeline(
+        match(and(...conditions)),
+        score(
+          searchTokens,
+          ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+          'matchScore',
+          3,
+          10,
+        ),
+        match(
+          using<SyncedCase & { bigramMatchCount: number }>()('bigramMatchCount').greaterThan(0),
+        ),
+        sort(descending({ name: 'matchScore' }), descending(dateFiled), descending(caseNumber)),
+        paginate(predicate.offset, predicate.limit),
+      );
+
+      return await this.getAdapter<SyncedCase>().paginate(spec);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to search cases with hybrid scoring for "${predicate.debtorName}".`,
+          module: MODULE_NAME,
+        },
+      });
+    }
+  }
+
+  private async executeCaseSearch(
+    predicate: CasesSearchPredicate,
+    offset: number,
+    limit: number,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
       if (predicate.includeOnlyUnassigned) {
         return await this.searchForUnassignedCases(predicate);
       }
-      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
       const conditions = this.addConditions(predicate);
 
       if (!hasRequiredSearchFields(predicate)) {
@@ -343,14 +434,14 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const spec = pipeline(
         match(and(...conditions)),
         sort(descending(dateFiled), descending(caseNumber)),
-        paginate(predicate.offset, predicate.limit),
+        paginate(offset, limit),
       );
 
       return await this.getAdapter<SyncedCase>().paginate(spec);
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          message: `Failed to retrieve member consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          message: `Failed to retrieve cases${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
           module: MODULE_NAME,
         },
       });
