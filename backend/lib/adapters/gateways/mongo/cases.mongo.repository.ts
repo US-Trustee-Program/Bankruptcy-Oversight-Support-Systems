@@ -20,7 +20,7 @@ import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
 import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
-import { generateDebtorNameRegexPattern, generateQueryTokens } from '../../utils/phonetic-helper';
+import { generateQueryTokens } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -300,34 +300,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       conditions.push(doc('caseNumber').equals(predicate.caseNumber));
     }
 
-    if (predicate.debtorName) {
-      const debtorNameRegex = generateDebtorNameRegexPattern(predicate.debtorName);
-
-      if (predicate.phoneticTokens && predicate.phoneticTokens.length > 0) {
-        conditions.push(
-          or(
-            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
-            doc('debtor.phoneticTokens').contains(predicate.phoneticTokens),
-            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
-            doc('jointDebtor.phoneticTokens').contains(predicate.phoneticTokens),
-            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
-            doc('debtor.name').regex(debtorNameRegex),
-            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
-            doc('jointDebtor.name').regex(debtorNameRegex),
-          ),
-        );
-      } else {
-        conditions.push(
-          or(
-            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
-            doc('debtor.name').regex(debtorNameRegex),
-            // @ts-expect-error - nested field path not in type definition but valid for MongoDB
-            doc('jointDebtor.name').regex(debtorNameRegex),
-          ),
-        );
-      }
-    }
-
     if (predicate.caseIds) {
       conditions.push(doc('caseId').contains(predicate.caseIds));
     }
@@ -363,7 +335,24 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     return this.executeCaseSearch(predicate, predicate.offset, predicate.limit);
   }
 
-  async searchCasesWithHybridScoring(
+  /**
+   * Searches cases using phonetic token matching for debtor name similarity.
+   *
+   * This method generates phonetic tokens (bigrams and phonetic codes) from the
+   * search query and matches them against pre-computed tokens stored on case documents.
+   * Results are scored based on token overlap and sorted by match score (descending),
+   * then by date filed and case number.
+   *
+   * Scoring weights:
+   * - Bigram matches: 3 points each (character-level similarity)
+   * - Phonetic code matches: 10 points each (sound-based similarity)
+   *
+   * Falls back to regular searchCases when no debtorName is provided.
+   *
+   * @param predicate - Search criteria including debtorName for phonetic matching
+   * @returns Paginated cases sorted by phonetic match score
+   */
+  async searchCasesWithPhoneticTokens(
     predicate: CasesSearchPredicate,
   ): Promise<CamsPaginationResponse<SyncedCase>> {
     try {
@@ -383,8 +372,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       }
 
       const doc = using<SyncedCase>();
-      const conditions: ConditionOrConjunction<SyncedCase>[] = [];
-      conditions.push(doc('documentType').equals('SYNCED_CASE'));
+      const conditions = this.addConditions(predicate);
 
       conditions.push(
         or(
@@ -394,27 +382,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           doc('jointDebtor.phoneticTokens').contains(searchTokens),
         ),
       );
-
-      if (predicate.divisionCodes?.length > 0) {
-        conditions.push(doc('courtDivisionCode').contains(predicate.divisionCodes));
-      }
-
-      if (predicate.chapters?.length > 0) {
-        conditions.push(doc('chapter').contains(predicate.chapters));
-      }
-
-      if (predicate.excludeClosedCases === true) {
-        conditions.push(
-          or(
-            doc('closedDate').notExists(),
-            and(
-              doc('closedDate').exists(),
-              doc('reopenedDate').exists(),
-              doc('reopenedDate').greaterThanOrEqual({ name: 'closedDate' }),
-            ),
-          ),
-        );
-      }
 
       const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 

@@ -94,7 +94,7 @@ export default class CaseManagement {
       let searchResult: CamsPaginationResponse<ResourceActions<SyncedCase>>;
 
       if (usePhoneticSearch) {
-        searchResult = await this.casesRepository.searchCasesWithHybridScoring(predicate);
+        searchResult = await this.casesRepository.searchCasesWithPhoneticTokens(predicate);
       } else {
         searchResult = await this.casesRepository.searchCases(predicate);
       }
