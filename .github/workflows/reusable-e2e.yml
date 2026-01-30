@@ -115,7 +115,7 @@ jobs:
           SLOT_NAME=${{ inputs.slotName }} OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }} OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }} TARGET_HOST=https://${{ inputs.webappName }}-${{ inputs.slotName }}.azurewebsites.us CAMS_LOGIN_PROVIDER=${{ vars.CAMS_LOGIN_PROVIDER }} npx playwright test --reporter=list,html
 
       - name: Upload report
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         if: always()
         with:
           name: playwright-report
