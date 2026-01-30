@@ -22,6 +22,7 @@ import {
   website,
   zoomInfoSpec,
   assistantName,
+  assistantTitle,
 } from '@common/cams/trustees-validators';
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
@@ -62,6 +63,7 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
 
 const assistantSpec: ValidationSpec<TrusteeAssistant> = {
   name: assistantName,
+  title: [V.optional(...assistantTitle)],
   contact: [V.spec(contactInformationSpec)],
 };
 
