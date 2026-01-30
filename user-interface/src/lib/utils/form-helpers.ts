@@ -20,7 +20,7 @@
 export function scrollToFirstError(): void {
   setTimeout(() => {
     const errorElement = document.querySelector('.usa-input-group--error');
-    if (errorElement) {
+    if (errorElement && 'scrollIntoView' in errorElement) {
       errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       const inputElement = errorElement.querySelector('input');
       inputElement?.focus();
