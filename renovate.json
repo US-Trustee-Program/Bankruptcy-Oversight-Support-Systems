@@ -17,6 +17,11 @@
   },
   "packageRules": [
     {
+      "description": "Group React packages that must have matching versions",
+      "matchPackageNames": ["react", "react-dom"],
+      "groupName": "react"
+    },
+    {
       "description": "Automatically pin dependency ranges to exact versions",
       "matchUpdateTypes": ["pin"],
       "enabled": true,
