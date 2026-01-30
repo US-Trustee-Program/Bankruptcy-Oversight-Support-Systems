@@ -40,6 +40,14 @@ const {
   source,
 } = QueryPipeline;
 
+// Type augmentation for MongoDB queries - allows dot-notation paths
+// This enables type-safe access to nested fields in MongoDB queries
+// without modifying the actual SyncedCase data structure
+type SyncedCaseQueryable = SyncedCase & {
+  'debtor.phoneticTokens'?: string[];
+  'jointDebtor.phoneticTokens'?: string[];
+};
+
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
   return predicate.limit && predicate.offset >= 0;
 }
@@ -371,14 +379,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         return { metadata: { total: 0 }, data: [] };
       }
 
-      const doc = using<SyncedCase>();
+      const doc = using<SyncedCaseQueryable>();
       const conditions = this.addConditions(predicate);
 
       conditions.push(
         or(
-          // @ts-expect-error - nested field path not in type definition but valid for MongoDB
           doc('debtor.phoneticTokens').contains(searchTokens),
-          // @ts-expect-error - nested field path not in type definition but valid for MongoDB
           doc('jointDebtor.phoneticTokens').contains(searchTokens),
         ),
       );
