@@ -71,7 +71,7 @@ export default function MeetingOfCreditorsInfoCard({
           </div>
           <div id="meeting-of-creditors-info-copy" style={{ display: 'none' }}>
             Zoom Link:{' '}
-            <a href={zoomInfo.link} target="_blank" rel="noreferrer">
+            <a href={zoomInfo.link} target="_blank" rel="noopener noreferrer">
               {zoomInfo.link}
             </a>
             <br />
