@@ -6,6 +6,21 @@ import { getNameVariations } from 'name-match/src/name-normalizer';
 const soundex = new natural.SoundEx();
 const metaphone = new natural.Metaphone();
 
+function normalizeText(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '');
+}
+
+function splitIntoWords(normalizedText: string, minLength: number = 1): string[] {
+  return normalizedText.split(/\s+/).filter((word) => word.length >= minLength);
+}
+
+function isEmpty(text: string | undefined): boolean {
+  return !text || text.trim().length === 0;
+}
+
 /**
  * Generates phonetic tokens (Soundex + Metaphone) for a text string.
  * Tokenizes by whitespace and generates phonetic codes for each word.
@@ -18,18 +33,12 @@ const metaphone = new natural.Metaphone();
  * @returns Array of unique phonetic codes (e.g., ["J500", "JN", "D000", "T"])
  */
 export function generatePhoneticTokens(text: string): string[] {
-  if (!text || text.trim().length === 0) {
+  if (isEmpty(text)) {
     return [];
   }
 
   const tokens: Set<string> = new Set();
-
-  const normalized = text
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, '');
-
-  const words = normalized.split(/\s+/).filter((word) => word.length > 0);
+  const words = splitIntoWords(normalizeText(text));
 
   words.forEach((word) => {
     try {
@@ -55,18 +64,12 @@ export function generatePhoneticTokens(text: string): string[] {
  * @returns Array of unique lowercase bigrams
  */
 export function generateBigrams(text: string): string[] {
-  if (!text || text.trim().length === 0) {
+  if (isEmpty(text)) {
     return [];
   }
 
   const bigrams = new Set<string>();
-
-  const normalized = text
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, '');
-
-  const words = normalized.split(/\s+/).filter((word) => word.length >= 2);
+  const words = splitIntoWords(normalizeText(text), 2);
 
   words.forEach((word) => {
     for (let i = 0; i <= word.length - 2; i++) {
@@ -101,7 +104,7 @@ export function isPhoneticToken(token: string): boolean {
  * @returns Array of unique tokens (bigrams lowercase, phonetics uppercase)
  */
 export function generateSearchTokens(text: string): string[] {
-  if (!text || text.trim().length === 0) {
+  if (isEmpty(text)) {
     return [];
   }
 
@@ -125,7 +128,7 @@ export function generateSearchTokens(text: string): string[] {
  * @returns Array of unique tokens for query matching
  */
 export function generateQueryTokens(searchQuery: string): string[] {
-  if (!searchQuery || searchQuery.trim().length === 0) {
+  if (isEmpty(searchQuery)) {
     return [];
   }
 
@@ -148,7 +151,7 @@ export function generateQueryTokens(searchQuery: string): string[] {
  * @returns Array of unique words including all nickname variations
  */
 export function expandQueryWithNicknames(searchQuery: string): string[] {
-  if (!searchQuery || searchQuery.trim().length === 0) {
+  if (isEmpty(searchQuery)) {
     return [];
   }
 
@@ -184,7 +187,7 @@ export function expandQueryWithNicknames(searchQuery: string): string[] {
  * @returns Array of unique phonetic codes for query + nickname variations
  */
 export function generatePhoneticTokensWithNicknames(searchQuery: string): string[] {
-  if (!searchQuery || searchQuery.trim().length === 0) {
+  if (isEmpty(searchQuery)) {
     return [];
   }
 
