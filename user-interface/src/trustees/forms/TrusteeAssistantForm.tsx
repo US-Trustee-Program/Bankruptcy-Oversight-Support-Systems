@@ -20,6 +20,7 @@ import { TrusteeAssistantFormData, trusteeAssistantSpec } from './trusteeForms.t
 import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
+import { scrollToFirstError } from '@/lib/utils/form-helpers';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
   if (!assistant) {
@@ -185,6 +186,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
         setSaveAlert(results.reasonMap.$.reasons.join(' '));
         partialAddressAlertRef.current?.show();
       }
+      scrollToFirstError();
     } else {
       setFieldErrors({});
       setSaveAlert(null);
