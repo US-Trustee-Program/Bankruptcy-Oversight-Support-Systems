@@ -153,14 +153,14 @@ export const trusteeInternalSpec: Readonly<ValidationSpec<TrusteeInternalFormDat
 
 export const trusteeAssistantSpec: Readonly<ValidationSpec<TrusteeAssistantFormData>> = {
   $: [completedAddressRequired, phoneRequiredWithExtension],
-  name: [V.optional(...trusteeName)],
+  name: trusteeName,
   title: [V.optional(...assistantTitle)],
-  address1: [V.optional(...addressLine1)],
+  address1: addressLine1,
   address2: addressLine2,
-  city: [V.optional(...city)],
-  state: [V.optional(...state)],
-  zipCode: [V.optional(...zipCode)],
-  email: [V.optional(...email)],
-  phone: [V.optional(...phoneNumber)],
+  city,
+  state,
+  zipCode,
+  email,
+  phone: phoneNumber,
   extension: [V.optional(...phoneExtension)],
 };

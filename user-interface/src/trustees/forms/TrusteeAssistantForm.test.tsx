@@ -351,39 +351,19 @@ describe('TrusteeAssistantForm', () => {
       );
     });
 
-    test('should send undefined assistant when form is empty', async () => {
-      const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
-      const mockPatchResponse = { data: mockTrustee };
-      vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
+    test('should not submit form when required fields are empty', async () => {
+      const patchSpy = vi.spyOn(Api2, 'patchTrustee');
 
-      // Start with no assistant (empty form)
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistant: undefined });
-
-      // Remove all required attributes to allow empty form submission
-      const nameInput = screen.getByTestId('assistant-name') as HTMLInputElement;
-      const addressInput = screen.getByTestId('assistant-address1') as HTMLInputElement;
-      const cityInput = screen.getByTestId('assistant-city') as HTMLInputElement;
-      const zipInput = screen.getByTestId('assistant-zip') as HTMLInputElement;
-      const phoneInput = screen.getByTestId('assistant-phone') as HTMLInputElement;
-      const emailInput = screen.getByTestId('assistant-email') as HTMLInputElement;
-
-      nameInput.removeAttribute('required');
-      addressInput.removeAttribute('required');
-      cityInput.removeAttribute('required');
-      zipInput.removeAttribute('required');
-      phoneInput.removeAttribute('required');
-      emailInput.removeAttribute('required');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
       await waitFor(
         () => {
-          expect(Api2.patchTrustee).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
-            assistant: undefined,
-          });
+          expect(patchSpy).not.toHaveBeenCalled();
         },
-        { timeout: 2000 },
+        { timeout: 1000 },
       );
     });
 
@@ -474,13 +454,20 @@ describe('TrusteeAssistantForm', () => {
       expect(result).toContain('Max length 50 characters');
     });
 
-    test('should handle undefined values', () => {
+    test('should return error for required field with undefined value', () => {
       const result = validateField('name', undefined);
-      expect(result).toBeUndefined();
+      expect(result).toBeDefined();
+      expect(result).toContain('Trustee name is required');
     });
 
-    test('should trim whitespace before validation', () => {
+    test('should return error for required field with whitespace-only value', () => {
       const result = validateField('name', '   ');
+      expect(result).toBeDefined();
+      expect(result).toContain('Trustee name is required');
+    });
+
+    test('should return undefined for optional field with undefined value', () => {
+      const result = validateField('title', undefined);
       expect(result).toBeUndefined();
     });
   });

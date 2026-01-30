@@ -227,6 +227,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   return (
     <div className="trustee-form-screen">
       <form
+        noValidate
         aria-label="Edit Trustee Assistant"
         data-testid="trustee-assistant-form"
         onSubmit={handleSubmit}
