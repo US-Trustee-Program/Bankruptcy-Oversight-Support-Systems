@@ -251,29 +251,14 @@ describe('TrusteeAssistantForm', () => {
   });
 
   describe('Form Submission', () => {
-    test('should successfully submit form with manually filled valid data', async () => {
+    test('should successfully submit form with only name field filled', async () => {
       const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
       const mockPatchResponse = { data: mockTrustee };
       vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
 
-      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      // Fill in all required fields manually
       await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-      await userEvent.type(screen.getByTestId('assistant-address1'), '456 Test St');
-      await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
-      await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
-      await userEvent.type(screen.getByTestId('assistant-phone'), '(555)555-5555');
-      await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
-
-      // Select state from ComboBox
-      const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
-      if (stateCombobox) {
-        await userEvent.click(stateCombobox);
-        // Wait for options to appear and select NY
-        const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
-        await userEvent.click(nyOption);
-      }
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
@@ -290,22 +275,9 @@ describe('TrusteeAssistantForm', () => {
     test('should show Saving... text during submission', async () => {
       vi.spyOn(Api2, 'patchTrustee').mockImplementation(() => new Promise(() => {}));
 
-      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      // Fill in required fields
       await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-      await userEvent.type(screen.getByTestId('assistant-address1'), '456 Test St');
-      await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
-      await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
-      await userEvent.type(screen.getByTestId('assistant-phone'), '(555)555-5555');
-      await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
-
-      const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
-      if (stateCombobox) {
-        await userEvent.click(stateCombobox);
-        const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
-        await userEvent.click(nyOption);
-      }
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
@@ -322,22 +294,9 @@ describe('TrusteeAssistantForm', () => {
       const errorMessage = 'Failed to update';
       vi.spyOn(Api2, 'patchTrustee').mockRejectedValue(new Error(errorMessage));
 
-      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
-      // Fill in required fields
       await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-      await userEvent.type(screen.getByTestId('assistant-address1'), '456 Test St');
-      await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
-      await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
-      await userEvent.type(screen.getByTestId('assistant-phone'), '(555)555-5555');
-      await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
-
-      const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
-      if (stateCombobox) {
-        await userEvent.click(stateCombobox);
-        const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
-        await userEvent.click(nyOption);
-      }
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
@@ -454,21 +413,23 @@ describe('TrusteeAssistantForm', () => {
       expect(result).toContain('Max length 50 characters');
     });
 
-    test('should return error for required field with undefined value', () => {
+    test('should return error for name field with undefined value', () => {
       const result = validateField('name', undefined);
       expect(result).toBeDefined();
       expect(result).toContain('Trustee name is required');
     });
 
-    test('should return error for required field with whitespace-only value', () => {
+    test('should return error for name field with whitespace-only value', () => {
       const result = validateField('name', '   ');
       expect(result).toBeDefined();
       expect(result).toContain('Trustee name is required');
     });
 
-    test('should return undefined for optional field with undefined value', () => {
-      const result = validateField('title', undefined);
-      expect(result).toBeUndefined();
+    test('should return undefined for optional fields with undefined value', () => {
+      expect(validateField('title', undefined)).toBeUndefined();
+      expect(validateField('email', undefined)).toBeUndefined();
+      expect(validateField('phone', undefined)).toBeUndefined();
+      expect(validateField('address1', undefined)).toBeUndefined();
     });
   });
 });
