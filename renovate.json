@@ -1,9 +1,7 @@
 {
   "enabled": true,
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "config:recommended"
-  ],
+  "extends": ["config:recommended"],
   "timezone": "America/New_York",
   "prConcurrentLimit": 10,
   "branchConcurrentLimit": 5,
@@ -16,6 +14,21 @@
     "node": "22.17.1"
   },
   "packageRules": [
+    {
+      "description": "Group React packages that must have matching versions",
+      "matchPackageNames": ["react", "react-dom"],
+      "groupName": "react"
+    },
+    {
+      "description": "Group Vite and related build tools for consistent versions across workspaces",
+      "matchPackageNames": ["vite", "@vitejs/plugin-react"],
+      "groupName": "vite"
+    },
+    {
+      "description": "Group Application Insights packages",
+      "matchPackageNames": ["applicationinsights", "@microsoft/applicationinsights-react-js", "@microsoft/applicationinsights-web"],
+      "groupName": "applicationinsights"
+    },
     {
       "description": "Automatically pin dependency ranges to exact versions",
       "matchUpdateTypes": ["pin"],
@@ -34,21 +47,28 @@
       "enabled": false
     },
     {
+      "description": "Disable Node.js Docker image updates in build Dockerfiles - version pinned to match .nvmrc",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["node"],
+      "matchFileNames": ["backend/Dockerfile.build", ".github/docker/Dockerfile.build-and-test"],
+      "enabled": false
+    },
+    {
       "description": "First-party GitHub Actions with digest pinning and 14-day wait",
       "matchManagers": ["github-actions"],
-      "matchPackagePatterns": ["^actions/", "^github/"],
       "pinDigests": true,
       "minimumReleaseAge": "14 days",
-      "groupName": "GitHub first-party actions"
+      "groupName": "GitHub first-party actions",
+      "matchPackageNames": ["/^actions//", "/^github//"]
     },
     {
       "description": "Third-party GitHub Actions with digest pinning, 30-day wait, and separate PRs",
       "matchManagers": ["github-actions"],
-      "excludePackagePatterns": ["^actions/", "^github/"],
       "pinDigests": true,
       "minimumReleaseAge": "30 days",
       "groupName": null,
-      "automerge": false
+      "automerge": false,
+      "matchPackageNames": ["!/^actions//", "!/^github//"]
     },
     {
       "description": "Require 30-day wait for x.0.0 major versions",

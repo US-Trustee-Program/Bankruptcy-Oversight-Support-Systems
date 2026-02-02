@@ -127,7 +127,7 @@ export function generateSearchTokens(text: string): string[] {
   return Array.from(generateAllTokensForWords([text]));
 }
 
-export interface SeparatedQueryTokens {
+interface SeparatedQueryTokens {
   searchTokens: string[];
   nicknameTokens: string[];
 }
