@@ -93,6 +93,22 @@ export function isPhoneticToken(token: string): boolean {
 }
 
 /**
+ * Generates all search tokens (bigrams + phonetic codes) for an array of words.
+ * Used internally to create token sets for both original search terms and nicknames.
+ *
+ * @param words - Array of words to generate tokens for
+ * @returns Set of unique tokens (bigrams lowercase, phonetics uppercase)
+ */
+function generateAllTokensForWords(words: string[]): Set<string> {
+  const tokens = new Set<string>();
+  words.forEach((word) => {
+    generateBigrams(word).forEach((t) => tokens.add(t));
+    generatePhoneticTokens(word).forEach((t) => tokens.add(t));
+  });
+  return tokens;
+}
+
+/**
  * Generates search tokens combining bigrams and phonetic codes.
  * This is used when storing/indexing names for hybrid search.
  * - Bigrams (lowercase): Enable substring matching
@@ -108,96 +124,64 @@ export function generateSearchTokens(text: string): string[] {
     return [];
   }
 
-  const tokens = new Set<string>();
+  return Array.from(generateAllTokensForWords([text]));
+}
 
-  generateBigrams(text).forEach((bigram) => tokens.add(bigram));
-  generatePhoneticTokens(text).forEach((phoneticToken) => tokens.add(phoneticToken));
-
-  return Array.from(tokens);
+export interface SeparatedQueryTokens {
+  searchTokens: string[];
+  nicknameTokens: string[];
 }
 
 /**
  * Generates query tokens for searching, with nickname expansion.
- * Expands the query with nickname variations, then generates both
- * bigrams and phonetic tokens for comprehensive matching.
+ * Returns separate arrays for original search tokens and nickname tokens,
+ * enabling differential scoring (exact matches score higher than nickname matches).
  *
- * For example: "Mike Smith" → expands "Mike" to ["mike", "michael", ...]
- *              → generates bigrams and phonetics for all variations
+ * For example: "Mike Smith" → expands "Mike" to ["michael", "mikey", ...]
+ *              → searchTokens: tokens for "mike", "smith"
+ *              → nicknameTokens: tokens for "michael", "mikey", etc. (excluding overlaps)
  *
  * @param searchQuery - The search query (e.g., "Mike Smith")
- * @returns Array of unique tokens for query matching
+ * @returns Object with searchTokens and nicknameTokens arrays
  */
-export function generateQueryTokens(searchQuery: string): string[] {
+export function generateQueryTokensWithNicknames(searchQuery: string): SeparatedQueryTokens {
   if (isEmpty(searchQuery)) {
-    return [];
-  }
-
-  const tokens = new Set<string>();
-  const expandedWords = expandQueryWithNicknames(searchQuery);
-
-  expandedWords.forEach((word) => {
-    generateBigrams(word).forEach((bigram) => tokens.add(bigram));
-    generatePhoneticTokens(word).forEach((phoneticToken) => tokens.add(phoneticToken));
-  });
-
-  return Array.from(tokens);
-}
-
-/**
- * Expands a search query with nickname variations.
- * For example: "Mike Johnson" → ["mike", "michael", "mikey", "mick", "johnson"]
- *
- * @param searchQuery - The search query (e.g., "Mike Johnson")
- * @returns Array of unique words including all nickname variations
- */
-export function expandQueryWithNicknames(searchQuery: string): string[] {
-  if (isEmpty(searchQuery)) {
-    return [];
+    return { searchTokens: [], nicknameTokens: [] };
   }
 
   const words = searchQuery.trim().split(/\s+/);
-  const expandedWords = new Set<string>();
+  const originalWords = new Set<string>();
+  const nicknameWords = new Set<string>();
 
   words.forEach((word) => {
+    const normalizedWord = word.toLowerCase();
+    originalWords.add(normalizedWord);
+
     try {
       const variations = getNameVariations(word) as string[];
-
       variations.forEach((variation: string) => {
         variation.split(' ').forEach((w) => {
-          if (w.length > 0) {
-            expandedWords.add(w.toLowerCase());
+          const normalized = w.toLowerCase();
+          if (
+            normalized.length > 0 &&
+            normalized !== normalizedWord &&
+            !originalWords.has(normalized)
+          ) {
+            nicknameWords.add(normalized);
           }
         });
       });
     } catch {
-      expandedWords.add(word.toLowerCase());
+      // No variations available
     }
   });
 
-  return Array.from(expandedWords);
-}
+  const searchTokens = generateAllTokensForWords([...originalWords]);
+  const allNicknameTokens = generateAllTokensForWords([...nicknameWords]);
+  const nicknameTokens = [...allNicknameTokens].filter((t) => !searchTokens.has(t));
 
-/**
- * Generates phonetic tokens for a search query with nickname expansion.
- * Expands the query with nickname variations, then generates phonetic codes for all variations.
- * For example: "Mike Johnson" → expands to ["mike", "michael", "mikey", "mick", "johnson"]
- *              → generates tokens for all variations
- *
- * @param searchQuery - The search query (e.g., "Mike Johnson")
- * @returns Array of unique phonetic codes for query + nickname variations
- */
-export function generatePhoneticTokensWithNicknames(searchQuery: string): string[] {
-  if (isEmpty(searchQuery)) {
-    return [];
-  }
-
-  const expandedWords = expandQueryWithNicknames(searchQuery);
-
-  const allTokens = new Set<string>();
-  expandedWords.forEach((word) => {
-    const tokens = generatePhoneticTokens(word);
-    tokens.forEach((token) => allTokens.add(token));
-  });
-
-  return Array.from(allTokens);
+  return {
+    searchTokens: Array.from(searchTokens),
+    nicknameTokens,
+  };
 }

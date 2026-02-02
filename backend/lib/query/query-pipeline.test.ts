@@ -1,5 +1,8 @@
 import { Condition, using } from './query-builder';
 import QueryPipeline, {
+  DEFAULT_BIGRAM_WEIGHT,
+  DEFAULT_NICKNAME_WEIGHT,
+  DEFAULT_PHONETIC_WEIGHT,
   FieldReference,
   isPaginate,
   isSort,
@@ -314,34 +317,48 @@ describe('Query Pipeline', () => {
   describe('score', () => {
     test('should create a score stage with all parameters', () => {
       const searchTokens = ['jo', 'hn', 'JN', 'J500'];
+      const nicknameTokens = ['mi', 'ic', 'MK', 'M200'];
       const targetFields = ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'];
       const outputField = 'matchScore';
       const bigramWeight = 3;
       const phoneticWeight = 10;
+      const nicknameWeight = 9;
 
       const expected = {
         stage: 'SCORE',
         searchTokens,
+        nicknameTokens,
         targetFields,
         outputField,
         bigramWeight,
         phoneticWeight,
+        nicknameWeight,
       };
 
-      const actual = score(searchTokens, targetFields, outputField, bigramWeight, phoneticWeight);
+      const actual = score(
+        searchTokens,
+        nicknameTokens,
+        targetFields,
+        outputField,
+        bigramWeight,
+        phoneticWeight,
+        nicknameWeight,
+      );
 
       expect(actual).toEqual(expected);
     });
 
     test('should use default weights when not provided', () => {
       const searchTokens = ['jo', 'JN'];
+      const nicknameTokens = [];
       const targetFields = ['debtor.phoneticTokens'];
       const outputField = 'matchScore';
 
-      const actual = score(searchTokens, targetFields, outputField);
+      const actual = score(searchTokens, nicknameTokens, targetFields, outputField);
 
-      expect(actual.bigramWeight).toEqual(3);
-      expect(actual.phoneticWeight).toEqual(10);
+      expect(actual.bigramWeight).toEqual(DEFAULT_BIGRAM_WEIGHT);
+      expect(actual.phoneticWeight).toEqual(DEFAULT_PHONETIC_WEIGHT);
+      expect(actual.nicknameWeight).toEqual(DEFAULT_NICKNAME_WEIGHT);
     });
   });
 });

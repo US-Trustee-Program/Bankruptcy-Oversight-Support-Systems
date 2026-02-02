@@ -7,6 +7,10 @@ import {
   using,
 } from './query-builder';
 
+export const DEFAULT_BIGRAM_WEIGHT = 3;
+export const DEFAULT_PHONETIC_WEIGHT = 11;
+export const DEFAULT_NICKNAME_WEIGHT = 10;
+
 function source<T = unknown>(source?: string) {
   return {
     usingFields: (...names: (keyof T)[]) => {
@@ -121,10 +125,12 @@ export function isSort(obj: unknown): obj is Sort {
 export type Score = {
   stage: 'SCORE';
   searchTokens: string[];
+  nicknameTokens: string[];
   targetFields: string[];
   outputField: string;
   bigramWeight: number;
   phoneticWeight: number;
+  nicknameWeight: number;
 };
 
 export type Stage<T = never> =
@@ -237,18 +243,22 @@ function first(field: Field, as: Field): First {
 
 function score(
   searchTokens: string[],
+  nicknameTokens: string[],
   targetFields: string[],
   outputField: string,
-  bigramWeight: number = 3,
-  phoneticWeight: number = 10,
+  bigramWeight: number = DEFAULT_BIGRAM_WEIGHT,
+  phoneticWeight: number = DEFAULT_PHONETIC_WEIGHT,
+  nicknameWeight: number = DEFAULT_NICKNAME_WEIGHT,
 ): Score {
   return {
     stage: 'SCORE',
     searchTokens,
+    nicknameTokens,
     targetFields,
     outputField,
     bigramWeight,
     phoneticWeight,
+    nicknameWeight,
   };
 }
 
