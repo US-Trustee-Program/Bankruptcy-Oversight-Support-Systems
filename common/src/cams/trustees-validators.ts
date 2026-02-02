@@ -66,6 +66,8 @@ export const zoomPasscode = [V.minLength(1, FIELD_VALIDATION_MESSAGES.PASSCODE_R
 
 export const assistantName = [V.minLength(1)];
 
+export const assistantTitle = [V.maxLength(50)];
+
 export const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
   link: zoomLink,
   phone: zoomPhone,

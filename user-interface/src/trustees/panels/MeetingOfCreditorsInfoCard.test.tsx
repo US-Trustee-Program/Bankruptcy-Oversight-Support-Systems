@@ -122,8 +122,8 @@ describe('MeetingOfCreditorsInfoCard', () => {
 
     render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} onEdit={mockOnEdit} />);
 
-    // Verify the element with the class exists in the DOM
-    const meetingInfoElement = document.querySelector('.meeting-of-creditors-info-details');
+    // Verify the element with the ID exists in the DOM
+    const meetingInfoElement = document.querySelector('#meeting-of-creditors-info-copy');
     expect(meetingInfoElement).toBeInTheDocument();
 
     const copyButton = screen.getByRole('button', { name: 'Copy Meeting of Creditors info' });

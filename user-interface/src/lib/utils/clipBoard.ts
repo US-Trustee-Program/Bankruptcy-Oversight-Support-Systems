@@ -50,10 +50,10 @@ export async function copyElementHTMLToClipboard(
  * @param options.inner - If true, copies innerHTML; if false, copies outerHTML (default: true)
  */
 export async function copyHTMLToClipboard(
-  className: string,
+  queryString: string,
   options: { inner?: boolean } = {},
 ): Promise<void> {
-  const element = document.querySelector<HTMLElement>(`.${className}`);
+  const element = document.querySelector<HTMLElement>(queryString);
   if (!element) return;
 
   await copyElementHTMLToClipboard(element, options);
