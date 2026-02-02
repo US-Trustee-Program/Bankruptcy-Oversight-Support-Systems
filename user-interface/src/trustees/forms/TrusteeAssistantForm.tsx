@@ -20,11 +20,13 @@ import { TrusteeAssistantFormData, trusteeAssistantSpec } from './trusteeForms.t
 import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
+import { scrollToFirstError } from '@/lib/utils/form-helpers';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
   if (!assistant) {
     return {
       name: undefined,
+      title: undefined,
       address1: undefined,
       address2: undefined,
       city: undefined,
@@ -39,6 +41,7 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
   const contact = assistant.contact;
   return {
     name: assistant.name,
+    title: assistant.title,
     address1: contact.address?.address1,
     address2: contact.address?.address2,
     city: contact.address?.city,
@@ -99,6 +102,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     return {
       assistant: {
         name: formData.name,
+        ...(formData.title && { title: formData.title }),
         contact: {
           address:
             formData.address1 && formData.city && formData.state && formData.zipCode
@@ -182,6 +186,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
         setSaveAlert(results.reasonMap.$.reasons.join(' '));
         partialAddressAlertRef.current?.show();
       }
+      scrollToFirstError();
     } else {
       setFieldErrors({});
       setSaveAlert(null);
@@ -224,6 +229,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   return (
     <div className="trustee-form-screen">
       <form
+        noValidate
         aria-label="Edit Trustee Assistant"
         data-testid="trustee-assistant-form"
         onSubmit={handleSubmit}
@@ -253,11 +259,24 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
             <div className="field-group">
               <Input
+                id="assistant-title"
+                data-testid="assistant-title"
+                className="assistant-title-input"
+                name="title"
+                label="Title"
+                value={formData.title || ''}
+                onChange={handleFieldChange}
+                errorMessage={fieldErrors['title']?.join(' ')}
+                autoComplete="off"
+              />
+            </div>
+
+            <div className="field-group">
+              <Input
                 id="assistant-address1"
                 className="assistant-address1-input"
                 name="address1"
                 label="Address Line 1"
-                required
                 value={formData.address1}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['address1']?.join(' ')}
@@ -284,7 +303,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-city-input"
                 name="city"
                 label="City"
-                required
                 value={formData.city}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['city']?.join(' ')}
@@ -298,7 +316,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-state-input"
                 name="state"
                 label="State"
-                required
                 selections={formData.state ? [formData.state] : []}
                 onUpdateSelection={handleStateSelection}
                 autoComplete="off"
@@ -312,7 +329,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-zip-input"
                 name="zipCode"
                 label="Zip Code"
-                required
                 value={formData.zipCode}
                 onChange={handleZipCodeChange}
                 errorMessage={fieldErrors['zipCode']?.join(' ')}
@@ -330,7 +346,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-phone-input"
                 name="phone"
                 label="Phone"
-                required
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['phone']?.join(' ')}
                 autoComplete="off"
@@ -354,7 +369,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
                 className="assistant-email-input"
                 name="email"
                 label="Email"
-                required
                 value={formData.email}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['email']?.join(' ')}

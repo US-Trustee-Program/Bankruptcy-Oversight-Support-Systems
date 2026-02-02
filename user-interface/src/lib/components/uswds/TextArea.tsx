@@ -15,12 +15,14 @@ type TextAreaProps = JSX.IntrinsicElements['textarea'] & {
   label?: string;
   ariaDescription?: string;
   value?: string;
+  errorMessage?: string;
 };
 
 function TextArea_(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
-  const { id, label, ariaDescription, ...otherProps } = props;
+  const { id, label, ariaDescription, errorMessage, required, ...otherProps } = props;
   const labelId = `textarea-label-${id}`;
   const textAreaId = `textarea-${id}`;
+  const errorMessageId = `${textAreaId}-error-message`;
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -85,26 +87,36 @@ function TextArea_(props: TextAreaProps, ref: React.Ref<TextAreaRef>) {
         className={'usa-label' + (props.className && ` ${props.className}-label`)}
       >
         {label}
-        {props.required && <span className="required-form-field" />}
+        {required && <span className="required-form-field" />}
       </label>
       {ariaDescription && (
         <div className="usa-hint" id={ariaDescribedBy()}>
           {ariaDescription}
         </div>
       )}
-      <div className="usa-textarea-group">
+      <div
+        className={`usa-textarea-group ${errorMessage && errorMessage.length > 0 ? 'usa-textarea-group--error' : ''}`}
+      >
         <textarea
           {...otherProps}
           id={textAreaId}
+          required={required}
           className={`${props.className ?? ''} usa-textarea`}
           data-testid={textAreaId}
           onChange={handleOnChange}
           disabled={inputDisabled}
           value={inputValue}
+          aria-invalid={errorMessage && errorMessage.length > 0 ? 'true' : undefined}
+          aria-errormessage={errorMessage && errorMessage.length > 0 ? errorMessageId : undefined}
           aria-describedby={ariaDescription ? ariaDescribedBy() : undefined}
           ref={inputRef}
         ></textarea>
       </div>
+      {errorMessage && errorMessage.length > 0 && (
+        <div id={errorMessageId} className="usa-input__error-message">
+          {errorMessage}
+        </div>
+      )}
     </div>
   );
 }
