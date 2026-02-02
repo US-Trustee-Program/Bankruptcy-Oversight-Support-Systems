@@ -318,3 +318,50 @@ describe('TextArea additional coverage tests', () => {
     );
   });
 });
+
+describe('TextArea error handling tests', () => {
+  const mockOnChange = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('should display error message and set ARIA attributes when errorMessage provided', () => {
+    render(
+      <TextArea id="test" label="Test" errorMessage="This is required" onChange={mockOnChange} />,
+    );
+
+    const textarea = document.getElementById('textarea-test');
+    const errorElement = document.getElementById('textarea-test-error-message');
+    const textareaGroup = document.querySelector('.usa-textarea-group');
+
+    expect(errorElement).toBeInTheDocument();
+    expect(errorElement).toHaveTextContent('This is required');
+    expect(errorElement).toHaveClass('usa-input__error-message');
+    expect(textarea).toHaveAttribute('aria-invalid', 'true');
+    expect(textarea).toHaveAttribute('aria-errormessage', 'textarea-test-error-message');
+    expect(textareaGroup).toHaveClass('usa-textarea-group--error');
+  });
+
+  test('should not display error message or set ARIA attributes when errorMessage is undefined or empty', () => {
+    const { rerender } = render(<TextArea id="test" label="Test" onChange={mockOnChange} />);
+
+    let textarea = document.getElementById('textarea-test');
+    let textareaGroup = document.querySelector('.usa-textarea-group');
+
+    expect(document.getElementById('textarea-test-error-message')).not.toBeInTheDocument();
+    expect(textarea).not.toHaveAttribute('aria-invalid');
+    expect(textarea).not.toHaveAttribute('aria-errormessage');
+    expect(textareaGroup).not.toHaveClass('usa-textarea-group--error');
+
+    rerender(<TextArea id="test" label="Test" errorMessage="" onChange={mockOnChange} />);
+
+    textarea = document.getElementById('textarea-test');
+    textareaGroup = document.querySelector('.usa-textarea-group');
+
+    expect(document.getElementById('textarea-test-error-message')).not.toBeInTheDocument();
+    expect(textarea).not.toHaveAttribute('aria-invalid');
+    expect(textarea).not.toHaveAttribute('aria-errormessage');
+    expect(textareaGroup).not.toHaveClass('usa-textarea-group--error');
+  });
+});
