@@ -125,10 +125,19 @@ export default function TrusteeDetailProfile({
                 </Button>
               </h3>
             </div>
-            {!trustee.assistant && <div>No information added.</div>}
+            {!trustee.assistant && (
+              <div data-testid="no-assistant-information">No information added.</div>
+            )}
             {!!trustee.assistant && (
               <>
-                <div className="assistant-name">{trustee.assistant.name}</div>
+                <div className="assistant-name" data-testid="assistant-name">
+                  {trustee.assistant.name}
+                </div>
+                {trustee.assistant.title && (
+                  <div className="assistant-title" data-testid="assistant-title">
+                    {trustee.assistant.title}
+                  </div>
+                )}
                 <FormattedContact
                   contact={trustee.assistant.contact}
                   testIdPrefix="trustee-assistant"
