@@ -140,13 +140,16 @@ function buildMatchCountExpression(tokens: string[], documentField: string): obj
 function buildWeightedScoreExpression(
   bigramField: string,
   phoneticField: string,
+  nicknameField: string,
   bigramWeight: number,
   phoneticWeight: number,
+  nicknameWeight: number,
 ): object {
   return {
     $add: [
       { $multiply: [`$${bigramField}`, bigramWeight] },
       { $multiply: [`$${phoneticField}`, phoneticWeight] },
+      { $multiply: [`$${nicknameField}`, nicknameWeight] },
     ],
   };
 }
@@ -160,8 +163,10 @@ function buildFieldScoreExpressions(
   targetFields: string[],
   bigrams: string[],
   phonetics: string[],
+  nicknameTokens: string[],
   bigramWeight: number,
   phoneticWeight: number,
+  nicknameWeight: number,
 ): FieldScoreResult {
   const expressions: Record<string, object> = {};
   const tempFieldNames: string[] = [];
@@ -169,16 +174,20 @@ function buildFieldScoreExpressions(
   targetFields.forEach((field, idx) => {
     const bigramField = `_bigramMatches_${idx}`;
     const phoneticField = `_phoneticMatches_${idx}`;
+    const nicknameField = `_nicknameMatches_${idx}`;
     const scoreField = `_score_${idx}`;
-    tempFieldNames.push(bigramField, phoneticField, scoreField);
+    tempFieldNames.push(bigramField, phoneticField, nicknameField, scoreField);
 
     expressions[bigramField] = buildMatchCountExpression(bigrams, field);
     expressions[phoneticField] = buildMatchCountExpression(phonetics, field);
+    expressions[nicknameField] = buildMatchCountExpression(nicknameTokens, field);
     expressions[scoreField] = buildWeightedScoreExpression(
       bigramField,
       phoneticField,
+      nicknameField,
       bigramWeight,
       phoneticWeight,
+      nicknameWeight,
     );
   });
 
@@ -229,34 +238,47 @@ function buildCleanupProjection(tempFieldNames: string[]): Record<string, number
  * preventing phonetic-only matches (e.g., "John" → "Jane") while still allowing
  * nickname matches that share bigrams (e.g., "Mike" → "Michael" via shared "mi").
  *
- * @example
- * // Search query: "John" → searchTokens = ["jo", "oh", "hn", "J500", "JN"]
- * // Document has: { debtor: { phoneticTokens: ["jo", "oh", "hn", "J500", "JN", "S530", "SM0", "sm", "mi", "it", "th"] } }
- * //   (stored tokens include both bigrams and phonetic codes for "John Smith")
- * // Matching: 3 bigrams match (jo, oh, hn), 2 phonetics match (J500, JN)
- * // Result: matchScore = (3 × 3) + (2 × 10) = 29, bigramMatchCount = 3
+ * Scoring weights (default):
+ *   - Bigram matches: 3 points each (substring matching)
+ *   - Phonetic matches: 11 points each (sound-alike matching)
+ *   - Nickname matches: 10 points each (e.g., Mike → Michael)
  *
  * @example
- * // Search query: "John" → searchTokens = ["jo", "oh", "hn", "J500", "JN"]
- * // Document has: { debtor: { phoneticTokens: ["ja", "an", "ne", "J500", "JN"] } }
- * //   (stored tokens for "Jane" - shares phonetic codes but different bigrams)
- * // Matching: 0 bigrams match, 2 phonetics match (J500, JN)
- * // Result: matchScore = (0 × 3) + (2 × 10) = 20, bigramMatchCount = 0
- * // "Jane" is filtered out because bigramMatchCount = 0
+ * // Search query: "John" → searchTokens = ["jo", "oh", "hn", "J500", "JN"], nicknameTokens = []
+ * // Document has: { debtor: { phoneticTokens: ["jo", "oh", "hn", "J500", "JN", "S530", "SM0", "sm", "mi", "it", "th"] } }
+ * // Matching: 3 bigrams (jo, oh, hn), 2 phonetics (J500, JN), 0 nicknames
+ * // Result: matchScore = (3 × 3) + (2 × 11) + (0 × 10) = 31, bigramMatchCount = 3
+ *
+ * @example
+ * // Search query: "Mike" → searchTokens = ["mi", "ik", "ke", "M200", "MK"]
+ * //                      → nicknameTokens = ["ic", "ch", "ha", "ae", "el", "M240", "MKSHL"] (from "michael")
+ * // Document has "Michael": { phoneticTokens: ["mi", "ic", "ch", "ha", "ae", "el", "M240", "MKSHL"] }
+ * // Matching: 1 bigram (mi), 0 phonetics, 7 nicknames (ic, ch, ha, ae, el, M240, MKSHL)
+ * // Result: matchScore = (1 × 3) + (0 × 11) + (7 × 10) = 73, bigramMatchCount = 1
  *
  * @param stage - The Score stage configuration
  * @returns Array of 3 MongoDB aggregation stage objects
  */
 function toMongoScore(stage: Score): object[] {
-  const { searchTokens, targetFields, outputField, bigramWeight, phoneticWeight } = stage;
+  const {
+    searchTokens,
+    nicknameTokens,
+    targetFields,
+    outputField,
+    bigramWeight,
+    phoneticWeight,
+    nicknameWeight,
+  } = stage;
 
   const { bigrams, phonetics } = partitionSearchTokens(searchTokens);
   const { expressions, tempFieldNames } = buildFieldScoreExpressions(
     targetFields,
     bigrams,
     phonetics,
+    nicknameTokens,
     bigramWeight,
     phoneticWeight,
+    nicknameWeight,
   );
 
   return [

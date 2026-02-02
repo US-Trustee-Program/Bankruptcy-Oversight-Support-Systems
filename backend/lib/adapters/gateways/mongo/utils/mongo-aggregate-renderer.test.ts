@@ -1,7 +1,23 @@
-import QueryPipeline, { Score, Stage } from '../../../../query/query-pipeline';
+import QueryPipeline, {
+  DEFAULT_BIGRAM_WEIGHT,
+  DEFAULT_NICKNAME_WEIGHT,
+  DEFAULT_PHONETIC_WEIGHT,
+  Score,
+  Stage,
+} from '../../../../query/query-pipeline';
 import MongoAggregateRenderer from './mongo-aggregate-renderer';
 import { Condition, Field } from '../../../../query/query-builder';
 import { CaseAssignment } from '@common/cams/assignments';
+
+type MongoAddFieldsValue = {
+  $size?: { $setIntersection: [string[], string] };
+  $max?: string[];
+  $add?: unknown[];
+};
+type MongoScoreStage = {
+  $addFields?: Record<string, MongoAddFieldsValue>;
+  $project?: Record<string, number>;
+};
 
 const { pipeline, score } = QueryPipeline;
 
@@ -159,24 +175,29 @@ describe('aggregation query renderer tests', () => {
 
   test('should render a SCORE stage with multiple target fields', () => {
     const searchTokens = ['jo', 'hn', 'JN', 'J500'];
+    const nicknameTokens = ['mi', 'MK'];
     const scoreStage: Score = score(
       searchTokens,
+      nicknameTokens,
       ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
       'matchScore',
-      3,
-      10,
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
     );
 
-    const result = MongoAggregateRenderer.toMongoScore(scoreStage);
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
     expect(result).toHaveLength(3);
 
     expect(result[0]).toHaveProperty('$addFields');
     expect(result[0].$addFields).toHaveProperty('_bigramMatches_0');
     expect(result[0].$addFields).toHaveProperty('_phoneticMatches_0');
+    expect(result[0].$addFields).toHaveProperty('_nicknameMatches_0');
     expect(result[0].$addFields).toHaveProperty('_score_0');
     expect(result[0].$addFields).toHaveProperty('_bigramMatches_1');
     expect(result[0].$addFields).toHaveProperty('_phoneticMatches_1');
+    expect(result[0].$addFields).toHaveProperty('_nicknameMatches_1');
     expect(result[0].$addFields).toHaveProperty('_score_1');
 
     expect(result[1]).toHaveProperty('$addFields');
@@ -187,23 +208,35 @@ describe('aggregation query renderer tests', () => {
     expect(result[2].$project).toEqual({
       _bigramMatches_0: 0,
       _phoneticMatches_0: 0,
+      _nicknameMatches_0: 0,
       _score_0: 0,
       _bigramMatches_1: 0,
       _phoneticMatches_1: 0,
+      _nicknameMatches_1: 0,
       _score_1: 0,
     });
   });
 
-  test('should render SCORE stage with correct $setIntersection for bigrams and phonetics', () => {
+  test('should render SCORE stage with correct $setIntersection for bigrams, phonetics, and nicknames', () => {
     const searchTokens = ['jo', 'hn', 'JN', 'J500'];
-    const scoreStage: Score = score(searchTokens, ['debtor.phoneticTokens'], 'matchScore', 3, 10);
+    const nicknameTokens = ['mi', 'MK'];
+    const scoreStage: Score = score(
+      searchTokens,
+      nicknameTokens,
+      ['debtor.phoneticTokens'],
+      'matchScore',
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
+    );
 
-    const result = MongoAggregateRenderer.toMongoScore(scoreStage);
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
     const addFieldsStage = result[0].$addFields;
 
     expect(addFieldsStage._bigramMatches_0.$size.$setIntersection[0]).toEqual(['jo', 'hn']);
     expect(addFieldsStage._phoneticMatches_0.$size.$setIntersection[0]).toEqual(['JN', 'J500']);
+    expect(addFieldsStage._nicknameMatches_0.$size.$setIntersection[0]).toEqual(['mi', 'MK']);
   });
 
   test('should separate bigrams so "John" query does not match "Jane" bigrams', () => {
@@ -212,13 +245,15 @@ describe('aggregation query renderer tests', () => {
 
     const scoreStage: Score = score(
       johnQueryTokens,
+      [],
       ['debtor.phoneticTokens'],
       'matchScore',
-      3,
-      10,
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
     );
 
-    const result = MongoAggregateRenderer.toMongoScore(scoreStage);
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
     const addFieldsStage = result[0].$addFields;
 
     const queryBigrams = addFieldsStage._bigramMatches_0.$size.$setIntersection[0];
@@ -240,13 +275,15 @@ describe('aggregation query renderer tests', () => {
 
     const scoreStage: Score = score(
       mikeQueryTokens,
+      [],
       ['debtor.phoneticTokens'],
       'matchScore',
-      3,
-      10,
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
     );
 
-    const result = MongoAggregateRenderer.toMongoScore(scoreStage);
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
     const addFieldsStage = result[0].$addFields;
 
     const queryBigrams = addFieldsStage._bigramMatches_0.$size.$setIntersection[0];
@@ -261,13 +298,15 @@ describe('aggregation query renderer tests', () => {
     const searchTokens = ['jo', 'hn', 'JN', 'J500'];
     const scoreStage: Score = score(
       searchTokens,
+      [],
       ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
       'matchScore',
-      3,
-      10,
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
     );
 
-    const result = MongoAggregateRenderer.toMongoScore(scoreStage);
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
     const maxScoreStage = result[1].$addFields;
     expect(maxScoreStage).toHaveProperty('bigramMatchCount');
@@ -284,7 +323,15 @@ describe('aggregation query renderer tests', () => {
       rightOperand: 'SYNCED_CASE',
     };
 
-    const scoreStage: Score = score(['jo', 'JN'], ['debtor.phoneticTokens'], 'matchScore', 3, 10);
+    const scoreStage: Score = score(
+      ['jo', 'JN'],
+      [],
+      ['debtor.phoneticTokens'],
+      'matchScore',
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
+    );
 
     const sortStage: Stage = {
       stage: 'SORT',

@@ -18,9 +18,13 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '@common/cams/cases';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
-import QueryPipeline from '../../../query/query-pipeline';
+import QueryPipeline, {
+  DEFAULT_BIGRAM_WEIGHT,
+  DEFAULT_NICKNAME_WEIGHT,
+  DEFAULT_PHONETIC_WEIGHT,
+} from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
-import { generateQueryTokens } from '../../utils/phonetic-helper';
+import { generateQueryTokensWithNicknames } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -340,7 +344,36 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   async searchCases(predicate: CasesSearchPredicate): Promise<CamsPaginationResponse<SyncedCase>> {
-    return this.executeCaseSearch(predicate, predicate.offset, predicate.limit);
+    try {
+      if (predicate.includeOnlyUnassigned) {
+        return await this.searchForUnassignedCases(predicate);
+      }
+
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
+      const conditions = this.addConditions(predicate);
+
+      if (!hasRequiredSearchFields(predicate)) {
+        throw new CamsError(MODULE_NAME, {
+          message: 'Case Search requires a pagination predicate with a valid limit and offset',
+        });
+      }
+
+      const spec = pipeline(
+        match(and(...conditions)),
+        sort(descending(dateFiled), descending(caseNumber)),
+        paginate(predicate.offset, predicate.limit),
+      );
+
+      return await this.getAdapter<SyncedCase>().paginate(spec);
+    } catch (originalError) {
+      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to retrieve cases${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          module: MODULE_NAME,
+        },
+      });
+      throw error;
+    }
   }
 
   /**
@@ -374,8 +407,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         });
       }
 
-      const searchTokens = generateQueryTokens(predicate.debtorName);
-      if (searchTokens.length === 0) {
+      const { searchTokens, nicknameTokens } = generateQueryTokensWithNicknames(
+        predicate.debtorName,
+      );
+      const allTokens = [...searchTokens, ...nicknameTokens];
+      if (allTokens.length === 0) {
         return { metadata: { total: 0 }, data: [] };
       }
 
@@ -384,8 +420,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
       conditions.push(
         or(
-          doc('debtor.phoneticTokens').contains(searchTokens),
-          doc('jointDebtor.phoneticTokens').contains(searchTokens),
+          doc('debtor.phoneticTokens').contains(allTokens),
+          doc('jointDebtor.phoneticTokens').contains(allTokens),
         ),
       );
 
@@ -395,10 +431,12 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         match(and(...conditions)),
         score(
           searchTokens,
+          nicknameTokens,
           ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
           'matchScore',
-          3,
-          10,
+          DEFAULT_BIGRAM_WEIGHT,
+          DEFAULT_PHONETIC_WEIGHT,
+          DEFAULT_NICKNAME_WEIGHT,
         ),
         match(
           using<SyncedCase & { bigramMatchCount: number }>()('bigramMatchCount').greaterThan(0),
@@ -415,43 +453,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           module: MODULE_NAME,
         },
       });
-    }
-  }
-
-  private async executeCaseSearch(
-    predicate: CasesSearchPredicate,
-    offset: number,
-    limit: number,
-  ): Promise<CamsPaginationResponse<SyncedCase>> {
-    try {
-      if (predicate.includeOnlyUnassigned) {
-        return await this.searchForUnassignedCases(predicate);
-      }
-
-      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
-      const conditions = this.addConditions(predicate);
-
-      if (!hasRequiredSearchFields(predicate)) {
-        throw new CamsError(MODULE_NAME, {
-          message: 'Case Search requires a pagination predicate with a valid limit and offset',
-        });
-      }
-
-      const spec = pipeline(
-        match(and(...conditions)),
-        sort(descending(dateFiled), descending(caseNumber)),
-        paginate(offset, limit),
-      );
-
-      return await this.getAdapter<SyncedCase>().paginate(spec);
-    } catch (originalError) {
-      const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          message: `Failed to retrieve cases${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
-          module: MODULE_NAME,
-        },
-      });
-      throw error;
     }
   }
 
