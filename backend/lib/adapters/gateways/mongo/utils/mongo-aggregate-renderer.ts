@@ -10,7 +10,6 @@ import {
   Score,
   Sort,
 } from '../../../../query/query-pipeline';
-import { isPhoneticToken } from '../../../utils/phonetic-helper';
 import { toMongoQuery } from './mongo-query-renderer';
 import { AggregateQuery } from '../../../../humble-objects/mongo-humble';
 import {
@@ -20,6 +19,18 @@ import {
   isField,
 } from '../../../../query/query-builder';
 import { CamsError } from '../../../../common-errors/cams-error';
+
+/**
+ * Determines if a token is a phonetic token (Soundex or Metaphone).
+ * Phonetic tokens are uppercase alphanumeric strings with length > 1.
+ * Bigrams are lowercase, so this distinguishes between the two types.
+ *
+ * @param token - The token to check
+ * @returns True if the token is a phonetic token
+ */
+function isPhoneticToken(token: string): boolean {
+  return token.length > 1 && /^[A-Z0-9]+$/.test(token);
+}
 
 const MODULE_NAME = 'MONGO-AGGREGATE-RENDERER';
 
@@ -358,6 +369,7 @@ function toMongoAggregate(pipeline: Pipeline): AggregateQuery {
 }
 
 const MongoAggregateRenderer = {
+  isPhoneticToken,
   toMongoAggregateSort,
   toMongoLookup,
   toMongoAddFields,

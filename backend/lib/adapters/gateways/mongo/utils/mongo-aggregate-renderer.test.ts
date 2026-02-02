@@ -21,6 +21,40 @@ type MongoScoreStage = {
 
 const { pipeline, score } = QueryPipeline;
 
+describe('isPhoneticToken', () => {
+  test('should return true for Soundex codes', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('J500')).toBe(true);
+    expect(MongoAggregateRenderer.isPhoneticToken('S530')).toBe(true);
+    expect(MongoAggregateRenderer.isPhoneticToken('M240')).toBe(true);
+  });
+
+  test('should return true for Metaphone codes', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('JN')).toBe(true);
+    expect(MongoAggregateRenderer.isPhoneticToken('SM0')).toBe(true);
+    expect(MongoAggregateRenderer.isPhoneticToken('MKSHL')).toBe(true);
+  });
+
+  test('should return false for lowercase bigrams', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('jo')).toBe(false);
+    expect(MongoAggregateRenderer.isPhoneticToken('sm')).toBe(false);
+    expect(MongoAggregateRenderer.isPhoneticToken('th')).toBe(false);
+  });
+
+  test('should return false for single character tokens', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('J')).toBe(false);
+    expect(MongoAggregateRenderer.isPhoneticToken('A')).toBe(false);
+  });
+
+  test('should return false for mixed case tokens', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('Jo')).toBe(false);
+    expect(MongoAggregateRenderer.isPhoneticToken('jN')).toBe(false);
+  });
+
+  test('should return false for empty string', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('')).toBe(false);
+  });
+});
+
 describe('aggregation query renderer tests', () => {
   test('should return paginated aggregation query', () => {
     const expected = [

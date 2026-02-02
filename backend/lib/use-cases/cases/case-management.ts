@@ -54,7 +54,17 @@ export default class CaseManagement {
     predicate: CasesSearchPredicate,
     phoneticSearchEnabled: boolean,
   ): boolean {
-    return !!(predicate.debtorName && phoneticSearchEnabled);
+    if (!phoneticSearchEnabled) {
+      return false;
+    }
+
+    const normalizedDebtorName = predicate.debtorName?.trim();
+
+    if (!normalizedDebtorName || normalizedDebtorName.length < 2) {
+      return false;
+    }
+
+    return true;
   }
 
   public async searchCases(
