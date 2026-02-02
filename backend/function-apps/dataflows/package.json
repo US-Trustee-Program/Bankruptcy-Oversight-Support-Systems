@@ -17,7 +17,6 @@
     "mssql": "12.2.0",
     "dotenv": "17.2.3",
     "express": "5.2.1",
-    "applicationinsights": "3.13.0",
-    "natural": "8.1.0"
+    "applicationinsights": "3.13.0"
   }
 }
