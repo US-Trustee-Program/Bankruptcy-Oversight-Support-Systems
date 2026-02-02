@@ -120,7 +120,15 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getAllCaseHistory(..._ignore): Promise<CaseHistory[]> {
+    throw new Error('Method not implemented.');
+  }
+
   createCaseHistory(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateCaseHistory(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
@@ -201,6 +209,10 @@ export class MockMongoRepository
   }
 
   getSyncedCase(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateManyByQuery(..._ignore): Promise<UpdateResult> {
     throw new Error('Method not implemented.');
   }
 
