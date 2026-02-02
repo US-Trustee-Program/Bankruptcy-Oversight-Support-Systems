@@ -81,18 +81,6 @@ export function generateBigrams(text: string): string[] {
 }
 
 /**
- * Determines if a token is a phonetic token (Soundex or Metaphone).
- * Phonetic tokens are uppercase alphanumeric strings with length > 1.
- * Bigrams are lowercase, so this distinguishes between the two types.
- *
- * @param token - The token to check
- * @returns True if the token is a phonetic token
- */
-export function isPhoneticToken(token: string): boolean {
-  return token.length > 1 && /^[A-Z0-9]+$/.test(token);
-}
-
-/**
  * Generates all search tokens (bigrams + phonetic codes) for an array of words.
  * Used internally to create token sets for both original search terms and nicknames.
  *

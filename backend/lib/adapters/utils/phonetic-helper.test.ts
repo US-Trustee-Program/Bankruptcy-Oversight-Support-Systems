@@ -2,10 +2,10 @@ import { describe, test, expect } from 'vitest';
 import {
   generatePhoneticTokens,
   generateBigrams,
-  isPhoneticToken,
   generateSearchTokens,
   generateQueryTokensWithNicknames,
 } from './phonetic-helper';
+import MongoAggregateRenderer from '../gateways/mongo/utils/mongo-aggregate-renderer';
 
 describe('Phonetic Utilities', () => {
   describe('generatePhoneticTokens', () => {
@@ -111,45 +111,11 @@ describe('Phonetic Utilities', () => {
     });
   });
 
-  describe('isPhoneticToken', () => {
-    test('should return true for Soundex codes', () => {
-      expect(isPhoneticToken('J500')).toBe(true);
-      expect(isPhoneticToken('S530')).toBe(true);
-      expect(isPhoneticToken('M240')).toBe(true);
-    });
-
-    test('should return true for Metaphone codes', () => {
-      expect(isPhoneticToken('JN')).toBe(true);
-      expect(isPhoneticToken('SM0')).toBe(true);
-      expect(isPhoneticToken('MKSHL')).toBe(true);
-    });
-
-    test('should return false for lowercase bigrams', () => {
-      expect(isPhoneticToken('jo')).toBe(false);
-      expect(isPhoneticToken('sm')).toBe(false);
-      expect(isPhoneticToken('th')).toBe(false);
-    });
-
-    test('should return false for single character tokens', () => {
-      expect(isPhoneticToken('J')).toBe(false);
-      expect(isPhoneticToken('A')).toBe(false);
-    });
-
-    test('should return false for mixed case tokens', () => {
-      expect(isPhoneticToken('Jo')).toBe(false);
-      expect(isPhoneticToken('jN')).toBe(false);
-    });
-
-    test('should return false for empty string', () => {
-      expect(isPhoneticToken('')).toBe(false);
-    });
-  });
-
   describe('generateSearchTokens', () => {
     test('should combine bigrams and phonetic tokens', () => {
       const tokens = generateSearchTokens('John');
-      const bigrams = tokens.filter((t) => !isPhoneticToken(t));
-      const phonetics = tokens.filter((t) => isPhoneticToken(t));
+      const bigrams = tokens.filter((t) => !MongoAggregateRenderer.isPhoneticToken(t));
+      const phonetics = tokens.filter((t) => MongoAggregateRenderer.isPhoneticToken(t));
 
       expect(bigrams).toContain('jo');
       expect(bigrams).toContain('oh');
