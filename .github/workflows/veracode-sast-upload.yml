@@ -13,13 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
       - name: Package source code for scan
         run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
 
       - name: Veracode Upload And Scan
-        uses: veracode/veracode-uploadandscan-action@4e085f49ae0fba919fa0fb27cb1d4262284d9243 # 0.2.10
+        uses: veracode/veracode-uploadandscan-action@ddca86b1d1d45639d1c414003f3495f71851cfe2 # 0.2.11
         with:
           appname: "CAMS"
           createprofile: false
