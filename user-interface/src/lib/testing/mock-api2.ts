@@ -382,6 +382,191 @@ const caseDetails = {
   },
 };
 
+/**
+ * Mock cases with phoneticTokens for testing hybrid search.
+ * Includes bigrams (lowercase) and phonetic codes (uppercase).
+ */
+const hybridSearchTestCases = [
+  {
+    caseId: '081-24-10001',
+    debtor: {
+      name: 'John Smith',
+      phoneticTokens: ['jo', 'oh', 'hn', 'sm', 'mi', 'it', 'th', 'J500', 'JN', 'S530', 'SM0'],
+    },
+    caseTitle: 'John Smith',
+  },
+  {
+    caseId: '081-24-10002',
+    debtor: {
+      name: 'Jon Smith',
+      phoneticTokens: ['jo', 'on', 'sm', 'mi', 'it', 'th', 'J500', 'JN', 'S530', 'SM0'],
+    },
+    caseTitle: 'Jon Smith',
+  },
+  {
+    caseId: '081-24-10003',
+    debtor: {
+      name: 'Jonathan Smith',
+      phoneticTokens: [
+        'jo',
+        'on',
+        'na',
+        'at',
+        'th',
+        'ha',
+        'an',
+        'sm',
+        'mi',
+        'it',
+        'J535',
+        'JN0N',
+        'S530',
+        'SM0',
+      ],
+    },
+    caseTitle: 'Jonathan Smith',
+  },
+  {
+    caseId: '081-24-10004',
+    debtor: {
+      name: 'Jane Doe',
+      phoneticTokens: ['ja', 'an', 'ne', 'do', 'oe', 'J500', 'JN', 'D000', 'T'],
+    },
+    caseTitle: 'Jane Doe',
+  },
+  {
+    caseId: '081-24-10005',
+    debtor: {
+      name: 'Mike Johnson',
+      phoneticTokens: [
+        'mi',
+        'ik',
+        'ke',
+        'jo',
+        'oh',
+        'hn',
+        'ns',
+        'so',
+        'on',
+        'M200',
+        'MK',
+        'J525',
+        'JNSN',
+      ],
+    },
+    jointDebtor: {
+      name: 'Sarah Johnson',
+      phoneticTokens: [
+        'sa',
+        'ar',
+        'ra',
+        'ah',
+        'jo',
+        'oh',
+        'hn',
+        'ns',
+        'so',
+        'on',
+        'S600',
+        'SR',
+        'J525',
+        'JNSN',
+      ],
+    },
+    caseTitle: 'Mike Johnson',
+  },
+  {
+    caseId: '081-24-10006',
+    debtor: {
+      name: 'Michael Johnson',
+      phoneticTokens: [
+        'mi',
+        'ic',
+        'ch',
+        'ha',
+        'ae',
+        'el',
+        'jo',
+        'oh',
+        'hn',
+        'ns',
+        'so',
+        'on',
+        'M240',
+        'MKSHL',
+        'J525',
+        'JNSN',
+      ],
+    },
+    caseTitle: 'Michael Johnson',
+  },
+  {
+    caseId: '081-24-10007',
+    debtor: {
+      name: 'Robert Brown',
+      phoneticTokens: [
+        'ro',
+        'ob',
+        'be',
+        'er',
+        'rt',
+        'br',
+        'ro',
+        'ow',
+        'wn',
+        'R163',
+        'RBRT',
+        'B650',
+        'BRN',
+      ],
+    },
+    jointDebtor: {
+      name: 'Mary Brown',
+      phoneticTokens: ['ma', 'ar', 'ry', 'br', 'ro', 'ow', 'wn', 'M600', 'MR', 'B650', 'BRN'],
+    },
+    caseTitle: 'Robert Brown',
+  },
+  {
+    caseId: '081-24-10008',
+    debtor: {
+      name: 'Bob Brown',
+      phoneticTokens: ['bo', 'ob', 'br', 'ro', 'ow', 'wn', 'B100', 'BB', 'B650', 'BRN'],
+    },
+    caseTitle: 'Bob Brown',
+  },
+  {
+    caseId: '081-24-10009',
+    debtor: {
+      name: 'William Davis',
+      phoneticTokens: [
+        'wi',
+        'il',
+        'll',
+        'li',
+        'ia',
+        'am',
+        'da',
+        'av',
+        'vi',
+        'is',
+        'W450',
+        'WLM',
+        'D120',
+        'TFS',
+      ],
+    },
+    caseTitle: 'William Davis',
+  },
+  {
+    caseId: '081-24-10010',
+    debtor: {
+      name: 'Bill Davis',
+      phoneticTokens: ['bi', 'il', 'll', 'da', 'av', 'vi', 'is', 'B400', 'BL', 'D120', 'TFS'],
+    },
+    caseTitle: 'Bill Davis',
+  },
+];
+
 const courts = [
   {
     officeName: 'Juneau',
@@ -1494,6 +1679,123 @@ const orders = [
   },
 ];
 
+// Simple bigram generator for mock filtering
+function generateMockBigrams(text: string): string[] {
+  if (!text || text.length < 2) return [];
+  const normalized = text.toLowerCase().replace(/[^a-z]/g, '');
+  const bigrams: string[] = [];
+  for (let i = 0; i < normalized.length - 1; i++) {
+    bigrams.push(normalized.substring(i, i + 2));
+  }
+  return bigrams;
+}
+
+// Mock nickname mappings for testing
+const nicknameMap: Record<string, string[]> = {
+  mike: ['michael', 'mikey', 'mick'],
+  michael: ['mike', 'mikey', 'mick'],
+  bob: ['robert', 'bobby', 'rob'],
+  robert: ['bob', 'bobby', 'rob'],
+  bill: ['william', 'billy', 'will'],
+  william: ['bill', 'billy', 'will'],
+  jon: ['jonathan', 'john'],
+  john: ['jonathan', 'jon'],
+  jonathan: ['john', 'jon'],
+};
+
+// Mock phonetic code mappings (simplified Soundex/Metaphone approximations)
+const phoneticMap: Record<string, string[]> = {
+  mike: ['M200', 'MK'],
+  michael: ['M240', 'MKSHL'],
+  mikey: ['M200', 'MK'],
+  mick: ['M200', 'MK'],
+  bob: ['B100', 'BB'],
+  robert: ['R163', 'RBRT'],
+  bobby: ['B100', 'BB'],
+  rob: ['R100', 'RB'],
+  bill: ['B400', 'BL'],
+  william: ['W450', 'WLM'],
+  billy: ['B400', 'BL'],
+  will: ['W400', 'WL'],
+  jon: ['J500', 'JN'],
+  john: ['J500', 'JN'],
+  jonathan: ['J535', 'JN0N'],
+  smith: ['S530', 'SM0'],
+  johnson: ['J525', 'JNSN'],
+  brown: ['B650', 'BRN'],
+  davis: ['D120', 'TFS'],
+  doe: ['D000', 'T'],
+  jane: ['J500', 'JN'],
+};
+
+// Generate search tokens and nickname tokens for mock scoring
+interface MockSearchTokens {
+  searchBigrams: string[];
+  searchPhonetics: string[];
+  nicknameBigrams: string[];
+}
+
+function generateMockSearchTokens(text: string): MockSearchTokens {
+  if (!text) return { searchBigrams: [], searchPhonetics: [], nicknameBigrams: [] };
+
+  const words = text.toLowerCase().split(/\s+/);
+  const searchBigrams = new Set<string>();
+  const searchPhonetics = new Set<string>();
+  const nicknameBigrams = new Set<string>();
+
+  words.forEach((word) => {
+    // Add bigrams from original word
+    generateMockBigrams(word).forEach((b) => searchBigrams.add(b));
+
+    // Add phonetic codes from original word
+    const phonetics = phoneticMap[word] || [];
+    phonetics.forEach((p) => searchPhonetics.add(p));
+
+    // Add bigrams from nickname variations
+    const nicknames = nicknameMap[word] || [];
+    nicknames.forEach((nickname) => {
+      generateMockBigrams(nickname).forEach((b) => {
+        if (!searchBigrams.has(b)) {
+          nicknameBigrams.add(b);
+        }
+      });
+    });
+  });
+
+  return {
+    searchBigrams: Array.from(searchBigrams),
+    searchPhonetics: Array.from(searchPhonetics),
+    nicknameBigrams: Array.from(nicknameBigrams),
+  };
+}
+
+// Calculate match score for hybrid search mock with full scoring
+function calculateMockMatchScore(
+  searchQuery: string,
+  caseTokens: string[],
+): { bigramMatches: number; score: number } {
+  const { searchBigrams, searchPhonetics, nicknameBigrams } = generateMockSearchTokens(searchQuery);
+
+  const caseBigrams = caseTokens.filter((t) => t === t.toLowerCase() && t.length === 2);
+  const casePhonetics = caseTokens.filter((t) => /^[A-Z0-9]+$/.test(t) && t.length > 1);
+
+  const bigramMatches = searchBigrams.filter((b) => caseBigrams.includes(b)).length;
+  const phoneticMatches = searchPhonetics.filter((p) => casePhonetics.includes(p)).length;
+  const nicknameMatches = nicknameBigrams.filter((b) => caseBigrams.includes(b)).length;
+
+  const BIGRAM_WEIGHT = 3;
+  const PHONETIC_WEIGHT = 30;
+  const NICKNAME_WEIGHT = 10;
+
+  return {
+    bigramMatches,
+    score:
+      bigramMatches * BIGRAM_WEIGHT +
+      phoneticMatches * PHONETIC_WEIGHT +
+      nicknameMatches * NICKNAME_WEIGHT,
+  };
+}
+
 async function post<T = unknown>(
   path: string,
   body: object,
@@ -1508,6 +1810,47 @@ async function post<T = unknown>(
     const response: ResponseBody<unknown> = {
       data: [],
     };
+
+    // Handle debtor name search with hybrid test cases
+    if (searchRequest?.debtorName) {
+      const debtorName = searchRequest.debtorName;
+      const matchingCases = hybridSearchTestCases
+        .map((testCase) => {
+          const debtorTokens = testCase.debtor?.phoneticTokens || [];
+          const jointDebtorTokens = testCase.jointDebtor?.phoneticTokens || [];
+          const allTokens = [...debtorTokens, ...jointDebtorTokens];
+
+          const { bigramMatches, score } = calculateMockMatchScore(debtorName, allTokens);
+
+          return {
+            ...testCase,
+            officeName: 'Manhattan',
+            officeCode: '1',
+            courtId: '081-',
+            courtName: 'Southern District of New York',
+            courtDivisionCode: '111',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '2',
+            regionName: 'NEW YORK',
+            state: 'NY',
+            dxtrId: '0',
+            chapter: '11',
+            dateFiled: '2024-01-15',
+            debtorTypeCode: 'IC',
+            debtorTypeLabel: 'Individual Consumer',
+            _actions,
+            matchScore: score,
+            bigramMatchCount: bigramMatches,
+          };
+        })
+        .filter((c) => c.bigramMatchCount > 0)
+        .sort((a, b) => b.matchScore - a.matchScore);
+
+      response.data = matchingCases;
+      return response as ResponseBody<T>;
+    }
+
     if (caseNumber === '99-99999') {
       throw new Error('api error');
     } else if (caseNumber === '00-00000') {

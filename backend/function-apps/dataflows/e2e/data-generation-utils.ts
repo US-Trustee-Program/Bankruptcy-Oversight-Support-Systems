@@ -7,6 +7,7 @@ import { ConsolidationOrder, TransferOrder } from '@common/cams/orders';
 import DxtrUtils from './dxtr-utils';
 import {
   insertConsolidationOrders,
+  insertHybridSearchTestCases,
   insertTransferOrders,
   insertTrustees,
   insertUserGroups,
@@ -136,11 +137,16 @@ function createKnownGoodTransferOrder(transferTo: CaseSummary, transferFrom: Cas
   return knownGoodTransferOrder;
 }
 
+async function seedHybridSearchTestData(context: ApplicationContext) {
+  await insertHybridSearchTestCases(context);
+}
+
 const DataGenerationUtils = {
   KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER,
   KNOWN_GOOD_TRANSFER_FROM_CASE_ID,
   KNOWN_GOOD_TRANSFER_TO_CASE_ID,
   seedCosmosE2eDatabase,
+  seedHybridSearchTestData,
   generateTrustees,
   generateUserGroups,
 };
