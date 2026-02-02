@@ -60,7 +60,7 @@
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-testing-library": "7.15.4",
-    "knip": "5.81.0",
+    "knip": "5.82.1",
     "prettier": "3.8.0",
     "react": "19.2.3",
     "typescript": "5.9.3",
