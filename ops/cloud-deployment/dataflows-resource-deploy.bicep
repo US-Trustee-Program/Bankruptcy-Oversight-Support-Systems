@@ -556,6 +556,9 @@ module dataflowsSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
   }
+  dependsOn: [
+    dataflowsFunctionApp::slot
+  ]
 }
 
 var createSqlServerVnetRule = !empty(sqlServerResourceGroupName) && !empty(sqlServerName) && !isUstpDeployment
