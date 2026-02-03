@@ -6,6 +6,7 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
 import LoadE2eDb from './e2e/load-e2e-db';
+import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import MigrateAssignees from './migrations/migrate-assignees';
 import MigrateCases from './migrations/migrate-cases';
 import MigrateChildCasesToMemberCases from './migrations/migrate-childcases-to-membercases';
@@ -97,6 +98,7 @@ initializeApplicationInsights();
 
 // Register data flows.
 dataflows.register(
+  BackfillPhoneticTokens,
   CaseAssignmentEvent,
   CaseClosedEvent,
   LoadE2eDb,

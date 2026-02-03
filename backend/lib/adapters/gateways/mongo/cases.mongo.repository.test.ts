@@ -589,9 +589,7 @@ describe('Cases repository', () => {
     vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
       new CamsError('CASES_MONGO_REPOSITORY'),
     );
-    await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
-      'Unknown CAMS Error',
-    );
+    await expect(repo.searchCases(predicate)).rejects.toThrow('Unknown CAMS Error');
   });
 
   test('should throw error when paginate throws error with includeOnlyUnassigned', async () => {
@@ -605,9 +603,7 @@ describe('Cases repository', () => {
     vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
       new CamsError('CASES_MONGO_REPOSITORY'),
     );
-    await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
-      'Unknown CAMS Error',
-    );
+    await expect(repo.searchCases(predicate)).rejects.toThrow('Unknown CAMS Error');
   });
 
   test('should call paginate with includeOnlyUnassigned and assignments in query', async () => {
@@ -675,7 +671,7 @@ describe('Cases repository', () => {
     vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockResolvedValue({
       data: expectedSyncedCaseArray,
     });
-    await expect(async () => await repo.searchCases(predicate)).rejects.toThrow(
+    await expect(repo.searchCases(predicate)).rejects.toThrow(
       'Case Search requires a pagination predicate with a valid limit and offset',
     );
   });
@@ -815,7 +811,7 @@ describe('Cases repository', () => {
     vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
       new CamsError('CASES_MONGO_REPOSITORY'),
     );
-    await expect(async () => await repo.getConsolidationMemberCaseIds(predicate)).rejects.toThrow(
+    await expect(repo.getConsolidationMemberCaseIds(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
     );
   });
