@@ -1,7 +1,7 @@
 import { app, InvocationContext, output } from '@azure/functions';
 import { CaseSyncEvent } from '@common/queue/dataflow-types';
 
-import ContextCreator from '../../azure/application-context-creator';
+import ApplicationApplicationContextCreator from '../../azure/application-context-creator';
 import {
   buildFunctionName,
   buildQueueName,
@@ -11,7 +11,6 @@ import {
 import ResyncTerminalTransactionCases from '../../../lib/use-cases/dataflows/resync-terminal-transaction-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
-import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
@@ -63,7 +62,9 @@ const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
  * Query DXTR for cases with terminal transaction blind spot, paginate, and queue for processing.
  */
 async function handleStart(message: ResyncStartMessage, context: InvocationContext) {
-  const appContext = await ContextCreator.getApplicationContext({ invocationContext: context });
+  const appContext = await ApplicationContextCreator.getApplicationContext({
+    invocationContext: context,
+  });
   const { logger } = appContext;
 
   const cutoffDate = message.cutoffDate || '2018-01-01';
@@ -77,7 +78,7 @@ async function handleStart(message: ResyncStartMessage, context: InvocationConte
 
   if (result.error) {
     logger.error(MODULE_NAME, `Failed to get case IDs: ${result.error.message}`);
-    return;
+    throw result.error;
   }
 
   const events = result.events || [];
@@ -106,7 +107,7 @@ async function handleStart(message: ResyncStartMessage, context: InvocationConte
  * Process a batch of case sync events via ExportAndLoadCase.
  */
 async function handlePage(events: CaseSyncEvent[], invocationContext: InvocationContext) {
-  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+  const appContext = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = appContext;
 
   logger.info(MODULE_NAME, `Processing page with ${events.length} events`);
@@ -127,7 +128,7 @@ async function handlePage(events: CaseSyncEvent[], invocationContext: Invocation
  * Route errors to appropriate queue: NotFoundError = abandon, others = retry.
  */
 async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
+  const logger = ApplicationApplicationContextCreator.getLogger(invocationContext);
 
   // NotFoundError = case doesn't exist in DXTR anymore, abandon
   if (isNotFoundError(event.error)) {
@@ -150,7 +151,7 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
  * Retry failed sync with limit of 3 attempts.
  */
 async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
   const RETRY_LIMIT = 3;
