@@ -183,6 +183,11 @@ export interface CasesRepository extends Releasable {
   getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
   updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;
+  countByQuery: <T>(query: Query<T>) => Promise<number>;
+  searchByQuery: <T>(
+    query: Query<T>,
+    options: { limit: number; offset: number },
+  ) => Promise<CamsPaginationResponse<T>>;
 }
 
 export interface OfficesRepository

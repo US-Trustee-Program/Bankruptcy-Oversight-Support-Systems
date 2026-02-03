@@ -8,8 +8,8 @@ esbuild
     outfile: 'dist/dataflows.js',
   })
   .catch((err) => {
-    // eslint-disable-next-line no-undef
+
     console.error('Build failed:', err);
-    // eslint-disable-next-line no-undef
+
     process.exit(1);
   });

@@ -536,4 +536,24 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  public async countByQuery<T>(query: ConditionOrConjunction<T>): Promise<number> {
+    try {
+      return await this.getAdapter<T>().countDocuments(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  public async searchByQuery<T>(
+    query: ConditionOrConjunction<T>,
+    options: { limit: number; offset: number },
+  ) {
+    try {
+      const spec = pipeline(match(query), paginate(options.offset, options.limit));
+      return await this.getAdapter<T>().paginate(spec);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }

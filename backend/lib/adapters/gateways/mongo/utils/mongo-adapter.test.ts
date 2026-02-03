@@ -379,7 +379,7 @@ describe('Mongo adapter', () => {
       insertedCount: 3,
     });
 
-    await expect(async () => await adapter.insertMany([{}, {}, {}, {}])).rejects.toThrow(
+    await expect(adapter.insertMany([{}, {}, {}, {}])).rejects.toThrow(
       expect.objectContaining({
         status: 500,
         message: 'Not all items inserted',
