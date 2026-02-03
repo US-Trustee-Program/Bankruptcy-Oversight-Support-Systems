@@ -19,7 +19,7 @@ import {
   getTheThrownError,
 } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
-import { CasesMongoRepository } from './cases.mongo.repository';
+import { CasesMongoRepository, MATCH_SCORE_THRESHOLD } from './cases.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
@@ -799,6 +799,46 @@ describe('Cases repository', () => {
 
       expect(result.data).toEqual([]);
       expect(result.metadata.total).toBe(0);
+    });
+
+    test('should filter results by match score threshold to exclude low-scoring matches', async () => {
+      // Searching for "mike" should match "michael" (nickname) but not "smith" (no relation)
+      // This test verifies the query includes the match score threshold filter
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'mike',
+        limit: 25,
+        offset: 0,
+      };
+
+      const michaelCase = MockData.getSyncedCase({
+        override: {
+          caseId: '111-11-11111',
+          debtor: { name: 'Michael Johnson' },
+        },
+      });
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: [michaelCase], metadata: { total: 1 } });
+
+      const result = await repo.searchCasesWithPhoneticTokens(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual([michaelCase]);
+
+      // Verify the query includes the match score threshold filter
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+
+      // Should contain a MATCH stage filtering by matchScore > MATCH_SCORE_THRESHOLD
+      expect(queryString).toContain('matchScore');
+      expect(queryString).toContain(`"rightOperand":${MATCH_SCORE_THRESHOLD}`);
+      expect(queryString).toContain('"condition":"GREATER_THAN"');
+    });
+
+    test('should require minimum match score threshold of 8 (3 bigram matches)', () => {
+      // With bigram weight of 3, threshold of 8 requires at least 3 bigram matches (3 × 3 = 9)
+      expect(MATCH_SCORE_THRESHOLD).toBe(8);
     });
   });
 
