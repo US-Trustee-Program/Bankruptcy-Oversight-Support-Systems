@@ -29,6 +29,10 @@ import { generateQueryTokensWithNicknames } from '../../utils/phonetic-helper';
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
+// Minimum match score threshold for phonetic search results.
+// With bigram weight of 3, a threshold of 8 requires at least 3 bigram matches (3 × 3 = 9).
+export const MATCH_SCORE_THRESHOLD = 8;
+
 const { and, or, using } = QueryBuilder;
 const {
   addFields,
@@ -444,7 +448,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           DEFAULT_NICKNAME_WEIGHT,
         ),
         match(
-          using<SyncedCase & { bigramMatchCount: number }>()('bigramMatchCount').greaterThan(0),
+          using<SyncedCase & { matchScore: number }>()('matchScore').greaterThan(
+            MATCH_SCORE_THRESHOLD,
+          ),
         ),
         sort(descending({ name: 'matchScore' }), descending(dateFiled), descending(caseNumber)),
         paginate(predicate.offset, predicate.limit),
