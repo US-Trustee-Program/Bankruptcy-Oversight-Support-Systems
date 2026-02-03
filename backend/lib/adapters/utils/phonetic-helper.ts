@@ -10,7 +10,7 @@ function normalizeText(text: string): string {
   return text
     .trim()
     .toLowerCase()
-    .replace(/[^a-z\s]/g, '');
+    .replace(/[^a-z0-9\s]/g, '');
 }
 
 function splitIntoWords(normalizedText: string, minLength: number = 1): string[] {
@@ -137,25 +137,17 @@ export function generateQueryTokensWithNicknames(searchQuery: string): Separated
     return { searchTokens: [], nicknameTokens: [] };
   }
 
-  const words = searchQuery.trim().split(/\s+/);
-  const originalWords = new Set<string>();
+  const words = splitIntoWords(normalizeText(searchQuery));
+  const originalWords = new Set<string>(words);
   const nicknameWords = new Set<string>();
 
   words.forEach((word) => {
-    const normalizedWord = word.toLowerCase();
-    originalWords.add(normalizedWord);
-
     try {
       const variations = getNameVariations(word) as string[];
       variations.forEach((variation: string) => {
-        variation.split(' ').forEach((w) => {
-          const normalized = w.toLowerCase();
-          if (
-            normalized.length > 0 &&
-            normalized !== normalizedWord &&
-            !originalWords.has(normalized)
-          ) {
-            nicknameWords.add(normalized);
+        splitIntoWords(normalizeText(variation)).forEach((w) => {
+          if (w.length > 0 && w !== word && !originalWords.has(w)) {
+            nicknameWords.add(w);
           }
         });
       });

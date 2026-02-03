@@ -377,21 +377,26 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   /**
-   * Searches cases using phonetic token matching for debtor name similarity.
+   * Searches cases using phonetic token matching with nickname expansion for debtor name similarity.
    *
-   * This method generates phonetic tokens (bigrams and phonetic codes) from the
+   * This method generates search tokens (bigrams and phonetic codes) and nickname tokens from the
    * search query and matches them against pre-computed tokens stored on case documents.
-   * Results are scored based on token overlap and sorted by match score (descending),
-   * then by date filed and case number.
+   * Results are scored based on token overlap, filtered to require at least one bigram match,
+   * and sorted by match score (descending), then by date filed and case number.
    *
    * Scoring weights:
-   * - Bigram matches: 3 points each (character-level similarity)
-   * - Phonetic code matches: 10 points each (sound-based similarity)
+   * - Bigram matches: 3 points each (character-level similarity, typo tolerance)
+   * - Phonetic code matches: 11 points each (sound-based similarity via Soundex/Metaphone)
+   * - Nickname matches: 10 points each (name variations like "Mike" → "Michael")
+   *
+   * Filtering:
+   * - Requires at least one bigram match to prevent phonetic-only false positives
+   * - Matches on both debtor and jointDebtor phonetic tokens
    *
    * Falls back to regular searchCases when no debtorName is provided.
    *
    * @param predicate - Search criteria including debtorName for phonetic matching
-   * @returns Paginated cases sorted by phonetic match score
+   * @returns Paginated cases sorted by phonetic match score (highest relevance first)
    */
   async searchCasesWithPhoneticTokens(
     predicate: CasesSearchPredicate,

@@ -1,5 +1,5 @@
 import { createAuditRecord } from '@common/cams/auditable';
-import { SyncedCase } from '@common/cams/cases';
+import { DxtrCase, SyncedCase } from '@common/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
@@ -15,8 +15,8 @@ const MODULE_NAME = 'EXPORT-AND-LOAD';
  * @param bCase The case to add search tokens to
  * @returns A new case object with search tokens added (immutable)
  */
-function addPhoneticTokens(bCase: SyncedCase): SyncedCase {
-  const result: SyncedCase = { ...bCase };
+function addPhoneticTokens(bCase: DxtrCase): DxtrCase {
+  const result: DxtrCase = { ...bCase };
 
   if (bCase.debtor?.name) {
     result.debtor = { ...bCase.debtor, phoneticTokens: generateSearchTokens(bCase.debtor.name) };
