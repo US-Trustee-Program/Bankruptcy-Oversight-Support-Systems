@@ -18,6 +18,8 @@ type SyncedCaseQueryable = SyncedCase & {
 /**
  * Builds the query to find SYNCED_CASE documents that need phonetic token backfill.
  * A case needs backfill if debtor.phoneticTokens is missing or empty.
+ *
+ * This query is used both for counting and paginating to ensure consistency.
  */
 function buildNeedsBackfillQuery() {
   const doc = using<SyncedCaseQueryable>();
@@ -25,30 +27,6 @@ function buildNeedsBackfillQuery() {
     doc('documentType').equals('SYNCED_CASE'),
     or(doc('debtor.phoneticTokens').notExists(), doc('debtor.phoneticTokens').equals([])),
   );
-}
-
-/**
- * Counts the number of SYNCED_CASE documents that need phonetic token backfill.
- */
-async function countCasesNeedingBackfill(context: ApplicationContext): Promise<MaybeData<number>> {
-  try {
-    const repo = factory.getCasesRepository(context);
-    const query = buildNeedsBackfillQuery();
-    const _count = await repo.updateManyByQuery(query, { $set: {} });
-    // Use matchedCount from a dry-run update to get count
-    // Actually, we need a count method - let's use searchCases with pagination
-    const result = await repo.searchCases({
-      limit: 1,
-      offset: 0,
-    });
-    // This approach won't work well - we need direct count access
-    // For now, return a placeholder that will be replaced with proper implementation
-    return { data: result.metadata?.total ?? 0 };
-  } catch (originalError) {
-    return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to count cases needing backfill.'),
-    };
-  }
 }
 
 export type BackfillCase = {
@@ -61,11 +39,21 @@ export type BackfillCase = {
   };
 };
 
-export type BackfillPageResult = MaybeData<BackfillCase[]>;
+type BackfillPageResult = MaybeData<BackfillCase[]>;
 
 /**
  * Gets a page of cases that need phonetic token backfill.
- * Uses MongoDB skip/limit for pagination.
+ *
+ * PAGINATION STRATEGY: Uses database-level filtering with buildNeedsBackfillQuery()
+ * to paginate only over cases that need backfill. This is more efficient than
+ * fetching all cases and filtering in memory.
+ *
+ * The same query is used in countCasesNeedingBackfill() to ensure page ranges
+ * align correctly with the filtered dataset.
+ *
+ * @param offset - Starting position in the filtered set (cases needing backfill only)
+ * @param limit - Number of cases to fetch
+ * @returns Cases that need backfill from this page
  */
 async function getPageOfCasesNeedingBackfill(
   context: ApplicationContext,
@@ -74,18 +62,11 @@ async function getPageOfCasesNeedingBackfill(
 ): Promise<BackfillPageResult> {
   try {
     const repo = factory.getCasesRepository(context);
-    const result = await repo.searchCases({
-      limit,
-      offset,
-    });
-
-    // Filter to only cases that need backfill
-    const casesNeedingBackfill = result.data.filter(
-      (c) => !c.debtor?.phoneticTokens || c.debtor.phoneticTokens.length === 0,
-    );
+    const query = buildNeedsBackfillQuery();
+    const result = await repo.searchByQuery<SyncedCaseQueryable>(query, { limit, offset });
 
     return {
-      data: casesNeedingBackfill.map((c) => ({
+      data: result.data.map((c) => ({
         caseId: c.caseId,
         debtor: c.debtor ? { name: c.debtor.name } : undefined,
         jointDebtor: c.jointDebtor ? { name: c.jointDebtor.name } : undefined,
@@ -120,7 +101,7 @@ function generateTokenUpdates(bCase: BackfillCase): Record<string, string[]> {
   return updates;
 }
 
-export type BackfillResult = {
+type BackfillResult = {
   caseId: string;
   success: boolean;
   error?: string;
@@ -181,62 +162,37 @@ async function backfillTokensForCases(
 }
 
 /**
- * Gets the total count of cases needing backfill for pagination calculation.
- * This is a more direct approach using the repository's search with specific criteria.
+ * Counts the number of SYNCED_CASE documents that need phonetic token backfill.
+ * Uses the same query as getPageOfCasesNeedingBackfill() to ensure consistency.
+ *
+ * This pushes the filtering to the database level for efficiency.
  */
-async function getTotalCasesNeedingBackfill(
-  context: ApplicationContext,
-): Promise<MaybeData<number>> {
+async function countCasesNeedingBackfill(context: ApplicationContext): Promise<MaybeData<number>> {
   try {
-    // We'll need to use searchCases with a large limit to estimate
-    // A better approach would be to add a countDocuments method to the repository
-    // For now, we'll iterate through pages to count
     const repo = factory.getCasesRepository(context);
-    let totalCount = 0;
-    let offset = 0;
-    const pageSize = 1000;
-
-    while (true) {
-      const result = await repo.searchCases({
-        limit: pageSize,
-        offset,
-      });
-
-      if (!result.data || result.data.length === 0) {
-        break;
-      }
-
-      const needsBackfill = result.data.filter(
-        (c) => !c.debtor?.phoneticTokens || c.debtor.phoneticTokens.length === 0,
-      );
-
-      totalCount += needsBackfill.length;
-
-      if (result.data.length < pageSize) {
-        break;
-      }
-
-      offset += pageSize;
-    }
-
-    return { data: totalCount };
+    const query = buildNeedsBackfillQuery();
+    const count = await repo.countByQuery(query);
+    return { data: count };
   } catch (originalError) {
     return {
       error: getCamsError(
         originalError,
         MODULE_NAME,
-        'Failed to get total count of cases needing backfill.',
+        'Failed to count cases needing phonetic token backfill.',
       ),
     };
   }
 }
 
 /**
- * Simple initialization that returns the count of cases to process.
- * Used by the START queue handler.
+ * Initializes the backfill by returning the count of cases needing backfill.
+ * Used by the START queue handler to create page ranges.
+ *
+ * Uses database-level filtering (buildNeedsBackfillQuery) to count only cases
+ * that actually need backfill, matching the pagination strategy in getPageOfCasesNeedingBackfill.
  */
 async function initializeBackfill(context: ApplicationContext): Promise<MaybeData<number>> {
-  return getTotalCasesNeedingBackfill(context);
+  return countCasesNeedingBackfill(context);
 }
 
 /**
@@ -248,10 +204,9 @@ async function completeBackfill(_context: ApplicationContext): Promise<MaybeVoid
 }
 
 const BackfillPhoneticTokens = {
-  countCasesNeedingBackfill,
   getPageOfCasesNeedingBackfill,
   backfillTokensForCases,
-  getTotalCasesNeedingBackfill,
+  countCasesNeedingBackfill,
   initializeBackfill,
   completeBackfill,
   generateTokenUpdates,

@@ -137,33 +137,27 @@ describe('BackfillPhoneticTokens use case', () => {
 
   describe('getPageOfCasesNeedingBackfill', () => {
     it('should return cases that need backfill', async () => {
+      // Only cases needing backfill are returned by searchByQuery (filtering happens at DB level)
       const caseNeedingBackfill = MockData.getSyncedCase({
         override: { caseId: '123-45-67890', debtor: { name: 'John Smith' } },
       });
-      const caseWithTokens = MockData.getSyncedCase({
-        override: {
-          caseId: '123-45-67891',
-          debtor: { name: 'Jane Doe', phoneticTokens: ['abc'] },
-        },
-      });
-      const mockCases = [caseNeedingBackfill, caseWithTokens];
+      const mockCases = [caseNeedingBackfill];
 
-      vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockResolvedValue({
+      vi.spyOn(MockMongoRepository.prototype, 'searchByQuery').mockResolvedValue({
         data: mockCases,
-        metadata: { total: 2 },
+        metadata: { total: 1 },
       });
 
       const result = await BackfillPhoneticTokens.getPageOfCasesNeedingBackfill(context, 0, 100);
 
       expect(result.error).toBeUndefined();
       expect(result.data).toBeDefined();
-      // Should filter out case with existing phoneticTokens
       expect(result.data?.length).toBe(1);
       expect(result.data?.[0].caseId).toBe('123-45-67890');
     });
 
-    it('should return error when searchCases fails', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'searchCases').mockRejectedValue(
+    it('should return error when searchByQuery fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'searchByQuery').mockRejectedValue(
         new Error('Database error'),
       );
 
@@ -176,25 +170,25 @@ describe('BackfillPhoneticTokens use case', () => {
 
   describe('initializeBackfill', () => {
     it('should return total count of cases needing backfill', async () => {
-      const mockCase = MockData.getSyncedCase({
-        override: { caseId: '123-45-67890', debtor: { name: 'John Smith' } },
-      });
-
-      vi.spyOn(MockMongoRepository.prototype, 'searchCases')
-        .mockResolvedValueOnce({
-          data: [mockCase],
-          metadata: { total: 1 },
-        })
-        .mockResolvedValueOnce({
-          data: [],
-          metadata: { total: 0 },
-        });
+      // countByQuery returns the count directly from the database
+      vi.spyOn(MockMongoRepository.prototype, 'countByQuery').mockResolvedValue(5);
 
       const result = await BackfillPhoneticTokens.initializeBackfill(context);
 
       expect(result.error).toBeUndefined();
       expect(result.data).toBeDefined();
-      expect(result.data).toBe(1);
+      expect(result.data).toBe(5);
+    });
+
+    it('should return error when countByQuery fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'countByQuery').mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      const result = await BackfillPhoneticTokens.initializeBackfill(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.data).toBeUndefined();
     });
   });
 
