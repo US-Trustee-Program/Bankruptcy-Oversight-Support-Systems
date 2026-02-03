@@ -10,6 +10,8 @@ import { vi } from 'vitest';
  * import '../../helpers/driver-mocks';
  */
 
+// No shared state needed - we'll use vi.spyOn() at runtime instead
+
 /**
  * Create a mock LaunchDarkly client with configurable feature flags.
  * This helper ensures consistency between default mocks and test-specific overrides.
@@ -167,29 +169,9 @@ vi.mock('mssql', () => {
   };
 });
 
-// Mock LaunchDarkly SDK for backend BEFORE any imports
-// This provides default feature flag behavior; individual tests can override via spyOn
-vi.mock('@launchdarkly/node-server-sdk', () => {
-  // Use shared helper to ensure consistency
-  const mockClient = createMockLaunchDarklyClient(); // Default: no flags enabled
-
-  return {
-    default: {
-      init: vi.fn().mockReturnValue(mockClient),
-    },
-    init: vi.fn().mockReturnValue(mockClient),
-  };
-});
-
-// Mock LaunchDarkly SDK for frontend BEFORE any imports
-// This provides default feature flag behavior; individual tests can override via spyOn
-vi.mock('launchdarkly-react-client-sdk', () => ({
-  withLDProvider: (_config: unknown) => (Component: unknown) => Component,
-  useFlags: () => ({}), // Default: no flags enabled
-  useLDClient: () => ({
-    identify: vi.fn(),
-  }),
-}));
+// NOTE: We do NOT use vi.mock() for LaunchDarkly SDKs.
+// Instead, tests use vi.spyOn() at runtime to mock these modules.
+// This avoids hoisting issues and allows tests to set flags dynamically.
 
 // Mock Okta Auth SDK BEFORE any imports
 // This provides a basic mock that can be overridden in individual tests using vi.spyOn

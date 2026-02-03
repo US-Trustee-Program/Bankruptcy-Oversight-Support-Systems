@@ -1,9 +1,59 @@
-import QueryPipeline, { Stage } from '../../../../query/query-pipeline';
+import QueryPipeline, {
+  DEFAULT_BIGRAM_WEIGHT,
+  DEFAULT_NICKNAME_WEIGHT,
+  DEFAULT_PHONETIC_WEIGHT,
+  Score,
+  Stage,
+} from '../../../../query/query-pipeline';
 import MongoAggregateRenderer from './mongo-aggregate-renderer';
 import { Condition, Field } from '../../../../query/query-builder';
 import { CaseAssignment } from '@common/cams/assignments';
 
-const { pipeline } = QueryPipeline;
+type MongoAddFieldsValue = {
+  $size?: { $setIntersection: [string[], string] };
+  $max?: string[];
+  $add?: unknown[];
+};
+type MongoScoreStage = {
+  $addFields?: Record<string, MongoAddFieldsValue>;
+  $project?: Record<string, number>;
+};
+
+const { pipeline, score } = QueryPipeline;
+
+describe('isPhoneticToken', () => {
+  test('should return true for Soundex codes', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('J500')).toBe(true);
+    expect(MongoAggregateRenderer.isPhoneticToken('S530')).toBe(true);
+    expect(MongoAggregateRenderer.isPhoneticToken('M240')).toBe(true);
+  });
+
+  test('should return true for Metaphone codes', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('JN')).toBe(true);
+    expect(MongoAggregateRenderer.isPhoneticToken('SM0')).toBe(true);
+    expect(MongoAggregateRenderer.isPhoneticToken('MKSHL')).toBe(true);
+  });
+
+  test('should return false for lowercase bigrams', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('jo')).toBe(false);
+    expect(MongoAggregateRenderer.isPhoneticToken('sm')).toBe(false);
+    expect(MongoAggregateRenderer.isPhoneticToken('th')).toBe(false);
+  });
+
+  test('should return false for single character tokens', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('J')).toBe(false);
+    expect(MongoAggregateRenderer.isPhoneticToken('A')).toBe(false);
+  });
+
+  test('should return false for mixed case tokens', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('Jo')).toBe(false);
+    expect(MongoAggregateRenderer.isPhoneticToken('jN')).toBe(false);
+  });
+
+  test('should return false for empty string', () => {
+    expect(MongoAggregateRenderer.isPhoneticToken('')).toBe(false);
+  });
+});
 
 describe('aggregation query renderer tests', () => {
   test('should return paginated aggregation query', () => {
@@ -155,6 +205,182 @@ describe('aggregation query renderer tests', () => {
     const actual = MongoAggregateRenderer.toMongoAggregate(query);
 
     expect(actual).toEqual(expected);
+  });
+
+  test('should render a SCORE stage with multiple target fields', () => {
+    const searchTokens = ['jo', 'hn', 'JN', 'J500'];
+    const nicknameTokens = ['mi', 'MK'];
+    const scoreStage: Score = score(
+      searchTokens,
+      nicknameTokens,
+      ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+      'matchScore',
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
+    );
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    expect(result).toHaveLength(3);
+
+    expect(result[0]).toHaveProperty('$addFields');
+    expect(result[0].$addFields).toHaveProperty('_bigramMatches_0');
+    expect(result[0].$addFields).toHaveProperty('_phoneticMatches_0');
+    expect(result[0].$addFields).toHaveProperty('_nicknameMatches_0');
+    expect(result[0].$addFields).toHaveProperty('_score_0');
+    expect(result[0].$addFields).toHaveProperty('_bigramMatches_1');
+    expect(result[0].$addFields).toHaveProperty('_phoneticMatches_1');
+    expect(result[0].$addFields).toHaveProperty('_nicknameMatches_1');
+    expect(result[0].$addFields).toHaveProperty('_score_1');
+
+    expect(result[1]).toHaveProperty('$addFields');
+    expect(result[1].$addFields).toHaveProperty('matchScore');
+    expect(result[1].$addFields).toHaveProperty('bigramMatchCount');
+
+    expect(result[2]).toHaveProperty('$project');
+    expect(result[2].$project).toEqual({
+      _bigramMatches_0: 0,
+      _phoneticMatches_0: 0,
+      _nicknameMatches_0: 0,
+      _score_0: 0,
+      _bigramMatches_1: 0,
+      _phoneticMatches_1: 0,
+      _nicknameMatches_1: 0,
+      _score_1: 0,
+    });
+  });
+
+  test('should render SCORE stage with correct $setIntersection for bigrams, phonetics, and nicknames', () => {
+    const searchTokens = ['jo', 'hn', 'JN', 'J500'];
+    const nicknameTokens = ['mi', 'MK'];
+    const scoreStage: Score = score(
+      searchTokens,
+      nicknameTokens,
+      ['debtor.phoneticTokens'],
+      'matchScore',
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
+    );
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    const addFieldsStage = result[0].$addFields;
+
+    expect(addFieldsStage._bigramMatches_0.$size.$setIntersection[0]).toEqual(['jo', 'hn']);
+    expect(addFieldsStage._phoneticMatches_0.$size.$setIntersection[0]).toEqual(['JN', 'J500']);
+    expect(addFieldsStage._nicknameMatches_0.$size.$setIntersection[0]).toEqual(['mi', 'MK']);
+  });
+
+  test('should separate bigrams so "John" query does not match "Jane" bigrams', () => {
+    const johnQueryTokens = ['jo', 'oh', 'hn', 'J500', 'JN'];
+    const janeDocTokens = ['ja', 'an', 'ne', 'J500', 'JN'];
+
+    const scoreStage: Score = score(
+      johnQueryTokens,
+      [],
+      ['debtor.phoneticTokens'],
+      'matchScore',
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
+    );
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+    const addFieldsStage = result[0].$addFields;
+
+    const queryBigrams = addFieldsStage._bigramMatches_0.$size.$setIntersection[0];
+    const janeBigrams = janeDocTokens.filter((t) => t === t.toLowerCase() && t.length === 2);
+
+    const bigramOverlap = queryBigrams.filter((b: string) => janeBigrams.includes(b));
+    expect(bigramOverlap).toHaveLength(0);
+
+    const queryPhonetics = addFieldsStage._phoneticMatches_0.$size.$setIntersection[0];
+    const janePhonetics = janeDocTokens.filter((t) => /^[A-Z0-9]+$/.test(t) && t.length > 1);
+
+    const phoneticOverlap = queryPhonetics.filter((p: string) => janePhonetics.includes(p));
+    expect(phoneticOverlap.length).toBeGreaterThan(0);
+  });
+
+  test('should allow nickname matches: "Mike" query matches "Michael" via shared bigrams', () => {
+    const mikeQueryTokens = ['mi', 'ik', 'ke', 'M200', 'MK'];
+    const michaelDocTokens = ['mi', 'ic', 'ch', 'ha', 'ae', 'el', 'M240', 'MXL'];
+
+    const scoreStage: Score = score(
+      mikeQueryTokens,
+      [],
+      ['debtor.phoneticTokens'],
+      'matchScore',
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
+    );
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+    const addFieldsStage = result[0].$addFields;
+
+    const queryBigrams = addFieldsStage._bigramMatches_0.$size.$setIntersection[0];
+    const michaelBigrams = michaelDocTokens.filter((t) => t === t.toLowerCase() && t.length === 2);
+
+    const bigramOverlap = queryBigrams.filter((b: string) => michaelBigrams.includes(b));
+    expect(bigramOverlap.length).toBeGreaterThan(0);
+    expect(bigramOverlap).toContain('mi');
+  });
+
+  test('should output bigramMatchCount for filtering results', () => {
+    const searchTokens = ['jo', 'hn', 'JN', 'J500'];
+    const scoreStage: Score = score(
+      searchTokens,
+      [],
+      ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+      'matchScore',
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
+    );
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    const maxScoreStage = result[1].$addFields;
+    expect(maxScoreStage).toHaveProperty('bigramMatchCount');
+    expect(maxScoreStage.bigramMatchCount).toEqual({
+      $max: ['$_bigramMatches_0', '$_bigramMatches_1'],
+    });
+  });
+
+  test('should flatten SCORE stages in pipeline', () => {
+    const simpleMatch: Stage = {
+      stage: 'MATCH',
+      condition: 'EQUALS',
+      leftOperand: { name: 'documentType' },
+      rightOperand: 'SYNCED_CASE',
+    };
+
+    const scoreStage: Score = score(
+      ['jo', 'JN'],
+      [],
+      ['debtor.phoneticTokens'],
+      'matchScore',
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
+    );
+
+    const sortStage: Stage = {
+      stage: 'SORT',
+      fields: [{ field: { name: 'matchScore' }, direction: 'DESCENDING' }],
+    };
+
+    const query = pipeline(simpleMatch, scoreStage, sortStage);
+    const result = MongoAggregateRenderer.toMongoAggregate(query);
+
+    expect(result).toHaveLength(5);
+    expect(result[0]).toHaveProperty('$match');
+    expect(result[1]).toHaveProperty('$addFields');
+    expect(result[2]).toHaveProperty('$addFields');
+    expect(result[3]).toHaveProperty('$project');
+    expect(result[4]).toHaveProperty('$sort');
   });
 });
 

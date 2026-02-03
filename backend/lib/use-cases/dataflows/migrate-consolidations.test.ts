@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { describe, test, expect, vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import AcmsOrders, {
   AcmsConsolidation,
@@ -16,21 +16,21 @@ import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { ConsolidationFrom } from '@common/cams/events';
 
 describe('isAcmsEtlQueueItem', () => {
-  it('should return true for a valid AcmsEtlQueueItem', () => {
+  test('should return true for a valid AcmsEtlQueueItem', () => {
     const item = { divisionCode: 'A', chapter: 'B', leadCaseId: '123' };
     expect(isAcmsEtlQueueItem(item)).toBe(true);
   });
 
-  it('should return false for an object missing leadCaseId', () => {
+  test('should return false for an object missing leadCaseId', () => {
     const item = { divisionCode: 'A', chapter: 'B' };
     expect(isAcmsEtlQueueItem(item)).toBe(false);
   });
 
-  it('should return false for null', () => {
+  test('should return false for null', () => {
     expect(isAcmsEtlQueueItem(null)).toBe(false);
   });
 
-  it('should return false for non-object types', () => {
+  test('should return false for non-object types', () => {
     expect(isAcmsEtlQueueItem('string')).toBe(false);
     expect(isAcmsEtlQueueItem(123)).toBe(false);
     expect(isAcmsEtlQueueItem(undefined)).toBe(false);

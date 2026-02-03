@@ -6,6 +6,7 @@ import {
   DEFAULT_SEARCH_OFFSET,
 } from '@common/api/search';
 import CaseNumberInput from '@/lib/components/CaseNumberInput';
+import Input from '@/lib/components/uswds/Input';
 import Api2 from '@/lib/models/api2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
@@ -27,6 +28,10 @@ import Checkbox from '@/lib/components/uswds/Checkbox';
 import { SEARCH_SCREEN_SPEC, SearchScreenFormData } from './searchScreen.types';
 import { validateObject, ValidatorReasonMap } from '@common/cams/validation';
 import useDebounce from '@/lib/hooks/UseDebounce';
+import useFeatureFlags, {
+  PHONETIC_SEARCH_ENABLED,
+  SHOW_DEBTOR_NAME_COLUMN,
+} from '@/lib/hooks/UseFeatureFlags';
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -56,6 +61,10 @@ export function validateFormData(formData: SearchScreenFormData): {
 }
 
 export default function SearchScreen() {
+  const featureFlags = useFeatureFlags();
+  const phoneticSearchEnabled = featureFlags[PHONETIC_SEARCH_ENABLED] === true;
+  const showDebtorNameColumn = featureFlags[SHOW_DEBTOR_NAME_COLUMN] === true;
+
   const session = LocalStorage.getSession();
   const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
   const defaultDivisionCodes = userCourtDivisionCodes.length ? userCourtDivisionCodes : undefined;
@@ -71,6 +80,7 @@ export default function SearchScreen() {
     useState<CasesSearchPredicate>(defaultSearchPredicate);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
   const [showCaseNumberError, setShowCaseNumberError] = useState<boolean>(false);
+  const [showDebtorNameError, setShowDebtorNameError] = useState<boolean>(false);
   const [hasAttemptedSearch, setHasAttemptedSearch] = useState<boolean>(false);
 
   const infoModalRef = useRef(null);
@@ -81,6 +91,7 @@ export default function SearchScreen() {
   const [activeElement, setActiveElement] = useState<Element | null>(null);
 
   const caseNumberInputRef = useRef<InputRef>(null);
+  const debtorNameInputRef = useRef<InputRef>(null);
   const courtSelectionRef = useRef<ComboBoxRef>(null);
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
@@ -91,27 +102,33 @@ export default function SearchScreen() {
   const mapToFormData = (predicate: CasesSearchPredicate): SearchScreenFormData => {
     return {
       caseNumber: predicate.caseNumber,
+      debtorName: predicate.debtorName,
       divisionCodes: predicate.divisionCodes,
       chapters: predicate.chapters,
       excludeClosedCases: predicate.excludeClosedCases,
     };
   };
 
-  // Derive validation state from temporarySearchPredicate
-  // This ensures button disabled state and validation are always in sync
   const currentValidation = useMemo(() => {
     const formData = mapToFormData(temporarySearchPredicate);
     return validateFormData(formData);
   }, [temporarySearchPredicate]);
 
-  // Only show case number error after user has finished typing (controlled by debounce)
   const fieldErrors: ValidatorReasonMap = useMemo(() => {
     const errors: ValidatorReasonMap = {};
     if (showCaseNumberError && currentValidation.fieldErrors.caseNumber) {
       errors.caseNumber = currentValidation.fieldErrors.caseNumber;
     }
+    if (showDebtorNameError && currentValidation.fieldErrors.debtorName) {
+      errors.debtorName = currentValidation.fieldErrors.debtorName;
+    }
     return errors;
-  }, [showCaseNumberError, currentValidation.fieldErrors.caseNumber]);
+  }, [
+    showCaseNumberError,
+    showDebtorNameError,
+    currentValidation.fieldErrors.caseNumber,
+    currentValidation.fieldErrors.debtorName,
+  ]);
 
   const getChapters = useCallback(() => {
     const chapterArray: ComboOption[] = [];
@@ -155,6 +172,7 @@ export default function SearchScreen() {
 
   function disableSearchForm(value: boolean) {
     caseNumberInputRef.current?.disable(value);
+    debtorNameInputRef.current?.disable(value);
     courtSelectionRef.current?.disable(value);
     chapterSelectionRef.current?.disable(value);
   }
@@ -182,12 +200,31 @@ export default function SearchScreen() {
       setTemporarySearchPredicate(newPredicate);
     }
 
-    // Hide validation errors while user is typing
     setShowCaseNumberError(false);
 
-    // Show validation errors after user has finished typing (debounced)
     debounce(() => {
       setShowCaseNumberError(true);
+    }, 300);
+  }
+
+  function handleDebtorNameChange(ev: ChangeEvent<HTMLInputElement>): void {
+    const debtorName = ev.target.value;
+
+    if (temporarySearchPredicate.debtorName != debtorName) {
+      const newPredicate = { ...temporarySearchPredicate };
+
+      if (debtorName) {
+        newPredicate.debtorName = debtorName;
+      } else {
+        delete newPredicate.debtorName;
+      }
+      setTemporarySearchPredicate(newPredicate);
+    }
+
+    setShowDebtorNameError(false);
+
+    debounce(() => {
+      setShowDebtorNameError(true);
     }, 300);
   }
 
@@ -297,6 +334,24 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
+            {phoneticSearchEnabled && (
+              <div className="debtor-name-search form-field" data-testid="debtor-name-search">
+                <div className="usa-search usa-search--small">
+                  <Input
+                    id="debtor-name-search-field"
+                    name="debtor-name-search"
+                    label="Debtor Name"
+                    autoComplete="off"
+                    onChange={handleDebtorNameChange}
+                    onFocus={handleFilterFormElementFocus}
+                    aria-label="Find case by Debtor Name."
+                    ref={debtorNameInputRef}
+                    value={temporarySearchPredicate.debtorName || ''}
+                    errorMessage={fieldErrors.debtorName?.reasons?.[0]}
+                  />
+                </div>
+              </div>
+            )}
             <div className="case-district-search form-field" data-testid="case-district-search">
               <div className="usa-search usa-search--small">
                 <ComboBox
@@ -393,6 +448,8 @@ export default function SearchScreen() {
             <SearchResults
               id="search-results"
               searchPredicate={searchPredicate}
+              phoneticSearchEnabled={phoneticSearchEnabled}
+              showDebtorNameColumn={showDebtorNameColumn}
               onStartSearching={setStartSearching}
               onEndSearching={setEndSearching}
               header={SearchResultsHeader}
