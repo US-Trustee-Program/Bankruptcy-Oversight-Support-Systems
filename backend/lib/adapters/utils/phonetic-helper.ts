@@ -10,7 +10,7 @@ function normalizeText(text: string): string {
   return text
     .trim()
     .toLowerCase()
-    .replace(/[^a-z\s]/g, '');
+    .replace(/[^a-z0-9\s]/g, '');
 }
 
 function splitIntoWords(normalizedText: string, minLength: number = 1): string[] {
