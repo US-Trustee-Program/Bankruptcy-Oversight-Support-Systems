@@ -7,6 +7,10 @@ import {
   using,
 } from './query-builder';
 
+export const DEFAULT_BIGRAM_WEIGHT = 3;
+export const DEFAULT_PHONETIC_WEIGHT = 11;
+export const DEFAULT_NICKNAME_WEIGHT = 10;
+
 function source<T = unknown>(source?: string) {
   return {
     usingFields: (...names: (keyof T)[]) => {
@@ -118,6 +122,17 @@ export function isSort(obj: unknown): obj is Sort {
   return typeof obj === 'object' && 'stage' in obj && obj.stage === 'SORT';
 }
 
+export type Score = {
+  stage: 'SCORE';
+  searchTokens: string[];
+  nicknameTokens: string[];
+  targetFields: string[];
+  outputField: string;
+  bigramWeight: number;
+  phoneticWeight: number;
+  nicknameWeight: number;
+};
+
 export type Stage<T = never> =
   | Paginate
   | Sort
@@ -126,7 +141,8 @@ export type Stage<T = never> =
   | AddFields<T>
   | ExcludeFields
   | IncludeFields
-  | Group;
+  | Group
+  | Score;
 
 export function isPipeline(obj: unknown): obj is Pipeline {
   return typeof obj === 'object' && 'stages' in obj;
@@ -225,6 +241,27 @@ function first(field: Field, as: Field): First {
   return { accumulator: 'FIRST', as: { name: as.name }, field: { name: field.name } };
 }
 
+function score(
+  searchTokens: string[],
+  nicknameTokens: string[],
+  targetFields: string[],
+  outputField: string,
+  bigramWeight: number = DEFAULT_BIGRAM_WEIGHT,
+  phoneticWeight: number = DEFAULT_PHONETIC_WEIGHT,
+  nicknameWeight: number = DEFAULT_NICKNAME_WEIGHT,
+): Score {
+  return {
+    stage: 'SCORE',
+    searchTokens,
+    nicknameTokens,
+    targetFields,
+    outputField,
+    bigramWeight,
+    phoneticWeight,
+    nicknameWeight,
+  };
+}
+
 const QueryPipeline = {
   addFields,
   additionalField,
@@ -239,6 +276,7 @@ const QueryPipeline = {
   match,
   paginate,
   pipeline,
+  score,
   sort,
   source,
 };

@@ -8,14 +8,23 @@ import {
 import { ApplicationContext } from '../../types/basic';
 import { CaseHistory } from '@common/cams/history';
 import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
-import { CamsPaginationResponse, CasesRepository } from '../../../use-cases/gateways.types';
+import {
+  CamsPaginationResponse,
+  CaseHistoryDocumentType,
+  CasesRepository,
+} from '../../../use-cases/gateways.types';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '@common/cams/cases';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
-import QueryPipeline from '../../../query/query-pipeline';
+import QueryPipeline, {
+  DEFAULT_BIGRAM_WEIGHT,
+  DEFAULT_NICKNAME_WEIGHT,
+  DEFAULT_PHONETIC_WEIGHT,
+} from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
+import { generateQueryTokensWithNicknames } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -30,9 +39,18 @@ const {
   match,
   paginate,
   pipeline,
+  score,
   sort,
   source,
 } = QueryPipeline;
+
+// Type augmentation for MongoDB queries - allows dot-notation paths
+// This enables type-safe access to nested fields in MongoDB queries
+// without modifying the actual SyncedCase data structure
+type SyncedCaseQueryable = SyncedCase & {
+  'debtor.phoneticTokens'?: string[];
+  'jointDebtor.phoneticTokens'?: string[];
+};
 
 function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
   return predicate.limit && predicate.offset >= 0;
@@ -186,7 +204,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  async getAllCaseHistory(documentType: string): Promise<CaseHistory[]> {
+  async getAllCaseHistory(documentType: CaseHistoryDocumentType): Promise<CaseHistory[]> {
     const doc = using<CaseHistory>();
     try {
       const query = doc('documentType').equals(documentType);
@@ -330,8 +348,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       if (predicate.includeOnlyUnassigned) {
         return await this.searchForUnassignedCases(predicate);
       }
-      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
       const conditions = this.addConditions(predicate);
 
       if (!hasRequiredSearchFields(predicate)) {
@@ -350,11 +368,96 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     } catch (originalError) {
       const error = getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          message: `Failed to retrieve member consolidations${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
+          message: `Failed to retrieve cases${predicate.caseIds ? ' for ' + predicate.caseIds.join(', ') : ''}.`,
           module: MODULE_NAME,
         },
       });
       throw error;
+    }
+  }
+
+  /**
+   * Searches cases using phonetic token matching with nickname expansion for debtor name similarity.
+   *
+   * This method generates search tokens (bigrams and phonetic codes) and nickname tokens from the
+   * search query and matches them against pre-computed tokens stored on case documents.
+   * Results are scored based on token overlap, filtered to require at least one bigram match,
+   * and sorted by match score (descending), then by date filed and case number.
+   *
+   * Scoring weights:
+   * - Bigram matches: 3 points each (character-level similarity, typo tolerance)
+   * - Phonetic code matches: 11 points each (sound-based similarity via Soundex/Metaphone)
+   * - Nickname matches: 10 points each (name variations like "Mike" → "Michael")
+   *
+   * Filtering:
+   * - Requires at least one bigram match to prevent phonetic-only false positives
+   * - Matches on both debtor and jointDebtor phonetic tokens
+   *
+   * Falls back to regular searchCases when no debtorName is provided.
+   *
+   * @param predicate - Search criteria including debtorName for phonetic matching
+   * @returns Paginated cases sorted by phonetic match score (highest relevance first)
+   */
+  async searchCasesWithPhoneticTokens(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<SyncedCase>> {
+    try {
+      if (!predicate.debtorName) {
+        return this.searchCases(predicate);
+      }
+
+      if (!hasRequiredSearchFields(predicate)) {
+        throw new CamsError(MODULE_NAME, {
+          message: 'Case Search requires a pagination predicate with a valid limit and offset',
+        });
+      }
+
+      const { searchTokens, nicknameTokens } = generateQueryTokensWithNicknames(
+        predicate.debtorName,
+      );
+      const allTokens = [...searchTokens, ...nicknameTokens];
+      if (allTokens.length === 0) {
+        return { metadata: { total: 0 }, data: [] };
+      }
+
+      const doc = using<SyncedCaseQueryable>();
+      const conditions = this.addConditions(predicate);
+
+      conditions.push(
+        or(
+          doc('debtor.phoneticTokens').contains(allTokens),
+          doc('jointDebtor.phoneticTokens').contains(allTokens),
+        ),
+      );
+
+      const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
+
+      const spec = pipeline(
+        match(and(...conditions)),
+        score(
+          searchTokens,
+          nicknameTokens,
+          ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+          'matchScore',
+          DEFAULT_BIGRAM_WEIGHT,
+          DEFAULT_PHONETIC_WEIGHT,
+          DEFAULT_NICKNAME_WEIGHT,
+        ),
+        match(
+          using<SyncedCase & { bigramMatchCount: number }>()('bigramMatchCount').greaterThan(0),
+        ),
+        sort(descending({ name: 'matchScore' }), descending(dateFiled), descending(caseNumber)),
+        paginate(predicate.offset, predicate.limit),
+      );
+
+      return await this.getAdapter<SyncedCase>().paginate(spec);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          message: `Failed to search cases with hybrid scoring for "${predicate.debtorName}".`,
+          module: MODULE_NAME,
+        },
+      });
     }
   }
 
