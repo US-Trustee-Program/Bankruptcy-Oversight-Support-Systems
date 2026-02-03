@@ -84,10 +84,10 @@ const completedAddressRequired: ValidatorFunction = (obj: unknown): ValidatorRes
   }
 
   const requiredFieldsSpec: Readonly<ValidationSpec<typeof form>> = {
-    address1: addressLine1,
-    city,
-    state,
-    zipCode,
+    address1: [addressLine1],
+    city: [city],
+    state: [state],
+    zipCode: [zipCode],
   };
 
   const result = validateObject(requiredFieldsSpec, form);
@@ -126,41 +126,41 @@ const phoneRequiredWithExtension: ValidatorFunction = (obj): ValidatorResult => 
 // ============================================================================
 
 export const trusteePublicSpec: Readonly<ValidationSpec<TrusteePublicFormData>> = {
-  name: trusteeName,
-  companyName,
-  address1: addressLine1,
-  address2: addressLine2,
-  city,
-  state,
-  zipCode,
-  email,
-  website,
-  phone: phoneNumber,
-  extension: phoneExtension,
+  name: [trusteeName],
+  companyName: [companyName],
+  address1: [addressLine1],
+  address2: [addressLine2],
+  city: [city],
+  state: [state],
+  zipCode: [zipCode],
+  email: [email],
+  website: [website],
+  phone: [phoneNumber],
+  extension: [phoneExtension],
 };
 
 export const trusteeInternalSpec: Readonly<ValidationSpec<TrusteeInternalFormData>> = {
   $: [completedAddressRequired, phoneRequiredWithExtension],
-  address1: [V.optional(...addressLine1)],
-  address2: addressLine2,
-  city: [V.optional(...city)],
-  state: [V.optional(...state)],
-  zipCode: [V.optional(...zipCode)],
-  email: [V.optional(...email)],
-  phone: [V.optional(...phoneNumber)],
-  extension: [V.optional(...phoneExtension)],
+  address1: [V.optional(addressLine1)],
+  address2: [addressLine2],
+  city: [V.optional(city)],
+  state: [V.optional(state)],
+  zipCode: [V.optional(zipCode)],
+  email: [V.optional(email)],
+  phone: [V.optional(phoneNumber)],
+  extension: [V.optional(phoneExtension)],
 };
 
 export const trusteeAssistantSpec: Readonly<ValidationSpec<TrusteeAssistantFormData>> = {
   $: [completedAddressRequired, phoneRequiredWithExtension],
-  name: trusteeName,
-  title: [V.optional(...assistantTitle)],
-  address1: [V.optional(...addressLine1)],
-  address2: addressLine2,
-  city: [V.optional(...city)],
-  state: [V.optional(...state)],
-  zipCode: [V.optional(...zipCode)],
-  email: [V.optional(...email)],
-  phone: [V.optional(...phoneNumber)],
-  extension: [V.optional(...phoneExtension)],
+  name: [trusteeName],
+  title: [V.optional(assistantTitle)],
+  address1: [V.optional(addressLine1)],
+  address2: [addressLine2],
+  city: [V.optional(city)],
+  state: [V.optional(state)],
+  zipCode: [V.optional(zipCode)],
+  email: [V.optional(email)],
+  phone: [V.optional(phoneNumber)],
+  extension: [V.optional(phoneExtension)],
 };
