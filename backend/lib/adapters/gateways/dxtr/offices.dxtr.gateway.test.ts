@@ -78,9 +78,9 @@ describe('offices gateway tests', () => {
 
       const gateway = new OfficesDxtrGateway();
 
-      await expect(async () => {
-        await gateway.getOffices(applicationContext);
-      }).rejects.toThrow('Some expected SQL error.');
+      await expect(gateway.getOffices(applicationContext)).rejects.toThrow(
+        'Some expected SQL error.',
+      );
     });
   });
 });

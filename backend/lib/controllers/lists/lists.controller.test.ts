@@ -83,9 +83,7 @@ describe('lists controller tests', () => {
       params: { listName: 'invalid-list' },
     });
 
-    await expect(async () => {
-      await controller.handleRequest(applicationContext);
-    }).rejects.toThrow('Unknown Error');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
   });
 
   test('should throw CamsError when one is caught from use case', async () => {
@@ -98,9 +96,9 @@ describe('lists controller tests', () => {
       params: { listName: 'banks' },
     });
 
-    await expect(async () => {
-      await controller.handleRequest(applicationContext);
-    }).rejects.toThrow('Failed to retrieve banks list');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      'Failed to retrieve banks list',
+    );
   });
 
   test('should wrap unexpected error in UnknownError', async () => {
@@ -113,9 +111,7 @@ describe('lists controller tests', () => {
       params: { listName: 'bankruptcy-software' },
     });
 
-    await expect(async () => {
-      await controller.handleRequest(applicationContext);
-    }).rejects.toThrow('Unknown Error');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
   });
 
   test('should create bank item and return ID on POST', async () => {
@@ -209,9 +205,7 @@ describe('lists controller tests', () => {
       params: { listName: 'bankruptcy-software' },
     });
 
-    await expect(async () => {
-      await controller.handleRequest(applicationContext);
-    }).rejects.toThrow('Unknown Error');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
 
     expect(deleteSpy).not.toHaveBeenCalled();
   });
@@ -225,9 +219,7 @@ describe('lists controller tests', () => {
       params: { listName: 'bankruptcy-software', id: '   ' },
     });
 
-    await expect(async () => {
-      await controller.handleRequest(applicationContext);
-    }).rejects.toThrow('Unknown Error');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
 
     expect(deleteSpy).not.toHaveBeenCalled();
   });
@@ -241,9 +233,7 @@ describe('lists controller tests', () => {
       params: { listName: 'bankruptcy-software', id: 123 as unknown as string },
     });
 
-    await expect(async () => {
-      await controller.handleRequest(applicationContext);
-    }).rejects.toThrow('Unknown Error');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
 
     expect(deleteSpy).not.toHaveBeenCalled();
   });

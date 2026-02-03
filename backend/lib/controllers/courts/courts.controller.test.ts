@@ -44,9 +44,9 @@ describe('courts controller tests', () => {
     const controller = new CourtsController();
     const camsHttpRequest = mockCamsHttpRequest();
     applicationContext.request = camsHttpRequest;
-    await expect(async () => {
-      await controller.handleRequest(applicationContext);
-    }).rejects.toThrow('Some expected CAMS error.');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      'Some expected CAMS error.',
+    );
   });
 
   test('should wrap unexpected error in UnknownError', async () => {

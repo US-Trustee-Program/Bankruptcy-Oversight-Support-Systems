@@ -120,9 +120,9 @@ describe('orders controller tests', () => {
     const failTransfer = { ...orderTransfer };
     failTransfer.id = crypto.randomUUID().toString();
     const controller = new OrdersController(applicationContext);
-    await expect(
-      async () => await controller.updateOrder(applicationContext, id, failTransfer),
-    ).rejects.toThrow(expectedError);
+    await expect(controller.updateOrder(applicationContext, id, failTransfer)).rejects.toThrow(
+      expectedError,
+    );
   });
 
   test('should get suggested cases', async () => {
@@ -297,9 +297,7 @@ describe('orders controller exception tests', () => {
     applicationContext.request = request;
     const controller = new OrdersController(applicationContext);
 
-    await expect(async () => await controller.handleRequest(applicationContext)).rejects.toThrow(
-      expectedError,
-    );
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedError);
   });
 
   test('should wrap unexpected errors with CamsError', async () => {
