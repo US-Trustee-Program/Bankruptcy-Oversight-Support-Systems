@@ -376,6 +376,17 @@ function futureDateWithinYears(years: number, reason?: string): ValidatorFunctio
   };
 }
 
+/**
+ * Combines multiple validator functions into a single validator function.
+ * All validators are executed and their results are merged.
+ *
+ * @param {...ValidatorFunction[]} validators - Variable number of validator functions to combine
+ * @returns {ValidatorFunction} A single validator function that applies all provided validators
+ */
+function useValidators(...validators: ValidatorFunction[]): ValidatorFunction {
+  return (value: unknown): ValidatorResult => validateEach(validators, value);
+}
+
 const Validators = {
   arrayOf,
   dateAfter,
@@ -395,6 +406,7 @@ const Validators = {
   skip,
   spec,
   trimmed,
+  useValidators,
 };
 
 export default Validators;
