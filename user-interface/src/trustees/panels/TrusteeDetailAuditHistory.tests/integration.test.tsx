@@ -1,7 +1,11 @@
 import { screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import Api2 from '@/lib/models/api2';
-import { TrusteeOversightHistory, TrusteeSoftwareHistory } from '@common/cams/trustees';
+import {
+  TrusteeOversightHistory,
+  TrusteeSoftwareHistory,
+  TrusteeAssistantHistory,
+} from '@common/cams/trustees';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -69,6 +73,25 @@ describe('TrusteeDetailAuditHistory - RenderTrusteeHistory Integration Tests', (
       },
     });
 
+    const mockAssistantHistory: TrusteeAssistantHistory = {
+      id: 'audit-assistant-1',
+      trusteeId: 'trustee-1',
+      documentType: 'AUDIT_ASSISTANT',
+      before: {
+        name: 'Jane Smith',
+        contact: MockData.getContactInformation(),
+      },
+      after: {
+        name: 'Jane M. Smith',
+        title: 'Senior Assistant',
+        contact: MockData.getContactInformation(),
+      },
+      updatedOn: '2024-01-10T10:00:00Z',
+      updatedBy: MockData.getCamsUserReference({ name: 'User 8' }),
+      createdOn: '2024-01-10T10:00:00Z',
+      createdBy: MockData.getCamsUserReference({ name: 'User 8' }),
+    };
+
     const allHistoryTypes = [
       mockNameHistory,
       mockPublicContactHistory,
@@ -77,6 +100,7 @@ describe('TrusteeDetailAuditHistory - RenderTrusteeHistory Integration Tests', (
       mockSoftwareHistory,
       mockOversightHistory,
       mockZoomInfoHistory,
+      mockAssistantHistory,
     ];
 
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: allHistoryTypes });
@@ -96,6 +120,7 @@ describe('TrusteeDetailAuditHistory - RenderTrusteeHistory Integration Tests', (
     expect(screen.getByTestId('change-type-zoom-info-0')).toHaveTextContent(
       '341 Meeting Zoom Info',
     );
+    expect(screen.getByTestId('change-type-assistant-7')).toHaveTextContent('Assistant');
 
     expect(screen.getByTestId('previous-name-6')).toHaveTextContent('John Smith');
     expect(screen.getByTestId('previous-banks-3')).toHaveTextContent('Bank A');
@@ -104,6 +129,9 @@ describe('TrusteeDetailAuditHistory - RenderTrusteeHistory Integration Tests', (
     expect(screen.getByTestId('previous-zoom-info-0')).toHaveTextContent(
       'https://zoom.us/j/111111111',
     );
+    expect(screen.getByTestId('previous-assistant-name-7')).toHaveTextContent('Jane Smith');
+    expect(screen.getByTestId('new-assistant-name-7')).toHaveTextContent('Jane M. Smith');
+    expect(screen.getByTestId('new-assistant-title-7')).toHaveTextContent('Senior Assistant');
   });
 
   test('should handle switch case default correctly for unknown document types', async () => {

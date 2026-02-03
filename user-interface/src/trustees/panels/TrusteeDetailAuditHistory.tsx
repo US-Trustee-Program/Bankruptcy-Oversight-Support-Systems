@@ -14,6 +14,7 @@ import {
   TrusteeOversightHistory,
   TrusteeAppointmentHistory,
   TrusteeZoomInfoHistory,
+  TrusteeAssistantHistory,
   getAppointmentDetails,
   ZoomInfo,
 } from '@common/cams/trustees';
@@ -285,6 +286,53 @@ function ShowTrusteeAppointmentHistory(props: ShowTrusteeAppointmentHistoryProps
   );
 }
 
+type ShowTrusteeAssistantHistoryProps = Readonly<{ history: TrusteeAssistantHistory; idx: number }>;
+
+function ShowTrusteeAssistantHistory(props: ShowTrusteeAssistantHistoryProps) {
+  const { history, idx } = props;
+  return (
+    <tr>
+      <td data-testid={`change-type-assistant-${idx}`}>Assistant</td>
+      <td data-testid={`previous-assistant-${idx}`}>
+        {history.before && (
+          <>
+            <div className="assistant-name" data-testid={`previous-assistant-name-${idx}`}>
+              {history.before.name}
+            </div>
+            {history.before.title && (
+              <div className="assistant-title" data-testid={`previous-assistant-title-${idx}`}>
+                {history.before.title}
+              </div>
+            )}
+            <FormattedContact contact={history.before.contact} showLinks={false} />
+          </>
+        )}
+      </td>
+      <td data-testid={`new-assistant-${idx}`}>
+        {history.after && (
+          <>
+            <div className="assistant-name" data-testid={`new-assistant-name-${idx}`}>
+              {history.after.name}
+            </div>
+            {history.after.title && (
+              <div className="assistant-title" data-testid={`new-assistant-title-${idx}`}>
+                {history.after.title}
+              </div>
+            )}
+            <FormattedContact contact={history.after.contact} showLinks={false} />
+          </>
+        )}
+      </td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
 function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[] }>) {
   const { trusteeHistory } = props;
   return (
@@ -326,6 +374,14 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
             return (
               <ShowTrusteeAppointmentHistory
                 key={`${history.trusteeId}-${idx}`}
+                history={history}
+                idx={idx}
+              />
+            );
+          case 'AUDIT_ASSISTANT':
+            return (
+              <ShowTrusteeAssistantHistory
+                key={`${history.trusteeId || history.id}-${idx}`}
                 history={history}
                 idx={idx}
               />

@@ -60,7 +60,7 @@ describe('orders repo', () => {
     const predicate = {
       divisionCodes: ['081'],
     };
-    await expect(async () => await repo.search(predicate)).rejects.toThrow(UnknownError);
+    await expect(repo.search(predicate)).rejects.toThrow(UnknownError);
   });
 
   test('should insert an array of transfer orders', async () => {
@@ -87,7 +87,7 @@ describe('orders repo', () => {
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
       new Error('some error'),
     );
-    await expect(async () => await repo.read('123')).rejects.toThrow(UnknownError);
+    await expect(repo.read('123')).rejects.toThrow(UnknownError);
   });
 
   test('should throw NotFound error during update when dbAdapter findOne returns no results', async () => {
@@ -103,7 +103,7 @@ describe('orders repo', () => {
     vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
       new NotFoundError('test-module'),
     );
-    await expect(async () => await repo.update(transferOrder)).rejects.toThrow(NotFoundError);
+    await expect(repo.update(transferOrder)).rejects.toThrow(NotFoundError);
   });
 
   test('should throw CamsError error during update when dbAdapter throws error on replaceOne', async () => {
@@ -120,7 +120,7 @@ describe('orders repo', () => {
     vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
       new Error('some error'),
     );
-    await expect(async () => await repo.update(transferOrder)).rejects.toThrow(UnknownError);
+    await expect(repo.update(transferOrder)).rejects.toThrow(UnknownError);
   });
 
   test('should update one order', async () => {
@@ -150,7 +150,7 @@ describe('orders repo', () => {
     vi.spyOn(MongoCollectionAdapter.prototype, 'insertMany').mockRejectedValue(
       new Error('some value'),
     );
-    await expect(async () => await repo.createMany(newOrders)).rejects.toThrow(UnknownError);
+    await expect(repo.createMany(newOrders)).rejects.toThrow(UnknownError);
   });
 
   test('should return empty array when createMany is supplied with an empty array', async () => {

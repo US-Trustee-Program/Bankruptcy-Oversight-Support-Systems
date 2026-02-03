@@ -50,6 +50,23 @@ export default class CaseManagement {
     this.casesRepository = factory.getCasesRepository(applicationContext);
   }
 
+  private shouldUsePhoneticSearch(
+    predicate: CasesSearchPredicate,
+    phoneticSearchEnabled: boolean,
+  ): boolean {
+    if (!phoneticSearchEnabled) {
+      return false;
+    }
+
+    const normalizedDebtorName = predicate.debtorName?.trim();
+
+    if (!normalizedDebtorName || normalizedDebtorName.length < 2) {
+      return false;
+    }
+
+    return true;
+  }
+
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
@@ -81,7 +98,16 @@ export default class CaseManagement {
         predicate.excludedCaseIds = consolidationMemberCaseIds;
       }
 
-      const searchResult = await this.casesRepository.searchCases(predicate);
+      const phoneticSearchEnabled = context.featureFlags?.['phonetic-search-enabled'] === true;
+      const usePhoneticSearch = this.shouldUsePhoneticSearch(predicate, phoneticSearchEnabled);
+
+      let searchResult: CamsPaginationResponse<ResourceActions<SyncedCase>>;
+
+      if (usePhoneticSearch) {
+        searchResult = await this.casesRepository.searchCasesWithPhoneticTokens(predicate);
+      } else {
+        searchResult = await this.casesRepository.searchCases(predicate);
+      }
 
       const casesMap = new Map<string, ResourceActions<SyncedCase>>();
       const caseIds = [];

@@ -30,7 +30,7 @@
 
 import { vi } from 'vitest';
 import type { CamsSession } from '@common/cams/session';
-import type { CaseDetail, CaseSummary, CaseNote } from '@common/cams/cases';
+import type { CaseDetail, CaseSummary, CaseNote, SyncedCase } from '@common/cams/cases';
 import type { CaseAssignment } from '@common/cams/assignments';
 import type {
   TransferFrom,
@@ -79,6 +79,8 @@ export class TestSetup {
   private cases: CaseDetail[] = [];
   private searchResults: CaseSummary[] = [];
   private searchResultsExplicitlySet: boolean = false;
+  private caseDataset: SyncedCase[] = [];
+  private caseDatasetExplicitlySet: boolean = false;
   private myAssignments: CaseSummary[] = [];
   private transfers: Transfer[] = [];
   private consolidations: Consolidation[] = [];
@@ -167,6 +169,33 @@ export class TestSetup {
   withSearchResults(results: CaseSummary[]): TestSetup {
     this.searchResults = results;
     this.searchResultsExplicitlySet = true;
+    return this;
+  }
+
+  /**
+   * Provide a searchable dataset of cases for phonetic search tests.
+   * The repository mock will filter this dataset based on search predicates,
+   * allowing the full search logic to execute (nickname expansion, phonetic tokens, Jaro-Winkler).
+   *
+   * Use this instead of withSearchResults() when you want to test the actual search logic
+   * rather than just displaying pre-filtered results.
+   *
+   * @param cases Array of SyncedCase objects with phonetic tokens
+   * @example
+   * ```typescript
+   * const michaelCase = createMockCaseWithPhoneticTokens('24-00001', 'Michael Johnson', [...]);
+   * const mikeCase = createMockCaseWithPhoneticTokens('24-00002', 'Mike Johnson', [...]);
+   * const janeCase = createMockCaseWithPhoneticTokens('24-00003', 'Jane Doe', [...]);
+   *
+   * await TestSetup
+   *   .forUser(TestSessions.caseAssignmentManager())
+   *   .withCaseDataset([michaelCase, mikeCase, janeCase])  // Unfiltered dataset
+   *   .renderAt('/');
+   * ```
+   */
+  withCaseDataset(cases: SyncedCase[]): TestSetup {
+    this.caseDataset = cases;
+    this.caseDatasetExplicitlySet = true;
     return this;
   }
 
@@ -523,14 +552,19 @@ export class TestSetup {
 
       // Cases repository - STATE AWARE for transfers/consolidations
       CasesMongoRepository: {
-        // Only mock searchCases if withSearchResults() was explicitly called
-        // This prevents accidental usage and makes tests explicit about their search data needs
-        searchCases: this.searchResultsExplicitlySet
+        // Simple searchCases mock - returns dataset or results as-is
+        // Individual tests can override this with custom spy if they need filtering logic
+        searchCases: this.caseDatasetExplicitlySet
           ? vi.fn().mockResolvedValue({
-              metadata: { total: this.searchResults.length },
-              data: this.searchResults,
+              metadata: { total: this.caseDataset.length },
+              data: this.caseDataset,
             })
-          : undefined,
+          : this.searchResultsExplicitlySet
+            ? vi.fn().mockResolvedValue({
+                metadata: { total: this.searchResults.length },
+                data: this.searchResults,
+              })
+            : undefined,
         // STATE AWARE: Read transfers from state
         getTransfers: vi.fn().mockImplementation(async (caseId: string) => {
           return state.getTransfers(caseId);
@@ -817,18 +851,18 @@ export class TestSetup {
   }
 
   /**
-   * Set up feature flag spies to override the default flags defined in driver-mocks.
-   * This allows individual tests to enable specific feature flags.
-   *
-   * Uses spyOn to override the mocked LaunchDarkly modules that were hoisted in driver-mocks.
+   * Set up feature flags by spying on LaunchDarkly modules at runtime.
+   * This uses vi.spyOn() to mock the modules dynamically without vi.mock() hoisting issues.
    */
   private async setupFeatureFlagSpies(): Promise<void> {
-    // Spy on backend LaunchDarkly to return test-specific flags
-    const backendLD = await import('@launchdarkly/node-server-sdk');
+    console.log('[FEATURE FLAGS] Setting feature flags:', this.featureFlags);
 
-    // NOTE: This duplicates createMockLaunchDarklyClient from driver-mocks.ts
-    // We cannot import and use the helper here due to module loading order issues
-    // with dynamic imports. The helper is fine in hoisted vi.mock() calls.
+    // Spy on frontend LaunchDarkly useFlags hook
+    const frontendLD = await import('launchdarkly-react-client-sdk');
+    vi.spyOn(frontendLD, 'useFlags').mockReturnValue(this.featureFlags);
+
+    // Spy on backend LaunchDarkly init
+    const backendLD = await import('@launchdarkly/node-server-sdk');
     const mockClient = {
       waitForInitialization: vi.fn().mockResolvedValue(undefined),
       allFlagsState: vi.fn().mockResolvedValue({
@@ -843,9 +877,7 @@ export class TestSetup {
       vi.spyOn(backendLD.default, 'init').mockReturnValue(mockClient as never);
     }
 
-    // Spy on frontend LaunchDarkly to return test-specific flags
-    const frontendLD = await import('launchdarkly-react-client-sdk');
-    vi.spyOn(frontendLD, 'useFlags').mockReturnValue(this.featureFlags);
+    console.log('[FEATURE FLAGS] Feature flag spies set up successfully');
   }
 }
 

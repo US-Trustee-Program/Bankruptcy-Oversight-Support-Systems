@@ -160,6 +160,8 @@ export interface AcmsGateway {
   getMigrationCaseCount(context: ApplicationContext);
 }
 
+export type CaseHistoryDocumentType = 'AUDIT_ASSIGNMENT' | 'AUDIT_TRANSFER' | 'AUDIT_CONSOLIDATION';
+
 export interface CasesRepository extends Releasable {
   createTransferFrom(reference: TransferFrom): Promise<TransferFrom>;
   createTransferTo(reference: TransferTo): Promise<TransferTo>;
@@ -168,16 +170,24 @@ export interface CasesRepository extends Releasable {
   createConsolidationFrom(reference: ConsolidationFrom): Promise<ConsolidationFrom>;
   getConsolidation(caseId: string): Promise<Array<ConsolidationTo | ConsolidationFrom>>;
   getCaseHistory(caseId: string): Promise<CaseHistory[]>;
-  getAllCaseHistory(documentType: string): Promise<CaseHistory[]>;
+  getAllCaseHistory(documentType: CaseHistoryDocumentType): Promise<CaseHistory[]>;
   createCaseHistory(history: CaseHistory): Promise<void>;
   updateCaseHistory(history: CaseHistory): Promise<void>;
   syncDxtrCase(bCase: SyncedCase): Promise<void>;
   searchCases(
     predicate: CasesSearchPredicate,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
+  searchCasesWithPhoneticTokens(
+    predicate: CasesSearchPredicate,
+  ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
   getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
   updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;
+  countByQuery: <T>(query: Query<T>) => Promise<number>;
+  searchByQuery: <T>(
+    query: Query<T>,
+    options: { limit: number; offset: number },
+  ) => Promise<CamsPaginationResponse<T>>;
 }
 
 export interface OfficesRepository

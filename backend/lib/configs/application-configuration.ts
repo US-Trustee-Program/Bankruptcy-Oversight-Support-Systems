@@ -16,6 +16,7 @@ export class ApplicationConfiguration {
   public readonly featureFlagKey: string;
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
+  public readonly phoneticSimilarityThreshold: number;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -26,6 +27,9 @@ export class ApplicationConfiguration {
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
     this.userGroupGatewayConfig = getUserGroupGatewayConfig();
+    this.phoneticSimilarityThreshold = parseFloat(
+      process.env.PHONETIC_SIMILARITY_THRESHOLD ?? '0.83',
+    );
   }
 
   private getAppServerConfig(): ServerType {

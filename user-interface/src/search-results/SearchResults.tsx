@@ -1,8 +1,10 @@
 import { useEffect, useState, type JSX } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { CaseBasics, SyncedCase } from '@common/cams/cases';
+import { CaseSummary, SyncedCase } from '@common/cams/cases';
 import Table, { TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
+
+const SEARCH_RESULTS_WARNING_THRESHOLD = 10000;
 import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -25,22 +27,26 @@ export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): b
   }, false);
 }
 
-const searchResultsHeaderLabels = ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
-
 export type SearchResultsHeaderProps = {
   id: string;
   labels: string[];
+  phoneticSearchEnabled?: boolean;
+  showDebtorNameColumn?: boolean;
 };
 
 export type SearchResultsRowProps = TableRowProps & {
   idx: number;
-  bCase: CaseBasics;
+  bCase: CaseSummary;
   labels: string[];
+  phoneticSearchEnabled?: boolean;
+  showDebtorNameColumn?: boolean;
 };
 
 export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   id: string;
   searchPredicate: CasesSearchPredicate;
+  phoneticSearchEnabled?: boolean;
+  showDebtorNameColumn?: boolean;
   onStartSearching?: () => void;
   onEndSearching?: () => void;
   noResultsMessage?: string;
@@ -53,6 +59,8 @@ function SearchResults(props: SearchResultsProps) {
   const {
     id,
     searchPredicate: searchPredicateProp,
+    phoneticSearchEnabled = false,
+    showDebtorNameColumn = false,
     onStartSearching,
     onEndSearching,
     noResultsMessage: noResultsMessageProp,
@@ -68,6 +76,10 @@ function SearchResults(props: SearchResultsProps) {
   const [emptyResponse, setEmptyResponse] = useState<boolean>(true);
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
+
+  const searchResultsHeaderLabels = showDebtorNameColumn
+    ? ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed']
+    : ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
 
   const pagination: PaginationModel | undefined = searchResults?.pagination;
 
@@ -106,7 +118,14 @@ function SearchResults(props: SearchResultsProps) {
     }
     resetAlert();
 
-    trackSearchEvent(searchPredicate);
+    const searchMetadata = {
+      ...searchPredicate,
+      debtorNameUsed: !!searchPredicate.debtorName,
+    };
+    if ('debtorName' in searchMetadata) {
+      delete searchMetadata.debtorName;
+    }
+    trackSearchEvent(searchMetadata);
     setIsSearching(true);
     if (onStartSearching) {
       onStartSearching();
@@ -137,6 +156,11 @@ function SearchResults(props: SearchResultsProps) {
   }, [searchPredicate]);
 
   const totalCount = searchResults?.pagination?.totalCount ?? 0;
+  const isLimitReached = totalCount >= SEARCH_RESULTS_WARNING_THRESHOLD;
+  const displayCount = isLimitReached
+    ? `${new Intl.NumberFormat('en-US').format(SEARCH_RESULTS_WARNING_THRESHOLD)}+`
+    : new Intl.NumberFormat('en-US').format(totalCount);
+
   return (
     <div {...otherProps} className="search-results">
       {alertInfo && (
@@ -179,18 +203,46 @@ function SearchResults(props: SearchResultsProps) {
       )}
       {!isSearching && !emptyResponse && (
         <div>
+          {isLimitReached && (
+            <div className="search-alert">
+              <Alert
+                id="search-limit-alert"
+                className="measure-6"
+                message={`Showing first ${new Intl.NumberFormat('en-US').format(SEARCH_RESULTS_WARNING_THRESHOLD)} cases.`}
+                type={UswdsAlertStyle.Info}
+                show={true}
+                slim={true}
+                inline={true}
+                role="alert"
+              ></Alert>
+            </div>
+          )}
           <Table
             id={id}
             className="case-list"
             scrollable="true"
             uswdsStyle={['striped']}
             title="Search results"
-            caption={`${new Intl.NumberFormat('en-US').format(totalCount)} ${totalCount === 1 ? 'case' : 'cases'}`}
+            caption={`${displayCount} ${totalCount === 1 ? 'case' : 'cases'}`}
           >
-            <Header id={id} labels={searchResultsHeaderLabels} />
+            <Header
+              id={id}
+              labels={searchResultsHeaderLabels}
+              phoneticSearchEnabled={phoneticSearchEnabled}
+              showDebtorNameColumn={showDebtorNameColumn}
+            />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
-                return <Row bCase={bCase} labels={searchResultsHeaderLabels} idx={idx} key={idx} />;
+                return (
+                  <Row
+                    bCase={bCase}
+                    labels={searchResultsHeaderLabels}
+                    phoneticSearchEnabled={phoneticSearchEnabled}
+                    showDebtorNameColumn={showDebtorNameColumn}
+                    idx={idx}
+                    key={idx}
+                  />
+                );
               })}
             </TableBody>
           </Table>

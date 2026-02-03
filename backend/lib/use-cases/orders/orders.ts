@@ -158,7 +158,7 @@ export class OrdersUseCase {
       context.logger.info(
         MODULE_NAME,
         'Got initial runtime state from repo (Cosmos).',
-        initialSyncState,
+        // Do not log the actual state value to prevent log injection
       );
     } catch (error) {
       context.logger.info(

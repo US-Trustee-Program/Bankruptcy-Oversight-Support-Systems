@@ -68,9 +68,9 @@ describe('offices controller tests', () => {
 
     const controller = new OfficesController();
     applicationContext.request = mockCamsHttpRequest();
-    await expect(async () => {
-      await controller.handleRequest(applicationContext);
-    }).rejects.toThrow('Some expected CAMS error.');
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      'Some expected CAMS error.',
+    );
     expect(getOffices).toHaveBeenCalled();
     expect(getOfficeAttorneys).not.toHaveBeenCalled();
   });
@@ -167,9 +167,9 @@ describe('offices controller tests', () => {
     applicationContext.request = mockCamsHttpRequest({ params: { officeCode, subResource } });
 
     const controller = new OfficesController();
-    await expect(async () => {
-      await controller.handleRequest(applicationContext);
-    }).rejects.toThrow(`Sub resource ${subResource} is not supported.`);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      `Sub resource ${subResource} is not supported.`,
+    );
     expect(getOffices).not.toHaveBeenCalled();
     expect(getOfficeAttorneys).not.toHaveBeenCalled();
   });
