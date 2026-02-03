@@ -61,10 +61,15 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   email: [V.optional(V.nullable(...email))],
 };
 
+const assistantContactInformationSpec: ValidationSpec<ContactInformation> = {
+  ...contactInformationSpec,
+  address: [V.optional(V.nullable(V.spec(addressSpec)))],
+};
+
 const assistantSpec: ValidationSpec<TrusteeAssistant> = {
   name: assistantName,
   title: [V.optional(...assistantTitle)],
-  contact: [V.spec(contactInformationSpec)],
+  contact: [V.optional(V.spec(assistantContactInformationSpec))],
 };
 
 const trusteeSpec: ValidationSpec<TrusteeInput> = {

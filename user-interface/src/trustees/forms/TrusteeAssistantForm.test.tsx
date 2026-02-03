@@ -426,15 +426,28 @@ describe('TrusteeAssistantForm', () => {
           const callArgs = mockPatchTrustee.mock.calls[0];
           expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
           expect(callArgs[1].assistant).toBeDefined();
-          expect(callArgs[1].assistant!.name).toBe('Test Assistant');
-          expect(callArgs[1].assistant!.title).toBe('Lead Assistant');
-          expect(callArgs[1].assistant!.contact.address!.address1).toBe('456 Test St');
-          expect(callArgs[1].assistant!.contact.address!.address2).toBe('Suite 200');
-          expect(callArgs[1].assistant!.contact.address!.city).toBe('TestCity');
-          expect(callArgs[1].assistant!.contact.address!.state).toBe('NY');
-          expect(callArgs[1].assistant!.contact.address!.zipCode).toBe('12345');
-          expect(callArgs[1].assistant!.contact.phone!.extension).toBe('999');
-          expect(callArgs[1].assistant!.contact.email).toBe('test@example.com');
+
+          const { name, title, contact } = callArgs[1].assistant!;
+          expect(name).toBe('Test Assistant');
+          expect(title).toBe('Lead Assistant');
+
+          expect(contact).toBeDefined();
+
+          const { address, phone, email } = contact!;
+          expect(address).toBeDefined();
+          expect(phone).toBeDefined();
+
+          const { address1, address2, city, state, zipCode } = address!;
+          expect(address1).toBe('456 Test St');
+          expect(address2).toBe('Suite 200');
+          expect(city).toBe('TestCity');
+          expect(state).toBe('NY');
+          expect(zipCode).toBe('12345');
+
+          const { extension } = phone!;
+          expect(extension).toBe('999');
+
+          expect(email).toBe('test@example.com');
         },
         { timeout: 2000 },
       );

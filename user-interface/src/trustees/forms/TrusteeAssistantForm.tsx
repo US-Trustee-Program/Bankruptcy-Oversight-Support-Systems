@@ -21,6 +21,7 @@ import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
+import { Address, PhoneNumber } from '@common/cams/contact';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
   if (!assistant) {
@@ -108,31 +109,62 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
+  function getAddressInfo({
+    address1,
+    address2,
+    city,
+    zipCode,
+    state,
+  }: Partial<Address>): Address | undefined {
+    if (!address1 || !city || !state || !zipCode) return undefined;
+    return {
+      address1,
+      address2,
+      city,
+      state,
+      zipCode,
+      countryCode: 'US' as const,
+    };
+  }
+
+  function getPhoneInfo({
+    phone,
+    extension,
+  }: {
+    phone?: string;
+    extension?: string;
+  }): PhoneNumber | undefined {
+    if (!phone) return undefined;
+    return {
+      number: phone,
+      extension: extension,
+    };
+  }
+
   const mapPayload = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
     // If name is empty, clear the entire assistant
-    if (!formData.name) {
+    const { name, title, ...contactInfo } = formData;
+    if (!name) {
       return { assistant: undefined };
     }
 
+    const addressInfo = getAddressInfo(contactInfo);
+    const phoneInfo = getPhoneInfo(contactInfo);
+    const emailInfo = contactInfo.email || undefined;
+
+    const hasContactInfo = addressInfo || phoneInfo || emailInfo;
+
     return {
       assistant: {
-        name: formData.name,
-        ...(formData.title && { title: formData.title }),
-        contact: {
-          address:
-            formData.address1 && formData.city && formData.state && formData.zipCode
-              ? {
-                  address1: formData.address1,
-                  ...(formData.address2 && { address2: formData.address2 }),
-                  city: formData.city,
-                  state: formData.state,
-                  zipCode: formData.zipCode,
-                  countryCode: 'US',
-                }
-              : null,
-          phone: formData.phone ? { number: formData.phone, extension: formData.extension } : null,
-          email: formData.email ?? null,
-        },
+        name: name,
+        title: title,
+        contact: hasContactInfo
+          ? {
+              address: addressInfo,
+              phone: phoneInfo,
+              email: emailInfo,
+            }
+          : undefined,
       },
     } as Partial<TrusteeInput>;
   };
