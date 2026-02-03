@@ -11,7 +11,10 @@ import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
 import { ZoomInfo } from './trustees';
 
-export const trusteeName = [V.minLength(1, 'Trustee name is required'), V.maxLength(50)];
+export const trusteeName = [
+  V.minLength(1, 'Trustee name is required'),
+  V.optional(V.maxLength(50)),
+];
 
 export const companyName = [V.optional(V.maxLength(50))];
 
