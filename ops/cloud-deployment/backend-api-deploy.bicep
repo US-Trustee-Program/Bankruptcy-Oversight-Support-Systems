@@ -534,6 +534,9 @@ module apiSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
   }
+  dependsOn: [
+    apiFunctionApp::slot
+  ]
 }
 
 
