@@ -1,7 +1,7 @@
 import { app, InvocationContext, output } from '@azure/functions';
 import { CaseSyncEvent } from '@common/queue/dataflow-types';
 
-import ApplicationApplicationContextCreator from '../../azure/application-context-creator';
+import ApplicationContextCreator from '../../azure/application-context-creator';
 import {
   buildFunctionName,
   buildQueueName,
@@ -11,9 +11,9 @@ import {
 import ResyncTerminalTransactionCases from '../../../lib/use-cases/dataflows/resync-terminal-transaction-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
-import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
+import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 
 const MODULE_NAME = 'RESYNC-TERMINAL-TRANSACTION-CASES';
 const PAGE_SIZE = 100;
@@ -26,27 +26,27 @@ type ResyncStartMessage = StartMessage & {
 // Queues
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const PAGE = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'page'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const DLQ = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'dlq'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const RETRY = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'retry'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const HARD_STOP = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 // Registered function names
@@ -123,26 +123,55 @@ async function handlePage(events: CaseSyncEvent[], invocationContext: Invocation
 }
 
 /**
- * handleError
- *
- * Route errors to appropriate queue: NotFoundError = abandon, others = retry.
+ * Helper: Route error for initial attempt to appropriate queue.
+ * NotFoundError = abandon, others = retry.
  */
-async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const logger = ApplicationApplicationContextCreator.getLogger(invocationContext);
-
-  // NotFoundError = case doesn't exist in DXTR anymore, abandon
+function routeErrorForInitialAttempt(
+  event: CaseSyncEvent,
+  invocationContext: InvocationContext,
+  logger: LoggerImpl,
+): void {
   if (isNotFoundError(event.error)) {
     logger.info(MODULE_NAME, `Abandoning attempt to sync ${event.caseId}: ${event.error.message}`);
     return;
   }
 
-  // Other errors = retry
   logger.info(
     MODULE_NAME,
     `Error encountered attempting to sync ${event.caseId}: ${event.error['message']}`,
   );
   delete event.error;
   invocationContext.extraOutputs.set(RETRY, [event]);
+}
+
+/**
+ * handleError
+ *
+ * Route errors to appropriate queue: NotFoundError = abandon, others = retry.
+ */
+async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
+  routeErrorForInitialAttempt(event, invocationContext, logger);
+}
+
+/**
+ * Helper: Increment retry count and check limit.
+ * If limit exceeded, route to HARD_STOP and return true (indicating stop).
+ */
+function incrementRetryCount(
+  event: CaseSyncEvent,
+  limit: number,
+  invocationContext: InvocationContext,
+  logger: LoggerImpl,
+): boolean {
+  event.retryCount = (event.retryCount ?? 0) + 1;
+
+  if (event.retryCount > limit) {
+    invocationContext.extraOutputs.set(HARD_STOP, [event]);
+    logger.info(MODULE_NAME, `Too many attempts to sync ${filterToExtendedAscii(event.caseId)}`);
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -155,42 +184,20 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
   const { logger } = context;
 
   const RETRY_LIMIT = 3;
-  if (!event.retryCount) {
-    event.retryCount = 1;
-  } else {
-    event.retryCount += 1;
-  }
-
-  if (event.retryCount > RETRY_LIMIT) {
-    invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    logger.info(MODULE_NAME, `Too many attempts to sync ${filterToExtendedAscii(event.caseId)}`);
-    return;
-  }
+  const shouldStop = incrementRetryCount(event, RETRY_LIMIT, invocationContext, logger);
+  if (shouldStop) return;
 
   logger.info(
     MODULE_NAME,
     `Retry attempt ${event.retryCount} for ${filterToExtendedAscii(event.caseId)}`,
   );
 
-  // Export case if not already fetched
-  if (!event.bCase) {
-    const exportResult = await ExportAndLoadCase.exportCase(context, event);
-    if (exportResult.bCase) {
-      event.bCase = exportResult.bCase;
-    } else {
-      event.error =
-        exportResult.error ??
-        new UnknownError(MODULE_NAME, { message: 'Expected case detail was not returned.' });
-      invocationContext.extraOutputs.set(DLQ, [event]);
-      return;
-    }
-  }
+  // Reuse the same export + load pipeline as handlePage
+  const [processed] = await ExportAndLoadCase.exportAndLoad(context, [event]);
 
-  // Load case into Cosmos DB
-  const loadResult = await ExportAndLoadCase.loadCase(context, event);
-  if (loadResult.error) {
-    event.error = loadResult.error;
-    invocationContext.extraOutputs.set(DLQ, [event]);
+  if (processed.error) {
+    // Route failure to DLQ and keep error attached
+    invocationContext.extraOutputs.set(DLQ, [processed]);
     return;
   }
 
