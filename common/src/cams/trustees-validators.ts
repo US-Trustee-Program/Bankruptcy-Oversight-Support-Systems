@@ -20,7 +20,7 @@ export const companyName = V.optional(V.maxLength(50));
 
 export const addressLine1 = V.useValidators(
   V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED),
-  V.maxLength(40),
+  V.optional(V.maxLength(40)),
 );
 
 export const addressLine2 = V.optional(V.maxLength(40));
@@ -29,7 +29,7 @@ export const addressLine3 = V.optional(V.maxLength(40));
 
 export const city = V.useValidators(
   V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED),
-  V.maxLength(50),
+  V.optional(V.maxLength(50)),
 );
 
 export const state = V.exactLength(2, FIELD_VALIDATION_MESSAGES.STATE_REQUIRED);

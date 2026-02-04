@@ -260,6 +260,34 @@ describe('TrusteeAssistantForm', () => {
         { timeout: 1000 },
       );
     });
+
+    test('should display the correct error message for address information', async () => {
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+
+      const address2Input = screen.getByTestId('assistant-address2');
+      await userEvent.type(address2Input, '101');
+
+      const saveButton = screen.getByTestId('button-submit-button');
+      await saveButton.click();
+
+      const address1ErrorMessage = document.getElementById(
+        'assistant-address1-input__error-message',
+      );
+      expect(address1ErrorMessage).toBeInTheDocument();
+      expect(address1ErrorMessage?.textContent).toEqual('Address is required');
+
+      const cityErrorMessage = document.getElementById('assistant-city-input__error-message');
+      expect(cityErrorMessage).toBeInTheDocument();
+      expect(cityErrorMessage?.textContent).toEqual('City is required');
+
+      const stateErrorMessage = document.getElementById('assistant-state-input__error-message');
+      expect(stateErrorMessage).toBeInTheDocument();
+      expect(stateErrorMessage?.textContent).toEqual('State is required');
+
+      const zipErrorMessage = document.getElementById('assistant-zip-input__error-message');
+      expect(zipErrorMessage).toBeInTheDocument();
+      expect(zipErrorMessage?.textContent).toEqual('ZIP Code is required Must be 5 or 9 digits');
+    });
   });
 
   describe('Form Submission', () => {
@@ -422,7 +450,7 @@ describe('TrusteeAssistantForm', () => {
     test('should return error reasons for invalid field value', () => {
       const result = validateField('name', 'A'.repeat(51));
       expect(result).toBeDefined();
-      expect(result).toContain('Max length 50 characters');
+      expect(result).toEqual(['Max length 50 characters']);
     });
 
     test('should return error for name field with undefined value', () => {
