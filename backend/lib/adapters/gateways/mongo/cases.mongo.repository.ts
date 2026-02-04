@@ -25,12 +25,6 @@ import { generateStructuredQueryTokens } from '../../utils/phonetic-helper';
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
 
-// Minimum match score threshold for word-level phonetic search results.
-// With exact match weight of 10000, nickname weight of 1000, qualified phonetic weight of 100,
-// and phonetic prefix weight of 75, any score > 0 indicates a valid match.
-// The word-level matching already filters out false positives (e.g., "Mike" → "Mitchell").
-export const MATCH_SCORE_THRESHOLD = 0;
-
 const { and, or, using } = QueryBuilder;
 const {
   addFields,
@@ -449,11 +443,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           targetTokenFields: ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
           outputField: 'matchScore',
         }),
-        match(
-          using<SyncedCase & { matchScore: number }>()('matchScore').greaterThan(
-            MATCH_SCORE_THRESHOLD,
-          ),
-        ),
+        match(using<SyncedCase & { matchScore: number }>()('matchScore').greaterThan(0)),
         sort(descending({ name: 'matchScore' }), descending(dateFiled), descending(caseNumber)),
         paginate(predicate.offset, predicate.limit),
       );
