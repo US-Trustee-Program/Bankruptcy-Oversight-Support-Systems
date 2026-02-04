@@ -55,7 +55,7 @@ param networkAcls object = {
   bypass: 'AzureServices'
 }
 
-resource kv 'Microsoft.KeyVault/vaults@2023-02-01' = {
+resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
   properties: {
