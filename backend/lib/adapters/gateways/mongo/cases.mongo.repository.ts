@@ -381,16 +381,20 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
    *
    * This method generates search tokens (bigrams and phonetic codes) and nickname tokens from the
    * search query and matches them against pre-computed tokens stored on case documents.
-   * Results are scored based on token overlap, filtered to require at least one bigram match,
+   * Results are scored based on token overlap and match quality, filtered to require meaningful matches,
    * and sorted by match score (descending), then by date filed and case number.
    *
    * Scoring weights:
    * - Bigram matches: 3 points each (character-level similarity, typo tolerance)
    * - Phonetic code matches: 11 points each (sound-based similarity via Soundex/Metaphone)
    * - Nickname matches: 10 points each (name variations like "Mike" → "Michael")
+   * - Coverage bonus: up to 20 points (rewards high percentage of query tokens matched)
    *
-   * Filtering:
-   * - Requires at least one bigram match to prevent phonetic-only false positives
+   * Filtering (requires ALL of the following):
+   * - At least one phonetic match from either the search term OR its nickname variations
+   *   (prevents bigram-only false positives like "mike" matching "Richard" via "Michael" bigrams)
+   * - At least one bigram match
+   *   (prevents phonetic-only false positives like "mike" matching "McKay" via identical Soundex codes)
    * - Matches on both debtor and jointDebtor phonetic tokens
    *
    * Falls back to regular searchCases when no debtorName is provided.
@@ -432,6 +436,13 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
       const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
+      type ScoredCase = SyncedCase & {
+        phoneticMatchCount: number;
+        nicknamePhoneticMatchCount: number;
+        bigramMatchCount: number;
+      };
+      const scoredDoc = using<ScoredCase>();
+
       const spec = pipeline(
         match(and(...conditions)),
         score(
@@ -444,7 +455,13 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
           DEFAULT_NICKNAME_WEIGHT,
         ),
         match(
-          using<SyncedCase & { bigramMatchCount: number }>()('bigramMatchCount').greaterThan(0),
+          and(
+            or(
+              scoredDoc('phoneticMatchCount').greaterThan(0),
+              scoredDoc('nicknamePhoneticMatchCount').greaterThan(0),
+            ),
+            scoredDoc('bigramMatchCount').greaterThanOrEqual(1),
+          ),
         ),
         sort(descending({ name: 'matchScore' }), descending(dateFiled), descending(caseNumber)),
         paginate(predicate.offset, predicate.limit),

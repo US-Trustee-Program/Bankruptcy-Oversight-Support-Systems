@@ -47,6 +47,25 @@ describe('Phonetic Utilities', () => {
       expect(tokens1).toEqual(tokens2);
       expect(tokens2).toEqual(tokens3);
     });
+
+    test('should filter out stop words', () => {
+      const tokens = generatePhoneticTokens('King Brown and Schmitt');
+      // Should not include phonetic codes for "and" (A530, ANT)
+      expect(tokens).not.toContain('A530');
+      expect(tokens).not.toContain('ANT');
+      // Should include phonetic codes for actual names
+      expect(tokens).toContain('K520'); // King
+      expect(tokens).toContain('B650'); // Brown
+      expect(tokens).toContain('S530'); // Schmitt
+    });
+
+    test('should filter out common business stop words', () => {
+      const tokens = generatePhoneticTokens('Johnson Inc');
+      // Should include Johnson
+      expect(tokens).toContain('J525');
+      // Should not include "Inc"
+      expect(tokens).not.toContain('I520');
+    });
   });
 
   describe('generateBigrams', () => {
@@ -108,6 +127,17 @@ describe('Phonetic Utilities', () => {
       const bigrams = generateBigrams('Wu');
       expect(bigrams).toContain('wu');
       expect(bigrams).toHaveLength(1);
+    });
+
+    test('should filter out stop words', () => {
+      const bigrams = generateBigrams('King Brown and Schmitt');
+      // Should not include bigrams from "and"
+      expect(bigrams).not.toContain('an');
+      expect(bigrams).not.toContain('nd');
+      // Should include bigrams from actual names
+      expect(bigrams).toContain('ki');
+      expect(bigrams).toContain('br');
+      expect(bigrams).toContain('sc');
     });
   });
 

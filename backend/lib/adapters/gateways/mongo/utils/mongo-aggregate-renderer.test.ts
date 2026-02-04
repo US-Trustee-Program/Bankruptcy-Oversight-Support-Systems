@@ -228,25 +228,36 @@ describe('aggregation query renderer tests', () => {
     expect(result[0].$addFields).toHaveProperty('_bigramMatches_0');
     expect(result[0].$addFields).toHaveProperty('_phoneticMatches_0');
     expect(result[0].$addFields).toHaveProperty('_nicknameMatches_0');
+    expect(result[0].$addFields).toHaveProperty('_nicknamePhoneticMatches_0');
+    expect(result[0].$addFields).toHaveProperty('_coverageBonus_0');
     expect(result[0].$addFields).toHaveProperty('_score_0');
     expect(result[0].$addFields).toHaveProperty('_bigramMatches_1');
     expect(result[0].$addFields).toHaveProperty('_phoneticMatches_1');
     expect(result[0].$addFields).toHaveProperty('_nicknameMatches_1');
+    expect(result[0].$addFields).toHaveProperty('_nicknamePhoneticMatches_1');
+    expect(result[0].$addFields).toHaveProperty('_coverageBonus_1');
     expect(result[0].$addFields).toHaveProperty('_score_1');
 
     expect(result[1]).toHaveProperty('$addFields');
     expect(result[1].$addFields).toHaveProperty('matchScore');
     expect(result[1].$addFields).toHaveProperty('bigramMatchCount');
+    expect(result[1].$addFields).toHaveProperty('phoneticMatchCount');
+    expect(result[1].$addFields).toHaveProperty('nicknameMatchCount');
+    expect(result[1].$addFields).toHaveProperty('nicknamePhoneticMatchCount');
 
     expect(result[2]).toHaveProperty('$project');
     expect(result[2].$project).toEqual({
       _bigramMatches_0: 0,
       _phoneticMatches_0: 0,
       _nicknameMatches_0: 0,
+      _nicknamePhoneticMatches_0: 0,
+      _coverageBonus_0: 0,
       _score_0: 0,
       _bigramMatches_1: 0,
       _phoneticMatches_1: 0,
       _nicknameMatches_1: 0,
+      _nicknamePhoneticMatches_1: 0,
+      _coverageBonus_1: 0,
       _score_1: 0,
     });
   });
@@ -328,7 +339,7 @@ describe('aggregation query renderer tests', () => {
     expect(bigramOverlap).toContain('mi');
   });
 
-  test('should output bigramMatchCount for filtering results', () => {
+  test('should output match counts for filtering results', () => {
     const searchTokens = ['jo', 'hn', 'JN', 'J500'];
     const scoreStage: Score = score(
       searchTokens,
@@ -347,6 +358,51 @@ describe('aggregation query renderer tests', () => {
     expect(maxScoreStage.bigramMatchCount).toEqual({
       $max: ['$_bigramMatches_0', '$_bigramMatches_1'],
     });
+    expect(maxScoreStage).toHaveProperty('phoneticMatchCount');
+    expect(maxScoreStage.phoneticMatchCount).toEqual({
+      $max: ['$_phoneticMatches_0', '$_phoneticMatches_1'],
+    });
+    expect(maxScoreStage).toHaveProperty('nicknameMatchCount');
+    expect(maxScoreStage.nicknameMatchCount).toEqual({
+      $max: ['$_nicknameMatches_0', '$_nicknameMatches_1'],
+    });
+    expect(maxScoreStage).toHaveProperty('nicknamePhoneticMatchCount');
+    expect(maxScoreStage.nicknamePhoneticMatchCount).toEqual({
+      $max: ['$_nicknamePhoneticMatches_0', '$_nicknamePhoneticMatches_1'],
+    });
+  });
+
+  test('should compute coverage bonus based on percentage of query tokens matched', () => {
+    const searchTokens = ['mi', 'ik', 'ke', 'M200', 'MK']; // 5 tokens for "Mike"
+    const nicknameTokens = ['ic', 'ch', 'ha', 'ae', 'el', 'M240', 'MKSHL']; // 7 tokens for "Michael"
+    const scoreStage: Score = score(
+      searchTokens,
+      nicknameTokens,
+      ['debtor.phoneticTokens'],
+      'matchScore',
+      DEFAULT_BIGRAM_WEIGHT,
+      DEFAULT_PHONETIC_WEIGHT,
+      DEFAULT_NICKNAME_WEIGHT,
+    );
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+    const addFieldsStage = result[0].$addFields;
+
+    // Coverage bonus should be: (bigramMatches + phoneticMatches + nicknameMatches) / totalTokens * 20
+    expect(addFieldsStage._coverageBonus_0).toHaveProperty('$multiply');
+    const multiply = (addFieldsStage._coverageBonus_0 as { $multiply: unknown[] }).$multiply;
+    expect(multiply).toHaveLength(2);
+
+    // First element should be the division (coverage calculation)
+    expect(multiply[0]).toHaveProperty('$divide');
+    const divide = multiply[0].$divide;
+    expect(divide).toHaveLength(2);
+
+    // Total tokens should be searchTokens.length + nicknameTokens.length = 5 + 7 = 12
+    expect(divide[1]).toBe(12);
+
+    // Second element should be the multiplier (20 points max)
+    expect(multiply[1]).toBe(20);
   });
 
   test('should flatten SCORE stages in pipeline', () => {

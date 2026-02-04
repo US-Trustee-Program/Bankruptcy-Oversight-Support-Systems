@@ -6,11 +6,41 @@ import { getNameVariations } from 'name-match/src/name-normalizer';
 const soundex = new natural.SoundEx();
 const metaphone = new natural.Metaphone();
 
+// Stop words that should not be indexed for phonetic matching
+// These are common words in business names that would cause false positives
+const STOP_WORDS = new Set([
+  'and',
+  'or',
+  'the',
+  'of',
+  'in',
+  'at',
+  'to',
+  'for',
+  'a',
+  'an',
+  'as',
+  'by',
+  'inc',
+  'llc',
+  'ltd',
+  'corp',
+  'co',
+  'company',
+  'group',
+  'partners',
+  'associates',
+]);
+
 function normalizeText(text: string): string {
   return text
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, '');
+}
+
+function isStopWord(word: string): boolean {
+  return STOP_WORDS.has(word.toLowerCase());
 }
 
 function splitIntoWords(normalizedText: string, minLength: number = 1): string[] {
@@ -24,6 +54,7 @@ function isEmpty(text: string | undefined): boolean {
 /**
  * Generates phonetic tokens (Soundex + Metaphone) for a text string.
  * Tokenizes by whitespace and generates phonetic codes for each word.
+ * Stop words (e.g., "and", "the", "inc") are filtered out to prevent false positives.
  *
  * Note: This function normalizes to UPPERCASE because Soundex and Metaphone
  * algorithms expect uppercase input. Other functions in this module use lowercase
@@ -38,7 +69,7 @@ export function generatePhoneticTokens(text: string): string[] {
   }
 
   const tokens: Set<string> = new Set();
-  const words = splitIntoWords(normalizeText(text));
+  const words = splitIntoWords(normalizeText(text)).filter((word) => !isStopWord(word));
 
   words.forEach((word) => {
     try {
@@ -58,6 +89,7 @@ export function generatePhoneticTokens(text: string): string[] {
 /**
  * Generates bigrams (2-character n-grams) for a text string.
  * Bigrams enable substring/prefix matching in database queries.
+ * Stop words (e.g., "and", "the", "inc") are filtered out to prevent false positives.
  * For example: "John" → ["jo", "oh", "hn"]
  *
  * @param text - The text string (e.g., "John Smith")
@@ -69,7 +101,7 @@ export function generateBigrams(text: string): string[] {
   }
 
   const bigrams = new Set<string>();
-  const words = splitIntoWords(normalizeText(text), 2);
+  const words = splitIntoWords(normalizeText(text), 2).filter((word) => !isStopWord(word));
 
   words.forEach((word) => {
     for (let i = 0; i <= word.length - 2; i++) {
