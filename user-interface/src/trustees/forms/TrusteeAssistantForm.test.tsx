@@ -311,7 +311,7 @@ describe('TrusteeAssistantForm', () => {
 
       const zipErrorMessage = document.getElementById('assistant-zip-input__error-message');
       expect(zipErrorMessage).toBeInTheDocument();
-      expect(zipErrorMessage?.textContent).toEqual('ZIP Code is required Must be 5 or 9 digits');
+      expect(zipErrorMessage?.textContent).toEqual('ZIP Code is required');
     });
   });
 
