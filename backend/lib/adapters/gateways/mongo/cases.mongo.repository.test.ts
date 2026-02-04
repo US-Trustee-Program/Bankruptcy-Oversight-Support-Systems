@@ -836,9 +836,43 @@ describe('Cases repository', () => {
       expect(queryString).toContain('"condition":"GREATER_THAN"');
     });
 
-    test('should require minimum match score threshold of 8 (3 bigram matches)', () => {
-      // With bigram weight of 3, threshold of 8 requires at least 3 bigram matches (3 × 3 = 9)
-      expect(MATCH_SCORE_THRESHOLD).toBe(8);
+    test('should use word-level matching threshold of 0 (any score indicates valid match)', () => {
+      // With word-level matching, the algorithm itself prevents false positives.
+      // Any score > 0 indicates a valid match (exact, nickname, qualified phonetic, or phonetic prefix).
+      // Scores: exact=10000, nickname=1000, qualified phonetic=100, phonetic prefix=75
+      expect(MATCH_SCORE_THRESHOLD).toBe(0);
+    });
+
+    test('should use word-level matching to prevent false positives instead of bigram filtering', async () => {
+      // The new word-level algorithm prevents false positives like "Mike" → "Mitchell" by:
+      // 1. Requiring phonetic matches to be "qualified" (have exact, nickname, or prefix match)
+      // 2. Matching whole words against nickname database instead of token overlaps
+      // This eliminates the need for bigram count filtering.
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'mike',
+        limit: 25,
+        offset: 0,
+      };
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+
+      await repo.searchCasesWithPhoneticTokens(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+
+      // Should use word-level fields for matching
+      expect(queryString).toContain('searchWords');
+      expect(queryString).toContain('nicknameWords');
+      expect(queryString).toContain('searchMetaphones');
+      expect(queryString).toContain('targetNameFields');
+
+      // Should still filter by matchScore > 0
+      expect(queryString).toContain('matchScore');
+      expect(queryString).toContain('"condition":"GREATER_THAN"');
     });
   });
 

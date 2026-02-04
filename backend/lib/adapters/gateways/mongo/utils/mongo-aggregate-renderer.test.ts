@@ -1,21 +1,10 @@
-import QueryPipeline, {
-  DEFAULT_BIGRAM_WEIGHT,
-  DEFAULT_NICKNAME_WEIGHT,
-  DEFAULT_PHONETIC_WEIGHT,
-  Score,
-  Stage,
-} from '../../../../query/query-pipeline';
+import QueryPipeline, { Score, Stage } from '../../../../query/query-pipeline';
 import MongoAggregateRenderer from './mongo-aggregate-renderer';
 import { Condition, Field } from '../../../../query/query-builder';
 import { CaseAssignment } from '@common/cams/assignments';
 
-type MongoAddFieldsValue = {
-  $size?: { $setIntersection: [string[], string] };
-  $max?: string[];
-  $add?: unknown[];
-};
 type MongoScoreStage = {
-  $addFields?: Record<string, MongoAddFieldsValue>;
+  $addFields?: Record<string, unknown>;
   $project?: Record<string, number>;
 };
 
@@ -208,145 +197,139 @@ describe('aggregation query renderer tests', () => {
   });
 
   test('should render a SCORE stage with multiple target fields', () => {
-    const searchTokens = ['jo', 'hn', 'JN', 'J500'];
-    const nicknameTokens = ['mi', 'MK'];
-    const scoreStage: Score = score(
-      searchTokens,
-      nicknameTokens,
-      ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
-      'matchScore',
-      DEFAULT_BIGRAM_WEIGHT,
-      DEFAULT_PHONETIC_WEIGHT,
-      DEFAULT_NICKNAME_WEIGHT,
-    );
+    const scoreStage: Score = score({
+      searchWords: ['john'],
+      nicknameWords: ['jonathan', 'jon'],
+      searchMetaphones: ['JN'],
+      nicknameMetaphones: ['JN0N'],
+      targetNameFields: ['debtor.name', 'jointDebtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+      outputField: 'matchScore',
+    });
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    expect(result).toHaveLength(3);
+    // 5 stages: parse words, match counts, scores, max score, cleanup
+    expect(result).toHaveLength(5);
 
+    // Stage 1: parse words expressions
     expect(result[0]).toHaveProperty('$addFields');
-    expect(result[0].$addFields).toHaveProperty('_bigramMatches_0');
-    expect(result[0].$addFields).toHaveProperty('_phoneticMatches_0');
-    expect(result[0].$addFields).toHaveProperty('_nicknameMatches_0');
-    expect(result[0].$addFields).toHaveProperty('_score_0');
-    expect(result[0].$addFields).toHaveProperty('_bigramMatches_1');
-    expect(result[0].$addFields).toHaveProperty('_phoneticMatches_1');
-    expect(result[0].$addFields).toHaveProperty('_nicknameMatches_1');
-    expect(result[0].$addFields).toHaveProperty('_score_1');
+    expect(result[0].$addFields).toHaveProperty('_words_0');
+    expect(result[0].$addFields).toHaveProperty('_words_1');
 
+    // Stage 2: match count expressions
     expect(result[1]).toHaveProperty('$addFields');
-    expect(result[1].$addFields).toHaveProperty('matchScore');
-    expect(result[1].$addFields).toHaveProperty('bigramMatchCount');
+    expect(result[1].$addFields).toHaveProperty('_exactMatches_0');
+    expect(result[1].$addFields).toHaveProperty('_nicknameMatches_0');
+    expect(result[1].$addFields).toHaveProperty('_phoneticMatches_0');
+    expect(result[1].$addFields).toHaveProperty('_phoneticPrefixMatch_0');
+    expect(result[1].$addFields).toHaveProperty('_exactMatches_1');
+    expect(result[1].$addFields).toHaveProperty('_nicknameMatches_1');
+    expect(result[1].$addFields).toHaveProperty('_phoneticMatches_1');
+    expect(result[1].$addFields).toHaveProperty('_phoneticPrefixMatch_1');
 
-    expect(result[2]).toHaveProperty('$project');
-    expect(result[2].$project).toEqual({
-      _bigramMatches_0: 0,
-      _phoneticMatches_0: 0,
-      _nicknameMatches_0: 0,
-      _score_0: 0,
-      _bigramMatches_1: 0,
-      _phoneticMatches_1: 0,
-      _nicknameMatches_1: 0,
-      _score_1: 0,
+    // Stage 3: score expressions
+    expect(result[2]).toHaveProperty('$addFields');
+    expect(result[2].$addFields).toHaveProperty('_score_0');
+    expect(result[2].$addFields).toHaveProperty('_score_1');
+
+    // Stage 4: max score
+    expect(result[3]).toHaveProperty('$addFields');
+    expect(result[3].$addFields).toHaveProperty('matchScore');
+
+    // Stage 5: cleanup
+    expect(result[4]).toHaveProperty('$project');
+  });
+
+  test('should render SCORE stage with word-level matching expressions', () => {
+    const scoreStage: Score = score({
+      searchWords: ['mike'],
+      nicknameWords: ['michael', 'mikey'],
+      searchMetaphones: ['MK'],
+      nicknameMetaphones: ['MXL'],
+      targetNameFields: ['debtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'],
+      outputField: 'matchScore',
     });
-  });
-
-  test('should render SCORE stage with correct $setIntersection for bigrams, phonetics, and nicknames', () => {
-    const searchTokens = ['jo', 'hn', 'JN', 'J500'];
-    const nicknameTokens = ['mi', 'MK'];
-    const scoreStage: Score = score(
-      searchTokens,
-      nicknameTokens,
-      ['debtor.phoneticTokens'],
-      'matchScore',
-      DEFAULT_BIGRAM_WEIGHT,
-      DEFAULT_PHONETIC_WEIGHT,
-      DEFAULT_NICKNAME_WEIGHT,
-    );
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    const addFieldsStage = result[0].$addFields;
+    // Stage 1 should parse name into words
+    const parseStage = result[0].$addFields;
+    expect(parseStage._words_0).toHaveProperty('$map');
 
-    expect(addFieldsStage._bigramMatches_0.$size.$setIntersection[0]).toEqual(['jo', 'hn']);
-    expect(addFieldsStage._phoneticMatches_0.$size.$setIntersection[0]).toEqual(['JN', 'J500']);
-    expect(addFieldsStage._nicknameMatches_0.$size.$setIntersection[0]).toEqual(['mi', 'MK']);
+    // Stage 2 should have exact, nickname, and phonetic match counts
+    const matchCountStage = result[1].$addFields;
+    expect(matchCountStage._exactMatches_0).toHaveProperty('$size');
+    expect(matchCountStage._nicknameMatches_0).toHaveProperty('$size');
+    expect(matchCountStage._phoneticMatches_0).toHaveProperty('$size');
+    expect(matchCountStage._phoneticPrefixMatch_0).toHaveProperty('$cond');
   });
 
-  test('should separate bigrams so "John" query does not match "Jane" bigrams', () => {
-    const johnQueryTokens = ['jo', 'oh', 'hn', 'J500', 'JN'];
-    const janeDocTokens = ['ja', 'an', 'ne', 'J500', 'JN'];
-
-    const scoreStage: Score = score(
-      johnQueryTokens,
-      [],
-      ['debtor.phoneticTokens'],
-      'matchScore',
-      DEFAULT_BIGRAM_WEIGHT,
-      DEFAULT_PHONETIC_WEIGHT,
-      DEFAULT_NICKNAME_WEIGHT,
-    );
-
-    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
-    const addFieldsStage = result[0].$addFields;
-
-    const queryBigrams = addFieldsStage._bigramMatches_0.$size.$setIntersection[0];
-    const janeBigrams = janeDocTokens.filter((t) => t === t.toLowerCase() && t.length === 2);
-
-    const bigramOverlap = queryBigrams.filter((b: string) => janeBigrams.includes(b));
-    expect(bigramOverlap).toHaveLength(0);
-
-    const queryPhonetics = addFieldsStage._phoneticMatches_0.$size.$setIntersection[0];
-    const janePhonetics = janeDocTokens.filter((t) => /^[A-Z0-9]+$/.test(t) && t.length > 1);
-
-    const phoneticOverlap = queryPhonetics.filter((p: string) => janePhonetics.includes(p));
-    expect(phoneticOverlap.length).toBeGreaterThan(0);
-  });
-
-  test('should allow nickname matches: "Mike" query matches "Michael" via shared bigrams', () => {
-    const mikeQueryTokens = ['mi', 'ik', 'ke', 'M200', 'MK'];
-    const michaelDocTokens = ['mi', 'ic', 'ch', 'ha', 'ae', 'el', 'M240', 'MXL'];
-
-    const scoreStage: Score = score(
-      mikeQueryTokens,
-      [],
-      ['debtor.phoneticTokens'],
-      'matchScore',
-      DEFAULT_BIGRAM_WEIGHT,
-      DEFAULT_PHONETIC_WEIGHT,
-      DEFAULT_NICKNAME_WEIGHT,
-    );
-
-    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
-    const addFieldsStage = result[0].$addFields;
-
-    const queryBigrams = addFieldsStage._bigramMatches_0.$size.$setIntersection[0];
-    const michaelBigrams = michaelDocTokens.filter((t) => t === t.toLowerCase() && t.length === 2);
-
-    const bigramOverlap = queryBigrams.filter((b: string) => michaelBigrams.includes(b));
-    expect(bigramOverlap.length).toBeGreaterThan(0);
-    expect(bigramOverlap).toContain('mi');
-  });
-
-  test('should output bigramMatchCount for filtering results', () => {
-    const searchTokens = ['jo', 'hn', 'JN', 'J500'];
-    const scoreStage: Score = score(
-      searchTokens,
-      [],
-      ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
-      'matchScore',
-      DEFAULT_BIGRAM_WEIGHT,
-      DEFAULT_PHONETIC_WEIGHT,
-      DEFAULT_NICKNAME_WEIGHT,
-    );
-
-    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
-
-    const maxScoreStage = result[1].$addFields;
-    expect(maxScoreStage).toHaveProperty('bigramMatchCount');
-    expect(maxScoreStage.bigramMatchCount).toEqual({
-      $max: ['$_bigramMatches_0', '$_bigramMatches_1'],
+  test('should use correct search words for exact matching', () => {
+    const scoreStage: Score = score({
+      searchWords: ['john', 'smith'],
+      nicknameWords: ['jonathan'],
+      searchMetaphones: ['JN', 'SM0'],
+      nicknameMetaphones: [],
+      targetNameFields: ['debtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'],
+      outputField: 'matchScore',
     });
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    // Verify exact match uses searchWords array
+    const matchCountStage = result[1].$addFields;
+    const exactMatchExpr = matchCountStage._exactMatches_0 as {
+      $size: { $setIntersection: unknown[] };
+    };
+    expect(exactMatchExpr.$size.$setIntersection[0]).toEqual(['john', 'smith']);
+  });
+
+  test('should use nickname words for nickname matching', () => {
+    const scoreStage: Score = score({
+      searchWords: ['mike'],
+      nicknameWords: ['michael', 'mikey', 'mick'],
+      searchMetaphones: ['MK'],
+      nicknameMetaphones: ['MXL', 'MK'],
+      targetNameFields: ['debtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'],
+      outputField: 'matchScore',
+    });
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    // Verify nickname match uses nicknameWords array
+    const matchCountStage = result[1].$addFields;
+    const nicknameMatchExpr = matchCountStage._nicknameMatches_0 as {
+      $size: { $setIntersection: unknown[] };
+    };
+    expect(nicknameMatchExpr.$size.$setIntersection[0]).toEqual(['michael', 'mikey', 'mick']);
+  });
+
+  test('should combine search and nickname metaphones for phonetic matching', () => {
+    const scoreStage: Score = score({
+      searchWords: ['mike'],
+      nicknameWords: ['michael'],
+      searchMetaphones: ['MK'],
+      nicknameMetaphones: ['MXL'],
+      targetNameFields: ['debtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'],
+      outputField: 'matchScore',
+    });
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    // Verify phonetic match combines both metaphone arrays
+    const matchCountStage = result[1].$addFields;
+    const phoneticMatchExpr = matchCountStage._phoneticMatches_0 as {
+      $size: { $setIntersection: unknown[] };
+    };
+    // First element should contain both search and nickname metaphones
+    const metaphones = phoneticMatchExpr.$size.$setIntersection[0] as string[];
+    expect(metaphones).toContain('MK');
+    expect(metaphones).toContain('MXL');
   });
 
   test('should flatten SCORE stages in pipeline', () => {
@@ -357,15 +340,15 @@ describe('aggregation query renderer tests', () => {
       rightOperand: 'SYNCED_CASE',
     };
 
-    const scoreStage: Score = score(
-      ['jo', 'JN'],
-      [],
-      ['debtor.phoneticTokens'],
-      'matchScore',
-      DEFAULT_BIGRAM_WEIGHT,
-      DEFAULT_PHONETIC_WEIGHT,
-      DEFAULT_NICKNAME_WEIGHT,
-    );
+    const scoreStage: Score = score({
+      searchWords: ['jon'],
+      nicknameWords: [],
+      searchMetaphones: ['JN'],
+      nicknameMetaphones: [],
+      targetNameFields: ['debtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'],
+      outputField: 'matchScore',
+    });
 
     const sortStage: Stage = {
       stage: 'SORT',
@@ -375,12 +358,15 @@ describe('aggregation query renderer tests', () => {
     const query = pipeline(simpleMatch, scoreStage, sortStage);
     const result = MongoAggregateRenderer.toMongoAggregate(query);
 
-    expect(result).toHaveLength(5);
+    // 7 stages: 1 match + 5 score stages (parse, match counts, scores, max, cleanup) + 1 sort
+    expect(result).toHaveLength(7);
     expect(result[0]).toHaveProperty('$match');
-    expect(result[1]).toHaveProperty('$addFields');
-    expect(result[2]).toHaveProperty('$addFields');
-    expect(result[3]).toHaveProperty('$project');
-    expect(result[4]).toHaveProperty('$sort');
+    expect(result[1]).toHaveProperty('$addFields'); // parse words
+    expect(result[2]).toHaveProperty('$addFields'); // match counts
+    expect(result[3]).toHaveProperty('$addFields'); // scores
+    expect(result[4]).toHaveProperty('$addFields'); // max score
+    expect(result[5]).toHaveProperty('$project'); // cleanup
+    expect(result[6]).toHaveProperty('$sort');
   });
 });
 
