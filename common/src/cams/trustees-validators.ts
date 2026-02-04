@@ -31,10 +31,9 @@ export const city = V.checkFirst(V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_R
 
 export const state = V.exactLength(2, FIELD_VALIDATION_MESSAGES.STATE_REQUIRED);
 
-export const zipCode = V.useValidators(
+export const zipCode = V.checkFirst(
   V.minLength(1, FIELD_VALIDATION_MESSAGES.ZIP_CODE_REQUIRED),
-  V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE),
-);
+).then(V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE));
 
 export const countryCode = V.exactLength(2);
 
