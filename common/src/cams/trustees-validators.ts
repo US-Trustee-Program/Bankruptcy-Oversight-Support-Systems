@@ -11,25 +11,22 @@ import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
 import { ZoomInfo } from './trustees';
 
-export const trusteeName = V.useValidators(
-  V.minLength(1, 'Trustee name is required'),
-  V.optional(V.maxLength(50)),
+export const trusteeName = V.checkFirst(V.minLength(1, 'Trustee name is required')).then(
+  V.maxLength(50),
 );
 
 export const companyName = V.optional(V.maxLength(50));
 
-export const addressLine1 = V.useValidators(
+export const addressLine1 = V.checkFirst(
   V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED),
-  V.optional(V.maxLength(40)),
-);
+).then(V.maxLength(40));
 
 export const addressLine2 = V.optional(V.maxLength(40));
 
 export const addressLine3 = V.optional(V.maxLength(40));
 
-export const city = V.useValidators(
-  V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED),
-  V.optional(V.maxLength(50)),
+export const city = V.checkFirst(V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED)).then(
+  V.maxLength(50),
 );
 
 export const state = V.exactLength(2, FIELD_VALIDATION_MESSAGES.STATE_REQUIRED);
