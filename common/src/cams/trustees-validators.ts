@@ -13,7 +13,7 @@ import { ZoomInfo } from './trustees';
 
 export const trusteeName = V.useValidators(
   V.minLength(1, 'Trustee name is required'),
-  V.maxLength(50),
+  V.optional(V.maxLength(50)),
 );
 
 export const companyName = V.optional(V.maxLength(50));

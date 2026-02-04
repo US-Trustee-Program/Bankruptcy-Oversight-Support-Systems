@@ -416,13 +416,13 @@ describe('TrusteeAssistantForm', () => {
     test('should return error for name field with undefined value', () => {
       const result = validateField('name', undefined);
       expect(result).toBeDefined();
-      expect(result).toContain('Trustee name is required');
+      expect(result).toEqual(['Trustee name is required']);
     });
 
     test('should return error for name field with whitespace-only value', () => {
       const result = validateField('name', '   ');
       expect(result).toBeDefined();
-      expect(result).toContain('Trustee name is required');
+      expect(result).toEqual(['Trustee name is required']);
     });
 
     test('should return undefined for optional fields with undefined value', () => {
