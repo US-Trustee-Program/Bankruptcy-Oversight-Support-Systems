@@ -130,173 +130,299 @@ function toMongoProjectInclude(stage: IncludeFields) {
   return { $project: fields };
 }
 
-function partitionSearchTokens(searchTokens: string[]): {
-  bigrams: string[];
-  phonetics: string[];
-} {
+/**
+ * Builds a MongoDB expression to parse a name field into normalized word array.
+ * Splits on whitespace and converts to lowercase.
+ *
+ * @param nameField - The document field containing a name (e.g., 'debtor.name')
+ * @returns MongoDB expression that produces an array of lowercase words
+ */
+function buildParseWordsExpression(nameField: string): object {
   return {
-    bigrams: searchTokens.filter((t) => !isPhoneticToken(t)),
-    phonetics: searchTokens.filter((t) => isPhoneticToken(t)),
-  };
-}
-
-function buildMatchCountExpression(tokens: string[], documentField: string): object {
-  return {
-    $size: {
-      $setIntersection: [tokens, { $ifNull: [`$${documentField}`, []] }],
+    $map: {
+      input: {
+        $filter: {
+          input: { $split: [{ $toLower: { $ifNull: [`$${nameField}`, ''] } }, ' '] },
+          cond: { $gt: [{ $strLenCP: '$$this' }, 0] },
+        },
+      },
+      as: 'word',
+      in: { $trim: { input: '$$word' } },
     },
   };
 }
 
-function buildWeightedScoreExpression(
-  bigramField: string,
-  phoneticField: string,
-  nicknameField: string,
-  bigramWeight: number,
-  phoneticWeight: number,
-  nicknameWeight: number,
+/**
+ * Builds a MongoDB expression to count exact word matches.
+ *
+ * @param searchWords - Array of search words to match
+ * @param wordsField - Temp field containing parsed document words
+ * @returns MongoDB expression computing count of exact matches
+ */
+function buildExactMatchCountExpression(searchWords: string[], wordsField: string): object {
+  return {
+    $size: {
+      $setIntersection: [searchWords, { $ifNull: [`$${wordsField}`, []] }],
+    },
+  };
+}
+
+/**
+ * Builds a MongoDB expression to count nickname word matches.
+ *
+ * @param nicknameWords - Array of nickname words to match
+ * @param wordsField - Temp field containing parsed document words
+ * @returns MongoDB expression computing count of nickname matches
+ */
+function buildNicknameMatchCountExpression(nicknameWords: string[], wordsField: string): object {
+  return {
+    $size: {
+      $setIntersection: [nicknameWords, { $ifNull: [`$${wordsField}`, []] }],
+    },
+  };
+}
+
+/**
+ * Builds a MongoDB expression to count Metaphone code matches.
+ * Filters the document's phoneticTokens to uppercase-only tokens (Metaphone codes).
+ *
+ * @param metaphones - Array of Metaphone codes to match
+ * @param tokenField - Document field containing phoneticTokens
+ * @returns MongoDB expression computing count of phonetic matches
+ */
+function buildPhoneticMatchCountExpression(metaphones: string[], tokenField: string): object {
+  return {
+    $size: {
+      $setIntersection: [
+        metaphones,
+        {
+          $filter: {
+            input: { $ifNull: [`$${tokenField}`, []] },
+            cond: { $regexMatch: { input: '$$this', regex: '^[A-Z0-9]+$' } },
+          },
+        },
+      ],
+    },
+  };
+}
+
+/**
+ * Builds a MongoDB expression to detect phonetic prefix matches.
+ * Returns 1 if any document word starts with a search word (character prefix)
+ * AND the document word is longer than the search word.
+ * This enables matches like Jon → Johnson where "jon" is a prefix of "johnson".
+ *
+ * IMPORTANT: This requires BOTH character prefix AND longer document word.
+ * This prevents false positives like Mike → Maxwell where MK is a phonetic prefix
+ * of MKSWL, but "mike" is NOT a character prefix of "maxwell".
+ *
+ * @param searchWords - Array of search words (lowercase)
+ * @param wordsField - Temp field containing parsed document words
+ * @returns MongoDB expression returning 1 if prefix match found, 0 otherwise
+ */
+function buildCharacterPrefixMatchExpression(searchWords: string[], wordsField: string): object {
+  if (searchWords.length === 0) {
+    return { $literal: 0 };
+  }
+
+  // Check if any document word starts with any search word (and is longer)
+  return {
+    $cond: {
+      if: {
+        $anyElementTrue: {
+          $map: {
+            input: { $ifNull: [`$${wordsField}`, []] },
+            as: 'docWord',
+            in: {
+              $anyElementTrue: {
+                $map: {
+                  input: searchWords,
+                  as: 'searchWord',
+                  in: {
+                    $and: [
+                      // Document word starts with search word (character prefix)
+                      { $eq: [{ $indexOfCP: ['$$docWord', '$$searchWord'] }, 0] },
+                      // Document word is longer (it's a prefix, not exact match)
+                      { $gt: [{ $strLenCP: '$$docWord' }, { $strLenCP: '$$searchWord' }] },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      then: 1,
+      else: 0,
+    },
+  };
+}
+
+/**
+ * Builds a MongoDB expression for the final weighted score.
+ * Phonetic matches only count if qualified by exact, nickname, or prefix match.
+ *
+ * @param idx - Index for field-specific temp field names
+ * @param exactMatchWeight - Weight for exact matches
+ * @param nicknameMatchWeight - Weight for nickname matches
+ * @param phoneticMatchWeight - Weight for phonetic matches
+ * @param phoneticPrefixWeight - Weight for phonetic prefix matches
+ * @returns MongoDB expression computing the final score
+ */
+function buildFinalScoreExpression(
+  idx: number,
+  exactMatchWeight: number,
+  nicknameMatchWeight: number,
+  phoneticMatchWeight: number,
+  phoneticPrefixWeight: number,
 ): object {
   return {
     $add: [
-      { $multiply: [`$${bigramField}`, bigramWeight] },
-      { $multiply: [`$${phoneticField}`, phoneticWeight] },
-      { $multiply: [`$${nicknameField}`, nicknameWeight] },
+      // Exact matches always score
+      { $multiply: [`$_exactMatches_${idx}`, exactMatchWeight] },
+      // Nickname matches always score
+      { $multiply: [`$_nicknameMatches_${idx}`, nicknameMatchWeight] },
+      // Phonetic matches only score if qualified (has exact, nickname, or prefix match)
+      {
+        $cond: {
+          if: {
+            $or: [
+              { $gt: [`$_exactMatches_${idx}`, 0] },
+              { $gt: [`$_nicknameMatches_${idx}`, 0] },
+              { $gt: [`$_phoneticPrefixMatch_${idx}`, 0] },
+            ],
+          },
+          then: { $multiply: [`$_phoneticMatches_${idx}`, phoneticMatchWeight] },
+          else: 0,
+        },
+      },
+      // Character prefix matches score independently (e.g., "jon" → "johnson")
+      { $multiply: [`$_phoneticPrefixMatch_${idx}`, phoneticPrefixWeight] },
     ],
   };
 }
 
-interface FieldScoreResult {
-  expressions: Record<string, object>;
-  tempFieldNames: string[];
-}
+/**
+ * Renders a SCORE stage to MongoDB aggregation pipeline stages.
+ *
+ * Implements word-level name matching with qualified phonetic scoring:
+ *
+ * **Match Types (in priority order):**
+ * 1. Exact Match (10,000 pts): Document word equals search word
+ * 2. Nickname Match (1,000 pts): Document word is in search term's nickname set
+ * 3. Qualified Phonetic (100 pts): Metaphone match + (exact OR nickname OR char prefix)
+ * 4. Character Prefix (75 pts): Document word starts with search word (e.g., "jon" → "johnson")
+ *
+ * **Key insight**: Phonetic matches alone are too permissive. A phonetic match
+ * is only valid when accompanied by an exact match, nickname relationship, or
+ * character prefix match. This prevents false positives like:
+ * - Mike → Mitchell (phonetic "M" overlap, no qualification)
+ * - Mike → Maxwell (phonetic "MK" prefix of "MKSWL", but "mike" is NOT char prefix of "maxwell")
+ * - Bill → Bella (phonetic "BL" overlap, no qualification)
+ *
+ * While allowing valid matches like:
+ * - Mike → Michael (nickname relationship)
+ * - Jon → John (phonetic match qualified by nickname)
+ * - Jon → Johnson (character prefix: "jon" starts "johnson")
+ *
+ * @example
+ * // Search "Mike" → searchWords: ["mike"], nicknameWords: ["michael", "mikey"]
+ * // Document "Michael" → words: ["michael"]
+ * // Result: nicknameMatch = 1 → score = 1000
+ *
+ * @example
+ * // Search "Jon" → searchWords: ["jon"]
+ * // Document "Johnson" → words: ["johnson"]
+ * // Result: charPrefix = 1 ("jon" starts "johnson") → score = 75
+ *
+ * @param stage - The Score stage configuration
+ * @returns Array of MongoDB aggregation stage objects
+ */
+function toMongoScore(stage: Score): object[] {
+  const {
+    searchWords,
+    nicknameWords,
+    searchMetaphones,
+    nicknameMetaphones,
+    targetNameFields,
+    targetTokenFields,
+    outputField,
+    exactMatchWeight,
+    nicknameMatchWeight,
+    phoneticMatchWeight,
+    phoneticPrefixWeight,
+  } = stage;
 
-function buildFieldScoreExpressions(
-  targetFields: string[],
-  bigrams: string[],
-  phonetics: string[],
-  nicknameTokens: string[],
-  bigramWeight: number,
-  phoneticWeight: number,
-  nicknameWeight: number,
-): FieldScoreResult {
-  const expressions: Record<string, object> = {};
+  // Combine search and nickname metaphones for phonetic matching
+  const allMetaphones = [...new Set([...searchMetaphones, ...nicknameMetaphones])];
+
   const tempFieldNames: string[] = [];
+  const stages: object[] = [];
 
-  targetFields.forEach((field, idx) => {
-    const bigramField = `_bigramMatches_${idx}`;
-    const phoneticField = `_phoneticMatches_${idx}`;
+  // Stage 1: Parse document names into word arrays
+  const parseWordsFields: Record<string, object> = {};
+  targetNameFields.forEach((nameField, idx) => {
+    const wordsField = `_words_${idx}`;
+    tempFieldNames.push(wordsField);
+    parseWordsFields[wordsField] = buildParseWordsExpression(nameField);
+  });
+  stages.push({ $addFields: parseWordsFields });
+
+  // Stage 2: Calculate match counts for each target
+  const matchCountFields: Record<string, object> = {};
+  targetNameFields.forEach((_, idx) => {
+    const wordsField = `_words_${idx}`;
+    const tokenField = targetTokenFields[idx];
+
+    const exactField = `_exactMatches_${idx}`;
     const nicknameField = `_nicknameMatches_${idx}`;
-    const scoreField = `_score_${idx}`;
-    tempFieldNames.push(bigramField, phoneticField, nicknameField, scoreField);
+    const phoneticField = `_phoneticMatches_${idx}`;
+    const prefixField = `_phoneticPrefixMatch_${idx}`;
 
-    expressions[bigramField] = buildMatchCountExpression(bigrams, field);
-    expressions[phoneticField] = buildMatchCountExpression(phonetics, field);
-    expressions[nicknameField] = buildMatchCountExpression(nicknameTokens, field);
-    expressions[scoreField] = buildWeightedScoreExpression(
-      bigramField,
-      phoneticField,
-      nicknameField,
-      bigramWeight,
-      phoneticWeight,
-      nicknameWeight,
+    tempFieldNames.push(exactField, nicknameField, phoneticField, prefixField);
+
+    matchCountFields[exactField] = buildExactMatchCountExpression(searchWords, wordsField);
+    matchCountFields[nicknameField] = buildNicknameMatchCountExpression(nicknameWords, wordsField);
+    matchCountFields[phoneticField] = buildPhoneticMatchCountExpression(allMetaphones, tokenField);
+    matchCountFields[prefixField] = buildCharacterPrefixMatchExpression(searchWords, wordsField);
+  });
+  stages.push({ $addFields: matchCountFields });
+
+  // Stage 3: Calculate scores for each target
+  const scoreFields: Record<string, object> = {};
+  targetNameFields.forEach((_, idx) => {
+    const scoreField = `_score_${idx}`;
+    tempFieldNames.push(scoreField);
+    scoreFields[scoreField] = buildFinalScoreExpression(
+      idx,
+      exactMatchWeight,
+      nicknameMatchWeight,
+      phoneticMatchWeight,
+      phoneticPrefixWeight,
     );
   });
+  stages.push({ $addFields: scoreFields });
 
-  return { expressions, tempFieldNames };
-}
-
-function buildMaxScoreExpression(
-  outputField: string,
-  targetFields: string[],
-): Record<string, object> {
-  return {
-    [outputField]: {
-      $max: targetFields.map((_, idx) => `$_score_${idx}`),
+  // Stage 4: Take max score across all targets
+  stages.push({
+    $addFields: {
+      [outputField]: {
+        $max: targetNameFields.map((_, idx) => `$_score_${idx}`),
+      },
     },
-    bigramMatchCount: {
-      $max: targetFields.map((_, idx) => `$_bigramMatches_${idx}`),
-    },
-  };
-}
+  });
 
-function buildCleanupProjection(tempFieldNames: string[]): Record<string, number> {
-  return tempFieldNames.reduce(
+  // Stage 5: Cleanup temporary fields
+  const cleanupProjection = tempFieldNames.reduce(
     (acc, field) => {
       acc[field] = 0;
       return acc;
     },
     {} as Record<string, number>,
   );
-}
+  stages.push({ $project: cleanupProjection });
 
-/**
- * Renders a SCORE stage to MongoDB aggregation pipeline stages.
- *
- * Generates 3 MongoDB stages that compute a weighted match score:
- *
- * 1. $addFields - For each targetField, computes:
- *    - Bigram match count: number of lowercase tokens (e.g., "jo", "hn") found in document
- *    - Phonetic match count: number of uppercase tokens (e.g., "JN", "J500") found in document
- *    - Field score: (bigramMatches × bigramWeight) + (phoneticMatches × phoneticWeight)
- *
- * 2. $addFields - Computes:
- *    - outputField: max score across all target fields (handles both debtor and jointDebtor)
- *    - bigramMatchCount: max bigram matches across all target fields (for filtering)
- *
- * 3. $project - Removes temporary computation fields
- *
- * The bigramMatchCount field enables filtering to require at least one bigram match,
- * preventing phonetic-only matches (e.g., "John" → "Jane") while still allowing
- * nickname matches that share bigrams (e.g., "Mike" → "Michael" via shared "mi").
- *
- * Scoring weights (default):
- *   - Bigram matches: 3 points each (substring matching)
- *   - Phonetic matches: 11 points each (sound-alike matching)
- *   - Nickname matches: 10 points each (e.g., Mike → Michael)
- *
- * @example
- * // Search query: "John" → searchTokens = ["jo", "oh", "hn", "J500", "JN"], nicknameTokens = []
- * // Document has: { debtor: { phoneticTokens: ["jo", "oh", "hn", "J500", "JN", "S530", "SM0", "sm", "mi", "it", "th"] } }
- * // Matching: 3 bigrams (jo, oh, hn), 2 phonetics (J500, JN), 0 nicknames
- * // Result: matchScore = (3 × 3) + (2 × 11) + (0 × 10) = 31, bigramMatchCount = 3
- *
- * @example
- * // Search query: "Mike" → searchTokens = ["mi", "ik", "ke", "M200", "MK"]
- * //                      → nicknameTokens = ["ic", "ch", "ha", "ae", "el", "M240", "MKSHL"] (from "michael")
- * // Document has "Michael": { phoneticTokens: ["mi", "ic", "ch", "ha", "ae", "el", "M240", "MKSHL"] }
- * // Matching: 1 bigram (mi), 0 phonetics, 7 nicknames (ic, ch, ha, ae, el, M240, MKSHL)
- * // Result: matchScore = (1 × 3) + (0 × 11) + (7 × 10) = 73, bigramMatchCount = 1
- *
- * @param stage - The Score stage configuration
- * @returns Array of 3 MongoDB aggregation stage objects
- */
-function toMongoScore(stage: Score): object[] {
-  const {
-    searchTokens,
-    nicknameTokens,
-    targetFields,
-    outputField,
-    bigramWeight,
-    phoneticWeight,
-    nicknameWeight,
-  } = stage;
-
-  const { bigrams, phonetics } = partitionSearchTokens(searchTokens);
-  const { expressions, tempFieldNames } = buildFieldScoreExpressions(
-    targetFields,
-    bigrams,
-    phonetics,
-    nicknameTokens,
-    bigramWeight,
-    phoneticWeight,
-    nicknameWeight,
-  );
-
-  return [
-    { $addFields: expressions },
-    { $addFields: buildMaxScoreExpression(outputField, targetFields) },
-    { $project: buildCleanupProjection(tempFieldNames) },
-  ];
+  return stages;
 }
 
 function toMongoFilterCondition<T = unknown>(query: ConditionOrConjunction<T>) {
