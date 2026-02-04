@@ -154,6 +154,31 @@ describe('TrusteeAssistantForm', () => {
       expect(nameInput.value).toBe('');
       expect(emailInput.value).toBe('');
     });
+
+    test('should render form when assistant contact property is undefined', () => {
+      const assistantWithoutContact = {
+        name: 'John Assistant',
+        title: 'Lead Assistant',
+        contact: undefined,
+      } as unknown as TrusteeAssistant;
+
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistant: assistantWithoutContact });
+
+      expect(screen.getByTestId('trustee-assistant-form')).toBeInTheDocument();
+      expect(screen.getByRole('form', { name: 'Edit Trustee Assistant' })).toBeInTheDocument();
+
+      const nameInput = screen.getByTestId('assistant-name') as HTMLInputElement;
+      const titleInput = screen.getByTestId('assistant-title') as HTMLInputElement;
+      const emailInput = screen.getByTestId('assistant-email') as HTMLInputElement;
+      const phoneInput = screen.getByTestId('assistant-phone') as HTMLInputElement;
+      const address1Input = screen.getByTestId('assistant-address1') as HTMLInputElement;
+
+      expect(nameInput.value).toBe('John Assistant');
+      expect(titleInput.value).toBe('Lead Assistant');
+      expect(emailInput.value).toBe('');
+      expect(phoneInput.value).toBe('');
+      expect(address1Input.value).toBe('');
+    });
   });
 
   describe('Form Field Validation', () => {
