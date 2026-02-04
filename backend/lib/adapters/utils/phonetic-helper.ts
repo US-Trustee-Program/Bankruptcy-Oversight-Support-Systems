@@ -115,74 +115,13 @@ export function generateSearchTokens(text: string): string[] {
   return Array.from(generateAllTokensForWords([text]));
 }
 
-interface SeparatedQueryTokens {
-  searchTokens: string[];
-  nicknameTokens: string[];
-}
-
-/**
- * Structured query tokens for word-level name matching.
- * Separates words from phonetic codes to enable more precise matching algorithms.
- */
 export interface StructuredQueryTokens {
-  /** Normalized lowercase words from the search query (e.g., ["mike", "smith"]) */
   searchWords: string[];
-  /** Normalized lowercase nickname variations (e.g., ["michael", "mikey"]) */
   nicknameWords: string[];
-  /** Metaphone codes for search words only (e.g., ["MK", "SM0"]) */
   searchMetaphones: string[];
-  /** Metaphone codes for nickname words (e.g., ["MXL"]) */
   nicknameMetaphones: string[];
-  /** Combined tokens (bigrams + phonetics) for backward compatibility */
   searchTokens: string[];
-  /** Combined nickname tokens for backward compatibility */
   nicknameTokens: string[];
-}
-
-/**
- * Generates query tokens for searching, with nickname expansion.
- * Returns separate arrays for original search tokens and nickname tokens,
- * enabling differential scoring (exact matches score higher than nickname matches).
- *
- * For example: "Mike Smith" → expands "Mike" to ["michael", "mikey", ...]
- *              → searchTokens: tokens for "mike", "smith"
- *              → nicknameTokens: tokens for "michael", "mikey", etc. (excluding overlaps)
- *
- * @param searchQuery - The search query (e.g., "Mike Smith")
- * @returns Object with searchTokens and nicknameTokens arrays
- */
-export function generateQueryTokensWithNicknames(searchQuery: string): SeparatedQueryTokens {
-  if (isEmpty(searchQuery)) {
-    return { searchTokens: [], nicknameTokens: [] };
-  }
-
-  const words = splitIntoWords(normalizeText(searchQuery));
-  const originalWords = new Set<string>(words);
-  const nicknameWords = new Set<string>();
-
-  words.forEach((word) => {
-    try {
-      const variations = getNameVariations(word) as string[];
-      variations.forEach((variation: string) => {
-        splitIntoWords(normalizeText(variation)).forEach((w) => {
-          if (w.length > 0 && w !== word && !originalWords.has(w)) {
-            nicknameWords.add(w);
-          }
-        });
-      });
-    } catch {
-      // No variations available
-    }
-  });
-
-  const searchTokens = generateAllTokensForWords([...originalWords]);
-  const allNicknameTokens = generateAllTokensForWords([...nicknameWords]);
-  const nicknameTokens = [...allNicknameTokens].filter((t) => !searchTokens.has(t));
-
-  return {
-    searchTokens: Array.from(searchTokens),
-    nicknameTokens,
-  };
 }
 
 /**
@@ -264,7 +203,7 @@ export function generateStructuredQueryTokens(searchQuery: string): StructuredQu
     }
   });
 
-  // Generate combined tokens for backward compatibility
+  // Generate combined tokens for pre-filter optimization (uses MongoDB index)
   const searchTokensSet = generateAllTokensForWords([...originalWords]);
   const allNicknameTokensSet = generateAllTokensForWords([...nicknameWords]);
   const nicknameTokens = [...allNicknameTokensSet].filter((t) => !searchTokensSet.has(t));

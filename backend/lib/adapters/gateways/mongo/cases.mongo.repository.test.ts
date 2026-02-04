@@ -19,7 +19,7 @@ import {
   getTheThrownError,
 } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
-import { CasesMongoRepository, MATCH_SCORE_THRESHOLD } from './cases.mongo.repository';
+import { CasesMongoRepository } from './cases.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import * as crypto from 'crypto';
 import { UnknownError } from '../../../common-errors/unknown-error';
@@ -826,21 +826,14 @@ describe('Cases repository', () => {
       expect(paginateSpy).toHaveBeenCalled();
       expect(result.data).toEqual([michaelCase]);
 
-      // Verify the query includes the match score threshold filter
+      // Verify the query includes the match score filter (any score > 0 is a valid match)
       const actualQuery = paginateSpy.mock.calls[0][0];
       const queryString = JSON.stringify(actualQuery);
 
-      // Should contain a MATCH stage filtering by matchScore > MATCH_SCORE_THRESHOLD
+      // Should contain a MATCH stage filtering by matchScore > 0
       expect(queryString).toContain('matchScore');
-      expect(queryString).toContain(`"rightOperand":${MATCH_SCORE_THRESHOLD}`);
+      expect(queryString).toContain('"rightOperand":0');
       expect(queryString).toContain('"condition":"GREATER_THAN"');
-    });
-
-    test('should use word-level matching threshold of 0 (any score indicates valid match)', () => {
-      // With word-level matching, the algorithm itself prevents false positives.
-      // Any score > 0 indicates a valid match (exact, nickname, qualified phonetic, or phonetic prefix).
-      // Scores: exact=10000, nickname=1000, qualified phonetic=100, phonetic prefix=75
-      expect(MATCH_SCORE_THRESHOLD).toBe(0);
     });
 
     test('should use word-level matching to prevent false positives instead of bigram filtering', async () => {
