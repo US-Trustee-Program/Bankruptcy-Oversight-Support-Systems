@@ -1045,83 +1045,59 @@ describe('validators', () => {
 
   describe('checkFirst', () => {
     test('should run initial validators and return valid when they pass', () => {
-      const validator = Validators.checkFirst(Validators.minLength(1, 'Field is required'));
+      const validator = Validators.checkFirst(
+        Validators.minLength(1, 'Too short'),
+        Validators.maxLength(5, 'Too long'),
+        Validators.matches(/Hello/, 'Must be "Hello"'),
+      );
 
-      expect(validator('hello')).toEqual(VALID);
+      expect(validator('Hello')).toEqual(VALID);
     });
 
-    test('should return error when initial validators fail', () => {
-      const validator = Validators.checkFirst(Validators.minLength(1, 'Field is required'));
+    test('should run initial validators then run then validator and return valid when they pass', () => {
+      const validator = Validators.checkFirst(
+        Validators.minLength(1, 'FIRST: Too short'),
+        Validators.maxLength(5, 'FIRST: Too long'),
+        Validators.matches(/Hello/, 'FIRST: Must be "Hello"'),
+      ).then(
+        Validators.minLength(1, 'THEN: Too short'),
+        Validators.maxLength(5, 'THEN: Too long'),
+        Validators.matches(/Hello/, 'THEN: Must be "Hello"'),
+      );
 
-      const result = validator('');
-      expect(result).toEqual({ reasons: ['Field is required'] });
+      expect(validator('Hello')).toEqual(VALID);
     });
 
     test('should run multiple initial validators', () => {
       const validator = Validators.checkFirst(
-        Validators.minLength(3, 'Too short'),
-        Validators.maxLength(10, 'Too long'),
+        Validators.minLength(10, 'FIRST: Too short'),
+        Validators.maxLength(1, 'FIRST: Too long'),
+        Validators.matches(/^[A-Z]/, 'FIRST: Must start with uppercase'),
+      ).then(
+        Validators.minLength(10, 'THEN: should not run'),
+        Validators.maxLength(1, 'THEN: should not run'),
+        Validators.matches(/^[A-Z]/, 'THEN: should not run'),
       );
 
-      expect(validator('hello')).toEqual(VALID);
-    });
-
-    test('should collect all errors from multiple initial validators', () => {
-      const validator = Validators.checkFirst(
-        Validators.minLength(10, 'Too short'),
-        Validators.matches(/^[A-Z]/, 'Must start with uppercase'),
-      );
-
-      const result = validator('hi');
-      expect(result.reasons).toEqual(['Too short', 'Must start with uppercase']);
+      expect(validator('hello')).toEqual({
+        reasons: ['FIRST: Too short', 'FIRST: Too long', 'FIRST: Must start with uppercase'],
+      });
     });
 
     test('should run then validators when initial validators pass', () => {
-      const validator = Validators.checkFirst(Validators.minLength(1, 'Field is required')).then(
-        Validators.maxLength(10),
+      const validator = Validators.checkFirst(
+        Validators.minLength(1, 'FIRST: Too short'),
+        Validators.maxLength(5, 'FIRST: Too long'),
+        Validators.matches(/Hello/, 'FIRST: Must be "Hello"'),
+      ).then(
+        Validators.minLength(6, 'THEN: Too short'),
+        Validators.maxLength(1, 'THEN: Too long'),
+        Validators.matches(/Bye/, 'THEN: Must be "Bye"'),
       );
 
-      expect(validator('hello')).toEqual(VALID);
-    });
-
-    test('should not run then validators when initial validators fail', () => {
-      const validator = Validators.checkFirst(Validators.minLength(5, minLength(5))).then(
-        Validators.matches(/^[A-Z]/, 'Must start with uppercase'),
-      );
-
-      const result = validator('hi');
-      expect(result).toEqual({ reasons: [minLength(5)] });
-    });
-
-    test('should return error from then validators when initial passes but then fails', () => {
-      const validator = Validators.checkFirst(Validators.minLength(1, 'Field is required')).then(
-        Validators.maxLength(5),
-      );
-
-      const result = validator('toolong');
-      expect(result).toEqual({ reasons: [maxLength(5)] });
-    });
-
-    test('should support multiple validators in then', () => {
-      const validator = Validators.checkFirst(Validators.minLength(1, 'Field is required')).then(
-        Validators.minLength(3, 'Too short'),
-        Validators.maxLength(10, 'Too long'),
-      );
-
-      expect(validator('hello')).toEqual(VALID);
-    });
-
-    test('should collect all errors from then validators', () => {
-      const validator = Validators.checkFirst(Validators.minLength(1, 'Field is required')).then(
-        Validators.minLength(10, 'Must be at least 10 characters'),
-        Validators.matches(/^[A-Z]/, 'Must start with uppercase'),
-      );
-
-      const result = validator('hello');
-      expect(result.reasons).toEqual([
-        'Must be at least 10 characters',
-        'Must start with uppercase',
-      ]);
+      expect(validator('Hello')).toEqual({
+        reasons: ['THEN: Too short', 'THEN: Too long', 'THEN: Must be "Bye"'],
+      });
     });
   });
 });
