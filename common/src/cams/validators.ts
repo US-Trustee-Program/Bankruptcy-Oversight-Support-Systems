@@ -387,8 +387,67 @@ function useValidators(...validators: ValidatorFunction[]): ValidatorFunction {
   return (value: unknown): ValidatorResult => validateEach(validators, value);
 }
 
+/**
+ * Interface for the chainable validator builder returned by checkFirst.
+ * Allows adding additional validators through the then() method.
+ */
+export interface ValidatorChain extends ValidatorFunction {
+  /**
+   * Adds additional validators to run after the initial validators pass.
+   * @param validators - Variable number of validator functions to run if initial validators pass
+   * @returns A ValidatorFunction that runs initial validators first, then these validators
+   */
+  then(...validators: ValidatorFunction[]): ValidatorFunction;
+}
+
+/**
+ * Creates a chainable validator that runs initial validators first.
+ * Only if the initial validators pass will the validators in .then() be executed.
+ * Currently supports one .then() call.
+ *
+ * @example
+ * const validator = V.checkFirst(
+ *   V.minLength(1, 'Field is required')
+ * ).then(
+ *   V.maxLength(50),
+ *   V.matches(/pattern/)
+ * );
+ *
+ * @param {...ValidatorFunction[]} initialValidators - Initial validator(s) to run first
+ * @returns {ValidatorChain} A chainable validator with a .then() method
+ */
+function checkFirst(...initialValidators: ValidatorFunction[]): ValidatorChain {
+  // Create the base validator function that just runs initial validators
+  const validatorFn = (value: unknown): ValidatorResult => {
+    return validateEach(initialValidators, value);
+  };
+
+  // Add the then() method
+  const chain: ValidatorChain = Object.assign(validatorFn, {
+    then(...nextValidators: ValidatorFunction[]): ValidatorFunction {
+      // Return a new validator that runs initial validators first,
+      // then runs next validators only if initial ones pass
+      return (value: unknown): ValidatorResult => {
+        // Run initial validators first
+        const initialResult = validateEach(initialValidators, value);
+
+        // If initial validators fail, return immediately
+        if (!initialResult.valid) {
+          return initialResult;
+        }
+
+        // If initial validators pass, run the next validators
+        return validateEach(nextValidators, value);
+      };
+    },
+  });
+
+  return chain;
+}
+
 const Validators = {
   arrayOf,
+  checkFirst,
   dateAfter,
   dateBefore,
   dateMinMax,
