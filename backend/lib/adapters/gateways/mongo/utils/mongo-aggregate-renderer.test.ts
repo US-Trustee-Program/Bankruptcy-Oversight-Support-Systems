@@ -223,10 +223,12 @@ describe('aggregation query renderer tests', () => {
     expect(result[1].$addFields).toHaveProperty('_nicknameMatches_0');
     expect(result[1].$addFields).toHaveProperty('_phoneticMatches_0');
     expect(result[1].$addFields).toHaveProperty('_charPrefixMatch_0');
+    expect(result[1].$addFields).toHaveProperty('_similarLengthMatch_0');
     expect(result[1].$addFields).toHaveProperty('_exactMatches_1');
     expect(result[1].$addFields).toHaveProperty('_nicknameMatches_1');
     expect(result[1].$addFields).toHaveProperty('_phoneticMatches_1');
     expect(result[1].$addFields).toHaveProperty('_charPrefixMatch_1');
+    expect(result[1].$addFields).toHaveProperty('_similarLengthMatch_1');
 
     // Stage 3: score expressions
     expect(result[2]).toHaveProperty('$addFields');
@@ -258,12 +260,13 @@ describe('aggregation query renderer tests', () => {
     const parseStage = result[0].$addFields;
     expect(parseStage._words_0).toHaveProperty('$map');
 
-    // Stage 2 should have exact, nickname, and phonetic match counts
+    // Stage 2 should have exact, nickname, phonetic, char prefix, and similar length match counts
     const matchCountStage = result[1].$addFields;
     expect(matchCountStage._exactMatches_0).toHaveProperty('$size');
     expect(matchCountStage._nicknameMatches_0).toHaveProperty('$size');
     expect(matchCountStage._phoneticMatches_0).toHaveProperty('$size');
     expect(matchCountStage._charPrefixMatch_0).toHaveProperty('$cond');
+    expect(matchCountStage._similarLengthMatch_0).toHaveProperty('$cond');
   });
 
   test('should use correct search words for exact matching', () => {
@@ -351,6 +354,36 @@ describe('aggregation query renderer tests', () => {
     expect(() => MongoAggregateRenderer.toMongoScore(scoreStage)).toThrow(
       'targetNameFields and targetTokenFields must have the same length',
     );
+  });
+
+  test('should include similar length check as phonetic qualifier (Smyth → Smith)', () => {
+    // This test verifies that phonetic matches are qualified by similar word length,
+    // enabling matches like Smyth → Smith (both 5 chars, same Metaphone SM0)
+    // while blocking Mike → Mitchell (4 vs 8 chars)
+    const scoreStage: Score = score({
+      searchWords: ['smyth'],
+      nicknameWords: [],
+      searchMetaphones: ['SM0'],
+      nicknameMetaphones: [],
+      targetNameFields: ['debtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'],
+      outputField: 'matchScore',
+    });
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    // Verify similar length match expression is generated
+    const matchCountStage = result[1].$addFields;
+    expect(matchCountStage._similarLengthMatch_0).toHaveProperty('$cond');
+
+    // Verify the score expression includes similar length as a phonetic qualifier
+    const scoreExpr = result[2].$addFields._score_0 as { $add: unknown[] };
+    const phoneticCondition = scoreExpr.$add[2] as { $cond: { if: { $or: unknown[] } } };
+    const qualifiers = phoneticCondition.$cond.if.$or;
+
+    // Should have 4 qualifiers: exact, nickname, char prefix, similar length
+    expect(qualifiers).toHaveLength(4);
+    expect(qualifiers[3]).toEqual({ $gt: ['$_similarLengthMatch_0', 0] });
   });
 
   test('should flatten SCORE stages in pipeline', () => {

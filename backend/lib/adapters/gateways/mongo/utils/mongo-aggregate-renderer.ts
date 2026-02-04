@@ -259,8 +259,53 @@ function buildCharacterPrefixMatchExpression(searchWords: string[], wordsField: 
 }
 
 /**
+ * Builds a MongoDB expression to detect similar-length word matches.
+ * Returns 1 if any document word has a length within ±1 of any search word's length.
+ * This enables phonetic matches like Smyth → Smith (both 5 chars) while blocking
+ * Mike → Mitchell (4 vs 8 chars - too different in length).
+ *
+ * @param searchWords - Array of search words (lowercase)
+ * @param wordsField - Temp field containing parsed document words
+ * @returns MongoDB expression returning 1 if similar length match found, 0 otherwise
+ */
+function buildSimilarLengthMatchExpression(searchWords: string[], wordsField: string): object {
+  if (searchWords.length === 0) {
+    return { $literal: 0 };
+  }
+
+  const searchWordLengths = searchWords.map((w) => w.length);
+
+  return {
+    $cond: {
+      if: {
+        $anyElementTrue: {
+          $map: {
+            input: { $ifNull: [`$${wordsField}`, []] },
+            as: 'docWord',
+            in: {
+              $anyElementTrue: {
+                $map: {
+                  input: searchWordLengths,
+                  as: 'searchLen',
+                  in: {
+                    // Document word length is within ±1 of search word length
+                    $lte: [{ $abs: { $subtract: [{ $strLenCP: '$$docWord' }, '$$searchLen'] } }, 1],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      then: 1,
+      else: 0,
+    },
+  };
+}
+
+/**
  * Builds a MongoDB expression for the final weighted score.
- * Phonetic matches only count if qualified by exact, nickname, or character prefix match.
+ * Phonetic matches only count if qualified by exact, nickname, char prefix, or similar length.
  *
  * @param idx - Index for field-specific temp field names
  * @param exactMatchWeight - Weight for exact matches
@@ -282,7 +327,7 @@ function buildFinalScoreExpression(
       { $multiply: [`$_exactMatches_${idx}`, exactMatchWeight] },
       // Nickname matches always score
       { $multiply: [`$_nicknameMatches_${idx}`, nicknameMatchWeight] },
-      // Phonetic matches only score if qualified (has exact, nickname, or char prefix match)
+      // Phonetic matches only score if qualified (has exact, nickname, char prefix, or similar length)
       {
         $cond: {
           if: {
@@ -290,6 +335,7 @@ function buildFinalScoreExpression(
               { $gt: [`$_exactMatches_${idx}`, 0] },
               { $gt: [`$_nicknameMatches_${idx}`, 0] },
               { $gt: [`$_charPrefixMatch_${idx}`, 0] },
+              { $gt: [`$_similarLengthMatch_${idx}`, 0] },
             ],
           },
           then: { $multiply: [`$_phoneticMatches_${idx}`, phoneticMatchWeight] },
@@ -310,20 +356,21 @@ function buildFinalScoreExpression(
  * **Match Types (in priority order):**
  * 1. Exact Match (10,000 pts): Document word equals search word
  * 2. Nickname Match (1,000 pts): Document word is in search term's nickname set
- * 3. Qualified Phonetic (100 pts): Metaphone match + (exact OR nickname OR char prefix)
+ * 3. Qualified Phonetic (100 pts): Metaphone match + (exact OR nickname OR char prefix OR similar length)
  * 4. Character Prefix (75 pts): Document word starts with search word (e.g., "jon" → "johnson")
  *
  * **Key insight**: Phonetic matches alone are too permissive. A phonetic match
- * is only valid when accompanied by an exact match, nickname relationship, or
- * character prefix match. This prevents false positives like:
- * - Mike → Mitchell (phonetic "M" overlap, no qualification)
- * - Mike → Maxwell (phonetic "MK" prefix of "MKSWL", but "mike" is NOT char prefix of "maxwell")
- * - Bill → Bella (phonetic "BL" overlap, no qualification)
+ * is only valid when accompanied by an exact match, nickname relationship,
+ * character prefix match, or similar word length. This prevents false positives like:
+ * - Mike → Mitchell (phonetic overlap, different lengths: 4 vs 8)
+ * - Mike → Maxwell (phonetic overlap, different lengths: 4 vs 7)
+ * - Bill → Bella (phonetic overlap, no qualification)
  *
  * While allowing valid matches like:
  * - Mike → Michael (nickname relationship)
- * - Jon → John (phonetic match qualified by nickname)
+ * - Jon → John (phonetic match qualified by similar length: 3 vs 4)
  * - Jon → Johnson (character prefix: "jon" starts "johnson")
+ * - Smyth → Smith (phonetic match qualified by same length: both 5 chars)
  *
  * @example
  * // Search "Mike" → searchWords: ["mike"], nicknameWords: ["michael", "mikey"]
@@ -385,13 +432,24 @@ function toMongoScore(stage: Score): object[] {
     const nicknameField = `_nicknameMatches_${idx}`;
     const phoneticField = `_phoneticMatches_${idx}`;
     const charPrefixField = `_charPrefixMatch_${idx}`;
+    const similarLengthField = `_similarLengthMatch_${idx}`;
 
-    tempFieldNames.push(exactField, nicknameField, phoneticField, charPrefixField);
+    tempFieldNames.push(
+      exactField,
+      nicknameField,
+      phoneticField,
+      charPrefixField,
+      similarLengthField,
+    );
 
     matchCountFields[exactField] = buildExactMatchCountExpression(searchWords, wordsField);
     matchCountFields[nicknameField] = buildNicknameMatchCountExpression(nicknameWords, wordsField);
     matchCountFields[phoneticField] = buildPhoneticMatchCountExpression(allMetaphones, tokenField);
     matchCountFields[charPrefixField] = buildCharacterPrefixMatchExpression(
+      searchWords,
+      wordsField,
+    );
+    matchCountFields[similarLengthField] = buildSimilarLengthMatchExpression(
       searchWords,
       wordsField,
     );
