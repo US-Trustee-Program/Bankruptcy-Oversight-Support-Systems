@@ -33,42 +33,42 @@ import { Address, ContactInformation, PhoneNumber } from '@common/cams/contact';
 const MODULE_NAME = 'TRUSTEES-USE-CASE';
 
 const addressSpec: ValidationSpec<Address> = {
-  address1: addressLine1,
-  address2: addressLine2,
-  address3: addressLine3,
-  city,
-  state,
-  zipCode,
-  countryCode,
+  address1: [addressLine1],
+  address2: [addressLine2],
+  address3: [addressLine3],
+  city: [city],
+  state: [state],
+  zipCode: [zipCode],
+  countryCode: [countryCode],
 };
 
 const phoneSpec: ValidationSpec<PhoneNumber> = {
-  number: phoneNumber,
-  extension: phoneExtension,
+  number: [phoneNumber],
+  extension: [phoneExtension],
 };
 
 const contactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.spec(addressSpec)],
   phone: [V.optional(V.spec(phoneSpec))],
-  email: [V.optional(...email)],
-  website,
-  companyName,
+  email: [V.optional(email)],
+  website: [website],
+  companyName: [companyName],
 };
 
 const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   address: [V.optional(V.nullable(V.spec(addressSpec)))],
   phone: [V.optional(V.nullable(V.spec(phoneSpec)))],
-  email: [V.optional(V.nullable(...email))],
+  email: [V.optional(V.nullable(email))],
 };
 
 const assistantSpec: ValidationSpec<TrusteeAssistant> = {
-  name: assistantName,
-  title: [V.optional(...assistantTitle)],
+  name: [assistantName],
+  title: [V.optional(assistantTitle)],
   contact: [V.spec(contactInformationSpec)],
 };
 
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
-  name: trusteeName,
+  name: [trusteeName],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
   assistant: [V.optional(V.spec(assistantSpec))],
