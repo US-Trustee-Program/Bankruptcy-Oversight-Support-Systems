@@ -39,6 +39,21 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
   }
 
   const contact = assistant.contact;
+  if (!contact) {
+    return {
+      name: assistant.name,
+      title: assistant.title,
+      address1: undefined,
+      address2: undefined,
+      city: undefined,
+      state: undefined,
+      zipCode: undefined,
+      phone: undefined,
+      extension: undefined,
+      email: undefined,
+    };
+  }
+
   return {
     name: assistant.name,
     title: assistant.title,
