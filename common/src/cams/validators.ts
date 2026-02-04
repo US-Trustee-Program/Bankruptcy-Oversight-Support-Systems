@@ -436,7 +436,7 @@ function checkFirst(...initialValidators: ValidatorFunction[]): ValidatorChain {
           return initialResult;
         }
 
-        // If initial validators pass, run the next validators
+        // If initial validators pass, run the next set of validators
         return validateEach(nextValidators, value);
       };
     },
