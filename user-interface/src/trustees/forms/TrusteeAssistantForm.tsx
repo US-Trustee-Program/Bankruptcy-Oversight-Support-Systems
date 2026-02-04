@@ -148,25 +148,22 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
       return { assistant: undefined };
     }
 
+    const assistantTrusteePayload: Partial<TrusteeAssistant> & { name: string } = { name };
+    if (title) assistantTrusteePayload.title = title;
+
     const addressInfo = getAddressInfo(contactInfo);
     const phoneInfo = getPhoneInfo(contactInfo);
     const emailInfo = contactInfo.email || undefined;
 
     const hasContactInfo = addressInfo || phoneInfo || emailInfo;
+    if (!hasContactInfo) return { assistant: assistantTrusteePayload };
 
-    return {
-      assistant: {
-        name: name,
-        title: title,
-        contact: hasContactInfo
-          ? {
-              address: addressInfo,
-              phone: phoneInfo,
-              email: emailInfo,
-            }
-          : undefined,
-      },
-    } as Partial<TrusteeInput>;
+    assistantTrusteePayload.contact = {};
+    if (addressInfo) assistantTrusteePayload.contact.address = addressInfo;
+    if (phoneInfo) assistantTrusteePayload.contact.phone = phoneInfo;
+    if (addressInfo) assistantTrusteePayload.contact.email = emailInfo;
+
+    return { assistant: assistantTrusteePayload };
   };
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
