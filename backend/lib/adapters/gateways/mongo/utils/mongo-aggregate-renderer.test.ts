@@ -222,11 +222,11 @@ describe('aggregation query renderer tests', () => {
     expect(result[1].$addFields).toHaveProperty('_exactMatches_0');
     expect(result[1].$addFields).toHaveProperty('_nicknameMatches_0');
     expect(result[1].$addFields).toHaveProperty('_phoneticMatches_0');
-    expect(result[1].$addFields).toHaveProperty('_phoneticPrefixMatch_0');
+    expect(result[1].$addFields).toHaveProperty('_charPrefixMatch_0');
     expect(result[1].$addFields).toHaveProperty('_exactMatches_1');
     expect(result[1].$addFields).toHaveProperty('_nicknameMatches_1');
     expect(result[1].$addFields).toHaveProperty('_phoneticMatches_1');
-    expect(result[1].$addFields).toHaveProperty('_phoneticPrefixMatch_1');
+    expect(result[1].$addFields).toHaveProperty('_charPrefixMatch_1');
 
     // Stage 3: score expressions
     expect(result[2]).toHaveProperty('$addFields');
@@ -263,7 +263,7 @@ describe('aggregation query renderer tests', () => {
     expect(matchCountStage._exactMatches_0).toHaveProperty('$size');
     expect(matchCountStage._nicknameMatches_0).toHaveProperty('$size');
     expect(matchCountStage._phoneticMatches_0).toHaveProperty('$size');
-    expect(matchCountStage._phoneticPrefixMatch_0).toHaveProperty('$cond');
+    expect(matchCountStage._charPrefixMatch_0).toHaveProperty('$cond');
   });
 
   test('should use correct search words for exact matching', () => {
@@ -330,6 +330,27 @@ describe('aggregation query renderer tests', () => {
     const metaphones = phoneticMatchExpr.$size.$setIntersection[0] as string[];
     expect(metaphones).toContain('MK');
     expect(metaphones).toContain('MXL');
+  });
+
+  test('should throw error when targetNameFields and targetTokenFields have different lengths', () => {
+    const scoreStage: Score = {
+      stage: 'SCORE',
+      searchWords: ['mike'],
+      nicknameWords: [],
+      searchMetaphones: ['MK'],
+      nicknameMetaphones: [],
+      targetNameFields: ['debtor.name', 'jointDebtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'], // Mismatched length
+      outputField: 'matchScore',
+      exactMatchWeight: 10000,
+      nicknameMatchWeight: 1000,
+      phoneticMatchWeight: 100,
+      charPrefixWeight: 75,
+    };
+
+    expect(() => MongoAggregateRenderer.toMongoScore(scoreStage)).toThrow(
+      'targetNameFields and targetTokenFields must have the same length',
+    );
   });
 
   test('should flatten SCORE stages in pipeline', () => {

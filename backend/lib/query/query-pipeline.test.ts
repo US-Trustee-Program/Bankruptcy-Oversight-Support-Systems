@@ -3,7 +3,7 @@ import QueryPipeline, {
   DEFAULT_EXACT_MATCH_WEIGHT,
   DEFAULT_NICKNAME_MATCH_WEIGHT,
   DEFAULT_PHONETIC_MATCH_WEIGHT,
-  DEFAULT_PHONETIC_PREFIX_WEIGHT,
+  DEFAULT_CHAR_PREFIX_WEIGHT,
   FieldReference,
   isPaginate,
   isSort,
@@ -329,7 +329,7 @@ describe('Query Pipeline', () => {
         exactMatchWeight: 5000,
         nicknameMatchWeight: 500,
         phoneticMatchWeight: 50,
-        phoneticPrefixWeight: 25,
+        charPrefixWeight: 25,
       };
 
       const actual = score({
@@ -343,7 +343,7 @@ describe('Query Pipeline', () => {
         exactMatchWeight: 5000,
         nicknameMatchWeight: 500,
         phoneticMatchWeight: 50,
-        phoneticPrefixWeight: 25,
+        charPrefixWeight: 25,
       });
 
       expect(actual).toEqual(expected);
@@ -363,7 +363,7 @@ describe('Query Pipeline', () => {
       expect(actual.exactMatchWeight).toEqual(DEFAULT_EXACT_MATCH_WEIGHT);
       expect(actual.nicknameMatchWeight).toEqual(DEFAULT_NICKNAME_MATCH_WEIGHT);
       expect(actual.phoneticMatchWeight).toEqual(DEFAULT_PHONETIC_MATCH_WEIGHT);
-      expect(actual.phoneticPrefixWeight).toEqual(DEFAULT_PHONETIC_PREFIX_WEIGHT);
+      expect(actual.charPrefixWeight).toEqual(DEFAULT_CHAR_PREFIX_WEIGHT);
     });
   });
 });

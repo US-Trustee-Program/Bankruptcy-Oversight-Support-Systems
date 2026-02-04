@@ -207,14 +207,14 @@ function buildPhoneticMatchCountExpression(metaphones: string[], tokenField: str
 }
 
 /**
- * Builds a MongoDB expression to detect phonetic prefix matches.
+ * Builds a MongoDB expression to detect character prefix matches.
  * Returns 1 if any document word starts with a search word (character prefix)
  * AND the document word is longer than the search word.
  * This enables matches like Jon → Johnson where "jon" is a prefix of "johnson".
  *
  * IMPORTANT: This requires BOTH character prefix AND longer document word.
- * This prevents false positives like Mike → Maxwell where MK is a phonetic prefix
- * of MKSWL, but "mike" is NOT a character prefix of "maxwell".
+ * This prevents false positives like Mike → Maxwell where "mike" is NOT
+ * a character prefix of "maxwell".
  *
  * @param searchWords - Array of search words (lowercase)
  * @param wordsField - Temp field containing parsed document words
@@ -260,13 +260,13 @@ function buildCharacterPrefixMatchExpression(searchWords: string[], wordsField: 
 
 /**
  * Builds a MongoDB expression for the final weighted score.
- * Phonetic matches only count if qualified by exact, nickname, or prefix match.
+ * Phonetic matches only count if qualified by exact, nickname, or character prefix match.
  *
  * @param idx - Index for field-specific temp field names
  * @param exactMatchWeight - Weight for exact matches
  * @param nicknameMatchWeight - Weight for nickname matches
  * @param phoneticMatchWeight - Weight for phonetic matches
- * @param phoneticPrefixWeight - Weight for phonetic prefix matches
+ * @param charPrefixWeight - Weight for character prefix matches
  * @returns MongoDB expression computing the final score
  */
 function buildFinalScoreExpression(
@@ -274,7 +274,7 @@ function buildFinalScoreExpression(
   exactMatchWeight: number,
   nicknameMatchWeight: number,
   phoneticMatchWeight: number,
-  phoneticPrefixWeight: number,
+  charPrefixWeight: number,
 ): object {
   return {
     $add: [
@@ -282,14 +282,14 @@ function buildFinalScoreExpression(
       { $multiply: [`$_exactMatches_${idx}`, exactMatchWeight] },
       // Nickname matches always score
       { $multiply: [`$_nicknameMatches_${idx}`, nicknameMatchWeight] },
-      // Phonetic matches only score if qualified (has exact, nickname, or prefix match)
+      // Phonetic matches only score if qualified (has exact, nickname, or char prefix match)
       {
         $cond: {
           if: {
             $or: [
               { $gt: [`$_exactMatches_${idx}`, 0] },
               { $gt: [`$_nicknameMatches_${idx}`, 0] },
-              { $gt: [`$_phoneticPrefixMatch_${idx}`, 0] },
+              { $gt: [`$_charPrefixMatch_${idx}`, 0] },
             ],
           },
           then: { $multiply: [`$_phoneticMatches_${idx}`, phoneticMatchWeight] },
@@ -297,7 +297,7 @@ function buildFinalScoreExpression(
         },
       },
       // Character prefix matches score independently (e.g., "jon" → "johnson")
-      { $multiply: [`$_phoneticPrefixMatch_${idx}`, phoneticPrefixWeight] },
+      { $multiply: [`$_charPrefixMatch_${idx}`, charPrefixWeight] },
     ],
   };
 }
@@ -337,6 +337,7 @@ function buildFinalScoreExpression(
  *
  * @param stage - The Score stage configuration
  * @returns Array of MongoDB aggregation stage objects
+ * @throws CamsError if targetNameFields and targetTokenFields have different lengths
  */
 function toMongoScore(stage: Score): object[] {
   const {
@@ -350,8 +351,14 @@ function toMongoScore(stage: Score): object[] {
     exactMatchWeight,
     nicknameMatchWeight,
     phoneticMatchWeight,
-    phoneticPrefixWeight,
+    charPrefixWeight,
   } = stage;
+
+  if (targetNameFields.length !== targetTokenFields.length) {
+    throw new CamsError(MODULE_NAME, {
+      message: `targetNameFields and targetTokenFields must have the same length. Got ${targetNameFields.length} and ${targetTokenFields.length}.`,
+    });
+  }
 
   // Combine search and nickname metaphones for phonetic matching
   const allMetaphones = [...new Set([...searchMetaphones, ...nicknameMetaphones])];
@@ -377,14 +384,17 @@ function toMongoScore(stage: Score): object[] {
     const exactField = `_exactMatches_${idx}`;
     const nicknameField = `_nicknameMatches_${idx}`;
     const phoneticField = `_phoneticMatches_${idx}`;
-    const prefixField = `_phoneticPrefixMatch_${idx}`;
+    const charPrefixField = `_charPrefixMatch_${idx}`;
 
-    tempFieldNames.push(exactField, nicknameField, phoneticField, prefixField);
+    tempFieldNames.push(exactField, nicknameField, phoneticField, charPrefixField);
 
     matchCountFields[exactField] = buildExactMatchCountExpression(searchWords, wordsField);
     matchCountFields[nicknameField] = buildNicknameMatchCountExpression(nicknameWords, wordsField);
     matchCountFields[phoneticField] = buildPhoneticMatchCountExpression(allMetaphones, tokenField);
-    matchCountFields[prefixField] = buildCharacterPrefixMatchExpression(searchWords, wordsField);
+    matchCountFields[charPrefixField] = buildCharacterPrefixMatchExpression(
+      searchWords,
+      wordsField,
+    );
   });
   stages.push({ $addFields: matchCountFields });
 
@@ -398,7 +408,7 @@ function toMongoScore(stage: Score): object[] {
       exactMatchWeight,
       nicknameMatchWeight,
       phoneticMatchWeight,
-      phoneticPrefixWeight,
+      charPrefixWeight,
     );
   });
   stages.push({ $addFields: scoreFields });

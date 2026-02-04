@@ -10,7 +10,7 @@ import {
 export const DEFAULT_EXACT_MATCH_WEIGHT = 10000;
 export const DEFAULT_NICKNAME_MATCH_WEIGHT = 1000;
 export const DEFAULT_PHONETIC_MATCH_WEIGHT = 100;
-export const DEFAULT_PHONETIC_PREFIX_WEIGHT = 75;
+export const DEFAULT_CHAR_PREFIX_WEIGHT = 75;
 
 function source<T = unknown>(source?: string) {
   return {
@@ -135,7 +135,7 @@ export type Score = {
   exactMatchWeight: number;
   nicknameMatchWeight: number;
   phoneticMatchWeight: number;
-  phoneticPrefixWeight: number;
+  charPrefixWeight: number;
 };
 
 export type Stage<T = never> =
@@ -257,7 +257,7 @@ interface ScoreParams {
   exactMatchWeight?: number;
   nicknameMatchWeight?: number;
   phoneticMatchWeight?: number;
-  phoneticPrefixWeight?: number;
+  charPrefixWeight?: number;
 }
 
 function score(params: ScoreParams): Score {
@@ -273,7 +273,7 @@ function score(params: ScoreParams): Score {
     exactMatchWeight: params.exactMatchWeight ?? DEFAULT_EXACT_MATCH_WEIGHT,
     nicknameMatchWeight: params.nicknameMatchWeight ?? DEFAULT_NICKNAME_MATCH_WEIGHT,
     phoneticMatchWeight: params.phoneticMatchWeight ?? DEFAULT_PHONETIC_MATCH_WEIGHT,
-    phoneticPrefixWeight: params.phoneticPrefixWeight ?? DEFAULT_PHONETIC_PREFIX_WEIGHT,
+    charPrefixWeight: params.charPrefixWeight ?? DEFAULT_CHAR_PREFIX_WEIGHT,
   };
 }
 
