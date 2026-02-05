@@ -274,9 +274,19 @@ function buildCharacterPrefixMatchExpression(searchWords: string[], wordsField: 
 
 /**
  * Builds a MongoDB expression to detect similar-length word matches.
- * Returns 1 if any document word has a length within ±1 of any search word's length.
- * This enables phonetic matches like Smyth → Smith (both 5 chars) while blocking
- * Mike → Mitchell (4 vs 8 chars - too different in length).
+ * Returns 1 if any document word has a similar length to any search word.
+ * Tolerance depends on whether both words are in the same "size class":
+ * - Both words ≤4 chars OR both words >4 chars: allows ±1 character (tolerance 1)
+ * - One word ≤4 and other >4 (mixed size classes): requires exact match (tolerance 0)
+ *
+ * This prevents false positives from phonetic matching across size boundaries where
+ * collisions are common, while preserving legitimate matches within size classes.
+ * Examples:
+ * - "Jon" (3) ↔ "John" (4): similar length ✓ (both ≤4, so ±1 allowed)
+ * - "Smyth" (5) ↔ "Smith" (5): similar length ✓ (both >4, so ±1 allowed)
+ * - "Kris" (4) → "Cruz" (4): similar length ✓ (both ≤4, same length)
+ * - "Kris" (4) → "Cross" (5): NOT similar length ✗ (mixed: 4≤4, 5>4, tolerance=0, diff=1)
+ * - "Mike" (4) → "Mitchell" (8): NOT similar length ✗ (diff=4 exceeds any tolerance)
  *
  * @param searchWords - Array of search words (lowercase)
  * @param wordsField - Temp field containing parsed document words
@@ -302,8 +312,21 @@ function buildSimilarLengthMatchExpression(searchWords: string[], wordsField: st
                   input: searchWordLengths,
                   as: 'searchLen',
                   in: {
-                    // Document word length is within ±1 of search word length
-                    $lte: [{ $abs: { $subtract: [{ $strLenCP: '$$docWord' }, '$$searchLen'] } }, 1],
+                    $lte: [
+                      { $abs: { $subtract: [{ $strLenCP: '$$docWord' }, '$$searchLen'] } },
+                      {
+                        $cond: {
+                          if: {
+                            $eq: [
+                              { $lte: ['$$searchLen', 4] },
+                              { $lte: [{ $strLenCP: '$$docWord' }, 4] },
+                            ],
+                          },
+                          then: 1,
+                          else: 0,
+                        },
+                      },
+                    ],
                   },
                 },
               },
