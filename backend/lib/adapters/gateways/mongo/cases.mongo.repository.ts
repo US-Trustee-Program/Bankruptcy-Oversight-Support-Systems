@@ -382,7 +382,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
    * - Exact Match (10,000 pts): Document word equals search word exactly
    * - Nickname Match (1,000 pts): Document word is in search term's nickname set (e.g., Mike → Michael)
    * - Qualified Phonetic (100 pts): Metaphone match + (exact OR nickname OR prefix qualifier)
-   * - Phonetic Prefix (75 pts): Document word's Metaphone starts with search Metaphone (e.g., Jon → Johnson)
+   * - Character Prefix (75 pts): Document word starts with search word characters (e.g., Jon → Johnson)
    *
    * **Key Features:**
    * - Phonetic matches alone are NOT sufficient - they must be qualified by exact, nickname, or prefix
