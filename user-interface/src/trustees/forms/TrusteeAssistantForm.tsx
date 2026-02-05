@@ -161,7 +161,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     assistantTrusteePayload.contact = {};
     if (addressInfo) assistantTrusteePayload.contact.address = addressInfo;
     if (phoneInfo) assistantTrusteePayload.contact.phone = phoneInfo;
-    if (addressInfo) assistantTrusteePayload.contact.email = emailInfo;
+    if (emailInfo) assistantTrusteePayload.contact.email = emailInfo;
 
     return { assistant: assistantTrusteePayload };
   };
