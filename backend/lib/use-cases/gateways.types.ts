@@ -183,11 +183,10 @@ export interface CasesRepository extends Releasable {
   getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
   updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;
-  countByQuery: <T>(query: Query<T>) => Promise<number>;
-  searchByQuery: <T>(
+  findByCursor: <T>(
     query: Query<T>,
-    options: { limit: number; offset: number },
-  ) => Promise<CamsPaginationResponse<T>>;
+    options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
+  ) => Promise<T[]>;
 }
 
 export interface OfficesRepository
@@ -263,7 +262,8 @@ export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>
 export type RuntimeStateDocumentType =
   | 'ORDERS_SYNC_STATE'
   | 'OFFICE_STAFF_SYNC_STATE'
-  | 'CASES_SYNC_STATE';
+  | 'CASES_SYNC_STATE'
+  | 'PHONETIC_BACKFILL_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -285,6 +285,15 @@ export type OfficeStaffSyncState = RuntimeState & {
   userGroups: CamsUserGroup[];
   users: CamsUserReference[];
   officesWithUsers: UstpOfficeDetails[];
+};
+
+export type PhoneticBackfillState = RuntimeState & {
+  documentType: 'PHONETIC_BACKFILL_STATE';
+  lastId: string | null;
+  processedCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
 };
 
 export interface DocumentCollectionAdapter<T> {

@@ -1,35 +1,50 @@
 import { SyncedCase } from '@common/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import QueryBuilder from '../../query/query-builder';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
-import { MaybeData, MaybeVoid } from './queue-types';
+import { MaybeData } from './queue-types';
+import { PhoneticBackfillState } from '../gateways.types';
 
 const MODULE_NAME = 'BACKFILL-PHONETIC-TOKENS-USE-CASE';
 
 const { and, or, using } = QueryBuilder;
 
 // Type augmentation for MongoDB queries - allows dot-notation paths
+// _id is MongoDB's ObjectId field which is time-ordered (contains timestamp)
 type SyncedCaseQueryable = SyncedCase & {
   'debtor.phoneticTokens'?: string[];
+  _id: string; // MongoDB ObjectId as string - time-ordered for safe cursor pagination
 };
 
 /**
  * Builds the query to find SYNCED_CASE documents that need phonetic token backfill.
  * A case needs backfill if debtor.phoneticTokens is missing or empty.
  *
- * This query is used both for counting and paginating to ensure consistency.
+ * Uses MongoDB's _id (ObjectId) for cursor-based pagination because ObjectIds are
+ * time-ordered (first 4 bytes are timestamp), ensuring new documents always have
+ * larger _id values than existing ones. This prevents skipping documents during migration.
+ *
+ * @param lastId - Optional cursor position (_id as string); if provided, only returns documents with _id > lastId
  */
-function buildNeedsBackfillQuery() {
+function buildNeedsBackfillQuery(lastId?: string | null) {
   const doc = using<SyncedCaseQueryable>();
-  return and(
+  const conditions = [
     doc('documentType').equals('SYNCED_CASE'),
     or(doc('debtor.phoneticTokens').notExists(), doc('debtor.phoneticTokens').equals([])),
-  );
+  ];
+
+  if (lastId) {
+    conditions.push(doc('_id').greaterThan(lastId));
+  }
+
+  return and(...conditions);
 }
 
 export type BackfillCase = {
+  _id: string; // MongoDB ObjectId as string - used for cursor pagination
   caseId: string;
   debtor?: {
     name?: string;
@@ -39,45 +54,70 @@ export type BackfillCase = {
   };
 };
 
-type BackfillPageResult = MaybeData<BackfillCase[]>;
+export type CursorPageResult = {
+  cases: BackfillCase[];
+  lastId: string | null;
+  hasMore: boolean;
+};
+
+type CursorPageMaybeResult = MaybeData<CursorPageResult>;
 
 /**
- * Gets a page of cases that need phonetic token backfill.
+ * Gets a page of cases that need phonetic token backfill using cursor-based pagination.
  *
- * PAGINATION STRATEGY: Uses database-level filtering with buildNeedsBackfillQuery()
- * to paginate only over cases that need backfill. This is more efficient than
- * fetching all cases and filtering in memory.
+ * PAGINATION STRATEGY: Uses _id > lastId cursor-based pagination which is efficient
+ * for large datasets because it uses the index directly without skip/offset overhead.
  *
- * The same query is used in countCasesNeedingBackfill() to ensure page ranges
- * align correctly with the filtered dataset.
+ * Uses MongoDB's _id (ObjectId) because ObjectIds are time-ordered - they contain a
+ * timestamp in the first 4 bytes. This ensures new documents inserted during migration
+ * will always have larger _id values, preventing any documents from being skipped.
  *
- * @param offset - Starting position in the filtered set (cases needing backfill only)
- * @param limit - Number of cases to fetch
- * @returns Cases that need backfill from this page
+ * The method fetches limit + 1 records to detect if more results exist.
+ *
+ * @param context - Application context
+ * @param lastId - Cursor position (_id as string, null for first page)
+ * @param limit - Number of cases to fetch per page
+ * @returns Cases that need backfill, the new cursor position, and hasMore flag
  */
-async function getPageOfCasesNeedingBackfill(
+async function getPageOfCasesNeedingBackfillByCursor(
   context: ApplicationContext,
-  offset: number,
+  lastId: string | null,
   limit: number,
-): Promise<BackfillPageResult> {
+): Promise<CursorPageMaybeResult> {
   try {
     const repo = factory.getCasesRepository(context);
-    const query = buildNeedsBackfillQuery();
-    const result = await repo.searchByQuery<SyncedCaseQueryable>(query, { limit, offset });
+    const query = buildNeedsBackfillQuery(lastId);
+
+    // Fetch limit + 1 to detect if there are more results
+    // Sort by _id (ObjectId) which is time-ordered for safe cursor pagination
+    const results = await repo.findByCursor<SyncedCaseQueryable>(query, {
+      limit: limit + 1,
+      sortField: '_id',
+      sortDirection: 'ASCENDING',
+    });
+
+    const hasMore = results.length > limit;
+    const cases = results.slice(0, limit);
+    const newLastId = cases.length > 0 ? cases[cases.length - 1]._id : null;
 
     return {
-      data: result.data.map((c) => ({
-        caseId: c.caseId,
-        debtor: c.debtor ? { name: c.debtor.name } : undefined,
-        jointDebtor: c.jointDebtor ? { name: c.jointDebtor.name } : undefined,
-      })),
+      data: {
+        cases: cases.map((c) => ({
+          _id: c._id,
+          caseId: c.caseId,
+          debtor: c.debtor ? { name: c.debtor.name } : undefined,
+          jointDebtor: c.jointDebtor ? { name: c.jointDebtor.name } : undefined,
+        })),
+        lastId: newLastId,
+        hasMore,
+      },
     };
   } catch (originalError) {
     return {
       error: getCamsError(
         originalError,
         MODULE_NAME,
-        `Failed to get page of cases needing backfill (offset: ${offset}, limit: ${limit}).`,
+        `Failed to get page of cases needing backfill by cursor (lastId: ${lastId}, limit: ${limit}).`,
       ),
     };
   }
@@ -162,53 +202,75 @@ async function backfillTokensForCases(
 }
 
 /**
- * Counts the number of SYNCED_CASE documents that need phonetic token backfill.
- * Uses the same query as getPageOfCasesNeedingBackfill() to ensure consistency.
- *
- * This pushes the filtering to the database level for efficiency.
+ * Reads the current backfill state from the runtime-state collection.
+ * Returns null if no state exists (first run).
  */
-async function countCasesNeedingBackfill(context: ApplicationContext): Promise<MaybeData<number>> {
+async function readBackfillState(
+  context: ApplicationContext,
+): Promise<MaybeData<PhoneticBackfillState | null>> {
   try {
-    const repo = factory.getCasesRepository(context);
-    const query = buildNeedsBackfillQuery();
-    const count = await repo.countByQuery(query);
-    return { data: count };
+    const repo = factory.getPhoneticBackfillStateRepo(context);
+    const state = await repo.read('PHONETIC_BACKFILL_STATE');
+    return { data: state };
   } catch (originalError) {
+    // NotFoundError is expected on first run
+    if (isNotFoundError(originalError)) {
+      return { data: null };
+    }
     return {
-      error: getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Failed to count cases needing phonetic token backfill.',
-      ),
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to read backfill state.'),
     };
   }
 }
 
 /**
- * Initializes the backfill by returning the count of cases needing backfill.
- * Used by the START queue handler to create page ranges.
- *
- * Uses database-level filtering (buildNeedsBackfillQuery) to count only cases
- * that actually need backfill, matching the pagination strategy in getPageOfCasesNeedingBackfill.
+ * Updates the backfill state in the runtime-state collection.
+ * Uses upsert to create if not exists or update if exists.
  */
-async function initializeBackfill(context: ApplicationContext): Promise<MaybeData<number>> {
-  return countCasesNeedingBackfill(context);
-}
+async function updateBackfillState(
+  context: ApplicationContext,
+  updates: Partial<Omit<PhoneticBackfillState, 'documentType'>> & {
+    lastId: string | null;
+    processedCount: number;
+    status: PhoneticBackfillState['status'];
+  },
+): Promise<MaybeData<PhoneticBackfillState>> {
+  try {
+    const repo = factory.getPhoneticBackfillStateRepo(context);
+    const now = new Date().toISOString();
 
-/**
- * Marks backfill as complete. Currently a no-op but could be extended
- * to store completion state if needed.
- */
-async function completeBackfill(_context: ApplicationContext): Promise<MaybeVoid> {
-  return { success: true };
+    // Read existing state to preserve startedAt if it exists
+    let existingState: PhoneticBackfillState | null = null;
+    try {
+      existingState = await repo.read('PHONETIC_BACKFILL_STATE');
+    } catch {
+      // Not found is fine, we'll create a new one
+    }
+
+    const state: PhoneticBackfillState = {
+      id: existingState?.id,
+      documentType: 'PHONETIC_BACKFILL_STATE',
+      lastId: updates.lastId,
+      processedCount: updates.processedCount,
+      startedAt: existingState?.startedAt ?? now,
+      lastUpdatedAt: now,
+      status: updates.status,
+    };
+
+    const result = await repo.upsert(state);
+    return { data: result };
+  } catch (originalError) {
+    return {
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to update backfill state.'),
+    };
+  }
 }
 
 const BackfillPhoneticTokens = {
-  getPageOfCasesNeedingBackfill,
+  getPageOfCasesNeedingBackfillByCursor,
   backfillTokensForCases,
-  countCasesNeedingBackfill,
-  initializeBackfill,
-  completeBackfill,
+  readBackfillState,
+  updateBackfillState,
   generateTokenUpdates,
 };
 

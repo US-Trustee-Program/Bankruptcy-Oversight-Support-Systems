@@ -5,7 +5,7 @@ import {
   buildFunctionName,
   buildQueueName,
   buildStartQueueHttpTrigger,
-  RangeMessage,
+  CursorMessage,
   StartMessage,
 } from '../dataflows-common';
 import BackfillPhoneticTokensUseCase, {
@@ -50,8 +50,6 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
-const GET_CASES_NEEDING_BACKFILL = buildFunctionName(MODULE_NAME, 'getCasesNeedingBackfill');
-const INITIALIZE_BACKFILL = buildFunctionName(MODULE_NAME, 'initializeBackfill');
 
 type BackfillEvent = BackfillCase & {
   retryCount?: number;
@@ -61,84 +59,121 @@ type BackfillEvent = BackfillCase & {
 /**
  * handleStart
  *
- * Initialize the backfill migration by counting cases that need phonetic tokens
- * and creating page messages for batch processing.
+ * Initialize the backfill migration by reading existing state for resumability.
+ * If already completed, skip. Otherwise, queue first/next CursorMessage with lastId from state.
+ * No counting - uses cursor-based pagination for efficiency.
  */
 async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  const result = await BackfillPhoneticTokensUseCase.initializeBackfill(context);
+  const stateResult = await BackfillPhoneticTokensUseCase.readBackfillState(context);
 
-  if (result.error) {
+  if (stateResult.error) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(result.error, MODULE_NAME, INITIALIZE_BACKFILL),
+      buildQueueError(stateResult.error, MODULE_NAME, HANDLE_START),
     );
     return;
   }
 
-  const count = result.data ?? 0;
-  logger.info(MODULE_NAME, `Found ${count} cases needing phonetic token backfill.`);
+  const existingState = stateResult.data;
 
-  if (count === 0) {
-    logger.info(MODULE_NAME, 'No cases need backfill. Migration complete.');
+  // If already completed, skip
+  if (existingState?.status === 'COMPLETED') {
+    logger.info(
+      MODULE_NAME,
+      `Backfill already completed at ${existingState.lastUpdatedAt}. Processed ${existingState.processedCount} cases. Skipping.`,
+    );
     return;
   }
 
-  // Create page messages for batch processing
-  let start = 0;
-  let end = 0;
+  // Resume from existing state or start fresh
+  const lastId = existingState?.lastId ?? null;
+  const processedCount = existingState?.processedCount ?? 0;
 
-  const pages: RangeMessage[] = [];
-  while (end < count) {
-    start = end;
-    end += PAGE_SIZE;
-    pages.push({ start, end });
+  if (existingState) {
+    logger.info(
+      MODULE_NAME,
+      `Resuming backfill from cursor ${lastId}. Already processed ${processedCount} cases.`,
+    );
+  } else {
+    logger.info(MODULE_NAME, 'Starting fresh phonetic token backfill migration.');
   }
 
-  logger.info(MODULE_NAME, `Queueing ${pages.length} pages for processing.`);
-  invocationContext.extraOutputs.set(PAGE, pages);
+  // Queue the first/next cursor message
+  const cursorMessage: CursorMessage = { lastId };
+  invocationContext.extraOutputs.set(PAGE, cursorMessage);
 }
 
 /**
  * handlePage
  *
- * Process a page of cases by fetching cases needing backfill
- * and updating them with phonetic tokens.
+ * Process a page of cases using cursor-based pagination.
+ * Fetches page using cursor, processes batch, updates state with new cursor position.
+ * If hasMore, queues next CursorMessage. If no more results, sets status to COMPLETED.
  */
-async function handlePage(range: RangeMessage, invocationContext: InvocationContext) {
+async function handlePage(cursor: CursorMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  const casesResult = await BackfillPhoneticTokensUseCase.getPageOfCasesNeedingBackfill(
+  // Read current state to get processedCount
+  const stateResult = await BackfillPhoneticTokensUseCase.readBackfillState(context);
+  if (stateResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(stateResult.error, MODULE_NAME, HANDLE_PAGE),
+    );
+    return;
+  }
+
+  const currentProcessedCount = stateResult.data?.processedCount ?? 0;
+
+  // Fetch page using cursor
+  const casesResult = await BackfillPhoneticTokensUseCase.getPageOfCasesNeedingBackfillByCursor(
     context,
-    range.start,
-    range.end - range.start,
+    cursor.lastId,
+    PAGE_SIZE,
   );
 
   if (casesResult.error) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(casesResult.error, MODULE_NAME, GET_CASES_NEEDING_BACKFILL),
+      buildQueueError(casesResult.error, MODULE_NAME, HANDLE_PAGE),
     );
     return;
   }
 
-  const cases = casesResult.data ?? [];
+  const { cases, lastId: newLastId, hasMore } = casesResult.data;
+
   if (cases.length === 0) {
-    logger.debug(MODULE_NAME, `No cases in range ${range.start}-${range.end} need backfill.`);
+    // No more cases to process - mark as completed
+    logger.info(MODULE_NAME, `No more cases to backfill. Migration complete.`);
+
+    await BackfillPhoneticTokensUseCase.updateBackfillState(context, {
+      lastId: cursor.lastId,
+      processedCount: currentProcessedCount,
+      status: 'COMPLETED',
+    });
     return;
   }
 
   logger.debug(
     MODULE_NAME,
-    `Processing ${cases.length} cases in range ${range.start}-${range.end}.`,
+    `Processing ${cases.length} cases. Cursor: ${cursor.lastId ?? 'start'} -> ${newLastId}.`,
   );
 
+  // Process the batch
   const backfillResult = await BackfillPhoneticTokensUseCase.backfillTokensForCases(context, cases);
 
   if (backfillResult.error) {
+    // Update state with FAILED status
+    await BackfillPhoneticTokensUseCase.updateBackfillState(context, {
+      lastId: cursor.lastId,
+      processedCount: currentProcessedCount,
+      status: 'FAILED',
+    });
+
     invocationContext.extraOutputs.set(
       DLQ,
       buildQueueError(backfillResult.error, MODULE_NAME, HANDLE_PAGE),
@@ -147,19 +182,56 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
   }
 
   const results = backfillResult.data ?? [];
+  const successCount = results.filter((r) => r.success).length;
   const failedResults = results.filter((r) => !r.success);
+  const newProcessedCount = currentProcessedCount + successCount;
 
+  // Update state with new cursor position
+  const updateResult = await BackfillPhoneticTokensUseCase.updateBackfillState(context, {
+    lastId: newLastId,
+    processedCount: newProcessedCount,
+    status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
+  });
+
+  if (updateResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(updateResult.error, MODULE_NAME, HANDLE_PAGE),
+    );
+    return;
+  }
+
+  // Handle failed cases
   if (failedResults.length > 0) {
     logger.warn(MODULE_NAME, `${failedResults.length} cases failed to backfill.`);
-    const failedEvents: BackfillEvent[] = failedResults.map((r) => ({
-      caseId: r.caseId,
-      error: new Error(r.error ?? 'Unknown error'),
-    }));
+    const failedEvents: BackfillEvent[] = failedResults.map((r) => {
+      const originalCase = cases.find((c) => c.caseId === r.caseId);
+      return {
+        _id: originalCase?._id ?? '',
+        caseId: r.caseId,
+        debtor: originalCase?.debtor,
+        jointDebtor: originalCase?.jointDebtor,
+        error: new Error(r.error ?? 'Unknown error'),
+      };
+    });
     invocationContext.extraOutputs.set(DLQ, failedEvents);
   }
 
-  const successCount = results.filter((r) => r.success).length;
-  logger.debug(MODULE_NAME, `Successfully backfilled ${successCount} cases.`);
+  logger.debug(
+    MODULE_NAME,
+    `Successfully backfilled ${successCount} cases. Total processed: ${newProcessedCount}.`,
+  );
+
+  // If there are more results, queue next cursor message
+  if (hasMore) {
+    const nextCursor: CursorMessage = { lastId: newLastId };
+    invocationContext.extraOutputs.set(PAGE, nextCursor);
+  } else {
+    logger.info(
+      MODULE_NAME,
+      `Backfill migration complete. Total processed: ${newProcessedCount} cases.`,
+    );
+  }
 }
 
 /**
@@ -202,6 +274,7 @@ async function handleRetry(event: BackfillEvent, invocationContext: InvocationCo
   }
 
   const backfillCase: BackfillCase = {
+    _id: event._id,
     caseId: event.caseId,
     debtor: event.debtor,
     jointDebtor: event.jointDebtor,
@@ -231,7 +304,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: PAGE.queueName,
     handler: handlePage,
-    extraOutputs: [DLQ],
+    extraOutputs: [PAGE, DLQ],
   });
 
   app.storageQueue(HANDLE_ERROR, {
