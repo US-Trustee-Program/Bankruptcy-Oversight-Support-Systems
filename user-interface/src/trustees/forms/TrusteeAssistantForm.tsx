@@ -161,7 +161,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     assistantTrusteePayload.contact = {};
     if (addressInfo) assistantTrusteePayload.contact.address = addressInfo;
     if (phoneInfo) assistantTrusteePayload.contact.phone = phoneInfo;
-    if (addressInfo) assistantTrusteePayload.contact.email = emailInfo;
+    if (emailInfo) assistantTrusteePayload.contact.email = emailInfo;
 
     return { assistant: assistantTrusteePayload };
   };
@@ -218,6 +218,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const validateFormAndUpdateErrors = (formData: TrusteeAssistantFormData): boolean => {
     const results = validateObject(trusteeAssistantSpec, formData);
+    partialAddressAlertRef.current?.hide();
 
     if (!results.valid && results.reasonMap) {
       setFieldErrors(
@@ -425,6 +426,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
         <Alert
           role="alert"
+          id="assistant-form-error-alert"
           className="form-field-warning"
           type={UswdsAlertStyle.Error}
           inline={true}
