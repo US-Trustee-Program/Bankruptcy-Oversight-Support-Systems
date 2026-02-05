@@ -256,9 +256,9 @@ describe('aggregation query renderer tests', () => {
 
     const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
 
-    // Stage 1 should parse name into words
+    // Stage 1 should parse name into words using $reduce (splits on spaces and hyphens)
     const parseStage = result[0].$addFields;
-    expect(parseStage._words_0).toHaveProperty('$map');
+    expect(parseStage._words_0).toHaveProperty('$reduce');
 
     // Stage 2 should have exact, nickname, phonetic, char prefix, and similar length match counts
     const matchCountStage = result[1].$addFields;
@@ -384,6 +384,39 @@ describe('aggregation query renderer tests', () => {
     // Should have 4 qualifiers: exact, nickname, char prefix, similar length
     expect(qualifiers).toHaveLength(4);
     expect(qualifiers[3]).toEqual({ $gt: ['$_similarLengthMatch_0', 0] });
+  });
+
+  test('should parse hyphenated names into separate words (jean-pierre → jean, pierre)', () => {
+    // This test verifies that hyphenated names like "jean-pierre" are tokenized
+    // as ["jean", "pierre"], enabling matches with search terms "jean pierre"
+    const scoreStage: Score = score({
+      searchWords: ['jean', 'pierre'],
+      nicknameWords: [],
+      searchMetaphones: ['JN', 'PR'],
+      nicknameMetaphones: [],
+      targetNameFields: ['debtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'],
+      outputField: 'matchScore',
+    });
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    // Verify the parse words expression uses $reduce to split on both spaces and hyphens
+    const parseStage = result[0].$addFields;
+    const wordsExpr = parseStage._words_0 as {
+      $reduce: { input: { $split: [object, string] }; in: { $concatArrays: unknown[] } };
+    };
+
+    // Should use $reduce to flatten arrays from splitting on hyphens
+    expect(wordsExpr).toHaveProperty('$reduce');
+    // The input to $reduce should split the name on spaces first
+    expect(wordsExpr.$reduce.input).toHaveProperty('$split');
+    // The "in" expression should use $concatArrays to flatten results
+    expect(wordsExpr.$reduce.in).toHaveProperty('$concatArrays');
+    // The second element of $concatArrays should split on hyphens
+    const concatArrays = wordsExpr.$reduce.in.$concatArrays as unknown[];
+    const hyphenSplit = concatArrays[1] as { $filter: { input: { $split: [string, string] } } };
+    expect(hyphenSplit.$filter.input.$split[1]).toBe('-');
   });
 
   test('should flatten SCORE stages in pipeline', () => {

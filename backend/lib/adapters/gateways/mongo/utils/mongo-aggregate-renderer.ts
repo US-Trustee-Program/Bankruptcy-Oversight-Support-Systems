@@ -132,22 +132,36 @@ function toMongoProjectInclude(stage: IncludeFields) {
 
 /**
  * Builds a MongoDB expression to parse a name field into normalized word array.
- * Splits on whitespace and converts to lowercase.
+ * Splits on both whitespace and hyphens, converts to lowercase.
+ * This ensures "jean-pierre" is tokenized as ["jean", "pierre"] to match search queries.
  *
  * @param nameField - The document field containing a name (e.g., 'debtor.name')
  * @returns MongoDB expression that produces an array of lowercase words
  */
 function buildParseWordsExpression(nameField: string): object {
+  // Get lowercase string, defaulting to empty string for null/missing
+  const lowerName = { $toLower: { $ifNull: [`$${nameField}`, ''] } };
+
+  // Split on space first to get initial words
+  const wordsFromSpaces = { $split: [lowerName, ' '] };
+
+  // For each word, split on hyphen and flatten the results
+  // This turns ["jean-pierre", "smith"] into ["jean", "pierre", "smith"]
   return {
-    $map: {
-      input: {
-        $filter: {
-          input: { $split: [{ $toLower: { $ifNull: [`$${nameField}`, ''] } }, ' '] },
-          cond: { $gt: [{ $strLenCP: '$$this' }, 0] },
-        },
+    $reduce: {
+      input: wordsFromSpaces,
+      initialValue: [],
+      in: {
+        $concatArrays: [
+          '$$value',
+          {
+            $filter: {
+              input: { $split: ['$$this', '-'] },
+              cond: { $gt: [{ $strLenCP: '$$this' }, 0] },
+            },
+          },
+        ],
       },
-      as: 'word',
-      in: { $trim: { input: '$$word' } },
     },
   };
 }

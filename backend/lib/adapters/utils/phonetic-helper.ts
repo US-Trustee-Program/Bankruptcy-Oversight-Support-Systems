@@ -10,6 +10,7 @@ function normalizeText(text: string): string {
   return text
     .trim()
     .toLowerCase()
+    .replace(/-/g, ' ') // Treat hyphens as word separators (jean-pierre → jean pierre)
     .replace(/[^a-z0-9\s]/g, '');
 }
 
