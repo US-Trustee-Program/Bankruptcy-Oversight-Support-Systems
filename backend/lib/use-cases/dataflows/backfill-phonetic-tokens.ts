@@ -54,7 +54,7 @@ export type BackfillCase = {
   };
 };
 
-export type CursorPageResult = {
+type CursorPageResult = {
   cases: BackfillCase[];
   lastId: string | null;
   hasMore: boolean;
@@ -243,8 +243,11 @@ async function updateBackfillState(
     let existingState: PhoneticBackfillState | null = null;
     try {
       existingState = await repo.read('PHONETIC_BACKFILL_STATE');
-    } catch {
-      // Not found is fine, we'll create a new one
+    } catch (originalError) {
+      // NotFoundError is expected on first run, rethrow other errors
+      if (!isNotFoundError(originalError)) {
+        throw originalError;
+      }
     }
 
     const state: PhoneticBackfillState = {
