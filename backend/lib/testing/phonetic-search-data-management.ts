@@ -15,8 +15,11 @@
  * - Edge cases (short names, stop words, numbers, etc.)
  *
  * Usage:
- *   # Seed test cases
+ *   # Seed test cases (with phoneticTokens)
  *   npx tsx backend/lib/testing/phonetic-search-data-management.ts seed
+ *
+ *   # Seed test cases WITHOUT phoneticTokens (for testing migration)
+ *   npx tsx backend/lib/testing/phonetic-search-data-management.ts seed-without-tokens
  *
  *   # Verify test cases
  *   npx tsx backend/lib/testing/phonetic-search-data-management.ts verify
@@ -83,6 +86,74 @@ async function seedTestData(): Promise<void> {
     console.log('\n🧪 Test through your UI now!');
     console.log(
       '🧹 Cleanup: npx tsx backend/lib/testing/phonetic-search-data-management.ts cleanup\n',
+    );
+  } catch (error) {
+    console.error('❌ Error seeding test data:', error);
+    process.exit(1);
+  } finally {
+    await client.close();
+  }
+}
+
+// Seed test cases WITHOUT phoneticTokens (for testing migration)
+async function seedTestDataWithoutTokens(): Promise<void> {
+  const mongoUrl = process.env.MONGO_CONNECTION_STRING!;
+  const dbName = process.env.COSMOS_DATABASE_NAME || 'cams';
+
+  console.log('========================================');
+  console.log('SEEDING PHONETIC TEST DATA (WITHOUT TOKENS)');
+  console.log('========================================');
+  console.log(`Database: ${dbName}`);
+  console.log(`Total cases: ${phoneticSearchTestCases.length}`);
+  console.log('');
+
+  const client = new MongoClient(mongoUrl);
+
+  try {
+    await client.connect();
+    console.log('✓ Connected to MongoDB\n');
+
+    const db = client.db(dbName);
+    const collection = db.collection('cases');
+
+    // Check for existing test cases (caseNumber starts with "00-")
+    const existingCount = await collection.countDocuments({
+      caseNumber: { $regex: /^00-/ },
+    });
+
+    if (existingCount > 0) {
+      console.log(`⚠️  Found ${existingCount} existing test cases (caseNumber starts with "00-")`);
+      console.log(
+        '   Run cleanup first: npx tsx backend/lib/testing/phonetic-search-data-management.ts cleanup\n',
+      );
+      process.exit(1);
+    }
+
+    // Strip phoneticTokens from cases for migration testing
+    const casesWithoutTokens = phoneticSearchTestCases.map((c) => {
+      const caseCopy = JSON.parse(JSON.stringify(c));
+      if (caseCopy.debtor) {
+        delete caseCopy.debtor.phoneticTokens;
+      }
+      if (caseCopy.jointDebtor) {
+        delete caseCopy.jointDebtor.phoneticTokens;
+      }
+      return caseCopy;
+    });
+
+    // Insert test cases
+    console.log(`📥 Inserting ${casesWithoutTokens.length} test cases WITHOUT phoneticTokens...`);
+    await collection.insertMany(casesWithoutTokens);
+
+    console.log(
+      `\n✅ Successfully seeded ${casesWithoutTokens.length} cases WITHOUT phoneticTokens!`,
+    );
+    console.log('\n🧪 Now run the backfill migration to populate phoneticTokens:');
+    console.log('   POST /api/backfill-phonetic-tokens');
+    console.log('\n📋 Then verify with:');
+    console.log('   npx tsx backend/lib/testing/phonetic-search-data-management.ts verify');
+    console.log(
+      '\n🧹 Cleanup: npx tsx backend/lib/testing/phonetic-search-data-management.ts cleanup\n',
     );
   } catch (error) {
     console.error('❌ Error seeding test data:', error);
@@ -171,6 +242,72 @@ async function verifyTestData(): Promise<boolean> {
   }
 }
 
+// Verify test data exists but does NOT have phoneticTokens (for pre-migration check)
+async function verifyNoTokens(): Promise<boolean> {
+  const mongoUrl = process.env.MONGO_CONNECTION_STRING!;
+  const dbName = process.env.COSMOS_DATABASE_NAME || 'cams';
+
+  console.log('========================================');
+  console.log('VERIFYING TEST DATA HAS NO PHONETIC TOKENS');
+  console.log('========================================');
+
+  const client = new MongoClient(mongoUrl);
+
+  try {
+    await client.connect();
+    const db = client.db(dbName);
+    const collection = db.collection('cases');
+
+    // Count test cases (caseNumber starts with "00-")
+    const totalCount = await collection.countDocuments({ caseNumber: { $regex: /^00-/ } });
+    console.log(`Found ${totalCount} test cases (caseNumber starts with "00-")`);
+
+    if (totalCount === 0) {
+      console.log('⚠️  No test cases found. Run seed-without-tokens command first.\n');
+      return false;
+    }
+
+    // Count cases WITH phoneticTokens
+    const withTokensCount = await collection.countDocuments({
+      caseNumber: { $regex: /^00-/ },
+      'debtor.phoneticTokens': { $exists: true, $ne: [] },
+    });
+
+    // Count cases WITHOUT phoneticTokens
+    const withoutTokensCount = await collection.countDocuments({
+      caseNumber: { $regex: /^00-/ },
+      $or: [
+        { 'debtor.phoneticTokens': { $exists: false } },
+        { 'debtor.phoneticTokens': { $eq: [] } },
+      ],
+    });
+
+    console.log(`\n📊 Token Status:`);
+    console.log(`   Cases WITH phoneticTokens:    ${withTokensCount}`);
+    console.log(`   Cases WITHOUT phoneticTokens: ${withoutTokensCount}`);
+
+    if (withTokensCount === 0 && withoutTokensCount === totalCount) {
+      console.log(`\n✅ All ${totalCount} test cases are ready for migration (no tokens)!`);
+      console.log('\n🚀 Run the migration:');
+      console.log('   POST /api/backfill-phonetic-tokens\n');
+      return true;
+    } else if (withTokensCount === totalCount) {
+      console.log(`\n✅ All ${totalCount} test cases already have phoneticTokens.`);
+      console.log('   Migration has already been run or cases were seeded with tokens.\n');
+      return true;
+    } else {
+      console.log(`\n⚠️  Mixed state: some cases have tokens, some don't.`);
+      console.log('   Consider running cleanup and re-seeding.\n');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error verifying test data:', error);
+    return false;
+  } finally {
+    await client.close();
+  }
+}
+
 // Cleanup test data
 async function cleanupTestData(): Promise<void> {
   const mongoUrl = process.env.MONGO_CONNECTION_STRING!;
@@ -237,8 +374,13 @@ async function main() {
 
   if (command === 'seed') {
     await seedTestData();
+  } else if (command === 'seed-without-tokens') {
+    await seedTestDataWithoutTokens();
   } else if (command === 'verify') {
     const success = await verifyTestData();
+    process.exit(success ? 0 : 1);
+  } else if (command === 'verify-no-tokens') {
+    const success = await verifyNoTokens();
     process.exit(success ? 0 : 1);
   } else if (command === 'cleanup') {
     await cleanupTestData();
@@ -247,9 +389,13 @@ async function main() {
     console.log('  npx tsx backend/lib/testing/phonetic-search-data-management.ts <command>');
     console.log('');
     console.log('Commands:');
-    console.log('  seed    - Insert phonetic test cases into database');
-    console.log('  verify  - Verify test cases exist and have correct structure');
-    console.log('  cleanup - Remove all MOCK- test cases from database');
+    console.log('  seed                - Insert phonetic test cases into database (with tokens)');
+    console.log(
+      '  seed-without-tokens - Insert test cases WITHOUT phoneticTokens (for migration testing)',
+    );
+    console.log('  verify              - Verify test cases exist and have correct structure');
+    console.log('  verify-no-tokens    - Check token status (for pre/post migration verification)');
+    console.log('  cleanup             - Remove all test cases from database');
     console.log('');
     process.exit(1);
   }
