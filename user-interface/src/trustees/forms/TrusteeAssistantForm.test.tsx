@@ -313,6 +313,65 @@ describe('TrusteeAssistantForm', () => {
       expect(zipErrorMessage).toBeInTheDocument();
       expect(zipErrorMessage?.textContent).toEqual('ZIP Code is required');
     });
+
+    test('should hide alert after fixing validation errors and show new field-level errors', async () => {
+      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+
+      // Fill in name and partial address (missing address1)
+      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+      await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
+      await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
+
+      const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
+      if (stateCombobox) {
+        await userEvent.click(stateCombobox);
+        const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
+        await userEvent.click(nyOption);
+      }
+
+      // Submit to trigger alert
+      const saveButton = screen.getByTestId('button-submit-button');
+      saveButton.click();
+
+      // Verify alert message is visible
+      await waitFor(
+        () => {
+          const alertMessage = screen.queryByTestId('alert-message-assistant-form-error-alert');
+          expect(alertMessage).toBeInTheDocument();
+          expect(alertMessage).toBeVisible();
+        },
+        { timeout: 1000 },
+      );
+
+      // Fix address1
+      await userEvent.type(screen.getByTestId('assistant-address1'), '123 Main St');
+
+      // Add phone extension without phone number (will cause new error)
+      await userEvent.type(screen.getByTestId('assistant-extension'), '123');
+
+      // Submit again
+      saveButton.click();
+
+      await waitFor(
+        () => {
+          const alertContainer = screen.getByTestId('alert-container-assistant-form-error-alert');
+          expect(alertContainer).not.toHaveClass('visible');
+        },
+        { timeout: 1000 },
+      );
+
+      // Verify phone error message is displayed
+      await waitFor(
+        () => {
+          const phoneErrorMessage = document.getElementById('assistant-phone-input__error-message');
+          expect(phoneErrorMessage).toBeInTheDocument();
+          expect(phoneErrorMessage?.textContent).toEqual(
+            'Phone number is required when extension is provided',
+          );
+        },
+        { timeout: 1000 },
+      );
+    });
   });
 
   describe('Form Submission', () => {
@@ -451,6 +510,90 @@ describe('TrusteeAssistantForm', () => {
         },
         { timeout: 2000 },
       );
+    });
+  });
+
+  describe('Individual Contact Info Saving', () => {
+    async function submitFormAndGetAssistant(
+      fillForm: (container: HTMLElement) => Promise<void>,
+    ): Promise<TrusteeAssistant> {
+      const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
+      const mockPatchResponse = { data: mockTrustee };
+      vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
+
+      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      await fillForm(container);
+
+      const submitButton = screen.getByRole('button', { name: 'Save' });
+      await userEvent.click(submitButton);
+
+      let assistant: TrusteeAssistant | undefined;
+      await waitFor(
+        () => {
+          expect(Api2.patchTrustee).toHaveBeenCalledTimes(1);
+          const callArgs = vi.mocked(Api2.patchTrustee).mock.calls[0];
+          expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
+          expect(callArgs[1].assistant).toBeDefined();
+          assistant = callArgs[1].assistant;
+        },
+        { timeout: 2000 },
+      );
+      return assistant!;
+    }
+
+    test('should save email independently without address or phone', async () => {
+      const assistant = await submitFormAndGetAssistant(async () => {
+        await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+        await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
+      });
+
+      expect(assistant.name).toBe('Test Assistant');
+      expect(assistant.contact).toBeDefined();
+      expect(assistant.contact!.email).toBe('test@example.com');
+      expect(assistant.contact!.address).toBeUndefined();
+      expect(assistant.contact!.phone).toBeUndefined();
+    });
+
+    test('should save phone independently without address or email', async () => {
+      const assistant = await submitFormAndGetAssistant(async () => {
+        await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+        await userEvent.type(screen.getByTestId('assistant-phone'), '(555)555-5555');
+        await userEvent.type(screen.getByTestId('assistant-extension'), '123');
+      });
+
+      expect(assistant.name).toBe('Test Assistant');
+      expect(assistant.contact).toBeDefined();
+      expect(assistant.contact!.phone).toBeDefined();
+      expect(assistant.contact!.phone!.number).toBe('555-555-5555');
+      expect(assistant.contact!.phone!.extension).toBe('123');
+      expect(assistant.contact!.address).toBeUndefined();
+      expect(assistant.contact!.email).toBeUndefined();
+    });
+
+    test('should save address independently without phone or email', async () => {
+      const assistant = await submitFormAndGetAssistant(async (container) => {
+        await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+        await userEvent.type(screen.getByTestId('assistant-address1'), '123 Test St');
+        await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
+        await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
+
+        const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
+        if (stateCombobox) {
+          await userEvent.click(stateCombobox);
+          const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
+          await userEvent.click(nyOption);
+        }
+      });
+
+      expect(assistant.name).toBe('Test Assistant');
+      expect(assistant.contact).toBeDefined();
+      expect(assistant.contact!.address).toBeDefined();
+      expect(assistant.contact!.address!.address1).toBe('123 Test St');
+      expect(assistant.contact!.address!.city).toBe('TestCity');
+      expect(assistant.contact!.address!.state).toBe('NY');
+      expect(assistant.contact!.address!.zipCode).toBe('12345');
+      expect(assistant.contact!.phone).toBeUndefined();
+      expect(assistant.contact!.email).toBeUndefined();
     });
   });
 
