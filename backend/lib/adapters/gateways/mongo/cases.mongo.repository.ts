@@ -544,8 +544,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     try {
       const sortSpec = QueryBuilder.orderBy<T>([options.sortField, options.sortDirection]);
       const adapter = this.getAdapter<T>();
-      const results = await adapter.find(query, sortSpec);
-      return results.slice(0, options.limit);
+      return await adapter.find(query, sortSpec, options.limit);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

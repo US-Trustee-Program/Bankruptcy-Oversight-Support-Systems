@@ -12,6 +12,7 @@ import BackfillPhoneticTokensUseCase, {
   BackfillCase,
 } from '../../../lib/use-cases/dataflows/backfill-phonetic-tokens';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import { CamsError } from '../../../lib/common-errors/cams-error';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 import ModuleNames from '../module-names';
 
@@ -136,10 +137,15 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     PAGE_SIZE,
   );
 
-  if (casesResult.error) {
+  if (casesResult.error || !casesResult.data) {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(casesResult.error, MODULE_NAME, HANDLE_PAGE),
+      buildQueueError(
+        casesResult.error ??
+          new CamsError(MODULE_NAME, { message: 'Unexpected missing data in cases result' }),
+        MODULE_NAME,
+        HANDLE_PAGE,
+      ),
     );
     return;
   }
