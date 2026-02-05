@@ -436,4 +436,41 @@ describe('TrusteeDetailProfile', () => {
       'No information added.',
     );
   });
+
+  test('should display "Add Another Assistant" button when an assistant exists', () => {
+    const trusteeWithAssistant = {
+      ...mockTrustee,
+      assistant: {
+        name: 'Jane Assistant',
+        contact: {
+          address: {
+            address1: '789 Assistant St',
+            city: 'Assistant City',
+            state: 'TX',
+            zipCode: '78901',
+            countryCode: 'US' as const,
+          },
+          phone: { number: '555-111-2222' },
+          email: 'jane.assistant@example.com',
+        },
+      },
+    };
+
+    renderWithProps({ trustee: trusteeWithAssistant });
+
+    const addAnotherButton = screen.getByTestId('add-another-assistant');
+    expect(addAnotherButton).toBeInTheDocument();
+  });
+
+  test('should not display "Add Another Assistant" button when no assistant exists', () => {
+    const trusteeWithoutAssistant = {
+      ...mockTrustee,
+      assistant: undefined,
+    };
+
+    renderWithProps({ trustee: trusteeWithoutAssistant });
+
+    const addAnotherButton = screen.queryByTestId('add-another-assistant');
+    expect(addAnotherButton).not.toBeInTheDocument();
+  });
 });
