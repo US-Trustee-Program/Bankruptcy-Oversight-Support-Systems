@@ -333,12 +333,12 @@ describe('TrusteeAssistantForm', () => {
       const saveButton = screen.getByTestId('button-submit-button');
       saveButton.click();
 
-      // Verify alert is displayed
+      // Verify alert message is visible
       await waitFor(
         () => {
-          const alert = screen.getByTestId('alert-assistant-form-error-alert');
-          expect(alert).toBeInTheDocument();
-          expect(alert).toHaveClass('usa-alert__visible');
+          const alertMessage = screen.queryByTestId('alert-message-assistant-form-error-alert');
+          expect(alertMessage).toBeInTheDocument();
+          expect(alertMessage).toBeVisible();
         },
         { timeout: 1000 },
       );
@@ -352,12 +352,10 @@ describe('TrusteeAssistantForm', () => {
       // Submit again
       saveButton.click();
 
-      // Verify alert is hidden now
       await waitFor(
         () => {
-          const alert = screen.getByTestId('alert-assistant-form-error-alert');
-          expect(alert).toBeInTheDocument();
-          expect(alert).toHaveClass('usa-alert__hidden');
+          const alertContainer = screen.getByTestId('alert-container-assistant-form-error-alert');
+          expect(alertContainer).not.toHaveClass('visible');
         },
         { timeout: 1000 },
       );
@@ -516,125 +514,86 @@ describe('TrusteeAssistantForm', () => {
   });
 
   describe('Individual Contact Info Saving', () => {
-    test('should save email independently without address or phone', async () => {
-      const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
-      const mockPatchResponse = { data: mockTrustee };
-      vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
-
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      // Fill in only name and email
-      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-      await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
-
-      const submitButton = screen.getByRole('button', { name: 'Save' });
-      await userEvent.click(submitButton);
-
-      await waitFor(
-        () => {
-          expect(Api2.patchTrustee).toHaveBeenCalledTimes(1);
-          const mockPatchTrustee = vi.mocked(Api2.patchTrustee);
-          const callArgs = mockPatchTrustee.mock.calls[0];
-          expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
-          expect(callArgs[1].assistant).toBeDefined();
-
-          const { name, contact } = callArgs[1].assistant!;
-          expect(name).toBe('Test Assistant');
-          expect(contact).toBeDefined();
-
-          // Verify only email is present, no address or phone
-          expect(contact!.email).toBe('test@example.com');
-          expect(contact!.address).toBeUndefined();
-          expect(contact!.phone).toBeUndefined();
-        },
-        { timeout: 2000 },
-      );
-    });
-
-    test('should save phone independently without address or email', async () => {
-      const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
-      const mockPatchResponse = { data: mockTrustee };
-      vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
-
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      // Fill in only name, phone, and extension
-      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-      await userEvent.type(screen.getByTestId('assistant-phone'), '(555)555-5555');
-      await userEvent.type(screen.getByTestId('assistant-extension'), '123');
-
-      const submitButton = screen.getByRole('button', { name: 'Save' });
-      await userEvent.click(submitButton);
-
-      await waitFor(
-        () => {
-          expect(Api2.patchTrustee).toHaveBeenCalledTimes(1);
-          const mockPatchTrustee = vi.mocked(Api2.patchTrustee);
-          const callArgs = mockPatchTrustee.mock.calls[0];
-          expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
-          expect(callArgs[1].assistant).toBeDefined();
-
-          const { name, contact } = callArgs[1].assistant!;
-          expect(name).toBe('Test Assistant');
-          expect(contact).toBeDefined();
-
-          // Verify only phone is present, no address or email
-          expect(contact!.phone).toBeDefined();
-          expect(contact!.phone!.number).toBe('555-555-5555');
-          expect(contact!.phone!.extension).toBe('123');
-          expect(contact!.address).toBeUndefined();
-          expect(contact!.email).toBeUndefined();
-        },
-        { timeout: 2000 },
-      );
-    });
-
-    test('should save address independently without phone or email', async () => {
+    async function submitFormAndGetAssistant(
+      fillForm: (container: HTMLElement) => Promise<void>,
+    ): Promise<TrusteeAssistant> {
       const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
       const mockPatchResponse = { data: mockTrustee };
       vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
 
       const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
-
-      // Fill in only name and complete address
-      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
-      await userEvent.type(screen.getByTestId('assistant-address1'), '123 Test St');
-      await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
-      await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
-
-      const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
-      if (stateCombobox) {
-        await userEvent.click(stateCombobox);
-        const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
-        await userEvent.click(nyOption);
-      }
+      await fillForm(container);
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
+      let assistant: TrusteeAssistant | undefined;
       await waitFor(
         () => {
           expect(Api2.patchTrustee).toHaveBeenCalledTimes(1);
-          const mockPatchTrustee = vi.mocked(Api2.patchTrustee);
-          const callArgs = mockPatchTrustee.mock.calls[0];
+          const callArgs = vi.mocked(Api2.patchTrustee).mock.calls[0];
           expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
           expect(callArgs[1].assistant).toBeDefined();
-
-          const { name, contact } = callArgs[1].assistant!;
-          expect(name).toBe('Test Assistant');
-          expect(contact).toBeDefined();
-
-          // Verify only address is present, no phone or email
-          expect(contact!.address).toBeDefined();
-          expect(contact!.address!.address1).toBe('123 Test St');
-          expect(contact!.address!.city).toBe('TestCity');
-          expect(contact!.address!.state).toBe('NY');
-          expect(contact!.address!.zipCode).toBe('12345');
-          expect(contact!.phone).toBeUndefined();
-          expect(contact!.email).toBeUndefined();
+          assistant = callArgs[1].assistant;
         },
         { timeout: 2000 },
       );
+      return assistant!;
+    }
+
+    test('should save email independently without address or phone', async () => {
+      const assistant = await submitFormAndGetAssistant(async () => {
+        await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+        await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
+      });
+
+      expect(assistant.name).toBe('Test Assistant');
+      expect(assistant.contact).toBeDefined();
+      expect(assistant.contact!.email).toBe('test@example.com');
+      expect(assistant.contact!.address).toBeUndefined();
+      expect(assistant.contact!.phone).toBeUndefined();
+    });
+
+    test('should save phone independently without address or email', async () => {
+      const assistant = await submitFormAndGetAssistant(async () => {
+        await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+        await userEvent.type(screen.getByTestId('assistant-phone'), '(555)555-5555');
+        await userEvent.type(screen.getByTestId('assistant-extension'), '123');
+      });
+
+      expect(assistant.name).toBe('Test Assistant');
+      expect(assistant.contact).toBeDefined();
+      expect(assistant.contact!.phone).toBeDefined();
+      expect(assistant.contact!.phone!.number).toBe('555-555-5555');
+      expect(assistant.contact!.phone!.extension).toBe('123');
+      expect(assistant.contact!.address).toBeUndefined();
+      expect(assistant.contact!.email).toBeUndefined();
+    });
+
+    test('should save address independently without phone or email', async () => {
+      const assistant = await submitFormAndGetAssistant(async (container) => {
+        await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+        await userEvent.type(screen.getByTestId('assistant-address1'), '123 Test St');
+        await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
+        await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
+
+        const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
+        if (stateCombobox) {
+          await userEvent.click(stateCombobox);
+          const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
+          await userEvent.click(nyOption);
+        }
+      });
+
+      expect(assistant.name).toBe('Test Assistant');
+      expect(assistant.contact).toBeDefined();
+      expect(assistant.contact!.address).toBeDefined();
+      expect(assistant.contact!.address!.address1).toBe('123 Test St');
+      expect(assistant.contact!.address!.city).toBe('TestCity');
+      expect(assistant.contact!.address!.state).toBe('NY');
+      expect(assistant.contact!.address!.zipCode).toBe('12345');
+      expect(assistant.contact!.phone).toBeUndefined();
+      expect(assistant.contact!.email).toBeUndefined();
     });
   });
 
