@@ -216,11 +216,7 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  countByQuery(..._ignore): Promise<number> {
-    throw new Error('Method not implemented.');
-  }
-
-  searchByQuery(..._ignore): Promise<any> {
+  findByCursor(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
 
