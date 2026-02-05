@@ -313,6 +313,67 @@ describe('TrusteeAssistantForm', () => {
       expect(zipErrorMessage).toBeInTheDocument();
       expect(zipErrorMessage?.textContent).toEqual('ZIP Code is required');
     });
+
+    test('should hide alert after fixing validation errors and show new field-level errors', async () => {
+      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+
+      // Fill in name and partial address (missing address1)
+      await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+      await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
+      await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
+
+      const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
+      if (stateCombobox) {
+        await userEvent.click(stateCombobox);
+        const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
+        await userEvent.click(nyOption);
+      }
+
+      // Submit to trigger alert
+      const saveButton = screen.getByTestId('button-submit-button');
+      saveButton.click();
+
+      // Verify alert is displayed
+      await waitFor(
+        () => {
+          const alert = screen.getByTestId('alert-assistant-form-error-alert');
+          expect(alert).toBeInTheDocument();
+          expect(alert).toHaveClass('usa-alert__visible');
+        },
+        { timeout: 1000 },
+      );
+
+      // Fix address1
+      await userEvent.type(screen.getByTestId('assistant-address1'), '123 Main St');
+
+      // Add phone extension without phone number (will cause new error)
+      await userEvent.type(screen.getByTestId('assistant-extension'), '123');
+
+      // Submit again
+      saveButton.click();
+
+      // Verify alert is hidden now
+      await waitFor(
+        () => {
+          const alert = screen.getByTestId('alert-assistant-form-error-alert');
+          expect(alert).toBeInTheDocument();
+          expect(alert).toHaveClass('usa-alert__hidden');
+        },
+        { timeout: 1000 },
+      );
+
+      // Verify phone error message is displayed
+      await waitFor(
+        () => {
+          const phoneErrorMessage = document.getElementById('assistant-phone-input__error-message');
+          expect(phoneErrorMessage).toBeInTheDocument();
+          expect(phoneErrorMessage?.textContent).toEqual(
+            'Phone number is required when extension is provided',
+          );
+        },
+        { timeout: 1000 },
+      );
+    });
   });
 
   describe('Form Submission', () => {
