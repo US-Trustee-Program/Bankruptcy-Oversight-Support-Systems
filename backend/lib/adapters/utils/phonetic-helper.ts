@@ -212,7 +212,8 @@ export function generateStructuredQueryTokens(searchQuery: string): StructuredQu
   // Generate Metaphone codes only (more precise than Soundex)
   const searchMetaphones = generateMetaphoneCodesForWords([...originalWords]);
   const allNicknameMetaphones = generateMetaphoneCodesForWords([...nicknameWords]);
-  const nicknameMetaphones = allNicknameMetaphones.filter((m) => !searchMetaphones.includes(m));
+  const searchMetaphonesSet = new Set(searchMetaphones);
+  const nicknameMetaphones = allNicknameMetaphones.filter((m) => !searchMetaphonesSet.has(m));
 
   return {
     searchWords: [...originalWords],
