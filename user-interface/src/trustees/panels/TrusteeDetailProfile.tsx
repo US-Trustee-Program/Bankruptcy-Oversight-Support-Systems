@@ -142,6 +142,14 @@ export default function TrusteeDetailProfile({
                   contact={trustee.assistant.contact}
                   testIdPrefix="trustee-assistant"
                 />
+                <Button
+                  id="add-another-assistant"
+                  uswdsStyle={UswdsButtonStyle.Default}
+                  aria-label="Add another assistant"
+                  onClick={onAddAssistant}
+                >
+                  <IconLabel icon="add" label="Add Another Assistant" />
+                </Button>
               </>
             )}
           </div>
