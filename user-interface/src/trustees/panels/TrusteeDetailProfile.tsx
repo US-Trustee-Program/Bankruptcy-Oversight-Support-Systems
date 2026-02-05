@@ -138,10 +138,12 @@ export default function TrusteeDetailProfile({
                     {trustee.assistant.title}
                   </div>
                 )}
-                <FormattedContact
-                  contact={trustee.assistant.contact}
-                  testIdPrefix="trustee-assistant"
-                />
+                {trustee.assistant.contact && (
+                  <FormattedContact
+                    contact={trustee.assistant.contact}
+                    testIdPrefix="trustee-assistant"
+                  />
+                )}
               </>
             )}
           </div>

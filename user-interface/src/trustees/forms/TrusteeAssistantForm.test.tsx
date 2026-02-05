@@ -154,10 +154,36 @@ describe('TrusteeAssistantForm', () => {
       expect(nameInput.value).toBe('');
       expect(emailInput.value).toBe('');
     });
+
+    test('should render form when assistant contact property is undefined', () => {
+      const assistantWithoutContact = {
+        name: 'John Assistant',
+        title: 'Lead Assistant',
+        contact: undefined,
+      } as unknown as TrusteeAssistant;
+
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistant: assistantWithoutContact });
+
+      expect(screen.getByTestId('trustee-assistant-form')).toBeInTheDocument();
+      expect(screen.getByRole('form', { name: 'Edit Trustee Assistant' })).toBeInTheDocument();
+
+      const nameInput = screen.getByTestId('assistant-name') as HTMLInputElement;
+      const titleInput = screen.getByTestId('assistant-title') as HTMLInputElement;
+      const emailInput = screen.getByTestId('assistant-email') as HTMLInputElement;
+      const phoneInput = screen.getByTestId('assistant-phone') as HTMLInputElement;
+      const address1Input = screen.getByTestId('assistant-address1') as HTMLInputElement;
+
+      expect(nameInput.value).toBe('John Assistant');
+      expect(titleInput.value).toBe('Lead Assistant');
+      expect(emailInput.value).toBe('');
+      expect(phoneInput.value).toBe('');
+      expect(address1Input.value).toBe('');
+    });
   });
 
   describe('Form Field Validation', () => {
     test('should validate name max length', async () => {
+      const expectedErrorMessage = 'Max length 50 characters';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       const nameInput = screen.getByTestId('assistant-name');
@@ -166,14 +192,16 @@ describe('TrusteeAssistantForm', () => {
 
       await waitFor(
         () => {
-          const errorMessage = screen.queryByText(/Max length 50 characters/i);
-          expect(errorMessage).toBeInTheDocument();
+          const errorDiv = document.getElementById('assistant-name-input__error-message');
+          expect(errorDiv).toBeInTheDocument();
+          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
         { timeout: 1000 },
       );
     });
 
     test('should validate title max length', async () => {
+      const expectedErrorMessage = 'Max length 50 characters';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       const titleInput = screen.getByTestId('assistant-title');
@@ -182,14 +210,16 @@ describe('TrusteeAssistantForm', () => {
 
       await waitFor(
         () => {
-          const errorMessage = screen.queryByText(/Max length 50 characters/i);
-          expect(errorMessage).toBeInTheDocument();
+          const errorDiv = document.getElementById('assistant-title-input__error-message');
+          expect(errorDiv).toBeInTheDocument();
+          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
         { timeout: 1000 },
       );
     });
 
     test('should validate email format', async () => {
+      const expectedErrorMessage = 'Must be a valid email address';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       const emailInput = screen.getByTestId('assistant-email');
@@ -197,14 +227,16 @@ describe('TrusteeAssistantForm', () => {
 
       await waitFor(
         () => {
-          const errorMessage = screen.queryByText(/Must be a valid email address/i);
-          expect(errorMessage).toBeInTheDocument();
+          const errorDiv = document.getElementById('assistant-email-input__error-message');
+          expect(errorDiv).toBeInTheDocument();
+          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
         { timeout: 1000 },
       );
     });
 
     test('should validate phone number format', async () => {
+      const expectedErrorMessage = 'Must be a valid phone number';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       const phoneInput = screen.getByTestId('assistant-phone');
@@ -212,14 +244,16 @@ describe('TrusteeAssistantForm', () => {
 
       await waitFor(
         () => {
-          const errorMessage = screen.queryByText(/Must be a valid phone number/i);
-          expect(errorMessage).toBeInTheDocument();
+          const errorDiv = document.getElementById('assistant-phone-input__error-message');
+          expect(errorDiv).toBeInTheDocument();
+          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
         { timeout: 1000 },
       );
     });
 
     test('should validate extension format', async () => {
+      const expectedErrorMessage = 'Must be 1 to 6 digits';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       const extensionInput = screen.getByTestId('assistant-extension');
@@ -227,14 +261,16 @@ describe('TrusteeAssistantForm', () => {
 
       await waitFor(
         () => {
-          const errorMessage = screen.queryByText(/Must be 1 to 6 digits/i);
-          expect(errorMessage).toBeInTheDocument();
+          const errorDiv = document.getElementById('assistant-extension-input__error-message');
+          expect(errorDiv).toBeInTheDocument();
+          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
         { timeout: 1000 },
       );
     });
 
     test('should validate zip code format', async () => {
+      const expectedErrorMessage = 'Must be 5 or 9 digits';
       renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
 
       const zipInput = screen.getByTestId('assistant-zip');
@@ -242,11 +278,40 @@ describe('TrusteeAssistantForm', () => {
 
       await waitFor(
         () => {
-          const errorMessage = screen.queryByText(/Must be 5 or 9 digits/i);
-          expect(errorMessage).toBeInTheDocument();
+          const errorDiv = document.getElementById('assistant-zip-input__error-message');
+          expect(errorDiv).toBeInTheDocument();
+          expect(errorDiv?.textContent).toBe(expectedErrorMessage);
         },
         { timeout: 1000 },
       );
+    });
+
+    test('should display the correct error message for address information', async () => {
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+
+      const address2Input = screen.getByTestId('assistant-address2');
+      await userEvent.type(address2Input, '101');
+
+      const saveButton = screen.getByTestId('button-submit-button');
+      await saveButton.click();
+
+      const address1ErrorMessage = document.getElementById(
+        'assistant-address1-input__error-message',
+      );
+      expect(address1ErrorMessage).toBeInTheDocument();
+      expect(address1ErrorMessage?.textContent).toEqual('Address is required');
+
+      const cityErrorMessage = document.getElementById('assistant-city-input__error-message');
+      expect(cityErrorMessage).toBeInTheDocument();
+      expect(cityErrorMessage?.textContent).toEqual('City is required');
+
+      const stateErrorMessage = document.getElementById('assistant-state-input__error-message');
+      expect(stateErrorMessage).toBeInTheDocument();
+      expect(stateErrorMessage?.textContent).toEqual('State is required');
+
+      const zipErrorMessage = document.getElementById('assistant-zip-input__error-message');
+      expect(zipErrorMessage).toBeInTheDocument();
+      expect(zipErrorMessage?.textContent).toEqual('ZIP Code is required');
     });
   });
 
@@ -361,15 +426,28 @@ describe('TrusteeAssistantForm', () => {
           const callArgs = mockPatchTrustee.mock.calls[0];
           expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
           expect(callArgs[1].assistant).toBeDefined();
-          expect(callArgs[1].assistant!.name).toBe('Test Assistant');
-          expect(callArgs[1].assistant!.title).toBe('Lead Assistant');
-          expect(callArgs[1].assistant!.contact.address!.address1).toBe('456 Test St');
-          expect(callArgs[1].assistant!.contact.address!.address2).toBe('Suite 200');
-          expect(callArgs[1].assistant!.contact.address!.city).toBe('TestCity');
-          expect(callArgs[1].assistant!.contact.address!.state).toBe('NY');
-          expect(callArgs[1].assistant!.contact.address!.zipCode).toBe('12345');
-          expect(callArgs[1].assistant!.contact.phone!.extension).toBe('999');
-          expect(callArgs[1].assistant!.contact.email).toBe('test@example.com');
+
+          const { name, title, contact } = callArgs[1].assistant!;
+          expect(name).toBe('Test Assistant');
+          expect(title).toBe('Lead Assistant');
+
+          expect(contact).toBeDefined();
+
+          const { address, phone, email } = contact!;
+          expect(address).toBeDefined();
+          expect(phone).toBeDefined();
+
+          const { address1, address2, city, state, zipCode } = address!;
+          expect(address1).toBe('456 Test St');
+          expect(address2).toBe('Suite 200');
+          expect(city).toBe('TestCity');
+          expect(state).toBe('NY');
+          expect(zipCode).toBe('12345');
+
+          const { extension } = phone!;
+          expect(extension).toBe('999');
+
+          expect(email).toBe('test@example.com');
         },
         { timeout: 2000 },
       );
@@ -410,19 +488,19 @@ describe('TrusteeAssistantForm', () => {
     test('should return error reasons for invalid field value', () => {
       const result = validateField('name', 'A'.repeat(51));
       expect(result).toBeDefined();
-      expect(result).toContain('Max length 50 characters');
+      expect(result).toEqual(['Max length 50 characters']);
     });
 
     test('should return error for name field with undefined value', () => {
       const result = validateField('name', undefined);
       expect(result).toBeDefined();
-      expect(result).toContain('Trustee name is required');
+      expect(result).toEqual(['Trustee name is required']);
     });
 
     test('should return error for name field with whitespace-only value', () => {
       const result = validateField('name', '   ');
       expect(result).toBeDefined();
-      expect(result).toContain('Trustee name is required');
+      expect(result).toEqual(['Trustee name is required']);
     });
 
     test('should return undefined for optional fields with undefined value', () => {
