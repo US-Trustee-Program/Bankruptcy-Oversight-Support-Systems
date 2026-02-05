@@ -386,6 +386,74 @@ describe('aggregation query renderer tests', () => {
     expect(qualifiers[3]).toEqual({ $gt: ['$_similarLengthMatch_0', 0] });
   });
 
+  test('should use size-class matching to prevent short/long word false positives', () => {
+    // This test verifies that similar length matching uses "size classes" to prevent
+    // false positives from phonetic collisions between short and long words.
+    // - Words in same size class (both ≤4 OR both >4): ±1 tolerance allowed
+    // - Words in different size classes (one ≤4, other >4): exact match required
+    //
+    // This prevents: "Kris" (4) → "Cross" (5) [KRS phonetic collision]
+    // While preserving: "Jon" (3) → "John" (4) [legitimate variation, both ≤4]
+    const scoreStage: Score = score({
+      searchWords: ['kris'], // 4 chars, at boundary
+      nicknameWords: [],
+      searchMetaphones: ['KRS'],
+      nicknameMetaphones: [],
+      targetNameFields: ['debtor.name'],
+      targetTokenFields: ['debtor.phoneticTokens'],
+      outputField: 'matchScore',
+    });
+
+    const result = MongoAggregateRenderer.toMongoScore(scoreStage) as MongoScoreStage[];
+
+    // Verify the similar length expression uses size-class logic
+    const matchCountStage = result[1].$addFields;
+    const similarLengthExpr = matchCountStage._similarLengthMatch_0 as {
+      $cond: {
+        if: {
+          $anyElementTrue: {
+            $map: {
+              input: object;
+              as: string;
+              in: {
+                $anyElementTrue: {
+                  $map: {
+                    input: number[];
+                    as: string;
+                    in: { $lte: [object, object] };
+                  };
+                };
+              };
+            };
+          };
+        };
+      };
+    };
+
+    // Navigate to the tolerance condition that checks size classes
+    const outerMap = similarLengthExpr.$cond.if.$anyElementTrue.$map;
+    const innerMapContainer = outerMap.in as { $anyElementTrue: { $map: unknown } };
+    const innerMap = innerMapContainer.$anyElementTrue.$map as {
+      in: { $lte: [object, object] };
+    };
+    const comparison = innerMap.in.$lte;
+
+    // The second element should be a conditional that returns tolerance based on size class
+    const toleranceCond = comparison[1] as {
+      $cond: { if: { $eq: [object, object] }; then: number; else: number };
+    };
+    expect(toleranceCond).toHaveProperty('$cond');
+
+    // Should compare whether both words are in same size class (both ≤4 or both >4)
+    const sizeClassCheck = toleranceCond.$cond.if as { $eq: [object, object] };
+    expect(sizeClassCheck).toHaveProperty('$eq');
+    expect(sizeClassCheck.$eq).toHaveLength(2);
+
+    // When same class: tolerance = 1, different class: tolerance = 0
+    expect(toleranceCond.$cond.then).toBe(1); // Same size class: allow ±1
+    expect(toleranceCond.$cond.else).toBe(0); // Different size classes: exact match only
+  });
+
   test('should parse hyphenated names into separate words (jean-pierre → jean, pierre)', () => {
     // This test verifies that hyphenated names like "jean-pierre" are tokenized
     // as ["jean", "pierre"], enabling matches with search terms "jean pierre"
