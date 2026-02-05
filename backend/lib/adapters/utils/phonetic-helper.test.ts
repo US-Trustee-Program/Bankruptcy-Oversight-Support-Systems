@@ -98,6 +98,21 @@ describe('Phonetic Utilities', () => {
       expect(bigrams).toContain('en');
     });
 
+    test('should treat hyphens as word separators (jean-pierre → jean, pierre)', () => {
+      const bigrams = generateBigrams('Jean-Pierre');
+      // Should have bigrams from "jean" and "pierre" as separate words
+      expect(bigrams).toContain('je');
+      expect(bigrams).toContain('ea');
+      expect(bigrams).toContain('an');
+      expect(bigrams).toContain('pi');
+      expect(bigrams).toContain('ie');
+      expect(bigrams).toContain('er');
+      expect(bigrams).toContain('rr');
+      expect(bigrams).toContain('re');
+      // Should NOT have bigrams crossing the hyphen boundary
+      expect(bigrams).not.toContain('np'); // "n-p" should not create "np"
+    });
+
     test('should deduplicate bigrams', () => {
       const bigrams = generateBigrams('Anna Banana');
       const uniqueBigrams = [...new Set(bigrams)];
