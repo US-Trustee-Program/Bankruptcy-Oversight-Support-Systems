@@ -225,7 +225,8 @@ The contents of these files must be:
   "IsEncrypted": false,
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AzureWebJobsStorage": "--SEE AzureWebJobsStorage BELOW--"
+    "AzureWebJobsStorage": "--SEE Storage Connections BELOW--",
+    "AzureWebJobsDataflowsStorage": "--SEE Storage Connections BELOW--"
   },
   "ConnectionStrings": {},
   "Host": {
@@ -243,7 +244,8 @@ The contents of these files must be:
   "Values": {
     "MyTaskHub": "--A NAME UNIQUE TO YOU--",
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AzureWebJobsStorage": "--SEE AzureWebJobsStorage BELOW--"
+    "AzureWebJobsStorage": "--SEE Storage Connections BELOW--",
+    "AzureWebJobsDataflowsStorage": "--SEE Storage Connections BELOW--"
   },
   "ConnectionStrings": {},
   "Host": {
@@ -253,13 +255,25 @@ The contents of these files must be:
 }
 ```
 
-###### AzureWebJobsStorage
+###### Storage Connections
 
-A sufficiently privileged user can retrieve the `AzureWebJobsStorage` connection string for the
-`api` and `dataflows` function apps with the following Azure CLI command:
+CAMS uses two types of storage connections:
+
+**Runtime Storage (`AzureWebJobsStorage`)**
+- Required by Azure Functions runtime for timer coordination, host management, and key storage
+- Each function app (API and dataflows) uses its own runtime storage account
+- Set in `local.settings.json` for local development
+
+**Application Storage (`AzureWebJobsDataflowsStorage`)**
+- Dataflows storage account for application queues (used by Azure Functions bindings)
+- Used by both API (to write queue messages) and dataflows (to read queue messages)
+- Must be set in `local.settings.json` for both function apps
+- Both apps use the **same** connection string value (points to dataflows storage account)
+
+A sufficiently privileged user can retrieve connection strings from deployed environments with:
 
 ```sh
-az functionapp config appsettings list -g {resource-group-name} -n {function-app-name} --query "[?name=='AzureWebJobsStorage']"
+az functionapp config appsettings list -g {resource-group-name} -n {function-app-name} --query "[?name=='AzureWebJobsStorage' || name=='AzureWebJobsDataflowsStorage']"
 ```
 
 Replace `{resource-group-name}` and `{function-app-name}` with their respective values in the

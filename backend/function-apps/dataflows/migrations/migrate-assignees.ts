@@ -2,7 +2,7 @@ import { app, InvocationContext, output } from '@azure/functions';
 import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import ContextCreator from '../../azure/application-context-creator';
 import MigrateOfficeAssigneesUseCase from '../../../lib/use-cases/dataflows/migrate-office-assignees';
-import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
+import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 

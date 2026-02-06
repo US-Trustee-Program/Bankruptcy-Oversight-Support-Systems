@@ -201,6 +201,7 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     properties: {
       appSettingNames: [
         'AzureWebJobsStorage'
+        'AzureWebJobsDataflowsStorage'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
       ]
@@ -272,6 +273,10 @@ var baseApiFunctionAppConfigProperties = {
         name: 'AzureWebJobsStorage'
         value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
       }
+      {
+        name: 'AzureWebJobsDataflowsStorage'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
+      }
     ])
     cors: {
       allowedOrigins: apiCorsAllowOrigins
@@ -297,6 +302,10 @@ var baseApiFunctionAppConfigProperties = {
       {
         name: 'AzureWebJobsStorage'
         value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionSlotStorageAccount.listKeys().keys[0].value}'
+      }
+      {
+        name: 'AzureWebJobsDataflowsStorage'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
       }
     ])
     cors: {
