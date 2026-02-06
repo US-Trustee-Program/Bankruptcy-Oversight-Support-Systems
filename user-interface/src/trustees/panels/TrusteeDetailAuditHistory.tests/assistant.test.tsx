@@ -10,23 +10,29 @@ const MOCK_TRUSTEE_ID = 'trustee-123';
 function createMockAssistantHistory(
   override: Partial<TrusteeAssistantHistory> = {},
 ): TrusteeAssistantHistory {
+  const userRef = MockData.getCamsUserReference({ name: 'John Doe' });
   return {
     id: 'history-1',
     trusteeId: MOCK_TRUSTEE_ID,
     documentType: 'AUDIT_ASSISTANT',
-    before: {
+    assistantId: 'assistant-after',
+    before: MockData.getTrusteeAssistant({
+      id: 'assistant-before',
+      trusteeId: MOCK_TRUSTEE_ID,
       name: 'Jane Smith',
       contact: MockData.getContactInformation(),
-    },
-    after: {
+    }),
+    after: MockData.getTrusteeAssistant({
+      id: 'assistant-after',
+      trusteeId: MOCK_TRUSTEE_ID,
       name: 'Jane M. Smith',
       title: 'Senior Assistant',
       contact: MockData.getContactInformation(),
-    },
+    }),
     updatedOn: '2024-01-15T10:00:00Z',
-    updatedBy: MockData.getCamsUserReference({ name: 'John Doe' }),
+    updatedBy: userRef,
     createdOn: '2024-01-15T10:00:00Z',
-    createdBy: MockData.getCamsUserReference({ name: 'John Doe' }),
+    createdBy: userRef,
     ...override,
   };
 }
@@ -54,11 +60,13 @@ describe('TrusteeDetailAuditHistory - Assistant History', () => {
     const mockHistory = [
       createMockAssistantHistory({
         before: undefined,
-        after: {
+        after: MockData.getTrusteeAssistant({
+          id: 'assistant-after',
+          trusteeId: MOCK_TRUSTEE_ID,
           name: 'Jane Smith',
           title: 'Legal Assistant',
           contact: MockData.getContactInformation(),
-        },
+        }),
       }),
     ];
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: mockHistory });
@@ -75,11 +83,13 @@ describe('TrusteeDetailAuditHistory - Assistant History', () => {
   test('should render when assistant is removed (after is undefined)', async () => {
     const mockHistory = [
       createMockAssistantHistory({
-        before: {
+        before: MockData.getTrusteeAssistant({
+          id: 'assistant-before',
+          trusteeId: MOCK_TRUSTEE_ID,
           name: 'Jane Smith',
           title: 'Legal Assistant',
           contact: MockData.getContactInformation(),
-        },
+        }),
         after: undefined,
       }),
     ];
@@ -97,14 +107,18 @@ describe('TrusteeDetailAuditHistory - Assistant History', () => {
   test('should render assistant without title', async () => {
     const mockHistory = [
       createMockAssistantHistory({
-        before: {
+        before: MockData.getTrusteeAssistant({
+          id: 'assistant-before',
+          trusteeId: MOCK_TRUSTEE_ID,
           name: 'Jane Smith',
           contact: MockData.getContactInformation(),
-        },
-        after: {
+        }),
+        after: MockData.getTrusteeAssistant({
+          id: 'assistant-after',
+          trusteeId: MOCK_TRUSTEE_ID,
           name: 'Jane M. Smith',
           contact: MockData.getContactInformation(),
-        },
+        }),
       }),
     ];
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: mockHistory });
@@ -134,11 +148,13 @@ describe('TrusteeDetailAuditHistory - Assistant History', () => {
 
     const mockHistory = [
       createMockAssistantHistory({
-        after: {
+        after: MockData.getTrusteeAssistant({
+          id: 'assistant-after',
+          trusteeId: MOCK_TRUSTEE_ID,
           name: 'Jane Smith',
           title: 'Legal Assistant',
           contact: mockContact,
-        },
+        }),
       }),
     ];
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: mockHistory });

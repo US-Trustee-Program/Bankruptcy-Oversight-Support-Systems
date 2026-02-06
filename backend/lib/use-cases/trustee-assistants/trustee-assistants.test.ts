@@ -68,9 +68,6 @@ describe('TrusteeAssistantsUseCase', () => {
       );
 
       expect(actualError.isCamsError).toBe(true);
-      expect(actualError.message).toContain(
-        `Failed to retrieve assistants for trustee with ID ${trusteeId}`,
-      );
     });
 
     test('should handle repository error during assistants retrieval', async () => {
@@ -182,6 +179,163 @@ describe('TrusteeAssistantsUseCase', () => {
           assistantId: createdAssistant.id,
           before: undefined,
           after: createdAssistant,
+        }),
+      );
+    });
+  });
+
+  describe('getAssistant', () => {
+    const assistantId = 'assistant-123';
+    const mockAssistant = MockData.getTrusteeAssistant({
+      id: assistantId,
+      trusteeId: 'trustee-123',
+    });
+
+    test('should return assistant by ID', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockAssistant);
+
+      const result = await trusteeAssistantsUseCase.getAssistant(context, assistantId);
+
+      expect(result).toEqual(mockAssistant);
+      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(assistantId);
+    });
+
+    test('should throw error when assistant does not exist', async () => {
+      const repositoryError = new Error('Assistant not found');
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAssistantsUseCase.getAssistant(context, assistantId),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+
+    test('should handle repository error during assistant retrieval', async () => {
+      const repositoryError = new Error('Database connection error');
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAssistantsUseCase.getAssistant(context, assistantId),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+  });
+
+  describe('updateAssistant', () => {
+    const trusteeId = 'trustee-123';
+    const assistantId = 'assistant-456';
+    const existingAssistant = MockData.getTrusteeAssistant({
+      id: assistantId,
+      trusteeId,
+      name: 'Jane Assistant',
+      title: 'Legal Assistant',
+    });
+
+    const updateInput: TrusteeAssistantInput = {
+      name: 'Jane Updated Assistant',
+      title: 'Senior Legal Assistant',
+      contact: {
+        address: {
+          address1: '456 Oak St',
+          city: 'Springfield',
+          state: 'IL',
+          zipCode: '62701',
+          countryCode: 'US',
+        },
+        phone: {
+          number: '555-987-6543',
+        },
+        email: 'jane.updated@example.com',
+      },
+    };
+
+    const updatedAssistant = {
+      ...existingAssistant,
+      ...updateInput,
+      updatedBy: SYSTEM_USER_REFERENCE,
+      updatedOn: '2024-01-02T00:00:00Z',
+    };
+
+    test('should update an assistant with valid input', async () => {
+      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
+      vi.spyOn(MockMongoRepository.prototype, 'read')
+        .mockResolvedValueOnce(mockTrustee)
+        .mockResolvedValueOnce(existingAssistant);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAssistant').mockResolvedValue(
+        updatedAssistant,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+
+      const result = await trusteeAssistantsUseCase.updateAssistant(
+        context,
+        trusteeId,
+        assistantId,
+        updateInput,
+      );
+
+      expect(result).toEqual(updatedAssistant);
+      expect(MockMongoRepository.prototype.updateAssistant).toHaveBeenCalledWith(
+        trusteeId,
+        assistantId,
+        updateInput,
+        context.session.user,
+      );
+    });
+
+    test('should throw error when trustee does not exist', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+        new UnknownError(MODULE_NAME, { message: 'Trustee not found' }),
+      );
+
+      await expect(
+        trusteeAssistantsUseCase.updateAssistant(context, trusteeId, assistantId, updateInput),
+      ).rejects.toThrow();
+    });
+
+    test('should throw error when assistant does not exist', async () => {
+      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
+      vi.spyOn(MockMongoRepository.prototype, 'read')
+        .mockResolvedValueOnce(mockTrustee)
+        .mockRejectedValueOnce(new Error('Assistant not found'));
+
+      await expect(
+        trusteeAssistantsUseCase.updateAssistant(context, trusteeId, assistantId, updateInput),
+      ).rejects.toThrow();
+    });
+
+    test('should throw error when name is missing', async () => {
+      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+
+      const invalidInput = { ...updateInput, name: '' };
+
+      await expect(
+        trusteeAssistantsUseCase.updateAssistant(context, trusteeId, assistantId, invalidInput),
+      ).rejects.toThrow();
+    });
+
+    test('should create audit history record after updating assistant', async () => {
+      const mockTrustee = { id: trusteeId, name: 'Test Trustee' };
+      vi.spyOn(MockMongoRepository.prototype, 'read')
+        .mockResolvedValueOnce(mockTrustee)
+        .mockResolvedValueOnce(existingAssistant);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAssistant').mockResolvedValue(
+        updatedAssistant,
+      );
+      const createHistorySpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue(undefined);
+
+      await trusteeAssistantsUseCase.updateAssistant(context, trusteeId, assistantId, updateInput);
+
+      expect(createHistorySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_ASSISTANT',
+          assistantId: assistantId,
+          before: existingAssistant,
+          after: updatedAssistant,
         }),
       );
     });

@@ -19,7 +19,7 @@ export class TrusteeAssistantsController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAssistant[] | undefined>> {
+  ): Promise<CamsHttpResponseInit<TrusteeAssistant[] | TrusteeAssistant | undefined>> {
     // Check feature flag
     if (!context.featureFlags['trustee-management']) {
       return {
@@ -45,7 +45,9 @@ export class TrusteeAssistantsController implements CamsController {
           return await this.handleGetRequest(context);
         case 'POST':
           return await this.handlePostRequest(context);
-        // TODO: Add PUT, DELETE in future slices
+        case 'PUT':
+          return await this.handlePutRequest(context);
+        // TODO: Add DELETE in future slice
         default:
           throw new BadRequestError(MODULE_NAME, {
             message: `HTTP method ${method} is not supported`,
@@ -58,8 +60,9 @@ export class TrusteeAssistantsController implements CamsController {
 
   private async handleGetRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<TrusteeAssistant[]>> {
+  ): Promise<CamsHttpResponseInit<TrusteeAssistant[] | TrusteeAssistant>> {
     const trusteeId = context.request.params['trusteeId'];
+    const assistantId = context.request.params['assistantId'];
 
     if (!trusteeId) {
       throw new BadRequestError(MODULE_NAME, {
@@ -67,6 +70,22 @@ export class TrusteeAssistantsController implements CamsController {
       });
     }
 
+    // If assistantId is provided, get single assistant
+    if (assistantId) {
+      const assistant = await this.useCase.getAssistant(context, assistantId);
+
+      return httpSuccess({
+        statusCode: 200,
+        body: {
+          meta: {
+            self: context.request.url,
+          },
+          data: assistant,
+        },
+      });
+    }
+
+    // Otherwise, get all assistants for trustee
     const assistants = await this.useCase.getTrusteeAssistants(context, trusteeId);
 
     return httpSuccess({
@@ -106,6 +125,45 @@ export class TrusteeAssistantsController implements CamsController {
       body: {
         meta: {
           self: `${context.request.url}/${assistant.id}`,
+        },
+        data: undefined,
+      },
+    });
+  }
+
+  private async handlePutRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<undefined>> {
+    const trusteeId = context.request.params['trusteeId'];
+    const assistantId = context.request.params['assistantId'];
+
+    if (!trusteeId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Trustee ID is required',
+      });
+    }
+
+    if (!assistantId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Assistant ID is required',
+      });
+    }
+
+    const input = context.request.body as TrusteeAssistantInput;
+
+    if (!input) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Request body is required',
+      });
+    }
+
+    await this.useCase.updateAssistant(context, trusteeId, assistantId, input);
+
+    return httpSuccess({
+      statusCode: 200,
+      body: {
+        meta: {
+          self: context.request.url,
         },
         data: undefined,
       },

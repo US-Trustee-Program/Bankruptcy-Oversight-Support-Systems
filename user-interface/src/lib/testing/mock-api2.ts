@@ -2390,10 +2390,50 @@ async function getTrusteeAssistants(_trusteeId: string) {
   };
 }
 
+async function getAssistant(_trusteeId: string, assistantId: string) {
+  return {
+    data: {
+      id: assistantId,
+      trusteeId: _trusteeId,
+      name: 'Mock Assistant',
+      title: 'Mock Title',
+      contact: {
+        address: {
+          address1: '123 Mock St',
+          city: 'Mock City',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US' as const,
+        },
+        phone: { number: '555-123-4567' },
+        email: 'mock@example.com',
+      },
+      updatedBy: { id: 'user-1', name: 'Admin User' },
+      updatedOn: new Date().toISOString(),
+    } as TrusteeAssistant,
+  };
+}
+
 async function createTrusteeAssistant(trusteeId: string, assistant: TrusteeAssistantInput) {
   return {
     data: {
       id: randomId(),
+      trusteeId,
+      ...assistant,
+      updatedBy: { id: 'user-1', name: 'Admin User' },
+      updatedOn: new Date().toISOString(),
+    } as TrusteeAssistant,
+  };
+}
+
+async function updateTrusteeAssistant(
+  trusteeId: string,
+  assistantId: string,
+  assistant: TrusteeAssistantInput,
+) {
+  return {
+    data: {
+      id: assistantId,
       trusteeId,
       ...assistant,
       updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -2520,7 +2560,9 @@ const MockApi2 = {
   postTrusteeAppointment,
   putTrusteeAppointment,
   getTrusteeAssistants,
+  getAssistant,
   createTrusteeAssistant,
+  updateTrusteeAssistant,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,

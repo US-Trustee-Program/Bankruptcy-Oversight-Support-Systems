@@ -77,15 +77,20 @@ describe('TrusteeDetailAuditHistory - RenderTrusteeHistory Integration Tests', (
       id: 'audit-assistant-1',
       trusteeId: 'trustee-1',
       documentType: 'AUDIT_ASSISTANT',
-      before: {
+      assistantId: 'assistant-after',
+      before: MockData.getTrusteeAssistant({
+        id: 'assistant-before',
+        trusteeId: 'trustee-1',
         name: 'Jane Smith',
         contact: MockData.getContactInformation(),
-      },
-      after: {
+      }),
+      after: MockData.getTrusteeAssistant({
+        id: 'assistant-after',
+        trusteeId: 'trustee-1',
         name: 'Jane M. Smith',
         title: 'Senior Assistant',
         contact: MockData.getContactInformation(),
-      },
+      }),
       updatedOn: '2024-01-10T10:00:00Z',
       updatedBy: MockData.getCamsUserReference({ name: 'User 8' }),
       createdOn: '2024-01-10T10:00:00Z',

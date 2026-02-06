@@ -51,7 +51,9 @@ describe('TrusteeAssistantsController', () => {
 
     mockUseCase = {
       getTrusteeAssistants: vi.fn(),
+      getAssistant: vi.fn(),
       createAssistant: vi.fn(),
+      updateAssistant: vi.fn(),
     } as unknown as Mocked<TrusteeAssistantsUseCase>;
 
     (TrusteeAssistantsUseCase as MockedClass<typeof TrusteeAssistantsUseCase>).mockImplementation(
@@ -160,6 +162,56 @@ describe('TrusteeAssistantsController', () => {
     });
   });
 
+  describe('GET /api/trustees/:trusteeId/assistants/:assistantId', () => {
+    beforeEach(() => {
+      context.request.method = 'GET';
+    });
+
+    test('should return single assistant by ID', async () => {
+      const trusteeId = 'trustee-123';
+      const assistantId = 'assistant-456';
+      const assistant = MockData.getTrusteeAssistant({ id: assistantId, trusteeId });
+
+      context.request.params['trusteeId'] = trusteeId;
+      context.request.params['assistantId'] = assistantId;
+      context.request.url = `/api/trustees/${trusteeId}/assistants/${assistantId}`;
+      mockUseCase.getAssistant.mockResolvedValue(assistant);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.data).toEqual(assistant);
+      expect(result.body?.meta).toEqual({
+        self: `/api/trustees/${trusteeId}/assistants/${assistantId}`,
+      });
+      expect(mockUseCase.getAssistant).toHaveBeenCalledWith(context, assistantId);
+    });
+
+    test('should return list when assistantId is missing', async () => {
+      const trusteeId = 'trustee-123';
+      const assistants = [MockData.getTrusteeAssistant({ trusteeId })];
+      context.request.params = { trusteeId };
+      context.request.url = `/api/trustees/${trusteeId}/assistants`;
+      mockUseCase.getTrusteeAssistants.mockResolvedValue(assistants);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.data).toEqual(assistants);
+      expect(mockUseCase.getTrusteeAssistants).toHaveBeenCalledWith(context, trusteeId);
+    });
+
+    test('should propagate use case errors when assistant not found', async () => {
+      const trusteeId = 'trustee-123';
+      const assistantId = 'non-existent';
+      context.request.params['trusteeId'] = trusteeId;
+      context.request.params['assistantId'] = assistantId;
+      mockUseCase.getAssistant.mockRejectedValue(new Error('Assistant not found'));
+
+      await expect(controller.handleRequest(context)).rejects.toThrow();
+    });
+  });
+
   describe('POST /api/trustees/:trusteeId/assistants', () => {
     beforeEach(() => {
       context.request.method = 'POST';
@@ -213,16 +265,72 @@ describe('TrusteeAssistantsController', () => {
     });
   });
 
-  describe('Unsupported HTTP methods', () => {
-    test('should return BadRequestError for PUT method', async () => {
+  describe('PUT /api/trustees/:trusteeId/assistants/:assistantId', () => {
+    beforeEach(() => {
       context.request.method = 'PUT';
-      context.request.params['trusteeId'] = 'trustee-123';
+    });
 
-      await expect(controller.handleRequest(context)).rejects.toThrow(
-        'HTTP method PUT is not supported',
+    test('should update an existing assistant', async () => {
+      const trusteeId = 'trustee-123';
+      const assistantId = 'assistant-456';
+      const updatedAssistant = {
+        ...assistantInput,
+        id: assistantId,
+        trusteeId,
+        updatedBy: SYSTEM_USER_REFERENCE,
+        updatedOn: '2024-01-02T00:00:00Z',
+      };
+
+      context.request.params = { trusteeId, assistantId };
+      context.request.body = assistantInput;
+      context.request.url = `/api/trustees/${trusteeId}/assistants/${assistantId}`;
+      mockUseCase.updateAssistant.mockResolvedValue(updatedAssistant);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.meta?.self).toBe(`/api/trustees/${trusteeId}/assistants/${assistantId}`);
+      expect(mockUseCase.updateAssistant).toHaveBeenCalledWith(
+        context,
+        trusteeId,
+        assistantId,
+        assistantInput,
       );
     });
 
+    test('should throw error when trusteeId is not provided', async () => {
+      context.request.params = { assistantId: 'assistant-456' };
+      context.request.body = assistantInput;
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
+    });
+
+    test('should throw error when assistantId is not provided', async () => {
+      context.request.params = { trusteeId: 'trustee-123' };
+      context.request.body = assistantInput;
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Assistant ID is required');
+    });
+
+    test('should throw error when request body is missing', async () => {
+      context.request.params = { trusteeId: 'trustee-123', assistantId: 'assistant-456' };
+      context.request.body = undefined;
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Request body is required');
+    });
+
+    test('should propagate use case validation errors', async () => {
+      const trusteeId = 'trustee-123';
+      const assistantId = 'assistant-456';
+      context.request.params = { trusteeId, assistantId };
+      context.request.body = assistantInput;
+      mockUseCase.updateAssistant.mockRejectedValue(new Error('Validation failed'));
+
+      await expect(controller.handleRequest(context)).rejects.toThrow();
+    });
+  });
+
+  describe('Unsupported HTTP methods', () => {
     test('should return BadRequestError for DELETE method', async () => {
       context.request.method = 'DELETE';
       context.request.params['trusteeId'] = 'trustee-123';

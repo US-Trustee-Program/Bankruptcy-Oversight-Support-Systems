@@ -54,6 +54,22 @@ export class TrusteeAssistantsUseCase {
     }
   }
 
+  async getAssistant(context: ApplicationContext, assistantId: string): Promise<TrusteeAssistant> {
+    try {
+      const assistant = await this.trusteeAssistantsRepository.read(assistantId);
+
+      context.logger.info(MODULE_NAME, `Retrieved assistant ${assistantId}`);
+      return assistant;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to retrieve assistant with ID ${assistantId}.`,
+        },
+      });
+    }
+  }
+
   async createAssistant(
     context: ApplicationContext,
     trusteeId: string,
@@ -95,6 +111,54 @@ export class TrusteeAssistantsUseCase {
         camsStackInfo: {
           module: MODULE_NAME,
           message: `Failed to create assistant for trustee with ID ${trusteeId}.`,
+        },
+      });
+    }
+  }
+
+  async updateAssistant(
+    context: ApplicationContext,
+    trusteeId: string,
+    assistantId: string,
+    input: TrusteeAssistantInput,
+  ): Promise<TrusteeAssistant> {
+    try {
+      // Validate input
+      this.checkValidation(validateObject(assistantInputSpec, input));
+
+      // Verify trustee exists
+      await this.trusteesRepository.read(trusteeId);
+
+      // Get existing assistant for audit history
+      const existingAssistant = await this.trusteeAssistantsRepository.read(assistantId);
+
+      // Update assistant
+      const updatedAssistant = await this.trusteeAssistantsRepository.updateAssistant(
+        trusteeId,
+        assistantId,
+        input,
+        context.session.user,
+      );
+
+      // Create audit history
+      const historyRecord: Omit<TrusteeAssistantHistory, keyof Auditable | 'id'> = {
+        documentType: 'AUDIT_ASSISTANT',
+        trusteeId,
+        assistantId: assistantId,
+        before: existingAssistant,
+        after: updatedAssistant,
+      };
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(historyRecord, context.session.user),
+      );
+
+      context.logger.info(MODULE_NAME, `Updated assistant ${assistantId} for trustee ${trusteeId}`);
+      return updatedAssistant;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to update assistant with ID ${assistantId} for trustee ${trusteeId}.`,
         },
       });
     }
