@@ -16,6 +16,7 @@ import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
+import { TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeAssistantFormData, trusteeAssistantSpec } from './trusteeForms.types';
 import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -70,6 +71,7 @@ export function validateField(
 
 type TrusteeAssistantFormProps = {
   trusteeId: string;
+  assistantId?: string;
   assistant?: TrusteeAssistant;
 };
 
@@ -80,7 +82,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
 
-  const { trusteeId, assistant } = props;
+  const { trusteeId, assistantId, assistant } = props;
+  const isCreateMode = assistantId === 'new';
 
   type FieldErrors = Partial<Record<keyof TrusteeAssistantFormData | '$', string[] | undefined>>;
 
@@ -93,7 +96,33 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
-  const mapPayload = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
+  const mapPayloadForCreate = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
+    return {
+      name: formData.name!,
+      ...(formData.title && { title: formData.title }),
+      ...(formData.address1 &&
+        formData.city &&
+        formData.state &&
+        formData.zipCode && {
+          contact: {
+            address: {
+              address1: formData.address1,
+              ...(formData.address2 && { address2: formData.address2 }),
+              city: formData.city,
+              state: formData.state,
+              zipCode: formData.zipCode,
+              countryCode: 'US',
+            },
+            ...(formData.phone && {
+              phone: { number: formData.phone, extension: formData.extension },
+            }),
+            ...(formData.email && { email: formData.email }),
+          },
+        }),
+    };
+  };
+
+  const mapPayloadForEdit = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
     // If name is empty, clear the entire assistant
     if (!formData.name) {
       return { assistant: undefined };
@@ -160,12 +189,18 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     if (validateFormAndUpdateErrors(currentFormData)) {
       setIsSubmitting(true);
 
-      const payload = mapPayload(currentFormData);
       try {
-        await Api2.patchTrustee(trusteeId, payload);
+        if (isCreateMode) {
+          const payload = mapPayloadForCreate(currentFormData);
+          await Api2.createTrusteeAssistant(trusteeId, payload);
+        } else {
+          const payload = mapPayloadForEdit(currentFormData);
+          await Api2.patchTrustee(trusteeId, payload);
+        }
         navigate.navigateTo(`/trustees/${trusteeId}`);
       } catch (e) {
-        globalAlert?.error(`Failed to update trustee assistant: ${(e as Error).message}`);
+        const action = isCreateMode ? 'create' : 'update';
+        globalAlert?.error(`Failed to ${action} trustee assistant: ${(e as Error).message}`);
       } finally {
         setIsSubmitting(false);
       }
@@ -230,7 +265,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     <div className="trustee-form-screen">
       <form
         noValidate
-        aria-label="Edit Trustee Assistant"
+        aria-label={isCreateMode ? 'Create Trustee Assistant' : 'Edit Trustee Assistant'}
         data-testid="trustee-assistant-form"
         onSubmit={handleSubmit}
       >
