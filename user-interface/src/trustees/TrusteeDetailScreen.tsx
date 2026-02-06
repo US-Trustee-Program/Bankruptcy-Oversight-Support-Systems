@@ -70,8 +70,8 @@ export default function TrusteeDetailScreen() {
     navigate(`/trustees/${trusteeId}/assistant/create`);
   }
 
-  function openEditAssistant() {
-    navigate(`/trustees/${trusteeId}/assistant/edit`);
+  function openEditAssistant(assistantId: string) {
+    navigate(`/trustees/${trusteeId}/assistant/edit/${assistantId}`);
   }
 
   function openEditOtherInformation() {
@@ -191,9 +191,9 @@ export default function TrusteeDetailScreen() {
       content: <TrusteeAssistantForm trusteeId={trusteeId} assistantId="new" />,
     },
     {
-      path: 'assistant/edit',
+      path: 'assistant/edit/:assistantId',
       subHeading: 'Edit Trustee Assistant (USTP Internal)',
-      content: <TrusteeAssistantForm trusteeId={trusteeId} assistant={trustee.assistant} />,
+      content: <TrusteeAssistantForm trusteeId={trusteeId} />,
     },
     {
       path: 'other/edit',

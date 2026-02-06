@@ -1,6 +1,7 @@
 import './TrusteeAssistantForm.scss';
 import './TrusteeContactForm.scss';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -15,8 +16,7 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
-import { TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeAssistantFormData, trusteeAssistantSpec } from './trusteeForms.types';
 import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -43,14 +43,14 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
   return {
     name: assistant.name,
     title: assistant.title,
-    address1: contact.address?.address1,
-    address2: contact.address?.address2,
-    city: contact.address?.city,
-    state: contact.address?.state,
-    zipCode: contact.address?.zipCode,
-    phone: contact.phone?.number,
-    extension: contact.phone?.extension,
-    email: contact.email,
+    address1: contact?.address?.address1,
+    address2: contact?.address?.address2,
+    city: contact?.address?.city,
+    state: contact?.address?.state,
+    zipCode: contact?.address?.zipCode,
+    phone: contact?.phone?.number,
+    extension: contact?.phone?.extension,
+    email: contact?.email,
   };
 };
 
@@ -81,9 +81,13 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
+  const routeParams = useParams<{ assistantId?: string }>();
 
-  const { trusteeId, assistantId, assistant } = props;
+  const { trusteeId } = props;
+  const assistantId = props.assistantId || routeParams.assistantId;
   const isCreateMode = assistantId === 'new';
+
+  const [assistant, setAssistant] = useState<TrusteeAssistant | undefined>(props.assistant);
 
   type FieldErrors = Partial<Record<keyof TrusteeAssistantFormData | '$', string[] | undefined>>;
 
@@ -95,6 +99,20 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
+
+  // Load assistant data when in edit mode
+  useEffect(() => {
+    if (!isCreateMode && assistantId) {
+      Api2.getAssistant(trusteeId, assistantId)
+        .then((response) => {
+          setAssistant(response.data);
+          setFormData(getInitialFormData(response.data));
+        })
+        .catch((error) => {
+          globalAlert?.error(`Failed to load assistant: ${error.message}`);
+        });
+    }
+  }, [isCreateMode, assistantId, trusteeId, globalAlert]);
 
   const mapPayloadForCreate = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
     return {
@@ -122,33 +140,30 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     };
   };
 
-  const mapPayloadForEdit = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
-    // If name is empty, clear the entire assistant
-    if (!formData.name) {
-      return { assistant: undefined };
-    }
-
+  const mapPayloadForEdit = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
     return {
-      assistant: {
-        name: formData.name,
-        ...(formData.title && { title: formData.title }),
-        contact: {
-          address:
-            formData.address1 && formData.city && formData.state && formData.zipCode
-              ? {
-                  address1: formData.address1,
-                  ...(formData.address2 && { address2: formData.address2 }),
-                  city: formData.city,
-                  state: formData.state,
-                  zipCode: formData.zipCode,
-                  countryCode: 'US',
-                }
-              : null,
-          phone: formData.phone ? { number: formData.phone, extension: formData.extension } : null,
-          email: formData.email ?? null,
-        },
-      },
-    } as Partial<TrusteeInput>;
+      name: formData.name!,
+      ...(formData.title && { title: formData.title }),
+      ...(formData.address1 &&
+        formData.city &&
+        formData.state &&
+        formData.zipCode && {
+          contact: {
+            address: {
+              address1: formData.address1,
+              ...(formData.address2 && { address2: formData.address2 }),
+              city: formData.city,
+              state: formData.state,
+              zipCode: formData.zipCode,
+              countryCode: 'US',
+            },
+            ...(formData.phone && {
+              phone: { number: formData.phone, extension: formData.extension },
+            }),
+            ...(formData.email && { email: formData.email }),
+          },
+        }),
+    };
   };
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,7 +210,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
           await Api2.createTrusteeAssistant(trusteeId, payload);
         } else {
           const payload = mapPayloadForEdit(currentFormData);
-          await Api2.patchTrustee(trusteeId, payload);
+          // TODO: CAMS-686 why is assistantId! being used, it should always exist?
+          await Api2.updateTrusteeAssistant(trusteeId, assistantId!, payload);
         }
         navigate.navigateTo(`/trustees/${trusteeId}`);
       } catch (e) {

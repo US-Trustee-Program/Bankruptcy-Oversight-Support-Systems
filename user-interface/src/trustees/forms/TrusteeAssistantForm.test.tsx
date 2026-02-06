@@ -7,7 +7,7 @@ import TestingUtilities from '@/lib/testing/testing-utilities';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { TrusteeAssistant } from '@common/cams/trustees';
+import { TrusteeAssistant } from '@common/cams/trustee-assistants';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -25,7 +25,9 @@ const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const TEST_TRUSTEE_ID = 'trustee-123';
 
-const VALID_ASSISTANT: TrusteeAssistant = {
+const VALID_ASSISTANT: TrusteeAssistant = MockData.getTrusteeAssistant({
+  id: 'valid-assistant-123',
+  trusteeId: TEST_TRUSTEE_ID,
   name: 'Jane Assistant',
   title: 'Senior Assistant',
   contact: {
@@ -43,7 +45,7 @@ const VALID_ASSISTANT: TrusteeAssistant = {
     },
     email: 'jane@example.com',
   },
-};
+});
 
 describe('TrusteeAssistantForm', () => {
   const mockNavigate = vi.fn();
@@ -256,12 +258,24 @@ describe('TrusteeAssistantForm', () => {
 
   describe('Form Submission', () => {
     test('should successfully submit form with only name field filled', async () => {
-      const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
-      const mockPatchResponse = { data: mockTrustee };
-      vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
+      const assistantId = 'assistant-456';
+      const mockAssistant = MockData.getTrusteeAssistant({
+        id: assistantId,
+        trusteeId: TEST_TRUSTEE_ID,
+        name: 'Existing Assistant',
+      });
+      vi.spyOn(Api2, 'getAssistant').mockResolvedValue({ data: mockAssistant });
+      const updateSpy = vi
+        .spyOn(Api2, 'updateTrusteeAssistant')
+        .mockResolvedValue({ data: mockAssistant });
 
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId });
 
+      await waitFor(() => {
+        expect(screen.getByTestId('assistant-name')).toHaveValue('Existing Assistant');
+      });
+
+      await userEvent.clear(screen.getByTestId('assistant-name'));
       await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
@@ -269,7 +283,7 @@ describe('TrusteeAssistantForm', () => {
 
       await waitFor(
         () => {
-          expect(Api2.patchTrustee).toHaveBeenCalledTimes(1);
+          expect(updateSpy).toHaveBeenCalledTimes(1);
           expect(mockNavigate).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
         },
         { timeout: 2000 },
@@ -277,10 +291,21 @@ describe('TrusteeAssistantForm', () => {
     });
 
     test('should show Saving... text during submission', async () => {
-      vi.spyOn(Api2, 'patchTrustee').mockImplementation(() => new Promise(() => {}));
+      const assistantId = 'assistant-456';
+      const mockAssistant = MockData.getTrusteeAssistant({
+        id: assistantId,
+        trusteeId: TEST_TRUSTEE_ID,
+      });
+      vi.spyOn(Api2, 'getAssistant').mockResolvedValue({ data: mockAssistant });
+      vi.spyOn(Api2, 'updateTrusteeAssistant').mockImplementation(() => new Promise(() => {}));
 
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId });
 
+      await waitFor(() => {
+        expect(screen.getByTestId('assistant-name')).toHaveValue(mockAssistant.name);
+      });
+
+      await userEvent.clear(screen.getByTestId('assistant-name'));
       await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
@@ -295,11 +320,24 @@ describe('TrusteeAssistantForm', () => {
     });
 
     test('should handle API error during submission', async () => {
+      const assistantId = 'assistant-456';
+      const mockAssistant = MockData.getTrusteeAssistant({
+        id: assistantId,
+        trusteeId: TEST_TRUSTEE_ID,
+      });
       const errorMessage = 'Failed to update';
-      vi.spyOn(Api2, 'patchTrustee').mockRejectedValue(new Error(errorMessage));
+      vi.spyOn(Api2, 'getAssistant').mockResolvedValue({ data: mockAssistant });
+      const updateSpy = vi
+        .spyOn(Api2, 'updateTrusteeAssistant')
+        .mockRejectedValue(new Error(errorMessage));
 
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId });
 
+      await waitFor(() => {
+        expect(screen.getByTestId('assistant-name')).toHaveValue(mockAssistant.name);
+      });
+
+      await userEvent.clear(screen.getByTestId('assistant-name'));
       await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
@@ -307,7 +345,7 @@ describe('TrusteeAssistantForm', () => {
 
       await waitFor(
         () => {
-          expect(Api2.patchTrustee).toHaveBeenCalled();
+          expect(updateSpy).toHaveBeenCalled();
           expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
         },
         { timeout: 2000 },
@@ -315,44 +353,77 @@ describe('TrusteeAssistantForm', () => {
     });
 
     test('should not submit form when required fields are empty', async () => {
-      const patchSpy = vi.spyOn(Api2, 'patchTrustee');
+      const assistantId = 'assistant-456';
+      const mockAssistant = MockData.getTrusteeAssistant({
+        id: assistantId,
+        trusteeId: TEST_TRUSTEE_ID,
+      });
+      vi.spyOn(Api2, 'getAssistant').mockResolvedValue({ data: mockAssistant });
+      const updateSpy = vi.spyOn(Api2, 'updateTrusteeAssistant');
 
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistant: undefined });
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('assistant-name')).toHaveValue(mockAssistant.name);
+      });
+
+      await userEvent.clear(screen.getByTestId('assistant-name'));
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
       await waitFor(
         () => {
-          expect(patchSpy).not.toHaveBeenCalled();
+          expect(updateSpy).not.toHaveBeenCalled();
         },
         { timeout: 1000 },
       );
     });
 
     test('should submit form with complete address', async () => {
-      const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
-      const mockPatchResponse = { data: mockTrustee };
-      vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
+      const assistantId = 'assistant-456';
+      const mockAssistant = MockData.getTrusteeAssistant({
+        id: assistantId,
+        trusteeId: TEST_TRUSTEE_ID,
+      });
+      vi.spyOn(Api2, 'getAssistant').mockResolvedValue({ data: mockAssistant });
+      const updateSpy = vi
+        .spyOn(Api2, 'updateTrusteeAssistant')
+        .mockResolvedValue({ data: mockAssistant });
 
-      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId });
 
-      // Fill in all fields including complete address
+      await waitFor(() => {
+        expect(screen.getByTestId('assistant-name')).toHaveValue(mockAssistant.name);
+      });
+
+      // Clear and fill in all fields including complete address
+      await userEvent.clear(screen.getByTestId('assistant-name'));
       await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
+      await userEvent.clear(screen.getByTestId('assistant-title'));
       await userEvent.type(screen.getByTestId('assistant-title'), 'Lead Assistant');
+      await userEvent.clear(screen.getByTestId('assistant-address1'));
       await userEvent.type(screen.getByTestId('assistant-address1'), '456 Test St');
+      await userEvent.clear(screen.getByTestId('assistant-address2'));
       await userEvent.type(screen.getByTestId('assistant-address2'), 'Suite 200');
+      await userEvent.clear(screen.getByTestId('assistant-city'));
       await userEvent.type(screen.getByTestId('assistant-city'), 'TestCity');
+      await userEvent.clear(screen.getByTestId('assistant-zip'));
       await userEvent.type(screen.getByTestId('assistant-zip'), '12345');
+      await userEvent.clear(screen.getByTestId('assistant-phone'));
       await userEvent.type(screen.getByTestId('assistant-phone'), '(555)555-5555');
+      await userEvent.clear(screen.getByTestId('assistant-extension'));
       await userEvent.type(screen.getByTestId('assistant-extension'), '999');
+      await userEvent.clear(screen.getByTestId('assistant-email'));
       await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
 
+      // State might already be selected, but ensure NY is set
       const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
       if (stateCombobox) {
         await userEvent.click(stateCombobox);
-        const nyOption = await screen.findByText(/NY.*New York/i, {}, { timeout: 1000 });
-        await userEvent.click(nyOption);
+        const nyOptions = await screen.findAllByText(/NY.*New York/i, {}, { timeout: 1000 });
+        // Click the last option (the one in the dropdown, not the screen reader text)
+        await userEvent.click(nyOptions[nyOptions.length - 1]);
       }
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
@@ -360,20 +431,20 @@ describe('TrusteeAssistantForm', () => {
 
       await waitFor(
         () => {
-          expect(Api2.patchTrustee).toHaveBeenCalledTimes(1);
-          const mockPatchTrustee = vi.mocked(Api2.patchTrustee);
-          const callArgs = mockPatchTrustee.mock.calls[0];
+          expect(updateSpy).toHaveBeenCalledTimes(1);
+          const callArgs = updateSpy.mock.calls[0];
           expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
-          expect(callArgs[1].assistant).toBeDefined();
-          expect(callArgs[1].assistant!.name).toBe('Test Assistant');
-          expect(callArgs[1].assistant!.title).toBe('Lead Assistant');
-          expect(callArgs[1].assistant!.contact.address!.address1).toBe('456 Test St');
-          expect(callArgs[1].assistant!.contact.address!.address2).toBe('Suite 200');
-          expect(callArgs[1].assistant!.contact.address!.city).toBe('TestCity');
-          expect(callArgs[1].assistant!.contact.address!.state).toBe('NY');
-          expect(callArgs[1].assistant!.contact.address!.zipCode).toBe('12345');
-          expect(callArgs[1].assistant!.contact.phone!.extension).toBe('999');
-          expect(callArgs[1].assistant!.contact.email).toBe('test@example.com');
+          expect(callArgs[1]).toBe(assistantId);
+          const payload = callArgs[2];
+          expect(payload.name).toBe('Test Assistant');
+          expect(payload.title).toBe('Lead Assistant');
+          expect(payload.contact?.address?.address1).toBe('456 Test St');
+          expect(payload.contact?.address?.address2).toBe('Suite 200');
+          expect(payload.contact?.address?.city).toBe('TestCity');
+          expect(payload.contact?.address?.state).toBe('NY');
+          expect(payload.contact?.address?.zipCode).toBe('12345');
+          expect(payload.contact?.phone?.extension).toBe('999');
+          expect(payload.contact?.email).toBe('test@example.com');
         },
         { timeout: 2000 },
       );
@@ -436,9 +507,10 @@ describe('TrusteeAssistantForm', () => {
     });
 
     test('should not submit form data when cancel is clicked', async () => {
-      const patchSpy = vi.spyOn(Api2, 'patchTrustee');
+      const createSpy = vi.spyOn(Api2, 'createTrusteeAssistant');
+      const updateSpy = vi.spyOn(Api2, 'updateTrusteeAssistant');
 
-      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId: 'new' });
 
       // Fill in some data
       await userEvent.type(screen.getByTestId('assistant-name'), 'Test Assistant');
@@ -446,7 +518,8 @@ describe('TrusteeAssistantForm', () => {
       const cancelButton = screen.getByRole('button', { name: 'Cancel' });
       await userEvent.click(cancelButton);
 
-      expect(patchSpy).not.toHaveBeenCalled();
+      expect(createSpy).not.toHaveBeenCalled();
+      expect(updateSpy).not.toHaveBeenCalled();
     });
   });
 

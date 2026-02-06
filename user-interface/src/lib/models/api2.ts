@@ -287,8 +287,20 @@ async function getTrusteeAssistants(trusteeId: string) {
   return api().get<TrusteeAssistant[]>(`/trustees/${trusteeId}/assistants`);
 }
 
+async function getAssistant(trusteeId: string, assistantId: string) {
+  return api().get<TrusteeAssistant>(`/trustees/${trusteeId}/assistants/${assistantId}`);
+}
+
 async function createTrusteeAssistant(trusteeId: string, assistant: TrusteeAssistantInput) {
   return api().post(`/trustees/${trusteeId}/assistants`, assistant);
+}
+
+async function updateTrusteeAssistant(
+  trusteeId: string,
+  assistantId: string,
+  assistant: TrusteeAssistantInput,
+) {
+  return api().put(`/trustees/${trusteeId}/assistants/${assistantId}`, assistant);
 }
 
 async function getCaseDetail(caseId: string) {
@@ -492,7 +504,9 @@ export const _Api2 = {
   postTrusteeAppointment,
   putTrusteeAppointment,
   getTrusteeAssistants,
+  getAssistant,
   createTrusteeAssistant,
+  updateTrusteeAssistant,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   postTrustee,
