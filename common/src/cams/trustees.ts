@@ -5,6 +5,7 @@ import { ContactInformation } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
+import { TrusteeAssistant } from './trustee-assistants';
 
 export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
@@ -70,17 +71,12 @@ export type ZoomInfo = {
   passcode: string;
 };
 
-export type TrusteeAssistant = {
-  name: string;
-  title?: string;
-  contact: ContactInformation;
-};
-
 type TrusteeCore = {
   name: string;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
-  assistant?: TrusteeAssistant;
+  assistant?: TrusteeAssistant; // TODO: CAMS-686 - Remove in Slice 6
+  assistants?: TrusteeAssistant[]; // New field for multiple assistants
 };
 
 type TrusteeOptionalFields = {
@@ -153,6 +149,7 @@ export type TrusteeZoomInfoHistory = AbstractTrusteeHistory<
 
 export type TrusteeAssistantHistory = AbstractTrusteeHistory<TrusteeAssistant, TrusteeAssistant> & {
   documentType: 'AUDIT_ASSISTANT';
+  assistantId: string;
 };
 
 type UserAndRole = { user: CamsUserReference; role: OversightRoleType };

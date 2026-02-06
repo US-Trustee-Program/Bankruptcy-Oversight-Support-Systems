@@ -15,6 +15,7 @@ import { CaseAssociatedController } from '../lib/controllers/case-associated/cas
 import { OrdersController } from '../lib/controllers/orders/orders.controller';
 import { TrusteesController } from '../lib/controllers/trustees/trustees.controller';
 import { TrusteeAppointmentsController } from '../lib/controllers/trustee-appointments/trustee-appointments.controller';
+import { TrusteeAssistantsController } from '../lib/controllers/trustee-assistants/trustee-assistants.controller';
 import { TrusteeAssignmentsController } from '../lib/controllers/trustee-assignments/trustee-assignments.controller';
 import { TrusteeHistoryController } from '../lib/controllers/trustee-history/trustee-history.controller';
 import { OfficesController } from '../lib/controllers/offices/offices.controller';
@@ -272,6 +273,24 @@ export function createApp(): Application {
   app.get('/api/trustees/:trusteeId/appointments', handleTrusteeAppointments);
   app.post('/api/trustees/:trusteeId/appointments', handleTrusteeAppointments);
   app.put('/api/trustees/:trusteeId/appointments/:appointmentId', handleTrusteeAppointments);
+
+  const handleTrusteeAssistants = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new TrusteeAssistantsController(context);
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse);
+      await finalizeDeferrable(context);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  app.get('/api/trustees/:trusteeId/assistants', handleTrusteeAssistants);
+  app.get('/api/trustees/:trusteeId/assistants/:assistantId', handleTrusteeAssistants);
+  app.post('/api/trustees/:trusteeId/assistants', handleTrusteeAssistants);
+  app.put('/api/trustees/:trusteeId/assistants/:assistantId', handleTrusteeAssistants);
+  app.delete('/api/trustees/:trusteeId/assistants/:assistantId', handleTrusteeAssistants);
 
   const handleTrusteeAssignments = async (req: Request, res: Response, next: NextFunction) => {
     try {
