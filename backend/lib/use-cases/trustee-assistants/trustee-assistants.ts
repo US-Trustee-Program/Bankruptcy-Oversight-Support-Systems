@@ -5,8 +5,9 @@ import factory from '../../factory';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { assistantInputSpec } from '@common/cams/trustees-validators';
-import { createAuditRecord } from '@common/cams/auditable';
+import { createAuditRecord, Auditable } from '@common/cams/auditable';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { TrusteeAssistantHistory } from '@common/cams/trustees';
 
 const MODULE_NAME = 'TRUSTEE-ASSISTANTS-USE-CASE';
 
@@ -73,16 +74,15 @@ export class TrusteeAssistantsUseCase {
       );
 
       // Create audit history
+      const historyRecord: Omit<TrusteeAssistantHistory, keyof Auditable | 'id'> = {
+        documentType: 'AUDIT_ASSISTANT',
+        trusteeId,
+        assistantId: assistant.id,
+        before: undefined,
+        after: assistant,
+      };
       await this.trusteesRepository.createTrusteeHistory(
-        createAuditRecord(
-          {
-            documentType: 'AUDIT_ASSISTANT',
-            assistantId: assistant.id,
-            before: undefined,
-            after: assistant,
-          },
-          context.session.user,
-        ),
+        createAuditRecord(historyRecord, context.session.user),
       );
 
       context.logger.info(
