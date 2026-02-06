@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeAll, afterEach } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -20,7 +20,7 @@ describe('BackfillPhoneticTokens use case', () => {
   });
 
   describe('generateTokenUpdates', () => {
-    it('should generate tokens for debtor name', () => {
+    test('should generate tokens for debtor name', () => {
       const bCase = {
         _id: 'case-id-1',
         caseId: '123-45-67890',
@@ -34,7 +34,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(updates['jointDebtor.phoneticTokens']).toBeUndefined();
     });
 
-    it('should generate tokens for joint debtor name', () => {
+    test('should generate tokens for joint debtor name', () => {
       const bCase = {
         _id: 'case-id-1',
         caseId: '123-45-67890',
@@ -48,7 +48,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(updates['jointDebtor.phoneticTokens'].length).toBeGreaterThan(0);
     });
 
-    it('should generate tokens for both debtor and joint debtor', () => {
+    test('should generate tokens for both debtor and joint debtor', () => {
       const bCase = {
         _id: 'case-id-1',
         caseId: '123-45-67890',
@@ -62,7 +62,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(updates['jointDebtor.phoneticTokens']).toBeDefined();
     });
 
-    it('should return empty object when no names exist', () => {
+    test('should return empty object when no names exist', () => {
       const bCase = {
         _id: 'case-id-1',
         caseId: '123-45-67890',
@@ -73,7 +73,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(Object.keys(updates).length).toBe(0);
     });
 
-    it('should match output of generateSearchTokens', () => {
+    test('should match output of generateSearchTokens', () => {
       const name = 'John Smith';
       const bCase = {
         _id: 'case-id-1',
@@ -89,7 +89,7 @@ describe('BackfillPhoneticTokens use case', () => {
   });
 
   describe('backfillTokensForCases', () => {
-    it('should update cases with phonetic tokens', async () => {
+    test('should update cases with phonetic tokens', async () => {
       const updateManyByQuerySpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateManyByQuery')
         .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
@@ -108,7 +108,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(updateManyByQuerySpy).toHaveBeenCalledTimes(2);
     });
 
-    it('should handle cases with no names gracefully', async () => {
+    test('should handle cases with no names gracefully', async () => {
       const updateManyByQuerySpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateManyByQuery')
         .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
@@ -125,7 +125,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(updateManyByQuerySpy).not.toHaveBeenCalled();
     });
 
-    it('should record failure when update throws error', async () => {
+    test('should record failure when update throws error', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockRejectedValue(
         new Error('Database error'),
       );
@@ -143,7 +143,7 @@ describe('BackfillPhoneticTokens use case', () => {
   });
 
   describe('getPageOfCasesNeedingBackfillByCursor', () => {
-    it('should return cases that need backfill with cursor info', async () => {
+    test('should return cases that need backfill with cursor info', async () => {
       const caseNeedingBackfill = MockData.getSyncedCase({
         override: { caseId: '123-45-67890', debtor: { name: 'John Smith' }, _id: 'case-id-1' },
       });
@@ -165,7 +165,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(result.data?.hasMore).toBe(false);
     });
 
-    it('should detect hasMore when more results than limit', async () => {
+    test('should detect hasMore when more results than limit', async () => {
       const case1 = MockData.getSyncedCase({
         override: { caseId: '123-45-67890', _id: 'case-id-1' },
       });
@@ -190,7 +190,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(result.data?.lastId).toBe('case-id-1');
     });
 
-    it('should return empty result when no cases found', async () => {
+    test('should return empty result when no cases found', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([]);
 
       const result = await BackfillPhoneticTokens.getPageOfCasesNeedingBackfillByCursor(
@@ -206,7 +206,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(result.data?.lastId).toBeNull();
     });
 
-    it('should return error when findByCursor fails', async () => {
+    test('should return error when findByCursor fails', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockRejectedValue(
         new Error('Database error'),
       );
@@ -223,7 +223,7 @@ describe('BackfillPhoneticTokens use case', () => {
   });
 
   describe('readBackfillState', () => {
-    it('should return existing state', async () => {
+    test('should return existing state', async () => {
       const existingState: PhoneticBackfillState = {
         id: 'state-id-1',
         documentType: 'PHONETIC_BACKFILL_STATE',
@@ -245,7 +245,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(result.data?.status).toBe('IN_PROGRESS');
     });
 
-    it('should return null when no state exists (first run)', async () => {
+    test('should return null when no state exists (first run)', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
         new NotFoundError('TEST', { message: 'Not found' }),
       );
@@ -256,7 +256,7 @@ describe('BackfillPhoneticTokens use case', () => {
       expect(result.data).toBeNull();
     });
 
-    it('should return error on unexpected failure', async () => {
+    test('should return error on unexpected failure', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
         new Error('Database connection failed'),
       );
@@ -269,7 +269,7 @@ describe('BackfillPhoneticTokens use case', () => {
   });
 
   describe('updateBackfillState', () => {
-    it('should create new state when none exists', async () => {
+    test('should create new state when none exists', async () => {
       const readSpy = vi
         .spyOn(MockMongoRepository.prototype, 'read')
         .mockRejectedValue(new NotFoundError('TEST', { message: 'Not found' }));
@@ -303,7 +303,7 @@ describe('BackfillPhoneticTokens use case', () => {
       );
     });
 
-    it('should preserve startedAt when updating existing state', async () => {
+    test('should preserve startedAt when updating existing state', async () => {
       const existingState: PhoneticBackfillState = {
         id: 'existing-id',
         documentType: 'PHONETIC_BACKFILL_STATE',
@@ -340,7 +340,7 @@ describe('BackfillPhoneticTokens use case', () => {
       );
     });
 
-    it('should return error when upsert fails', async () => {
+    test('should return error when upsert fails', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
         new NotFoundError('TEST', { message: 'Not found' }),
       );
