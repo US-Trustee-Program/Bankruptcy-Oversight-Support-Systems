@@ -4,7 +4,7 @@ param accountName string
 @description('Dev users database name')
 param devUsersDatabaseName string = 'dev-users'
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-09-15' existing = {
   name: accountName
 }
 
