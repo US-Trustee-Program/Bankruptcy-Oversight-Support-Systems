@@ -486,150 +486,158 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       className={`usa-form-group combo-box-form-group ${props.className ?? ''}`}
       ref={comboBoxRef}
     >
-      <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
-        <label
-          className="usa-label"
-          id={comboBoxId + '-label'}
-          htmlFor={`${comboBoxId}-combo-box-input`}
-        >
-          {label} {props.required && <span className="required-form-field">*</span>}
-        </label>
-      </div>
-      {ariaDescription && (
-        <div className="usa-hint" id={`${comboBoxId}-hint`}>
-          {ariaDescription}
-        </div>
-      )}
-      <div className="usa-combo-box">
-        <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
-          {label && label + '. '}
-          Combo box {multiSelect ? 'multi-select ' : ''}
-          {props.required ? 'required. ' : ''}
-          {getSelectedItemsDescription()}
-          {!comboboxDisabled
-            ? 'Press Enter or Down Arrow key to open the dropdown list.'
-            : 'Combo box is disabled.'}
-        </span>
+      <div className="combo-box-content">
         <div
-          className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''} ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
-          role="combobox"
-          aria-haspopup="listbox"
-          aria-owns={`${comboBoxId}-item-list`}
-          aria-expanded={expanded}
-          aria-controls={`${comboBoxId}-item-list`}
-          aria-labelledby={comboBoxId + '-label'}
-          aria-describedby={`${comboBoxId}-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
-          tabIndex={0}
-          onClick={() => handleToggleDropdown()}
-          onKeyDown={handleKeyDownOnToggleButton}
-          ref={containerRef}
+          className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}
         >
-          <div className="combo-box-input-container" role="presentation">
-            {expanded ? (
-              <>
-                <Icon name="search"></Icon>
-                <input
-                  {...otherProps}
-                  id={`${comboBoxId}-combo-box-input`}
-                  data-testid="combo-box-input"
-                  className={getInputClassName()}
-                  onChange={handleInputFilter}
-                  onKeyDown={(ev) => handleKeyDown(ev, 0)}
-                  onFocus={handleOnInputFocus}
-                  onClick={handleOnInputClick}
-                  disabled={comboboxDisabled}
-                  autoComplete={'off'}
-                  aria-autocomplete="list"
-                  aria-activedescendant={currentListItem ?? ''}
-                  aria-describedby={`${comboBoxId}-filter-input-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
-                  aria-labelledby={`${comboBoxId}-label`}
-                  ref={filterRef}
-                />
-              </>
-            ) : (
-              <span title={getSelectedLabel()} className={getSelectedClasses()}>
-                {getSelectedLabel()}
-              </span>
-            )}
-          </div>
-          {expanded && (
-            <span id={`${comboBoxId}-filter-input-aria-description`} className="screen-reader-only">
-              Enter text to filter options. Use up and down arrows to select a filtered item from
-              the list.
-            </span>
-          )}
-          <Button
-            id={`${comboBoxId}-expand`}
-            data-testid={`${comboBoxId}-expand`}
-            className="expand-button"
-            uswdsStyle={UswdsButtonStyle.Unstyled}
-            onClick={() => handleToggleDropdown()}
-            onKeyDown={(ev) => handleKeyDown(ev, 0)}
-            disabled={comboboxDisabled}
-            tabIndex={-1}
-            type="button"
-            aria-disabled={comboboxDisabled}
-            title={`Toggle ${label || 'dropdown'} options`}
+          <label
+            className="usa-label"
+            id={comboBoxId + '-label'}
+            htmlFor={`${comboBoxId}-combo-box-input`}
           >
-            <Icon name={expanded ? 'expand_less' : 'expand_more'}></Icon>
-          </Button>
-        </div>
-        {!comboboxDisabled && (
-          <div
-            className={`item-list-container ${expanded ? 'expanded' : 'closed'}`}
-            id={`${comboBoxId}-item-list-container`}
-            aria-hidden={!expanded}
-            tabIndex={-1}
-            style={dropdownLocation ?? undefined}
-          >
-            <ul
-              id={`${comboBoxId}-item-list`}
-              role="listbox"
-              aria-multiselectable={multiSelect === true ? 'true' : 'false'}
-              ref={comboBoxListRef}
+            {label} {props.required && <span className="required-form-field">*</span>}
+          </label>
+          {selectedMap.size > 0 && (
+            <Button
+              className="clear-all-button"
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              onClick={handleClearAllClick}
+              onKeyDown={handleClearAllKeyDown}
+              id={`${comboBoxId}-clear-all`}
+              aria-label={`Clear all ${label ?? ''} items selected.`}
             >
-              {props.options
-                .filter(
-                  (option) => !filter || option.label.toLowerCase().includes(filter.toLowerCase()),
-                )
-                .map((option, idx) => (
-                  <li
-                    id={`option-${option.value}`}
-                    className={setListItemClass(idx, option)}
-                    role="option"
-                    data-value={option.value}
-                    data-testid={`${comboBoxId}-option-item-${idx}`}
-                    key={`${comboBoxId}-${idx}`}
-                    onClick={() => handleDropdownItemSelection(option)}
-                    onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
-                    tabIndex={expanded ? 0 : -1}
-                    aria-selected={selectedMap.has(option.value) ? 'true' : undefined}
-                    aria-label={buildAriaLabel(option)}
-                  >
-                    {
-                      <>
-                        {option.label}
-                        {selectedMap.has(option.value) && <Icon name="check"></Icon>}
-                      </>
-                    }
-                  </li>
-                ))}
-            </ul>
+              Clear
+            </Button>
+          )}
+        </div>
+        {ariaDescription && (
+          <div className="usa-hint" id={`${comboBoxId}-hint`}>
+            {ariaDescription}
           </div>
         )}
+        <div className="usa-combo-box">
+          <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
+            {label && label + '. '}
+            Combo box {multiSelect ? 'multi-select ' : ''}
+            {props.required ? 'required. ' : ''}
+            {getSelectedItemsDescription()}
+            {!comboboxDisabled
+              ? 'Press Enter or Down Arrow key to open the dropdown list.'
+              : 'Combo box is disabled.'}
+          </span>
+          <div
+            className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''} ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
+            role="combobox"
+            aria-haspopup="listbox"
+            aria-owns={`${comboBoxId}-item-list`}
+            aria-expanded={expanded}
+            aria-controls={`${comboBoxId}-item-list`}
+            aria-labelledby={comboBoxId + '-label'}
+            aria-describedby={`${comboBoxId}-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
+            tabIndex={0}
+            onClick={() => handleToggleDropdown()}
+            onKeyDown={handleKeyDownOnToggleButton}
+            ref={containerRef}
+          >
+            <div className="combo-box-input-container" role="presentation">
+              {expanded ? (
+                <>
+                  <Icon name="search"></Icon>
+                  <input
+                    {...otherProps}
+                    id={`${comboBoxId}-combo-box-input`}
+                    data-testid="combo-box-input"
+                    className={getInputClassName()}
+                    onChange={handleInputFilter}
+                    onKeyDown={(ev) => handleKeyDown(ev, 0)}
+                    onFocus={handleOnInputFocus}
+                    onClick={handleOnInputClick}
+                    disabled={comboboxDisabled}
+                    autoComplete={'off'}
+                    aria-autocomplete="list"
+                    aria-activedescendant={currentListItem ?? ''}
+                    aria-describedby={`${comboBoxId}-filter-input-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
+                    aria-labelledby={`${comboBoxId}-label`}
+                    ref={filterRef}
+                  />
+                </>
+              ) : (
+                <span title={getSelectedLabel()} className={getSelectedClasses()}>
+                  {getSelectedLabel()}
+                </span>
+              )}
+            </div>
+            {expanded && (
+              <span
+                id={`${comboBoxId}-filter-input-aria-description`}
+                className="screen-reader-only"
+              >
+                Enter text to filter options. Use up and down arrows to select a filtered item from
+                the list.
+              </span>
+            )}
+            <Button
+              id={`${comboBoxId}-expand`}
+              data-testid={`${comboBoxId}-expand`}
+              className="expand-button"
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              onClick={() => handleToggleDropdown()}
+              onKeyDown={(ev) => handleKeyDown(ev, 0)}
+              disabled={comboboxDisabled}
+              tabIndex={-1}
+              type="button"
+              aria-disabled={comboboxDisabled}
+              title={`Toggle ${label || 'dropdown'} options`}
+            >
+              <Icon name={expanded ? 'expand_less' : 'expand_more'}></Icon>
+            </Button>
+          </div>
+          {!comboboxDisabled && (
+            <div
+              className={`item-list-container ${expanded ? 'expanded' : 'closed'}`}
+              id={`${comboBoxId}-item-list-container`}
+              aria-hidden={!expanded}
+              tabIndex={-1}
+              style={dropdownLocation ?? undefined}
+            >
+              <ul
+                id={`${comboBoxId}-item-list`}
+                role="listbox"
+                aria-multiselectable={multiSelect === true ? 'true' : 'false'}
+                ref={comboBoxListRef}
+              >
+                {props.options
+                  .filter(
+                    (option) =>
+                      !filter || option.label.toLowerCase().includes(filter.toLowerCase()),
+                  )
+                  .map((option, idx) => (
+                    <li
+                      id={`option-${option.value}`}
+                      className={setListItemClass(idx, option)}
+                      role="option"
+                      data-value={option.value}
+                      data-testid={`${comboBoxId}-option-item-${idx}`}
+                      key={`${comboBoxId}-${idx}`}
+                      onClick={() => handleDropdownItemSelection(option)}
+                      onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
+                      tabIndex={expanded ? 0 : -1}
+                      aria-selected={selectedMap.has(option.value) ? 'true' : undefined}
+                      aria-label={buildAriaLabel(option)}
+                    >
+                      {
+                        <>
+                          {option.label}
+                          {selectedMap.has(option.value) && <Icon name="check"></Icon>}
+                        </>
+                      }
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+        </div>
       </div>
-      {selectedMap.size > 0 && (
-        <Button
-          className="clear-all-button"
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          onClick={handleClearAllClick}
-          onKeyDown={handleClearAllKeyDown}
-          id={`${comboBoxId}-clear-all`}
-          aria-label={`Clear all ${label ?? ''} items selected.`}
-        >
-          Clear
-        </Button>
-      )}
       {errorMessage && errorMessage.length > 0 && (
         <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
           {errorMessage}

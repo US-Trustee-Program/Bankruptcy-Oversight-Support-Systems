@@ -20,7 +20,10 @@ function using<T = unknown>(context: ApplicationContext, queueName: LogicalQueue
   const queue = map.get(queueName);
 
   const enqueue = (...messages: T[]) => {
-    output.set(queue, messages);
+    // Azure storage queue output binding unwraps arrays and sends each element
+    // as a separate message. To send an array as a single message, wrap it in
+    // another array. Each message will be the array of events.
+    output.set(queue, [messages]);
   };
 
   return {
