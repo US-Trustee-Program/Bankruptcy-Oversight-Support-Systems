@@ -45,7 +45,7 @@ export default class CaseManagement {
 
   constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
     this.assignmentRepository = factory.getAssignmentRepository(applicationContext);
-    this.casesGateway = casesGateway ? casesGateway : factory.getCasesGateway(applicationContext);
+    this.casesGateway = casesGateway || factory.getCasesGateway(applicationContext);
     this.officesGateway = factory.getOfficesGateway(applicationContext);
     this.casesRepository = factory.getCasesRepository(applicationContext);
   }
@@ -133,15 +133,15 @@ export default class CaseManagement {
 
       return { metadata: searchResult.metadata, data: Array.from(casesMap.values()) };
     } catch (originalError) {
-      if (!isCamsError(originalError)) {
+      if (isCamsError(originalError)) {
+        throw originalError;
+      } else {
         throw new UnknownError(MODULE_NAME, {
           message:
             'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
           originalError,
           status: 500,
         });
-      } else {
-        throw originalError;
       }
     }
   }
@@ -171,8 +171,7 @@ export default class CaseManagement {
     caseId: string,
   ): Promise<CaseSummary> {
     try {
-      const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
-      return caseSummary;
+      return await this.casesGateway.getCaseSummary(applicationContext, caseId);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
