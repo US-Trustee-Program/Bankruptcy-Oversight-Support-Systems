@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureSuccess, toAzureError } from '../../azure/functions';
 import { CaseReloadController } from '../../../lib/controllers/admin/case-reload.controller';
+import { extraOutputs } from '../queue-outputs';
 
 const MODULE_NAME = 'CASE-RELOAD-FUNCTION';
 
@@ -33,4 +34,5 @@ app.http('case-reload', {
   authLevel: 'anonymous',
   handler,
   route: 'dev-tools/case-reload',
+  extraOutputs,
 });

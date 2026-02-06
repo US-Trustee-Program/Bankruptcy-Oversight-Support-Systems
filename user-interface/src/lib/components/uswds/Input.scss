@@ -18,6 +18,15 @@
 
   .usa-input-suffix {
     z-index: 1;
+    display: flex;
+    align-items: center;
+    height: 100%;
+
+    button {
+      display: flex;
+      align-items: center;
+      height: 100%;
+    }
   }
 
   .usa-input[data-position='right'] + .usa-input-prefix {

@@ -466,4 +466,210 @@ describe('CaseReload Component - UX and Presentation Tests', () => {
       expect(alertContainer).toHaveClass('inline-alert');
     });
   });
+
+  describe('Find Case button behavior', () => {
+    test('should keep "Find Case" label and show spinner when validating', async () => {
+      vi.spyOn(Api2, 'getCaseDetail').mockImplementation(
+        () => new Promise((resolve) => setTimeout(() => resolve({ data: mockCaseDetail }), 1000)),
+      );
+      vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [mockSyncedCase] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      });
+
+      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
+      await userEvent.click(divisionComboBox);
+
+      await waitFor(() => {
+        const buffaloOption = screen.getByText(/Buffalo/);
+        expect(buffaloOption).toBeInTheDocument();
+      });
+
+      const buffaloOption = screen.getByText(/Buffalo/);
+      await userEvent.click(buffaloOption);
+
+      const caseNumberInput = screen.getByLabelText('Case Number');
+      await userEvent.type(caseNumberInput, '99-88513');
+
+      const findButton = screen.getByTestId('button-validate-button');
+      await userEvent.click(findButton);
+
+      // Button should still say "Find Case", not "Finding..."
+      expect(findButton).toHaveTextContent('Find Case');
+      expect(findButton).not.toHaveTextContent('Finding');
+
+      // Spinner should appear
+      await waitFor(() => {
+        expect(screen.getByText('Finding case...')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Case number display', () => {
+    test('should display case number without division prefix duplication', async () => {
+      vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
+      vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [mockSyncedCase] });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      });
+
+      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
+      await userEvent.click(divisionComboBox);
+
+      await waitFor(() => {
+        const buffaloOption = screen.getByText(/Buffalo/);
+        expect(buffaloOption).toBeInTheDocument();
+      });
+
+      const buffaloOption = screen.getByText(/Buffalo/);
+      await userEvent.click(buffaloOption);
+
+      const caseNumberInput = screen.getByLabelText('Case Number');
+      await userEvent.type(caseNumberInput, '99-88513');
+
+      const findButton = screen.getByTestId('button-validate-button');
+      await userEvent.click(findButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('alert-validated-case-alert')).toBeInTheDocument();
+      });
+
+      // Should show "99-88513", not "091-99-88513"
+      expect(screen.getByText(/Case Number:/)).toBeInTheDocument();
+      expect(screen.getByText(/99-88513/)).toBeInTheDocument();
+      expect(screen.queryByText(/091-99-88513/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Sync completion UX', () => {
+    test('should hide Reload Case button and show only Reset when sync completes', async () => {
+      vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
+      vi.spyOn(Api2, 'searchCases')
+        .mockResolvedValueOnce({ data: [mockSyncedCase] }) // Initial validation
+        .mockResolvedValueOnce({
+          data: [{ ...mockSyncedCase, updatedOn: '2024-01-20T15:00:00Z' }],
+        }); // Polling result
+
+      vi.spyOn(Api2, 'postCaseReload').mockResolvedValue(undefined);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      });
+
+      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
+      await userEvent.click(divisionComboBox);
+
+      await waitFor(() => {
+        const buffaloOption = screen.getByText(/Buffalo/);
+        expect(buffaloOption).toBeInTheDocument();
+      });
+
+      const buffaloOption = screen.getByText(/Buffalo/);
+      await userEvent.click(buffaloOption);
+
+      const caseNumberInput = screen.getByLabelText('Case Number');
+      await userEvent.type(caseNumberInput, '99-88513');
+
+      const findButton = screen.getByTestId('button-validate-button');
+      await userEvent.click(findButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('alert-validated-case-alert')).toBeInTheDocument();
+      });
+
+      // Click reload button to trigger sync
+      const reloadButton = screen.getByTestId('button-reload-button');
+      await userEvent.click(reloadButton);
+
+      // Wait for polling to complete (mock will resolve immediately)
+      await waitFor(
+        () => {
+          expect(screen.getByText('Sync Completed')).toBeInTheDocument();
+        },
+        { timeout: 10000 },
+      );
+
+      // Reload Case button should be hidden
+      expect(screen.queryByTestId('button-reload-button')).not.toBeInTheDocument();
+      expect(screen.queryByText('Reload Case')).not.toBeInTheDocument();
+
+      // Only Reset button should be visible
+      expect(screen.getByTestId('button-reset-button')).toBeInTheDocument();
+      expect(screen.getByText('Reset')).toBeInTheDocument();
+    });
+
+    test('should display Sync Completed alert below Case Exists', async () => {
+      vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
+      vi.spyOn(Api2, 'searchCases')
+        .mockResolvedValueOnce({ data: [mockSyncedCase] })
+        .mockResolvedValueOnce({
+          data: [{ ...mockSyncedCase, updatedOn: '2024-01-20T15:00:00Z' }],
+        });
+
+      vi.spyOn(Api2, 'postCaseReload').mockResolvedValue(undefined);
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      });
+
+      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
+      await userEvent.click(divisionComboBox);
+
+      await waitFor(() => {
+        const buffaloOption = screen.getByText(/Buffalo/);
+        expect(buffaloOption).toBeInTheDocument();
+      });
+
+      const buffaloOption = screen.getByText(/Buffalo/);
+      await userEvent.click(buffaloOption);
+
+      const caseNumberInput = screen.getByLabelText('Case Number');
+      await userEvent.type(caseNumberInput, '99-88513');
+
+      const findButton = screen.getByTestId('button-validate-button');
+      await userEvent.click(findButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('alert-validated-case-alert')).toBeInTheDocument();
+      });
+
+      const reloadButton = screen.getByTestId('button-reload-button');
+      await userEvent.click(reloadButton);
+
+      await waitFor(
+        () => {
+          expect(screen.getByText('Sync Completed')).toBeInTheDocument();
+        },
+        { timeout: 10000 },
+      );
+
+      // Both alerts should be visible
+      expect(screen.getByText('Case Exists')).toBeInTheDocument();
+      expect(screen.getByText('Sync Completed')).toBeInTheDocument();
+      expect(screen.getByText('Sync completed successfully')).toBeInTheDocument();
+    });
+  });
+
+  describe('Form attributes', () => {
+    test('should disable autocomplete on case number input', async () => {
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      });
+
+      const caseNumberInput = screen.getByLabelText('Case Number');
+      expect(caseNumberInput).toHaveAttribute('autocomplete', 'off');
+    });
+  });
 });

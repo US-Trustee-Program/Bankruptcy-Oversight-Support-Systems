@@ -160,14 +160,14 @@ export function CaseReload() {
 
   function startPolling(caseId: string, startTime: Date) {
     let pollCount = 0;
-    const maxPolls = 12; // 2 minutes (10s initial delay + 11 polls * 10s)
+    const maxPolls = 24; // 2 minutes (5s initial delay + 23 polls * 5s)
 
     // Clear any existing polling (safety)
     stopPolling();
 
-    // Initial 10-second delay before first poll
+    // Initial 5-second delay before first poll
     initialPollTimeoutRef.current = setTimeout(() => {
-      // Poll every 10 seconds
+      // Poll every 5 seconds
       pollIntervalRef.current = setInterval(async () => {
         pollCount++;
 
@@ -202,8 +202,8 @@ export function CaseReload() {
           console.error('Polling error:', error);
           // Don't stop polling on transient errors
         }
-      }, 10000); // 10 seconds
-    }, 10000); // Initial 10-second delay
+      }, 5000); // 5 seconds
+    }, 5000); // Initial 5-second delay
   }
 
   function checkSyncCompleted(newCosmosCase: SyncedCase | undefined, startTime: Date): boolean {
@@ -273,6 +273,7 @@ export function CaseReload() {
                     allowEnterKey={false}
                     allowPartialCaseNumber={false}
                     disabled={isValidating}
+                    autoComplete="off"
                   />
                 </div>
               </div>
@@ -285,10 +286,17 @@ export function CaseReload() {
                     uswdsStyle={UswdsButtonStyle.Default}
                     disabled={!isValidatable() || isValidating}
                   >
-                    {isValidating ? 'Finding...' : 'Find Case'}
+                    Find Case
                   </Button>
                 </div>
               </div>
+              {isValidating && (
+                <div className="grid-row">
+                  <div className="grid-col-12">
+                    <LoadingSpinner caption="Finding case..." />
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -339,25 +347,64 @@ export function CaseReload() {
                 </div>
               </div>
 
-              <div className="grid-row">
-                <div className="grid-col-12 button-group">
-                  <Button
-                    id="reload-button"
-                    onClick={handleReload}
-                    uswdsStyle={UswdsButtonStyle.Default}
-                    disabled={!isReloadable() || pollStatus === 'polling'}
-                  >
-                    {isReloading ? 'Reloading...' : 'Reload Case'}
-                  </Button>
-                  <Button
-                    id="reset-button"
-                    onClick={handleReset}
-                    uswdsStyle={UswdsButtonStyle.Outline}
-                  >
-                    Reset
-                  </Button>
+              {pollStatus === 'success' && (
+                <div className="grid-row" data-testid="polling-success-container">
+                  <div className="grid-col-12">
+                    <Alert
+                      type={UswdsAlertStyle.Success}
+                      title="Sync Completed"
+                      message="Sync completed successfully"
+                      show={true}
+                      inline={true}
+                      id="polling-success-alert"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {pollStatus !== 'success' && (
+                <div className="grid-row">
+                  <div className="grid-col-12 button-group">
+                    <Button
+                      id="reload-button"
+                      onClick={handleReload}
+                      uswdsStyle={UswdsButtonStyle.Default}
+                      disabled={!isReloadable() || pollStatus === 'polling' || isReloading}
+                    >
+                      Reload Case
+                    </Button>
+                    <Button
+                      id="reset-button"
+                      onClick={handleReset}
+                      uswdsStyle={UswdsButtonStyle.Outline}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {isReloading && (
+                <div className="grid-row">
+                  <div className="grid-col-12">
+                    <LoadingSpinner caption="Queueing reload..." />
+                  </div>
+                </div>
+              )}
+
+              {pollStatus === 'success' && (
+                <div className="grid-row">
+                  <div className="grid-col-12">
+                    <Button
+                      id="reset-button"
+                      onClick={handleReset}
+                      uswdsStyle={UswdsButtonStyle.Outline}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {pollStatus === 'polling' && (
                 <div className="grid-row" data-testid="polling-status-container">
@@ -377,21 +424,6 @@ export function CaseReload() {
                       show={true}
                       inline={true}
                       id="polling-timeout-alert"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {pollStatus === 'success' && (
-                <div className="grid-row" data-testid="polling-success-container">
-                  <div className="grid-col-12">
-                    <Alert
-                      type={UswdsAlertStyle.Success}
-                      title="Sync Completed"
-                      message="Sync completed successfully"
-                      show={true}
-                      inline={true}
-                      id="polling-success-alert"
                     />
                   </div>
                 </div>
