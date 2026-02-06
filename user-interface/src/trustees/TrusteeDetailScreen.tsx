@@ -187,8 +187,8 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'assistant/create',
-      subHeading: 'Edit Trustee Assistant (USTP Internal)',
-      content: <TrusteeAssistantForm trusteeId={trusteeId} />,
+      subHeading: 'Create Trustee Assistant (USTP Internal)',
+      content: <TrusteeAssistantForm trusteeId={trusteeId} assistantId="new" />,
     },
     {
       path: 'assistant/edit',
