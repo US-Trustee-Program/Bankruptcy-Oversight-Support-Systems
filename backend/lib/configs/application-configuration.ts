@@ -18,6 +18,7 @@ export class ApplicationConfiguration {
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
   public readonly phoneticSimilarityThreshold: number;
+  public readonly adminKey: string;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -32,6 +33,7 @@ export class ApplicationConfiguration {
     this.phoneticSimilarityThreshold = parseFloat(
       process.env.PHONETIC_SIMILARITY_THRESHOLD ?? '0.83',
     );
+    this.adminKey = process.env.ADMIN_KEY;
   }
 
   private getAppServerConfig(): ServerType {
