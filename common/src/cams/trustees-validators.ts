@@ -10,6 +10,8 @@ import {
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
 import { ValidationSpec } from './validation';
 import { ZoomInfo } from './trustees';
+import { Address, ContactInformation, PhoneNumber } from './contact';
+import { TrusteeAssistantInput } from './trustee-assistants';
 
 export const trusteeName = V.useValidators(
   V.minLength(1, 'Trustee name is required'),
@@ -81,4 +83,33 @@ export const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
   phone: [zoomPhone],
   meetingId: [zoomMeetingId],
   passcode: [zoomPasscode],
+};
+
+export const addressSpec: ValidationSpec<Address> = {
+  address1: [addressLine1],
+  address2: [addressLine2],
+  address3: [addressLine3],
+  city: [city],
+  state: [state],
+  zipCode: [zipCode],
+  countryCode: [countryCode],
+};
+
+export const phoneSpec: ValidationSpec<PhoneNumber> = {
+  number: [phoneNumber],
+  extension: [phoneExtension],
+};
+
+export const contactInformationSpec: ValidationSpec<ContactInformation> = {
+  address: [V.spec(addressSpec)],
+  phone: [V.optional(V.spec(phoneSpec))],
+  email: [V.optional(email)],
+  website: [website],
+  companyName: [companyName],
+};
+
+export const assistantInputSpec: ValidationSpec<TrusteeAssistantInput> = {
+  name: [assistantName],
+  title: [V.optional(assistantTitle)],
+  contact: [V.optional(V.spec(contactInformationSpec))],
 };
