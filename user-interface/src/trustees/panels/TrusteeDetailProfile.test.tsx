@@ -369,32 +369,33 @@ describe('TrusteeDetailProfile', () => {
   test('should render assistant information with title', () => {
     const trusteeWithAssistant = {
       ...mockTrustee,
-      assistant: {
-        name: 'Jane Assistant',
-        title: 'Senior Assistant',
-        contact: {
-          address: {
-            address1: '789 Assistant St',
-            city: 'Assistant City',
-            state: 'TX',
-            zipCode: '78901',
-            countryCode: 'US' as const,
+      assistants: [
+        {
+          id: 'assistant-1',
+          name: 'Jane Assistant',
+          title: 'Senior Assistant',
+          contact: {
+            address: {
+              address1: '789 Assistant St',
+              city: 'Assistant City',
+              state: 'TX',
+              zipCode: '78901',
+              countryCode: 'US' as const,
+            },
+            phone: { number: '555-111-2222', extension: '456' },
+            email: 'jane.assistant@example.com',
           },
-          phone: { number: '555-111-2222', extension: '456' },
-          email: 'jane.assistant@example.com',
         },
-      },
+      ],
     };
 
     renderWithProps({ trustee: trusteeWithAssistant });
 
-    expect(screen.getByTestId('assistant-name')).toHaveTextContent('Jane Assistant');
-    expect(screen.getByTestId('assistant-title')).toHaveTextContent('Senior Assistant');
-    expect(screen.getByTestId('trustee-assistant-street-address')).toHaveTextContent(
-      '789 Assistant St',
-    );
-    expect(screen.getByTestId('trustee-assistant-city')).toHaveTextContent('Assistant City');
-    expect(screen.getByTestId('trustee-assistant-phone-number')).toHaveTextContent(
+    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
+    expect(screen.getByTestId('assistant-title-0')).toHaveTextContent('Senior Assistant');
+    expect(screen.getByTestId('assistant-0-street-address')).toHaveTextContent('789 Assistant St');
+    expect(screen.getByTestId('assistant-0-city')).toHaveTextContent('Assistant City');
+    expect(screen.getByTestId('assistant-0-phone-number')).toHaveTextContent(
       '555-111-2222 ext. 456',
     );
   });
@@ -402,32 +403,35 @@ describe('TrusteeDetailProfile', () => {
   test('should render assistant information without title', () => {
     const trusteeWithAssistantNoTitle = {
       ...mockTrustee,
-      assistant: {
-        name: 'Jane Assistant',
-        contact: {
-          address: {
-            address1: '789 Assistant St',
-            city: 'Assistant City',
-            state: 'TX',
-            zipCode: '78901',
-            countryCode: 'US' as const,
+      assistants: [
+        {
+          id: 'assistant-1',
+          name: 'Jane Assistant',
+          contact: {
+            address: {
+              address1: '789 Assistant St',
+              city: 'Assistant City',
+              state: 'TX',
+              zipCode: '78901',
+              countryCode: 'US' as const,
+            },
+            phone: { number: '555-111-2222' },
+            email: 'jane.assistant@example.com',
           },
-          phone: { number: '555-111-2222' },
-          email: 'jane.assistant@example.com',
         },
-      },
+      ],
     };
 
     renderWithProps({ trustee: trusteeWithAssistantNoTitle });
 
-    expect(screen.getByTestId('assistant-name')).toHaveTextContent('Jane Assistant');
-    expect(screen.queryByTestId('assistant-title')).not.toBeInTheDocument();
+    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
+    expect(screen.queryByTestId('assistant-title-0')).not.toBeInTheDocument();
   });
 
   test('should show "No information added" when assistant is missing', () => {
     const trusteeWithoutAssistant = {
       ...mockTrustee,
-      assistant: undefined,
+      assistants: undefined,
     };
 
     renderWithProps({ trustee: trusteeWithoutAssistant });
@@ -440,37 +444,40 @@ describe('TrusteeDetailProfile', () => {
   test('should display "Add Another Assistant" button when an assistant exists', () => {
     const trusteeWithAssistant = {
       ...mockTrustee,
-      assistant: {
-        name: 'Jane Assistant',
-        contact: {
-          address: {
-            address1: '789 Assistant St',
-            city: 'Assistant City',
-            state: 'TX',
-            zipCode: '78901',
-            countryCode: 'US' as const,
+      assistants: [
+        {
+          id: 'assistant-1',
+          name: 'Jane Assistant',
+          contact: {
+            address: {
+              address1: '789 Assistant St',
+              city: 'Assistant City',
+              state: 'TX',
+              zipCode: '78901',
+              countryCode: 'US' as const,
+            },
+            phone: { number: '555-111-2222' },
+            email: 'jane.assistant@example.com',
           },
-          phone: { number: '555-111-2222' },
-          email: 'jane.assistant@example.com',
         },
-      },
+      ],
     };
 
     renderWithProps({ trustee: trusteeWithAssistant });
 
-    const addAnotherButton = screen.getByTestId('add-another-assistant');
+    const addAnotherButton = screen.getByTestId('button-add-another-assistant-button');
     expect(addAnotherButton).toBeInTheDocument();
   });
 
   test('should not display "Add Another Assistant" button when no assistant exists', () => {
     const trusteeWithoutAssistant = {
       ...mockTrustee,
-      assistant: undefined,
+      assistants: undefined,
     };
 
     renderWithProps({ trustee: trusteeWithoutAssistant });
 
-    const addAnotherButton = screen.queryByTestId('add-another-assistant');
+    const addAnotherButton = screen.queryByTestId('button-add-another-assistant-button');
     expect(addAnotherButton).not.toBeInTheDocument();
   });
 });

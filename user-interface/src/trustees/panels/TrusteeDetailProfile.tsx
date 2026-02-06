@@ -173,7 +173,7 @@ export default function TrusteeDetailProfile({
               ))}
               <Button
                 id="add-another-assistant-button"
-                uswdsStyle={UswdsButtonStyle.Primary}
+                uswdsStyle={UswdsButtonStyle.Default}
                 aria-label="Add another assistant"
                 onClick={onAddAssistant}
               >
