@@ -75,8 +75,7 @@ type TrusteeCore = {
   name: string;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
-  assistant?: TrusteeAssistant; // TODO: CAMS-686 - Remove in Slice 6
-  assistants?: TrusteeAssistant[]; // New field for multiple assistants
+  assistants?: TrusteeAssistant[]; // Multiple assistants per trustee
 };
 
 type TrusteeOptionalFields = {

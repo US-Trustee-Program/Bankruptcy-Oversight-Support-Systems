@@ -6,7 +6,6 @@ import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
-import { TrusteeAssistant } from '@common/cams/trustee-assistants';
 import {
   trusteeName,
   companyName,
@@ -22,8 +21,6 @@ import {
   email,
   website,
   zoomInfoSpec,
-  assistantName,
-  assistantTitle,
 } from '@common/cams/trustees-validators';
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
@@ -62,17 +59,10 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   email: [V.optional(V.nullable(email))],
 };
 
-const assistantSpec: ValidationSpec<TrusteeAssistant> = {
-  name: [assistantName],
-  title: [V.optional(assistantTitle)],
-  contact: [V.spec(contactInformationSpec)],
-};
-
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [trusteeName],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
-  assistant: [V.optional(V.spec(assistantSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   software: [V.optional(V.length(0, 100))],
   zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
@@ -318,20 +308,6 @@ export class TrusteesUseCase {
               trusteeId,
               before: existingTrustee.zoomInfo,
               after: updatedTrustee.zoomInfo,
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (!deepEqual(existingTrustee.assistant, updatedTrustee.assistant)) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_ASSISTANT',
-              trusteeId,
-              before: normalizeForUndefined(existingTrustee.assistant),
-              after: normalizeForUndefined(updatedTrustee.assistant),
             },
             userReference,
           ),
