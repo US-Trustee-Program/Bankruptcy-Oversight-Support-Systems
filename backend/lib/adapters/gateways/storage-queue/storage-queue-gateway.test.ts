@@ -22,7 +22,39 @@ describe('storage queue gateway', () => {
 
       actual.enqueue({}, {});
 
-      expect(extraOutputs.set).toHaveBeenCalledWith(expect.anything(), [{}, {}]);
+      expect(extraOutputs.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueName: 'case-assignment-event',
+          type: 'queue',
+        }),
+        [{}, {}],
+      );
+    });
+
+    test('should support SYNC_CASES_PAGE queue for case reload', async () => {
+      const extraOutputs: InvocationContextExtraOutputs = {
+        set: vi.fn(),
+        get: vi.fn(),
+      };
+
+      const context = await createMockApplicationContext();
+      context.extraOutputs = extraOutputs;
+      const actual = using(context, 'SYNC_CASES_PAGE');
+
+      expect('enqueue' in actual).toBeTruthy();
+      expect(typeof actual.enqueue === 'function').toBeTruthy();
+
+      const testEvent = { type: 'CASE_CHANGED', caseId: '081-12-34567' };
+      // Pass array of events to send as a single queue message
+      actual.enqueue([testEvent]);
+
+      expect(extraOutputs.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueName: 'sync-cases-page',
+          type: 'queue',
+        }),
+        [[testEvent]],
+      );
     });
   });
 });
