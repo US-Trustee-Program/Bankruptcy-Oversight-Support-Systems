@@ -107,7 +107,7 @@ var allowedNetworkList = [for item in allowedNetworks: {
   ignoreMissingVNetServiceEndpoint: false
 }]
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-09-15' = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
   name: accountName
   location: location
   kind: 'MongoDB'
