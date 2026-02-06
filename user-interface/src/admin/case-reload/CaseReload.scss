@@ -3,27 +3,36 @@
 
   h2 {
     margin-top: 0;
+    margin-bottom: 0.5rem;
   }
 
   .case-reload-form {
-    margin-top: 1.5rem;
+    margin-top: 0.5rem;
 
     .grid-row {
-      margin-bottom: 1.5rem;
+      margin-bottom: 0.75rem;
     }
 
-    .validation-results {
-      margin-top: 2rem;
-      padding: 1.5rem;
-      background-color: #f0f0f0;
-      border-left: 4px solid #005ea2;
+    .usa-alert-container.inline-alert {
+      margin-left: 0;
 
-      h3 {
-        margin-top: 0;
+      .usa-alert {
+        margin-left: 0;
       }
+    }
 
+    .validated-case-details {
       p {
-        margin: 0.5rem 0;
+        margin: 0.25rem 0;
+      }
+    }
+
+    .button-group {
+      display: flex;
+      gap: 1rem;
+
+      button {
+        margin-top: 0;
       }
     }
 
