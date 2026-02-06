@@ -22,7 +22,7 @@ param privateDnsZoneId string = ''
 @description('Name for the DNS zone group (default: "default", use "zone-group" for slots to match existing infrastructure)')
 param dnsZoneGroupName string = 'default'
 
-resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-06-01' = {
+resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = {
   name: 'pep-${stackName}'
   location: location
   properties: {
