@@ -1,10 +1,12 @@
 import { vi } from 'vitest';
-import { createMockApplicationContext } from '../../testing/testing-utilities';
+import { createMockApplicationContext, getTheThrownError } from '../../testing/testing-utilities';
 import { TrusteeAssistantsUseCase } from './trustee-assistants';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { ApplicationContext } from '../../adapters/types/basic';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 const MODULE_NAME = 'TRUSTEE-ASSISTANTS-USE-CASE';
 
@@ -117,6 +119,88 @@ describe('TrusteeAssistantsUseCase', () => {
           after: createdAssistant,
         }),
       );
+    });
+  });
+});
+
+describe('TrusteeAssistantsUseCase tests', () => {
+  let context: ApplicationContext;
+  let trusteeAssistantsUseCase: TrusteeAssistantsUseCase;
+
+  describe('getTrusteeAssistants', () => {
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      trusteeAssistantsUseCase = new TrusteeAssistantsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('should return list of assistants for a trustee', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const mockAssistants = [
+        MockData.getTrusteeAssistant({ trusteeId }),
+        MockData.getTrusteeAssistant({ trusteeId }),
+      ];
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAssistants').mockResolvedValue(
+        mockAssistants,
+      );
+
+      const result = await trusteeAssistantsUseCase.getTrusteeAssistants(context, trusteeId);
+
+      expect(result).toEqual(mockAssistants);
+      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId);
+      expect(MockMongoRepository.prototype.getTrusteeAssistants).toHaveBeenCalledWith(trusteeId);
+    });
+
+    test('should return empty array when trustee has no assistants', async () => {
+      const trusteeId = 'trustee-456';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAssistants').mockResolvedValue([]);
+
+      const result = await trusteeAssistantsUseCase.getTrusteeAssistants(context, trusteeId);
+
+      expect(result).toEqual([]);
+      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId);
+    });
+
+    test('should throw error when trustee does not exist', async () => {
+      const trusteeId = 'non-existent-trustee';
+      const repositoryError = new Error('Trustee not found');
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAssistantsUseCase.getTrusteeAssistants(context, trusteeId),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain(
+        `Failed to retrieve assistants for trustee with ID ${trusteeId}`,
+      );
+    });
+
+    test('should handle repository error during assistants retrieval', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      const repositoryError = new Error('Database error');
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAssistants').mockRejectedValue(
+        repositoryError,
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAssistantsUseCase.getTrusteeAssistants(context, trusteeId),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
     });
   });
 });

@@ -24,6 +24,7 @@ import { Debtor, DebtorAttorney, Party, LegacyAddress, LegacyTrustee } from '../
 import { PhoneNumber, Address, ContactInformation } from '../contact';
 import { Trustee, TrusteeHistory, TrusteeInput } from '../trustees';
 import { TrusteeAppointment } from '../trustee-appointments';
+import { TrusteeAssistant } from '../trustee-assistants';
 import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
@@ -657,6 +658,21 @@ function getTrusteeAppointment(override: Partial<TrusteeAppointment> = {}): Trus
   };
 }
 
+function getTrusteeAssistant(override: Partial<TrusteeAssistant> = {}): TrusteeAssistant {
+  return {
+    id: faker.string.uuid(),
+    trusteeId: faker.string.uuid(),
+    name: faker.person.fullName(),
+    title: faker.person.jobTitle(),
+    contact: getContactInformation(),
+    createdOn: getDateBeforeToday().toISOString(),
+    createdBy: getCamsUserReference(),
+    updatedOn: getDateBeforeToday().toISOString(),
+    updatedBy: getCamsUserReference(),
+    ...override,
+  };
+}
+
 function getTrusteeHistory(): TrusteeHistory[] {
   return [
     {
@@ -1109,6 +1125,7 @@ const MockData = {
   getTrusteeInput,
   getChapter13Trustee,
   getTrusteeAppointment,
+  getTrusteeAssistant,
   getTrusteeHistory,
   getLegacyTrustee,
 };
