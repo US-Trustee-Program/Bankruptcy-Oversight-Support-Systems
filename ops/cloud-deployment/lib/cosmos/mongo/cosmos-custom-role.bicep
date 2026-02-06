@@ -1,7 +1,7 @@
 @description('Cosmos DB account name, max length 44 characters')
 param accountName string
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-09-15' existing = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
   name: accountName
 }
 
