@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteesRepository } from '../gateways.types';
+import { TrusteesRepository, TrusteeAssistantsRepository } from '../gateways.types';
 import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
@@ -79,9 +79,11 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
 
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
+  private readonly trusteeAssistantsRepository: TrusteeAssistantsRepository;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = factory.getTrusteesRepository(context);
+    this.trusteeAssistantsRepository = factory.getTrusteeAssistantsRepository(context);
   }
 
   private checkValidation(validatorResult: ValidatorResult) {
@@ -180,7 +182,14 @@ export class TrusteesUseCase {
       // Retrieve individual trustee from repository
       const trustee = await this.trusteesRepository.read(trusteeId);
 
-      context.logger.info(MODULE_NAME, `Retrieved trustee ${trusteeId}`);
+      // Fetch and populate assistants array
+      const assistants = await this.trusteeAssistantsRepository.getTrusteeAssistants(trusteeId);
+      trustee.assistants = assistants;
+
+      context.logger.info(
+        MODULE_NAME,
+        `Retrieved trustee ${trusteeId} with ${assistants.length} assistants`,
+      );
       return trustee;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
