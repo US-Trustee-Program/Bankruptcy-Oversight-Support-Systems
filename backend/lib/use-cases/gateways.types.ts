@@ -363,7 +363,7 @@ export type OfficeAssignee = {
   name: string;
 };
 
-export type LogicalQueueNames = 'CASE_ASSIGNMENT_EVENT' | 'CASE_CLOSED_EVENT';
+export type LogicalQueueNames = 'CASE_ASSIGNMENT_EVENT' | 'CASE_CLOSED_EVENT' | 'SYNC_CASES_PAGE';
 
 export interface QueueGateway {
   using<T = unknown>(

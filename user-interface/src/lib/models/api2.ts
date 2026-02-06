@@ -485,6 +485,10 @@ async function deleteBank(id: string) {
   return api().delete(`/lists/banks/${id}`);
 }
 
+async function postCaseReload(caseId: string) {
+  await api().post('/dev-tools/case-reload', { caseId });
+}
+
 async function getTrusteeOversightAssignments(trusteeId: string) {
   return api().get<TrusteeOversightAssignment[]>(`/trustees/${trusteeId}/oversight-assignments`);
 }
@@ -551,6 +555,7 @@ export const _Api2 = {
   postBankruptcySoftware,
   deleteBankruptcySoftware,
   getOversightStaff,
+  postCaseReload,
 };
 
 const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
