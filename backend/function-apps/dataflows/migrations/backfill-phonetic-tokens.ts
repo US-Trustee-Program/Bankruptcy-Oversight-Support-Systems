@@ -248,7 +248,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
 async function handleError(event: BackfillEvent, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
-  logger.info(
+  logger.error(
     MODULE_NAME,
     `Error encountered backfilling case ${event.caseId}: ${event.error?.message ?? 'Unknown error'}.`,
   );
@@ -275,7 +275,7 @@ async function handleRetry(event: BackfillEvent, invocationContext: InvocationCo
 
   if (event.retryCount > RETRY_LIMIT) {
     invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    logger.info(MODULE_NAME, `Too many retry attempts for case ${event.caseId}.`);
+    logger.error(MODULE_NAME, `Too many retry attempts for case ${event.caseId}.`);
     return;
   }
 
