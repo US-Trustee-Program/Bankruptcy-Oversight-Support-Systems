@@ -11,6 +11,7 @@
 - [Backend Logging](/architecture/decision-records/BackendLogging.md)
 - [BDD Full-Stack Testing](/architecture/decision-records/BddFullStackTesting.md)
 - [Testing Framework](/architecture/decision-records/TestingFramework.md)
+- [Cross-Function App Queue Communication](/architecture/decision-records/CrossFunctionAppQueueCommunication.md)
 - [Dataflows](/architecture/decision-records/Dataflows.md)
 - [Dead Code Detection](/architecture/decision-records/DeadCodeDetection.md)
 - [Deployment](/architecture/decision-records/Deployment.md)

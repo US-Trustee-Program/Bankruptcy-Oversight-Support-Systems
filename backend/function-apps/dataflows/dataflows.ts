@@ -16,6 +16,7 @@ import ResyncTerminalTransactionCases from './migrations/resync-terminal-transac
 import SyncCases from './import/sync-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
+import QueueSyncCasesPage from './queue-sync-cases-page';
 /*
 
 dataflows.ts
@@ -110,6 +111,7 @@ dataflows.register(
   MigrateConsolidations,
   ResyncRemainingCases,
   ResyncTerminalTransactionCases,
+  QueueSyncCasesPage,
   SyncCases,
   SyncOfficeStaff,
   SyncOrders,
