@@ -456,14 +456,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
           <Button id="submit-button" type="submit">
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
-          <Button
-            className="spaced-button"
-            type="button"
-            onClick={handleCancel}
-            uswdsStyle={UswdsButtonStyle.Unstyled}
-          >
-            Cancel
-          </Button>
           {!isCreateMode && assistantId && (
             <OpenModalButton
               id="delete-assistant-button"
@@ -474,7 +466,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
               openProps={{
                 trusteeId,
                 assistantId,
-                assistantName: formData.name ?? 'this assistant',
                 buttonId: 'delete-assistant-button',
                 callback: handleDeleteSuccess,
               }}
@@ -483,6 +474,14 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
               Delete
             </OpenModalButton>
           )}
+          <Button
+            className="spaced-button"
+            type="button"
+            onClick={handleCancel}
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+          >
+            Cancel
+          </Button>
         </div>
       </form>
       {!isCreateMode && assistantId && (

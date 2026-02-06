@@ -2442,6 +2442,10 @@ async function updateTrusteeAssistant(
   };
 }
 
+async function deleteTrusteeAssistant(_trusteeId: string, _assistantId: string) {
+  return;
+}
+
 async function getBankruptcySoftwareList() {
   return {
     data: [
@@ -2563,6 +2567,7 @@ const MockApi2 = {
   getAssistant,
   createTrusteeAssistant,
   updateTrusteeAssistant,
+  deleteTrusteeAssistant,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,
