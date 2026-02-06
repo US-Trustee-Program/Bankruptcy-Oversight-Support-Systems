@@ -10,7 +10,7 @@ export interface TrusteeDetailProfileProps {
   onEditPublicProfile: () => void;
   onEditInternalProfile: () => void;
   onAddAssistant: () => void;
-  onEditAssistant: () => void;
+  onEditAssistant: (assistantId: string) => void;
   onEditOtherInformation: () => void;
   onEditZoomInfo: () => void;
 }
@@ -110,49 +110,77 @@ export default function TrusteeDetailProfile({
               <FormattedContact contact={trustee.internal} testIdPrefix="trustee-internal" />
             )}
           </div>
-          <div className="trustee-assistant-information record-detail-card">
-            <div className="title-bar">
-              <h3>
-                Trustee Assistant (USTP Internal)
-                <Button
-                  id="edit-assistant"
-                  uswdsStyle={UswdsButtonStyle.Unstyled}
-                  aria-label="Edit trustee assistant information"
-                  title="Edit trustee assistant information"
-                  onClick={trustee.assistant ? onEditAssistant : onAddAssistant}
-                >
-                  <IconLabel icon="edit" label="Edit" />
-                </Button>
-              </h3>
-            </div>
-            {!trustee.assistant && (
+          {/* Display assistants - support for multiple */}
+          {(!trustee.assistants || trustee.assistants.length === 0) && (
+            <div className="trustee-assistant-information record-detail-card">
+              <div className="title-bar">
+                <h3>
+                  Trustee Assistant (USTP Internal)
+                  <Button
+                    id="edit-assistant-empty"
+                    uswdsStyle={UswdsButtonStyle.Unstyled}
+                    aria-label="Add assistant"
+                    title="Add assistant"
+                    onClick={onAddAssistant}
+                  >
+                    <IconLabel icon="edit" label="Edit" />
+                  </Button>
+                </h3>
+              </div>
               <div data-testid="no-assistant-information">No information added.</div>
-            )}
-            {!!trustee.assistant && (
-              <>
-                <div className="assistant-name" data-testid="assistant-name">
-                  {trustee.assistant.name}
-                </div>
-                {trustee.assistant.title && (
-                  <div className="assistant-title" data-testid="assistant-title">
-                    {trustee.assistant.title}
-                  </div>
-                )}
-                <FormattedContact
-                  contact={trustee.assistant.contact}
-                  testIdPrefix="trustee-assistant"
-                />
-                <Button
-                  id="add-another-assistant"
-                  uswdsStyle={UswdsButtonStyle.Default}
-                  aria-label="Add another assistant"
-                  onClick={onAddAssistant}
+            </div>
+          )}
+          {trustee.assistants && trustee.assistants.length > 0 && (
+            <>
+              {trustee.assistants.map((assistant, index) => (
+                <div
+                  key={assistant.id || index}
+                  className="trustee-assistant-information record-detail-card"
                 >
-                  <IconLabel icon="add" label="Add Another Assistant" />
-                </Button>
-              </>
-            )}
-          </div>
+                  <div className="title-bar">
+                    <h3>
+                      Trustee Assistant (USTP Internal)
+                      <Button
+                        id={`edit-assistant-${index}`}
+                        uswdsStyle={UswdsButtonStyle.Unstyled}
+                        aria-label={`Edit assistant ${assistant.name}`}
+                        title={`Edit assistant ${assistant.name}`}
+                        onClick={() => onEditAssistant(assistant.id)}
+                      >
+                        <IconLabel icon="edit" label="Edit" />
+                      </Button>
+                    </h3>
+                  </div>
+                  <div
+                    className="assistant-name"
+                    data-testid={`assistant-name-${index}`}
+                    style={{ fontWeight: 'bold' }}
+                  >
+                    {assistant.name}
+                  </div>
+                  {assistant.title && (
+                    <div className="assistant-title" data-testid={`assistant-title-${index}`}>
+                      {assistant.title}
+                    </div>
+                  )}
+                  {assistant.contact && (
+                    <FormattedContact
+                      contact={assistant.contact}
+                      testIdPrefix={`assistant-${index}`}
+                    />
+                  )}
+                </div>
+              ))}
+              <Button
+                id="add-another-assistant-button"
+                uswdsStyle={UswdsButtonStyle.Primary}
+                aria-label="Add another assistant"
+                onClick={onAddAssistant}
+              >
+                + Add Another Assistant
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </div>
