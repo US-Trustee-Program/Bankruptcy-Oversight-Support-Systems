@@ -1,0 +1,64 @@
+name: Snyk Security
+
+on: workflow_call
+
+jobs:
+  snyk-sca:
+    name: Snyk SCA Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Snyk CLI
+        uses: snyk/actions/setup@master
+        with:
+          snyk-version: latest
+
+      - name: Authenticate with Snyk
+        run: snyk auth --auth-type=oauth --client-secret=${{ secrets.SNYK_OAUTH_CLIENT_SECRET }} --client-id=${{ secrets.SNYK_OAUTH_CLIENT_ID }}
+        env:
+          SNYK_API: https://api.snykgov.io
+
+      - name: Run Snyk SCA scan
+        run: snyk test --all-projects --severity-threshold=medium --sarif-file-output=snyk-sca.sarif
+        env:
+          SNYK_API: https://api.snykgov.io
+
+      - name: Monitor project in Snyk
+        if: always()
+        run: snyk monitor --all-projects
+        env:
+          SNYK_API: https://api.snykgov.io
+
+      - name: Upload SARIF to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-sca.sarif
+
+  snyk-sast:
+    name: Snyk Code (SAST)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Snyk CLI
+        uses: snyk/actions/setup@master
+        with:
+          snyk-version: latest
+
+      - name: Authenticate with Snyk
+        run: snyk auth --auth-type=oauth --client-secret=${{ secrets.SNYK_OAUTH_CLIENT_SECRET }} --client-id=${{ secrets.SNYK_OAUTH_CLIENT_ID }}
+        env:
+          SNYK_API: https://api.snykgov.io
+
+      - name: Run Snyk Code (SAST) scan
+        run: snyk code test --severity-threshold=medium --sarif-file-output=snyk-code.sarif
+        env:
+          SNYK_API: https://api.snykgov.io
+
+      - name: Upload SARIF to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-code.sarif
