@@ -21,6 +21,7 @@ import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
+import { Address, PhoneNumber } from '@common/cams/contact';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
   if (!assistant) {
@@ -39,6 +40,21 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
   }
 
   const contact = assistant.contact;
+  if (!contact) {
+    return {
+      name: assistant.name,
+      title: assistant.title,
+      address1: undefined,
+      address2: undefined,
+      city: undefined,
+      state: undefined,
+      zipCode: undefined,
+      phone: undefined,
+      extension: undefined,
+      email: undefined,
+    };
+  }
+
   return {
     name: assistant.name,
     title: assistant.title,
@@ -93,33 +109,61 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
+  function getAddressInfo({
+    address1,
+    address2,
+    city,
+    zipCode,
+    state,
+  }: Partial<Address>): Address | undefined {
+    if (!address1 || !city || !state || !zipCode) return undefined;
+    return {
+      address1,
+      address2,
+      city,
+      state,
+      zipCode,
+      countryCode: 'US' as const,
+    };
+  }
+
+  function getPhoneInfo({
+    phone,
+    extension,
+  }: {
+    phone?: string;
+    extension?: string;
+  }): PhoneNumber | undefined {
+    if (!phone) return undefined;
+    return {
+      number: phone,
+      extension: extension,
+    };
+  }
+
   const mapPayload = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
     // If name is empty, clear the entire assistant
-    if (!formData.name) {
+    const { name, title, ...contactInfo } = formData;
+    if (!name) {
       return { assistant: undefined };
     }
 
-    return {
-      assistant: {
-        name: formData.name,
-        ...(formData.title && { title: formData.title }),
-        contact: {
-          address:
-            formData.address1 && formData.city && formData.state && formData.zipCode
-              ? {
-                  address1: formData.address1,
-                  ...(formData.address2 && { address2: formData.address2 }),
-                  city: formData.city,
-                  state: formData.state,
-                  zipCode: formData.zipCode,
-                  countryCode: 'US',
-                }
-              : null,
-          phone: formData.phone ? { number: formData.phone, extension: formData.extension } : null,
-          email: formData.email ?? null,
-        },
-      },
-    } as Partial<TrusteeInput>;
+    const assistantTrusteePayload: Partial<TrusteeAssistant> & { name: string } = { name };
+    if (title) assistantTrusteePayload.title = title;
+
+    const addressInfo = getAddressInfo(contactInfo);
+    const phoneInfo = getPhoneInfo(contactInfo);
+    const emailInfo = contactInfo.email || undefined;
+
+    const hasContactInfo = addressInfo || phoneInfo || emailInfo;
+    if (!hasContactInfo) return { assistant: assistantTrusteePayload };
+
+    assistantTrusteePayload.contact = {};
+    if (addressInfo) assistantTrusteePayload.contact.address = addressInfo;
+    if (phoneInfo) assistantTrusteePayload.contact.phone = phoneInfo;
+    if (emailInfo) assistantTrusteePayload.contact.email = emailInfo;
+
+    return { assistant: assistantTrusteePayload };
   };
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,6 +218,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const validateFormAndUpdateErrors = (formData: TrusteeAssistantFormData): boolean => {
     const results = validateObject(trusteeAssistantSpec, formData);
+    partialAddressAlertRef.current?.hide();
 
     if (!results.valid && results.reasonMap) {
       setFieldErrors(
@@ -381,6 +426,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
         <Alert
           role="alert"
+          id="assistant-form-error-alert"
           className="form-field-warning"
           type={UswdsAlertStyle.Error}
           inline={true}

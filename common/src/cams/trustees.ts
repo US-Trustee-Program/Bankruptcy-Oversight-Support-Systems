@@ -73,7 +73,7 @@ export type ZoomInfo = {
 export type TrusteeAssistant = {
   name: string;
   title?: string;
-  contact: ContactInformation;
+  contact?: Partial<ContactInformation>;
 };
 
 type TrusteeCore = {
