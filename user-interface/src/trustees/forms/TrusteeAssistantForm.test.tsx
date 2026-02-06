@@ -523,6 +523,33 @@ describe('TrusteeAssistantForm', () => {
     });
   });
 
+  describe('Delete Functionality', () => {
+    test('should show Delete button in edit mode', async () => {
+      const assistantId = 'assistant-456';
+      const mockAssistant = MockData.getTrusteeAssistant({
+        id: assistantId,
+        trusteeId: TEST_TRUSTEE_ID,
+      });
+      vi.spyOn(Api2, 'getAssistant').mockResolvedValue({ data: mockAssistant });
+
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('assistant-name')).toHaveValue(mockAssistant.name);
+      });
+
+      expect(screen.getByTestId('open-modal-button_delete-assistant-button')).toBeInTheDocument();
+    });
+
+    test('should not show Delete button in create mode', () => {
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId: 'new' });
+
+      expect(
+        screen.queryByTestId('open-modal-button_delete-assistant-button'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('validateField Helper Function', () => {
     test('should return undefined for valid field value', () => {
       const result = validateField('name', 'Valid Name');

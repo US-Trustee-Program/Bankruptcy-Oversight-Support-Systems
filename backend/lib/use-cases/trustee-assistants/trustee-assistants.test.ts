@@ -340,4 +340,78 @@ describe('TrusteeAssistantsUseCase', () => {
       );
     });
   });
+
+  describe('deleteAssistant', () => {
+    const trusteeId = 'trustee-123';
+    const assistantId = 'assistant-456';
+    const existingAssistant = MockData.getTrusteeAssistant({
+      id: assistantId,
+      trusteeId,
+      name: 'Jane Assistant',
+    });
+
+    test('should delete an assistant and create audit history', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      vi.spyOn(MockMongoRepository.prototype, 'read')
+        .mockResolvedValueOnce(mockTrustee)
+        .mockResolvedValueOnce(existingAssistant);
+      vi.spyOn(MockMongoRepository.prototype, 'deleteAssistant').mockResolvedValue(undefined);
+      const createHistorySpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue(undefined);
+
+      await trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId);
+
+      expect(MockMongoRepository.prototype.deleteAssistant).toHaveBeenCalledWith(assistantId);
+      expect(createHistorySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'AUDIT_ASSISTANT',
+          assistantId,
+          before: existingAssistant,
+          after: undefined,
+        }),
+      );
+    });
+
+    test('should throw error when trustee does not exist', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+        new UnknownError(MODULE_NAME, { message: 'Trustee not found' }),
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+
+    test('should throw error when assistant does not exist', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      vi.spyOn(MockMongoRepository.prototype, 'read')
+        .mockResolvedValueOnce(mockTrustee)
+        .mockRejectedValueOnce(new Error('Assistant not found'));
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+
+    test('should throw error when repository delete fails', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      vi.spyOn(MockMongoRepository.prototype, 'read')
+        .mockResolvedValueOnce(mockTrustee)
+        .mockResolvedValueOnce(existingAssistant);
+      vi.spyOn(MockMongoRepository.prototype, 'deleteAssistant').mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+  });
 });

@@ -162,4 +162,25 @@ describe('TrusteeAssistantsMongoRepository', () => {
       );
     });
   });
+
+  describe('deleteAssistant', () => {
+    test('should delete an assistant by ID', async () => {
+      const expectedQuery = createQuery({ field: 'id', value: 'assistant-1' });
+      const mockDeleteOne = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockImplementation(mockDeleteOne);
+
+      await repository.deleteAssistant('assistant-1');
+
+      expect(mockDeleteOne).toHaveBeenCalledWith(expectedQuery);
+    });
+
+    test('should wrap database errors with context', async () => {
+      const mockDeleteOne = vi.fn().mockRejectedValue(new Error('Database error'));
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockImplementation(mockDeleteOne);
+
+      await expect(repository.deleteAssistant('assistant-1')).rejects.toThrow(
+        'Failed to delete trustee assistant assistant-1',
+      );
+    });
+  });
 });

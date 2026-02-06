@@ -54,6 +54,7 @@ describe('TrusteeAssistantsController', () => {
       getAssistant: vi.fn(),
       createAssistant: vi.fn(),
       updateAssistant: vi.fn(),
+      deleteAssistant: vi.fn(),
     } as unknown as Mocked<TrusteeAssistantsUseCase>;
 
     (TrusteeAssistantsUseCase as MockedClass<typeof TrusteeAssistantsUseCase>).mockImplementation(
@@ -330,13 +331,54 @@ describe('TrusteeAssistantsController', () => {
     });
   });
 
-  describe('Unsupported HTTP methods', () => {
-    test('should return BadRequestError for DELETE method', async () => {
+  describe('DELETE /api/trustees/:trusteeId/assistants/:assistantId', () => {
+    beforeEach(() => {
       context.request.method = 'DELETE';
+    });
+
+    test('should delete an assistant and return 204', async () => {
+      const trusteeId = 'trustee-123';
+      const assistantId = 'assistant-456';
+
+      context.request.params = { trusteeId, assistantId };
+      context.request.url = `/api/trustees/${trusteeId}/assistants/${assistantId}`;
+      mockUseCase.deleteAssistant.mockResolvedValue(undefined);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(204);
+      expect(mockUseCase.deleteAssistant).toHaveBeenCalledWith(context, trusteeId, assistantId);
+    });
+
+    test('should throw error when trusteeId is not provided', async () => {
+      context.request.params = { assistantId: 'assistant-456' };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
+    });
+
+    test('should throw error when assistantId is not provided', async () => {
+      context.request.params = { trusteeId: 'trustee-123' };
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Assistant ID is required');
+    });
+
+    test('should propagate use case errors', async () => {
+      const trusteeId = 'trustee-123';
+      const assistantId = 'assistant-456';
+      context.request.params = { trusteeId, assistantId };
+      mockUseCase.deleteAssistant.mockRejectedValue(new Error('Assistant not found'));
+
+      await expect(controller.handleRequest(context)).rejects.toThrow();
+    });
+  });
+
+  describe('Unsupported HTTP methods', () => {
+    test('should return BadRequestError for PATCH method', async () => {
+      context.request.method = 'PATCH';
       context.request.params['trusteeId'] = 'trustee-123';
 
       await expect(controller.handleRequest(context)).rejects.toThrow(
-        'HTTP method DELETE is not supported',
+        'HTTP method PATCH is not supported',
       );
     });
   });
