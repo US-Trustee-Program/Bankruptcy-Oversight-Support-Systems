@@ -44,7 +44,7 @@ import {
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { TrusteeAssistant } from '@common/cams/trustee-assistants';
+import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { OversightRoleType } from '@common/cams/roles';
 import {
   BankList,
@@ -287,6 +287,10 @@ async function getTrusteeAssistants(trusteeId: string) {
   return api().get<TrusteeAssistant[]>(`/trustees/${trusteeId}/assistants`);
 }
 
+async function createTrusteeAssistant(trusteeId: string, assistant: TrusteeAssistantInput) {
+  return api().post(`/trustees/${trusteeId}/assistants`, assistant);
+}
+
 async function getCaseDetail(caseId: string) {
   return api().get<CaseDetail>(`/cases/${caseId}`);
 }
@@ -488,6 +492,7 @@ export const _Api2 = {
   postTrusteeAppointment,
   putTrusteeAppointment,
   getTrusteeAssistants,
+  createTrusteeAssistant,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   postTrustee,
