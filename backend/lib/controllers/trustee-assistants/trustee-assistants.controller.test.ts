@@ -9,6 +9,8 @@ import { TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 // Mock the use case
+import MockData from '@common/cams/test-utilities/mock-data';
+
 vi.mock('../../use-cases/trustee-assistants/trustee-assistants');
 
 describe('TrusteeAssistantsController', () => {
@@ -20,6 +22,8 @@ describe('TrusteeAssistantsController', () => {
     id: 'user123',
     name: 'Test User',
   };
+
+  const sampleAssistant = MockData.getTrusteeAssistant();
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -92,6 +96,91 @@ describe('TrusteeAssistantsController', () => {
 
     test('should throw error when trusteeId is not provided', async () => {
       context.request.body = assistantInput;
+      await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
+    });
+  });
+
+  describe('Feature flag protection', () => {
+    test('should return 404 when trustee-management feature is disabled', async () => {
+      context.featureFlags['trustee-management'] = false;
+      context.request.method = 'GET';
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(404);
+    });
+  });
+
+  describe('Role-based authorization', () => {
+    test('should allow access for users with TrusteeAdmin role', async () => {
+      context.request.method = 'GET';
+      context.request.params['trusteeId'] = 'trustee-123';
+      mockUseCase.getTrusteeAssistants.mockResolvedValue([sampleAssistant]);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+    });
+
+    test('should deny access for users without TrusteeAdmin role', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request.method = 'GET';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'User does not have permission to access trustee assistants',
+      );
+    });
+
+    test('should deny access when user roles are undefined', async () => {
+      delete context.session.user.roles;
+      context.request.method = 'GET';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'User does not have permission to access trustee assistants',
+      );
+    });
+  });
+
+  describe('GET /api/trustees/:trusteeId/assistants', () => {
+    beforeEach(() => {
+      context.request.method = 'GET';
+    });
+
+    test('should return list of assistants for trustee', async () => {
+      const trusteeId = 'trustee-123';
+      const assistant1 = MockData.getTrusteeAssistant({ trusteeId });
+      const assistant2 = MockData.getTrusteeAssistant({ trusteeId });
+
+      context.request.params['trusteeId'] = trusteeId;
+      context.request.url = `/api/trustees/${trusteeId}/assistants`;
+      mockUseCase.getTrusteeAssistants.mockResolvedValue([assistant1, assistant2]);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.data).toEqual([assistant1, assistant2]);
+      expect(result.body?.meta).toEqual({
+        self: `/api/trustees/${trusteeId}/assistants`,
+      });
+      expect(mockUseCase.getTrusteeAssistants).toHaveBeenCalledWith(context, trusteeId);
+    });
+
+    test('should return empty array when trustee has no assistants', async () => {
+      const trusteeId = 'trustee-456';
+
+      context.request.params['trusteeId'] = trusteeId;
+      context.request.url = `/api/trustees/${trusteeId}/assistants`;
+      mockUseCase.getTrusteeAssistants.mockResolvedValue([]);
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body?.data).toEqual([]);
+      expect(mockUseCase.getTrusteeAssistants).toHaveBeenCalledWith(context, trusteeId);
+    });
+
+    test('should return 400 when trusteeId is missing', async () => {
+      context.request.params = {};
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Trustee ID is required');
     });
@@ -121,7 +210,44 @@ describe('TrusteeAssistantsController', () => {
 
       expect(result.statusCode).toBe(201);
       expect(result.body?.meta?.self).toBe(
-        `/api/trustees/${trusteeId}/assistants/${createdAssistant.id}`,
+        `/api/trustees/${trusteeId}/assistants/${createdAssistant.id}`
+      );
+    });
+
+    test('should propagate use case errors', async () => {
+      const trusteeId = 'trustee-123';
+      context.request.params['trusteeId'] = trusteeId;
+      mockUseCase.getTrusteeAssistants.mockRejectedValue(new Error('Trustee not found'));
+
+      await expect(controller.handleRequest(context)).rejects.toThrow();
+    });
+  });
+
+  describe('Unsupported HTTP methods', () => {
+    test('should return BadRequestError for POST method', async () => {
+      context.request.method = 'POST';
+      context.request.params['trusteeId'] = 'trustee-123';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'HTTP method POST is not supported',
+      );
+    });
+
+    test('should return BadRequestError for PUT method', async () => {
+      context.request.method = 'PUT';
+      context.request.params['trusteeId'] = 'trustee-123';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'HTTP method PUT is not supported',
+      );
+    });
+
+    test('should return BadRequestError for DELETE method', async () => {
+      context.request.method = 'DELETE';
+      context.request.params['trusteeId'] = 'trustee-123';
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(
+        'HTTP method DELETE is not supported',
       );
     });
   });
