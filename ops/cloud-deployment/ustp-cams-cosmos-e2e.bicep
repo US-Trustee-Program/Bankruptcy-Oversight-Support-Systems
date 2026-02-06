@@ -7,7 +7,7 @@ param databaseName string
 @description('List of container name and keys')
 param databaseCollections array = [] // See parameters.json file
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-09-15' existing = {
   name: accountName
   scope: resourceGroup(resourceGroupName)
 }
