@@ -1,6 +1,9 @@
 import { app, InvocationContext } from '@azure/functions';
 import ModuleNames from '../module-names';
-import { CASE_ASSIGNMENT_EVENT_DLQ, CASE_ASSIGNMENT_EVENT_QUEUE } from '../storage-queues';
+import {
+  CASE_ASSIGNMENT_EVENT_DLQ,
+  CASE_ASSIGNMENT_EVENT_QUEUE,
+} from '../../../lib/storage-queues';
 import { buildFunctionName } from '../dataflows-common';
 import { CaseAssignment } from '@common/cams/assignments';
 import ContextCreator from '../../azure/application-context-creator';

@@ -23,7 +23,6 @@ import {
   OrdersRepository,
   OrderSyncState,
   PhoneticBackfillState,
-  QueueGateway,
   RuntimeState,
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
@@ -68,7 +67,6 @@ import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository'
 import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
 import { getCamsErrorWithStack } from './common-errors/error-utilities';
 import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
-import StorageQueueGateway from './adapters/gateways/storage-queue/storage-queue-gateway';
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
 import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
 import { TrusteeAssistantsMongoRepository } from './adapters/gateways/mongo/trustee-assistants.mongo.repository';
@@ -78,6 +76,8 @@ import {
   ServerConfigError,
   UNSUPPORTED_AUTHENTICATION_PROVIDER,
 } from './common-errors/server-config-error';
+import { ApiToDataflowsGateway } from './use-cases/gateways.types';
+import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -399,10 +399,6 @@ const getTrusteeAssistantsRepository = (
   return repo;
 };
 
-const getQueueGateway = (_ignore: ApplicationContext): QueueGateway => {
-  return StorageQueueGateway;
-};
-
 const getListsGateway = (context: ApplicationContext): ListsRepository => {
   if (context.config.get('dbMock')) {
     return new MockMongoRepository();
@@ -410,6 +406,10 @@ const getListsGateway = (context: ApplicationContext): ListsRepository => {
   const repo = ListsMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
+};
+
+const getApiToDataflowsGateway = (context: ApplicationContext): ApiToDataflowsGateway => {
+  return new ApiToDataflowsGatewayImpl(context);
 };
 
 const factory = {
@@ -441,9 +441,9 @@ const factory = {
   getTrusteesRepository,
   getTrusteeAppointmentsRepository,
   getTrusteeAssistantsRepository,
-  getQueueGateway,
   getListsGateway,
   getUserGroupsRepository,
+  getApiToDataflowsGateway,
 };
 
 export default factory;
