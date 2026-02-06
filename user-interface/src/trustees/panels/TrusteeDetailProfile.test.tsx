@@ -372,6 +372,7 @@ describe('TrusteeDetailProfile', () => {
       assistants: [
         {
           id: 'assistant-1',
+          trusteeId: mockTrustee.id,
           name: 'Jane Assistant',
           title: 'Senior Assistant',
           contact: {
@@ -385,6 +386,8 @@ describe('TrusteeDetailProfile', () => {
             phone: { number: '555-111-2222', extension: '456' },
             email: 'jane.assistant@example.com',
           },
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2024-01-01T00:00:00Z',
         },
       ],
     };
@@ -406,6 +409,7 @@ describe('TrusteeDetailProfile', () => {
       assistants: [
         {
           id: 'assistant-1',
+          trusteeId: mockTrustee.id,
           name: 'Jane Assistant',
           contact: {
             address: {
@@ -418,6 +422,8 @@ describe('TrusteeDetailProfile', () => {
             phone: { number: '555-111-2222' },
             email: 'jane.assistant@example.com',
           },
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2024-01-01T00:00:00Z',
         },
       ],
     };
@@ -447,6 +453,7 @@ describe('TrusteeDetailProfile', () => {
       assistants: [
         {
           id: 'assistant-1',
+          trusteeId: mockTrustee.id,
           name: 'Jane Assistant',
           contact: {
             address: {
@@ -459,6 +466,8 @@ describe('TrusteeDetailProfile', () => {
             phone: { number: '555-111-2222' },
             email: 'jane.assistant@example.com',
           },
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2024-01-01T00:00:00Z',
         },
       ],
     };
