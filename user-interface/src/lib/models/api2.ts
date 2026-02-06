@@ -303,6 +303,10 @@ async function updateTrusteeAssistant(
   return api().put(`/trustees/${trusteeId}/assistants/${assistantId}`, assistant);
 }
 
+async function deleteTrusteeAssistant(trusteeId: string, assistantId: string) {
+  return api().delete(`/trustees/${trusteeId}/assistants/${assistantId}`);
+}
+
 async function getCaseDetail(caseId: string) {
   return api().get<CaseDetail>(`/cases/${caseId}`);
 }
@@ -507,6 +511,7 @@ export const _Api2 = {
   getAssistant,
   createTrusteeAssistant,
   updateTrusteeAssistant,
+  deleteTrusteeAssistant,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   postTrustee,

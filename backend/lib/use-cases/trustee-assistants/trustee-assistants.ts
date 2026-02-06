@@ -163,4 +163,36 @@ export class TrusteeAssistantsUseCase {
       });
     }
   }
+
+  async deleteAssistant(
+    context: ApplicationContext,
+    trusteeId: string,
+    assistantId: string,
+  ): Promise<void> {
+    try {
+      await this.trusteesRepository.read(trusteeId);
+      const existingAssistant = await this.trusteeAssistantsRepository.read(assistantId);
+      await this.trusteeAssistantsRepository.deleteAssistant(assistantId);
+
+      const historyRecord: Omit<TrusteeAssistantHistory, keyof Auditable | 'id'> = {
+        documentType: 'AUDIT_ASSISTANT',
+        trusteeId,
+        assistantId,
+        before: existingAssistant,
+        after: undefined,
+      };
+      await this.trusteesRepository.createTrusteeHistory(
+        createAuditRecord(historyRecord, context.session.user),
+      );
+
+      context.logger.info(MODULE_NAME, `Deleted assistant ${assistantId} for trustee ${trusteeId}`);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: `Failed to delete assistant with ID ${assistantId} for trustee ${trusteeId}.`,
+        },
+      });
+    }
+  }
 }

@@ -4,6 +4,7 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import TrusteeDetailProfile, { TrusteeDetailProfileProps } from './TrusteeDetailProfile';
 import { Trustee } from '@common/cams/trustees';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 const mockTrustee: Trustee = {
   id: '--id-guid--',
@@ -488,5 +489,72 @@ describe('TrusteeDetailProfile', () => {
 
     const addAnotherButton = screen.queryByTestId('button-add-another-assistant-button');
     expect(addAnotherButton).not.toBeInTheDocument();
+  });
+
+  test('should call onAddAssistant when "Add Another Assistant" button is clicked', async () => {
+    const assistant = MockData.getTrusteeAssistant({ trusteeId: mockTrustee.id });
+    const trusteeWithAssistant = {
+      ...mockTrustee,
+      assistants: [assistant],
+    };
+
+    renderWithProps({ trustee: trusteeWithAssistant });
+
+    const addAnotherButton = screen.getByTestId('button-add-another-assistant-button');
+    await userEvent.click(addAnotherButton);
+
+    expect(mockOnAddAssistant).toHaveBeenCalledTimes(1);
+  });
+
+  test('should render multiple assistants with individual edit buttons', () => {
+    const assistant1 = MockData.getTrusteeAssistant({
+      trusteeId: mockTrustee.id,
+      name: 'Jane Assistant',
+      title: 'Senior Assistant',
+    });
+    const assistant2 = MockData.getTrusteeAssistant({
+      trusteeId: mockTrustee.id,
+      name: 'Bob Helper',
+      title: 'Legal Assistant',
+    });
+    const trusteeWithMultipleAssistants = {
+      ...mockTrustee,
+      assistants: [assistant1, assistant2],
+    };
+
+    renderWithProps({ trustee: trusteeWithMultipleAssistants });
+
+    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
+    expect(screen.getByTestId('assistant-title-0')).toHaveTextContent('Senior Assistant');
+    expect(screen.getByTestId('assistant-name-1')).toHaveTextContent('Bob Helper');
+    expect(screen.getByTestId('assistant-title-1')).toHaveTextContent('Legal Assistant');
+
+    expect(screen.getByTestId('button-edit-assistant-0')).toBeInTheDocument();
+    expect(screen.getByTestId('button-edit-assistant-1')).toBeInTheDocument();
+    expect(screen.getByTestId('button-add-another-assistant-button')).toBeInTheDocument();
+  });
+
+  test('should call onEditAssistant with correct ID when edit button is clicked', async () => {
+    const assistant = MockData.getTrusteeAssistant({ trusteeId: mockTrustee.id });
+    const trusteeWithAssistant = {
+      ...mockTrustee,
+      assistants: [assistant],
+    };
+
+    renderWithProps({ trustee: trusteeWithAssistant });
+
+    const editButton = screen.getByTestId('button-edit-assistant-0');
+    await userEvent.click(editButton);
+
+    expect(mockOnEditAssistant).toHaveBeenCalledWith(assistant.id);
+  });
+
+  test('should call onAddAssistant when edit button is clicked in empty state', async () => {
+    renderWithProps({ trustee: { ...mockTrustee, assistants: undefined } });
+
+    const editButton = screen.getByTestId('button-edit-assistant-empty');
+    await userEvent.click(editButton);
+
+    expect(mockOnAddAssistant).toHaveBeenCalledTimes(1);
   });
 });

@@ -22,6 +22,11 @@ import { validateEach, validateObject } from '@common/cams/validation';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
+import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
+import TrusteeAssistantRemovalModal, {
+  TrusteeAssistantRemovalModalRef,
+} from '../modals/TrusteeAssistantRemovalModal';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
   if (!assistant) {
@@ -99,6 +104,10 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
+
+  const deleteModalId = 'delete-assistant-modal';
+  const deleteModalRef = useRef<TrusteeAssistantRemovalModalRef>(null);
+  const openDeleteModalButtonRef = useRef<OpenModalButtonRef>(null);
 
   // Load assistant data when in edit mode
   useEffect(() => {
@@ -194,6 +203,10 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   };
 
   const handleCancel = useCallback(() => {
+    navigate.navigateTo(`/trustees/${trusteeId}`);
+  }, [navigate, trusteeId]);
+
+  const handleDeleteSuccess = useCallback(() => {
     navigate.navigateTo(`/trustees/${trusteeId}`);
   }, [navigate, trusteeId]);
 
@@ -451,8 +464,30 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
           >
             Cancel
           </Button>
+          {!isCreateMode && assistantId && (
+            <OpenModalButton
+              id="delete-assistant-button"
+              uswdsStyle={UswdsButtonStyle.Secondary}
+              modalId={deleteModalId}
+              modalRef={deleteModalRef}
+              ref={openDeleteModalButtonRef}
+              openProps={{
+                trusteeId,
+                assistantId,
+                assistantName: formData.name ?? 'this assistant',
+                buttonId: 'delete-assistant-button',
+                callback: handleDeleteSuccess,
+              }}
+              ariaLabel="Delete this assistant"
+            >
+              Delete
+            </OpenModalButton>
+          )}
         </div>
       </form>
+      {!isCreateMode && assistantId && (
+        <TrusteeAssistantRemovalModal ref={deleteModalRef} modalId={deleteModalId} />
+      )}
     </div>
   );
 }

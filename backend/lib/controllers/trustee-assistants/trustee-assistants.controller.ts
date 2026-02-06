@@ -47,7 +47,8 @@ export class TrusteeAssistantsController implements CamsController {
           return await this.handlePostRequest(context);
         case 'PUT':
           return await this.handlePutRequest(context);
-        // TODO: Add DELETE in future slice
+        case 'DELETE':
+          return await this.handleDeleteRequest(context);
         default:
           throw new BadRequestError(MODULE_NAME, {
             message: `HTTP method ${method} is not supported`,
@@ -168,6 +169,29 @@ export class TrusteeAssistantsController implements CamsController {
         data: undefined,
       },
     });
+  }
+
+  private async handleDeleteRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<undefined>> {
+    const trusteeId = context.request.params['trusteeId'];
+    const assistantId = context.request.params['assistantId'];
+
+    if (!trusteeId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Trustee ID is required',
+      });
+    }
+
+    if (!assistantId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Assistant ID is required',
+      });
+    }
+
+    await this.useCase.deleteAssistant(context, trusteeId, assistantId);
+
+    return { statusCode: 204 };
   }
 
   private hasRequiredRole(context: ApplicationContext): boolean {
