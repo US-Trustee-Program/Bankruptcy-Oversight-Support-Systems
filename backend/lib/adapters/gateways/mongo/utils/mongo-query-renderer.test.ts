@@ -1,3 +1,4 @@
+import { ObjectId } from 'mongodb';
 import QueryBuilder, { Field, Query } from '../../../../query/query-builder';
 import { toMongoQuery, toMongoSort } from './mongo-query-renderer';
 
@@ -190,5 +191,41 @@ describe('Mongo Query Renderer', () => {
       ],
     });
     expect(actual).toEqual(expected);
+  });
+
+  describe('ObjectId coercion for _id field', () => {
+    type WithId = { _id: string };
+    const docWithId = QueryBuilder.using<WithId>();
+    // Fake ObjectId for testing - not a real secret, just 24 hex chars
+    const testObjectIdString = '507f1f77bcf86cd799439011'; // pragma: allowlist secret
+
+    test('should convert valid ObjectId string to ObjectId when querying _id', () => {
+      const objectIdString = testObjectIdString;
+      const actual = toMongoQuery(docWithId('_id').equals(objectIdString));
+
+      expect(actual).toEqual({ _id: { $eq: expect.any(ObjectId) } });
+      expect((actual as { _id: { $eq: ObjectId } })._id.$eq.toString()).toBe(objectIdString);
+    });
+
+    test('should convert ObjectId string for greaterThan comparisons on _id', () => {
+      const objectIdString = testObjectIdString;
+      const actual = toMongoQuery(docWithId('_id').greaterThan(objectIdString));
+
+      expect(actual).toEqual({ _id: { $gt: expect.any(ObjectId) } });
+      expect((actual as { _id: { $gt: ObjectId } })._id.$gt.toString()).toBe(objectIdString);
+    });
+
+    test('should not convert non-ObjectId strings for _id', () => {
+      const invalidString = 'not-an-objectid';
+      const actual = toMongoQuery(docWithId('_id').equals(invalidString));
+
+      expect(actual).toEqual({ _id: { $eq: 'not-an-objectid' } });
+    });
+
+    test('should not convert ObjectId-like strings for other fields', () => {
+      const actual = toMongoQuery(doc('uno').equals(testObjectIdString));
+
+      expect(actual).toEqual({ uno: { $eq: testObjectIdString } });
+    });
   });
 });

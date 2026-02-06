@@ -537,21 +537,14 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  public async countByQuery<T>(query: ConditionOrConjunction<T>): Promise<number> {
-    try {
-      return await this.getAdapter<T>().countDocuments(query);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async searchByQuery<T>(
+  public async findByCursor<T>(
     query: ConditionOrConjunction<T>,
-    options: { limit: number; offset: number },
-  ) {
+    options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
+  ): Promise<T[]> {
     try {
-      const spec = pipeline(match(query), paginate(options.offset, options.limit));
-      return await this.getAdapter<T>().paginate(spec);
+      const sortSpec = QueryBuilder.orderBy<T>([options.sortField, options.sortDirection]);
+      const adapter = this.getAdapter<T>();
+      return await adapter.find(query, sortSpec, options.limit);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
