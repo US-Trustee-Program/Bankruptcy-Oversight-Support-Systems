@@ -4,7 +4,7 @@ import { Condition, Field } from '../../../../query/query-builder';
 import { CaseAssignment } from '@common/cams/assignments';
 
 type MongoScoreStage = {
-  $addFields?: Record<string, unknown>;
+  $addFields?: Record<string, object>;
   $project?: Record<string, number>;
 };
 
@@ -213,31 +213,35 @@ describe('aggregation query renderer tests', () => {
     expect(result).toHaveLength(5);
 
     // Stage 1: parse words expressions
-    expect(result[0]).toHaveProperty('$addFields');
-    expect(result[0].$addFields).toHaveProperty('_words_0');
-    expect(result[0].$addFields).toHaveProperty('_words_1');
+    expect(result[0].$addFields).toEqual(
+      expect.objectContaining({ _words_0: expect.any(Object), _words_1: expect.any(Object) }),
+    );
 
     // Stage 2: match count expressions
-    expect(result[1]).toHaveProperty('$addFields');
-    expect(result[1].$addFields).toHaveProperty('_exactMatches_0');
-    expect(result[1].$addFields).toHaveProperty('_nicknameMatches_0');
-    expect(result[1].$addFields).toHaveProperty('_phoneticMatches_0');
-    expect(result[1].$addFields).toHaveProperty('_charPrefixMatch_0');
-    expect(result[1].$addFields).toHaveProperty('_similarLengthMatch_0');
-    expect(result[1].$addFields).toHaveProperty('_exactMatches_1');
-    expect(result[1].$addFields).toHaveProperty('_nicknameMatches_1');
-    expect(result[1].$addFields).toHaveProperty('_phoneticMatches_1');
-    expect(result[1].$addFields).toHaveProperty('_charPrefixMatch_1');
-    expect(result[1].$addFields).toHaveProperty('_similarLengthMatch_1');
+    expect(result[1].$addFields).toEqual(
+      expect.objectContaining({
+        _exactMatches_0: expect.any(Object),
+        _nicknameMatches_0: expect.any(Object),
+        _phoneticMatches_0: expect.any(Object),
+        _charPrefixMatch_0: expect.any(Object),
+        _similarLengthMatch_0: expect.any(Object),
+        _exactMatches_1: expect.any(Object),
+        _nicknameMatches_1: expect.any(Object),
+        _phoneticMatches_1: expect.any(Object),
+        _charPrefixMatch_1: expect.any(Object),
+        _similarLengthMatch_1: expect.any(Object),
+      }),
+    );
 
     // Stage 3: score expressions
-    expect(result[2]).toHaveProperty('$addFields');
-    expect(result[2].$addFields).toHaveProperty('_score_0');
-    expect(result[2].$addFields).toHaveProperty('_score_1');
+    expect(result[2].$addFields).toEqual(
+      expect.objectContaining({ _score_0: expect.any(Object), _score_1: expect.any(Object) }),
+    );
 
     // Stage 4: max score
-    expect(result[3]).toHaveProperty('$addFields');
-    expect(result[3].$addFields).toHaveProperty('matchScore');
+    expect(result[3].$addFields).toEqual(
+      expect.objectContaining({ matchScore: expect.any(Object) }),
+    );
 
     // Stage 5: cleanup
     expect(result[4]).toHaveProperty('$project');
@@ -285,7 +289,7 @@ describe('aggregation query renderer tests', () => {
     // Verify exact match uses searchWords array
     const matchCountStage = result[1].$addFields;
     const exactMatchExpr = matchCountStage._exactMatches_0 as {
-      $size: { $setIntersection: unknown[] };
+      $size: { $setIntersection: [string[], object] };
     };
     expect(exactMatchExpr.$size.$setIntersection[0]).toEqual(['john', 'smith']);
   });
@@ -306,7 +310,7 @@ describe('aggregation query renderer tests', () => {
     // Verify nickname match uses nicknameWords array
     const matchCountStage = result[1].$addFields;
     const nicknameMatchExpr = matchCountStage._nicknameMatches_0 as {
-      $size: { $setIntersection: unknown[] };
+      $size: { $setIntersection: [string[], object] };
     };
     expect(nicknameMatchExpr.$size.$setIntersection[0]).toEqual(['michael', 'mikey', 'mick']);
   });
@@ -327,10 +331,10 @@ describe('aggregation query renderer tests', () => {
     // Verify phonetic match combines both metaphone arrays
     const matchCountStage = result[1].$addFields;
     const phoneticMatchExpr = matchCountStage._phoneticMatches_0 as {
-      $size: { $setIntersection: unknown[] };
+      $size: { $setIntersection: [string[], object] };
     };
     // First element should contain both search and nickname metaphones
-    const metaphones = phoneticMatchExpr.$size.$setIntersection[0] as string[];
+    const metaphones = phoneticMatchExpr.$size.$setIntersection[0];
     expect(metaphones).toContain('MK');
     expect(metaphones).toContain('MXL');
   });
@@ -377,8 +381,8 @@ describe('aggregation query renderer tests', () => {
     expect(matchCountStage._similarLengthMatch_0).toHaveProperty('$cond');
 
     // Verify the score expression includes similar length as a phonetic qualifier
-    const scoreExpr = result[2].$addFields._score_0 as { $add: unknown[] };
-    const phoneticCondition = scoreExpr.$add[2] as { $cond: { if: { $or: unknown[] } } };
+    const scoreExpr = result[2].$addFields._score_0 as { $add: object[] };
+    const phoneticCondition = scoreExpr.$add[2] as { $cond: { if: { $or: object[] } } };
     const qualifiers = phoneticCondition.$cond.if.$or;
 
     // Should have 4 qualifiers: exact, nickname, char prefix, similar length
@@ -432,7 +436,7 @@ describe('aggregation query renderer tests', () => {
 
     // Navigate to the tolerance condition that checks size classes
     const outerMap = similarLengthExpr.$cond.if.$anyElementTrue.$map;
-    const innerMapContainer = outerMap.in as { $anyElementTrue: { $map: unknown } };
+    const innerMapContainer = outerMap.in as { $anyElementTrue: { $map: object } };
     const innerMap = innerMapContainer.$anyElementTrue.$map as {
       in: { $lte: [object, object] };
     };
@@ -472,7 +476,7 @@ describe('aggregation query renderer tests', () => {
     // Verify the parse words expression uses $reduce to split on both spaces and hyphens
     const parseStage = result[0].$addFields;
     const wordsExpr = parseStage._words_0 as {
-      $reduce: { input: { $split: [object, string] }; in: { $concatArrays: unknown[] } };
+      $reduce: { input: { $split: [object, string] }; in: { $concatArrays: object[] } };
     };
 
     // Should use $reduce to flatten arrays from splitting on hyphens
@@ -482,7 +486,7 @@ describe('aggregation query renderer tests', () => {
     // The "in" expression should use $concatArrays to flatten results
     expect(wordsExpr.$reduce.in).toHaveProperty('$concatArrays');
     // The second element of $concatArrays should split on hyphens
-    const concatArrays = wordsExpr.$reduce.in.$concatArrays as unknown[];
+    const concatArrays = wordsExpr.$reduce.in.$concatArrays;
     const hyphenSplit = concatArrays[1] as { $filter: { input: { $split: [string, string] } } };
     expect(hyphenSplit.$filter.input.$split[1]).toBe('-');
   });
