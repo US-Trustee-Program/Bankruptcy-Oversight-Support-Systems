@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssistantsUseCase } from '../../use-cases/trustee-assistants/trustee-assistants';
-import { TrusteeAssistant } from '@common/cams/trustee-assistants';
+import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
@@ -43,7 +43,9 @@ export class TrusteeAssistantsController implements CamsController {
       switch (method) {
         case 'GET':
           return await this.handleGetRequest(context);
-        // TODO: Add POST, PUT, DELETE in future slices
+        case 'POST':
+          return await this.handlePostRequest(context);
+        // TODO: Add PUT, DELETE in future slices
         default:
           throw new BadRequestError(MODULE_NAME, {
             message: `HTTP method ${method} is not supported`,
@@ -74,6 +76,38 @@ export class TrusteeAssistantsController implements CamsController {
           self: context.request.url,
         },
         data: assistants,
+      },
+    });
+  }
+
+  private async handlePostRequest(
+    context: ApplicationContext,
+  ): Promise<CamsHttpResponseInit<undefined>> {
+    const trusteeId = context.request.params['trusteeId'];
+
+    if (!trusteeId) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Trustee ID is required',
+      });
+    }
+
+    const input = context.request.body as TrusteeAssistantInput;
+
+    if (!input) {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Request body is required',
+      });
+    }
+
+    const assistant = await this.useCase.createAssistant(context, trusteeId, input);
+
+    return httpSuccess({
+      statusCode: 201,
+      body: {
+        meta: {
+          self: `${context.request.url}/${assistant.id}`,
+        },
+        data: undefined,
       },
     });
   }
