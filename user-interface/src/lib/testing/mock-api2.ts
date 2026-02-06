@@ -34,6 +34,7 @@ import {
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
@@ -2383,6 +2384,24 @@ async function putTrusteeAppointment(
   return put(`/trustees/${trusteeId}/appointments/${appointmentId}`, appointment, {});
 }
 
+async function getTrusteeAssistants(_trusteeId: string) {
+  return {
+    data: [] as TrusteeAssistant[],
+  };
+}
+
+async function createTrusteeAssistant(trusteeId: string, assistant: TrusteeAssistantInput) {
+  return {
+    data: {
+      id: randomId(),
+      trusteeId,
+      ...assistant,
+      updatedBy: { id: 'user-1', name: 'Admin User' },
+      updatedOn: new Date().toISOString(),
+    } as TrusteeAssistant,
+  };
+}
+
 async function getBankruptcySoftwareList() {
   return {
     data: [
@@ -2500,6 +2519,8 @@ const MockApi2 = {
   getTrusteeAppointments,
   postTrusteeAppointment,
   putTrusteeAppointment,
+  getTrusteeAssistants,
+  createTrusteeAssistant,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,

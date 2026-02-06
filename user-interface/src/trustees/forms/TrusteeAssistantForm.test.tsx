@@ -49,7 +49,11 @@ describe('TrusteeAssistantForm', () => {
   const mockNavigate = vi.fn();
   let userEvent: ReturnType<typeof TestingUtilities.setupUserEvent>;
 
-  function renderWithRouter(props: { trusteeId: string; assistant?: TrusteeAssistant }) {
+  function renderWithRouter(props: {
+    trusteeId: string;
+    assistantId?: string;
+    assistant?: TrusteeAssistant;
+  }) {
     return render(
       <BrowserRouter>
         <TrusteeAssistantForm {...props} />
@@ -373,6 +377,51 @@ describe('TrusteeAssistantForm', () => {
         },
         { timeout: 2000 },
       );
+    });
+
+    test('should successfully submit form in create mode', async () => {
+      const mockCreateResponse = {
+        data: {
+          id: 'new-assistant-id',
+          trusteeId: TEST_TRUSTEE_ID,
+          name: 'New Assistant',
+          updatedBy: { id: 'user-123', name: 'Test User' },
+          updatedOn: '2024-01-01T00:00:00Z',
+        },
+      };
+      vi.spyOn(Api2, 'createTrusteeAssistant').mockResolvedValue(mockCreateResponse);
+
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId: 'new' });
+
+      await userEvent.type(screen.getByTestId('assistant-name'), 'New Assistant');
+
+      const submitButton = screen.getByRole('button', { name: 'Save' });
+      await userEvent.click(submitButton);
+
+      await waitFor(
+        () => {
+          expect(Api2.createTrusteeAssistant).toHaveBeenCalledTimes(1);
+          expect(Api2.createTrusteeAssistant).toHaveBeenCalledWith(TEST_TRUSTEE_ID, {
+            name: 'New Assistant',
+          });
+          expect(mockNavigate).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
+        },
+        { timeout: 2000 },
+      );
+    });
+
+    test('should display correct aria-label for create mode', () => {
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId: 'new' });
+
+      const form = screen.getByTestId('trustee-assistant-form');
+      expect(form).toHaveAttribute('aria-label', 'Create Trustee Assistant');
+    });
+
+    test('should display correct aria-label for edit mode', () => {
+      renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistant: VALID_ASSISTANT });
+
+      const form = screen.getByTestId('trustee-assistant-form');
+      expect(form).toHaveAttribute('aria-label', 'Edit Trustee Assistant');
     });
   });
 
