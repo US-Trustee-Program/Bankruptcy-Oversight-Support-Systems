@@ -168,13 +168,8 @@ export class TrusteeAssistantsMongoRepository
         doc('id').equals(assistantId),
       );
 
-      const result = await this.getAdapter<TrusteeAssistantDocument>().deleteOne(query);
-
-      if (result.deletedCount === 0) {
-        throw new NotFoundError(MODULE_NAME, {
-          message: `Trustee assistant with ID ${assistantId} not found.`,
-        });
-      }
+      // deleteOne throws NotFoundError if deletedCount !== 1, so no need to check result
+      await this.getAdapter<TrusteeAssistantDocument>().deleteOne(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to delete trustee assistant ${assistantId}.`,

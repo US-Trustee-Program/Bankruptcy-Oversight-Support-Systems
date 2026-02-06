@@ -5,7 +5,8 @@ import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { Trustee, TrusteeHistory, TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
+import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
+import { TrusteeAssistant } from '@common/cams/trustee-assistants';
 import {
   trusteeName,
   companyName,
