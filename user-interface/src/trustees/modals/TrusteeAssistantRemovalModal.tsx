@@ -5,6 +5,7 @@ import {
   SubmitCancelButtonGroupRef,
 } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
+import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import Api2 from '@/lib/models/api2';
 import React, { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
@@ -14,7 +15,6 @@ type CallbackFunction = () => void;
 export type TrusteeAssistantRemovalModalOpenProps = {
   trusteeId: string;
   assistantId: string;
-  assistantName: string;
   buttonId: string;
   callback: CallbackFunction;
   openModalButtonRef: React.Ref<OpenModalButtonRef>;
@@ -43,7 +43,8 @@ function TrusteeAssistantRemovalModal_(
     modalId,
     modalRef,
     submitButton: {
-      label: 'Delete',
+      label: 'Yes, Delete',
+      uswdsStyle: UswdsButtonStyle.Secondary,
       onClick: handleRemoveSubmitButtonClick,
       disabled: false,
       closeOnClick: true,
@@ -89,8 +90,8 @@ function TrusteeAssistantRemovalModal_(
       ref={modalRef}
       modalId={modalId}
       className="remove-assistant-confirmation-modal"
-      heading="Delete assistant?"
-      content={`Would you like to delete ${formValuesFromShowOptions?.assistantName ?? 'this assistant'}? This action cannot be undone.`}
+      heading="Are you sure you want to delete this assistant?"
+      content="This action can't be undone."
       actionButtonGroup={removeConfirmationButtonGroup}
     ></Modal>
   );
