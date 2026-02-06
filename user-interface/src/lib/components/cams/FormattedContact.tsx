@@ -128,13 +128,13 @@ export type FormattedContactProps = {
 
 export default function FormattedContact(props: Readonly<FormattedContactProps>): JSX.Element {
   const { contact, className, showLinks = true, testIdPrefix } = props;
+  const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
 
   if (!contact) {
-    return <>(none)</>;
+    return <span data-testid={getTestId('no-contact-info')}>(none)</span>;
   }
 
   const formatters = [formatCompanyName, formatAddress, formatPhone, formatEmail, formatWebsite];
-  const getTestId = (suffix: string) => (testIdPrefix ? `${testIdPrefix}-${suffix}` : undefined);
 
   const children = formatters.reduce((acc, formatter) => {
     const element = formatter(contact, showLinks, getTestId);

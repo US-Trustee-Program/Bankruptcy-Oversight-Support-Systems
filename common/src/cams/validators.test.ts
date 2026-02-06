@@ -1042,4 +1042,62 @@ describe('validators', () => {
       expect(validator('invalid')).toEqual({ reasons: [MUST_BE_YYYY_MM_DD_FORMAT] });
     });
   });
+
+  describe('checkFirst', () => {
+    test('should run initial validators and return valid when they pass', () => {
+      const validator = Validators.checkFirst(
+        Validators.minLength(1, 'Too short'),
+        Validators.maxLength(5, 'Too long'),
+        Validators.matches(/Hello/, 'Must be "Hello"'),
+      );
+
+      expect(validator('Hello')).toEqual(VALID);
+    });
+
+    test('should run initial validators then run then validator and return valid when they pass', () => {
+      const validator = Validators.checkFirst(
+        Validators.minLength(1, 'FIRST: Too short'),
+        Validators.maxLength(5, 'FIRST: Too long'),
+        Validators.matches(/Hello/, 'FIRST: Must be "Hello"'),
+      ).then(
+        Validators.minLength(1, 'THEN: Too short'),
+        Validators.maxLength(5, 'THEN: Too long'),
+        Validators.matches(/Hello/, 'THEN: Must be "Hello"'),
+      );
+
+      expect(validator('Hello')).toEqual(VALID);
+    });
+
+    test('should run multiple initial validators', () => {
+      const validator = Validators.checkFirst(
+        Validators.minLength(10, 'FIRST: Too short'),
+        Validators.maxLength(1, 'FIRST: Too long'),
+        Validators.matches(/^[A-Z]/, 'FIRST: Must start with uppercase'),
+      ).then(
+        Validators.minLength(10, 'THEN: should not run'),
+        Validators.maxLength(1, 'THEN: should not run'),
+        Validators.matches(/^[A-Z]/, 'THEN: should not run'),
+      );
+
+      expect(validator('hello')).toEqual({
+        reasons: ['FIRST: Too short', 'FIRST: Too long', 'FIRST: Must start with uppercase'],
+      });
+    });
+
+    test('should run then validators when initial validators pass', () => {
+      const validator = Validators.checkFirst(
+        Validators.minLength(1, 'FIRST: Too short'),
+        Validators.maxLength(5, 'FIRST: Too long'),
+        Validators.matches(/Hello/, 'FIRST: Must be "Hello"'),
+      ).then(
+        Validators.minLength(6, 'THEN: Too short'),
+        Validators.maxLength(1, 'THEN: Too long'),
+        Validators.matches(/Bye/, 'THEN: Must be "Bye"'),
+      );
+
+      expect(validator('Hello')).toEqual({
+        reasons: ['THEN: Too short', 'THEN: Too long', 'THEN: Must be "Bye"'],
+      });
+    });
+  });
 });
