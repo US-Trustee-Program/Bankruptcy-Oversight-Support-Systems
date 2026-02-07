@@ -57,7 +57,7 @@ module targetVnet './vnet.bicep' = if (deployVnet) {
   }
 }
 
-resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-09-01' existing = {
+resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' existing = {
   name: virtualNetworkName
   scope: resourceGroup(networkResourceGroupName)
 }
