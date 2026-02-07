@@ -229,11 +229,16 @@ describe('TrusteesUseCase tests', () => {
     test('should return a single trustee', async () => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee();
+      const mockAssistants = [MockData.getTrusteeAssistant({ trusteeId })];
+
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAssistants').mockResolvedValue(
+        mockAssistants,
+      );
 
       const result = await trusteesUseCase.getTrustee(context, trusteeId);
 
-      expect(result).toEqual(mockTrustee);
+      expect(result).toEqual({ ...mockTrustee, assistants: mockAssistants });
     });
 
     test('should handle repository error when trustee not found', async () => {
@@ -804,49 +809,6 @@ describe('TrusteesUseCase tests', () => {
           passcode: MockData.randomAlphaNumeric(10),
         };
         const updateData = { zoomInfo: invalidZoomInfo };
-
-        await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
-          BadRequestError,
-        );
-      });
-    });
-
-    describe('assistant validation', () => {
-      test('should update trustee with assistant including title', async () => {
-        const updatedBy = getCamsUserReference(context.session.user);
-        const assistant = {
-          name: 'Test Assistant',
-          title: 'Senior Assistant',
-          contact: MockData.getContactInformation(),
-        };
-        const updateData = { assistant };
-        const updatedTrustee = { ...existingTrustee, assistant };
-
-        const updateTrusteeSpy = vi
-          .spyOn(MockMongoRepository.prototype, 'updateTrustee')
-          .mockResolvedValue(updatedTrustee);
-        const historyCreateSpy = vi
-          .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
-          .mockResolvedValue();
-
-        await trusteesUseCase.updateTrustee(context, trusteeId, updateData);
-        expect(updateTrusteeSpy).toHaveBeenCalledWith(trusteeId, updatedTrustee, updatedBy);
-        expect(historyCreateSpy).toHaveBeenCalledWith(
-          expect.objectContaining({
-            documentType: 'AUDIT_ASSISTANT',
-            trusteeId,
-            after: assistant,
-          }),
-        );
-      });
-
-      test('should throw BadRequestError for assistant title exceeding max length', async () => {
-        const invalidAssistant = {
-          name: 'Test Assistant',
-          title: 'a'.repeat(51),
-          contact: MockData.getContactInformation(),
-        };
-        const updateData = { assistant: invalidAssistant };
 
         await expect(trusteesUseCase.updateTrustee(context, trusteeId, updateData)).rejects.toThrow(
           BadRequestError,
