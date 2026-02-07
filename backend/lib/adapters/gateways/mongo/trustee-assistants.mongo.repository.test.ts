@@ -163,6 +163,146 @@ describe('TrusteeAssistantsMongoRepository', () => {
     });
   });
 
+  describe('createAssistant', () => {
+    test('should create a new assistant', async () => {
+      const assistantInput = {
+        name: 'Jane Doe',
+        title: 'Legal Assistant',
+        contact: MockData.getContactInformation(),
+      };
+
+      const mockInsertOne = vi.fn().mockResolvedValue('new-assistant-id');
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockImplementation(mockInsertOne);
+
+      const result = await repository.createAssistant('trustee-1', assistantInput, mockUser);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 'new-assistant-id',
+          trusteeId: 'trustee-1',
+          name: 'Jane Doe',
+          title: 'Legal Assistant',
+        }),
+      );
+      expect(mockInsertOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trusteeId: 'trustee-1',
+          documentType: 'TRUSTEE_ASSISTANT',
+          name: 'Jane Doe',
+          title: 'Legal Assistant',
+          createdBy: mockUser,
+        }),
+      );
+    });
+
+    test('should wrap database errors with context', async () => {
+      const assistantInput = {
+        name: 'Jane Doe',
+      };
+
+      const mockInsertOne = vi.fn().mockRejectedValue(new Error('Database error'));
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockImplementation(mockInsertOne);
+
+      await expect(
+        repository.createAssistant('trustee-1', assistantInput, mockUser),
+      ).rejects.toThrow('Failed to create trustee assistant for trustee trustee-1');
+    });
+  });
+
+  describe('updateAssistant', () => {
+    test('should update an existing assistant', async () => {
+      const existingAssistant = MockData.getTrusteeAssistant({
+        id: 'assistant-1',
+        trusteeId: 'trustee-1',
+        name: 'Jane Doe',
+        title: 'Legal Assistant',
+      });
+
+      const updateInput = {
+        name: 'Jane Smith',
+        title: 'Senior Legal Assistant',
+      };
+
+      const mockFindOne = vi.fn().mockResolvedValue(existingAssistant);
+      const mockReplaceOne = vi.fn().mockResolvedValue(undefined);
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockImplementation(mockReplaceOne);
+
+      const result = await repository.updateAssistant(
+        'trustee-1',
+        'assistant-1',
+        updateInput,
+        mockUser,
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          id: 'assistant-1',
+          trusteeId: 'trustee-1',
+          name: 'Jane Smith',
+          title: 'Senior Legal Assistant',
+          updatedBy: mockUser,
+        }),
+      );
+      expect(mockReplaceOne).toHaveBeenCalled();
+    });
+
+    test('should throw NotFoundError when assistant does not exist', async () => {
+      const updateInput = {
+        name: 'Jane Smith',
+      };
+
+      const mockFindOne = vi.fn().mockResolvedValue(null);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
+
+      await expect(
+        repository.updateAssistant('trustee-1', 'non-existent', updateInput, mockUser),
+      ).rejects.toThrow('Trustee assistant with ID non-existent not found');
+    });
+
+    test('should throw error when assistant does not belong to trustee', async () => {
+      const existingAssistant = MockData.getTrusteeAssistant({
+        id: 'assistant-1',
+        trusteeId: 'different-trustee',
+        name: 'Jane Doe',
+      });
+
+      const updateInput = {
+        name: 'Jane Smith',
+      };
+
+      const mockFindOne = vi.fn().mockResolvedValue(existingAssistant);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
+
+      await expect(
+        repository.updateAssistant('trustee-1', 'assistant-1', updateInput, mockUser),
+      ).rejects.toThrow('Failed to update trustee assistant assistant-1');
+    });
+
+    test('should wrap database errors with context', async () => {
+      const existingAssistant = MockData.getTrusteeAssistant({
+        id: 'assistant-1',
+        trusteeId: 'trustee-1',
+        name: 'Jane Doe',
+      });
+
+      const updateInput = {
+        name: 'Jane Smith',
+      };
+
+      const mockFindOne = vi.fn().mockResolvedValue(existingAssistant);
+      const mockReplaceOne = vi.fn().mockRejectedValue(new Error('Database error'));
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockImplementation(mockReplaceOne);
+
+      await expect(
+        repository.updateAssistant('trustee-1', 'assistant-1', updateInput, mockUser),
+      ).rejects.toThrow('Failed to update trustee assistant assistant-1');
+    });
+  });
+
   describe('deleteAssistant', () => {
     test('should delete an assistant by ID', async () => {
       const expectedQuery = createQuery({ field: 'id', value: 'assistant-1' });
