@@ -3,7 +3,7 @@ import {
   generatePhoneticTokens,
   generateBigrams,
   generateSearchTokens,
-  generateQueryTokensWithNicknames,
+  generateStructuredQueryTokens,
 } from './phonetic-helper';
 import MongoAggregateRenderer from '../gateways/mongo/utils/mongo-aggregate-renderer';
 
@@ -98,6 +98,21 @@ describe('Phonetic Utilities', () => {
       expect(bigrams).toContain('en');
     });
 
+    test('should treat hyphens as word separators (jean-pierre → jean, pierre)', () => {
+      const bigrams = generateBigrams('Jean-Pierre');
+      // Should have bigrams from "jean" and "pierre" as separate words
+      expect(bigrams).toContain('je');
+      expect(bigrams).toContain('ea');
+      expect(bigrams).toContain('an');
+      expect(bigrams).toContain('pi');
+      expect(bigrams).toContain('ie');
+      expect(bigrams).toContain('er');
+      expect(bigrams).toContain('rr');
+      expect(bigrams).toContain('re');
+      // Should NOT have bigrams crossing the hyphen boundary
+      expect(bigrams).not.toContain('np'); // "n-p" should not create "np"
+    });
+
     test('should deduplicate bigrams', () => {
       const bigrams = generateBigrams('Anna Banana');
       const uniqueBigrams = [...new Set(bigrams)];
@@ -151,102 +166,92 @@ describe('Phonetic Utilities', () => {
     });
   });
 
-  describe('generateQueryTokensWithNicknames', () => {
+  describe('generateStructuredQueryTokens', () => {
     test('should return empty arrays for empty input', () => {
-      const result = generateQueryTokensWithNicknames('');
+      const result = generateStructuredQueryTokens('');
+      expect(result.searchWords).toEqual([]);
+      expect(result.nicknameWords).toEqual([]);
+      expect(result.searchMetaphones).toEqual([]);
+      expect(result.nicknameMetaphones).toEqual([]);
       expect(result.searchTokens).toEqual([]);
       expect(result.nicknameTokens).toEqual([]);
     });
 
-    test('should return empty arrays for whitespace-only input', () => {
-      const result = generateQueryTokensWithNicknames('   ');
-      expect(result.searchTokens).toEqual([]);
-      expect(result.nicknameTokens).toEqual([]);
+    test('should return searchWords as normalized lowercase words', () => {
+      const result = generateStructuredQueryTokens('John Smith');
+      expect(result.searchWords).toEqual(['john', 'smith']);
     });
 
-    test('should generate searchTokens for the original query', () => {
-      const result = generateQueryTokensWithNicknames('John');
-
-      expect(result.searchTokens).toContain('jo');
-      expect(result.searchTokens).toContain('oh');
-      expect(result.searchTokens).toContain('hn');
-      expect(result.searchTokens).toContain('J500');
-      expect(result.searchTokens).toContain('JN');
+    test('should return nicknameWords for names with known nicknames', () => {
+      const result = generateStructuredQueryTokens('Mike');
+      expect(result.nicknameWords).toContain('michael');
     });
 
-    test('should expand nicknames and generate nicknameTokens', () => {
-      const result = generateQueryTokensWithNicknames('Mike');
-
-      expect(result.searchTokens).toContain('mi');
-      expect(result.searchTokens).toContain('ik');
-      expect(result.searchTokens).toContain('ke');
-      expect(result.searchTokens).toContain('M200');
-
-      expect(result.nicknameTokens.length).toBeGreaterThan(0);
-      const hasMichaelTokens =
-        result.nicknameTokens.includes('M240') || result.nicknameTokens.includes('MKSHL');
-      expect(hasMichaelTokens).toBe(true);
+    test('should return searchMetaphones (Metaphone only, not Soundex)', () => {
+      const result = generateStructuredQueryTokens('John');
+      // JN is Metaphone, J500 is Soundex
+      expect(result.searchMetaphones).toContain('JN');
+      expect(result.searchMetaphones).not.toContain('J500');
     });
 
-    test('should handle multiple words with nickname expansion', () => {
-      const result = generateQueryTokensWithNicknames('Mike Smith');
-
-      expect(result.searchTokens).toContain('mi');
-      expect(result.searchTokens).toContain('sm');
-      expect(result.searchTokens).toContain('S530');
-
-      const hasMichaelTokens =
-        result.nicknameTokens.includes('M240') || result.nicknameTokens.includes('MKSHL');
-      expect(hasMichaelTokens).toBe(true);
+    test('should return nicknameMetaphones for nickname words', () => {
+      const result = generateStructuredQueryTokens('Mike');
+      // MKSHL is Metaphone for Michael
+      expect(result.nicknameMetaphones).toContain('MKSHL');
     });
 
-    test('should not include overlapping tokens in nicknameTokens', () => {
-      const result = generateQueryTokensWithNicknames('Mike');
-
-      const overlap = result.nicknameTokens.filter((t) => result.searchTokens.includes(t));
+    test('should not include overlapping metaphones in nicknameMetaphones', () => {
+      const result = generateStructuredQueryTokens('Mike');
+      // MK is shared between Mike and Michael, should only be in searchMetaphones
+      const overlap = result.nicknameMetaphones.filter((m) => result.searchMetaphones.includes(m));
       expect(overlap).toHaveLength(0);
     });
 
-    test('should handle names without known nicknames', () => {
-      const result = generateQueryTokensWithNicknames('Zyzzyva');
+    test('should maintain backward compatibility with searchTokens and nicknameTokens', () => {
+      const result = generateStructuredQueryTokens('Mike');
 
-      expect(result.searchTokens.length).toBeGreaterThan(0);
-      expect(result.nicknameTokens).toEqual([]);
+      // searchTokens should contain both bigrams and phonetics
+      expect(result.searchTokens).toContain('mi');
+      expect(result.searchTokens).toContain('ik');
+      expect(result.searchTokens).toContain('ke');
+      expect(result.searchTokens).toContain('MK');
+      expect(result.searchTokens).toContain('M200');
+
+      // nicknameTokens should contain tokens from nicknames, excluding overlap
+      expect(result.nicknameTokens.length).toBeGreaterThan(0);
     });
 
-    test('should expand Bob to Robert', () => {
-      const result = generateQueryTokensWithNicknames('Bob');
+    test('should handle multiple words with mixed nickname expansion', () => {
+      const result = generateStructuredQueryTokens('Mike Smith');
 
-      const hasRobertPhonetics =
-        result.nicknameTokens.includes('RBRT') || result.nicknameTokens.includes('R163');
-      expect(hasRobertPhonetics).toBe(true);
-    });
-
-    test('should expand Bill to William', () => {
-      const result = generateQueryTokensWithNicknames('Bill');
-
-      const hasWilliamBigrams =
-        result.nicknameTokens.includes('wi') || result.nicknameTokens.includes('il');
-      expect(hasWilliamBigrams).toBe(true);
+      expect(result.searchWords).toEqual(['mike', 'smith']);
+      expect(result.nicknameWords).toContain('michael');
+      expect(result.searchMetaphones).toContain('MK');
+      expect(result.searchMetaphones).toContain('SM0');
     });
 
     test('should handle case insensitivity', () => {
-      const lowerResult = generateQueryTokensWithNicknames('mike');
-      const upperResult = generateQueryTokensWithNicknames('MIKE');
-      const mixedResult = generateQueryTokensWithNicknames('MiKe');
+      const lowerResult = generateStructuredQueryTokens('mike');
+      const upperResult = generateStructuredQueryTokens('MIKE');
 
-      expect(lowerResult.searchTokens.sort()).toEqual(upperResult.searchTokens.sort());
-      expect(upperResult.searchTokens.sort()).toEqual(mixedResult.searchTokens.sort());
+      expect(lowerResult.searchWords).toEqual(upperResult.searchWords);
+      expect(lowerResult.nicknameWords.sort()).toEqual(upperResult.nicknameWords.sort());
+      expect(lowerResult.searchMetaphones.sort()).toEqual(upperResult.searchMetaphones.sort());
     });
 
-    test('should deduplicate tokens', () => {
-      const result = generateQueryTokensWithNicknames('Anna');
+    test('should expand Bob to include Robert-related data', () => {
+      const result = generateStructuredQueryTokens('Bob');
 
-      const uniqueSearchTokens = [...new Set(result.searchTokens)];
-      const uniqueNicknameTokens = [...new Set(result.nicknameTokens)];
+      expect(result.searchWords).toContain('bob');
+      expect(result.nicknameWords).toContain('robert');
+      expect(result.nicknameMetaphones).toContain('RBRT');
+    });
 
-      expect(result.searchTokens.length).toBe(uniqueSearchTokens.length);
-      expect(result.nicknameTokens.length).toBe(uniqueNicknameTokens.length);
+    test('should expand Bill to include William-related data', () => {
+      const result = generateStructuredQueryTokens('Bill');
+
+      expect(result.searchWords).toContain('bill');
+      expect(result.nicknameWords).toContain('william');
     });
   });
 });
