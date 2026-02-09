@@ -557,4 +557,22 @@ describe('TrusteeDetailProfile', () => {
 
     expect(mockOnAddAssistant).toHaveBeenCalledTimes(1);
   });
+
+  test('should render assistant name without contact information when contact is missing', () => {
+    const trusteeWithAssistantNoContact = {
+      ...mockTrustee,
+      assistant: {
+        name: 'Jane Assistant',
+      },
+    };
+
+    renderWithProps({ trustee: trusteeWithAssistantNoContact });
+
+    expect(screen.getByTestId('assistant-name')).toHaveTextContent('Jane Assistant');
+    expect(screen.queryByTestId('assistant-title')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trustee-assistant-street-address')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trustee-assistant-phone-number')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trustee-assistant-email')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('trustee-assistant-no-contact-info')).not.toBeInTheDocument();
+  });
 });

@@ -21,6 +21,7 @@ import {
   OrdersGateway,
   OrdersRepository,
   OrderSyncState,
+  PhoneticBackfillState,
   QueueGateway,
   RuntimeState,
   RuntimeStateRepository,
@@ -84,6 +85,7 @@ let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | Appli
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
+let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
 let usersRepository: UsersRepository;
 
 let mockOrdersRepository: MockMongoRepository;
@@ -248,6 +250,15 @@ const getCasesSyncStateRepo = (
   return casesSyncStateRepo;
 };
 
+const getPhoneticBackfillStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<PhoneticBackfillState> => {
+  if (!phoneticBackfillStateRepo) {
+    phoneticBackfillStateRepo = getRuntimeStateRepository<PhoneticBackfillState>(context);
+  }
+  return phoneticBackfillStateRepo;
+};
+
 const getUsersRepository = (context: ApplicationContext): UsersRepository => {
   if (context.config.get('dbMock')) {
     return MockMongoRepository.getInstance(context);
@@ -404,6 +415,7 @@ const factory = {
   getOrderSyncStateRepo,
   getOfficeStaffSyncStateRepo,
   getCasesSyncStateRepo,
+  getPhoneticBackfillStateRepo,
   getAuthorizationGateway,
   getUserSessionUseCase,
   getUserSessionCacheRepository,

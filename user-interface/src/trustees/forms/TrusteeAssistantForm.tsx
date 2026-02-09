@@ -45,6 +45,21 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
   }
 
   const contact = assistant.contact;
+  if (!contact) {
+    return {
+      name: assistant.name,
+      title: assistant.title,
+      address1: undefined,
+      address2: undefined,
+      city: undefined,
+      state: undefined,
+      zipCode: undefined,
+      phone: undefined,
+      extension: undefined,
+      email: undefined,
+    };
+  }
+
   return {
     name: assistant.name,
     title: assistant.title,
@@ -123,6 +138,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     }
   }, [isCreateMode, assistantId, trusteeId, globalAlert]);
 
+  //TODO: refactor to be flat and avoid many null checks inline
   const mapPayloadForCreate = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
     return {
       name: formData.name!,
@@ -150,6 +166,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   };
 
   const mapPayloadForEdit = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
+    //TODO: fix bug, when no "address1" provided both phone and email not being saved as of now.
     return {
       name: formData.name!,
       ...(formData.title && { title: formData.title }),
@@ -238,6 +255,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const validateFormAndUpdateErrors = (formData: TrusteeAssistantFormData): boolean => {
     const results = validateObject(trusteeAssistantSpec, formData);
+    partialAddressAlertRef.current?.hide();
 
     if (!results.valid && results.reasonMap) {
       setFieldErrors(
@@ -445,6 +463,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
         <Alert
           role="alert"
+          id="assistant-form-error-alert"
           className="form-field-warning"
           type={UswdsAlertStyle.Error}
           inline={true}

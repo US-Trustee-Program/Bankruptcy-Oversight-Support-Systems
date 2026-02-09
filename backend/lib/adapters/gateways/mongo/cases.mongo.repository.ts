@@ -18,13 +18,9 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { SyncedCase } from '@common/cams/cases';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CamsError } from '../../../common-errors/cams-error';
-import QueryPipeline, {
-  DEFAULT_BIGRAM_WEIGHT,
-  DEFAULT_NICKNAME_WEIGHT,
-  DEFAULT_PHONETIC_WEIGHT,
-} from '../../../query/query-pipeline';
+import QueryPipeline from '../../../query/query-pipeline';
 import { CaseAssignment } from '@common/cams/assignments';
-import { generateQueryTokensWithNicknames } from '../../utils/phonetic-helper';
+import { generateStructuredQueryTokens } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'CASES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'cases';
@@ -377,26 +373,26 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   }
 
   /**
-   * Searches cases using phonetic token matching with nickname expansion for debtor name similarity.
+   * Searches cases using word-level phonetic matching with nickname expansion for debtor name similarity.
    *
-   * This method generates search tokens (bigrams and phonetic codes) and nickname tokens from the
-   * search query and matches them against pre-computed tokens stored on case documents.
-   * Results are scored based on token overlap, filtered to require at least one bigram match,
-   * and sorted by match score (descending), then by date filed and case number.
+   * This method implements word-level name matching that compares whole words rather than tokens,
+   * enabling more precise matching that prevents false positives while allowing valid matches.
    *
-   * Scoring weights:
-   * - Bigram matches: 3 points each (character-level similarity, typo tolerance)
-   * - Phonetic code matches: 11 points each (sound-based similarity via Soundex/Metaphone)
-   * - Nickname matches: 10 points each (name variations like "Mike" → "Michael")
+   * **Match Types (in priority order):**
+   * - Exact Match (10,000 pts): Document word equals search word exactly
+   * - Nickname Match (1,000 pts): Document word is in search term's nickname set (e.g., Mike → Michael)
+   * - Qualified Phonetic (100 pts): Metaphone match + (exact OR nickname OR prefix qualifier)
+   * - Character Prefix (75 pts): Document word starts with search word characters (e.g., Jon → Johnson)
    *
-   * Filtering:
-   * - Requires at least one bigram match to prevent phonetic-only false positives
-   * - Matches on both debtor and jointDebtor phonetic tokens
+   * **Key Features:**
+   * - Phonetic matches alone are NOT sufficient - they must be qualified by exact, nickname, or prefix
+   * - This prevents false positives like "Mike" → "Mitchell" (just phonetic overlap, no qualification)
+   * - While allowing valid matches like "Mike" → "Michael" (nickname relationship)
    *
    * Falls back to regular searchCases when no debtorName is provided.
    *
    * @param predicate - Search criteria including debtorName for phonetic matching
-   * @returns Paginated cases sorted by phonetic match score (highest relevance first)
+   * @returns Paginated cases sorted by match score (highest relevance first)
    */
   async searchCasesWithPhoneticTokens(
     predicate: CasesSearchPredicate,
@@ -412,40 +408,42 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         });
       }
 
-      const { searchTokens, nicknameTokens } = generateQueryTokensWithNicknames(
-        predicate.debtorName,
-      );
-      const allTokens = [...searchTokens, ...nicknameTokens];
-      if (allTokens.length === 0) {
+      const structured = generateStructuredQueryTokens(predicate.debtorName);
+
+      // If no search data was generated, return empty results
+      if (structured.searchWords.length === 0 && structured.searchMetaphones.length === 0) {
         return { metadata: { total: 0 }, data: [] };
       }
 
       const doc = using<SyncedCaseQueryable>();
       const conditions = this.addConditions(predicate);
 
-      conditions.push(
-        or(
-          doc('debtor.phoneticTokens').contains(allTokens),
-          doc('jointDebtor.phoneticTokens').contains(allTokens),
-        ),
-      );
+      // Pre-filter using existing phoneticTokens index for efficiency
+      // This narrows results before the more expensive word-level scoring
+      const allTokens = [...structured.searchTokens, ...structured.nicknameTokens];
+      if (allTokens.length > 0) {
+        conditions.push(
+          or(
+            doc('debtor.phoneticTokens').contains(allTokens),
+            doc('jointDebtor.phoneticTokens').contains(allTokens),
+          ),
+        );
+      }
 
       const [dateFiled, caseNumber] = source<SyncedCase>().fields('dateFiled', 'caseNumber');
 
       const spec = pipeline(
         match(and(...conditions)),
-        score(
-          searchTokens,
-          nicknameTokens,
-          ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
-          'matchScore',
-          DEFAULT_BIGRAM_WEIGHT,
-          DEFAULT_PHONETIC_WEIGHT,
-          DEFAULT_NICKNAME_WEIGHT,
-        ),
-        match(
-          using<SyncedCase & { bigramMatchCount: number }>()('bigramMatchCount').greaterThan(0),
-        ),
+        score({
+          searchWords: structured.searchWords,
+          nicknameWords: structured.nicknameWords,
+          searchMetaphones: structured.searchMetaphones,
+          nicknameMetaphones: structured.nicknameMetaphones,
+          targetNameFields: ['debtor.name', 'jointDebtor.name'],
+          targetTokenFields: ['debtor.phoneticTokens', 'jointDebtor.phoneticTokens'],
+          outputField: 'matchScore',
+        }),
+        match(using<SyncedCase & { matchScore: number }>()('matchScore').greaterThan(0)),
         sort(descending({ name: 'matchScore' }), descending(dateFiled), descending(caseNumber)),
         paginate(predicate.offset, predicate.limit),
       );
@@ -454,7 +452,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
-          message: `Failed to search cases with hybrid scoring for "${predicate.debtorName}".`,
+          message: `Failed to search cases with word-level scoring for "${predicate.debtorName}".`,
           module: MODULE_NAME,
         },
       });
@@ -537,21 +535,14 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  public async countByQuery<T>(query: ConditionOrConjunction<T>): Promise<number> {
-    try {
-      return await this.getAdapter<T>().countDocuments(query);
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
-  }
-
-  public async searchByQuery<T>(
+  public async findByCursor<T>(
     query: ConditionOrConjunction<T>,
-    options: { limit: number; offset: number },
-  ) {
+    options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
+  ): Promise<T[]> {
     try {
-      const spec = pipeline(match(query), paginate(options.offset, options.limit));
-      return await this.getAdapter<T>().paginate(spec);
+      const sortSpec = QueryBuilder.orderBy<T>([options.sortField, options.sortDirection]);
+      const adapter = this.getAdapter<T>();
+      return await adapter.find(query, sortSpec, options.limit);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
