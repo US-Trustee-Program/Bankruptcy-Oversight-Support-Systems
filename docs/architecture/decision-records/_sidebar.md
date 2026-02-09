@@ -22,5 +22,6 @@
 - [GitHub Actions](/architecture/decision-records/GithubActionWorkflow.md)
 - [Monorepo Architecture: npm Workspaces](/architecture/decision-records/NpmWorkspaces.md)
 - [Office Assignees Collection Management](/architecture/decision-records/OfficeAssigneesCollectionManagement.md)
+- [Phonetic Debtor Search](/architecture/decision-records/PhoneticDebtorSearch.md)
 - [Storage Queue](/architecture/decision-records/StorageQueue.md)
 - [Zero Downtime](/architecture/decision-records/ZeroDowntimeDeployment.md)
