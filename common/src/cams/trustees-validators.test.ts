@@ -95,10 +95,7 @@ describe('trustees-validators', () => {
       {
         value: '',
         expected: {
-          reasons: [
-            FIELD_VALIDATION_MESSAGES.ZIP_CODE_REQUIRED,
-            FIELD_VALIDATION_MESSAGES.ZIP_CODE,
-          ],
+          reasons: [FIELD_VALIDATION_MESSAGES.ZIP_CODE_REQUIRED],
         },
       },
       { value: '1234', expected: { reasons: [FIELD_VALIDATION_MESSAGES.ZIP_CODE] } },

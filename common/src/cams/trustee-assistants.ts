@@ -5,7 +5,7 @@ import { ContactInformation } from './contact';
 export type TrusteeAssistantInput = {
   name: string;
   title?: string;
-  contact?: ContactInformation;
+  contact?: Partial<ContactInformation>;
 };
 
 export type TrusteeAssistant = Auditable &
@@ -13,5 +13,5 @@ export type TrusteeAssistant = Auditable &
     trusteeId: string;
     name: string;
     title?: string;
-    contact?: ContactInformation;
+    contact?: Partial<ContactInformation>;
   };

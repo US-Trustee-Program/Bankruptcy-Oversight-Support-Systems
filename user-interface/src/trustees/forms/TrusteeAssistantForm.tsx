@@ -27,6 +27,7 @@ import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import TrusteeAssistantRemovalModal, {
   TrusteeAssistantRemovalModalRef,
 } from '../modals/TrusteeAssistantRemovalModal';
+import { Address, PhoneNumber } from '@common/cams/contact';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
   if (!assistant) {
@@ -138,58 +139,56 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     }
   }, [isCreateMode, assistantId, trusteeId, globalAlert]);
 
-  //TODO: refactor to be flat and avoid many null checks inline
-  const mapPayloadForCreate = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
+  function getAddressInfo({
+    address1,
+    address2,
+    city,
+    zipCode,
+    state,
+  }: Partial<Address>): Address | undefined {
+    if (!address1 || !city || !state || !zipCode) return undefined;
     return {
-      name: formData.name!,
-      ...(formData.title && { title: formData.title }),
-      ...(formData.address1 &&
-        formData.city &&
-        formData.state &&
-        formData.zipCode && {
-          contact: {
-            address: {
-              address1: formData.address1,
-              ...(formData.address2 && { address2: formData.address2 }),
-              city: formData.city,
-              state: formData.state,
-              zipCode: formData.zipCode,
-              countryCode: 'US',
-            },
-            ...(formData.phone && {
-              phone: { number: formData.phone, extension: formData.extension },
-            }),
-            ...(formData.email && { email: formData.email }),
-          },
-        }),
+      address1,
+      address2,
+      city,
+      state,
+      zipCode,
+      countryCode: 'US' as const,
     };
-  };
+  }
 
-  const mapPayloadForEdit = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
-    //TODO: fix bug, when no "address1" provided both phone and email not being saved as of now.
+  function getPhoneInfo({
+    phone,
+    extension,
+  }: {
+    phone?: string;
+    extension?: string;
+  }): PhoneNumber | undefined {
+    if (!phone) return undefined;
     return {
-      name: formData.name!,
-      ...(formData.title && { title: formData.title }),
-      ...(formData.address1 &&
-        formData.city &&
-        formData.state &&
-        formData.zipCode && {
-          contact: {
-            address: {
-              address1: formData.address1,
-              ...(formData.address2 && { address2: formData.address2 }),
-              city: formData.city,
-              state: formData.state,
-              zipCode: formData.zipCode,
-              countryCode: 'US',
-            },
-            ...(formData.phone && {
-              phone: { number: formData.phone, extension: formData.extension },
-            }),
-            ...(formData.email && { email: formData.email }),
-          },
-        }),
+      number: phone,
+      extension: extension,
     };
+  }
+
+  const mapAssistantPayload = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
+    const { name, title, ...contactInfo } = formData;
+    const assistantTrusteePayload: Partial<TrusteeAssistant> & { name: string } = { name: name! };
+    if (title) assistantTrusteePayload.title = title;
+
+    const addressInfo = getAddressInfo(contactInfo);
+    const phoneInfo = getPhoneInfo(contactInfo);
+    const emailInfo = contactInfo.email || undefined;
+
+    const hasContactInfo = addressInfo || phoneInfo || emailInfo;
+    if (!hasContactInfo) return assistantTrusteePayload;
+
+    assistantTrusteePayload.contact = {};
+    if (addressInfo) assistantTrusteePayload.contact.address = addressInfo;
+    if (phoneInfo) assistantTrusteePayload.contact.phone = phoneInfo;
+    if (emailInfo) assistantTrusteePayload.contact.email = emailInfo;
+
+    return assistantTrusteePayload;
   };
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,10 +235,10 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
       try {
         if (isCreateMode) {
-          const payload = mapPayloadForCreate(currentFormData);
+          const payload = mapAssistantPayload(currentFormData);
           await Api2.createTrusteeAssistant(trusteeId, payload);
         } else {
-          const payload = mapPayloadForEdit(currentFormData);
+          const payload = mapAssistantPayload(currentFormData);
           // TODO: CAMS-686 why is assistantId! being used, it should always exist?
           await Api2.updateTrusteeAssistant(trusteeId, assistantId!, payload);
         }

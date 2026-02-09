@@ -7,7 +7,7 @@ import TestingUtilities from '@/lib/testing/testing-utilities';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { TrusteeAssistant } from '@common/cams/trustee-assistants';
+import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -637,25 +637,32 @@ describe('TrusteeAssistantForm', () => {
   describe('Individual Contact Info Saving', () => {
     async function submitFormAndGetAssistant(
       fillForm: (container: HTMLElement) => Promise<void>,
-    ): Promise<TrusteeAssistant> {
-      const mockTrustee = MockData.getTrustee({ trusteeId: TEST_TRUSTEE_ID });
-      const mockPatchResponse = { data: mockTrustee };
-      vi.spyOn(Api2, 'patchTrustee').mockResolvedValue(mockPatchResponse);
+    ): Promise<TrusteeAssistantInput> {
+      const mockCreateResponse = {
+        data: {
+          id: 'new-assistant-id',
+          trusteeId: TEST_TRUSTEE_ID,
+          name: 'Test Assistant',
+          updatedBy: { id: 'user-123', name: 'Test User' },
+          updatedOn: '2024-01-01T00:00:00Z',
+        },
+      };
+      vi.spyOn(Api2, 'createTrusteeAssistant').mockResolvedValue(mockCreateResponse);
 
-      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID });
+      const { container } = renderWithRouter({ trusteeId: TEST_TRUSTEE_ID, assistantId: 'new' });
       await fillForm(container);
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);
 
-      let assistant: TrusteeAssistant | undefined;
+      let assistant: TrusteeAssistantInput | undefined;
       await waitFor(
         () => {
-          expect(Api2.patchTrustee).toHaveBeenCalledTimes(1);
-          const callArgs = vi.mocked(Api2.patchTrustee).mock.calls[0];
+          expect(Api2.createTrusteeAssistant).toHaveBeenCalledTimes(1);
+          const callArgs = vi.mocked(Api2.createTrusteeAssistant).mock.calls[0];
           expect(callArgs[0]).toBe(TEST_TRUSTEE_ID);
           expect(callArgs[1]).toBeDefined();
-          assistant = callArgs[1] as unknown as TrusteeAssistant; // TODO: assure this is working and doing what we expect.
+          assistant = callArgs[1];
         },
         { timeout: 2000 },
       );
