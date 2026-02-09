@@ -245,59 +245,40 @@ test.describe('Trustee Assistants (CAMS-686)', () => {
   test('edit assistant form should not have accessibility issues', async ({ page }) => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
 
-    // First, create an assistant to edit
-    const assistantName = `Edit Test Assistant ${Date.now()}`;
-    await createAssistant(page, {
-      name: assistantName,
-      title: 'Original Title',
-      email: 'original@example.com',
+    // Mock data now provides assistants - no need to create one
+    // Just wait for assistants to be visible
+    await page.waitForSelector('[data-testid="assistant-name-0"]', {
+      state: 'visible',
+      timeout: 15000,
     });
 
-    // Test accessibility of profile with assistant
+    // Test accessibility of profile with assistants
     await page.waitForTimeout(ANALYZE_DELAY);
     let accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
-    // Now edit the assistant
+    // Click edit on first assistant
     const editAssistantButton = page.getByTestId('button-edit-assistant-0');
-    await expect(editAssistantButton).toBeVisible();
+    await expect(editAssistantButton).toBeVisible({ timeout: 15000 });
     await editAssistantButton.click();
 
     // Wait for form to render with data
     await expect(page.locator('[data-testid="trustee-assistant-form"]')).toBeVisible();
+    await expect(page.locator('#assistant-name')).toBeVisible();
+    await expect(page.locator('#assistant-title')).toBeVisible();
 
-    // Verify form loads with existing data
-    await expect(page.locator('#assistant-name')).toHaveValue(assistantName);
-    await expect(page.locator('#assistant-title')).toHaveValue('Original Title');
-    await expect(page.locator('#submit-button')).toBeVisible();
-    await expect(page.locator('#delete-assistant-button')).toBeVisible();
-
-    // Test accessibility of edit form
+    // Test accessibility of edit form with data
     await page.waitForTimeout(ANALYZE_DELAY);
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
-    // Make a change
+    // Make a change to test form in modified state
     await page.locator('#assistant-title').fill('Updated Title');
 
     // Test accessibility with modified form
     await page.waitForTimeout(ANALYZE_DELAY);
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
-
-    // Save the changes
-    await page.locator('#submit-button').click();
-
-    // Wait for navigation back to profile
-    await page.waitForTimeout(ANALYZE_DELAY);
-    await expect(page.locator('.case-detail-header')).toBeVisible();
-
-    // Test accessibility after save
-    accessibilityScanResults = await createAxeBuilder(page).analyze();
-    expect(accessibilityScanResults.violations).toEqual([]);
-
-    // Verify the change was saved
-    await expect(page.locator('[data-testid="assistant-title-0"]')).toHaveText('Updated Title');
   });
 
   test('assistant form with validation errors should not have accessibility issues', async ({

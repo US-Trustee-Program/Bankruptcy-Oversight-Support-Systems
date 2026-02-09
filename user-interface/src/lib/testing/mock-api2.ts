@@ -1767,13 +1767,60 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
             countryCode: 'US',
           },
         },
+        assistants: [
+          {
+            id: 'assistant-001',
+            trusteeId: 'ab6b007b-deb3-4f88-b376-0f3786ce75d3',
+            name: 'Test Assistant One',
+            title: 'Senior Assistant',
+            contact: {
+              address: {
+                address1: '123 Main St',
+                city: 'Test City',
+                state: 'NY',
+                zipCode: '10001',
+                countryCode: 'US' as const,
+              },
+              phone: { number: '555-123-4567' },
+              email: 'assistant1@example.com',
+            },
+            updatedBy: { id: 'user-1', name: 'Admin User' },
+            updatedOn: '2025-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'assistant-002',
+            trusteeId: 'ab6b007b-deb3-4f88-b376-0f3786ce75d3',
+            name: 'Test Assistant Two',
+            title: 'Junior Assistant',
+            contact: {
+              address: {
+                address1: '456 Oak Ave',
+                city: 'Another City',
+                state: 'CA',
+                zipCode: '90001',
+                countryCode: 'US' as const,
+              },
+              phone: { number: '555-987-6543' },
+              email: 'assistant2@example.com',
+            },
+            updatedBy: { id: 'user-1', name: 'Admin User' },
+            updatedOn: '2025-01-02T00:00:00.000Z',
+          },
+        ],
       },
     };
   } else if (path.match(/\/trustees/)) {
     response = {
       data: [
         {
+          id: 'trustee-001',
+          trusteeId: 'trustee-001',
           name: 'John Doe',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: {
+            id: 'user-1',
+            name: 'Mock User',
+          },
           legacy: {
             address1: '8904 Marquardt Keys',
             address2: 'Apt. 284',
@@ -1784,7 +1831,14 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           },
         },
         {
+          id: 'trustee-002',
+          trusteeId: 'trustee-002',
           name: 'Jane Smith',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: {
+            id: 'user-1',
+            name: 'Mock User',
+          },
           legacy: {
             address1: '18098 Kitty Canyon',
             address2: 'Suite 449',
@@ -1795,7 +1849,14 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           },
         },
         {
+          id: 'trustee-003',
+          trusteeId: 'trustee-003',
           name: 'Bob Johnson',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: {
+            id: 'user-1',
+            name: 'Mock User',
+          },
           legacy: {
             address1: '68622 Judd Highway',
             address2: 'Suite 147',
@@ -2385,8 +2446,49 @@ async function putTrusteeAppointment(
 }
 
 async function getTrusteeAssistants(_trusteeId: string) {
+  // Return mock assistants for accessibility testing
+  // Tests don't need persistence - just need to render different UI states
   return {
-    data: [] as TrusteeAssistant[],
+    data: [
+      {
+        id: 'assistant-001',
+        trusteeId: _trusteeId,
+        name: 'Test Assistant One',
+        title: 'Senior Assistant',
+        contact: {
+          address: {
+            address1: '123 Main St',
+            city: 'Test City',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US' as const,
+          },
+          phone: { number: '555-123-4567' },
+          email: 'assistant1@example.com',
+        },
+        updatedBy: { id: 'user-1', name: 'Admin User' },
+        updatedOn: '2025-01-01T00:00:00.000Z',
+      },
+      {
+        id: 'assistant-002',
+        trusteeId: _trusteeId,
+        name: 'Test Assistant Two',
+        title: 'Junior Assistant',
+        contact: {
+          address: {
+            address1: '456 Oak Ave',
+            city: 'Another City',
+            state: 'CA',
+            zipCode: '90001',
+            countryCode: 'US' as const,
+          },
+          phone: { number: '555-987-6543' },
+          email: 'assistant2@example.com',
+        },
+        updatedBy: { id: 'user-1', name: 'Admin User' },
+        updatedOn: '2025-01-02T00:00:00.000Z',
+      },
+    ] as TrusteeAssistant[],
   };
 }
 
