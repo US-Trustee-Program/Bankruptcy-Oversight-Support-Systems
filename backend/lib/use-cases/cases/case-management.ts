@@ -19,6 +19,9 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignment } from '@common/cams/assignments';
+import { validateObject, flatten, ValidatorResult } from '@common/cams/validation';
+import { casesSearchPredicateSpec } from '@common/cams/search-validators';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -50,6 +53,14 @@ export default class CaseManagement {
     this.casesRepository = factory.getCasesRepository(applicationContext);
   }
 
+  private checkValidation(validatorResult: ValidatorResult) {
+    if (!validatorResult.valid) {
+      const validationErrors = flatten(validatorResult.reasonMap || {});
+      const collectedErrors = 'Search validation failed: ' + validationErrors.join('. ') + '.';
+      throw new BadRequestError(MODULE_NAME, { message: collectedErrors });
+    }
+  }
+
   private shouldUsePhoneticSearch(
     predicate: CasesSearchPredicate,
     phoneticSearchEnabled: boolean,
@@ -73,6 +84,8 @@ export default class CaseManagement {
     includeAssignments: boolean,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>> {
     try {
+      // RULE 3: Backend validation (security boundary)
+      this.checkValidation(validateObject(casesSearchPredicateSpec, predicate));
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();
         for (const user of predicate.assignments) {
