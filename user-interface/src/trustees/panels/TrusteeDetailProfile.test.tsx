@@ -561,18 +561,23 @@ describe('TrusteeDetailProfile', () => {
   test('should render assistant name without contact information when contact is missing', () => {
     const trusteeWithAssistantNoContact = {
       ...mockTrustee,
-      assistant: {
-        name: 'Jane Assistant',
-      },
+      assistants: [
+        {
+          id: 'assistant-no-contact',
+          trusteeId: mockTrustee.id,
+          name: 'Jane Assistant',
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2024-01-01T00:00:00Z',
+        },
+      ],
     };
 
     renderWithProps({ trustee: trusteeWithAssistantNoContact });
 
-    expect(screen.getByTestId('assistant-name')).toHaveTextContent('Jane Assistant');
-    expect(screen.queryByTestId('assistant-title')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-assistant-street-address')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-assistant-phone-number')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-assistant-email')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-assistant-no-contact-info')).not.toBeInTheDocument();
+    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
+    expect(screen.queryByTestId('assistant-title-0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-0-street-address')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-0-phone-number')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-0-email')).not.toBeInTheDocument();
   });
 });

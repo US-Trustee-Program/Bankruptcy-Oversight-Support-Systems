@@ -104,8 +104,13 @@ export const contactInformationSpec: ValidationSpec<ContactInformation> = {
   companyName: [companyName],
 };
 
+export const assistantContactInformationSpec: ValidationSpec<ContactInformation> = {
+  ...contactInformationSpec,
+  address: [V.optional(V.spec(addressSpec))],
+};
+
 export const assistantInputSpec: ValidationSpec<TrusteeAssistantInput> = {
   name: [assistantName],
   title: [V.optional(assistantTitle)],
-  contact: [V.optional(V.spec(contactInformationSpec))],
+  contact: [V.optional(V.spec(assistantContactInformationSpec))],
 };
