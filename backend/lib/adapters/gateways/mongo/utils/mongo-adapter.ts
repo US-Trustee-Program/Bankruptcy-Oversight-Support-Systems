@@ -84,15 +84,20 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     };
   }
 
-  public async find(query: Query<T>, sort?: SortSpec): Promise<T[]> {
+  public async find(query: Query<T>, sort?: SortSpec, limit?: number): Promise<T[]> {
     const mongoQuery = toMongoQuery<T>(query);
     const mongoSort = sort ? toMongoSort(sort) : undefined;
     try {
       const items: T[] = [];
 
-      const findResults = await this.collectionHumble.find(mongoQuery);
-      const results = mongoSort ? findResults.sort(mongoSort) : findResults;
-      for await (const doc of results) {
+      let cursor = await this.collectionHumble.find(mongoQuery);
+      if (mongoSort) {
+        cursor = cursor.sort(mongoSort);
+      }
+      if (limit !== undefined) {
+        cursor = cursor.limit(limit);
+      }
+      for await (const doc of cursor) {
         items.push(doc as CamsItem<T>);
       }
 
