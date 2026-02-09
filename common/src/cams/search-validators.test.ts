@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { validateObject } from './validation';
+import { validateObject, validateEach } from './validation';
 import {
   casesSearchPredicateSpec,
   caseNumber,
@@ -16,195 +16,183 @@ import { CasesSearchPredicate } from '../api/search';
 
 describe('Search Validators', () => {
   describe('caseNumber validator', () => {
+    test.each(['23-12345', '99-00001', '00-99999'])(
+      'should accept valid case number "%s"',
+      (input) => {
+        const result = validateEach([caseNumber], input);
+        expect(result.valid).toBe(true);
+      },
+    );
+
     test.each([
-      ['23-12345', true],
-      ['99-00001', true],
-      ['00-99999', true],
-      ['123-45678', false], // Too many digits in year
-      ['2-12345', false], // Too few digits in year
-      ['23-1234', false], // Too few digits in case number
-      ['23-123456', false], // Too many digits in case number
-      ['AB-12345', false], // Letters in year
-      ['23-ABCDE', false], // Letters in case number
-      ['', false], // Empty string
-      ['23_12345', false], // Wrong separator
-    ])('should validate case number "%s" as valid=%s', (input, expectedValid) => {
-      const result = validateObject({ caseNumber: [caseNumber] }, { caseNumber: input });
-      expect(result.valid).toBe(expectedValid);
+      ['123-45678', 'too many digits in year'],
+      ['2-12345', 'too few digits in year'],
+      ['23-1234', 'too few digits in case number'],
+      ['23-123456', 'too many digits in case number'],
+      ['AB-12345', 'letters in year'],
+      ['23-ABCDE', 'letters in case number'],
+      ['', 'empty string'],
+      ['23_12345', 'wrong separator'],
+    ])('should reject invalid case number "%s" (%s)', (input, _reason) => {
+      const result = validateEach([caseNumber], input);
+      expect(result.valid).toBeFalsy();
     });
 
     test('should allow undefined case number', () => {
-      const result = validateObject({ caseNumber: [caseNumber] }, {});
+      const result = validateEach([caseNumber], undefined);
       expect(result.valid).toBe(true);
     });
   });
 
   describe('debtorName validator', () => {
-    test.each([
-      ['Jo', true], // Minimum 2 characters
-      ['John Doe', true],
-      ['A'.repeat(200), true], // Maximum 200 characters
-      ['J', false], // Too short
-      ['A'.repeat(201), false], // Too long
-      ['  Jo  ', true], // Should be trimmed before validation
-      ['  J  ', false], // Should be trimmed, then too short
-    ])('should validate debtor name "%s" as valid=%s', (input, expectedValid) => {
-      const result = validateObject({ debtorName: [debtorName] }, { debtorName: input });
-      expect(result.valid).toBe(expectedValid);
+    test.each(['Jo', 'John Doe', 'A'.repeat(200), '  Jo  '])(
+      'should accept valid debtor name "%s"',
+      (input) => {
+        const result = validateEach([debtorName], input);
+        expect(result.valid).toBe(true);
+      },
+    );
 
-      if (!expectedValid && input.trim().length < 2) {
-        expect(result.reasonMap?.debtorName?.reasons?.[0]).toContain('at least 2 characters');
-      } else if (!expectedValid && input.trim().length > 200) {
-        expect(result.reasonMap?.debtorName?.reasons?.[0]).toContain('not exceed 200 characters');
-      }
+    test.each(['J', '  J  '])('should reject debtor name "%s" as too short', (input) => {
+      const result = validateEach([debtorName], input);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasons?.[0]).toContain('at least 2 characters');
+    });
+
+    test('should reject debtor name exceeding maximum length', () => {
+      const result = validateEach([debtorName], 'A'.repeat(201));
+      expect(result.valid).toBeFalsy();
+      expect(result.reasons?.[0]).toContain('not exceed 200 characters');
     });
 
     test('should allow undefined debtor name', () => {
-      const result = validateObject({ debtorName: [debtorName] }, {});
+      const result = validateEach([debtorName], undefined);
       expect(result.valid).toBe(true);
     });
   });
 
   describe('limit validator', () => {
+    test.each([1, 50, 100, '25'])('should accept valid limit %s', (input) => {
+      const result = validateEach([limit], input);
+      expect(result.valid).toBe(true);
+    });
+
     test.each([
-      [1, true],
-      [50, true],
-      [100, true],
-      [0, false], // Too small
-      [101, false], // Too large
-      [-1, false], // Negative
-      ['25', true], // String that can be parsed
-      ['101', false], // String too large
-      ['abc', false], // Non-numeric string
-    ])('should validate limit %s as valid=%s', (input, expectedValid) => {
-      const result = validateObject({ limit: [limit] }, { limit: input });
-      expect(result.valid).toBe(expectedValid);
+      [0, 'too small'],
+      [101, 'too large'],
+      [-1, 'negative'],
+      ['101', 'string too large'],
+      ['abc', 'non-numeric string'],
+    ])('should reject invalid limit %s (%s)', (input, _reason) => {
+      const result = validateEach([limit], input);
+      expect(result.valid).toBeFalsy();
     });
 
     test('should allow undefined limit', () => {
-      const result = validateObject({ limit: [limit] }, {});
+      const result = validateEach([limit], undefined);
       expect(result.valid).toBe(true);
     });
   });
 
   describe('offset validator', () => {
+    test.each([0, 1, 1000000, '0', '100'])('should accept valid offset %s', (input) => {
+      const result = validateEach([offset], input);
+      expect(result.valid).toBe(true);
+    });
+
     test.each([
-      [0, true],
-      [1, true],
-      [1000000, true],
-      [-1, false], // Negative
-      ['0', true], // String that can be parsed
-      ['100', true],
-      ['-1', false], // Negative string
-      ['abc', false], // Non-numeric string
-    ])('should validate offset %s as valid=%s', (input, expectedValid) => {
-      const result = validateObject({ offset: [offset] }, { offset: input });
-      expect(result.valid).toBe(expectedValid);
+      [-1, 'negative'],
+      ['-1', 'negative string'],
+      ['abc', 'non-numeric string'],
+    ])('should reject invalid offset %s (%s)', (input, _reason) => {
+      const result = validateEach([offset], input);
+      expect(result.valid).toBeFalsy();
     });
 
     test('should allow undefined offset', () => {
-      const result = validateObject({ offset: [offset] }, {});
+      const result = validateEach([offset], undefined);
       expect(result.valid).toBe(true);
     });
   });
 
   describe('divisionCodes validator', () => {
     test('should validate array of valid division codes', () => {
-      const result = validateObject(
-        { divisionCodes: [divisionCodes] },
-        { divisionCodes: ['081', '082', 'NYC'] }
-      );
+      const result = validateEach([divisionCodes], ['081', '082', 'NYC']);
       expect(result.valid).toBe(true);
     });
 
     test('should reject invalid division codes', () => {
-      const result = validateObject(
-        { divisionCodes: [divisionCodes] },
-        { divisionCodes: ['', 'A'.repeat(11)] } // Empty or too long
-      );
-      expect(result.valid).toBe(false);
-      expect(result.reasonMap?.divisionCodes?.reasons?.[0]).toContain('Invalid division code');
+      const result = validateEach([divisionCodes], ['', 'A'.repeat(11)]);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasons?.[0]).toContain('Invalid division code');
     });
 
     test('should reject non-string values in array', () => {
-      const result = validateObject(
-        { divisionCodes: [divisionCodes] },
-        { divisionCodes: [123, null] as any }
-      );
-      expect(result.valid).toBe(false);
+      const result = validateEach([divisionCodes], [123, null]);
+      expect(result.valid).toBeFalsy();
     });
 
     test('should allow undefined division codes', () => {
-      const result = validateObject({ divisionCodes: [divisionCodes] }, {});
+      const result = validateEach([divisionCodes], undefined);
       expect(result.valid).toBe(true);
     });
   });
 
   describe('chapters validator', () => {
+    test.each([[['7']], [['11']], [['12']], [['13']], [['15']], [['7', '11', '13']]])(
+      'should accept valid chapters %j',
+      (input) => {
+        const result = validateEach([chapters], input);
+        expect(result.valid).toBe(true);
+      },
+    );
+
     test.each([
-      [['7'], true],
-      [['11'], true],
-      [['12'], true],
-      [['13'], true],
-      [['15'], true],
-      [['7', '11', '13'], true],
-      [['9'], false], // Invalid chapter
-      [['7', '9'], false], // Mix of valid and invalid
-      [['Chapter 7'], false], // Wrong format
-    ])('should validate chapters %j as valid=%s', (input, expectedValid) => {
-      const result = validateObject({ chapters: [chapters] }, { chapters: input });
-      expect(result.valid).toBe(expectedValid);
+      [['9'], 'invalid chapter'],
+      [['7', '9'], 'mix of valid and invalid'],
+      [['Chapter 7'], 'wrong format'],
+    ])('should reject invalid chapters %j (%s)', (input, _reason) => {
+      const result = validateEach([chapters], input);
+      expect(result.valid).toBeFalsy();
     });
 
     test('should allow undefined chapters', () => {
-      const result = validateObject({ chapters: [chapters] }, {});
+      const result = validateEach([chapters], undefined);
       expect(result.valid).toBe(true);
     });
   });
 
   describe('caseIds validator', () => {
     test('should validate array of valid case IDs', () => {
-      const result = validateObject(
-        { caseIds: [caseIds] },
-        { caseIds: ['case-123', 'case-456'] }
-      );
+      const result = validateEach([caseIds], ['case-123', 'case-456']);
       expect(result.valid).toBe(true);
     });
 
     test('should reject empty strings in case IDs', () => {
-      const result = validateObject(
-        { caseIds: [caseIds] },
-        { caseIds: ['case-123', ''] }
-      );
-      expect(result.valid).toBe(false);
-      expect(result.reasonMap?.caseIds?.reasons?.[0]).toContain('non-empty string');
+      const result = validateEach([caseIds], ['case-123', '']);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasons?.[0]).toContain('non-empty string');
     });
 
     test('should allow undefined case IDs', () => {
-      const result = validateObject({ caseIds: [caseIds] }, {});
+      const result = validateEach([caseIds], undefined);
       expect(result.valid).toBe(true);
     });
   });
 
   describe('excludedCaseIds validator', () => {
     test('should validate array of valid excluded case IDs', () => {
-      const result = validateObject(
-        { excludedCaseIds: [excludedCaseIds] },
-        { excludedCaseIds: ['case-789', 'case-012'] }
-      );
+      const result = validateEach([excludedCaseIds], ['case-789', 'case-012']);
       expect(result.valid).toBe(true);
     });
 
     test('should reject empty strings in excluded case IDs', () => {
-      const result = validateObject(
-        { excludedCaseIds: [excludedCaseIds] },
-        { excludedCaseIds: [''] }
-      );
-      expect(result.valid).toBe(false);
+      const result = validateEach([excludedCaseIds], ['']);
+      expect(result.valid).toBeFalsy();
     });
 
     test('should allow undefined excluded case IDs', () => {
-      const result = validateObject({ excludedCaseIds: [excludedCaseIds] }, {});
+      const result = validateEach([excludedCaseIds], undefined);
       expect(result.valid).toBe(true);
     });
   });
@@ -228,10 +216,10 @@ describe('Search Validators', () => {
 
     test('should fail when debtor name is too short', () => {
       const predicate: CasesSearchPredicate = {
-        debtorName: 'J', // Too short
+        debtorName: 'J',
       };
       const result = atLeastOneSearchCriterion(predicate);
-      expect(result.valid).toBe(false);
+      expect(result.valid).toBeFalsy();
       expect(result.reasons?.[0]).toContain('At least one search criterion is required');
     });
 
@@ -262,7 +250,7 @@ describe('Search Validators', () => {
     test('should fail when no search criteria provided', () => {
       const predicate: CasesSearchPredicate = {};
       const result = atLeastOneSearchCriterion(predicate);
-      expect(result.valid).toBe(false);
+      expect(result.valid).toBeFalsy();
       expect(result.reasons?.[0]).toContain('At least one search criterion is required');
     });
 
@@ -273,7 +261,7 @@ describe('Search Validators', () => {
         includeOnlyUnassigned: false,
       };
       const result = atLeastOneSearchCriterion(predicate);
-      expect(result.valid).toBe(false);
+      expect(result.valid).toBeFalsy();
     });
   });
 
@@ -297,19 +285,21 @@ describe('Search Validators', () => {
         offset: 0,
       };
       const result = validateObject(casesSearchPredicateSpec, predicate);
-      expect(result.valid).toBe(false);
-      expect(result.reasonMap?.$?.reasons?.[0]).toContain('At least one search criterion is required');
+      expect(result.valid).toBeFalsy();
+      expect(result.reasonMap?.$?.reasons?.[0]).toContain(
+        'At least one search criterion is required',
+      );
     });
 
     test('should fail with multiple validation errors', () => {
       const predicate: CasesSearchPredicate = {
         caseNumber: 'invalid-format',
-        debtorName: 'A', // Too short
-        limit: 200, // Too large
-        offset: -1, // Negative
+        debtorName: 'A',
+        limit: 200,
+        offset: -1,
       };
       const result = validateObject(casesSearchPredicateSpec, predicate);
-      expect(result.valid).toBe(false);
+      expect(result.valid).toBeFalsy();
       expect(result.reasonMap?.caseNumber?.reasons).toBeDefined();
       expect(result.reasonMap?.debtorName?.reasons).toBeDefined();
       expect(result.reasonMap?.limit?.reasons).toBeDefined();
@@ -318,7 +308,7 @@ describe('Search Validators', () => {
 
     test('should pass with minimal valid criteria', () => {
       const predicate: CasesSearchPredicate = {
-        debtorName: 'Jo', // Minimum valid length
+        debtorName: 'Jo',
       };
       const result = validateObject(casesSearchPredicateSpec, predicate);
       expect(result.valid).toBe(true);
@@ -326,13 +316,14 @@ describe('Search Validators', () => {
 
     test('should handle edge case with whitespace-only debtor name', () => {
       const predicate: CasesSearchPredicate = {
-        debtorName: '   ', // Should be trimmed to empty
+        debtorName: '   ',
       };
       const result = validateObject(casesSearchPredicateSpec, predicate);
-      expect(result.valid).toBe(false);
-      // Both field validation and at-least-one validation should fail
+      expect(result.valid).toBeFalsy();
       expect(result.reasonMap?.debtorName?.reasons?.[0]).toContain('at least 2 characters');
-      expect(result.reasonMap?.$?.reasons?.[0]).toContain('At least one search criterion is required');
+      expect(result.reasonMap?.$?.reasons?.[0]).toContain(
+        'At least one search criterion is required',
+      );
     });
   });
 });

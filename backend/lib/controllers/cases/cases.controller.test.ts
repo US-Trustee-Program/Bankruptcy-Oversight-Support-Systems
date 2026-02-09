@@ -12,6 +12,7 @@ import {
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ResourceActions } from '@common/cams/actions';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 describe('cases controller test', () => {
   const caseId1 = '081-11-06541';
@@ -48,6 +49,8 @@ describe('cases controller test', () => {
     });
 
     test('should throw CamsError when use case errors on getCaseDetail', async () => {
+      context.request.method = 'GET';
+      context.request.params = { caseId: caseId1 };
       vi.spyOn(CaseManagement.prototype, 'getCaseDetail').mockRejectedValue(
         new Error('some error'),
       );
@@ -418,8 +421,91 @@ describe('cases controller test', () => {
 
       vi.spyOn(CaseManagement.prototype, 'searchCases').mockRejectedValue(error);
 
-      context.request = mockCamsHttpRequest({ query: { caseNumber } });
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, limit, offset },
+      });
       await expect(controller.handleRequest(context)).rejects.toThrow(UnknownError);
+    });
+  });
+
+  describe('search input validation', () => {
+    test('should reject request with no body', async () => {
+      context.request = mockCamsHttpRequest({ method: 'POST' });
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test('should reject request with no search criteria', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { limit: 25, offset: 0 },
+      });
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test('should reject invalid case number format', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber: 'invalid-format', limit: 25, offset: 0 },
+      });
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test('should reject debtor name that is too short', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { debtorName: 'J', limit: 25, offset: 0 },
+      });
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test('should reject debtor name that exceeds maximum length', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { debtorName: 'A'.repeat(201), limit: 25, offset: 0 },
+      });
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test.each([
+      {
+        field: 'limit',
+        body: { caseNumber: '00-00000', limit: 0, offset: 0 },
+        reason: 'limit too small',
+      },
+      {
+        field: 'limit',
+        body: { caseNumber: '00-00000', limit: 101, offset: 0 },
+        reason: 'limit too large',
+      },
+      {
+        field: 'offset',
+        body: { caseNumber: '00-00000', limit: 25, offset: -1 },
+        reason: 'negative offset',
+      },
+    ])('should reject invalid $field ($reason)', async ({ body }) => {
+      context.request = mockCamsHttpRequest({ method: 'POST', body });
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test('should reject invalid chapter values', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { chapters: ['9'], limit: 25, offset: 0 },
+      });
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+    });
+
+    test('should not call use case when validation fails', async () => {
+      const searchSpy = vi.spyOn(CaseManagement.prototype, 'searchCases');
+
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { debtorName: 'J' },
+      });
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
+      expect(searchSpy).not.toHaveBeenCalled();
     });
   });
 });
