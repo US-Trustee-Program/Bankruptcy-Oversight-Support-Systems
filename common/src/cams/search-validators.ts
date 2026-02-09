@@ -12,9 +12,13 @@ const SEARCH_VALIDATION_MESSAGES = {
   DEBTOR_NAME_TOO_SHORT: `Debtor name must be at least ${DEBTOR_NAME_MIN_LENGTH} characters`,
   DEBTOR_NAME_TOO_LONG: `Debtor name must not exceed ${DEBTOR_NAME_MAX_LENGTH} characters`,
   CASE_NUMBER_INVALID: 'Case number must be in format: YY-NNNNN',
+  LIMIT_NOT_A_NUMBER: 'Limit must be a number',
   LIMIT_INVALID: 'Limit must be a positive number between 1 and 100',
+  OFFSET_NOT_A_NUMBER: 'Offset must be a number',
   OFFSET_INVALID: 'Offset must be a non-negative number',
+  DIVISION_CODE_NOT_A_STRING: 'Division code must be a string',
   DIVISION_CODE_INVALID: 'Invalid division code format',
+  CHAPTER_NOT_A_STRING: 'Chapter must be a string',
   CHAPTER_INVALID: 'Chapter must be one of: 7, 11, 12, 13, 15',
   CASE_ID_INVALID: 'Case ID must be a non-empty string',
   AT_LEAST_ONE_CRITERION: 'At least one search criterion is required',
@@ -37,7 +41,7 @@ export const limit = V.optional(
   V.useValidators((value: unknown) => {
     const num = typeof value === 'string' ? parseInt(value, 10) : value;
     if (typeof num !== 'number' || isNaN(num)) {
-      return { reasons: ['Limit must be a number'] };
+      return { reasons: [SEARCH_VALIDATION_MESSAGES.LIMIT_NOT_A_NUMBER] };
     }
     if (num < 1 || num > 100) {
       return { reasons: [SEARCH_VALIDATION_MESSAGES.LIMIT_INVALID] };
@@ -50,7 +54,7 @@ export const offset = V.optional(
   V.useValidators((value: unknown) => {
     const num = typeof value === 'string' ? parseInt(value, 10) : value;
     if (typeof num !== 'number' || isNaN(num)) {
-      return { reasons: ['Offset must be a number'] };
+      return { reasons: [SEARCH_VALIDATION_MESSAGES.OFFSET_NOT_A_NUMBER] };
     }
     if (num < 0) {
       return { reasons: [SEARCH_VALIDATION_MESSAGES.OFFSET_INVALID] };
@@ -63,7 +67,7 @@ export const divisionCodes = V.optional(
   V.arrayOf(
     V.useValidators((value: unknown) => {
       if (typeof value !== 'string') {
-        return { reasons: ['Division code must be a string'] };
+        return { reasons: [SEARCH_VALIDATION_MESSAGES.DIVISION_CODE_NOT_A_STRING] };
       }
       // Basic sanity check for division codes
       if (value.length === 0 || value.length > 10) {
@@ -78,7 +82,7 @@ export const chapters = V.optional(
   V.arrayOf(
     V.useValidators((value: unknown) => {
       if (typeof value !== 'string') {
-        return { reasons: ['Chapter must be a string'] };
+        return { reasons: [SEARCH_VALIDATION_MESSAGES.CHAPTER_NOT_A_STRING] };
       }
       // Valid chapter values based on bankruptcy law
       const validChapters = ['7', '11', '12', '13', '15'];
@@ -114,10 +118,17 @@ export const excludedCaseIds = V.optional(
 
 // At least one search criterion validator
 export const atLeastOneSearchCriterion = V.useValidators((form: unknown) => {
+  if (!form || typeof form !== 'object') {
+    return { reasons: [SEARCH_VALIDATION_MESSAGES.AT_LEAST_ONE_CRITERION] };
+  }
+
   const predicate = form as CasesSearchPredicate;
 
-  const hasCaseNumber = !!predicate.caseNumber?.trim();
-  const hasDebtorName = (predicate.debtorName?.trim().length ?? 0) >= DEBTOR_NAME_MIN_LENGTH;
+  const hasCaseNumber =
+    typeof predicate.caseNumber === 'string' && predicate.caseNumber.trim().length > 0;
+  const hasDebtorName =
+    typeof predicate.debtorName === 'string' &&
+    predicate.debtorName.trim().length >= DEBTOR_NAME_MIN_LENGTH;
   const hasDivisionCodes = !!predicate.divisionCodes && predicate.divisionCodes.length > 0;
   const hasChapters = !!predicate.chapters && predicate.chapters.length > 0;
   const hasCaseIds = !!predicate.caseIds && predicate.caseIds.length > 0;

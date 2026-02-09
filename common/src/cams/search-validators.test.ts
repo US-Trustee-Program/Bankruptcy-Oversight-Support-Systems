@@ -263,6 +263,24 @@ describe('Search Validators', () => {
       const result = atLeastOneSearchCriterion(predicate);
       expect(result.valid).toBeFalsy();
     });
+
+    test.each([undefined, null])('should fail gracefully when form is %s', (input) => {
+      const result = atLeastOneSearchCriterion(input);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasons?.[0]).toContain('At least one search criterion is required');
+    });
+
+    test('should treat non-string caseNumber as absent', () => {
+      const result = atLeastOneSearchCriterion({ caseNumber: 12345 } as unknown);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasons?.[0]).toContain('At least one search criterion is required');
+    });
+
+    test('should treat non-string debtorName as absent', () => {
+      const result = atLeastOneSearchCriterion({ debtorName: 12345 } as unknown);
+      expect(result.valid).toBeFalsy();
+      expect(result.reasons?.[0]).toContain('At least one search criterion is required');
+    });
   });
 
   describe('casesSearchPredicateSpec - full validation', () => {
