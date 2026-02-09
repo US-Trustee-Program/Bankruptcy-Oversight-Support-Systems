@@ -16,6 +16,10 @@ export type RangeMessage = {
   end: number;
 };
 
+export type CursorMessage = {
+  lastId: string | null;
+};
+
 /**
  * isAuthorized
  *
