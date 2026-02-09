@@ -2,6 +2,7 @@ import { describe, test, expect } from 'vitest';
 import { validateObject, VALID } from './validation';
 import * as TV from './trustees-validators';
 import { FIELD_VALIDATION_MESSAGES } from './validation-messages';
+import MockData from './test-utilities/mock-data';
 
 describe('trustees-validators', () => {
   describe('trusteeName', () => {
@@ -519,7 +520,7 @@ describe('trustees-validators', () => {
         link: 'https://zoom.us/j/123456789',
         phone: '123-456-7890',
         meetingId: '123456789',
-        passcode: 'abc123',
+        passcode: MockData.randomAlphaNumeric(6),
       };
 
       const result = validateObject(TV.zoomInfoSpec, validZoom);
@@ -531,7 +532,7 @@ describe('trustees-validators', () => {
         link: 'invalid link',
         phone: '123-456-7890',
         meetingId: '123456789',
-        passcode: 'abc123',
+        passcode: MockData.randomAlphaNumeric(6),
       };
 
       const result = validateObject(TV.zoomInfoSpec, invalidZoom);
@@ -544,7 +545,7 @@ describe('trustees-validators', () => {
         link: 'https://zoom.us/j/123456789',
         phone: '123-456-7890',
         meetingId: 'invalid',
-        passcode: 'abc123',
+        passcode: MockData.randomAlphaNumeric(6),
       };
 
       const result = validateObject(TV.zoomInfoSpec, invalidZoom);
