@@ -54,6 +54,11 @@
       "enabled": false
     },
     {
+      "description": "Disable minimumReleaseAge for Bicep resources - datasource lacks timestamp data",
+      "matchManagers": ["bicep"],
+      "minimumReleaseAge": "0 days"
+    },
+    {
       "description": "First-party GitHub Actions with digest pinning and 14-day wait",
       "matchManagers": ["github-actions"],
       "pinDigests": true,

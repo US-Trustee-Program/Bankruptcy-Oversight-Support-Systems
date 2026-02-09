@@ -13,33 +13,29 @@ import { ZoomInfo } from './trustees';
 import { Address, ContactInformation, PhoneNumber } from './contact';
 import { TrusteeAssistantInput } from './trustee-assistants';
 
-export const trusteeName = V.useValidators(
-  V.minLength(1, 'Trustee name is required'),
+export const trusteeName = V.checkFirst(V.minLength(1, 'Trustee name is required')).then(
   V.maxLength(50),
 );
 
 export const companyName = V.optional(V.maxLength(50));
 
-export const addressLine1 = V.useValidators(
+export const addressLine1 = V.checkFirst(
   V.minLength(1, FIELD_VALIDATION_MESSAGES.ADDRESS_REQUIRED),
-  V.maxLength(40),
-);
+).then(V.maxLength(40));
 
 export const addressLine2 = V.optional(V.maxLength(40));
 
 export const addressLine3 = V.optional(V.maxLength(40));
 
-export const city = V.useValidators(
-  V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED),
+export const city = V.checkFirst(V.minLength(1, FIELD_VALIDATION_MESSAGES.CITY_REQUIRED)).then(
   V.maxLength(50),
 );
 
 export const state = V.exactLength(2, FIELD_VALIDATION_MESSAGES.STATE_REQUIRED);
 
-export const zipCode = V.useValidators(
+export const zipCode = V.checkFirst(
   V.minLength(1, FIELD_VALIDATION_MESSAGES.ZIP_CODE_REQUIRED),
-  V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE),
-);
+).then(V.matches(ZIP_REGEX, FIELD_VALIDATION_MESSAGES.ZIP_CODE));
 
 export const countryCode = V.exactLength(2);
 
