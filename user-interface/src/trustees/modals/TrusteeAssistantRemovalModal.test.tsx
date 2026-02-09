@@ -45,7 +45,7 @@ describe('TrusteeAssistantRemovalModal', () => {
     vi.restoreAllMocks();
     vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
     vi.spyOn(Api2Module.default, 'deleteTrusteeAssistant').mockResolvedValue({
-      data: undefined,
+      data: undefined as unknown as object,
     });
     mockCallback.mockClear();
     mockGlobalAlert.error.mockClear();
@@ -186,7 +186,7 @@ describe('TrusteeAssistantRemovalModal', () => {
     expect(typeof utils.current?.hide).toBe('function');
 
     // Calling hide should not throw
-    expect(() => utils.current?.hide()).not.toThrow();
+    expect(() => utils.current?.hide({})).not.toThrow();
   });
 
   test('should close modal after successful deletion', async () => {
