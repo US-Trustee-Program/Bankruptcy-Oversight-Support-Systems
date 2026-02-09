@@ -7,9 +7,10 @@ import {
   using,
 } from './query-builder';
 
-export const DEFAULT_BIGRAM_WEIGHT = 3;
-export const DEFAULT_PHONETIC_WEIGHT = 11;
-export const DEFAULT_NICKNAME_WEIGHT = 10;
+export const DEFAULT_EXACT_MATCH_WEIGHT = 10000;
+export const DEFAULT_NICKNAME_MATCH_WEIGHT = 1000;
+export const DEFAULT_PHONETIC_MATCH_WEIGHT = 100;
+export const DEFAULT_CHAR_PREFIX_WEIGHT = 75;
 
 function source<T = unknown>(source?: string) {
   return {
@@ -124,13 +125,17 @@ export function isSort(obj: unknown): obj is Sort {
 
 export type Score = {
   stage: 'SCORE';
-  searchTokens: string[];
-  nicknameTokens: string[];
-  targetFields: string[];
+  searchWords: string[];
+  nicknameWords: string[];
+  searchMetaphones: string[];
+  nicknameMetaphones: string[];
+  targetNameFields: string[];
+  targetTokenFields: string[];
   outputField: string;
-  bigramWeight: number;
-  phoneticWeight: number;
-  nicknameWeight: number;
+  exactMatchWeight: number;
+  nicknameMatchWeight: number;
+  phoneticMatchWeight: number;
+  charPrefixWeight: number;
 };
 
 export type Stage<T = never> =
@@ -241,24 +246,34 @@ function first(field: Field, as: Field): First {
   return { accumulator: 'FIRST', as: { name: as.name }, field: { name: field.name } };
 }
 
-function score(
-  searchTokens: string[],
-  nicknameTokens: string[],
-  targetFields: string[],
-  outputField: string,
-  bigramWeight: number = DEFAULT_BIGRAM_WEIGHT,
-  phoneticWeight: number = DEFAULT_PHONETIC_WEIGHT,
-  nicknameWeight: number = DEFAULT_NICKNAME_WEIGHT,
-): Score {
+interface ScoreParams {
+  searchWords: string[];
+  nicknameWords: string[];
+  searchMetaphones: string[];
+  nicknameMetaphones: string[];
+  targetNameFields: string[];
+  targetTokenFields: string[];
+  outputField: string;
+  exactMatchWeight?: number;
+  nicknameMatchWeight?: number;
+  phoneticMatchWeight?: number;
+  charPrefixWeight?: number;
+}
+
+function score(params: ScoreParams): Score {
   return {
     stage: 'SCORE',
-    searchTokens,
-    nicknameTokens,
-    targetFields,
-    outputField,
-    bigramWeight,
-    phoneticWeight,
-    nicknameWeight,
+    searchWords: params.searchWords,
+    nicknameWords: params.nicknameWords,
+    searchMetaphones: params.searchMetaphones,
+    nicknameMetaphones: params.nicknameMetaphones,
+    targetNameFields: params.targetNameFields,
+    targetTokenFields: params.targetTokenFields,
+    outputField: params.outputField,
+    exactMatchWeight: params.exactMatchWeight ?? DEFAULT_EXACT_MATCH_WEIGHT,
+    nicknameMatchWeight: params.nicknameMatchWeight ?? DEFAULT_NICKNAME_MATCH_WEIGHT,
+    phoneticMatchWeight: params.phoneticMatchWeight ?? DEFAULT_PHONETIC_MATCH_WEIGHT,
+    charPrefixWeight: params.charPrefixWeight ?? DEFAULT_CHAR_PREFIX_WEIGHT,
   };
 }
 
