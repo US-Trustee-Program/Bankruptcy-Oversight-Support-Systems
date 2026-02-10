@@ -90,6 +90,18 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const { trusteeId } = props;
   const assistantId = props.assistantId || routeParams.assistantId;
+
+  if (!assistantId) {
+    return (
+      <Stop
+        id="missing-assistant-id-alert"
+        title="Error"
+        message="Assistant ID is required."
+        asError
+      />
+    );
+  }
+
   const isCreateMode = assistantId === 'new';
 
   const [assistant, setAssistant] = useState<TrusteeAssistant | undefined>(props.assistant);
@@ -123,33 +135,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     }
   }, [isCreateMode, assistantId, trusteeId, globalAlert]);
 
-  const mapPayloadForCreate = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
-    return {
-      name: formData.name!,
-      ...(formData.title && { title: formData.title }),
-      ...(formData.address1 &&
-        formData.city &&
-        formData.state &&
-        formData.zipCode && {
-          contact: {
-            address: {
-              address1: formData.address1,
-              ...(formData.address2 && { address2: formData.address2 }),
-              city: formData.city,
-              state: formData.state,
-              zipCode: formData.zipCode,
-              countryCode: 'US',
-            },
-            ...(formData.phone && {
-              phone: { number: formData.phone, extension: formData.extension },
-            }),
-            ...(formData.email && { email: formData.email }),
-          },
-        }),
-    };
-  };
-
-  const mapPayloadForEdit = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
+  const mapAssistantPayload = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
     return {
       name: formData.name!,
       ...(formData.title && { title: formData.title }),
@@ -218,13 +204,11 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
       setIsSubmitting(true);
 
       try {
+        const payload = mapAssistantPayload(currentFormData);
         if (isCreateMode) {
-          const payload = mapPayloadForCreate(currentFormData);
           await Api2.createTrusteeAssistant(trusteeId, payload);
         } else {
-          const payload = mapPayloadForEdit(currentFormData);
-          // TODO: CAMS-686 why is assistantId! being used, it should always exist?
-          await Api2.updateTrusteeAssistant(trusteeId, assistantId!, payload);
+          await Api2.updateTrusteeAssistant(trusteeId, assistantId, payload);
         }
         navigate.navigateTo(`/trustees/${trusteeId}`);
       } catch (e) {

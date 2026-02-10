@@ -230,6 +230,7 @@ describe('TrusteesUseCase tests', () => {
       const trusteeId = 'trustee-123';
       const mockTrustee = MockData.getTrustee();
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAssistants').mockResolvedValue([]);
 
       const result = await trusteesUseCase.getTrustee(context, trusteeId);
 
