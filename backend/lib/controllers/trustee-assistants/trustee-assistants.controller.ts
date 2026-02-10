@@ -134,7 +134,7 @@ export class TrusteeAssistantsController implements CamsController {
 
   private async handlePutRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<undefined>> {
+  ): Promise<CamsHttpResponseInit<TrusteeAssistant>> {
     const trusteeId = context.request.params['trusteeId'];
     const assistantId = context.request.params['assistantId'];
 
@@ -158,7 +158,12 @@ export class TrusteeAssistantsController implements CamsController {
       });
     }
 
-    await this.useCase.updateAssistant(context, trusteeId, assistantId, input);
+    const updatedAssistant = await this.useCase.updateAssistant(
+      context,
+      trusteeId,
+      assistantId,
+      input,
+    );
 
     return httpSuccess({
       statusCode: 200,
@@ -166,7 +171,7 @@ export class TrusteeAssistantsController implements CamsController {
         meta: {
           self: context.request.url,
         },
-        data: undefined,
+        data: updatedAssistant,
       },
     });
   }
