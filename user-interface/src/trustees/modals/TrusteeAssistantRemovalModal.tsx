@@ -1,14 +1,10 @@
 import Modal from '@/lib/components/uswds/modal/Modal';
-import {
-  ModalRefType,
-  OpenModalButtonRef,
-  SubmitCancelButtonGroupRef,
-} from '@/lib/components/uswds/modal/modal-refs';
+import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import Api2 from '@/lib/models/api2';
-import React, { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
 type CallbackFunction = () => void;
 
@@ -20,9 +16,8 @@ export type TrusteeAssistantRemovalModalOpenProps = {
   openModalButtonRef: React.Ref<OpenModalButtonRef>;
 };
 
-export interface TrusteeAssistantRemovalModalRef extends ModalRefType {
+export interface TrusteeAssistantRemovalModalRef extends Omit<ModalRefType, 'show'> {
   show: (showProps: TrusteeAssistantRemovalModalOpenProps) => void;
-  buttons?: RefObject<SubmitCancelButtonGroupRef | null>;
 }
 
 interface TrusteeAssistantRemovalModalProps {
