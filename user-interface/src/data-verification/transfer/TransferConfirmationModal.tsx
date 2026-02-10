@@ -92,7 +92,7 @@ function TransferConfirmationModal_(
 
   function hide() {
     if (modalRef.current?.hide) {
-      modalRef.current?.hide({});
+      modalRef.current?.hide();
     }
   }
 

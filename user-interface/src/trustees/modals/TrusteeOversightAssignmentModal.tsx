@@ -89,7 +89,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
         loadStaff(assignment);
       },
       hide: () => {
-        modalRef.current?.hide({});
+        modalRef.current?.hide();
         setSelectedStaff(null);
         setCurrentAssignment(null);
       },
@@ -100,7 +100,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
   const handleAssignStaff = useCallback(async () => {
     if (selectedStaff) {
       if (currentAssignment && currentAssignment.user.id === selectedStaff.id) {
-        modalRef.current?.hide({});
+        modalRef.current?.hide();
         return;
       }
 
@@ -111,7 +111,7 @@ const TrusteeOversightAssignmentModal = forwardRef<
         globalAlert?.success(
           `${roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)} assigned successfully`,
         );
-        modalRef.current?.hide({});
+        modalRef.current?.hide();
       } catch (err) {
         globalAlert?.error(err instanceof Error ? err.message : `Failed to assign ${roleLabel}`);
       } finally {
