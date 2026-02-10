@@ -10,6 +10,9 @@ param tags object = {}
 @description('Name of the blob container for security scan results.')
 param containerName string = 'security-scan-results'
 
+@description('Name of the blob container for Snyk baseline SARIFs.')
+param baselineContainerName string = 'snyk-baseline'
+
 module storage './lib/storage/storage-account.bicep' = {
   name: '${storageAccountName}-module'
   params: {
@@ -30,6 +33,11 @@ resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01'
 
 resource container 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-09-01' = {
   name: containerName
+  parent: blobService
+}
+
+resource baselineContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-09-01' = {
+  name: baselineContainerName
   parent: blobService
 }
 

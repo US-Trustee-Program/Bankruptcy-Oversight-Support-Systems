@@ -92,6 +92,8 @@ jobs:
           SNYK_API: https://api.snykgov.io
 
       - name: Run Snyk Code (SAST) scan
+        id: snyk-scan
+        continue-on-error: true
         run: snyk code test --severity-threshold=medium --sarif-file-output=snyk-code.sarif
         env:
           SNYK_API: https://api.snykgov.io
@@ -122,6 +124,39 @@ jobs:
           ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
           RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
 
+      - name: Download SAST baseline
+        id: baseline
+        if: always()
+        run: |
+          ACCOUNT_KEY=$(az storage account keys list \
+            -n "$ACCOUNT_NAME" \
+            -g "$RESOURCE_GROUP" \
+            --query '[0].value' -o tsv)
+          if az storage blob download \
+            --account-name "$ACCOUNT_NAME" \
+            --account-key "$ACCOUNT_KEY" \
+            -c snyk-baseline \
+            -n snyk-code-baseline.txt \
+            -f snyk-code-baseline.txt 2>/dev/null; then
+            echo "baseline_found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No SAST baseline found. All findings will be treated as new."
+            echo "baseline_found=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
+          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
+
+      - name: Compare against baseline
+        id: baseline-compare
+        if: always() && steps.snyk-scan.outcome == 'failure'
+        run: |
+          if ops/scripts/pipeline/snyk-baseline-compare.sh snyk-code.sarif snyk-code-baseline.txt; then
+            echo "has_new_findings=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_new_findings=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Sanitize SARIF for GitHub upload
         if: always()
         run: |
@@ -140,3 +175,20 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: snyk-code.sarif
+
+      - name: Fail on new findings
+        if: always()
+        env:
+          SCAN_OUTCOME: ${{ steps.snyk-scan.outcome }}
+          HAS_NEW_FINDINGS: ${{ steps.baseline-compare.outputs.has_new_findings }}
+        run: |
+          if [[ "$SCAN_OUTCOME" == "success" ]]; then
+            echo "Snyk Code scan passed — no findings."
+            exit 0
+          fi
+          if [[ "$HAS_NEW_FINDINGS" == "true" ]]; then
+            echo "New SAST findings detected that are not in the baseline."
+            exit 1
+          fi
+          echo "Snyk Code scan found issues, but all match the accepted baseline."
+          exit 0
