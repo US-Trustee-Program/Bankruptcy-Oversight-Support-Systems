@@ -6,8 +6,6 @@ jobs:
   deploy-storage:
     name: Deploy Scan Storage
     runs-on: ubuntu-latest
-    outputs:
-      account-name: ${{ steps.deploy.outputs.accountName }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -17,14 +15,11 @@ jobs:
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Deploy security scan storage account
-        id: deploy
         run: |
-          accountName=$(az deployment group create \
+          az deployment group create \
             --resource-group "$RESOURCE_GROUP" \
             --template-file ops/cloud-deployment/security-scan-storage.bicep \
-            --parameters storageAccountName="$STORAGE_ACCOUNT_NAME" \
-            --query 'properties.outputs.accountName.value' -o tsv)
-          echo "accountName=$accountName" >> "$GITHUB_OUTPUT"
+            --parameters storageAccountName="$STORAGE_ACCOUNT_NAME"
         env:
           RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
           STORAGE_ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
@@ -80,7 +75,7 @@ jobs:
               --overwrite
           fi
         env:
-          ACCOUNT_NAME: ${{ needs.deploy-storage.outputs.account-name }}
+          ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
           RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
 
       - name: Sanitize SARIF for GitHub upload
@@ -147,7 +142,7 @@ jobs:
               --overwrite
           fi
         env:
-          ACCOUNT_NAME: ${{ needs.deploy-storage.outputs.account-name }}
+          ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
           RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
 
       - name: Sanitize SARIF for GitHub upload
