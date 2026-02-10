@@ -38,7 +38,6 @@ import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-as
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
-import MockData from '@common/cams/test-utilities/mock-data';
 
 // Helper to generate a random ID
 function randomId() {
@@ -2454,7 +2453,25 @@ async function getTrusteeAssistants(_trusteeId: string) {
 
 async function getAssistant(trusteeId: string, assistantId: string) {
   return {
-    data: MockData.getTrusteeAssistant({ id: assistantId, trusteeId }),
+    data: {
+      id: assistantId,
+      trusteeId,
+      name: 'Jane Doe',
+      title: 'Paralegal',
+      contact: {
+        address: {
+          address1: '123 Main St',
+          city: 'Springfield',
+          state: 'IL',
+          zipCode: '62701',
+          countryCode: 'US',
+        },
+        phone: { number: '555-123-4567' },
+        email: 'jane.doe@example.com',
+      },
+      updatedBy: { id: 'user-1', name: 'Admin User' },
+      updatedOn: new Date().toISOString(),
+    } as TrusteeAssistant,
   };
 }
 
