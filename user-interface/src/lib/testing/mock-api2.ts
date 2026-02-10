@@ -2446,69 +2446,44 @@ async function putTrusteeAppointment(
 }
 
 async function getTrusteeAssistants(_trusteeId: string) {
-  // Return mock assistants for accessibility testing
-  // Tests don't need persistence - just need to render different UI states
   return {
     data: [
-      {
-        id: 'assistant-001',
-        trusteeId: _trusteeId,
-        name: 'Test Assistant One',
-        title: 'Senior Assistant',
-        contact: {
-          address: {
-            address1: '123 Main St',
-            city: 'Test City',
-            state: 'NY',
-            zipCode: '10001',
-            countryCode: 'US' as const,
-          },
-          phone: { number: '555-123-4567' },
-          email: 'assistant1@example.com',
-        },
-        updatedBy: { id: 'user-1', name: 'Admin User' },
-        updatedOn: '2025-01-01T00:00:00.000Z',
-      },
-      {
-        id: 'assistant-002',
-        trusteeId: _trusteeId,
-        name: 'Test Assistant Two',
-        title: 'Junior Assistant',
-        contact: {
-          address: {
-            address1: '456 Oak Ave',
-            city: 'Another City',
-            state: 'CA',
-            zipCode: '90001',
-            countryCode: 'US' as const,
-          },
-          phone: { number: '555-987-6543' },
-          email: 'assistant2@example.com',
-        },
-        updatedBy: { id: 'user-1', name: 'Admin User' },
-        updatedOn: '2025-01-02T00:00:00.000Z',
-      },
+      await getAssistant(_trusteeId, 'assistant-001').then((res) => res.data),
+      await getAssistant(_trusteeId, 'assistant-002').then((res) => res.data),
     ] as TrusteeAssistant[],
   };
 }
 
 async function getAssistant(_trusteeId: string, assistantId: string) {
+  // Extract identifier from assistantId (e.g., 'assistant-001' -> '001')
+  const idSuffix = assistantId.split('-').pop() || '000';
+
+  // Derive deterministic values from assistantId
+  const name = `Test Assistant ${idSuffix}`;
+  const title = `${idSuffix === '001' ? 'Senior' : 'Junior'} Assistant`;
+  const city = `Test City ${idSuffix}`;
+  const email = `assistant${idSuffix}@example.com`;
+
+  // Use faker for other fields (seed with assistantId for consistency)
+  const { faker } = await import('@faker-js/faker');
+  faker.seed(assistantId.charCodeAt(0) * 1000);
+
   return {
     data: {
       id: assistantId,
       trusteeId: _trusteeId,
-      name: 'Mock Assistant',
-      title: 'Mock Title',
+      name,
+      title,
       contact: {
         address: {
-          address1: '123 Mock St',
-          city: 'Mock City',
-          state: 'NY',
-          zipCode: '10001',
+          address1: faker.location.streetAddress(),
+          city,
+          state: faker.location.state({ abbreviated: true }),
+          zipCode: faker.location.zipCode(),
           countryCode: 'US' as const,
         },
-        phone: { number: '555-123-4567' },
-        email: 'mock@example.com',
+        phone: { number: faker.phone.number() },
+        email,
       },
       updatedBy: { id: 'user-1', name: 'Admin User' },
       updatedOn: new Date().toISOString(),

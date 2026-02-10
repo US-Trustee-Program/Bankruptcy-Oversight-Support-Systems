@@ -45,7 +45,7 @@ function TrusteeAssistantRemovalModal_(
     submitButton: {
       label: 'Yes, Delete',
       uswdsStyle: UswdsButtonStyle.Secondary,
-      onClick: handleRemoveSubmitButtonClick,
+      onClick: handleClickDelete,
       disabled: false,
       closeOnClick: true,
     },
@@ -54,7 +54,7 @@ function TrusteeAssistantRemovalModal_(
     },
   };
 
-  function handleRemoveSubmitButtonClick() {
+  function handleClickDelete() {
     if (formValuesFromShowOptions?.assistantId) {
       Api2.deleteTrusteeAssistant(
         formValuesFromShowOptions.trusteeId,

@@ -75,7 +75,7 @@ type TrusteeCore = {
   name: string;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
-  assistants?: TrusteeAssistant[]; // Multiple assistants per trustee
+  assistants?: TrusteeAssistant[];
 };
 
 type TrusteeOptionalFields = {
