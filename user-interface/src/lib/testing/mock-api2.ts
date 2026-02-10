@@ -38,6 +38,7 @@ import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-as
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 // Helper to generate a random ID
 function randomId() {
@@ -2447,47 +2448,13 @@ async function putTrusteeAppointment(
 
 async function getTrusteeAssistants(_trusteeId: string) {
   return {
-    data: [
-      await getAssistant(_trusteeId, 'assistant-001').then((res) => res.data),
-      await getAssistant(_trusteeId, 'assistant-002').then((res) => res.data),
-    ] as TrusteeAssistant[],
+    data: [] as TrusteeAssistant[],
   };
 }
 
-async function getAssistant(_trusteeId: string, assistantId: string) {
-  // Extract identifier from assistantId (e.g., 'assistant-001' -> '001')
-  const idSuffix = assistantId.split('-').pop() || '000';
-
-  // Derive deterministic values from assistantId
-  const name = `Test Assistant ${idSuffix}`;
-  const title = `${idSuffix === '001' ? 'Senior' : 'Junior'} Assistant`;
-  const city = `Test City ${idSuffix}`;
-  const email = `assistant${idSuffix}@example.com`;
-
-  // Use faker for other fields (seed with assistantId for consistency)
-  const { faker } = await import('@faker-js/faker');
-  faker.seed(assistantId.charCodeAt(0) * 1000);
-
+async function getAssistant(trusteeId: string, assistantId: string) {
   return {
-    data: {
-      id: assistantId,
-      trusteeId: _trusteeId,
-      name,
-      title,
-      contact: {
-        address: {
-          address1: faker.location.streetAddress(),
-          city,
-          state: faker.location.state({ abbreviated: true }),
-          zipCode: faker.location.zipCode(),
-          countryCode: 'US' as const,
-        },
-        phone: { number: faker.phone.number() },
-        email,
-      },
-      updatedBy: { id: 'user-1', name: 'Admin User' },
-      updatedOn: new Date().toISOString(),
-    } as TrusteeAssistant,
+    data: MockData.getTrusteeAssistant({ id: assistantId, trusteeId }),
   };
 }
 
