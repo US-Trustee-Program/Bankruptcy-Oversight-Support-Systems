@@ -186,7 +186,7 @@ describe('TrusteeAssistantRemovalModal', () => {
     expect(typeof utils.current?.hide).toBe('function');
 
     // Calling hide should not throw
-    expect(() => utils.current?.hide({})).not.toThrow();
+    expect(() => utils.current?.hide()).not.toThrow();
   });
 
   test('should close modal after successful deletion', async () => {
