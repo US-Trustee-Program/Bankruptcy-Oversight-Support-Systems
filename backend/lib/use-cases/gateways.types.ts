@@ -245,7 +245,8 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   ): Promise<TrusteeOversightAssignment>;
 }
 
-export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>, Releasable {
+export interface TrusteeAppointmentsRepository extends Releasable {
+  read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
   createAppointment(
     trusteeId: string,
@@ -260,7 +261,8 @@ export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>
   ): Promise<TrusteeAppointment>;
 }
 
-export interface TrusteeAssistantsRepository extends Reads<TrusteeAssistant>, Releasable {
+export interface TrusteeAssistantsRepository extends Releasable {
+  read(trusteeId: string, assistantId: string): Promise<TrusteeAssistant>;
   getTrusteeAssistants(trusteeId: string): Promise<TrusteeAssistant[]>;
   createAssistant(
     trusteeId: string,
@@ -273,7 +275,7 @@ export interface TrusteeAssistantsRepository extends Reads<TrusteeAssistant>, Re
     input: TrusteeAssistantInput,
     user: CamsUserReference,
   ): Promise<TrusteeAssistant>;
-  deleteAssistant(assistantId: string): Promise<void>;
+  deleteAssistant(trusteeId: string, assistantId: string): Promise<void>;
 }
 
 export type RuntimeStateDocumentType =

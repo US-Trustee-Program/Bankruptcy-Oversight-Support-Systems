@@ -73,7 +73,7 @@ export class TrusteeAssistantsController implements CamsController {
 
     // If assistantId is provided, get single assistant
     if (assistantId) {
-      const assistant = await this.useCase.getAssistant(context, assistantId);
+      const assistant = await this.useCase.getAssistant(context, trusteeId, assistantId);
 
       return httpSuccess({
         statusCode: 200,

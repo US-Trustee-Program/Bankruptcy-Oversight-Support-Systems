@@ -51,22 +51,26 @@ export class TrusteeAssistantsMongoRepository
     TrusteeAssistantsMongoRepository.dropInstance();
   }
 
-  async read(id: string): Promise<TrusteeAssistant> {
+  async read(trusteeId: string, assistantId: string): Promise<TrusteeAssistant> {
     try {
       const doc = using<TrusteeAssistantDocument>();
-      const query = and(doc('documentType').equals('TRUSTEE_ASSISTANT'), doc('id').equals(id));
+      const query = and(
+        doc('documentType').equals('TRUSTEE_ASSISTANT'),
+        doc('id').equals(assistantId),
+        doc('trusteeId').equals(trusteeId),
+      );
       const assistant = await this.getAdapter<TrusteeAssistantDocument>().findOne(query);
 
       if (!assistant) {
         throw new NotFoundError(MODULE_NAME, {
-          message: `Trustee assistant with ID ${id} not found.`,
+          message: `Trustee assistant with ID ${assistantId} not found.`,
         });
       }
 
       return assistant;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to retrieve trustee assistant with ID ${id}.`,
+        message: `Failed to retrieve trustee assistant with ID ${assistantId}.`,
       });
     }
   }
@@ -122,6 +126,7 @@ export class TrusteeAssistantsMongoRepository
       const query = and(
         doc('documentType').equals('TRUSTEE_ASSISTANT'),
         doc('id').equals(assistantId),
+        doc('trusteeId').equals(trusteeId),
       );
 
       const existingAssistant = await this.getAdapter<TrusteeAssistantDocument>().findOne(query);
@@ -130,14 +135,6 @@ export class TrusteeAssistantsMongoRepository
         throw new NotFoundError(MODULE_NAME, {
           message: `Trustee assistant with ID ${assistantId} not found.`,
         });
-      }
-
-      if (existingAssistant.trusteeId !== trusteeId) {
-        const error: Error & { code?: string } = new Error(
-          `Assistant ${assistantId} does not belong to trustee ${trusteeId}`,
-        );
-        error.code = 'TRUSTEE_ASSISTANT_FORBIDDEN';
-        throw error;
       }
 
       const updatedAssistant: TrusteeAssistantDocument = {
@@ -160,12 +157,13 @@ export class TrusteeAssistantsMongoRepository
     }
   }
 
-  async deleteAssistant(assistantId: string): Promise<void> {
+  async deleteAssistant(trusteeId: string, assistantId: string): Promise<void> {
     try {
       const doc = using<TrusteeAssistantDocument>();
       const query = and(
         doc('documentType').equals('TRUSTEE_ASSISTANT'),
         doc('id').equals(assistantId),
+        doc('trusteeId').equals(trusteeId),
       );
 
       // deleteOne throws NotFoundError if deletedCount !== 1, so no need to check result

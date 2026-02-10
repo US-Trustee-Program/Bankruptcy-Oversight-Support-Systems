@@ -104,15 +104,20 @@ describe('TrusteeAppointmentsMongoRepository', () => {
           leftOperand: { name: 'id' },
           rightOperand: 'appointment-1',
         },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'trusteeId' },
+          rightOperand: 'trustee-1',
+        },
       ],
     };
 
-    test('should retrieve a trustee appointment by id successfully', async () => {
+    test('should retrieve a trustee appointment by id and trusteeId successfully', async () => {
       const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(sampleAppointmentDocument);
 
-      const result = await repository.read('appointment-1');
+      const result = await repository.read('trustee-1', 'appointment-1');
 
       expect(mockAdapter).toHaveBeenCalledWith(expectedReadQuery);
       expect(result.id).toBe('appointment-1');
@@ -127,21 +132,26 @@ describe('TrusteeAppointmentsMongoRepository', () => {
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(null);
 
-      await expect(repository.read('appointment-1')).rejects.toThrow(
+      await expect(repository.read('trustee-1', 'appointment-1')).rejects.toThrow(
         'Trustee appointment with ID appointment-1 not found.',
       );
 
       expect(mockAdapter).toHaveBeenCalledWith(expectedReadQuery);
     });
 
+    test('should throw error when appointment does not belong to trustee', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(null);
+
+      await expect(repository.read('wrong-trustee', 'appointment-1')).rejects.toThrow(
+        'Trustee appointment with ID appointment-1 not found.',
+      );
+    });
+
     test('should handle database errors', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
 
-      await expect(repository.read('appointment-1')).rejects.toThrow();
-      expect(mockAdapter).toHaveBeenCalledWith(expectedReadQuery);
+      await expect(repository.read('trustee-1', 'appointment-1')).rejects.toThrow();
     });
   });
 
@@ -297,6 +307,11 @@ describe('TrusteeAppointmentsMongoRepository', () => {
           leftOperand: { name: 'id' },
           rightOperand: appointmentId,
         },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'trusteeId' },
+          rightOperand: trusteeId,
+        },
       ],
     };
 
@@ -353,6 +368,14 @@ describe('TrusteeAppointmentsMongoRepository', () => {
       expect(mockFindOne).toHaveBeenCalledWith(expectedUpdateQuery);
     });
 
+    test('should throw error when appointment does not belong to trustee', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(null);
+
+      await expect(
+        repository.updateAppointment('wrong-trustee', appointmentId, appointmentUpdate, mockUser),
+      ).rejects.toThrow(`Trustee appointment with ID ${appointmentId} not found.`);
+    });
+
     test('should handle database errors during update', async () => {
       const error = new Error('Database connection failed');
       const mockFindOne = vi
@@ -404,24 +427,6 @@ describe('TrusteeAppointmentsMongoRepository', () => {
       expect(result.createdOn).toBe(originalCreatedOn);
       expect(result.updatedBy).toEqual(mockUser);
       expect(result.updatedOn).not.toBe(originalCreatedOn);
-    });
-
-    test('should throw error when appointment does not belong to the specified trustee', async () => {
-      const wrongTrusteeId = 'wrong-trustee-id';
-      const existingAppointment: TrusteeAppointmentDocument = {
-        ...sampleAppointmentDocument,
-        trusteeId: 'different-trustee-id',
-      };
-
-      const mockFindOne = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-        .mockResolvedValue(existingAppointment);
-
-      await expect(
-        repository.updateAppointment(wrongTrusteeId, appointmentId, appointmentUpdate, mockUser),
-      ).rejects.toThrow();
-
-      expect(mockFindOne).toHaveBeenCalledWith(expectedUpdateQuery);
     });
   });
 });
