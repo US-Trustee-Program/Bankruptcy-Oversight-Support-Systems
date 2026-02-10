@@ -106,6 +106,18 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const { trusteeId } = props;
   const assistantId = props.assistantId || routeParams.assistantId;
+
+  if (!assistantId) {
+    return (
+      <Stop
+        id="missing-assistant-id-alert"
+        title="Error"
+        message="Assistant ID is required."
+        asError
+      />
+    );
+  }
+
   const isCreateMode = assistantId === 'new';
 
   const [assistant, setAssistant] = useState<TrusteeAssistant | undefined>(props.assistant);
@@ -234,13 +246,11 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
       setIsSubmitting(true);
 
       try {
+        const payload = mapAssistantPayload(currentFormData);
         if (isCreateMode) {
-          const payload = mapAssistantPayload(currentFormData);
           await Api2.createTrusteeAssistant(trusteeId, payload);
         } else {
-          const payload = mapAssistantPayload(currentFormData);
-          // TODO: CAMS-686 why is assistantId! being used, it should always exist?
-          await Api2.updateTrusteeAssistant(trusteeId, assistantId!, payload);
+          await Api2.updateTrusteeAssistant(trusteeId, assistantId, payload);
         }
         navigate.navigateTo(`/trustees/${trusteeId}`);
       } catch (e) {
