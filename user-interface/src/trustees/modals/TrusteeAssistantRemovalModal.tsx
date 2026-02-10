@@ -8,6 +8,12 @@ import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 
 type CallbackFunction = () => void;
 
+type RemovalState = {
+  trusteeId: string;
+  assistantId: string;
+  callback: CallbackFunction;
+} | null;
+
 export type TrusteeAssistantRemovalModalOpenProps = {
   trusteeId: string;
   assistantId: string;
@@ -29,50 +35,34 @@ function TrusteeAssistantRemovalModal_(
   ref: React.Ref<TrusteeAssistantRemovalModalRef>,
 ) {
   const { modalId } = props;
-  const [formValuesFromShowOptions, setFormValuesFromShowOptions] =
-    useState<TrusteeAssistantRemovalModalOpenProps | null>(null);
+  const [removalState, setRemovalState] = useState<RemovalState>(null);
   const modalRef = useRef<ModalRefType>(null);
   const globalAlert = useGlobalAlert();
 
-  const removeConfirmationButtonGroup: SubmitCancelBtnProps = {
-    modalId,
-    modalRef,
-    submitButton: {
-      label: 'Yes, Delete',
-      uswdsStyle: UswdsButtonStyle.Secondary,
-      onClick: handleClickDelete,
-      disabled: false,
-      closeOnClick: true,
-    },
-    cancelButton: {
-      label: 'Cancel',
-    },
-  };
-
   function handleClickDelete() {
-    if (formValuesFromShowOptions?.assistantId) {
-      Api2.deleteTrusteeAssistant(
-        formValuesFromShowOptions.trusteeId,
-        formValuesFromShowOptions.assistantId,
-      )
-        .then(() => {
-          formValuesFromShowOptions.callback();
-        })
-        .catch(() => {
-          globalAlert?.error('There was a problem removing the trustee assistant.');
-        });
-    }
+    const state = removalState;
+    if (!state || !state.assistantId) return;
+
+    Api2.deleteTrusteeAssistant(state.trusteeId, state.assistantId)
+      .then(() => {
+        state.callback();
+        modalRef.current?.hide();
+      })
+      .catch(() => {
+        globalAlert?.error('There was a problem removing the trustee assistant.');
+      });
   }
 
   function show(showProps: TrusteeAssistantRemovalModalOpenProps) {
-    setFormValuesFromShowOptions(showProps);
+    setRemovalState({
+      trusteeId: showProps.trusteeId,
+      assistantId: showProps.assistantId,
+      callback: showProps.callback,
+    });
 
-    if (modalRef.current?.show) {
-      const showOptions = {
-        openModalButtonRef: showProps.openModalButtonRef,
-      };
-      modalRef.current?.show(showOptions);
-    }
+    modalRef.current?.show({
+      openModalButtonRef: showProps.openModalButtonRef,
+    });
   }
 
   useImperativeHandle(ref, () => ({
@@ -81,6 +71,21 @@ function TrusteeAssistantRemovalModal_(
       modalRef.current?.hide();
     },
   }));
+
+  const removeConfirmationButtonGroup: SubmitCancelBtnProps = {
+    modalId,
+    modalRef,
+    submitButton: {
+      label: 'Yes, Delete',
+      uswdsStyle: UswdsButtonStyle.Secondary,
+      onClick: handleClickDelete,
+      disabled: !removalState,
+      closeOnClick: false,
+    },
+    cancelButton: {
+      label: 'Cancel',
+    },
+  };
 
   return (
     <Modal
