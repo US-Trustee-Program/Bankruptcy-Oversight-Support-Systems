@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 25
-- **Main Workflows**: 11
+- **Total Workflows**: 26
+- **Main Workflows**: 12
 - **Reusable Workflows**: 14
 
 ## Legend
@@ -106,7 +106,6 @@ flowchart LR
     sub_security_scan_yml_sast_pipeline_scan["SAST Pipeline Scan"]
     continuous_deployment_yml_snyk_security_scan["Snyk Security"]
     sub_snyk_security_scan_yml["Snyk Security"]
-    sub_snyk_security_scan_yml_deploy_storage["Deploy Scan Storage"]
     sub_snyk_security_scan_yml_snyk_sca["Snyk SCA Scan"]
     sub_snyk_security_scan_yml_snyk_sast["Snyk Code (SAST)"]
     continuous_deployment_yml_build["Build"]
@@ -179,7 +178,6 @@ flowchart LR
     sub_security_scan_yml --> sub_security_scan_yml_sast_pipeline_scan
     continuous_deployment_yml_security_scan --> sub_security_scan_yml
     continuous_deployment_yml --> continuous_deployment_yml_snyk_security_scan
-    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_deploy_storage
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sca
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sast
     continuous_deployment_yml_snyk_security_scan --> sub_snyk_security_scan_yml
@@ -257,7 +255,6 @@ flowchart LR
     class sub_security_scan_yml_sast_pipeline_scan job
     class continuous_deployment_yml_snyk_security_scan job
     class sub_snyk_security_scan_yml mainWorkflow
-    class sub_snyk_security_scan_yml_deploy_storage job
     class sub_snyk_security_scan_yml_snyk_sca job
     class sub_snyk_security_scan_yml_snyk_sast job
     class continuous_deployment_yml_build job
@@ -584,7 +581,6 @@ Workflows triggered by `workflow_call`:
 flowchart LR
     trigger_workflow_call(["workflow_call"])
     sub_snyk_security_scan_yml["Snyk Security"]
-    sub_snyk_security_scan_yml_deploy_storage["Deploy Scan Storage"]
     sub_snyk_security_scan_yml_snyk_sca["Snyk SCA Scan"]
     sub_snyk_security_scan_yml_snyk_sast["Snyk Code (SAST)"]
     sub_security_scan_yml["Veracode Security"]
@@ -598,7 +594,6 @@ flowchart LR
     sub_security_scan_yml_sast_pipeline_scan["SAST Pipeline Scan"]
 
     trigger_workflow_call --> sub_snyk_security_scan_yml
-    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_deploy_storage
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sca
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sast
     trigger_workflow_call --> sub_security_scan_yml
@@ -622,7 +617,6 @@ flowchart LR
 
     class trigger_workflow_call trigger
     class sub_snyk_security_scan_yml mainWorkflow
-    class sub_snyk_security_scan_yml_deploy_storage job
     class sub_snyk_security_scan_yml_snyk_sca job
     class sub_snyk_security_scan_yml_snyk_sast job
     class sub_security_scan_yml mainWorkflow
@@ -723,7 +717,6 @@ flowchart LR
     sub_security_scan_yml_sast_pipeline_scan["SAST Pipeline Scan"]
     continuous_deployment_yml_snyk_security_scan["Snyk Security"]
     sub_snyk_security_scan_yml["Snyk Security"]
-    sub_snyk_security_scan_yml_deploy_storage["Deploy Scan Storage"]
     sub_snyk_security_scan_yml_snyk_sca["Snyk SCA Scan"]
     sub_snyk_security_scan_yml_snyk_sast["Snyk Code (SAST)"]
     continuous_deployment_yml_build["Build"]
@@ -796,7 +789,6 @@ flowchart LR
     sub_security_scan_yml --> sub_security_scan_yml_sast_pipeline_scan
     continuous_deployment_yml_security_scan --> sub_security_scan_yml
     continuous_deployment_yml --> continuous_deployment_yml_snyk_security_scan
-    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_deploy_storage
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sca
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sast
     continuous_deployment_yml_snyk_security_scan --> sub_snyk_security_scan_yml
@@ -874,7 +866,6 @@ flowchart LR
     class sub_security_scan_yml_sast_pipeline_scan job
     class continuous_deployment_yml_snyk_security_scan job
     class sub_snyk_security_scan_yml mainWorkflow
-    class sub_snyk_security_scan_yml_deploy_storage job
     class sub_snyk_security_scan_yml_snyk_sca job
     class sub_snyk_security_scan_yml_snyk_sast job
     class continuous_deployment_yml_build job
@@ -1169,6 +1160,29 @@ flowchart LR
     class reusable_dast_yml_zap_dast_scan job
 ```
 
+#### Deploy Security Scan Storage
+
+Manual execution of `deploy-security-scan-storage.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
+    deploy_security_scan_storage_yml_deploy_storage["Deploy Scan Storage"]
+
+    trigger_workflow_dispatch --> deploy_security_scan_storage_yml
+    deploy_security_scan_storage_yml --> deploy_security_scan_storage_yml_deploy_storage
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class deploy_security_scan_storage_yml mainWorkflow
+    class deploy_security_scan_storage_yml_deploy_storage job
+```
+
 #### Stand Alone E2E Test Runs
 
 Manual execution of `e2e-test.yml`
@@ -1308,6 +1322,7 @@ flowchart LR
     sub_snyk_security_scan_yml["Snyk Security"]
     sub_security_scan_yml["Veracode Security"]
     trigger_workflow_dispatch(["workflow_dispatch"])
+    deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
     e2e_test_yml["Stand Alone E2E Test Runs"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     veracode_dast_scan_yml["Veracode Dynamic Analysis Scan"]
@@ -1330,6 +1345,7 @@ flowchart LR
 
     trigger_workflow_call --> sub_snyk_security_scan_yml
     trigger_workflow_call --> sub_security_scan_yml
+    trigger_workflow_dispatch --> deploy_security_scan_storage_yml
     trigger_workflow_dispatch --> e2e_test_yml
     trigger_workflow_dispatch --> azure_remove_branch_yml
     trigger_workflow_dispatch --> veracode_dast_scan_yml
@@ -1357,6 +1373,7 @@ flowchart LR
     class trigger_workflow_run trigger
     class sub_snyk_security_scan_yml mainWorkflow
     class sub_security_scan_yml mainWorkflow
+    class deploy_security_scan_storage_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
     class veracode_dast_scan_yml mainWorkflow
@@ -1373,10 +1390,13 @@ flowchart LR
 ### Main Workflows
 - **Snyk Security** (`sub-snyk-security-scan.yml`)
   - Triggers: workflow_call
-  - Jobs: 3
+  - Jobs: 2
 - **Veracode Security** (`sub-security-scan.yml`)
   - Triggers: workflow_call
   - Jobs: 6
+- **Deploy Security Scan Storage** (`deploy-security-scan-storage.yml`)
+  - Triggers: workflow_dispatch
+  - Jobs: 1
 - **Stand Alone E2E Test Runs** (`e2e-test.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 2

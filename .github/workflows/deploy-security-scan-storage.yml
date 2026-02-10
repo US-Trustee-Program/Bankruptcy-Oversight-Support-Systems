@@ -1,0 +1,26 @@
+name: Deploy Security Scan Storage
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-storage:
+    name: Deploy Scan Storage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Deploy security scan storage account
+        run: |
+          az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file ops/cloud-deployment/security-scan-storage.bicep \
+            --parameters storageAccountName="$STORAGE_ACCOUNT_NAME"
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
+          STORAGE_ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
