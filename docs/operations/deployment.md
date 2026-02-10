@@ -154,7 +154,7 @@ Note the following assumptions:
 | SNYK_OAUTH_CLIENT_ID           | Secrets                | ---              | OAuth client ID for Snyk government instance                     |
 | SNYK_OAUTH_CLIENT_SECRET       | Secrets                | ---              | OAuth client secret for Snyk government instance                 |
 | AZ_SECURITY_SCAN_RG            | Secrets                | ---              | Resource group for the security scan storage account             |
-| AZ_SECURITY_SCAN_STORAGE_NAME  | Variables              | ---              | Storage account name for security scan results (deployed by IaC) |
+| AZ_SECURITY_SCAN_STORAGE_NAME  | Secrets                | ---              | Storage account name for security scan results (deployed by IaC) |
 
 ### LaunchDarkly
 
