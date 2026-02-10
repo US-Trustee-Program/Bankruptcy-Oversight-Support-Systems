@@ -1,0 +1,14 @@
+# Snyk policy file — SCA license finding ignores
+# https://docs.snyk.io/snyk-cli/commands/policy
+version: v1.25.0
+ignore:
+  'snyk:lic:npm:rasha:MPL-2.0':
+    - '*':
+        reason: >-
+          Transitive dependency of @okta/okta-sdk-nodejs. MPL-2.0 is weak
+          copyleft compatible with project use. Package is unmodified.
+  'snyk:lic:npm:eckles:MPL-2.0':
+    - '*':
+        reason: >-
+          Transitive dependency of @okta/okta-sdk-nodejs. MPL-2.0 is weak
+          copyleft compatible with project use. Package is unmodified.

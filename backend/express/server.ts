@@ -41,6 +41,7 @@ export function checkResults(...results: boolean[]) {
 
 export function createApp(): Application {
   const app = express();
+  app.disable('x-powered-by');
 
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
