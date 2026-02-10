@@ -19,6 +19,7 @@ import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeAssistantFormData, trusteeAssistantSpec } from './trusteeForms.types';
 import { validateEach, validateObject } from '@common/cams/validation';
+import { CREATE_MODE_ID } from './trusteeForms.constants';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
@@ -118,7 +119,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     );
   }
 
-  const isCreateMode = assistantId === 'new';
+  const isCreateMode = assistantId === CREATE_MODE_ID;
 
   const [assistant, setAssistant] = useState<TrusteeAssistant | undefined>(props.assistant);
 

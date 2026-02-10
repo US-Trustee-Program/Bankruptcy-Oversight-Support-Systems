@@ -24,6 +24,7 @@ import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
+import { CREATE_MODE_ID } from './forms/trusteeForms.constants';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -188,7 +189,7 @@ export default function TrusteeDetailScreen() {
     {
       path: 'assistant/create',
       subHeading: 'Create Trustee Assistant (USTP Internal)',
-      content: <TrusteeAssistantForm trusteeId={trusteeId} assistantId="new" />,
+      content: <TrusteeAssistantForm trusteeId={trusteeId} assistantId={CREATE_MODE_ID} />,
     },
     {
       path: 'assistant/edit/:assistantId',
