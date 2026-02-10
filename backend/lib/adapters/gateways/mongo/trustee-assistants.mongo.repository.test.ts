@@ -26,8 +26,8 @@ describe('TrusteeAssistantsMongoRepository', () => {
     updatedBy: mockUser,
   });
 
-  // Helper to create expected query for filtering by documentType + additional field
-  const createQuery = (additionalFilter: { field: string; value: string }) => ({
+  // Helper to create expected query for filtering by documentType + additional fields
+  const createQuery = (additionalFilters: Array<{ field: string; value: string }>) => ({
     conjunction: 'AND',
     values: [
       {
@@ -35,11 +35,11 @@ describe('TrusteeAssistantsMongoRepository', () => {
         leftOperand: { name: 'documentType' },
         rightOperand: 'TRUSTEE_ASSISTANT',
       },
-      {
+      ...additionalFilters.map((filter) => ({
         condition: 'EQUALS',
-        leftOperand: { name: additionalFilter.field },
-        rightOperand: additionalFilter.value,
-      },
+        leftOperand: { name: filter.field },
+        rightOperand: filter.value,
+      })),
     ],
   });
 
@@ -89,12 +89,15 @@ describe('TrusteeAssistantsMongoRepository', () => {
   });
 
   describe('read', () => {
-    test('should retrieve trustee assistant by ID', async () => {
-      const expectedQuery = createQuery({ field: 'id', value: 'assistant-1' });
+    test('should retrieve trustee assistant by ID and trusteeId', async () => {
+      const expectedQuery = createQuery([
+        { field: 'id', value: 'assistant-1' },
+        { field: 'trusteeId', value: 'trustee-1' },
+      ]);
       const mockFindOne = vi.fn().mockResolvedValue(sampleAssistant);
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
 
-      const result = await repository.read('assistant-1');
+      const result = await repository.read('trustee-1', 'assistant-1');
 
       expect(result).toEqual(sampleAssistant);
       expect(mockFindOne).toHaveBeenCalledWith(expectedQuery);
@@ -104,8 +107,17 @@ describe('TrusteeAssistantsMongoRepository', () => {
       const mockFindOne = vi.fn().mockResolvedValue(null);
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
 
-      await expect(repository.read('non-existent')).rejects.toThrow(
+      await expect(repository.read('trustee-1', 'non-existent')).rejects.toThrow(
         'Trustee assistant with ID non-existent not found',
+      );
+    });
+
+    test('should throw NotFoundError when assistant does not belong to trustee', async () => {
+      const mockFindOne = vi.fn().mockResolvedValue(null);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
+
+      await expect(repository.read('wrong-trustee', 'assistant-1')).rejects.toThrow(
+        'Trustee assistant with ID assistant-1 not found',
       );
     });
 
@@ -113,7 +125,7 @@ describe('TrusteeAssistantsMongoRepository', () => {
       const mockFindOne = vi.fn().mockRejectedValue(new Error('Database connection error'));
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
 
-      await expect(repository.read('assistant-1')).rejects.toThrow(
+      await expect(repository.read('trustee-1', 'assistant-1')).rejects.toThrow(
         'Failed to retrieve trustee assistant with ID assistant-1',
       );
     });
@@ -121,7 +133,7 @@ describe('TrusteeAssistantsMongoRepository', () => {
 
   describe('getTrusteeAssistants', () => {
     test('should retrieve all assistants for a trustee', async () => {
-      const expectedQuery = createQuery({ field: 'trusteeId', value: 'trustee-1' });
+      const expectedQuery = createQuery([{ field: 'trusteeId', value: 'trustee-1' }]);
       const assistant1 = MockData.getTrusteeAssistant({
         id: 'assistant-1',
         trusteeId: 'trustee-1',
@@ -143,7 +155,7 @@ describe('TrusteeAssistantsMongoRepository', () => {
     });
 
     test('should return empty array when trustee has no assistants', async () => {
-      const expectedQuery = createQuery({ field: 'trusteeId', value: 'trustee-1' });
+      const expectedQuery = createQuery([{ field: 'trusteeId', value: 'trustee-1' }]);
       const mockFind = vi.fn().mockResolvedValue([]);
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockImplementation(mockFind);
 
@@ -261,23 +273,17 @@ describe('TrusteeAssistantsMongoRepository', () => {
       ).rejects.toThrow('Trustee assistant with ID non-existent not found');
     });
 
-    test('should throw error when assistant does not belong to trustee', async () => {
-      const existingAssistant = MockData.getTrusteeAssistant({
-        id: 'assistant-1',
-        trusteeId: 'different-trustee',
-        name: 'Jane Doe',
-      });
-
+    test('should throw NotFoundError when assistant does not belong to trustee', async () => {
       const updateInput = {
         name: 'Jane Smith',
       };
 
-      const mockFindOne = vi.fn().mockResolvedValue(existingAssistant);
+      const mockFindOne = vi.fn().mockResolvedValue(null);
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockImplementation(mockFindOne);
 
       await expect(
         repository.updateAssistant('trustee-1', 'assistant-1', updateInput, mockUser),
-      ).rejects.toThrow('Failed to update trustee assistant assistant-1');
+      ).rejects.toThrow('Trustee assistant with ID assistant-1 not found');
     });
 
     test('should wrap database errors with context', async () => {
@@ -304,21 +310,33 @@ describe('TrusteeAssistantsMongoRepository', () => {
   });
 
   describe('deleteAssistant', () => {
-    test('should delete an assistant by ID', async () => {
-      const expectedQuery = createQuery({ field: 'id', value: 'assistant-1' });
+    test('should delete an assistant by ID and trusteeId', async () => {
+      const expectedQuery = createQuery([
+        { field: 'id', value: 'assistant-1' },
+        { field: 'trusteeId', value: 'trustee-1' },
+      ]);
       const mockDeleteOne = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockImplementation(mockDeleteOne);
 
-      await repository.deleteAssistant('assistant-1');
+      await repository.deleteAssistant('trustee-1', 'assistant-1');
 
       expect(mockDeleteOne).toHaveBeenCalledWith(expectedQuery);
+    });
+
+    test('should throw NotFoundError when assistant does not belong to trustee', async () => {
+      const mockDeleteOne = vi.fn().mockRejectedValue(new Error('No document found'));
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockImplementation(mockDeleteOne);
+
+      await expect(repository.deleteAssistant('wrong-trustee', 'assistant-1')).rejects.toThrow(
+        'Failed to delete trustee assistant assistant-1',
+      );
     });
 
     test('should wrap database errors with context', async () => {
       const mockDeleteOne = vi.fn().mockRejectedValue(new Error('Database error'));
       vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockImplementation(mockDeleteOne);
 
-      await expect(repository.deleteAssistant('assistant-1')).rejects.toThrow(
+      await expect(repository.deleteAssistant('trustee-1', 'assistant-1')).rejects.toThrow(
         'Failed to delete trustee assistant assistant-1',
       );
     });

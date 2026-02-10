@@ -185,19 +185,20 @@ describe('TrusteeAssistantsUseCase', () => {
   });
 
   describe('getAssistant', () => {
+    const trusteeId = 'trustee-123';
     const assistantId = 'assistant-123';
     const mockAssistant = MockData.getTrusteeAssistant({
       id: assistantId,
-      trusteeId: 'trustee-123',
+      trusteeId,
     });
 
     test('should return assistant by ID', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockAssistant);
 
-      const result = await trusteeAssistantsUseCase.getAssistant(context, assistantId);
+      const result = await trusteeAssistantsUseCase.getAssistant(context, trusteeId, assistantId);
 
       expect(result).toEqual(mockAssistant);
-      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(assistantId);
+      expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId, assistantId);
     });
 
     test('should throw error when assistant does not exist', async () => {
@@ -205,7 +206,7 @@ describe('TrusteeAssistantsUseCase', () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.getAssistant(context, assistantId),
+        trusteeAssistantsUseCase.getAssistant(context, trusteeId, assistantId),
       );
 
       expect(actualError.isCamsError).toBe(true);
@@ -216,7 +217,7 @@ describe('TrusteeAssistantsUseCase', () => {
       vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(repositoryError);
 
       const actualError = await getTheThrownError(() =>
-        trusteeAssistantsUseCase.getAssistant(context, assistantId),
+        trusteeAssistantsUseCase.getAssistant(context, trusteeId, assistantId),
       );
 
       expect(actualError.isCamsError).toBe(true);
@@ -362,7 +363,10 @@ describe('TrusteeAssistantsUseCase', () => {
 
       await trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId);
 
-      expect(MockMongoRepository.prototype.deleteAssistant).toHaveBeenCalledWith(assistantId);
+      expect(MockMongoRepository.prototype.deleteAssistant).toHaveBeenCalledWith(
+        trusteeId,
+        assistantId,
+      );
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_ASSISTANT',

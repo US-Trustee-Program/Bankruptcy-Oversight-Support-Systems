@@ -54,9 +54,13 @@ export class TrusteeAssistantsUseCase {
     }
   }
 
-  async getAssistant(context: ApplicationContext, assistantId: string): Promise<TrusteeAssistant> {
+  async getAssistant(
+    context: ApplicationContext,
+    trusteeId: string,
+    assistantId: string,
+  ): Promise<TrusteeAssistant> {
     try {
-      const assistant = await this.trusteeAssistantsRepository.read(assistantId);
+      const assistant = await this.trusteeAssistantsRepository.read(trusteeId, assistantId);
 
       context.logger.info(MODULE_NAME, `Retrieved assistant ${assistantId}`);
       return assistant;
@@ -130,7 +134,7 @@ export class TrusteeAssistantsUseCase {
       await this.trusteesRepository.read(trusteeId);
 
       // Get existing assistant for audit history
-      const existingAssistant = await this.trusteeAssistantsRepository.read(assistantId);
+      const existingAssistant = await this.trusteeAssistantsRepository.read(trusteeId, assistantId);
 
       // Update assistant
       const updatedAssistant = await this.trusteeAssistantsRepository.updateAssistant(
@@ -171,8 +175,8 @@ export class TrusteeAssistantsUseCase {
   ): Promise<void> {
     try {
       await this.trusteesRepository.read(trusteeId);
-      const existingAssistant = await this.trusteeAssistantsRepository.read(assistantId);
-      await this.trusteeAssistantsRepository.deleteAssistant(assistantId);
+      const existingAssistant = await this.trusteeAssistantsRepository.read(trusteeId, assistantId);
+      await this.trusteeAssistantsRepository.deleteAssistant(trusteeId, assistantId);
 
       const historyRecord: Omit<TrusteeAssistantHistory, keyof Auditable | 'id'> = {
         documentType: 'AUDIT_ASSISTANT',

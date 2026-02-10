@@ -185,7 +185,7 @@ describe('TrusteeAssistantsController', () => {
       expect(result.body?.meta).toEqual({
         self: `/api/trustees/${trusteeId}/assistants/${assistantId}`,
       });
-      expect(mockUseCase.getAssistant).toHaveBeenCalledWith(context, assistantId);
+      expect(mockUseCase.getAssistant).toHaveBeenCalledWith(context, trusteeId, assistantId);
     });
 
     test('should return list when assistantId is missing', async () => {
