@@ -102,7 +102,7 @@ export class TrusteeAssistantsController implements CamsController {
 
   private async handlePostRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<undefined>> {
+  ): Promise<CamsHttpResponseInit<TrusteeAssistant>> {
     const trusteeId = context.request.params['trusteeId'];
 
     if (!trusteeId) {
@@ -127,7 +127,7 @@ export class TrusteeAssistantsController implements CamsController {
         meta: {
           self: `${context.request.url}/${assistant.id}`,
         },
-        data: undefined,
+        data: assistant,
       },
     });
   }
