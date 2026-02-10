@@ -7,6 +7,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { getCamsUserReference } from '@common/cams/session';
 
 const MODULE_NAME = 'TRUSTEE-ASSISTANTS-USE-CASE';
 
@@ -138,7 +139,7 @@ describe('TrusteeAssistantsUseCase', () => {
       expect(MockMongoRepository.prototype.createAssistant).toHaveBeenCalledWith(
         trusteeId,
         validInput,
-        context.session.user,
+        getCamsUserReference(context.session.user),
       );
     });
 
@@ -281,7 +282,7 @@ describe('TrusteeAssistantsUseCase', () => {
         trusteeId,
         assistantId,
         updateInput,
-        context.session.user,
+        getCamsUserReference(context.session.user),
       );
     });
 
