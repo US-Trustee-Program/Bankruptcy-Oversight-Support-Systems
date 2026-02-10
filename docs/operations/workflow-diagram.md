@@ -106,6 +106,7 @@ flowchart LR
     sub_security_scan_yml_sast_pipeline_scan["SAST Pipeline Scan"]
     continuous_deployment_yml_snyk_security_scan["Snyk Security"]
     sub_snyk_security_scan_yml["Snyk Security"]
+    sub_snyk_security_scan_yml_deploy_storage["Deploy Scan Storage"]
     sub_snyk_security_scan_yml_snyk_sca["Snyk SCA Scan"]
     sub_snyk_security_scan_yml_snyk_sast["Snyk Code (SAST)"]
     continuous_deployment_yml_build["Build"]
@@ -178,6 +179,7 @@ flowchart LR
     sub_security_scan_yml --> sub_security_scan_yml_sast_pipeline_scan
     continuous_deployment_yml_security_scan --> sub_security_scan_yml
     continuous_deployment_yml --> continuous_deployment_yml_snyk_security_scan
+    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_deploy_storage
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sca
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sast
     continuous_deployment_yml_snyk_security_scan --> sub_snyk_security_scan_yml
@@ -255,6 +257,7 @@ flowchart LR
     class sub_security_scan_yml_sast_pipeline_scan job
     class continuous_deployment_yml_snyk_security_scan job
     class sub_snyk_security_scan_yml mainWorkflow
+    class sub_snyk_security_scan_yml_deploy_storage job
     class sub_snyk_security_scan_yml_snyk_sca job
     class sub_snyk_security_scan_yml_snyk_sast job
     class continuous_deployment_yml_build job
@@ -581,6 +584,7 @@ Workflows triggered by `workflow_call`:
 flowchart LR
     trigger_workflow_call(["workflow_call"])
     sub_snyk_security_scan_yml["Snyk Security"]
+    sub_snyk_security_scan_yml_deploy_storage["Deploy Scan Storage"]
     sub_snyk_security_scan_yml_snyk_sca["Snyk SCA Scan"]
     sub_snyk_security_scan_yml_snyk_sast["Snyk Code (SAST)"]
     sub_security_scan_yml["Veracode Security"]
@@ -594,6 +598,7 @@ flowchart LR
     sub_security_scan_yml_sast_pipeline_scan["SAST Pipeline Scan"]
 
     trigger_workflow_call --> sub_snyk_security_scan_yml
+    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_deploy_storage
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sca
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sast
     trigger_workflow_call --> sub_security_scan_yml
@@ -617,6 +622,7 @@ flowchart LR
 
     class trigger_workflow_call trigger
     class sub_snyk_security_scan_yml mainWorkflow
+    class sub_snyk_security_scan_yml_deploy_storage job
     class sub_snyk_security_scan_yml_snyk_sca job
     class sub_snyk_security_scan_yml_snyk_sast job
     class sub_security_scan_yml mainWorkflow
@@ -717,6 +723,7 @@ flowchart LR
     sub_security_scan_yml_sast_pipeline_scan["SAST Pipeline Scan"]
     continuous_deployment_yml_snyk_security_scan["Snyk Security"]
     sub_snyk_security_scan_yml["Snyk Security"]
+    sub_snyk_security_scan_yml_deploy_storage["Deploy Scan Storage"]
     sub_snyk_security_scan_yml_snyk_sca["Snyk SCA Scan"]
     sub_snyk_security_scan_yml_snyk_sast["Snyk Code (SAST)"]
     continuous_deployment_yml_build["Build"]
@@ -789,6 +796,7 @@ flowchart LR
     sub_security_scan_yml --> sub_security_scan_yml_sast_pipeline_scan
     continuous_deployment_yml_security_scan --> sub_security_scan_yml
     continuous_deployment_yml --> continuous_deployment_yml_snyk_security_scan
+    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_deploy_storage
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sca
     sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sast
     continuous_deployment_yml_snyk_security_scan --> sub_snyk_security_scan_yml
@@ -866,6 +874,7 @@ flowchart LR
     class sub_security_scan_yml_sast_pipeline_scan job
     class continuous_deployment_yml_snyk_security_scan job
     class sub_snyk_security_scan_yml mainWorkflow
+    class sub_snyk_security_scan_yml_deploy_storage job
     class sub_snyk_security_scan_yml_snyk_sca job
     class sub_snyk_security_scan_yml_snyk_sast job
     class continuous_deployment_yml_build job
@@ -1364,7 +1373,7 @@ flowchart LR
 ### Main Workflows
 - **Snyk Security** (`sub-snyk-security-scan.yml`)
   - Triggers: workflow_call
-  - Jobs: 2
+  - Jobs: 3
 - **Veracode Security** (`sub-security-scan.yml`)
   - Triggers: workflow_call
   - Jobs: 6
