@@ -27,7 +27,7 @@ jobs:
           echo "accountName=$accountName" >> "$GITHUB_OUTPUT"
         env:
           RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
-          STORAGE_ACCOUNT_NAME: ${{ vars.AZ_SECURITY_SCAN_STORAGE_NAME }}
+          STORAGE_ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
 
   snyk-sca:
     name: Snyk SCA Scan
