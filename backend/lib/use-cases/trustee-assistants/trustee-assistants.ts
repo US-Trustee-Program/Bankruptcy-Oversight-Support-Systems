@@ -8,6 +8,7 @@ import { assistantInputSpec } from '@common/cams/trustees-validators';
 import { createAuditRecord, Auditable } from '@common/cams/auditable';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { TrusteeAssistantHistory } from '@common/cams/trustees';
+import { getCamsUserReference } from '@common/cams/session';
 
 const MODULE_NAME = 'TRUSTEE-ASSISTANTS-USE-CASE';
 
@@ -86,11 +87,13 @@ export class TrusteeAssistantsUseCase {
       // Verify trustee exists
       await this.trusteesRepository.read(trusteeId);
 
+      const userReference = getCamsUserReference(context.session.user);
+
       // Create assistant
       const assistant = await this.trusteeAssistantsRepository.createAssistant(
         trusteeId,
         input,
-        context.session.user,
+        userReference,
       );
 
       // Create audit history
@@ -102,7 +105,7 @@ export class TrusteeAssistantsUseCase {
         after: assistant,
       };
       await this.trusteesRepository.createTrusteeHistory(
-        createAuditRecord(historyRecord, context.session.user),
+        createAuditRecord(historyRecord, userReference),
       );
 
       context.logger.info(
@@ -133,6 +136,8 @@ export class TrusteeAssistantsUseCase {
       // Verify trustee exists
       await this.trusteesRepository.read(trusteeId);
 
+      const userReference = getCamsUserReference(context.session.user);
+
       // Get existing assistant for audit history
       const existingAssistant = await this.trusteeAssistantsRepository.read(trusteeId, assistantId);
 
@@ -141,7 +146,7 @@ export class TrusteeAssistantsUseCase {
         trusteeId,
         assistantId,
         input,
-        context.session.user,
+        userReference,
       );
 
       // Create audit history
@@ -153,7 +158,7 @@ export class TrusteeAssistantsUseCase {
         after: updatedAssistant,
       };
       await this.trusteesRepository.createTrusteeHistory(
-        createAuditRecord(historyRecord, context.session.user),
+        createAuditRecord(historyRecord, userReference),
       );
 
       context.logger.info(MODULE_NAME, `Updated assistant ${assistantId} for trustee ${trusteeId}`);
@@ -175,6 +180,7 @@ export class TrusteeAssistantsUseCase {
   ): Promise<void> {
     try {
       await this.trusteesRepository.read(trusteeId);
+      const userReference = getCamsUserReference(context.session.user);
       const existingAssistant = await this.trusteeAssistantsRepository.read(trusteeId, assistantId);
       await this.trusteeAssistantsRepository.deleteAssistant(trusteeId, assistantId);
 
@@ -186,7 +192,7 @@ export class TrusteeAssistantsUseCase {
         after: undefined,
       };
       await this.trusteesRepository.createTrusteeHistory(
-        createAuditRecord(historyRecord, context.session.user),
+        createAuditRecord(historyRecord, userReference),
       );
 
       context.logger.info(MODULE_NAME, `Deleted assistant ${assistantId} for trustee ${trusteeId}`);
