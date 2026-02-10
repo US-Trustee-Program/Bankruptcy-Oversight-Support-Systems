@@ -3,8 +3,35 @@ name: Snyk Security
 on: workflow_call
 
 jobs:
+  deploy-storage:
+    name: Deploy Scan Storage
+    runs-on: ubuntu-latest
+    outputs:
+      account-name: ${{ steps.deploy.outputs.accountName }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Deploy security scan storage account
+        id: deploy
+        run: |
+          accountName=$(az deployment group create \
+            --resource-group "$RESOURCE_GROUP" \
+            --template-file ops/cloud-deployment/security-scan-storage.bicep \
+            --parameters storageAccountName="$STORAGE_ACCOUNT_NAME" \
+            --query 'properties.outputs.accountName.value' -o tsv)
+          echo "accountName=$accountName" >> "$GITHUB_OUTPUT"
+        env:
+          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
+          STORAGE_ACCOUNT_NAME: ${{ vars.AZ_SECURITY_SCAN_STORAGE_NAME }}
+
   snyk-sca:
     name: Snyk SCA Scan
+    needs: deploy-storage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -30,6 +57,45 @@ jobs:
         env:
           SNYK_API: https://api.snykgov.io
 
+      - uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+        if: always()
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Upload raw SARIF to Azure Storage
+        if: always()
+        run: |
+          if [ -f snyk-sca.sarif ]; then
+            ACCOUNT_KEY=$(az storage account keys list \
+              -n "$ACCOUNT_NAME" \
+              -g "$RESOURCE_GROUP" \
+              --query '[0].value' -o tsv)
+            az storage blob upload \
+              --account-name "$ACCOUNT_NAME" \
+              --account-key "$ACCOUNT_KEY" \
+              -f snyk-sca.sarif \
+              -c security-scan-results \
+              -n "snyk-sca-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.sarif" \
+              --overwrite
+          fi
+        env:
+          ACCOUNT_NAME: ${{ needs.deploy-storage.outputs.account-name }}
+          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
+
+      - name: Sanitize SARIF for GitHub upload
+        if: always()
+        run: |
+          if [ -f snyk-sca.sarif ]; then
+            jq 'walk(
+              if type == "object" and has("security-severity") and
+                (.["security-severity"] | type == "string") and
+                (.["security-severity"] | test("^[0-9]+(\\.[0-9]+)?$") | not)
+              then del(.["security-severity"])
+              else . end
+            )' snyk-sca.sarif > snyk-sca-sanitized.sarif && mv snyk-sca-sanitized.sarif snyk-sca.sarif
+          fi
+
       - name: Upload SARIF to GitHub
         if: always()
         uses: github/codeql-action/upload-sarif@v3
@@ -38,6 +104,7 @@ jobs:
 
   snyk-sast:
     name: Snyk Code (SAST)
+    needs: deploy-storage
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -56,6 +123,45 @@ jobs:
         run: snyk code test --severity-threshold=medium --sarif-file-output=snyk-code.sarif
         env:
           SNYK_API: https://api.snykgov.io
+
+      - uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+        if: always()
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Upload raw SARIF to Azure Storage
+        if: always()
+        run: |
+          if [ -f snyk-code.sarif ]; then
+            ACCOUNT_KEY=$(az storage account keys list \
+              -n "$ACCOUNT_NAME" \
+              -g "$RESOURCE_GROUP" \
+              --query '[0].value' -o tsv)
+            az storage blob upload \
+              --account-name "$ACCOUNT_NAME" \
+              --account-key "$ACCOUNT_KEY" \
+              -f snyk-code.sarif \
+              -c security-scan-results \
+              -n "snyk-code-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.sarif" \
+              --overwrite
+          fi
+        env:
+          ACCOUNT_NAME: ${{ needs.deploy-storage.outputs.account-name }}
+          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
+
+      - name: Sanitize SARIF for GitHub upload
+        if: always()
+        run: |
+          if [ -f snyk-code.sarif ]; then
+            jq 'walk(
+              if type == "object" and has("security-severity") and
+                (.["security-severity"] | type == "string") and
+                (.["security-severity"] | test("^[0-9]+(\\.[0-9]+)?$") | not)
+              then del(.["security-severity"])
+              else . end
+            )' snyk-code.sarif > snyk-code-sanitized.sarif && mv snyk-code-sanitized.sarif snyk-code.sarif
+          fi
 
       - name: Upload SARIF to GitHub
         if: always()

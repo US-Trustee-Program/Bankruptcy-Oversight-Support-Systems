@@ -147,6 +147,15 @@ Note the following assumptions:
 | AZ_STOR_VERACODE_KEY  | Secrets                | Yes              | Access key for Azure Storage account               |
 | VERACODE_SAST_POLICY  | Secrets                | ---              | Policy name used for veracode scans                |
 
+### Snyk
+
+| Name                           | Type (Secret/Variable) | Is Flexion Only? | Description                                                      |
+| ------------------------------ | ---------------------- | ---------------- | ---------------------------------------------------------------- |
+| SNYK_OAUTH_CLIENT_ID           | Secrets                | ---              | OAuth client ID for Snyk government instance                     |
+| SNYK_OAUTH_CLIENT_SECRET       | Secrets                | ---              | OAuth client secret for Snyk government instance                 |
+| AZ_SECURITY_SCAN_RG            | Secrets                | ---              | Resource group for the security scan storage account             |
+| AZ_SECURITY_SCAN_STORAGE_NAME  | Variables              | ---              | Storage account name for security scan results (deployed by IaC) |
+
 ### LaunchDarkly
 
 | Name                     | Type (Secret/Variable) | Is Flexion Only? | Description                            |
