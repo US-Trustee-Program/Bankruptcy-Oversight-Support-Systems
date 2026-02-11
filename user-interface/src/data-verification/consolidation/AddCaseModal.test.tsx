@@ -87,7 +87,7 @@ describe('AddCaseModal', () => {
 
   test('should delegate reset to the view model', async () => {
     const { ref } = renderWithProps();
-    act(() => ref.current!.hide(true));
+    act(() => ref.current!.hide());
     expect(handleAddCaseReset).toHaveBeenCalled();
   });
 

@@ -32,6 +32,7 @@ import {
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Auditable } from '@common/cams/auditable';
 import {
   BankList,
@@ -244,7 +245,8 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   ): Promise<TrusteeOversightAssignment>;
 }
 
-export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>, Releasable {
+export interface TrusteeAppointmentsRepository extends Releasable {
+  read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
   createAppointment(
     trusteeId: string,
@@ -257,6 +259,23 @@ export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>
     appointmentInput: TrusteeAppointmentInput,
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;
+}
+
+export interface TrusteeAssistantsRepository extends Releasable {
+  read(trusteeId: string, assistantId: string): Promise<TrusteeAssistant>;
+  getTrusteeAssistants(trusteeId: string): Promise<TrusteeAssistant[]>;
+  createAssistant(
+    trusteeId: string,
+    input: TrusteeAssistantInput,
+    user: CamsUserReference,
+  ): Promise<TrusteeAssistant>;
+  updateAssistant(
+    trusteeId: string,
+    assistantId: string,
+    input: TrusteeAssistantInput,
+    user: CamsUserReference,
+  ): Promise<TrusteeAssistant>;
+  deleteAssistant(trusteeId: string, assistantId: string): Promise<void>;
 }
 
 export type RuntimeStateDocumentType =

@@ -1,6 +1,7 @@
 import './TrusteeAssistantForm.scss';
 import './TrusteeContactForm.scss';
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -15,12 +16,18 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
+import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeAssistantFormData, trusteeAssistantSpec } from './trusteeForms.types';
 import { validateEach, validateObject } from '@common/cams/validation';
+import { CREATE_MODE_ID } from './trusteeForms.constants';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
+import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
+import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
+import TrusteeAssistantRemovalModal, {
+  TrusteeAssistantRemovalModalRef,
+} from '../modals/TrusteeAssistantRemovalModal';
 import { Address, PhoneNumber } from '@common/cams/contact';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
@@ -58,14 +65,14 @@ const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormD
   return {
     name: assistant.name,
     title: assistant.title,
-    address1: contact.address?.address1,
-    address2: contact.address?.address2,
-    city: contact.address?.city,
-    state: contact.address?.state,
-    zipCode: contact.address?.zipCode,
-    phone: contact.phone?.number,
-    extension: contact.phone?.extension,
-    email: contact.email,
+    address1: contact?.address?.address1,
+    address2: contact?.address?.address2,
+    city: contact?.address?.city,
+    state: contact?.address?.state,
+    zipCode: contact?.address?.zipCode,
+    phone: contact?.phone?.number,
+    extension: contact?.phone?.extension,
+    email: contact?.email,
   };
 };
 
@@ -86,6 +93,7 @@ export function validateField(
 
 type TrusteeAssistantFormProps = {
   trusteeId: string;
+  assistantId?: string;
   assistant?: TrusteeAssistant;
 };
 
@@ -95,8 +103,25 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
+  const routeParams = useParams<{ assistantId?: string }>();
 
-  const { trusteeId, assistant } = props;
+  const { trusteeId } = props;
+  const assistantId = props.assistantId || routeParams.assistantId;
+
+  if (!assistantId) {
+    return (
+      <Stop
+        id="missing-assistant-id-alert"
+        title="Error"
+        message="Assistant ID is required."
+        asError
+      />
+    );
+  }
+
+  const isCreateMode = assistantId === CREATE_MODE_ID;
+
+  const [assistant, setAssistant] = useState<TrusteeAssistant | undefined>(props.assistant);
 
   type FieldErrors = Partial<Record<keyof TrusteeAssistantFormData | '$', string[] | undefined>>;
 
@@ -108,6 +133,24 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
+
+  const deleteModalId = 'delete-assistant-modal';
+  const deleteModalRef = useRef<TrusteeAssistantRemovalModalRef>(null);
+  const openDeleteModalButtonRef = useRef<OpenModalButtonRef>(null);
+
+  // Load assistant data when in edit mode
+  useEffect(() => {
+    if (!isCreateMode && assistantId) {
+      Api2.getAssistant(trusteeId, assistantId)
+        .then((response) => {
+          setAssistant(response.data);
+          setFormData(getInitialFormData(response.data));
+        })
+        .catch((error) => {
+          globalAlert?.error(`Failed to load assistant: ${error.message}`);
+        });
+    }
+  }, [isCreateMode, assistantId, trusteeId, globalAlert]);
 
   function getAddressInfo({
     address1,
@@ -141,14 +184,9 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     };
   }
 
-  const mapPayload = (formData: TrusteeAssistantFormData): Partial<TrusteeInput> => {
-    // If name is empty, clear the entire assistant
+  const mapAssistantPayload = (formData: TrusteeAssistantFormData): TrusteeAssistantInput => {
     const { name, title, ...contactInfo } = formData;
-    if (!name) {
-      return { assistant: undefined };
-    }
-
-    const assistantTrusteePayload: Partial<TrusteeAssistant> & { name: string } = { name };
+    const assistantTrusteePayload: Partial<TrusteeAssistant> & { name: string } = { name: name! };
     if (title) assistantTrusteePayload.title = title;
 
     const addressInfo = getAddressInfo(contactInfo);
@@ -156,14 +194,14 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     const emailInfo = contactInfo.email || undefined;
 
     const hasContactInfo = addressInfo || phoneInfo || emailInfo;
-    if (!hasContactInfo) return { assistant: assistantTrusteePayload };
+    if (!hasContactInfo) return assistantTrusteePayload;
 
     assistantTrusteePayload.contact = {};
     if (addressInfo) assistantTrusteePayload.contact.address = addressInfo;
     if (phoneInfo) assistantTrusteePayload.contact.phone = phoneInfo;
     if (emailInfo) assistantTrusteePayload.contact.email = emailInfo;
 
-    return { assistant: assistantTrusteePayload };
+    return assistantTrusteePayload;
   };
 
   const handleFieldChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -197,6 +235,10 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     navigate.navigateTo(`/trustees/${trusteeId}`);
   }, [navigate, trusteeId]);
 
+  const handleDeleteSuccess = useCallback(() => {
+    navigate.navigateTo(`/trustees/${trusteeId}`);
+  }, [navigate, trusteeId]);
+
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
     const currentFormData = normalizeFormData(formData);
@@ -204,12 +246,17 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     if (validateFormAndUpdateErrors(currentFormData)) {
       setIsSubmitting(true);
 
-      const payload = mapPayload(currentFormData);
       try {
-        await Api2.patchTrustee(trusteeId, payload);
+        const payload = mapAssistantPayload(currentFormData);
+        if (isCreateMode) {
+          await Api2.createTrusteeAssistant(trusteeId, payload);
+        } else {
+          await Api2.updateTrusteeAssistant(trusteeId, assistantId, payload);
+        }
         navigate.navigateTo(`/trustees/${trusteeId}`);
       } catch (e) {
-        globalAlert?.error(`Failed to update trustee assistant: ${(e as Error).message}`);
+        const action = isCreateMode ? 'create' : 'update';
+        globalAlert?.error(`Failed to ${action} trustee assistant: ${(e as Error).message}`);
       } finally {
         setIsSubmitting(false);
       }
@@ -275,7 +322,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     <div className="trustee-form-screen">
       <form
         noValidate
-        aria-label="Edit Trustee Assistant"
+        aria-label={isCreateMode ? 'Create Trustee Assistant' : 'Edit Trustee Assistant'}
         data-testid="trustee-assistant-form"
         onSubmit={handleSubmit}
       >
@@ -438,6 +485,24 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
           <Button id="submit-button" type="submit">
             {isSubmitting ? 'Saving…' : 'Save'}
           </Button>
+          {!isCreateMode && assistantId && (
+            <OpenModalButton
+              id="delete-assistant-button"
+              uswdsStyle={UswdsButtonStyle.Secondary}
+              modalId={deleteModalId}
+              modalRef={deleteModalRef}
+              ref={openDeleteModalButtonRef}
+              openProps={{
+                trusteeId,
+                assistantId,
+                buttonId: 'delete-assistant-button',
+                callback: handleDeleteSuccess,
+              }}
+              ariaLabel="Delete this assistant"
+            >
+              Delete
+            </OpenModalButton>
+          )}
           <Button
             className="spaced-button"
             type="button"
@@ -448,6 +513,9 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
           </Button>
         </div>
       </form>
+      {!isCreateMode && assistantId && (
+        <TrusteeAssistantRemovalModal ref={deleteModalRef} modalId={deleteModalId} />
+      )}
     </div>
   );
 }

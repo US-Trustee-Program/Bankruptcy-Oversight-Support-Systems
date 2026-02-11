@@ -229,7 +229,10 @@ export class TrusteeAppointmentsUseCase {
 
       const userReference = getCamsUserReference(context.session.user);
 
-      const existingAppointment = await this.trusteeAppointmentsRepository.read(appointmentId);
+      const existingAppointment = await this.trusteeAppointmentsRepository.read(
+        trusteeId,
+        appointmentId,
+      );
 
       const updatedAppointment = await this.trusteeAppointmentsRepository.updateAppointment(
         trusteeId,
