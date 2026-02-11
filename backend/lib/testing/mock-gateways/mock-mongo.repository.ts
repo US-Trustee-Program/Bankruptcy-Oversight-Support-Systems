@@ -220,6 +220,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   deleteMany(_ignore: any): Promise<void> {
     throw new Error('Method not implemented.');
   }

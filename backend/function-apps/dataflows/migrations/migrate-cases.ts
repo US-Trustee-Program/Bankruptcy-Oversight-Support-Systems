@@ -68,6 +68,13 @@ const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTabl
  * @param {InvocationContext} context
  */
 async function handleStart(_ignore: StartMessage, context: InvocationContext) {
+  const logger = ApplicationContextCreator.getLogger(context);
+  const migrationStartTimestamp = new Date().toISOString();
+  logger.info(
+    MODULE_NAME,
+    `MIGRATION_CUTOFF_TIMESTAMP=${migrationStartTimestamp} — Use this as cutoffDate for resync-remaining-cases.`,
+  );
+
   const isEmpty = await emptyMigrationTable(context);
   if (!isEmpty) return;
 
