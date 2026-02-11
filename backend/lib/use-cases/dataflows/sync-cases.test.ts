@@ -20,13 +20,14 @@ describe('getCaseIds tests', () => {
     expect(actual).toEqual({ events: [] });
   });
 
-  test('should return events to sync and last sync date', async () => {
+  test('should return events to sync and last sync date from gateway', async () => {
     const lastSyncDate = '2025-01-01';
-    const gatewayResponse = MockData.buildArray(MockData.randomCaseId, 3);
+    const latestSyncDate = '2025-02-11T10:30:00.124Z';
+    const caseIds = MockData.buildArray(MockData.randomCaseId, 3);
 
     const getIdSpy = vi
       .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue(gatewayResponse);
+      .mockResolvedValue({ caseIds, latestSyncDate });
 
     const syncState: CasesSyncState = {
       documentType: 'CASES_SYNC_STATE',
@@ -37,18 +38,19 @@ describe('getCaseIds tests', () => {
     const actual = await SyncCases.getCaseIds(context);
 
     const expected = {
-      events: gatewayResponse.map((caseId) => {
+      events: caseIds.map((caseId) => {
         return { caseId, type: 'CASE_CHANGED' };
       }),
+      lastSyncDate: latestSyncDate,
     };
 
     expect(getIdSpy).toHaveBeenCalledWith(expect.anything(), lastSyncDate);
-    expect(actual).toEqual(expect.objectContaining(expected));
-    expect(Date.parse(actual.lastSyncDate)).toBeGreaterThan(Date.parse(lastSyncDate));
+    expect(actual).toEqual(expected);
   });
 
-  test('should use provided lastSyncDate if provided', async () => {
-    const lastSyncDate = '2025-02-01 23:59:59';
+  test('should use provided lastSyncDate if provided and return gateway latestSyncDate', async () => {
+    const lastSyncDate = '2025-02-01T23:59:59.000Z';
+    const latestSyncDate = '2025-02-11T14:00:00.456Z';
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
       new Error('this should not be called'),
     );
@@ -57,14 +59,13 @@ describe('getCaseIds tests', () => {
 
     const getUpdatedSpy = vi
       .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue(mockCaseIds);
+      .mockResolvedValue({ caseIds: mockCaseIds, latestSyncDate });
 
     const actual = await SyncCases.getCaseIds(context, lastSyncDate);
     expect(getUpdatedSpy).toHaveBeenCalled();
     expect(actual).toEqual({
       events: expect.anything(),
-      lastSyncDate: expect.any(String),
+      lastSyncDate: latestSyncDate,
     });
-    expect(Date.parse(actual.lastSyncDate)).toBeGreaterThan(Date.parse(lastSyncDate));
   });
 });
