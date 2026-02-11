@@ -124,7 +124,7 @@ export class CasesLocalGateway implements CasesInterface {
   public async getUpdatedCaseIds(
     _applicationContext: ApplicationContext,
     _start: string,
-  ): Promise<string[]> {
+  ): Promise<{ caseIds: string[]; latestSyncDate: string }> {
     throw new Error('Not implemented');
   }
 

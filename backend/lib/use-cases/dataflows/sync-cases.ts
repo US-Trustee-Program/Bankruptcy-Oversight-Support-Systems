@@ -9,8 +9,6 @@ const MODULE_NAME = 'SYNC-CASES-USE-CASE';
 
 async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
   try {
-    const now = new Date().toISOString();
-
     let syncState: CasesSyncState;
     if (lastSyncDate) {
       syncState = {
@@ -24,13 +22,16 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
     }
 
     const casesGateway = factory.getCasesGateway(context);
-    const caseIds = await casesGateway.getUpdatedCaseIds(context, syncState.lastSyncDate);
+    const { caseIds, latestSyncDate } = await casesGateway.getUpdatedCaseIds(
+      context,
+      syncState.lastSyncDate,
+    );
 
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {
       return { type: 'CASE_CHANGED', caseId };
     });
 
-    return { events, lastSyncDate: now };
+    return { events, lastSyncDate: latestSyncDate };
   } catch (originalError) {
     const error = getCamsError(originalError, MODULE_NAME);
     context.logger.camsError(error);

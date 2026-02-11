@@ -33,7 +33,7 @@ type PartyCode = DebtorPartyCode | 'tr';
 const NOT_FOUND = -1;
 
 type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
-type CaseIdRecord = { caseId: string };
+type CaseIdRecord = { caseId: string; latestSyncDate: string };
 
 class CasesDxtrGateway implements CasesInterface {
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
@@ -543,9 +543,12 @@ class CasesDxtrGateway implements CasesInterface {
    *
    * @param {ApplicationContext} context
    * @param {string} start The date and time to begin checking for LAST_UPDATE_DATE values.
-   * @returns {string[]} A list of case ids for updated cases.
+   * @returns {{ caseIds: string[], latestSyncDate: string }} A list of case ids for updated cases and the latest sync date.
    */
-  async getUpdatedCaseIds(context: ApplicationContext, start: string): Promise<string[]> {
+  async getUpdatedCaseIds(
+    context: ApplicationContext,
+    start: string,
+  ): Promise<{ caseIds: string[]; latestSyncDate: string }> {
     const params: DbTableFieldSpec[] = [];
     params.push({
       name: 'start',
@@ -554,10 +557,13 @@ class CasesDxtrGateway implements CasesInterface {
     });
 
     const query = `
-      SELECT CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId
+      SELECT
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
+        FORMAT(C.LAST_UPDATE_DATE, 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
       FROM AO_CS C
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       WHERE C.LAST_UPDATE_DATE > @start
+      ORDER BY C.LAST_UPDATE_DATE DESC
     `;
 
     const queryResult: QueryResults = await executeQuery(
@@ -574,7 +580,14 @@ class CasesDxtrGateway implements CasesInterface {
       this.getUpdatedCaseIdsCallback,
     );
 
-    return results.map((record) => record.caseId);
+    if (results.length === 0) {
+      return { caseIds: [], latestSyncDate: start };
+    }
+
+    return {
+      caseIds: results.map((record) => record.caseId),
+      latestSyncDate: results[0].latestSyncDate,
+    };
   }
 
   private async queryCase(
