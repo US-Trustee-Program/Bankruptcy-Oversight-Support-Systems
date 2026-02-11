@@ -560,7 +560,7 @@ class CasesDxtrGateway implements CasesInterface {
         FORMAT(C.LAST_UPDATE_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
       FROM AO_CS C
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE C.LAST_UPDATE_DATE > @start
+      WHERE C.LAST_UPDATE_DATE AT TIME ZONE 'UTC' > @start
       ORDER BY C.LAST_UPDATE_DATE DESC, C.CASE_ID DESC
     `;
 
