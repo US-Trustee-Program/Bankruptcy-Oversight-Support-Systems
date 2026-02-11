@@ -36,6 +36,7 @@ function TrusteeAssistantRemovalModal_(
 ) {
   const { modalId } = props;
   const [removalState, setRemovalState] = useState<RemovalState>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const modalRef = useRef<ModalRefType>(null);
   const globalAlert = useGlobalAlert();
 
@@ -43,6 +44,7 @@ function TrusteeAssistantRemovalModal_(
     const state = removalState;
     if (!state || !state.assistantId) return;
 
+    setIsDeleting(true);
     Api2.deleteTrusteeAssistant(state.trusteeId, state.assistantId)
       .then(() => {
         state.callback();
@@ -50,6 +52,9 @@ function TrusteeAssistantRemovalModal_(
       })
       .catch(() => {
         globalAlert?.error('There was a problem removing the trustee assistant.');
+      })
+      .finally(() => {
+        setIsDeleting(false);
       });
   }
 
@@ -79,7 +84,7 @@ function TrusteeAssistantRemovalModal_(
       label: 'Yes, Delete',
       uswdsStyle: UswdsButtonStyle.Secondary,
       onClick: handleClickDelete,
-      disabled: !removalState,
+      disabled: !removalState || isDeleting,
       closeOnClick: false,
     },
     cancelButton: {
