@@ -68,9 +68,6 @@ param kvAppConfigName string = 'kv-${stackName}'
 
 param sqlServerName string = ''
 
-@description('Flag to enable Vercode access')
-param allowVeracodeScan bool = false
-
 @description('Name of the managed identity with read access to the keyvault storing application configurations.')
 @secure()
 param idKeyvaultAppConfiguration string
@@ -458,52 +455,26 @@ var apiApplicationSettings = concat(
 )
 
 var productionIpSecurityRestrictionsRules = isUstpDeployment
-  ? concat(
-      allowVeracodeScan
-        ? [
-            {
-              ipAddress: '3.32.105.199/32'
-              action: 'Allow'
-              priority: 1000
-              name: 'Veracode Agent'
-              description: 'Allow Veracode DAST Scans'
-            }
-          ]
-        : [],
-      [
-        {
-          ipAddress: 'Any'
-          action: 'Deny'
-          priority: 2147483647
-          name: 'Deny all'
-          description: 'Deny all access'
-        }
-      ]
-    )
+  ? [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
   : []
 
-var stagingIpSecurityRestrictionsRules = concat(
-  [
-    {
-      ipAddress: 'Any'
-      action: 'Deny'
-      priority: 2147483647
-      name: 'Deny all'
-      description: 'Deny all access'
-    }
-  ],
-  allowVeracodeScan
-    ? [
-        {
-          ipAddress: '3.32.105.199/32'
-          action: 'Allow'
-          priority: 1000
-          name: 'Veracode Agent'
-          description: 'Allow Veracode DAST Scans'
-        }
-      ]
-    : []
-)
+var stagingIpSecurityRestrictionsRules = [
+  {
+    ipAddress: 'Any'
+    action: 'Deny'
+    priority: 2147483647
+    name: 'Deny all'
+    description: 'Deny all access'
+  }
+]
 
 module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
   name: '${apiFunctionName}-pep-module'
