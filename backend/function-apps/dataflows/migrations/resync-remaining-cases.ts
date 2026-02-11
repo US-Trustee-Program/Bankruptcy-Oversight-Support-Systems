@@ -2,12 +2,7 @@ import { app, InvocationContext, output } from '@azure/functions';
 import { CaseSyncEvent } from '@common/queue/dataflow-types';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
-import {
-  buildFunctionName,
-  buildQueueName,
-  buildStartQueueHttpTrigger,
-  CursorMessage,
-} from '../dataflows-common';
+import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
@@ -18,9 +13,14 @@ import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 const MODULE_NAME = 'RESYNC-REMAINING-CASES';
 const PAGE_SIZE = 100;
 
-type ResyncRemainingStartMessage = CursorMessage & {
+type ResyncRemainingStartMessage = {
   cutoffDate: string;
-  remainingCount?: number;
+};
+
+type ResyncRemainingCursorMessage = {
+  cutoffDate: string;
+  lastId: string | null;
+  remainingCount: number;
 };
 
 const START = output.storageQueue({
@@ -52,7 +52,6 @@ const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
 async function handleStart(
   message: ResyncRemainingStartMessage,
@@ -69,15 +68,16 @@ async function handleStart(
 
   logger.info(MODULE_NAME, `Starting resync of remaining cases with cutoffDate: ${cutoffDate}`);
 
-  const cursorMessage: ResyncRemainingStartMessage = {
-    lastId: message.lastId ?? null,
+  const cursorMessage: ResyncRemainingCursorMessage = {
+    lastId: null,
     cutoffDate,
+    remainingCount: 0,
   };
   invocationContext.extraOutputs.set(PAGE, cursorMessage);
 }
 
 async function handlePage(
-  cursor: ResyncRemainingStartMessage,
+  cursor: ResyncRemainingCursorMessage,
   invocationContext: InvocationContext,
 ) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
@@ -98,15 +98,14 @@ async function handlePage(
   const { caseIds, lastId: newLastId, hasMore } = result.data;
 
   if (caseIds.length === 0) {
-    const totalRemaining = cursor.remainingCount ?? 0;
     logger.info(
       MODULE_NAME,
-      `REMAINING_CASES_TOTAL=${totalRemaining} — No more remaining cases to resync. Migration complete.`,
+      `REMAINING_CASES_TOTAL=${cursor.remainingCount} — No more remaining cases to resync. Migration complete.`,
     );
     return;
   }
 
-  const remainingCount = (cursor.remainingCount ?? 0) + caseIds.length;
+  const remainingCount = cursor.remainingCount + caseIds.length;
 
   logger.info(
     MODULE_NAME,
@@ -127,7 +126,7 @@ async function handlePage(
   }
 
   if (hasMore) {
-    const nextCursor: ResyncRemainingStartMessage = {
+    const nextCursor: ResyncRemainingCursorMessage = {
       lastId: newLastId,
       cutoffDate: cursor.cutoffDate,
       remainingCount,
@@ -231,15 +230,6 @@ function setup() {
     queueName: RETRY.queueName,
     handler: handleRetry,
     extraOutputs: [DLQ, HARD_STOP],
-  });
-
-  // NOTE: The start message requires { cutoffDate, lastId } which must be manually
-  // placed in the start queue. The HTTP trigger queues an empty start message.
-  app.http(HTTP_TRIGGER, {
-    route: 'resync-remaining-cases',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 
