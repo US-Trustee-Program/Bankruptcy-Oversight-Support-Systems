@@ -55,7 +55,7 @@ resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' existing 
 }
 
 var dnsZoneId = empty(privateDnsZoneId) ? privateDnsZone.id : privateDnsZoneId
-resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-06-01' = {
+resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = {
   parent: privateEndpoint
   name: dnsZoneGroupName
   properties: {
