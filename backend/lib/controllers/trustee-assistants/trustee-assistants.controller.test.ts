@@ -1,4 +1,4 @@
-import { vi, type Mocked, type MockedClass } from 'vitest';
+import { vi } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssistantsController } from './trustee-assistants.controller';
 import { TrusteeAssistantsUseCase } from '../../use-cases/trustee-assistants/trustee-assistants';
@@ -9,12 +9,9 @@ import { TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import MockData from '@common/cams/test-utilities/mock-data';
 
-vi.mock('../../use-cases/trustee-assistants/trustee-assistants');
-
 describe('TrusteeAssistantsController', () => {
   let context: ApplicationContext;
   let controller: TrusteeAssistantsController;
-  let mockUseCase: Mocked<TrusteeAssistantsUseCase>;
 
   const mockUser: CamsUserReference = {
     id: 'user123',
@@ -49,18 +46,6 @@ describe('TrusteeAssistantsController', () => {
       context.featureFlags = {};
     }
 
-    mockUseCase = {
-      getTrusteeAssistants: vi.fn(),
-      getAssistant: vi.fn(),
-      createAssistant: vi.fn(),
-      updateAssistant: vi.fn(),
-      deleteAssistant: vi.fn(),
-    } as unknown as Mocked<TrusteeAssistantsUseCase>;
-
-    (TrusteeAssistantsUseCase as MockedClass<typeof TrusteeAssistantsUseCase>).mockImplementation(
-      () => mockUseCase,
-    );
-
     controller = new TrusteeAssistantsController(context);
     context.featureFlags['trustee-management'] = true;
   });
@@ -84,7 +69,9 @@ describe('TrusteeAssistantsController', () => {
     test('should allow access for users with TrusteeAdmin role', async () => {
       context.request.method = 'GET';
       context.request.params['trusteeId'] = 'trustee-123';
-      mockUseCase.getTrusteeAssistants.mockResolvedValue([sampleAssistant]);
+      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants').mockResolvedValue([
+        sampleAssistant,
+      ]);
 
       const result = await controller.handleRequest(context);
 
@@ -122,7 +109,9 @@ describe('TrusteeAssistantsController', () => {
 
       context.request.params['trusteeId'] = trusteeId;
       context.request.url = `/api/trustees/${trusteeId}/assistants`;
-      mockUseCase.getTrusteeAssistants.mockResolvedValue([assistant1, assistant2]);
+      const getTrusteeAssistantsSpy = vi
+        .spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants')
+        .mockResolvedValue([assistant1, assistant2]);
 
       const result = await controller.handleRequest(context);
 
@@ -131,7 +120,7 @@ describe('TrusteeAssistantsController', () => {
       expect(result.body?.meta).toEqual({
         self: `/api/trustees/${trusteeId}/assistants`,
       });
-      expect(mockUseCase.getTrusteeAssistants).toHaveBeenCalledWith(context, trusteeId);
+      expect(getTrusteeAssistantsSpy).toHaveBeenCalledWith(context, trusteeId);
     });
 
     test('should return empty array when trustee has no assistants', async () => {
@@ -139,13 +128,15 @@ describe('TrusteeAssistantsController', () => {
 
       context.request.params['trusteeId'] = trusteeId;
       context.request.url = `/api/trustees/${trusteeId}/assistants`;
-      mockUseCase.getTrusteeAssistants.mockResolvedValue([]);
+      const getTrusteeAssistantsSpy = vi
+        .spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants')
+        .mockResolvedValue([]);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual([]);
-      expect(mockUseCase.getTrusteeAssistants).toHaveBeenCalledWith(context, trusteeId);
+      expect(getTrusteeAssistantsSpy).toHaveBeenCalledWith(context, trusteeId);
     });
 
     test('should return 400 when trusteeId is missing', async () => {
@@ -157,7 +148,9 @@ describe('TrusteeAssistantsController', () => {
     test('should propagate use case errors', async () => {
       const trusteeId = 'trustee-123';
       context.request.params['trusteeId'] = trusteeId;
-      mockUseCase.getTrusteeAssistants.mockRejectedValue(new Error('Trustee not found'));
+      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants').mockRejectedValue(
+        new Error('Trustee not found'),
+      );
 
       await expect(controller.handleRequest(context)).rejects.toThrow();
     });
@@ -176,7 +169,9 @@ describe('TrusteeAssistantsController', () => {
       context.request.params['trusteeId'] = trusteeId;
       context.request.params['assistantId'] = assistantId;
       context.request.url = `/api/trustees/${trusteeId}/assistants/${assistantId}`;
-      mockUseCase.getAssistant.mockResolvedValue(assistant);
+      const getAssistantSpy = vi
+        .spyOn(TrusteeAssistantsUseCase.prototype, 'getAssistant')
+        .mockResolvedValue(assistant);
 
       const result = await controller.handleRequest(context);
 
@@ -185,7 +180,7 @@ describe('TrusteeAssistantsController', () => {
       expect(result.body?.meta).toEqual({
         self: `/api/trustees/${trusteeId}/assistants/${assistantId}`,
       });
-      expect(mockUseCase.getAssistant).toHaveBeenCalledWith(context, trusteeId, assistantId);
+      expect(getAssistantSpy).toHaveBeenCalledWith(context, trusteeId, assistantId);
     });
 
     test('should return list when assistantId is missing', async () => {
@@ -193,13 +188,15 @@ describe('TrusteeAssistantsController', () => {
       const assistants = [MockData.getTrusteeAssistant({ trusteeId })];
       context.request.params = { trusteeId };
       context.request.url = `/api/trustees/${trusteeId}/assistants`;
-      mockUseCase.getTrusteeAssistants.mockResolvedValue(assistants);
+      const getTrusteeAssistantsSpy = vi
+        .spyOn(TrusteeAssistantsUseCase.prototype, 'getTrusteeAssistants')
+        .mockResolvedValue(assistants);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(200);
       expect(result.body?.data).toEqual(assistants);
-      expect(mockUseCase.getTrusteeAssistants).toHaveBeenCalledWith(context, trusteeId);
+      expect(getTrusteeAssistantsSpy).toHaveBeenCalledWith(context, trusteeId);
     });
 
     test('should propagate use case errors when assistant not found', async () => {
@@ -207,7 +204,9 @@ describe('TrusteeAssistantsController', () => {
       const assistantId = 'non-existent';
       context.request.params['trusteeId'] = trusteeId;
       context.request.params['assistantId'] = assistantId;
-      mockUseCase.getAssistant.mockRejectedValue(new Error('Assistant not found'));
+      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'getAssistant').mockRejectedValue(
+        new Error('Assistant not found'),
+      );
 
       await expect(controller.handleRequest(context)).rejects.toThrow();
     });
@@ -231,7 +230,9 @@ describe('TrusteeAssistantsController', () => {
       context.request.params = { trusteeId };
       context.request.body = assistantInput;
       context.request.url = `/api/trustees/${trusteeId}/assistants`;
-      mockUseCase.createAssistant.mockResolvedValue(createdAssistant);
+      const createAssistantSpy = vi
+        .spyOn(TrusteeAssistantsUseCase.prototype, 'createAssistant')
+        .mockResolvedValue(createdAssistant);
 
       const result = await controller.handleRequest(context);
 
@@ -239,7 +240,7 @@ describe('TrusteeAssistantsController', () => {
       expect(result.body?.meta?.self).toBe(
         `/api/trustees/${trusteeId}/assistants/${createdAssistant.id}`,
       );
-      expect(mockUseCase.createAssistant).toHaveBeenCalledWith(context, trusteeId, assistantInput);
+      expect(createAssistantSpy).toHaveBeenCalledWith(context, trusteeId, assistantInput);
     });
 
     test('should throw error when trusteeId is not provided', async () => {
@@ -260,7 +261,9 @@ describe('TrusteeAssistantsController', () => {
       const trusteeId = 'trustee-123';
       context.request.params = { trusteeId };
       context.request.body = assistantInput;
-      mockUseCase.createAssistant.mockRejectedValue(new Error('Validation failed'));
+      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'createAssistant').mockRejectedValue(
+        new Error('Validation failed'),
+      );
 
       await expect(controller.handleRequest(context)).rejects.toThrow();
     });
@@ -285,13 +288,15 @@ describe('TrusteeAssistantsController', () => {
       context.request.params = { trusteeId, assistantId };
       context.request.body = assistantInput;
       context.request.url = `/api/trustees/${trusteeId}/assistants/${assistantId}`;
-      mockUseCase.updateAssistant.mockResolvedValue(updatedAssistant);
+      const updateAssistantSpy = vi
+        .spyOn(TrusteeAssistantsUseCase.prototype, 'updateAssistant')
+        .mockResolvedValue(updatedAssistant);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(200);
       expect(result.body?.meta?.self).toBe(`/api/trustees/${trusteeId}/assistants/${assistantId}`);
-      expect(mockUseCase.updateAssistant).toHaveBeenCalledWith(
+      expect(updateAssistantSpy).toHaveBeenCalledWith(
         context,
         trusteeId,
         assistantId,
@@ -325,7 +330,9 @@ describe('TrusteeAssistantsController', () => {
       const assistantId = 'assistant-456';
       context.request.params = { trusteeId, assistantId };
       context.request.body = assistantInput;
-      mockUseCase.updateAssistant.mockRejectedValue(new Error('Validation failed'));
+      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'updateAssistant').mockRejectedValue(
+        new Error('Validation failed'),
+      );
 
       await expect(controller.handleRequest(context)).rejects.toThrow();
     });
@@ -342,12 +349,14 @@ describe('TrusteeAssistantsController', () => {
 
       context.request.params = { trusteeId, assistantId };
       context.request.url = `/api/trustees/${trusteeId}/assistants/${assistantId}`;
-      mockUseCase.deleteAssistant.mockResolvedValue(undefined);
+      const deleteAssistantSpy = vi
+        .spyOn(TrusteeAssistantsUseCase.prototype, 'deleteAssistant')
+        .mockResolvedValue(undefined);
 
       const result = await controller.handleRequest(context);
 
       expect(result.statusCode).toBe(204);
-      expect(mockUseCase.deleteAssistant).toHaveBeenCalledWith(context, trusteeId, assistantId);
+      expect(deleteAssistantSpy).toHaveBeenCalledWith(context, trusteeId, assistantId);
     });
 
     test('should throw error when trusteeId is not provided', async () => {
@@ -366,7 +375,9 @@ describe('TrusteeAssistantsController', () => {
       const trusteeId = 'trustee-123';
       const assistantId = 'assistant-456';
       context.request.params = { trusteeId, assistantId };
-      mockUseCase.deleteAssistant.mockRejectedValue(new Error('Assistant not found'));
+      vi.spyOn(TrusteeAssistantsUseCase.prototype, 'deleteAssistant').mockRejectedValue(
+        new Error('Assistant not found'),
+      );
 
       await expect(controller.handleRequest(context)).rejects.toThrow();
     });
