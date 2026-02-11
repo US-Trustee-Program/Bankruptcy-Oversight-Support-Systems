@@ -33,7 +33,6 @@ type PartyCode = DebtorPartyCode | 'tr';
 
 const NOT_FOUND = -1;
 
-type RawCaseIdAndMaxId = { caseId: string; maxTxId: number };
 type CaseIdRecord = { caseId: string; latestSyncDate: string };
 
 class CasesDxtrGateway implements CasesInterface {
@@ -999,12 +998,6 @@ class CasesDxtrGateway implements CasesInterface {
     applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
 
     return (queryResult.results as mssql.IResult<CaseBasics>).recordset;
-  }
-
-  caseIdsAndMaxTxIdCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
-    applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
-
-    return (queryResult.results as mssql.IResult<RawCaseIdAndMaxId[]>).recordset;
   }
 
   getUpdatedCaseIdsCallback(applicationContext: ApplicationContext, queryResult: QueryResults) {
