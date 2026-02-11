@@ -2,9 +2,9 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseBasics, CaseDetail, CaseSummary } from '@common/cams/cases';
 import { CasesSearchPredicate } from '@common/api/search';
 
-export type CasesSyncMeta = {
+export type UpdatedCaseIds = {
   caseIds: string[];
-  lastTxId: string;
+  latestSyncDate: string;
 };
 
 type TransactionIdRangeForDate = {
@@ -26,7 +26,7 @@ export interface CasesInterface {
 
   getSuggestedCases(applicationContext: ApplicationContext, caseId: string): Promise<CaseSummary[]>;
 
-  getUpdatedCaseIds(applicationContext: ApplicationContext, start: string): Promise<string[]>;
+  getUpdatedCaseIds(applicationContext: ApplicationContext, start: string): Promise<UpdatedCaseIds>;
 
   findTransactionIdRangeForDate(
     context: ApplicationContext,
