@@ -68,9 +68,6 @@ var appCommandLine = 'rm /etc/nginx/sites-enabled/default;envsubst < /home/site/
 @description('The preferred minimum TLS Cipher Suite to set for SSL negotiation. NOTE: Azure feature still in preview and limited to Premium plans')
 param preferredMinTLSCipherSuite string = 'TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256'
 
-@description('Flag to enable Veracode access')
-param allowVeracodeScan bool = false
-
 @description('Is ustp deployment')
 param isUstpDeployment bool
 
@@ -215,52 +212,26 @@ var applicationSettings = concat(
 )
 
 var productionIpSecurityRestrictionsRules = isUstpDeployment
-  ? concat(
-      allowVeracodeScan
-        ? [
-            {
-              ipAddress: '3.32.105.199/32'
-              action: 'Allow'
-              priority: 1000
-              name: 'Veracode Agent'
-              description: 'Allow Veracode DAST Scans'
-            }
-          ]
-        : [],
-      [
-        {
-          ipAddress: 'Any'
-          action: 'Deny'
-          priority: 2147483647
-          name: 'Deny all'
-          description: 'Deny all access'
-        }
-      ]
-    )
+  ? [
+      {
+        ipAddress: 'Any'
+        action: 'Deny'
+        priority: 2147483647
+        name: 'Deny all'
+        description: 'Deny all access'
+      }
+    ]
   : []
 
-var stagingIpSecurityRestrictionsRules = concat(
-  [
-    {
-      ipAddress: 'Any'
-      action: 'Deny'
-      priority: 2147483647
-      name: 'Deny all'
-      description: 'Deny all access'
-    }
-  ],
-  allowVeracodeScan
-    ? [
-        {
-          ipAddress: '3.32.105.199/32'
-          action: 'Allow'
-          priority: 1000
-          name: 'Veracode Agent'
-          description: 'Allow Veracode DAST Scans'
-        }
-      ]
-    : []
-)
+var stagingIpSecurityRestrictionsRules = [
+  {
+    ipAddress: 'Any'
+    action: 'Deny'
+    priority: 2147483647
+    name: 'Deny all'
+    description: 'Deny all access'
+  }
+]
 
 var baseWebappConfigProperties = {
   appSettings: applicationSettings

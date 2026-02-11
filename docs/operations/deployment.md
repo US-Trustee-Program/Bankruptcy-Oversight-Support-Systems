@@ -134,18 +134,14 @@ Note the following assumptions:
 | AZ_ANALYTICS_WORKSPACE_ID    | Secrets                | ---              | Azure resource id of Log Analytics.                                                               |
 | AZ_ACTION_GROUP_NAME         | Secrets                | Yes              | Action Group Name for alert rules                                                                 |
 
-### Veracode
+### Snyk
 
-| Name                  | Type (Secret/Variable) | Is Flexion Only? | Description                                        |
-| --------------------- | ---------------------- | ---------------- | -------------------------------------------------- |
-| VERACODE_APP_ID       | Secrets                | Yes              | Reference application identifier for scan results. |
-| VERACODE_API_ID       | Secrets                | Yes              | ---                                                |
-| VERACODE_API_KEY      | Secrets                | Yes              | ---                                                |
-| SRCCLR_API_TOKEN      | Secrets                | Yes              | API Token for Static Code Analysis                 |
-| SRCCLR_REGION         | Secrets                | Yes              | Region for Static Code analysis                    |
-| AZ_STOR_VERACODE_NAME | Secrets                | Yes              | Azure Storage account name for veracode scans      |
-| AZ_STOR_VERACODE_KEY  | Secrets                | Yes              | Access key for Azure Storage account               |
-| VERACODE_SAST_POLICY  | Secrets                | ---              | Policy name used for veracode scans                |
+| Name                           | Type (Secret/Variable) | Is Flexion Only? | Description                                                      |
+| ------------------------------ | ---------------------- | ---------------- | ---------------------------------------------------------------- |
+| SNYK_OAUTH_CLIENT_ID           | Secrets                | ---              | OAuth client ID for Snyk government instance                     |
+| SNYK_OAUTH_CLIENT_SECRET       | Secrets                | ---              | OAuth client secret for Snyk government instance                 |
+| AZ_SECURITY_SCAN_RG            | Secrets                | ---              | Resource group for the security scan storage account             |
+| AZ_SECURITY_SCAN_STORAGE_NAME  | Secrets                | ---              | Storage account name for security scan results (deployed by IaC) |
 
 ### LaunchDarkly
 
