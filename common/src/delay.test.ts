@@ -28,7 +28,7 @@ describe('delay', () => {
     [150, () => null, null],
     [250, () => ({ a: 1 }), { a: 1 }],
   ])('resolves with the return value of the function after %i ms', async (ms, fn, expected) => {
-    const promise = delay(ms, fn);
+    const promise = delay<ReturnType<typeof fn>>(ms, fn);
     vi.advanceTimersByTime(ms);
     await expect(promise).resolves.toEqual(expected);
   });
