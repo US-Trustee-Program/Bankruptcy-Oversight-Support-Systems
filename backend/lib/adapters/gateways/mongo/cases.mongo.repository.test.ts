@@ -1028,6 +1028,49 @@ describe('Cases repository', () => {
     expect(createSpy).toHaveBeenCalledWith(history);
   });
 
+  describe('getCaseIdsRemainingToSync', () => {
+    test('should query for SYNCED_CASE documents with updatedOn before cutoff date', async () => {
+      const cutoffDate = '2025-01-15T00:00:00.000Z';
+      const doc = using<SyncedCase & { _id: string }>();
+      const expectedQuery = and(
+        doc('documentType').equals('SYNCED_CASE'),
+        doc('updatedOn').lessThan(cutoffDate),
+      );
+      const expectedSort = QueryBuilder.orderBy<SyncedCase & { _id: string }>(['_id', 'ASCENDING']);
+
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repo.getCaseIdsRemainingToSync(cutoffDate, null, 100);
+
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery, expectedSort, 100);
+    });
+
+    test('should include cursor condition when lastId is provided', async () => {
+      const cutoffDate = '2025-01-15T00:00:00.000Z';
+      const doc = using<SyncedCase & { _id: string }>();
+      const expectedQuery = and(
+        doc('documentType').equals('SYNCED_CASE'),
+        doc('updatedOn').lessThan(cutoffDate),
+        doc('_id').greaterThan('previous-id'),
+      );
+      const expectedSort = QueryBuilder.orderBy<SyncedCase & { _id: string }>(['_id', 'ASCENDING']);
+
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repo.getCaseIdsRemainingToSync(cutoffDate, 'previous-id', 100);
+
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery, expectedSort, 100);
+    });
+
+    test('should wrap and rethrow adapter errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('test error'));
+
+      await expect(
+        repo.getCaseIdsRemainingToSync('2025-01-15T00:00:00.000Z', null, 100),
+      ).rejects.toThrow(UnknownError);
+    });
+  });
+
   test('should handle error creating case history', async () => {
     const history: CaseConsolidationHistory = {
       id: randomUUID().toString(),

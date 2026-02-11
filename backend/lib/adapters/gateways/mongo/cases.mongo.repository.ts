@@ -547,4 +547,30 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  public async getCaseIdsRemainingToSync(
+    cutoffDate: string,
+    lastId: string | null,
+    limit: number,
+  ): Promise<{ caseId: string; _id: string }[]> {
+    try {
+      type SyncedCaseQueryable = SyncedCase & { _id: string };
+      const doc = using<SyncedCaseQueryable>();
+
+      const conditions = [
+        doc('documentType').equals('SYNCED_CASE'),
+        doc('updatedOn').lessThan(cutoffDate),
+      ];
+      if (lastId) {
+        conditions.push(doc('_id').greaterThan(lastId));
+      }
+
+      const query = and(...conditions);
+      const sortSpec = QueryBuilder.orderBy<SyncedCaseQueryable>(['_id', 'ASCENDING']);
+      const adapter = this.getAdapter<SyncedCaseQueryable>();
+      return await adapter.find(query, sortSpec, limit);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }

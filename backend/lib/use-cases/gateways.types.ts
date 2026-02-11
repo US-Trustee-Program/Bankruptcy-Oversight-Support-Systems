@@ -187,6 +187,11 @@ export interface CasesRepository extends Releasable {
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
   ) => Promise<T[]>;
+  getCaseIdsRemainingToSync(
+    cutoffDate: string,
+    lastId: string | null,
+    limit: number,
+  ): Promise<{ caseId: string; _id: string }[]>;
 }
 
 export interface OfficesRepository
