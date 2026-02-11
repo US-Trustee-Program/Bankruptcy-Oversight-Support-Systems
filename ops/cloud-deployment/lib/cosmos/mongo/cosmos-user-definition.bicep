@@ -8,7 +8,7 @@ param mongoUser string
 
 param mongoPass string
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-09-15' existing = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
   name: accountName
 }
 
