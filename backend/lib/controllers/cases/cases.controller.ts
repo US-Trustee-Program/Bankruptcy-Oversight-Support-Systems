@@ -10,9 +10,6 @@ import { ResourceActions } from '@common/cams/actions';
 import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
-import { validateObject, flatten } from '@common/cams/validation';
-import { casesSearchPredicateSpec } from '@common/cams/search-validators';
-import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'CASES-CONTROLLER';
 
@@ -58,13 +55,6 @@ export class CasesController implements CamsController {
   }
 
   private async searchCases(request: CamsHttpRequest) {
-    const validationResult = validateObject(casesSearchPredicateSpec, request.body);
-    if (!validationResult.valid) {
-      const errors = flatten(validationResult.reasonMap || {});
-      throw new BadRequestError(MODULE_NAME, {
-        message: 'Search validation failed: ' + errors.join('. ') + '.',
-      });
-    }
     const predicate = request.body as CasesSearchPredicate;
     const options = request.query as SearchOptions;
     const includeAssignments = options?.includeAssignments === 'true';
