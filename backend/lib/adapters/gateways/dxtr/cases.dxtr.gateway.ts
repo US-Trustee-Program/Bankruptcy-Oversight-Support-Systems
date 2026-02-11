@@ -2,6 +2,7 @@ import * as mssql from 'mssql';
 import {
   CasesInterface,
   TransactionIdRangeForDate,
+  UpdatedCaseIds,
 } from '../../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
@@ -545,10 +546,7 @@ class CasesDxtrGateway implements CasesInterface {
    * @param {string} start The date and time to begin checking for LAST_UPDATE_DATE values.
    * @returns {{ caseIds: string[], latestSyncDate: string }} A list of case ids for updated cases and the latest sync date.
    */
-  async getUpdatedCaseIds(
-    context: ApplicationContext,
-    start: string,
-  ): Promise<{ caseIds: string[]; latestSyncDate: string }> {
+  async getUpdatedCaseIds(context: ApplicationContext, start: string): Promise<UpdatedCaseIds> {
     const params: DbTableFieldSpec[] = [];
     params.push({
       name: 'start',
@@ -559,11 +557,11 @@ class CasesDxtrGateway implements CasesInterface {
     const query = `
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
-        FORMAT(C.LAST_UPDATE_DATE, 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
+        FORMAT(C.LAST_UPDATE_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
       FROM AO_CS C
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       WHERE C.LAST_UPDATE_DATE > @start
-      ORDER BY C.LAST_UPDATE_DATE DESC
+      ORDER BY C.LAST_UPDATE_DATE DESC, C.CASE_ID DESC
     `;
 
     const queryResult: QueryResults = await executeQuery(
