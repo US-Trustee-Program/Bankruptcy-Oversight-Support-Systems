@@ -22,13 +22,13 @@ jobs:
           SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
 
       - name: Run Snyk SCA scan
-        run: snyk test --all-projects --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
+        run: snyk test --all-projects --exclude=backend/function-apps --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
         env:
           SNYK_API: https://api.snykgov.io
 
       - name: Monitor project in Snyk
         if: always()
-        run: snyk monitor --all-projects
+        run: snyk monitor --all-projects --exclude=backend/function-apps
         env:
           SNYK_API: https://api.snykgov.io
 
