@@ -4,6 +4,7 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import TrusteeDetailProfile, { TrusteeDetailProfileProps } from './TrusteeDetailProfile';
 import { Trustee } from '@common/cams/trustees';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 const mockTrustee: Trustee = {
   id: '--id-guid--',
@@ -369,32 +370,36 @@ describe('TrusteeDetailProfile', () => {
   test('should render assistant information with title', () => {
     const trusteeWithAssistant = {
       ...mockTrustee,
-      assistant: {
-        name: 'Jane Assistant',
-        title: 'Senior Assistant',
-        contact: {
-          address: {
-            address1: '789 Assistant St',
-            city: 'Assistant City',
-            state: 'TX',
-            zipCode: '78901',
-            countryCode: 'US' as const,
+      assistants: [
+        {
+          id: 'assistant-1',
+          trusteeId: mockTrustee.id,
+          name: 'Jane Assistant',
+          title: 'Senior Assistant',
+          contact: {
+            address: {
+              address1: '789 Assistant St',
+              city: 'Assistant City',
+              state: 'TX',
+              zipCode: '78901',
+              countryCode: 'US' as const,
+            },
+            phone: { number: '555-111-2222', extension: '456' },
+            email: 'jane.assistant@example.com',
           },
-          phone: { number: '555-111-2222', extension: '456' },
-          email: 'jane.assistant@example.com',
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2024-01-01T00:00:00Z',
         },
-      },
+      ],
     };
 
     renderWithProps({ trustee: trusteeWithAssistant });
 
-    expect(screen.getByTestId('assistant-name')).toHaveTextContent('Jane Assistant');
-    expect(screen.getByTestId('assistant-title')).toHaveTextContent('Senior Assistant');
-    expect(screen.getByTestId('trustee-assistant-street-address')).toHaveTextContent(
-      '789 Assistant St',
-    );
-    expect(screen.getByTestId('trustee-assistant-city')).toHaveTextContent('Assistant City');
-    expect(screen.getByTestId('trustee-assistant-phone-number')).toHaveTextContent(
+    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
+    expect(screen.getByTestId('assistant-title-0')).toHaveTextContent('Senior Assistant');
+    expect(screen.getByTestId('assistant-0-street-address')).toHaveTextContent('789 Assistant St');
+    expect(screen.getByTestId('assistant-0-city')).toHaveTextContent('Assistant City');
+    expect(screen.getByTestId('assistant-0-phone-number')).toHaveTextContent(
       '555-111-2222 ext. 456',
     );
   });
@@ -402,32 +407,38 @@ describe('TrusteeDetailProfile', () => {
   test('should render assistant information without title', () => {
     const trusteeWithAssistantNoTitle = {
       ...mockTrustee,
-      assistant: {
-        name: 'Jane Assistant',
-        contact: {
-          address: {
-            address1: '789 Assistant St',
-            city: 'Assistant City',
-            state: 'TX',
-            zipCode: '78901',
-            countryCode: 'US' as const,
+      assistants: [
+        {
+          id: 'assistant-1',
+          trusteeId: mockTrustee.id,
+          name: 'Jane Assistant',
+          contact: {
+            address: {
+              address1: '789 Assistant St',
+              city: 'Assistant City',
+              state: 'TX',
+              zipCode: '78901',
+              countryCode: 'US' as const,
+            },
+            phone: { number: '555-111-2222' },
+            email: 'jane.assistant@example.com',
           },
-          phone: { number: '555-111-2222' },
-          email: 'jane.assistant@example.com',
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2024-01-01T00:00:00Z',
         },
-      },
+      ],
     };
 
     renderWithProps({ trustee: trusteeWithAssistantNoTitle });
 
-    expect(screen.getByTestId('assistant-name')).toHaveTextContent('Jane Assistant');
-    expect(screen.queryByTestId('assistant-title')).not.toBeInTheDocument();
+    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
+    expect(screen.queryByTestId('assistant-title-0')).not.toBeInTheDocument();
   });
 
   test('should show "No information added" when assistant is missing', () => {
     const trusteeWithoutAssistant = {
       ...mockTrustee,
-      assistant: undefined,
+      assistants: undefined,
     };
 
     renderWithProps({ trustee: trusteeWithoutAssistant });
@@ -437,21 +448,136 @@ describe('TrusteeDetailProfile', () => {
     );
   });
 
+  test('should display "Add Another Assistant" button when an assistant exists', () => {
+    const trusteeWithAssistant = {
+      ...mockTrustee,
+      assistants: [
+        {
+          id: 'assistant-1',
+          trusteeId: mockTrustee.id,
+          name: 'Jane Assistant',
+          contact: {
+            address: {
+              address1: '789 Assistant St',
+              city: 'Assistant City',
+              state: 'TX',
+              zipCode: '78901',
+              countryCode: 'US' as const,
+            },
+            phone: { number: '555-111-2222' },
+            email: 'jane.assistant@example.com',
+          },
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2024-01-01T00:00:00Z',
+        },
+      ],
+    };
+
+    renderWithProps({ trustee: trusteeWithAssistant });
+
+    const addAnotherButton = screen.getByTestId('button-add-another-assistant-button');
+    expect(addAnotherButton).toBeInTheDocument();
+  });
+
+  test('should not display "Add Another Assistant" button when no assistant exists', () => {
+    const trusteeWithoutAssistant = {
+      ...mockTrustee,
+      assistants: undefined,
+    };
+
+    renderWithProps({ trustee: trusteeWithoutAssistant });
+
+    const addAnotherButton = screen.queryByTestId('button-add-another-assistant-button');
+    expect(addAnotherButton).not.toBeInTheDocument();
+  });
+
+  test('should call onAddAssistant when "Add Another Assistant" button is clicked', async () => {
+    const assistant = MockData.getTrusteeAssistant({ trusteeId: mockTrustee.id });
+    const trusteeWithAssistant = {
+      ...mockTrustee,
+      assistants: [assistant],
+    };
+
+    renderWithProps({ trustee: trusteeWithAssistant });
+
+    const addAnotherButton = screen.getByTestId('button-add-another-assistant-button');
+    await userEvent.click(addAnotherButton);
+
+    expect(mockOnAddAssistant).toHaveBeenCalledTimes(1);
+  });
+
+  test('should render multiple assistants with individual edit buttons', () => {
+    const assistant1 = MockData.getTrusteeAssistant({
+      trusteeId: mockTrustee.id,
+      name: 'Jane Assistant',
+      title: 'Senior Assistant',
+    });
+    const assistant2 = MockData.getTrusteeAssistant({
+      trusteeId: mockTrustee.id,
+      name: 'Bob Helper',
+      title: 'Legal Assistant',
+    });
+    const trusteeWithMultipleAssistants = {
+      ...mockTrustee,
+      assistants: [assistant1, assistant2],
+    };
+
+    renderWithProps({ trustee: trusteeWithMultipleAssistants });
+
+    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
+    expect(screen.getByTestId('assistant-title-0')).toHaveTextContent('Senior Assistant');
+    expect(screen.getByTestId('assistant-name-1')).toHaveTextContent('Bob Helper');
+    expect(screen.getByTestId('assistant-title-1')).toHaveTextContent('Legal Assistant');
+
+    expect(screen.getByTestId('button-edit-assistant-0')).toBeInTheDocument();
+    expect(screen.getByTestId('button-edit-assistant-1')).toBeInTheDocument();
+    expect(screen.getByTestId('button-add-another-assistant-button')).toBeInTheDocument();
+  });
+
+  test('should call onEditAssistant with correct ID when edit button is clicked', async () => {
+    const assistant = MockData.getTrusteeAssistant({ trusteeId: mockTrustee.id });
+    const trusteeWithAssistant = {
+      ...mockTrustee,
+      assistants: [assistant],
+    };
+
+    renderWithProps({ trustee: trusteeWithAssistant });
+
+    const editButton = screen.getByTestId('button-edit-assistant-0');
+    await userEvent.click(editButton);
+
+    expect(mockOnEditAssistant).toHaveBeenCalledWith(assistant.id);
+  });
+
+  test('should call onAddAssistant when edit button is clicked in empty state', async () => {
+    renderWithProps({ trustee: { ...mockTrustee, assistants: undefined } });
+
+    const editButton = screen.getByTestId('button-edit-assistant-empty');
+    await userEvent.click(editButton);
+
+    expect(mockOnAddAssistant).toHaveBeenCalledTimes(1);
+  });
+
   test('should render assistant name without contact information when contact is missing', () => {
     const trusteeWithAssistantNoContact = {
       ...mockTrustee,
-      assistant: {
-        name: 'Jane Assistant',
-      },
+      assistants: [
+        {
+          id: 'assistant-no-contact',
+          trusteeId: mockTrustee.id,
+          name: 'Jane Assistant',
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2024-01-01T00:00:00Z',
+        },
+      ],
     };
 
     renderWithProps({ trustee: trusteeWithAssistantNoContact });
 
-    expect(screen.getByTestId('assistant-name')).toHaveTextContent('Jane Assistant');
-    expect(screen.queryByTestId('assistant-title')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-assistant-street-address')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-assistant-phone-number')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-assistant-email')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('trustee-assistant-no-contact-info')).not.toBeInTheDocument();
+    expect(screen.getByTestId('assistant-name-0')).toHaveTextContent('Jane Assistant');
+    expect(screen.queryByTestId('assistant-title-0')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-0-street-address')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-0-phone-number')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('assistant-0-email')).not.toBeInTheDocument();
   });
 });
