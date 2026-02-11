@@ -1,9 +1,9 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 26
-- **Main Workflows**: 12
-- **Reusable Workflows**: 14
+- **Total Workflows**: 22
+- **Main Workflows**: 9
+- **Reusable Workflows**: 13
 
 ## Legend
 
@@ -95,19 +95,9 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
     continuous_deployment_yml_security_scan["Security"]
-    sub_security_scan_yml["Veracode Security"]
-    sub_security_scan_yml_sca_scan_frontend["sca-scan-frontend"]
-    reusable_sca_scan_yml["reusable-sca-scan.yml"]
-    reusable_sca_scan_yml_sca_scan["SCA Scan ${{ inputs.path }}"]
-    sub_security_scan_yml_sca_scan_backend_lib["sca-scan-backend-lib"]
-    sub_security_scan_yml_sca_scan_backend_api["sca-scan-backend-api"]
-    sub_security_scan_yml_sca_scan_backend_dataflows["sca-scan-backend-dataflows"]
-    sub_security_scan_yml_sca_scan_common["sca-scan-common"]
-    sub_security_scan_yml_sast_pipeline_scan["SAST Pipeline Scan"]
-    continuous_deployment_yml_snyk_security_scan["Snyk Security"]
-    sub_snyk_security_scan_yml["Snyk Security"]
-    sub_snyk_security_scan_yml_snyk_sca["Snyk SCA Scan"]
-    sub_snyk_security_scan_yml_snyk_sast["Snyk Code (SAST)"]
+    sub_security_scan_yml["Security"]
+    sub_security_scan_yml_sca_scan["SCA Scan"]
+    sub_security_scan_yml_sast_scan["SAST Scan"]
     continuous_deployment_yml_build["Build"]
     sub_build_yml["sub-build.yml"]
     sub_build_yml_see_slot_name["see-slot-name"]
@@ -164,23 +154,9 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_unit_test_common
     continuous_deployment_yml_unit_test_common --> reusable_unit_test_yml
     continuous_deployment_yml --> continuous_deployment_yml_security_scan
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_frontend
-    reusable_sca_scan_yml --> reusable_sca_scan_yml_sca_scan
-    sub_security_scan_yml_sca_scan_frontend --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_backend_lib
-    sub_security_scan_yml_sca_scan_backend_lib --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_backend_api
-    sub_security_scan_yml_sca_scan_backend_api --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_backend_dataflows
-    sub_security_scan_yml_sca_scan_backend_dataflows --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_common
-    sub_security_scan_yml_sca_scan_common --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sast_pipeline_scan
+    sub_security_scan_yml --> sub_security_scan_yml_sca_scan
+    sub_security_scan_yml --> sub_security_scan_yml_sast_scan
     continuous_deployment_yml_security_scan --> sub_security_scan_yml
-    continuous_deployment_yml --> continuous_deployment_yml_snyk_security_scan
-    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sca
-    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sast
-    continuous_deployment_yml_snyk_security_scan --> sub_snyk_security_scan_yml
     continuous_deployment_yml --> continuous_deployment_yml_build
     sub_build_yml --> sub_build_yml_see_slot_name
     sub_build_yml --> sub_build_yml_build_frontend_predeployment
@@ -245,18 +221,8 @@ flowchart LR
     class continuous_deployment_yml_unit_test_common job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml mainWorkflow
-    class sub_security_scan_yml_sca_scan_frontend job
-    class reusable_sca_scan_yml reusable
-    class reusable_sca_scan_yml_sca_scan job
-    class sub_security_scan_yml_sca_scan_backend_lib job
-    class sub_security_scan_yml_sca_scan_backend_api job
-    class sub_security_scan_yml_sca_scan_backend_dataflows job
-    class sub_security_scan_yml_sca_scan_common job
-    class sub_security_scan_yml_sast_pipeline_scan job
-    class continuous_deployment_yml_snyk_security_scan job
-    class sub_snyk_security_scan_yml mainWorkflow
-    class sub_snyk_security_scan_yml_snyk_sca job
-    class sub_snyk_security_scan_yml_snyk_sast job
+    class sub_security_scan_yml_sca_scan job
+    class sub_security_scan_yml_sast_scan job
     class continuous_deployment_yml_build job
     class sub_build_yml reusable
     class sub_build_yml_see_slot_name job
@@ -333,7 +299,6 @@ flowchart LR
             unit_test_common_vars["NODE_VERSION"]
         end
         security_scan["Security"]
-        snyk_security_scan["Snyk Security"]
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
@@ -368,7 +333,6 @@ flowchart LR
     setup_subgraph ==>|"needs"| build_subgraph
     setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
     setup_subgraph ==>|"needs"| deploy_subgraph
-    snyk_security_scan ==>|"needs"| deploy_subgraph
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
     unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
@@ -386,7 +350,6 @@ flowchart LR
     class deploy_code_slot_subgraph jobSubgraph
     class security_scan job
     class setup_subgraph jobSubgraph
-    class snyk_security_scan job
     class unit_test_backend_subgraph jobSubgraph
     class unit_test_common_subgraph jobSubgraph
     class unit_test_frontend_subgraph jobSubgraph
@@ -514,18 +477,12 @@ flowchart LR
 ### Schedule Triggered Workflows
 
 Workflows triggered by `schedule`:
-- **Veracode Dynamic Analysis Scan** (`veracode-dast-scan.yml`)
-- **Veracode Static Analysis Scan** (`veracode-sast-upload.yml`)
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
 - **Stand Alone DAST Scan** (`dast-scan.yml`)
 
 ```mermaid
 flowchart LR
     trigger_schedule(["schedule"])
-    veracode_dast_scan_yml["Veracode Dynamic Analysis Scan"]
-    veracode_dast_scan_yml_dast_scan["dast-scan"]
-    veracode_sast_upload_yml["Veracode Static Analysis Scan"]
-    veracode_sast_upload_yml_sast_upload_and_scan["SAST Upload and Scan"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     build_azure_cli_image_yml_build_and_push["build-and-push"]
     dast_scan_yml["Stand Alone DAST Scan"]
@@ -536,10 +493,6 @@ flowchart LR
     reusable_dast_yml["reusable-dast.yml"]
     reusable_dast_yml_zap_dast_scan["zap-dast-scan"]
 
-    trigger_schedule --> veracode_dast_scan_yml
-    veracode_dast_scan_yml --> veracode_dast_scan_yml_dast_scan
-    trigger_schedule --> veracode_sast_upload_yml
-    veracode_sast_upload_yml --> veracode_sast_upload_yml_sast_upload_and_scan
     trigger_schedule --> build_azure_cli_image_yml
     build_azure_cli_image_yml --> build_azure_cli_image_yml_build_and_push
     trigger_schedule --> dast_scan_yml
@@ -556,10 +509,6 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_schedule trigger
-    class veracode_dast_scan_yml mainWorkflow
-    class veracode_dast_scan_yml_dast_scan job
-    class veracode_sast_upload_yml mainWorkflow
-    class veracode_sast_upload_yml_sast_upload_and_scan job
     class build_azure_cli_image_yml mainWorkflow
     class build_azure_cli_image_yml_build_and_push job
     class dast_scan_yml mainWorkflow
@@ -574,41 +523,18 @@ flowchart LR
 ### Workflow_call Triggered Workflows
 
 Workflows triggered by `workflow_call`:
-- **Snyk Security** (`sub-snyk-security-scan.yml`)
-- **Veracode Security** (`sub-security-scan.yml`)
+- **Security** (`sub-security-scan.yml`)
 
 ```mermaid
 flowchart LR
     trigger_workflow_call(["workflow_call"])
-    sub_snyk_security_scan_yml["Snyk Security"]
-    sub_snyk_security_scan_yml_snyk_sca["Snyk SCA Scan"]
-    sub_snyk_security_scan_yml_snyk_sast["Snyk Code (SAST)"]
-    sub_security_scan_yml["Veracode Security"]
-    sub_security_scan_yml_sca_scan_frontend["sca-scan-frontend"]
-    reusable_sca_scan_yml["reusable-sca-scan.yml"]
-    reusable_sca_scan_yml_sca_scan["SCA Scan ${{ inputs.path }}"]
-    sub_security_scan_yml_sca_scan_backend_lib["sca-scan-backend-lib"]
-    sub_security_scan_yml_sca_scan_backend_api["sca-scan-backend-api"]
-    sub_security_scan_yml_sca_scan_backend_dataflows["sca-scan-backend-dataflows"]
-    sub_security_scan_yml_sca_scan_common["sca-scan-common"]
-    sub_security_scan_yml_sast_pipeline_scan["SAST Pipeline Scan"]
+    sub_security_scan_yml["Security"]
+    sub_security_scan_yml_sca_scan["SCA Scan"]
+    sub_security_scan_yml_sast_scan["SAST Scan"]
 
-    trigger_workflow_call --> sub_snyk_security_scan_yml
-    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sca
-    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sast
     trigger_workflow_call --> sub_security_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_frontend
-    reusable_sca_scan_yml --> reusable_sca_scan_yml_sca_scan
-    sub_security_scan_yml_sca_scan_frontend --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_backend_lib
-    sub_security_scan_yml_sca_scan_backend_lib --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_backend_api
-    sub_security_scan_yml_sca_scan_backend_api --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_backend_dataflows
-    sub_security_scan_yml_sca_scan_backend_dataflows --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_common
-    sub_security_scan_yml_sca_scan_common --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sast_pipeline_scan
+    sub_security_scan_yml --> sub_security_scan_yml_sca_scan
+    sub_security_scan_yml --> sub_security_scan_yml_sast_scan
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -616,18 +542,9 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_workflow_call trigger
-    class sub_snyk_security_scan_yml mainWorkflow
-    class sub_snyk_security_scan_yml_snyk_sca job
-    class sub_snyk_security_scan_yml_snyk_sast job
     class sub_security_scan_yml mainWorkflow
-    class sub_security_scan_yml_sca_scan_frontend job
-    class reusable_sca_scan_yml reusable
-    class reusable_sca_scan_yml_sca_scan job
-    class sub_security_scan_yml_sca_scan_backend_lib job
-    class sub_security_scan_yml_sca_scan_backend_api job
-    class sub_security_scan_yml_sca_scan_backend_dataflows job
-    class sub_security_scan_yml_sca_scan_common job
-    class sub_security_scan_yml_sast_pipeline_scan job
+    class sub_security_scan_yml_sca_scan job
+    class sub_security_scan_yml_sast_scan job
 ```
 
 ### Workflow_dispatch Triggered Workflows
@@ -706,19 +623,9 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
     continuous_deployment_yml_security_scan["Security"]
-    sub_security_scan_yml["Veracode Security"]
-    sub_security_scan_yml_sca_scan_frontend["sca-scan-frontend"]
-    reusable_sca_scan_yml["reusable-sca-scan.yml"]
-    reusable_sca_scan_yml_sca_scan["SCA Scan ${{ inputs.path }}"]
-    sub_security_scan_yml_sca_scan_backend_lib["sca-scan-backend-lib"]
-    sub_security_scan_yml_sca_scan_backend_api["sca-scan-backend-api"]
-    sub_security_scan_yml_sca_scan_backend_dataflows["sca-scan-backend-dataflows"]
-    sub_security_scan_yml_sca_scan_common["sca-scan-common"]
-    sub_security_scan_yml_sast_pipeline_scan["SAST Pipeline Scan"]
-    continuous_deployment_yml_snyk_security_scan["Snyk Security"]
-    sub_snyk_security_scan_yml["Snyk Security"]
-    sub_snyk_security_scan_yml_snyk_sca["Snyk SCA Scan"]
-    sub_snyk_security_scan_yml_snyk_sast["Snyk Code (SAST)"]
+    sub_security_scan_yml["Security"]
+    sub_security_scan_yml_sca_scan["SCA Scan"]
+    sub_security_scan_yml_sast_scan["SAST Scan"]
     continuous_deployment_yml_build["Build"]
     sub_build_yml["sub-build.yml"]
     sub_build_yml_see_slot_name["see-slot-name"]
@@ -775,23 +682,9 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_unit_test_common
     continuous_deployment_yml_unit_test_common --> reusable_unit_test_yml
     continuous_deployment_yml --> continuous_deployment_yml_security_scan
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_frontend
-    reusable_sca_scan_yml --> reusable_sca_scan_yml_sca_scan
-    sub_security_scan_yml_sca_scan_frontend --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_backend_lib
-    sub_security_scan_yml_sca_scan_backend_lib --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_backend_api
-    sub_security_scan_yml_sca_scan_backend_api --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_backend_dataflows
-    sub_security_scan_yml_sca_scan_backend_dataflows --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan_common
-    sub_security_scan_yml_sca_scan_common --> reusable_sca_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sast_pipeline_scan
+    sub_security_scan_yml --> sub_security_scan_yml_sca_scan
+    sub_security_scan_yml --> sub_security_scan_yml_sast_scan
     continuous_deployment_yml_security_scan --> sub_security_scan_yml
-    continuous_deployment_yml --> continuous_deployment_yml_snyk_security_scan
-    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sca
-    sub_snyk_security_scan_yml --> sub_snyk_security_scan_yml_snyk_sast
-    continuous_deployment_yml_snyk_security_scan --> sub_snyk_security_scan_yml
     continuous_deployment_yml --> continuous_deployment_yml_build
     sub_build_yml --> sub_build_yml_see_slot_name
     sub_build_yml --> sub_build_yml_build_frontend_predeployment
@@ -856,18 +749,8 @@ flowchart LR
     class continuous_deployment_yml_unit_test_common job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml mainWorkflow
-    class sub_security_scan_yml_sca_scan_frontend job
-    class reusable_sca_scan_yml reusable
-    class reusable_sca_scan_yml_sca_scan job
-    class sub_security_scan_yml_sca_scan_backend_lib job
-    class sub_security_scan_yml_sca_scan_backend_api job
-    class sub_security_scan_yml_sca_scan_backend_dataflows job
-    class sub_security_scan_yml_sca_scan_common job
-    class sub_security_scan_yml_sast_pipeline_scan job
-    class continuous_deployment_yml_snyk_security_scan job
-    class sub_snyk_security_scan_yml mainWorkflow
-    class sub_snyk_security_scan_yml_snyk_sca job
-    class sub_snyk_security_scan_yml_snyk_sast job
+    class sub_security_scan_yml_sca_scan job
+    class sub_security_scan_yml_sast_scan job
     class continuous_deployment_yml_build job
     class sub_build_yml reusable
     class sub_build_yml_see_slot_name job
@@ -944,7 +827,6 @@ flowchart LR
             unit_test_common_vars["NODE_VERSION"]
         end
         security_scan["Security"]
-        snyk_security_scan["Snyk Security"]
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
@@ -979,7 +861,6 @@ flowchart LR
     setup_subgraph ==>|"needs"| build_subgraph
     setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
     setup_subgraph ==>|"needs"| deploy_subgraph
-    snyk_security_scan ==>|"needs"| deploy_subgraph
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
     unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
@@ -997,7 +878,6 @@ flowchart LR
     class deploy_code_slot_subgraph jobSubgraph
     class security_scan job
     class setup_subgraph jobSubgraph
-    class snyk_security_scan job
     class unit_test_backend_subgraph jobSubgraph
     class unit_test_common_subgraph jobSubgraph
     class unit_test_frontend_subgraph jobSubgraph
@@ -1244,52 +1124,6 @@ flowchart LR
     class update_dependencies_yml_update_all job
 ```
 
-#### Veracode Dynamic Analysis Scan
-
-Manual execution of `veracode-dast-scan.yml`
-
-```mermaid
-flowchart LR
-    trigger_workflow_dispatch(["workflow_dispatch"])
-    veracode_dast_scan_yml["Veracode Dynamic Analysis Scan"]
-    veracode_dast_scan_yml_dast_scan["dast-scan"]
-
-    trigger_workflow_dispatch --> veracode_dast_scan_yml
-    veracode_dast_scan_yml --> veracode_dast_scan_yml_dast_scan
-
-    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
-    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
-    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
-
-    class trigger_workflow_dispatch trigger
-    class veracode_dast_scan_yml mainWorkflow
-    class veracode_dast_scan_yml_dast_scan job
-```
-
-#### Veracode Static Analysis Scan
-
-Manual execution of `veracode-sast-upload.yml`
-
-```mermaid
-flowchart LR
-    trigger_workflow_dispatch(["workflow_dispatch"])
-    veracode_sast_upload_yml["Veracode Static Analysis Scan"]
-    veracode_sast_upload_yml_sast_upload_and_scan["SAST Upload and Scan"]
-
-    trigger_workflow_dispatch --> veracode_sast_upload_yml
-    veracode_sast_upload_yml --> veracode_sast_upload_yml_sast_upload_and_scan
-
-    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
-    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
-    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
-
-    class trigger_workflow_dispatch trigger
-    class veracode_sast_upload_yml mainWorkflow
-    class veracode_sast_upload_yml_sast_upload_and_scan job
-```
-
 ### Workflow_run Triggered Workflows
 
 Workflows triggered by `workflow_run`:
@@ -1319,47 +1153,37 @@ flowchart LR
 ```mermaid
 flowchart LR
     trigger_workflow_call(["workflow_call"])
-    sub_snyk_security_scan_yml["Snyk Security"]
-    sub_security_scan_yml["Veracode Security"]
+    sub_security_scan_yml["Security"]
     trigger_workflow_dispatch(["workflow_dispatch"])
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
     e2e_test_yml["Stand Alone E2E Test Runs"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
-    veracode_dast_scan_yml["Veracode Dynamic Analysis Scan"]
-    veracode_sast_upload_yml["Veracode Static Analysis Scan"]
     continuous_deployment_yml["Continuous Deployment"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
     update_dependencies_yml["NPM Package Updates"]
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
-    trigger_schedule(["schedule"])
-    veracode_dast_scan_yml["Veracode Dynamic Analysis Scan"]
-    veracode_sast_upload_yml["Veracode Static Analysis Scan"]
-    build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
-    dast_scan_yml["Stand Alone DAST Scan"]
     trigger_push(["push"])
     continuous_deployment_yml["Continuous Deployment"]
+    trigger_schedule(["schedule"])
+    build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
+    dast_scan_yml["Stand Alone DAST Scan"]
     trigger_workflow_run(["workflow_run"])
     slack_notification_yml["slack-notification"]
 
-    trigger_workflow_call --> sub_snyk_security_scan_yml
     trigger_workflow_call --> sub_security_scan_yml
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
     trigger_workflow_dispatch --> e2e_test_yml
     trigger_workflow_dispatch --> azure_remove_branch_yml
-    trigger_workflow_dispatch --> veracode_dast_scan_yml
-    trigger_workflow_dispatch --> veracode_sast_upload_yml
     trigger_workflow_dispatch --> continuous_deployment_yml
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
     trigger_delete --> azure_remove_branch_yml
-    trigger_schedule --> veracode_dast_scan_yml
-    trigger_schedule --> veracode_sast_upload_yml
+    trigger_push --> continuous_deployment_yml
     trigger_schedule --> build_azure_cli_image_yml
     trigger_schedule --> dast_scan_yml
-    trigger_push --> continuous_deployment_yml
     trigger_workflow_run --> slack_notification_yml
 
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -1368,16 +1192,13 @@ flowchart LR
     class trigger_workflow_call trigger
     class trigger_workflow_dispatch trigger
     class trigger_delete trigger
-    class trigger_schedule trigger
     class trigger_push trigger
+    class trigger_schedule trigger
     class trigger_workflow_run trigger
-    class sub_snyk_security_scan_yml mainWorkflow
     class sub_security_scan_yml mainWorkflow
     class deploy_security_scan_storage_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
-    class veracode_dast_scan_yml mainWorkflow
-    class veracode_sast_upload_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
     class dast_scan_yml mainWorkflow
@@ -1388,12 +1209,9 @@ flowchart LR
 ## Workflow Details
 
 ### Main Workflows
-- **Snyk Security** (`sub-snyk-security-scan.yml`)
+- **Security** (`sub-security-scan.yml`)
   - Triggers: workflow_call
   - Jobs: 2
-- **Veracode Security** (`sub-security-scan.yml`)
-  - Triggers: workflow_call
-  - Jobs: 6
 - **Deploy Security Scan Storage** (`deploy-security-scan-storage.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 1
@@ -1403,15 +1221,9 @@ flowchart LR
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
   - Triggers: delete, workflow_dispatch
   - Jobs: 3
-- **Veracode Dynamic Analysis Scan** (`veracode-dast-scan.yml`)
-  - Triggers: schedule, workflow_dispatch
-  - Jobs: 1
-- **Veracode Static Analysis Scan** (`veracode-sast-upload.yml`)
-  - Triggers: schedule, workflow_dispatch
-  - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
-  - Jobs: 10
+  - Jobs: 9
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
@@ -1428,8 +1240,6 @@ flowchart LR
 ### Reusable Workflows
 - **Provision and Configure Cloud Resources** (`sub-deploy.yml`)
   - Jobs: 3
-- **Veracode Static Code Analysis Scan** (`reusable-sca-scan.yml`)
-  - Jobs: 1
 - **Azure Deployment - Supporting Infrastructure** (`reusable-infrastructure-deploy.yml`)
   - Jobs: 2
 - **End-to-end Tests** (`reusable-e2e.yml`)

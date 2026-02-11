@@ -78,9 +78,6 @@ cams1.code-workspace
 # Dist
 **/dist/
 
-# Veracode
-**/pipeline-scan*
-
 # Build Archives
 **/*.zip
 

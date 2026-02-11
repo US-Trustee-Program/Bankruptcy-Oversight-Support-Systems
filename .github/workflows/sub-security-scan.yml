@@ -1,92 +1,194 @@
-name: Veracode Security
+name: Security
 
 on: workflow_call
 
 jobs:
-  sca-scan-frontend:
-    uses: ./.github/workflows/reusable-sca-scan.yml
-    with:
-      path: user-interface
-      artifactname: user-interface
-    secrets: inherit # pragma: allowlist secret
-
-  sca-scan-backend-lib:
-    uses: ./.github/workflows/reusable-sca-scan.yml
-    with:
-      path: backend
-      artifactname: backend-lib
-    secrets: inherit # pragma: allowlist secret
-
-  sca-scan-backend-api:
-    uses: ./.github/workflows/reusable-sca-scan.yml
-    with:
-      path: backend/function-apps/api
-      artifactname: backend-api
-    secrets: inherit # pragma: allowlist secret
-
-  sca-scan-backend-dataflows:
-    uses: ./.github/workflows/reusable-sca-scan.yml
-    with:
-      path: backend/function-apps/dataflows
-      artifactname: backend-dataflows
-    secrets: inherit # pragma: allowlist secret
-
-  sca-scan-common:
-    uses: ./.github/workflows/reusable-sca-scan.yml
-    with:
-      path: common
-      artifactname: common
-    secrets: inherit # pragma: allowlist secret
-
-  sast-pipeline-scan:
-    name: SAST Pipeline Scan
+  sca-scan:
+    name: SCA Scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-      - name: Package source code for scan
-        run: zip -r cams.zip . -i "./backend/*" -i "./user-interface/*" -i "./common/*"
+      - name: Setup Snyk CLI
+        uses: snyk/actions/setup@master
+        with:
+          snyk-version: latest
+
+      - name: Authenticate with Snyk
+        run: snyk auth --auth-type=oauth --client-secret=${{ secrets.SNYK_OAUTH_CLIENT_SECRET }} --client-id=${{ secrets.SNYK_OAUTH_CLIENT_ID }}
+        env:
+          SNYK_API: https://api.snykgov.io
+
+      - name: Run Snyk SCA scan
+        run: snyk test --all-projects --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
+        env:
+          SNYK_API: https://api.snykgov.io
+
+      - name: Monitor project in Snyk
+        if: always()
+        run: snyk monitor --all-projects
+        env:
+          SNYK_API: https://api.snykgov.io
 
       - uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+        if: always()
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - name: Fetch pipeline-scan tool
-        run: |
-          curl -sSO https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
-          unzip -o pipeline-scan-LATEST.zip
-          java -jar pipeline-scan.jar --version
-
-      - name: Download baseline file
-        run: |
-          az storage blob download \
-          --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} \
-          --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} \
-          -c baseline \
-          -n results-latest.json \
-          -f ./results-latest.json
-
-      - name: Download Veracode policy file
-        run: |
-          java -jar pipeline-scan.jar \
-          -vid ${{ secrets.VERACODE_API_ID }} \
-          -vkey ${{ secrets.VERACODE_API_KEY }} \
-          --request_policy="${{ secrets.VERACODE_SAST_POLICY }}"
-
-      - name: Execute pipeline-scan
-        id: pipeline-scan
-        run: |
-          java -jar pipeline-scan.jar \
-          -vid ${{ secrets.VERACODE_API_ID }} -vkey ${{ secrets.VERACODE_API_KEY }} \
-          -bf results-latest.json \
-          -jf results.json \
-          -fjf filtered_results.json \
-          -pf ${{ secrets.VERACODE_SAST_POLICY }}.json \
-          --file cams.zip
-
-      - name: Upload to storage account
+      - name: Upload raw SARIF to Azure Storage
         if: always()
         run: |
-          az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f results.json -c results -n results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
-          az storage blob upload --account-name ${{ secrets.AZ_STOR_VERACODE_NAME }} --account-key ${{ secrets.AZ_STOR_VERACODE_KEY }} -f filtered_results.json -c results -n filtered_results-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.json
+          if [ -f snyk-sca.sarif ]; then
+            ACCOUNT_KEY=$(az storage account keys list \
+              -n "$ACCOUNT_NAME" \
+              -g "$RESOURCE_GROUP" \
+              --query '[0].value' -o tsv)
+            az storage blob upload \
+              --account-name "$ACCOUNT_NAME" \
+              --account-key "$ACCOUNT_KEY" \
+              -f snyk-sca.sarif \
+              -c security-scan-results \
+              -n "snyk-sca-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.sarif" \
+              --overwrite
+          fi
+        env:
+          ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
+          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
+
+      - name: Sanitize SARIF for GitHub upload
+        if: always()
+        run: |
+          if [ -f snyk-sca.sarif ]; then
+            jq 'walk(
+              if type == "object" and has("security-severity") and
+                (.["security-severity"] | type == "string") and
+                (.["security-severity"] | test("^[0-9]+(\\.[0-9]+)?$") | not)
+              then del(.["security-severity"])
+              else . end
+            )' snyk-sca.sarif > snyk-sca-sanitized.sarif && mv snyk-sca-sanitized.sarif snyk-sca.sarif
+          fi
+
+      - name: Upload SARIF to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-sca.sarif
+
+  sast-scan:
+    name: SAST Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Snyk CLI
+        uses: snyk/actions/setup@master
+        with:
+          snyk-version: latest
+
+      - name: Authenticate with Snyk
+        run: snyk auth --auth-type=oauth --client-secret=${{ secrets.SNYK_OAUTH_CLIENT_SECRET }} --client-id=${{ secrets.SNYK_OAUTH_CLIENT_ID }}
+        env:
+          SNYK_API: https://api.snykgov.io
+
+      - name: Run Snyk Code (SAST) scan
+        id: snyk-scan
+        continue-on-error: true
+        run: snyk code test --severity-threshold=medium --sarif-file-output=snyk-code.sarif
+        env:
+          SNYK_API: https://api.snykgov.io
+
+      - uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2
+        if: always()
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Upload raw SARIF to Azure Storage
+        if: always()
+        run: |
+          if [ -f snyk-code.sarif ]; then
+            ACCOUNT_KEY=$(az storage account keys list \
+              -n "$ACCOUNT_NAME" \
+              -g "$RESOURCE_GROUP" \
+              --query '[0].value' -o tsv)
+            az storage blob upload \
+              --account-name "$ACCOUNT_NAME" \
+              --account-key "$ACCOUNT_KEY" \
+              -f snyk-code.sarif \
+              -c security-scan-results \
+              -n "snyk-code-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.sarif" \
+              --overwrite
+          fi
+        env:
+          ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
+          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
+
+      - name: Download SAST baseline
+        id: baseline
+        if: always()
+        run: |
+          ACCOUNT_KEY=$(az storage account keys list \
+            -n "$ACCOUNT_NAME" \
+            -g "$RESOURCE_GROUP" \
+            --query '[0].value' -o tsv)
+          if az storage blob download \
+            --account-name "$ACCOUNT_NAME" \
+            --account-key "$ACCOUNT_KEY" \
+            -c snyk-baseline \
+            -n snyk-code-baseline.txt \
+            -f snyk-code-baseline.txt 2>/dev/null; then
+            echo "baseline_found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::No SAST baseline found. All findings will be treated as new."
+            echo "baseline_found=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
+          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
+
+      - name: Compare against baseline
+        id: baseline-compare
+        if: always() && steps.snyk-scan.outcome == 'failure'
+        run: |
+          if ops/scripts/pipeline/snyk-baseline-compare.sh snyk-code.sarif snyk-code-baseline.txt; then
+            echo "has_new_findings=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_new_findings=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Sanitize SARIF for GitHub upload
+        if: always()
+        run: |
+          if [ -f snyk-code.sarif ]; then
+            jq 'walk(
+              if type == "object" and has("security-severity") and
+                (.["security-severity"] | type == "string") and
+                (.["security-severity"] | test("^[0-9]+(\\.[0-9]+)?$") | not)
+              then del(.["security-severity"])
+              else . end
+            )' snyk-code.sarif > snyk-code-sanitized.sarif && mv snyk-code-sanitized.sarif snyk-code.sarif
+          fi
+
+      - name: Upload SARIF to GitHub
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: snyk-code.sarif
+
+      - name: Fail on new findings
+        if: always()
+        env:
+          SCAN_OUTCOME: ${{ steps.snyk-scan.outcome }}
+          HAS_NEW_FINDINGS: ${{ steps.baseline-compare.outputs.has_new_findings }}
+        run: |
+          if [[ "$SCAN_OUTCOME" == "success" ]]; then
+            echo "Snyk Code scan passed — no findings."
+            exit 0
+          fi
+          if [[ "$HAS_NEW_FINDINGS" == "true" ]]; then
+            echo "New SAST findings detected that are not in the baseline."
+            exit 1
+          fi
+          echo "Snyk Code scan found issues, but all match the accepted baseline."
+          exit 0

@@ -70,11 +70,6 @@ jobs:
     uses: ./.github/workflows/sub-security-scan.yml
     secrets: inherit # pragma: allowlist secret
 
-  snyk-security-scan:
-    name: Snyk Security
-    uses: ./.github/workflows/sub-snyk-security-scan.yml
-    secrets: inherit # pragma: allowlist secret
-
   build:
     name: Build
     needs: [setup]
@@ -105,7 +100,6 @@ jobs:
         unit-test-backend,
         unit-test-common,
         security-scan,
-        snyk-security-scan,
       ]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:

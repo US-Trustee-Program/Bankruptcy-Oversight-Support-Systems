@@ -73,9 +73,6 @@ param sqlServerIdentityName string = ''
 
 param sqlServerIdentityResourceGroupName string = ''
 
-@description('Flag: Enable Vercode access to execute DAST scanning')
-param allowVeracodeScan bool = false
-
 @description('Name of the managed identity with read access to the keyvault storing application configurations. ')
 @secure()
 param idKeyvaultAppConfiguration string
@@ -173,7 +170,6 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       webappName: webappName
       location: location
       virtualNetworkResourceGroupName: networkResourceGroupName
-      allowVeracodeScan: allowVeracodeScan
       createAlerts: createAlerts
       actionGroupName: actionGroupName
       actionGroupResourceGroupName: analyticsResourceGroupName
@@ -209,7 +205,6 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
       apiCorsAllowOrigins: ['https://${webappName}.azurewebsites.us','https://portal.azure.us']
       apiSlotCorsAllowOrigins: ['https://${webappName}-${slotName}.azurewebsites.us','https://portal.azure.us']
-      allowVeracodeScan: allowVeracodeScan
       idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
       kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
       virtualNetworkResourceGroupName: networkResourceGroupName
@@ -251,7 +246,6 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     sqlServerIdentityName: sqlServerIdentityName
     sqlServerIdentityResourceGroupName: sqlServerIdentityResourceGroupName
     dataflowsCorsAllowOrigins: ['https://portal.azure.us']
-    allowVeracodeScan: allowVeracodeScan
     idKeyvaultAppConfiguration: idKeyvaultAppConfiguration
     kvAppConfigResourceGroupName: kvAppConfigResourceGroupName
     virtualNetworkResourceGroupName: networkResourceGroupName
