@@ -188,6 +188,11 @@ export interface CasesRepository extends Releasable {
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
   ) => Promise<T[]>;
+  getCaseIdsRemainingToSync(
+    cutoffDate: string,
+    lastId: string | null,
+    limit: number,
+  ): Promise<{ caseId: string; _id: string }[]>;
 }
 
 export interface OfficesRepository
@@ -294,9 +299,17 @@ export type OrderSyncState = RuntimeState & {
   txId: string;
 };
 
-export type CasesSyncState = RuntimeState & {
+// Legacy sync state shape (pre-dual-sync-date)
+export type LegacyCasesSyncState = RuntimeState & {
   documentType: 'CASES_SYNC_STATE';
   lastSyncDate: string;
+};
+
+// Current sync state shape with dual sync dates
+export type CasesSyncState = RuntimeState & {
+  documentType: 'CASES_SYNC_STATE';
+  lastCasesSyncDate: string;
+  lastTransactionsSyncDate: string;
 };
 
 export type OfficeStaffSyncState = RuntimeState & {
