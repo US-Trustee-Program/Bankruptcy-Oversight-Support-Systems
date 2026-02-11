@@ -7,6 +7,11 @@ export type CasesSyncMeta = {
   lastTxId: string;
 };
 
+export type UpdatedCaseIds = {
+  caseIds: string[];
+  latestSyncDate: string;
+};
+
 type TransactionIdRangeForDate = {
   findDate: string;
   found: boolean;
@@ -26,10 +31,7 @@ export interface CasesInterface {
 
   getSuggestedCases(applicationContext: ApplicationContext, caseId: string): Promise<CaseSummary[]>;
 
-  getUpdatedCaseIds(
-    applicationContext: ApplicationContext,
-    start: string,
-  ): Promise<{ caseIds: string[]; latestSyncDate: string }>;
+  getUpdatedCaseIds(applicationContext: ApplicationContext, start: string): Promise<UpdatedCaseIds>;
 
   findTransactionIdRangeForDate(
     context: ApplicationContext,
