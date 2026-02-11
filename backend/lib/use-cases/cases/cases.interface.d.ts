@@ -4,7 +4,8 @@ import { CasesSearchPredicate } from '@common/api/search';
 
 export type UpdatedCaseIds = {
   caseIds: string[];
-  latestSyncDate: string;
+  latestCasesSyncDate: string;
+  latestTransactionsSyncDate: string;
 };
 
 type TransactionIdRangeForDate = {
@@ -26,7 +27,11 @@ export interface CasesInterface {
 
   getSuggestedCases(applicationContext: ApplicationContext, caseId: string): Promise<CaseSummary[]>;
 
-  getUpdatedCaseIds(applicationContext: ApplicationContext, start: string): Promise<UpdatedCaseIds>;
+  getUpdatedCaseIds(
+    applicationContext: ApplicationContext,
+    casesStart: string,
+    transactionsStart: string,
+  ): Promise<UpdatedCaseIds>;
 
   getCasesWithTerminalTransactionBlindSpot(
     context: ApplicationContext,

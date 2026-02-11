@@ -462,36 +462,40 @@ async function testMigrationQuery(context: ApplicationContext): Promise<boolean>
   }
 }
 
-// Test: UNION query (getUpdatedCaseIds)
-async function testUnionQuery(context: ApplicationContext): Promise<boolean> {
+// Test: Split query (getUpdatedCaseIds with dual sync dates)
+async function testSplitQuery(context: ApplicationContext): Promise<boolean> {
   context.logger.info(MODULE_NAME, '========================================');
-  context.logger.info(MODULE_NAME, 'TEST 2: UNION Query (Recent Terminal TX)');
+  context.logger.info(MODULE_NAME, 'TEST 2: Split Query (Recent Terminal TX)');
   context.logger.info(MODULE_NAME, 'Expected: 1 case (TC5 with recent transaction)');
   context.logger.info(MODULE_NAME, '========================================');
 
   // Use a date 7 days ago to catch TC5 (which has transaction 3 days ago)
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  const startDate =
-    sevenDaysAgo.toISOString().split('T')[0] +
-    ' ' +
-    sevenDaysAgo.toISOString().split('T')[1].split('.')[0];
+  const startDate = sevenDaysAgo.toISOString();
 
   const gateway = factory.getCasesGateway(context);
-  const caseIds = await gateway.getUpdatedCaseIds(context, startDate);
+  const result = await gateway.getUpdatedCaseIds(context, startDate, startDate);
 
   // Filter to only our test cases (may include production data)
-  const testCaseIds = caseIds.filter((id) => id.includes('091-9000') || id.includes('091-99-900'));
+  const testCaseIds = result.caseIds.filter(
+    (id) => id.includes('091-9000') || id.includes('091-99-900'),
+  );
 
   context.logger.info(
     MODULE_NAME,
-    `Found ${caseIds.length} total cases with recent terminal transactions`,
+    `Found ${result.caseIds.length} total cases with recent terminal transactions`,
   );
   context.logger.info(
     MODULE_NAME,
     `Found ${testCaseIds.length} test cases with recent terminal transactions:`,
   );
   testCaseIds.forEach((caseId) => context.logger.info(MODULE_NAME, `  - ${caseId}`));
+  context.logger.info(MODULE_NAME, `Latest cases sync date: ${result.latestCasesSyncDate}`);
+  context.logger.info(
+    MODULE_NAME,
+    `Latest transactions sync date: ${result.latestTransactionsSyncDate}`,
+  );
 
   // Expected: TC5 should be found (recent transaction)
   const expectedCaseId = '091-900005';
@@ -501,7 +505,7 @@ async function testUnionQuery(context: ApplicationContext): Promise<boolean> {
   if (found) {
     context.logger.info(
       MODULE_NAME,
-      '✓ TEST 2 PASSED: UNION query found recent terminal transaction test case',
+      '✓ TEST 2 PASSED: Split query found recent terminal transaction test case',
     );
     context.logger.info(MODULE_NAME, '');
     return true;
@@ -578,7 +582,7 @@ async function main() {
 
     // Run tests
     results.migrationQuery = await testMigrationQuery(context);
-    results.unionQuery = await testUnionQuery(context);
+    results.unionQuery = await testSplitQuery(context);
     // Skip Export/Load test for now - requires more complete case data
     // results.exportAndLoad = await testExportAndLoad(context);
     results.exportAndLoad = true; // Mark as passing for now
@@ -611,7 +615,7 @@ async function main() {
     );
     context.logger.info(
       MODULE_NAME,
-      `UNION Query:        ${results.unionQuery ? '✓ PASS' : '✗ FAIL'}`,
+      `Split Query:        ${results.unionQuery ? '✓ PASS' : '✗ FAIL'}`,
     );
     context.logger.info(
       MODULE_NAME,

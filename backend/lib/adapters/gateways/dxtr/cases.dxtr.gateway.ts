@@ -538,55 +538,103 @@ class CasesDxtrGateway implements CasesInterface {
   /**
    * getUpdatedCaseIds
    *
-   * Gets the case ids for all cases with LAST_UPDATE_DATE values greater than the provided date.
-   * 2025-02-23 06:35:30.453
+   * Gets the case ids for all cases with updates in either AO_CS or AO_TX tables.
    *
    * @param {ApplicationContext} context
-   * @param {string} start The date and time to begin checking for LAST_UPDATE_DATE values.
-   * @returns {{ caseIds: string[], latestSyncDate: string }} A list of case ids for updated cases and the latest sync date.
+   * @param {string} casesStart The date and time to begin checking for LAST_UPDATE_DATE values in AO_CS.
+   * @param {string} transactionsStart The date and time to begin checking for TX_DATE values in AO_TX.
+   * @returns {{ caseIds: string[], latestCasesSyncDate: string, latestTransactionsSyncDate: string }} Case ids and latest sync dates.
    */
-  async getUpdatedCaseIds(context: ApplicationContext, start: string): Promise<UpdatedCaseIds> {
-    const params: DbTableFieldSpec[] = [];
-    params.push({
-      name: 'start',
-      type: mssql.DateTime,
-      value: start,
-    });
+  async getUpdatedCaseIds(
+    context: ApplicationContext,
+    casesStart: string,
+    transactionsStart: string,
+  ): Promise<UpdatedCaseIds> {
+    // Query 1: Get cases updated in AO_CS
+    const casesParams: DbTableFieldSpec[] = [
+      {
+        name: 'casesStart',
+        type: mssql.DateTime,
+        value: casesStart,
+      },
+    ];
 
-    const query = `
+    const casesQuery = `
       SELECT
         CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
         FORMAT(C.LAST_UPDATE_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
       FROM AO_CS C
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE C.LAST_UPDATE_DATE AT TIME ZONE 'UTC' > @start
-
-      UNION
-
-      SELECT CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId
-      FROM [dbo].[AO_TX] TX
-      JOIN AO_CS C ON TX.CS_CASEID = C.CASE_ID AND TX.COURT_ID = C.COURT_ID
-      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE TX.TX_TYPE = 'O'
-        AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
-        AND TX.TX_DATE AT TIME ZONE 'UTC' > @start
+      WHERE C.LAST_UPDATE_DATE AT TIME ZONE 'UTC' > @casesStart
+      ORDER BY C.LAST_UPDATE_DATE DESC, C.CASE_ID DESC
     `;
 
-    const queryResult: QueryResults = await executeQuery(
+    const casesQueryResult: QueryResults = await executeQuery(
       context,
       context.config.dxtrDbConfig,
-      query,
-      params,
+      casesQuery,
+      casesParams,
     );
 
-    const results = handleQueryResult<CaseIdRecord[]>(
+    const casesResults = handleQueryResult<CaseIdRecord[]>(
       context,
-      queryResult,
+      casesQueryResult,
       MODULE_NAME,
       this.getUpdatedCaseIdsCallback,
     );
 
-    return results.map((record) => record.caseId);
+    // Query 2: Get cases with terminal transactions in AO_TX
+    const transactionsParams: DbTableFieldSpec[] = [
+      {
+        name: 'transactionsStart',
+        type: mssql.DateTime,
+        value: transactionsStart,
+      },
+    ];
+
+    const transactionsQuery = `
+      SELECT
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId,
+        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
+      FROM AO_TX TX
+      JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      WHERE TX.TX_TYPE = 'O'
+        AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
+        AND TX.TX_DATE AT TIME ZONE 'UTC' > @transactionsStart
+      ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
+    `;
+
+    const transactionsQueryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      transactionsQuery,
+      transactionsParams,
+    );
+
+    const transactionsResults = handleQueryResult<CaseIdRecord[]>(
+      context,
+      transactionsQueryResult,
+      MODULE_NAME,
+      this.getUpdatedCaseIdsCallback,
+    );
+
+    // Consolidate case IDs using Set
+    const caseIdSet = new Set<string>();
+    casesResults.forEach((record) => caseIdSet.add(record.caseId));
+    transactionsResults.forEach((record) => caseIdSet.add(record.caseId));
+
+    // Determine latest sync dates
+    const latestCasesSyncDate =
+      casesResults.length > 0 ? casesResults[0].latestSyncDate : casesStart;
+    const latestTransactionsSyncDate =
+      transactionsResults.length > 0 ? transactionsResults[0].latestSyncDate : transactionsStart;
+
+    return {
+      caseIds: Array.from(caseIdSet),
+      latestCasesSyncDate,
+      latestTransactionsSyncDate,
+    };
   }
 
   async getCasesWithTerminalTransactionBlindSpot(
@@ -609,8 +657,6 @@ class CasesDxtrGateway implements CasesInterface {
         AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
         AND TX.TX_DATE > C.LAST_UPDATE_DATE
         AND TX.TX_DATE >= @cutoffDate
-      WHERE C.LAST_UPDATE_DATE AT TIME ZONE 'UTC' > @start
-      ORDER BY C.LAST_UPDATE_DATE DESC, C.CASE_ID DESC
     `;
 
     const queryResult: QueryResults = await executeQuery(
@@ -627,14 +673,7 @@ class CasesDxtrGateway implements CasesInterface {
       this.getUpdatedCaseIdsCallback,
     );
 
-    if (results.length === 0) {
-      return { caseIds: [], latestSyncDate: start };
-    }
-
-    return {
-      caseIds: results.map((record) => record.caseId),
-      latestSyncDate: results[0].latestSyncDate,
-    };
+    return results.map((record) => record.caseId);
   }
 
   private async queryCase(
