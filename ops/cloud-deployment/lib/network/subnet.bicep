@@ -8,7 +8,7 @@ param subnetServiceEndpoints array = []
 
 param subnetDelegations array = []
 
-resource subnet 'Microsoft.Network/virtualNetworks/subnets@2023-02-01' = {
+resource subnet 'Microsoft.Network/virtualNetworks/subnets@2023-06-01' = {
   name: '${virtualNetworkName}/${subnetName}'
   properties: {
     addressPrefix: subnetAddressPrefix
