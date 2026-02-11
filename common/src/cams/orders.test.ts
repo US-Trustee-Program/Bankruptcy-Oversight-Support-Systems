@@ -120,17 +120,18 @@ describe('orders model tests', () => {
   });
 
   describe('generateConsolidationId', () => {
-    const idTests = [
+    const idTests: [[number, OrderStatus, number?], string][] = [
       [[1000, 'pending'], '1000/pending'],
       [[1000, 'pending', 0], '1000/pending'],
       [[2000, 'approved', 0], '2000/approved/0'],
       [[2000, 'approved', 10], '2000/approved/10'],
       [[3000, 'rejected', 1], '3000/rejected/1'],
     ];
-    test.each(idTests)('should generate expected consolidation id for %s', (args, expected) => {
-      expect(
-        generateConsolidationId(...(args as [number, OrderStatus, number | undefined])),
-      ).toEqual(expected);
-    });
+    test.each(idTests)(
+      'should generate expected consolidation id for %s',
+      (args: [number, OrderStatus, number?], expected: string) => {
+        expect(generateConsolidationId(...args)).toEqual(expected);
+      },
+    );
   });
 });
