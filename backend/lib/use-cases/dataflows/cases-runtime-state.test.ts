@@ -22,13 +22,15 @@ describe('storeRuntimeState tests', () => {
       .spyOn(MockMongoRepository.prototype, 'upsert')
       .mockResolvedValue(undefined);
 
-    const lastSyncDate = new Date().toISOString();
+    const lastCasesSyncDate = new Date().toISOString();
+    const lastTransactionsSyncDate = new Date().toISOString();
     const errorLogSpy = vi.spyOn(context.logger, 'camsError');
     const infoLogSpy = vi.spyOn(context.logger, 'info');
-    await CasesRuntimeState.storeRuntimeState(context, lastSyncDate);
+    await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
     expect(upsertSpy).toHaveBeenCalledWith({
       documentType: 'CASES_SYNC_STATE',
-      lastSyncDate,
+      lastCasesSyncDate,
+      lastTransactionsSyncDate,
     });
     expect(errorLogSpy).not.toHaveBeenCalled();
     expect(infoLogSpy).toHaveBeenCalledWith(
@@ -41,13 +43,16 @@ describe('storeRuntimeState tests', () => {
   test('should log CamsError', async () => {
     const original: CasesSyncState = {
       documentType: 'CASES_SYNC_STATE',
-      lastSyncDate: '1000',
+      lastCasesSyncDate: '1000',
+      lastTransactionsSyncDate: '1000',
     };
     vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(original);
     vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(new Error('some error'));
     const errorLogSpy = vi.spyOn(context.logger, 'camsError');
     const infoLogSpy = vi.spyOn(context.logger, 'info');
-    await expect(CasesRuntimeState.storeRuntimeState(context, '1001')).resolves.toBeUndefined();
+    await expect(
+      CasesRuntimeState.storeRuntimeState(context, '1001', '1001'),
+    ).resolves.toBeUndefined();
     expect(errorLogSpy).toHaveBeenCalled();
     expect(infoLogSpy).not.toHaveBeenCalledWith(
       expect.any(String),
