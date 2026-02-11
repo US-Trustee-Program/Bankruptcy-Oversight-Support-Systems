@@ -16,7 +16,6 @@ import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
-import DateHelper from '@common/date-helper';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 
@@ -68,6 +67,13 @@ const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTabl
  * @param {InvocationContext} context
  */
 async function handleStart(_ignore: StartMessage, context: InvocationContext) {
+  const logger = ApplicationContextCreator.getLogger(context);
+  const migrationStartTimestamp = new Date().toISOString();
+  logger.info(
+    MODULE_NAME,
+    `MIGRATION_CUTOFF_TIMESTAMP=${migrationStartTimestamp} — Use this as cutoffDate for resync-remaining-cases.`,
+  );
+
   const isEmpty = await emptyMigrationTable(context);
   if (!isEmpty) return;
 
@@ -86,7 +92,7 @@ async function handleStart(_ignore: StartMessage, context: InvocationContext) {
   }
   context.extraOutputs.set(PAGE, pages);
 
-  await storeRuntimeState(context);
+  await storeRuntimeState(context, migrationStartTimestamp);
 }
 
 /**
@@ -236,11 +242,12 @@ async function getCaseIdsToMigrate(
  * Wrapper for CasesRuntimeState.storeRuntimeState
  *
  * @param invocationContext
+ * @param syncDate
  * @returns
  */
-async function storeRuntimeState(invocationContext: InvocationContext) {
+async function storeRuntimeState(invocationContext: InvocationContext, syncDate: string) {
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
-  return CasesRuntimeState.storeRuntimeState(appContext, DateHelper.getTodaysIsoDate());
+  return CasesRuntimeState.storeRuntimeState(appContext, syncDate, syncDate);
 }
 
 function setup() {
