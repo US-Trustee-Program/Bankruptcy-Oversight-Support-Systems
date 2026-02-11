@@ -15,9 +15,11 @@ jobs:
           snyk-version: latest
 
       - name: Authenticate with Snyk
-        run: snyk auth --auth-type=oauth --client-secret=${{ secrets.SNYK_OAUTH_CLIENT_SECRET }} --client-id=${{ secrets.SNYK_OAUTH_CLIENT_ID }}
+        run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
+          SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }}
+          SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
 
       - name: Run Snyk SCA scan
         run: snyk test --all-projects --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
@@ -87,9 +89,11 @@ jobs:
           snyk-version: latest
 
       - name: Authenticate with Snyk
-        run: snyk auth --auth-type=oauth --client-secret=${{ secrets.SNYK_OAUTH_CLIENT_SECRET }} --client-id=${{ secrets.SNYK_OAUTH_CLIENT_ID }}
+        run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
+          SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }}
+          SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
 
       - name: Run Snyk Code (SAST) scan
         id: snyk-scan
@@ -149,7 +153,7 @@ jobs:
 
       - name: Compare against baseline
         id: baseline-compare
-        if: always() && steps.snyk-scan.outcome == 'failure'
+        if: ${{ always() && steps.snyk-scan.outcome == 'failure' }}
         run: |
           if ops/scripts/pipeline/snyk-baseline-compare.sh snyk-code.sarif snyk-code-baseline.txt; then
             echo "has_new_findings=false" >> "$GITHUB_OUTPUT"
