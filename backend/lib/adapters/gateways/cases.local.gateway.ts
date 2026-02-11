@@ -127,9 +127,14 @@ export class CasesLocalGateway implements CasesInterface {
 
   public async getUpdatedCaseIds(
     _applicationContext: ApplicationContext,
-    start: string,
+    casesStart: string,
+    transactionsStart: string,
   ): Promise<UpdatedCaseIds> {
-    return { caseIds: [], latestSyncDate: start };
+    return {
+      caseIds: [],
+      latestCasesSyncDate: casesStart,
+      latestTransactionsSyncDate: transactionsStart,
+    };
   }
 
   public async getCasesWithTerminalTransactionBlindSpot(

@@ -55,7 +55,7 @@ function hasRequiredSearchFields(predicate: CasesSearchPredicate) {
 export class CasesMongoRepository extends BaseMongoRepository implements CasesRepository {
   private static referenceCount: number = 0;
   private static instance: CasesMongoRepository;
-  private context: ApplicationContext;
+  private readonly context: ApplicationContext;
 
   private constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);

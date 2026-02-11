@@ -275,9 +275,19 @@ export type OrderSyncState = RuntimeState & {
   txId: string;
 };
 
-export type CasesSyncState = RuntimeState & {
+// Legacy sync state shape (pre-dual-sync-date)
+export type LegacyCasesSyncState = RuntimeState & {
   documentType: 'CASES_SYNC_STATE';
   lastSyncDate: string;
+};
+
+// Current sync state shape with dual sync dates
+export type CasesSyncState = RuntimeState & {
+  documentType: 'CASES_SYNC_STATE';
+  lastCasesSyncDate: string;
+  lastTransactionsSyncDate: string;
+  // Legacy field for self-healing
+  lastSyncDate?: string;
 };
 
 export type OfficeStaffSyncState = RuntimeState & {
