@@ -8,6 +8,7 @@ export function SearchResultsHeader(props: SearchResultsHeaderProps) {
   const caseNumberHeader = (
     <TableHeaderData
       key="case-number"
+      scope="col"
       data-testid="header-case-number"
       className={showDebtorNameColumn ? 'grid-col-2' : 'grid-col-3'}
     >
@@ -18,6 +19,7 @@ export function SearchResultsHeader(props: SearchResultsHeaderProps) {
   const caseTitleHeader = (
     <TableHeaderData
       key="case-title"
+      scope="col"
       data-testid="header-case-title"
       className={showDebtorNameColumn ? 'grid-col-3' : 'grid-col-4'}
     >
@@ -26,13 +28,18 @@ export function SearchResultsHeader(props: SearchResultsHeaderProps) {
   );
 
   const debtorNameHeader = (
-    <TableHeaderData key="debtor-name" data-testid="header-debtor-name" className="grid-col-3">
+    <TableHeaderData
+      key="debtor-name"
+      scope="col"
+      data-testid="header-debtor-name"
+      className="grid-col-3"
+    >
       {props.labels[2]}
     </TableHeaderData>
   );
 
   const chapterHeader = (
-    <TableHeaderData key="chapter" data-testid="header-chapter" className="grid-col-2">
+    <TableHeaderData key="chapter" scope="col" data-testid="header-chapter" className="grid-col-2">
       {props.labels[showDebtorNameColumn ? 3 : 2]}
     </TableHeaderData>
   );
@@ -40,6 +47,7 @@ export function SearchResultsHeader(props: SearchResultsHeaderProps) {
   const dateFiledHeader = (
     <TableHeaderData
       key="date-filed"
+      scope="col"
       data-testid="header-date-filed"
       className={showDebtorNameColumn ? 'grid-col-2' : 'grid-col-3'}
     >
