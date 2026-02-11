@@ -286,8 +286,6 @@ export type CasesSyncState = RuntimeState & {
   documentType: 'CASES_SYNC_STATE';
   lastCasesSyncDate: string;
   lastTransactionsSyncDate: string;
-  // Legacy field for self-healing
-  lastSyncDate?: string;
 };
 
 export type OfficeStaffSyncState = RuntimeState & {

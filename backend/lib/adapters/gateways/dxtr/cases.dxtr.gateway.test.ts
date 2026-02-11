@@ -1512,7 +1512,9 @@ describe('Test DXTR Gateway', () => {
       expect(querySpy).toHaveBeenCalledWith(
         expect.anything(),
         expect.anything(),
-        expect.stringContaining('TX.TX_DATE > C.LAST_UPDATE_DATE'),
+        expect.stringContaining(
+          "TX.TX_DATE AT TIME ZONE 'UTC' > C.LAST_UPDATE_DATE AT TIME ZONE 'UTC'",
+        ),
         expect.arrayContaining([
           expect.objectContaining({ name: 'cutoffDate', value: '2018-01-01' }),
         ]),

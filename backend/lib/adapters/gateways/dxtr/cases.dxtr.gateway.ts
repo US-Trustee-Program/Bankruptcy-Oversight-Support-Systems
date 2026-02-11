@@ -651,12 +651,12 @@ class CasesDxtrGateway implements CasesInterface {
     const query = `
       SELECT DISTINCT CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId
       FROM [dbo].[AO_TX] TX
-      JOIN AO_CS C ON TX.CS_CASEID = C.CASE_ID AND TX.COURT_ID = C.COURT_ID
+      JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
       WHERE TX.TX_TYPE = 'O'
         AND TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')
-        AND TX.TX_DATE > C.LAST_UPDATE_DATE
-        AND TX.TX_DATE >= @cutoffDate
+        AND TX.TX_DATE AT TIME ZONE 'UTC' > C.LAST_UPDATE_DATE AT TIME ZONE 'UTC'
+        AND TX.TX_DATE AT TIME ZONE 'UTC' >= @cutoffDate
     `;
 
     const queryResult: QueryResults = await executeQuery(

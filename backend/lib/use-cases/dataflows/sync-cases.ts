@@ -30,7 +30,8 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
       // Self-healing: Handle legacy single-date documents
       if (isLegacySyncState(rawState)) {
         syncState = {
-          ...rawState,
+          id: rawState.id,
+          documentType: rawState.documentType,
           lastCasesSyncDate: rawState.lastSyncDate,
           lastTransactionsSyncDate: rawState.lastSyncDate,
         };
