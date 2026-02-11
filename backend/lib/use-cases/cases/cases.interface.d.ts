@@ -26,7 +26,10 @@ export interface CasesInterface {
 
   getSuggestedCases(applicationContext: ApplicationContext, caseId: string): Promise<CaseSummary[]>;
 
-  getUpdatedCaseIds(applicationContext: ApplicationContext, start: string): Promise<string[]>;
+  getUpdatedCaseIds(
+    applicationContext: ApplicationContext,
+    start: string,
+  ): Promise<{ caseIds: string[]; latestSyncDate: string }>;
 
   findTransactionIdRangeForDate(
     context: ApplicationContext,

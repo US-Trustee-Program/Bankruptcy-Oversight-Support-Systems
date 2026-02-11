@@ -1348,9 +1348,12 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('getUpdatedCaseIds', () => {
-    test('should return a list of updated case ids', async () => {
-      const recordset = MockData.buildArray(MockData.randomCaseId, 100).map((caseId) => {
-        return { caseId };
+    test('should return case ids and latest sync date from first record', async () => {
+      const latestSyncDate = '2025-02-11T10:30:00.124Z';
+      const recordset = MockData.buildArray(MockData.randomCaseId, 100).map((caseId, idx) => {
+        // First record has the latest date due to DESC sort
+        const syncDate = idx === 0 ? latestSyncDate : '2025-02-10T08:00:00.000Z';
+        return { caseId, latestSyncDate: syncDate };
       });
 
       const executeResults: QueryResults = {
@@ -1361,7 +1364,7 @@ describe('Test DXTR Gateway', () => {
         message: '',
       };
 
-      const expectedReturn = recordset.map((record) => record.caseId);
+      const expectedCaseIds = recordset.map((record) => record.caseId);
 
       querySpy.mockImplementationOnce(async () => {
         return executeResults;
@@ -1369,10 +1372,13 @@ describe('Test DXTR Gateway', () => {
 
       const startDate = new Date().toISOString();
       const actual = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, startDate);
-      expect(actual).toEqual(expectedReturn);
+      expect(actual).toEqual({
+        caseIds: expectedCaseIds,
+        latestSyncDate,
+      });
     });
 
-    test('should return an empty array', async () => {
+    test('should return empty array and original start date when no results', async () => {
       const mockResults: QueryResults = {
         success: true,
         results: {
@@ -1381,9 +1387,13 @@ describe('Test DXTR Gateway', () => {
         message: '',
       };
 
+      const startDate = '2025-02-11T08:00:00.000Z';
       querySpy.mockReturnValue(mockResults);
-      const actual = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, 'foo');
-      expect(actual).toEqual([]);
+      const actual = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, startDate);
+      expect(actual).toEqual({
+        caseIds: [],
+        latestSyncDate: startDate,
+      });
     });
   });
 });
