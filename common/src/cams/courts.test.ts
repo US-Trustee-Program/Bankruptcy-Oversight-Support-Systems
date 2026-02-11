@@ -18,8 +18,9 @@ describe('common court library tests', () => {
         state: 'LA',
       },
     ];
-    const newOfficeList = filterCourtByDivision('313', COURT_DIVISIONS);
+    const newOfficeList = filterCourtByDivision('313', COURT_DIVISIONS)!;
 
+    expect(newOfficeList).toBeDefined();
     expect(newOfficeList.length).toEqual(1);
     expect(newOfficeList).toEqual(expect.arrayContaining([...expectedOffices]));
   });
