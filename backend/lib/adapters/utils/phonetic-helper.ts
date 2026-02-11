@@ -10,6 +10,7 @@ function normalizeText(text: string): string {
   return text
     .trim()
     .toLowerCase()
+    .replace(/-/g, ' ') // Treat hyphens as word separators (jean-pierre → jean pierre)
     .replace(/[^a-z0-9\s]/g, '');
 }
 
@@ -115,32 +116,79 @@ export function generateSearchTokens(text: string): string[] {
   return Array.from(generateAllTokensForWords([text]));
 }
 
-interface SeparatedQueryTokens {
+export interface StructuredQueryTokens {
+  searchWords: string[];
+  nicknameWords: string[];
+  searchMetaphones: string[];
+  nicknameMetaphones: string[];
   searchTokens: string[];
   nicknameTokens: string[];
 }
 
 /**
- * Generates query tokens for searching, with nickname expansion.
- * Returns separate arrays for original search tokens and nickname tokens,
- * enabling differential scoring (exact matches score higher than nickname matches).
+ * Generates Metaphone codes only for an array of words.
+ * Uses Metaphone instead of Soundex for more precise phonetic matching.
  *
- * For example: "Mike Smith" → expands "Mike" to ["michael", "mikey", ...]
- *              → searchTokens: tokens for "mike", "smith"
- *              → nicknameTokens: tokens for "michael", "mikey", etc. (excluding overlaps)
+ * @param words - Array of words to generate Metaphone codes for
+ * @returns Array of unique Metaphone codes (uppercase)
+ */
+function generateMetaphoneCodesForWords(words: string[]): string[] {
+  const codes = new Set<string>();
+  words.forEach((word) => {
+    try {
+      const code = metaphone.process(word);
+      if (code) codes.add(code);
+    } catch {
+      // Ignore processing errors
+    }
+  });
+  return Array.from(codes);
+}
+
+/**
+ * Generates structured query tokens for word-level name matching.
+ * This function exposes search words, nickname words, and Metaphone codes separately,
+ * enabling more precise matching algorithms that can distinguish between:
+ * - Exact word matches
+ * - Nickname relationships (Mike → Michael)
+ * - Phonetic similarity (Jon → John)
+ * - Phonetic prefix matches (Jon → Johnson)
+ *
+ * Uses Metaphone only (not Soundex) for phonetic matching as it provides
+ * more precise phonetic similarity detection.
  *
  * @param searchQuery - The search query (e.g., "Mike Smith")
- * @returns Object with searchTokens and nicknameTokens arrays
+ * @returns StructuredQueryTokens with words, metaphones, and combined tokens
+ *
+ * @example
+ * generateStructuredQueryTokens("Mike Smith")
+ * // Returns:
+ * // {
+ * //   searchWords: ["mike", "smith"],
+ * //   nicknameWords: ["michael", "mikey", ...],
+ * //   searchMetaphones: ["MK", "SM0"],
+ * //   nicknameMetaphones: ["MXL", ...],
+ * //   searchTokens: ["mi", "ik", "ke", "sm", "it", "th", "M200", "MK", "S530", "SM0"],
+ * //   nicknameTokens: ["ic", "ch", "ha", "ae", "el", "M240", "MXL", ...]
+ * // }
  */
-export function generateQueryTokensWithNicknames(searchQuery: string): SeparatedQueryTokens {
+export function generateStructuredQueryTokens(searchQuery: string): StructuredQueryTokens {
   if (isEmpty(searchQuery)) {
-    return { searchTokens: [], nicknameTokens: [] };
+    return {
+      searchWords: [],
+      nicknameWords: [],
+      searchMetaphones: [],
+      nicknameMetaphones: [],
+      searchTokens: [],
+      nicknameTokens: [],
+    };
   }
 
   const words = splitIntoWords(normalizeText(searchQuery));
   const originalWords = new Set<string>(words);
   const nicknameWords = new Set<string>();
 
+  // Expand nicknames using name-match library
   words.forEach((word) => {
     try {
       const variations = getNameVariations(word) as string[];
@@ -156,12 +204,23 @@ export function generateQueryTokensWithNicknames(searchQuery: string): Separated
     }
   });
 
-  const searchTokens = generateAllTokensForWords([...originalWords]);
-  const allNicknameTokens = generateAllTokensForWords([...nicknameWords]);
-  const nicknameTokens = [...allNicknameTokens].filter((t) => !searchTokens.has(t));
+  // Generate combined tokens for pre-filter optimization (uses MongoDB index)
+  const searchTokensSet = generateAllTokensForWords([...originalWords]);
+  const allNicknameTokensSet = generateAllTokensForWords([...nicknameWords]);
+  const nicknameTokens = [...allNicknameTokensSet].filter((t) => !searchTokensSet.has(t));
+
+  // Generate Metaphone codes only (more precise than Soundex)
+  const searchMetaphones = generateMetaphoneCodesForWords([...originalWords]);
+  const allNicknameMetaphones = generateMetaphoneCodesForWords([...nicknameWords]);
+  const searchMetaphonesSet = new Set(searchMetaphones);
+  const nicknameMetaphones = allNicknameMetaphones.filter((m) => !searchMetaphonesSet.has(m));
 
   return {
-    searchTokens: Array.from(searchTokens),
+    searchWords: [...originalWords],
+    nicknameWords: [...nicknameWords],
+    searchMetaphones,
+    nicknameMetaphones,
+    searchTokens: Array.from(searchTokensSet),
     nicknameTokens,
   };
 }

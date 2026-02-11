@@ -800,6 +800,73 @@ describe('Cases repository', () => {
       expect(result.data).toEqual([]);
       expect(result.metadata.total).toBe(0);
     });
+
+    test('should filter results by match score threshold to exclude low-scoring matches', async () => {
+      // Searching for "mike" should match "michael" (nickname) but not "smith" (no relation)
+      // This test verifies the query includes the match score threshold filter
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'mike',
+        limit: 25,
+        offset: 0,
+      };
+
+      const michaelCase = MockData.getSyncedCase({
+        override: {
+          caseId: '111-11-11111',
+          debtor: { name: 'Michael Johnson' },
+        },
+      });
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: [michaelCase], metadata: { total: 1 } });
+
+      const result = await repo.searchCasesWithPhoneticTokens(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual([michaelCase]);
+
+      // Verify the query includes the match score filter (any score > 0 is a valid match)
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+
+      // Should contain a MATCH stage filtering by matchScore > 0
+      expect(queryString).toContain('matchScore');
+      expect(queryString).toContain('"rightOperand":0');
+      expect(queryString).toContain('"condition":"GREATER_THAN"');
+    });
+
+    test('should use word-level matching to prevent false positives instead of bigram filtering', async () => {
+      // The new word-level algorithm prevents false positives like "Mike" → "Mitchell" by:
+      // 1. Requiring phonetic matches to be "qualified" (have exact, nickname, or prefix match)
+      // 2. Matching whole words against nickname database instead of token overlaps
+      // This eliminates the need for bigram count filtering.
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'mike',
+        limit: 25,
+        offset: 0,
+      };
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+
+      await repo.searchCasesWithPhoneticTokens(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+
+      // Should use word-level fields for matching
+      expect(queryString).toContain('searchWords');
+      expect(queryString).toContain('nicknameWords');
+      expect(queryString).toContain('searchMetaphones');
+      expect(queryString).toContain('targetNameFields');
+
+      // Should still filter by matchScore > 0
+      expect(queryString).toContain('matchScore');
+      expect(queryString).toContain('"condition":"GREATER_THAN"');
+    });
   });
 
   test('getConsolidationMemberCaseIds should throw error when find throws error', async () => {

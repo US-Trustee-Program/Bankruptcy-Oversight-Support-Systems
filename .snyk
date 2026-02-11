@@ -12,3 +12,11 @@ ignore:
         reason: >-
           Transitive dependency of @okta/okta-sdk-nodejs. MPL-2.0 is weak
           copyleft compatible with project use. Package is unmodified.
+  SNYK-JS-JSONBIGINT-6148131:
+    - '*':
+        reason: 'False positive - json-bigint not in package-lock.json or dependency tree'
+        expires: 2026-05-06T00:00:00.000Z
+  SNYK-JS-XML2JS-5414874:
+    - '*':
+        reason: 'False positive - xml2js not in package-lock.json or dependency tree'
+        expires: 2026-05-06T00:00:00.000Z
