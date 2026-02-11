@@ -10,7 +10,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup Snyk CLI
-        uses: snyk/actions/setup@master
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1
         with:
           snyk-version: latest
 
@@ -71,7 +71,7 @@ jobs:
 
       - name: Upload SARIF to GitHub
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@b5ebac6f4c00c8ccddb7cdcd45fdb248329f808a # v3
         with:
           sarif_file: snyk-sca.sarif
 
@@ -82,7 +82,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Setup Snyk CLI
-        uses: snyk/actions/setup@master
+        uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1
         with:
           snyk-version: latest
 
@@ -172,7 +172,7 @@ jobs:
 
       - name: Upload SARIF to GitHub
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@b5ebac6f4c00c8ccddb7cdcd45fdb248329f808a # v3
         with:
           sarif_file: snyk-code.sarif
 
