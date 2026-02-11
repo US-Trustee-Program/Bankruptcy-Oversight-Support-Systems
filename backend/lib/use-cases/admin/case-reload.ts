@@ -1,20 +1,42 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import StorageQueueGateway from '../../adapters/gateways/storage-queue/storage-queue-gateway';
-import { CaseSyncEvent } from '@common/queue/dataflow-types';
 
 const MODULE_NAME = 'CASE-RELOAD-USE-CASE';
 
 async function queueCaseReload(context: ApplicationContext, caseId: string): Promise<void> {
-  const event: CaseSyncEvent = {
-    type: 'CASE_CHANGED',
-    caseId,
-  };
+  const logger = context.logger;
+  const dataflowsBaseUrl = process.env.CAMS_DATAFLOWS_BASE_URL;
+  const adminKey = process.env.ADMIN_KEY;
 
-  const queueGateway = StorageQueueGateway.using<CaseSyncEvent>(context, 'SYNC_CASES_PAGE');
+  if (!dataflowsBaseUrl) {
+    throw new Error('CAMS_DATAFLOWS_BASE_URL not configured');
+  }
 
-  queueGateway.enqueue(event);
+  if (!adminKey) {
+    throw new Error('ADMIN_KEY not configured');
+  }
 
-  context.logger.info(MODULE_NAME, 'Case reload queued', { caseId });
+  try {
+    const response = await fetch(`${dataflowsBaseUrl}/sync-cases-page`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `ApiKey ${adminKey}`,
+      },
+      body: JSON.stringify({ caseIds: [caseId] }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Failed to queue case reload: ${response.status} ${response.statusText} - ${errorText}`,
+      );
+    }
+
+    logger.info(MODULE_NAME, `Successfully queued case reload for: ${caseId}`);
+  } catch (error) {
+    logger.error(MODULE_NAME, `Error queueing case reload for ${caseId}:`, error);
+    throw error;
+  }
 }
 
 export default {
