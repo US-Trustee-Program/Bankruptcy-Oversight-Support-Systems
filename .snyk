@@ -1,0 +1,14 @@
+# Snyk (https://snyk.io) policy file
+# False positive ignores - these packages are not in our dependency tree
+# See PR #1895 for investigation details
+
+version: v1.5.0
+ignore:
+  SNYK-JS-JSONBIGINT-6148131:
+    - '*':
+        reason: 'False positive - json-bigint not in package-lock.json or dependency tree'
+        expires: 2026-05-06T00:00:00.000Z
+  SNYK-JS-XML2JS-5414874:
+    - '*':
+        reason: 'False positive - xml2js not in package-lock.json or dependency tree'
+        expires: 2026-05-06T00:00:00.000Z

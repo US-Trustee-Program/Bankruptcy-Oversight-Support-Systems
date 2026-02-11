@@ -11,8 +11,8 @@ function formatDebtorNames(debtorName: string, jointDebtorName?: string): JSX.El
 
   return (
     <>
-      <div>{debtorName} (Debtor)</div>
-      <div>{jointDebtorName} (Joint Debtor)</div>
+      <div>Debtor: {debtorName}</div>
+      <div>Joint Debtor: {jointDebtorName}</div>
     </>
   );
 }
