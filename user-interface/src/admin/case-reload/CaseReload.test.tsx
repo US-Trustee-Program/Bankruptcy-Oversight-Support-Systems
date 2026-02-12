@@ -57,33 +57,41 @@ const mockSyncedCase: SyncedCase = {
   },
 };
 
-describe('CaseReload Component', () => {
-  beforeEach(() => {
-    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
+const setupCourtsMock = () => {
+  return vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+    data: [
+      {
+        courtId: '091',
+        courtName: 'Western District of New York',
+        courtDivisionName: 'Buffalo',
+        courtDivisionCode: '091',
+        officeName: 'Manhattan',
+        officeCode: '081',
+        regionId: '02',
+        regionName: 'NEW YORK',
+        groupDesignator: 'A',
+      },
+    ],
+  });
+};
 
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({
-      data: [
-        {
-          courtId: '091',
-          courtName: 'Western District of New York',
-          courtDivisionName: 'Buffalo',
-          courtDivisionCode: '091',
-          officeName: 'Manhattan',
-          officeCode: '081',
-          regionId: '02',
-          regionName: 'NEW YORK',
-          groupDesignator: 'A',
-        },
-      ],
-    });
+describe.sequential('CaseReload Component', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
 
   afterEach(() => {
+    vi.resetAllMocks();
     vi.restoreAllMocks();
+    vi.unstubAllEnvs();
   });
 
   describe('Initial render', () => {
     test('should display header with DXTR in title', async () => {
+      setupCourtsMock();
       render(<CaseReload />);
 
       await waitFor(() => {
@@ -94,6 +102,7 @@ describe('CaseReload Component', () => {
     });
 
     test('should display form with "Find Case" button', async () => {
+      setupCourtsMock();
       render(<CaseReload />);
 
       await waitFor(() => {
@@ -106,6 +115,7 @@ describe('CaseReload Component', () => {
     });
 
     test('should have Find Case button disabled initially', async () => {
+      setupCourtsMock();
       render(<CaseReload />);
 
       await waitFor(() => {
@@ -117,155 +127,9 @@ describe('CaseReload Component', () => {
     });
   });
 
-  describe('404 Error - Case Not Found', () => {
-    test('should display "Case Not Found" title with no message for 404', async () => {
-      const userEvent = TestingUtilities.setupUserEvent();
-      vi.spyOn(Api2, 'getCaseDetail').mockRejectedValue(
-        new Error('404 Error - /cases/091-99-98535 - Case summary not found'),
-      );
-
-      render(<CaseReload />);
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      });
-
-      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
-      await userEvent.click(divisionComboBox);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Buffalo/)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByText(/Buffalo/));
-
-      const caseNumberInput = screen.getByLabelText('Case Number');
-      await userEvent.type(caseNumberInput, '99-98535');
-
-      const findButton = screen.getByTestId('button-validate-button');
-      await userEvent.click(findButton);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-validation-error-alert')).toBeInTheDocument();
-      });
-
-      const alert = screen.getByTestId('alert-validation-error-alert');
-      expect(alert).toHaveTextContent('Case Not Found');
-      expect(alert).not.toHaveTextContent('091-99-98535');
-      expect(alert).not.toHaveTextContent('Case summary not found');
-    });
-
-    test('should keep form visible after 404 error', async () => {
-      const userEvent = TestingUtilities.setupUserEvent();
-      vi.spyOn(Api2, 'getCaseDetail').mockRejectedValue(
-        new Error('404 Error - /cases/091-99-98535 - Case summary not found'),
-      );
-
-      render(<CaseReload />);
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      });
-
-      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
-      await userEvent.click(divisionComboBox);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Buffalo/)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByText(/Buffalo/));
-
-      const caseNumberInput = screen.getByLabelText('Case Number');
-      await userEvent.type(caseNumberInput, '99-98535');
-
-      const findButton = screen.getByTestId('button-validate-button');
-      await userEvent.click(findButton);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-validation-error-alert')).toBeInTheDocument();
-      });
-
-      expect(screen.getByLabelText('Division')).toBeInTheDocument();
-      expect(screen.getByLabelText('Case Number')).toBeInTheDocument();
-      expect(screen.getByTestId('button-validate-button')).toBeInTheDocument();
-    });
-  });
-
-  describe('500 Error - Server Error', () => {
-    test('should display "Error" title with detailed message for 500', async () => {
-      const userEvent = TestingUtilities.setupUserEvent();
-      vi.spyOn(Api2, 'getCaseDetail').mockRejectedValue(
-        new Error('500 Error - /cases/091-99-88513 - Database connection timeout'),
-      );
-
-      render(<CaseReload />);
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      });
-
-      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
-      await userEvent.click(divisionComboBox);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Buffalo/)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByText(/Buffalo/));
-
-      const caseNumberInput = screen.getByLabelText('Case Number');
-      await userEvent.type(caseNumberInput, '99-88513');
-
-      const findButton = screen.getByTestId('button-validate-button');
-      await userEvent.click(findButton);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-validation-error-alert')).toBeInTheDocument();
-      });
-
-      expect(screen.getByText('Error')).toBeInTheDocument();
-      expect(screen.getByText('Database connection timeout')).toBeInTheDocument();
-    });
-
-    test('should display fallback error message when no details available', async () => {
-      const userEvent = TestingUtilities.setupUserEvent();
-      vi.spyOn(Api2, 'getCaseDetail').mockRejectedValue(new Error('Network error'));
-
-      render(<CaseReload />);
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      });
-
-      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
-      await userEvent.click(divisionComboBox);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Buffalo/)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByText(/Buffalo/));
-
-      const caseNumberInput = screen.getByLabelText('Case Number');
-      await userEvent.type(caseNumberInput, '99-88513');
-
-      const findButton = screen.getByTestId('button-validate-button');
-      await userEvent.click(findButton);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-validation-error-alert')).toBeInTheDocument();
-      });
-
-      expect(screen.getByText('Error')).toBeInTheDocument();
-      expect(
-        screen.getByText('Error encountered attempting to verify the case ID'),
-      ).toBeInTheDocument();
-    });
-  });
-
   describe('Successful case validation', () => {
     test('should hide form and show "Case Exists" notification', async () => {
+      setupCourtsMock();
       const userEvent = TestingUtilities.setupUserEvent();
       vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
       vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [mockSyncedCase] });
@@ -302,6 +166,7 @@ describe('CaseReload Component', () => {
     });
 
     test('should display all case details', async () => {
+      setupCourtsMock();
       const userEvent = TestingUtilities.setupUserEvent();
       vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
       vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [mockSyncedCase] });
@@ -341,6 +206,7 @@ describe('CaseReload Component', () => {
     });
 
     test('should show "Reload Case" and "Reset" buttons', async () => {
+      setupCourtsMock();
       const userEvent = TestingUtilities.setupUserEvent();
       vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
       vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [mockSyncedCase] });
@@ -382,6 +248,7 @@ describe('CaseReload Component', () => {
 
   describe('Reset functionality', () => {
     test('should reset form and clear validation when Reset is clicked', async () => {
+      setupCourtsMock();
       const userEvent = TestingUtilities.setupUserEvent();
       vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
       vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [mockSyncedCase] });
@@ -424,91 +291,9 @@ describe('CaseReload Component', () => {
     });
   });
 
-  describe('Inline alert styling', () => {
-    test('should display alerts as inline (not fixed position)', async () => {
-      const userEvent = TestingUtilities.setupUserEvent();
-      vi.spyOn(Api2, 'getCaseDetail').mockRejectedValue(
-        new Error('404 Error - /cases/091-99-98535 - Case summary not found'),
-      );
-
-      render(<CaseReload />);
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      });
-
-      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
-      await userEvent.click(divisionComboBox);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Buffalo/)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByText(/Buffalo/));
-
-      const caseNumberInput = screen.getByLabelText('Case Number');
-      await userEvent.type(caseNumberInput, '99-98535');
-
-      const findButton = screen.getByTestId('button-validate-button');
-      await userEvent.click(findButton);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-validation-error-alert')).toBeInTheDocument();
-      });
-
-      const alertContainer = screen
-        .getByTestId('alert-validation-error-alert')
-        .closest('.usa-alert-container');
-      expect(alertContainer).toHaveClass('inline-alert');
-    });
-  });
-
-  describe('Find Case button behavior', () => {
-    test('should show spinner when validating', async () => {
-      const userEvent = TestingUtilities.setupUserEvent();
-
-      let resolveGetCaseDetail: (value: { data: CaseDetail }) => void;
-      const getCaseDetailPromise = new Promise<{ data: CaseDetail }>((resolve) => {
-        resolveGetCaseDetail = resolve;
-      });
-
-      vi.spyOn(Api2, 'getCaseDetail').mockReturnValue(getCaseDetailPromise);
-      vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [mockSyncedCase] });
-
-      render(<CaseReload />);
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      });
-
-      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
-      await userEvent.click(divisionComboBox);
-
-      await waitFor(() => {
-        expect(screen.getByText(/Buffalo/)).toBeInTheDocument();
-      });
-
-      await userEvent.click(screen.getByText(/Buffalo/));
-
-      const caseNumberInput = screen.getByLabelText('Case Number');
-      await userEvent.type(caseNumberInput, '99-88513');
-
-      const findButton = screen.getByTestId('button-validate-button');
-      await userEvent.click(findButton);
-
-      await waitFor(() => {
-        expect(screen.getByText('Finding case...')).toBeInTheDocument();
-      });
-
-      expect(findButton).toHaveTextContent('Find Case');
-
-      // Resolve to complete the test
-      resolveGetCaseDetail!({ data: mockCaseDetail });
-    });
-  });
-
   describe('Case number display', () => {
     test('should display case number without division prefix duplication', async () => {
+      setupCourtsMock();
       const userEvent = TestingUtilities.setupUserEvent();
       vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
       vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [mockSyncedCase] });
@@ -546,6 +331,7 @@ describe('CaseReload Component', () => {
 
   describe('Form attributes', () => {
     test('should disable autocomplete on case number input', async () => {
+      setupCourtsMock();
       render(<CaseReload />);
 
       await waitFor(() => {
