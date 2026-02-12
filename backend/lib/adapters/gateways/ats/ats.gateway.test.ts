@@ -21,17 +21,17 @@ describe('ATS Gateway', () => {
     test('should return trustees in pages', async () => {
       const firstPage = await gateway.getTrusteesPage(context, null, 2);
       expect(firstPage).toHaveLength(2);
-      expect(firstPage[0].TRU_ID).toBe(1);
-      expect(firstPage[1].TRU_ID).toBe(2);
+      expect(firstPage[0].ID).toBe(1);
+      expect(firstPage[1].ID).toBe(2);
 
       const secondPage = await gateway.getTrusteesPage(context, 2, 2);
       expect(secondPage).toHaveLength(2);
-      expect(secondPage[0].TRU_ID).toBe(3);
-      expect(secondPage[1].TRU_ID).toBe(4);
+      expect(secondPage[0].ID).toBe(3);
+      expect(secondPage[1].ID).toBe(4);
 
       const lastPage = await gateway.getTrusteesPage(context, 4, 2);
       expect(lastPage).toHaveLength(1);
-      expect(lastPage[0].TRU_ID).toBe(5);
+      expect(lastPage[0].ID).toBe(5);
 
       const emptyPage = await gateway.getTrusteesPage(context, 5, 2);
       expect(emptyPage).toHaveLength(0);
@@ -40,7 +40,7 @@ describe('ATS Gateway', () => {
     test('should return trustee appointments', async () => {
       const appointments = await gateway.getTrusteeAppointments(context, 1);
       expect(appointments.length).toBeGreaterThan(0);
-      expect(appointments[0].TRU_ID).toBe(1);
+      expect(appointments[0].ID).toBe(1);
 
       // Check for special case-by-case appointment for trustee 1
       const cbcAppointment = appointments.find((a) => a.CHAPTER === '12CBC');
@@ -116,7 +116,7 @@ describe('ATS Gateway', () => {
 
       // Should not include WHERE clause for first page
       const query = mockExecuteQuery.mock.calls[0][1];
-      expect(query).not.toContain('WHERE TRU_ID >');
+      expect(query).not.toContain('WHERE ID >');
     });
 
     test('should build correct query for subsequent pages of trustees', async () => {
@@ -126,7 +126,7 @@ describe('ATS Gateway', () => {
 
       expect(mockExecuteQuery).toHaveBeenCalledWith(
         context,
-        expect.stringContaining('WHERE TRU_ID > @lastId'),
+        expect.stringContaining('WHERE ID > @lastId'),
         expect.arrayContaining([
           expect.objectContaining({ name: 'pageSize', value: 50 }),
           expect.objectContaining({ name: 'lastId', value: 100 }),
@@ -149,7 +149,7 @@ describe('ATS Gateway', () => {
       mockExecuteQuery.mockResolvedValue({
         results: [
           {
-            TRU_ID: 123,
+            ID: 123,
             DISTRICT: '02',
             DIVISION: '081',
             CHAPTER: '7',
@@ -167,7 +167,7 @@ describe('ATS Gateway', () => {
       );
 
       expect(appointments).toHaveLength(1);
-      expect(appointments[0].TRU_ID).toBe(123);
+      expect(appointments[0].ID).toBe(123);
     });
 
     test('should get total trustee count', async () => {
