@@ -315,7 +315,7 @@ describe('TrusteeDetailProfile', () => {
     expect(screen.getByTestId('trustee-bank-0')).toHaveTextContent('Bank: Single Trust Bank');
   });
 
-  test('should render "No information has been entered" when banks array is undefined', () => {
+  test('should render "No information added" when banks array is undefined', () => {
     const trusteeWithoutBanks = {
       ...mockTrustee,
       banks: undefined,
@@ -323,13 +323,11 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithoutBanks });
 
-    expect(screen.getByTestId('no-other-information')).toHaveTextContent(
-      'No information has been entered.',
-    );
+    expect(screen.getByTestId('no-other-information')).toHaveTextContent('No information added.');
     expect(screen.queryByTestId('trustee-bank-0')).not.toBeInTheDocument();
   });
 
-  test('should render "No information has been entered" when banks array is empty', () => {
+  test('should render "No information added" when banks array is empty', () => {
     const trusteeWithEmptyBanks = {
       ...mockTrustee,
       banks: [],
@@ -337,9 +335,7 @@ describe('TrusteeDetailProfile', () => {
 
     renderWithProps({ trustee: trusteeWithEmptyBanks });
 
-    expect(screen.getByTestId('no-other-information')).toHaveTextContent(
-      'No information has been entered.',
-    );
+    expect(screen.getByTestId('no-other-information')).toHaveTextContent('No information added.');
     expect(screen.queryByTestId('trustee-bank-0')).not.toBeInTheDocument();
   });
 

@@ -29,11 +29,11 @@ describe('MeetingOfCreditorsInfoCard', () => {
     expect(screen.getByTestId('zoom-info-heading')).toHaveTextContent('341 Meeting');
   });
 
-  test('should render "No information has been entered" when zoomInfo is undefined', () => {
+  test('should render "No information added" when zoomInfo is undefined', () => {
     render(<MeetingOfCreditorsInfoCard zoomInfo={undefined} onEdit={mockOnEdit} />);
 
     expect(screen.getByTestId('zoom-info-empty-message')).toHaveTextContent(
-      'No information has been entered.',
+      'No information added.',
     );
   });
 
