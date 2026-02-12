@@ -32,9 +32,7 @@ export default function OtherInformationCard({
                 <IconLabel icon="edit" label="Edit" />
               </Button>
             </div>
-            {!hasData && (
-              <div data-testid="no-other-information">No information has been entered.</div>
-            )}
+            {!hasData && <div data-testid="no-other-information">No information added.</div>}
             {banks &&
               banks.length > 0 &&
               banks.map((bank, index) => (
