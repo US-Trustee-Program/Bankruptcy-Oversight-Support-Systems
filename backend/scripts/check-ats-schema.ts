@@ -7,10 +7,11 @@ import * as dotenv from 'dotenv';
 import { InvocationContext } from '@azure/functions';
 import ApplicationContextCreator from '../function-apps/azure/application-context-creator';
 import factory from '../lib/factory';
-import { AbstractMssqlClient } from '../lib/adapters/gateways/abstract-mssql-client';
 
 // Load environment variables
 dotenv.config({ path: '.env' });
+
+type Row = Record<string, string | number | null>;
 
 async function checkSchema() {
   console.log('Checking ATS database schema...\n');
@@ -36,16 +37,16 @@ async function checkSchema() {
       ORDER BY ORDINAL_POSITION
     `;
 
-    // Access the executeQuery method through the gateway
-    const result = await (gateway as any).executeQuery(context, query, []);
+    const result = await gateway.executeQuery(context, query, []);
+    const rows = result.results as Row[];
 
     console.log('TRUSTEES table columns:');
     console.log('========================');
 
-    for (const col of result.results) {
+    for (const col of rows) {
       const maxLen = col.CHARACTER_MAXIMUM_LENGTH ? `(${col.CHARACTER_MAXIMUM_LENGTH})` : '';
       const nullable = col.IS_NULLABLE === 'YES' ? 'NULL' : 'NOT NULL';
-      console.log(`  ${col.COLUMN_NAME.padEnd(30)} ${col.DATA_TYPE}${maxLen} ${nullable}`);
+      console.log(`  ${String(col.COLUMN_NAME).padEnd(30)} ${col.DATA_TYPE}${maxLen} ${nullable}`);
     }
 
     // Also check for CHAPTER_DETAILS table (appointments)
@@ -60,16 +61,19 @@ async function checkSchema() {
       ORDER BY ORDINAL_POSITION
     `;
 
-    const appointmentsResult = await (gateway as any).executeQuery(context, appointmentsQuery, []);
+    const appointmentsResult = await gateway.executeQuery(context, appointmentsQuery, []);
+    const appointmentRows = appointmentsResult.results as Row[];
 
-    if (appointmentsResult.results.length > 0) {
+    if (appointmentRows.length > 0) {
       console.log('\nCHAPTER_DETAILS table columns:');
       console.log('================================');
 
-      for (const col of appointmentsResult.results) {
+      for (const col of appointmentRows) {
         const maxLen = col.CHARACTER_MAXIMUM_LENGTH ? `(${col.CHARACTER_MAXIMUM_LENGTH})` : '';
         const nullable = col.IS_NULLABLE === 'YES' ? 'NULL' : 'NOT NULL';
-        console.log(`  ${col.COLUMN_NAME.padEnd(30)} ${col.DATA_TYPE}${maxLen} ${nullable}`);
+        console.log(
+          `  ${String(col.COLUMN_NAME).padEnd(30)} ${col.DATA_TYPE}${maxLen} ${nullable}`,
+        );
       }
     }
 
@@ -77,10 +81,11 @@ async function checkSchema() {
     console.log('\n\nSample TRUSTEES row:');
     console.log('=====================');
     const sampleQuery = `SELECT TOP 1 * FROM TRUSTEES`;
-    const sampleResult = await (gateway as any).executeQuery(context, sampleQuery, []);
+    const sampleResult = await gateway.executeQuery(context, sampleQuery, []);
+    const sampleRows = sampleResult.results as Row[];
 
-    if (sampleResult.results.length > 0) {
-      const sample = sampleResult.results[0];
+    if (sampleRows.length > 0) {
+      const sample = sampleRows[0];
       for (const [key, value] of Object.entries(sample)) {
         if (value !== null && value !== undefined) {
           console.log(`  ${key}: ${value}`);
