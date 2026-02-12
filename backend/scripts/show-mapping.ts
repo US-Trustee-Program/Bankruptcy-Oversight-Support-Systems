@@ -10,8 +10,9 @@ import factory from '../lib/factory';
 import {
   transformTrusteeRecord,
   transformAppointmentRecord,
+  parseTodStatus,
+  deriveTrusteeStatus,
 } from '../lib/adapters/gateways/ats/ats-mappings';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../lib/adapters/types/ats.types';
 
 dotenv.config({ path: '.env' });
 
@@ -69,7 +70,9 @@ async function showMapping() {
       const transformed = transformAppointmentRecord(atsAppt);
       transformedAppointments.push(transformed);
     } catch (error) {
-      console.log(`Warning: Could not transform appointment: ${error.message}`);
+      console.log(
+        `Warning: Could not transform appointment: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
@@ -79,15 +82,25 @@ async function showMapping() {
     console.log(JSON.stringify(transformedAppointments[0], null, 2));
   }
 
+  // Derive trustee status from appointment statuses
+  const appointmentStatuses = atsAppointments.map((a) => parseTodStatus(a.STATUS).status);
+  const derivedStatus = deriveTrusteeStatus(appointmentStatuses);
+
+  console.log('\n4️⃣b DERIVED TRUSTEE STATUS:');
+  console.log('─'.repeat(60));
+  console.log(`  Appointment statuses: [${appointmentStatuses.join(', ')}]`);
+  console.log(`  Derived trustee status: '${derivedStatus}'`);
+
   // Show what the final MongoDB document would look like
   console.log('\n5️⃣  FINAL MONGODB TRUSTEE DOCUMENT:');
   console.log('─'.repeat(60));
 
   // This is a simulation of what would be saved
-  const mongoDocument: any = {
+  const mongoDocument: Record<string, unknown> = {
     _id: 'trustee-' + Math.random().toString(36).substring(7), // MongoDB would generate this
     trusteeId: 'trustee-' + Math.random().toString(36).substring(7), // CAMS would generate this
     name: trusteeInput.name,
+    status: derivedStatus,
     public: trusteeInput.public,
     legacy: trusteeInput.legacy,
     createdBy: {
@@ -139,6 +152,10 @@ async function showMapping() {
   console.log(`
 ATS TRUSTEES Table → MongoDB trustees Collection:
   ID               → legacy.truId (stored as string)
+  (derived)        → status (derived from CHAPTER_DETAILS.STATUS via deriveTrusteeStatus:
+                       any 'active' appointment → 'active',
+                       any suspended appointment → 'suspended',
+                       otherwise → 'not active')
   FIRST_NAME       → Concatenated into 'name' field
   MIDDLE           → Concatenated into 'name' field
   LAST_NAME        → Concatenated into 'name' field

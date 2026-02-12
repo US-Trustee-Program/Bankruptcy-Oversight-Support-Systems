@@ -279,10 +279,11 @@ async function main() {
       await checkMigrationState();
       break;
 
-    case 'run':
+    case 'run': {
       const pageSize = parseInt(args[1]) || 10;
       await runMigrationBatch(pageSize);
       break;
+    }
 
     case 'reset':
       await resetMigration();
