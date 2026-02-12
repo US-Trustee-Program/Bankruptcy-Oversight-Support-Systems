@@ -98,11 +98,11 @@ type TrusteeAssistantFormProps = {
 
 function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const flags = useFeatureFlags();
-
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
   const routeParams = useParams<{ assistantId?: string }>();
+  const navigate = useCamsNavigator();
 
   const { trusteeId, trustee } = props;
   const assistantId = routeParams.assistantId;
@@ -123,6 +123,18 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
 
+  const deleteModalId = 'delete-assistant-modal';
+  const deleteModalRef = useRef<TrusteeAssistantRemovalModalRef>(null);
+  const openDeleteModalButtonRef = useRef<OpenModalButtonRef>(null);
+
+  const handleCancel = useCallback(() => {
+    navigate.navigateTo(`/trustees/${trusteeId}`);
+  }, [navigate, trusteeId]);
+
+  const handleDeleteSuccess = useCallback(() => {
+    navigate.navigateTo(`/trustees/${trusteeId}`);
+  }, [navigate, trusteeId]);
+
   // If in edit mode and assistant not found, show error
   if (!isCreateMode && !assistant) {
     return (
@@ -131,7 +143,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   }
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
-  const navigate = useCamsNavigator();
 
   function getAddressInfo({
     address1,
@@ -212,14 +223,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     }, 300);
   };
 
-  const handleCancel = useCallback(() => {
-    navigate.navigateTo(`/trustees/${trusteeId}`);
-  }, [navigate, trusteeId]);
-
-  const handleDeleteSuccess = useCallback(() => {
-    navigate.navigateTo(`/trustees/${trusteeId}`);
-  }, [navigate, trusteeId]);
-
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
     const currentFormData = normalizeFormData(formData);
@@ -287,10 +290,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   if (!flags[TRUSTEE_MANAGEMENT]) {
     return <div data-testid="trustee-create-disabled">Trustee management is not enabled.</div>;
   }
-
-  const deleteModalId = 'delete-assistant-modal';
-  const deleteModalRef = useRef<TrusteeAssistantRemovalModalRef>(null);
-  const openDeleteModalButtonRef = useRef<OpenModalButtonRef>(null);
 
   if (!canManage) {
     return (
