@@ -172,6 +172,11 @@ export interface AtsGateway {
   ): Promise<import('../adapters/types/ats.types').AtsAppointmentRecord[]>;
   getTrusteeCount(context: ApplicationContext): Promise<number>;
   testConnection(context: ApplicationContext): Promise<boolean>;
+  executeQuery(
+    context: ApplicationContext,
+    query: string,
+    input?: import('../adapters/types/database').DbTableFieldSpec[],
+  ): Promise<import('../adapters/types/database').QueryResults>;
 }
 
 export type CaseHistoryDocumentType = 'AUDIT_ASSIGNMENT' | 'AUDIT_TRANSFER' | 'AUDIT_CONSOLIDATION';

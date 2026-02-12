@@ -1,5 +1,11 @@
-import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
-import { TrusteeInput } from '@common/cams/trustees';
+import {
+  AppointmentChapterType,
+  AppointmentStatus,
+  AppointmentType,
+  TrusteeInput,
+  TrusteeStatuses,
+  TrusteeStatus,
+} from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { ContactInformation } from '@common/cams/contact';
 import { USTP_OFFICE_NAME_MAP } from '../dxtr/dxtr.constants';
@@ -12,6 +18,7 @@ import {
 import {
   TOD_STATUS_MAP,
   DEFAULT_STATUS_MAPPING,
+  DEFAULT_TRUSTEE_STATUS,
   SPECIAL_CHAPTER_CODES,
   STANDARD_CHAPTERS,
   DISTRICT_TO_COURT_MAP,
@@ -218,6 +225,7 @@ export function transformTrusteeRecord(atsTrustee: AtsTrusteeRecord): TrusteeInp
 
   const trusteeInput: TrusteeInput = {
     name: fullName,
+    status: DEFAULT_TRUSTEE_STATUS,
     public: publicContact,
     legacy: {
       truId: atsTrustee.ID.toString(),
@@ -329,4 +337,37 @@ export function isValidAppointmentForChapter(
  */
 export function getAppointmentKey(trusteeId: string, appointment: TrusteeAppointmentInput): string {
   return `${trusteeId}-${appointment.courtId}-${appointment.divisionCode}-${appointment.chapter}-${appointment.appointmentType}`;
+}
+
+/**
+ * Derive trustee-level status from their appointment statuses.
+ *
+ * Priority:
+ * 1. If any appointment is 'active', trustee is ACTIVE
+ * 2. If any appointment is suspended, trustee is SUSPENDED
+ * 3. Otherwise, trustee is NOT_ACTIVE
+ *
+ * Returns ACTIVE when there are no appointments (default).
+ *
+ * @param appointmentStatuses - Statuses from all of a trustee's appointments
+ * @returns Derived trustee status
+ */
+export function deriveTrusteeStatus(appointmentStatuses: AppointmentStatus[]): TrusteeStatus {
+  if (appointmentStatuses.length === 0) {
+    return TrusteeStatuses.ACTIVE;
+  }
+
+  if (appointmentStatuses.some((s) => s === 'active')) {
+    return TrusteeStatuses.ACTIVE;
+  }
+
+  if (
+    appointmentStatuses.some(
+      (s) => s === 'voluntarily-suspended' || s === 'involuntarily-suspended',
+    )
+  ) {
+    return TrusteeStatuses.SUSPENDED;
+  }
+
+  return TrusteeStatuses.NOT_ACTIVE;
 }

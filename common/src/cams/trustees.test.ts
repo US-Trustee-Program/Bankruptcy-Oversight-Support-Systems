@@ -1,5 +1,5 @@
 import {
-  TRUSTEE_STATUS_VALUES,
+  TrusteeStatuses,
   getAppointmentDetails,
   formatChapterType,
   formatAppointmentType,
@@ -8,8 +8,12 @@ import {
 } from './trustees';
 
 describe('trustees', () => {
-  test('TRUSTEE_STATUS_VALUES', () => {
-    expect(TRUSTEE_STATUS_VALUES).toEqual(['active', 'not active', 'suspended']);
+  test('TrusteeStatuses', () => {
+    expect(TrusteeStatuses).toEqual({
+      ACTIVE: 'active',
+      NOT_ACTIVE: 'not active',
+      SUSPENDED: 'suspended',
+    });
   });
 
   describe('formatChapterType', () => {
