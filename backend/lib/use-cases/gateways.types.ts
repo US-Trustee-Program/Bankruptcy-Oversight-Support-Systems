@@ -277,7 +277,8 @@ export type RuntimeStateDocumentType =
   | 'ORDERS_SYNC_STATE'
   | 'OFFICE_STAFF_SYNC_STATE'
   | 'CASES_SYNC_STATE'
-  | 'PHONETIC_BACKFILL_STATE';
+  | 'PHONETIC_BACKFILL_STATE'
+  | 'TRUSTEE_MIGRATION_STATE';
 
 export type RuntimeState = {
   id?: string;
