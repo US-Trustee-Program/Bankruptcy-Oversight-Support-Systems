@@ -22,7 +22,13 @@ describe('storage queue gateway', () => {
 
       actual.enqueue({}, {});
 
-      expect(extraOutputs.set).toHaveBeenCalledWith(expect.anything(), [{}, {}]);
+      expect(extraOutputs.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueName: 'case-assignment-event',
+          type: 'queue',
+        }),
+        [[{}, {}]],
+      );
     });
 
     test('should support SYNC_CASES_PAGE queue for case reload', async () => {
@@ -41,7 +47,13 @@ describe('storage queue gateway', () => {
       const testEvent = { type: 'CASE_CHANGED', caseId: '081-12-34567' };
       actual.enqueue(testEvent);
 
-      expect(extraOutputs.set).toHaveBeenCalledWith(expect.anything(), [testEvent]);
+      expect(extraOutputs.set).toHaveBeenCalledWith(
+        expect.objectContaining({
+          queueName: 'sync-cases-page',
+          type: 'queue',
+        }),
+        [[testEvent]],
+      );
     });
   });
 });
