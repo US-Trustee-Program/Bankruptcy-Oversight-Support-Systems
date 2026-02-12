@@ -78,7 +78,7 @@ describe('ATS Gateway', () => {
         server: 'test-server',
         database: 'test-db',
         user: 'test-user',
-        password: 'test-pass', // pragma: allowlist secret
+        password: (Math.random() + 1).toString(36).substring(2),
         port: 1433,
         requestTimeout: 15000,
         pool: {
