@@ -1,0 +1,296 @@
+import { AppointmentChapterType, AppointmentType } from '@common/cams/trustees';
+import { TrusteeInput } from '@common/cams/trustees';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { ContactInformation } from '@common/cams/contact';
+import { USTP_OFFICE_NAME_MAP } from '../dxtr/dxtr.constants';
+import {
+  AtsTrusteeRecord,
+  AtsAppointmentRecord,
+  StatusMapping,
+  ChapterMapping,
+} from '../../types/ats.types';
+import {
+  TOD_STATUS_MAP,
+  DEFAULT_STATUS_MAPPING,
+  SPECIAL_CHAPTER_CODES,
+  STANDARD_CHAPTERS,
+  DISTRICT_TO_COURT_MAP,
+} from './ats.constants';
+
+const MODULE_NAME = 'ATS-MAPPINGS';
+
+/**
+ * Parse chapter code from ATS, handling special case-by-case codes.
+ *
+ * @param todChapter - Chapter code from ATS (e.g., '7', '13', '12CBC')
+ * @returns Chapter and optional appointment type
+ */
+export function parseChapterAndType(todChapter: string): ChapterMapping {
+  if (!todChapter) {
+    throw new Error('Chapter code is required');
+  }
+
+  const trimmedChapter = todChapter.trim().toUpperCase();
+
+  // Check for special case-by-case chapters
+  if (SPECIAL_CHAPTER_CODES[trimmedChapter]) {
+    return SPECIAL_CHAPTER_CODES[trimmedChapter];
+  }
+
+  // Standard chapters - remove any leading zeros
+  const numericChapter = trimmedChapter.replace(/^0+/, '');
+
+  if (!STANDARD_CHAPTERS.includes(numericChapter)) {
+    throw new Error(`Unknown chapter code: ${todChapter}`);
+  }
+
+  return { chapter: numericChapter };
+}
+
+/**
+ * Parse TOD STATUS to determine appointment type and status.
+ *
+ * @param todStatus - Status code from ATS
+ * @returns Appointment type and status
+ */
+export function parseTodStatus(todStatus: string): StatusMapping {
+  if (!todStatus) {
+    console.warn(`${MODULE_NAME}: Empty TOD STATUS, using defaults`);
+    return DEFAULT_STATUS_MAPPING;
+  }
+
+  const trimmedStatus = todStatus.trim().toUpperCase();
+
+  // Check if we have a mapping for this status
+  if (TOD_STATUS_MAP[trimmedStatus]) {
+    return TOD_STATUS_MAP[trimmedStatus];
+  }
+
+  // Log unknown status and return default
+  console.warn(`${MODULE_NAME}: Unknown TOD STATUS '${todStatus}', using defaults`);
+  return DEFAULT_STATUS_MAPPING;
+}
+
+/**
+ * Map division code to office name using existing USTP mapping.
+ *
+ * @param divisionCode - 3-character division code
+ * @returns Office name or 'Unknown' if not found
+ */
+export function getDivisionOfficeName(divisionCode: string): string {
+  if (!divisionCode) {
+    return 'Unknown';
+  }
+
+  const trimmedCode = divisionCode.trim();
+  const officeName = USTP_OFFICE_NAME_MAP.get(trimmedCode);
+
+  if (!officeName) {
+    console.warn(`${MODULE_NAME}: Unknown division code '${divisionCode}'`);
+    return 'Unknown';
+  }
+
+  return officeName;
+}
+
+/**
+ * Map district code to court ID.
+ *
+ * @param districtCode - 2-character district code
+ * @returns Court ID
+ */
+export function getCourtId(districtCode: string): string {
+  if (!districtCode) {
+    throw new Error('District code is required');
+  }
+
+  const trimmedDistrict = districtCode.trim();
+  const courtId = DISTRICT_TO_COURT_MAP[trimmedDistrict];
+
+  if (!courtId) {
+    throw new Error(`Unknown district code: ${districtCode}`);
+  }
+
+  return courtId;
+}
+
+/**
+ * Format phone number to standard format.
+ *
+ * @param phone - Raw phone number
+ * @returns Formatted phone number or undefined
+ */
+export function formatPhoneNumber(phone: string | undefined): string | undefined {
+  if (!phone) return undefined;
+
+  // Remove all non-numeric characters
+  const cleaned = phone.replace(/\D/g, '');
+
+  // Check if it's a valid US phone number
+  if (cleaned.length === 10) {
+    return `${cleaned.slice(0, 3)}-${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+  } else if (cleaned.length === 11 && cleaned[0] === '1') {
+    // Remove country code
+    return `${cleaned.slice(1, 4)}-${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+  }
+
+  // Return original if can't format
+  return phone;
+}
+
+/**
+ * Format ZIP code to standard format (ZIP+4).
+ *
+ * @param zip - Raw ZIP code
+ * @returns Formatted ZIP code or undefined
+ */
+export function formatZipCode(zip: string | undefined): string | undefined {
+  if (!zip) return undefined;
+
+  // Remove all non-alphanumeric characters
+  const cleaned = zip.replace(/[^0-9]/g, '');
+
+  if (cleaned.length === 5) {
+    return cleaned;
+  } else if (cleaned.length === 9) {
+    return `${cleaned.slice(0, 5)}-${cleaned.slice(5)}`;
+  }
+
+  // Return original if can't format
+  return zip;
+}
+
+/**
+ * Transform ATS trustee record to CAMS trustee input format.
+ *
+ * @param atsTrustee - Raw trustee record from ATS
+ * @returns Trustee input for CAMS
+ */
+export function transformTrusteeRecord(atsTrustee: AtsTrusteeRecord): TrusteeInput {
+  // Build full name string
+  const nameParts = [];
+  if (atsTrustee.TRU_FIRST_NAME) nameParts.push(atsTrustee.TRU_FIRST_NAME);
+  if (atsTrustee.TRU_MIDDLE_NAME) nameParts.push(atsTrustee.TRU_MIDDLE_NAME);
+  if (atsTrustee.TRU_LAST_NAME) nameParts.push(atsTrustee.TRU_LAST_NAME);
+
+  const fullName = nameParts.join(' ') || 'Unknown';
+
+  // Build public contact information
+  const publicContact: ContactInformation = {
+    address: {
+      address1: atsTrustee.TRU_ADDRESS1 || '',
+      address2: atsTrustee.TRU_ADDRESS2,
+      address3: atsTrustee.TRU_ADDRESS3,
+      city: atsTrustee.TRU_CITY || '',
+      state: atsTrustee.TRU_STATE || '',
+      zipCode: formatZipCode(atsTrustee.TRU_ZIP) || '',
+      countryCode: 'US' as const,
+    },
+  };
+
+  // Add phone if present
+  const formattedPhone = formatPhoneNumber(atsTrustee.TRU_PHONE);
+  if (formattedPhone) {
+    publicContact.phone = { number: formattedPhone };
+  }
+
+  // Add email if present
+  if (atsTrustee.TRU_EMAIL) {
+    publicContact.email = atsTrustee.TRU_EMAIL;
+  }
+
+  // Add company name if present
+  if (atsTrustee.TRU_COMPANY) {
+    publicContact.companyName = atsTrustee.TRU_COMPANY;
+  }
+
+  const trusteeInput: TrusteeInput = {
+    name: fullName,
+    public: publicContact,
+    legacy: {
+      truId: atsTrustee.TRU_ID.toString(),
+    },
+  };
+
+  return trusteeInput;
+}
+
+/**
+ * Transform ATS appointment record to CAMS appointment input format.
+ *
+ * @param atsAppointment - Raw appointment record from ATS
+ * @returns Appointment input for CAMS
+ */
+export function transformAppointmentRecord(
+  atsAppointment: AtsAppointmentRecord,
+): TrusteeAppointmentInput {
+  // Parse chapter and get appointment type if specified
+  const chapterMapping = parseChapterAndType(atsAppointment.CHAPTER);
+
+  // Parse status to get appointment type and status
+  // If chapter already specified appointment type (like 12CBC), use that
+  const statusMapping = parseTodStatus(atsAppointment.STATUS);
+  const appointmentType = chapterMapping.appointmentType || statusMapping.appointmentType;
+
+  // Map district to court ID
+  const courtId = getCourtId(atsAppointment.DISTRICT);
+
+  // Validate chapter type for CAMS
+  const chapter = chapterMapping.chapter as AppointmentChapterType;
+  if (!['7', '11', '12', '13'].includes(chapter)) {
+    throw new Error(`Invalid chapter for CAMS: ${chapter}`);
+  }
+
+  // Format dates
+  const appointedDate = atsAppointment.DATE_APPOINTED
+    ? atsAppointment.DATE_APPOINTED.toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
+
+  const effectiveDate = atsAppointment.EFFECTIVE_DATE
+    ? atsAppointment.EFFECTIVE_DATE.toISOString().split('T')[0]
+    : appointedDate;
+
+  return {
+    chapter,
+    appointmentType,
+    courtId,
+    divisionCode: atsAppointment.DIVISION,
+    appointedDate,
+    status: statusMapping.status,
+    effectiveDate,
+  };
+}
+
+/**
+ * Validate that appointment type is valid for the chapter.
+ *
+ * @param chapter - Chapter type
+ * @param appointmentType - Appointment type
+ * @returns True if valid combination
+ */
+export function isValidAppointmentForChapter(
+  chapter: AppointmentChapterType,
+  appointmentType: AppointmentType,
+): boolean {
+  const validCombinations: Record<AppointmentChapterType, AppointmentType[]> = {
+    '7': ['panel', 'off-panel', 'elected', 'converted-case'],
+    '11': ['case-by-case'],
+    '11-subchapter-v': ['pool', 'out-of-pool'],
+    '12': ['standing', 'case-by-case'],
+    '13': ['standing', 'case-by-case'],
+  };
+
+  const validTypes = validCombinations[chapter];
+  return validTypes ? validTypes.includes(appointmentType) : false;
+}
+
+/**
+ * Create a unique key for an appointment to prevent duplicates.
+ *
+ * @param trusteeId - Trustee ID
+ * @param appointment - Appointment data
+ * @returns Unique key string
+ */
+export function getAppointmentKey(trusteeId: string, appointment: TrusteeAppointmentInput): string {
+  return `${trusteeId}-${appointment.courtId}-${appointment.divisionCode}-${appointment.chapter}-${appointment.appointmentType}`;
+}
