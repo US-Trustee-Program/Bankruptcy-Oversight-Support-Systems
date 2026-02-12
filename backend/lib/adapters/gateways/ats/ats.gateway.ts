@@ -38,23 +38,29 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
 
     let query = `
       SELECT
-        TRU_ID,
-        TRU_LAST_NAME,
-        TRU_FIRST_NAME,
-        TRU_MIDDLE_NAME,
-        TRU_COMPANY,
-        TRU_ADDRESS1,
-        TRU_ADDRESS2,
-        TRU_ADDRESS3,
-        TRU_CITY,
-        TRU_STATE,
-        TRU_ZIP,
-        TRU_PHONE,
-        TRU_EMAIL
+        ID,
+        LAST_NAME,
+        FIRST_NAME,
+        MIDDLE,
+        COMPANY,
+        STREET,
+        STREET1,
+        CITY,
+        STATE,
+        ZIP,
+        ZIP_PLUS,
+        STREET_A2,
+        STREET1_A2,
+        CITY_A2,
+        STATE_A2,
+        ZIP_A2,
+        ZIP_PLUS_A2,
+        TELEPHONE,
+        EMAIL_ADDRESS
       FROM TRUSTEES`;
 
     if (lastTrusteeId !== null) {
-      query += ` WHERE TRU_ID > @lastId`;
+      query += ` WHERE ID > @lastId`;
       input.push({
         name: 'lastId',
         type: mssql.Int,
@@ -63,7 +69,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     }
 
     query += `
-      ORDER BY TRU_ID
+      ORDER BY ID
       OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY`;
 
     context.logger.debug(
@@ -114,12 +120,12 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
         DISTRICT,
         DIVISION,
         CHAPTER,
-        DATE_APPOINTED,
+        APPOINTED_DATE AS DATE_APPOINTED,
         STATUS,
-        EFFECTIVE_DATE
+        STATUS_EFF_DATE AS EFFECTIVE_DATE
       FROM CHAPTER_DETAILS
       WHERE TRU_ID = @trusteeId
-      ORDER BY DATE_APPOINTED DESC`;
+      ORDER BY APPOINTED_DATE DESC`;
 
     context.logger.debug(MODULE_NAME, `Querying appointments for trustee ID: ${trusteeId}`);
 

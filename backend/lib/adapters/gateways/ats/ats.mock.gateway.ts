@@ -37,19 +37,19 @@ export class MockAtsGateway implements AtsGateway {
 
     for (let i = startId; i <= endId; i++) {
       mockTrustees.push({
-        TRU_ID: i,
-        TRU_LAST_NAME: `LastName${i}`,
-        TRU_FIRST_NAME: `FirstName${i}`,
-        TRU_MIDDLE_NAME: `M${i}`,
-        TRU_COMPANY: i % 2 === 0 ? `Company ${i}` : undefined,
-        TRU_ADDRESS1: `${i * 100} Main Street`,
-        TRU_ADDRESS2: i % 3 === 0 ? `Suite ${i}` : undefined,
-        TRU_ADDRESS3: undefined,
-        TRU_CITY: 'New York',
-        TRU_STATE: 'NY',
-        TRU_ZIP: `1000${i}`,
-        TRU_PHONE: `555-000${i}`,
-        TRU_EMAIL: `trustee${i}@example.com`,
+        ID: i,
+        LAST_NAME: `LastName${i}`,
+        FIRST_NAME: `FirstName${i}`,
+        MIDDLE: `M${i}`,
+        COMPANY: i % 2 === 0 ? `Company ${i}` : undefined,
+        STREET: `${i * 100} Main Street`,
+        STREET1: i % 3 === 0 ? `Suite ${i}` : undefined,
+        STREET_A2: undefined,
+        CITY: 'New York',
+        STATE: 'NY',
+        ZIP: `1000${i}`,
+        TELEPHONE: `555-000${i}`,
+        EMAIL_ADDRESS: `trustee${i}@example.com`,
       });
     }
 
@@ -65,7 +65,7 @@ export class MockAtsGateway implements AtsGateway {
     // Return mock appointments for testing
     const mockAppointments: AtsAppointmentRecord[] = [
       {
-        TRU_ID: trusteeId,
+        ID: trusteeId,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '7',
@@ -74,7 +74,7 @@ export class MockAtsGateway implements AtsGateway {
         EFFECTIVE_DATE: new Date('2023-01-15'),
       },
       {
-        TRU_ID: trusteeId,
+        ID: trusteeId,
         DISTRICT: '02',
         DIVISION: '071',
         CHAPTER: '13',
@@ -87,7 +87,7 @@ export class MockAtsGateway implements AtsGateway {
     // Add special case appointments for testing mapping logic
     if (trusteeId === 1) {
       mockAppointments.push({
-        TRU_ID: trusteeId,
+        ID: trusteeId,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '12CBC',

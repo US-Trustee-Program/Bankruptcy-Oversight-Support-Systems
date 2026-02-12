@@ -221,13 +221,11 @@ export async function upsertTrustee(
     // Check if trustee already exists by legacy.truId
     // We need to search through all trustees to find one with matching legacy.truId
     const allTrustees = await repo.listTrustees();
-    const existingTrustee = allTrustees.find(
-      (t) => t.legacy?.truId === atsTrustee.TRU_ID.toString(),
-    );
+    const existingTrustee = allTrustees.find((t) => t.legacy?.truId === atsTrustee.ID.toString());
 
     if (existingTrustee) {
       // Update existing trustee
-      context.logger.debug(MODULE_NAME, `Updating existing trustee ${atsTrustee.TRU_ID}`);
+      context.logger.debug(MODULE_NAME, `Updating existing trustee ${atsTrustee.ID}`);
       const updated = await repo.updateTrustee(
         existingTrustee.trusteeId,
         trusteeInput,
@@ -236,17 +234,13 @@ export async function upsertTrustee(
       return { data: updated };
     } else {
       // Create new trustee
-      context.logger.debug(MODULE_NAME, `Creating new trustee ${atsTrustee.TRU_ID}`);
+      context.logger.debug(MODULE_NAME, `Creating new trustee ${atsTrustee.ID}`);
       const created = await repo.createTrustee(trusteeInput, SYSTEM_USER);
       return { data: created };
     }
   } catch (originalError) {
     return {
-      error: getCamsError(
-        originalError,
-        MODULE_NAME,
-        `Failed to upsert trustee ${atsTrustee.TRU_ID}`,
-      ),
+      error: getCamsError(originalError, MODULE_NAME, `Failed to upsert trustee ${atsTrustee.ID}`),
     };
   }
 }
@@ -356,7 +350,7 @@ export async function processTrusteeWithAppointments(
   context: ApplicationContext,
   atsTrustee: AtsTrusteeRecord,
 ): Promise<TrusteeProcessingResult> {
-  const truId = atsTrustee.TRU_ID.toString();
+  const truId = atsTrustee.ID.toString();
 
   try {
     // Upsert the trustee
@@ -368,7 +362,7 @@ export async function processTrusteeWithAppointments(
     const trustee = trusteeResult.data;
 
     // Get and process appointments
-    const appointmentsResult = await getTrusteeAppointments(context, atsTrustee.TRU_ID);
+    const appointmentsResult = await getTrusteeAppointments(context, atsTrustee.ID);
     if (appointmentsResult.error) {
       // Log error but don't fail the trustee processing
       context.logger.error(MODULE_NAME, `Failed to get appointments for trustee ${truId}`, {

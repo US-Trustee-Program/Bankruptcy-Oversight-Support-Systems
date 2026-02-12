@@ -142,22 +142,35 @@ export function formatPhoneNumber(phone: string | undefined): string | undefined
  * Format ZIP code to standard format (ZIP+4).
  *
  * @param zip - Raw ZIP code
+ * @param zipPlus - Optional ZIP+4 extension
  * @returns Formatted ZIP code or undefined
  */
-export function formatZipCode(zip: string | undefined): string | undefined {
+export function formatZipCode(
+  zip: string | undefined,
+  zipPlus?: string | undefined,
+): string | undefined {
   if (!zip) return undefined;
 
-  // Remove all non-alphanumeric characters
-  const cleaned = zip.replace(/[^0-9]/g, '');
+  // Remove all non-alphanumeric characters from zip
+  const cleanedZip = zip.replace(/[^0-9]/g, '');
 
-  if (cleaned.length === 5) {
-    return cleaned;
-  } else if (cleaned.length === 9) {
-    return `${cleaned.slice(0, 5)}-${cleaned.slice(5)}`;
+  if (cleanedZip.length !== 5) {
+    // If main ZIP is not 5 digits, try to extract from a 9-digit format
+    if (cleanedZip.length === 9) {
+      return `${cleanedZip.slice(0, 5)}-${cleanedZip.slice(5)}`;
+    }
+    return zip; // Return original if can't format
   }
 
-  // Return original if can't format
-  return zip;
+  // If we have a separate ZIP+4 extension
+  if (zipPlus) {
+    const cleanedPlus = zipPlus.replace(/[^0-9]/g, '');
+    if (cleanedPlus.length === 4) {
+      return `${cleanedZip}-${cleanedPlus}`;
+    }
+  }
+
+  return cleanedZip;
 }
 
 /**
@@ -169,48 +182,71 @@ export function formatZipCode(zip: string | undefined): string | undefined {
 export function transformTrusteeRecord(atsTrustee: AtsTrusteeRecord): TrusteeInput {
   // Build full name string
   const nameParts = [];
-  if (atsTrustee.TRU_FIRST_NAME) nameParts.push(atsTrustee.TRU_FIRST_NAME);
-  if (atsTrustee.TRU_MIDDLE_NAME) nameParts.push(atsTrustee.TRU_MIDDLE_NAME);
-  if (atsTrustee.TRU_LAST_NAME) nameParts.push(atsTrustee.TRU_LAST_NAME);
+  if (atsTrustee.FIRST_NAME) nameParts.push(atsTrustee.FIRST_NAME);
+  if (atsTrustee.MIDDLE) nameParts.push(atsTrustee.MIDDLE);
+  if (atsTrustee.LAST_NAME) nameParts.push(atsTrustee.LAST_NAME);
 
   const fullName = nameParts.join(' ') || 'Unknown';
 
   // Build public contact information
   const publicContact: ContactInformation = {
     address: {
-      address1: atsTrustee.TRU_ADDRESS1 || '',
-      address2: atsTrustee.TRU_ADDRESS2,
-      address3: atsTrustee.TRU_ADDRESS3,
-      city: atsTrustee.TRU_CITY || '',
-      state: atsTrustee.TRU_STATE || '',
-      zipCode: formatZipCode(atsTrustee.TRU_ZIP) || '',
+      address1: atsTrustee.STREET || '',
+      address2: atsTrustee.STREET1,
+      city: atsTrustee.CITY || '',
+      state: atsTrustee.STATE || '',
+      zipCode: formatZipCode(atsTrustee.ZIP, atsTrustee.ZIP_PLUS) || '',
       countryCode: 'US' as const,
     },
   };
 
   // Add phone if present
-  const formattedPhone = formatPhoneNumber(atsTrustee.TRU_PHONE);
+  const formattedPhone = formatPhoneNumber(atsTrustee.TELEPHONE);
   if (formattedPhone) {
     publicContact.phone = { number: formattedPhone };
   }
 
   // Add email if present
-  if (atsTrustee.TRU_EMAIL) {
-    publicContact.email = atsTrustee.TRU_EMAIL;
+  if (atsTrustee.EMAIL_ADDRESS) {
+    publicContact.email = atsTrustee.EMAIL_ADDRESS;
   }
 
   // Add company name if present
-  if (atsTrustee.TRU_COMPANY) {
-    publicContact.companyName = atsTrustee.TRU_COMPANY;
+  if (atsTrustee.COMPANY) {
+    publicContact.companyName = atsTrustee.COMPANY;
   }
 
   const trusteeInput: TrusteeInput = {
     name: fullName,
     public: publicContact,
     legacy: {
-      truId: atsTrustee.TRU_ID.toString(),
+      truId: atsTrustee.ID.toString(),
     },
   };
+
+  // Build internal contact information if any A2 fields are present
+  if (atsTrustee.STREET_A2 || atsTrustee.CITY_A2 || atsTrustee.STATE_A2 || atsTrustee.ZIP_A2) {
+    const internalContact: ContactInformation = {
+      address: {
+        address1: atsTrustee.STREET_A2 || '',
+        address2: atsTrustee.STREET1_A2,
+        city: atsTrustee.CITY_A2 || '',
+        state: atsTrustee.STATE_A2 || '',
+        zipCode: formatZipCode(atsTrustee.ZIP_A2, atsTrustee.ZIP_PLUS_A2) || '',
+        countryCode: 'US' as const,
+      },
+    };
+
+    // Internal contact uses same phone and email as public for now
+    if (formattedPhone) {
+      internalContact.phone = { number: formattedPhone };
+    }
+    if (atsTrustee.EMAIL_ADDRESS) {
+      internalContact.email = atsTrustee.EMAIL_ADDRESS;
+    }
+
+    trusteeInput.internal = internalContact;
+  }
 
   return trusteeInput;
 }

@@ -162,7 +162,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     return;
   }
 
-  const lastTrusteeId = trustees[trustees.length - 1].TRU_ID;
+  const lastTrusteeId = trustees[trustees.length - 1].ID;
 
   logger.debug(
     MODULE_NAME,
@@ -239,7 +239,7 @@ async function handleError(event: TrusteeEvent, invocationContext: InvocationCon
 
   logger.error(
     MODULE_NAME,
-    `Error encountered migrating trustee ${event.TRU_ID}: ${event.error?.message ?? 'Unknown error'}.`,
+    `Error encountered migrating trustee ${event.ID}: ${event.error?.message ?? 'Unknown error'}.`,
   );
 
   delete event.error;
@@ -264,7 +264,7 @@ async function handleRetry(event: TrusteeEvent, invocationContext: InvocationCon
 
   if (event.retryCount > RETRY_LIMIT) {
     invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    logger.error(MODULE_NAME, `Too many retry attempts for trustee ${event.TRU_ID}.`);
+    logger.error(MODULE_NAME, `Too many retry attempts for trustee ${event.ID}.`);
     return;
   }
 
@@ -276,7 +276,7 @@ async function handleRetry(event: TrusteeEvent, invocationContext: InvocationCon
   } else {
     logger.info(
       MODULE_NAME,
-      `Successfully retried migration for trustee ${event.TRU_ID} with ${result.appointmentsProcessed} appointments.`,
+      `Successfully retried migration for trustee ${event.ID} with ${result.appointmentsProcessed} appointments.`,
     );
   }
 }

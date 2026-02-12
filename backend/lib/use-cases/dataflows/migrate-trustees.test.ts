@@ -103,8 +103,8 @@ describe('Migrate Trustees Use Case', () => {
   describe('getPageOfTrustees', () => {
     test('should get page of trustees from ATS', async () => {
       const mockTrustees: AtsTrusteeRecord[] = [
-        { TRU_ID: 1, TRU_FIRST_NAME: 'John', TRU_LAST_NAME: 'Doe' },
-        { TRU_ID: 2, TRU_FIRST_NAME: 'Jane', TRU_LAST_NAME: 'Smith' },
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe' },
+        { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith' },
       ];
 
       mockAtsGateway.getTrusteesPage.mockResolvedValue(mockTrustees);
@@ -117,9 +117,7 @@ describe('Migrate Trustees Use Case', () => {
     });
 
     test('should indicate no more pages when less than page size returned', async () => {
-      const mockTrustees: AtsTrusteeRecord[] = [
-        { TRU_ID: 3, TRU_FIRST_NAME: 'Bob', TRU_LAST_NAME: 'Johnson' },
-      ];
+      const mockTrustees: AtsTrusteeRecord[] = [{ ID: 3, FIRST_NAME: 'Bob', LAST_NAME: 'Johnson' }];
 
       mockAtsGateway.getTrusteesPage.mockResolvedValue(mockTrustees);
 
@@ -134,7 +132,7 @@ describe('Migrate Trustees Use Case', () => {
     test('should get appointments for a trustee', async () => {
       const mockAppointments: AtsAppointmentRecord[] = [
         {
-          TRU_ID: 1,
+          ID: 1,
           DISTRICT: '02',
           DIVISION: '081',
           CHAPTER: '7',
@@ -154,9 +152,9 @@ describe('Migrate Trustees Use Case', () => {
   describe('upsertTrustee', () => {
     test('should create new trustee when none exists', async () => {
       const atsTrustee: AtsTrusteeRecord = {
-        TRU_ID: 1,
-        TRU_FIRST_NAME: 'John',
-        TRU_LAST_NAME: 'Doe',
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
       };
 
       const createdTrustee = {
@@ -177,9 +175,9 @@ describe('Migrate Trustees Use Case', () => {
 
     test('should update existing trustee when found', async () => {
       const atsTrustee: AtsTrusteeRecord = {
-        TRU_ID: 1,
-        TRU_FIRST_NAME: 'John',
-        TRU_LAST_NAME: 'Doe',
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
       };
 
       const existingTrustee = {
@@ -212,9 +210,9 @@ describe('Migrate Trustees Use Case', () => {
   describe('processTrusteeWithAppointments', () => {
     test('should process trustee with appointments successfully', async () => {
       const atsTrustee: AtsTrusteeRecord = {
-        TRU_ID: 1,
-        TRU_FIRST_NAME: 'John',
-        TRU_LAST_NAME: 'Doe',
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
       };
 
       const createdTrustee = {
@@ -225,7 +223,7 @@ describe('Migrate Trustees Use Case', () => {
 
       const mockAppointments: AtsAppointmentRecord[] = [
         {
-          TRU_ID: 1,
+          ID: 1,
           DISTRICT: '02',
           DIVISION: '081',
           CHAPTER: '7',
@@ -249,9 +247,9 @@ describe('Migrate Trustees Use Case', () => {
 
     test('should handle trustee with no appointments', async () => {
       const atsTrustee: AtsTrusteeRecord = {
-        TRU_ID: 2,
-        TRU_FIRST_NAME: 'Jane',
-        TRU_LAST_NAME: 'Smith',
+        ID: 2,
+        FIRST_NAME: 'Jane',
+        LAST_NAME: 'Smith',
       };
 
       const createdTrustee = {
@@ -274,8 +272,8 @@ describe('Migrate Trustees Use Case', () => {
   describe('processPageOfTrustees', () => {
     test('should process multiple trustees', async () => {
       const trustees: AtsTrusteeRecord[] = [
-        { TRU_ID: 1, TRU_FIRST_NAME: 'John', TRU_LAST_NAME: 'Doe' },
-        { TRU_ID: 2, TRU_FIRST_NAME: 'Jane', TRU_LAST_NAME: 'Smith' },
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe' },
+        { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith' },
       ];
 
       mockTrusteesRepo.listTrustees.mockResolvedValue([]);

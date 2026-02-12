@@ -171,19 +171,19 @@ describe('ATS Mappings', () => {
   describe('transformTrusteeRecord', () => {
     test('should transform complete trustee record', () => {
       const atsTrustee: AtsTrusteeRecord = {
-        TRU_ID: 123,
-        TRU_FIRST_NAME: 'John',
-        TRU_LAST_NAME: 'Doe',
-        TRU_MIDDLE_NAME: 'A',
-        TRU_COMPANY: 'Trustee Corp',
-        TRU_ADDRESS1: '123 Main St',
-        TRU_ADDRESS2: 'Suite 100',
-        TRU_ADDRESS3: undefined,
-        TRU_CITY: 'New York',
-        TRU_STATE: 'NY',
-        TRU_ZIP: '10001',
-        TRU_PHONE: '5551234567',
-        TRU_EMAIL: 'john.doe@example.com',
+        ID: 123,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        MIDDLE: 'A',
+        COMPANY: 'Trustee Corp',
+        STREET: '123 Main St',
+        STREET1: 'Suite 100',
+        STREET_A2: undefined,
+        CITY: 'New York',
+        STATE: 'NY',
+        ZIP: '10001',
+        TELEPHONE: '5551234567',
+        EMAIL_ADDRESS: 'john.doe@example.com',
       };
 
       const result = transformTrusteeRecord(atsTrustee);
@@ -212,9 +212,9 @@ describe('ATS Mappings', () => {
 
     test('should handle minimal trustee record', () => {
       const atsTrustee: AtsTrusteeRecord = {
-        TRU_ID: 456,
-        TRU_FIRST_NAME: 'Jane',
-        TRU_LAST_NAME: 'Smith',
+        ID: 456,
+        FIRST_NAME: 'Jane',
+        LAST_NAME: 'Smith',
       };
 
       const result = transformTrusteeRecord(atsTrustee);
@@ -242,7 +242,7 @@ describe('ATS Mappings', () => {
   describe('transformAppointmentRecord', () => {
     test('should transform standard appointment', () => {
       const atsAppointment: AtsAppointmentRecord = {
-        TRU_ID: 123,
+        ID: 123,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '7',
@@ -266,7 +266,7 @@ describe('ATS Mappings', () => {
 
     test('should handle case-by-case chapter appointments', () => {
       const atsAppointment: AtsAppointmentRecord = {
-        TRU_ID: 123,
+        ID: 123,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '12CBC',
@@ -290,7 +290,7 @@ describe('ATS Mappings', () => {
 
     test('should use current date if dates are missing', () => {
       const atsAppointment: AtsAppointmentRecord = {
-        TRU_ID: 123,
+        ID: 123,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '7',
@@ -306,7 +306,7 @@ describe('ATS Mappings', () => {
 
     test('should throw error for invalid district', () => {
       const atsAppointment: AtsAppointmentRecord = {
-        TRU_ID: 123,
+        ID: 123,
         DISTRICT: '99',
         DIVISION: '081',
         CHAPTER: '7',

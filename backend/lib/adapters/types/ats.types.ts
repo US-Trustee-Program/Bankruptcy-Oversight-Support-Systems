@@ -6,19 +6,28 @@
  * Raw trustee record from ATS TRUSTEES table
  */
 export interface AtsTrusteeRecord {
-  TRU_ID: number;
-  TRU_LAST_NAME?: string;
-  TRU_FIRST_NAME?: string;
-  TRU_MIDDLE_NAME?: string;
-  TRU_COMPANY?: string;
-  TRU_ADDRESS1?: string;
-  TRU_ADDRESS2?: string;
-  TRU_ADDRESS3?: string;
-  TRU_CITY?: string;
-  TRU_STATE?: string;
-  TRU_ZIP?: string;
-  TRU_PHONE?: string;
-  TRU_EMAIL?: string;
+  ID: number; // Maps from ID column in TRUSTEES table
+  LAST_NAME?: string;
+  FIRST_NAME?: string;
+  MIDDLE?: string;
+  COMPANY?: string;
+  // Public address fields
+  STREET?: string;
+  STREET1?: string;
+  CITY?: string;
+  STATE?: string;
+  ZIP?: string;
+  ZIP_PLUS?: string;
+  // Internal address fields (A2 = Address 2)
+  STREET_A2?: string;
+  STREET1_A2?: string;
+  CITY_A2?: string;
+  STATE_A2?: string;
+  ZIP_A2?: string;
+  ZIP_PLUS_A2?: string;
+  // Contact fields
+  TELEPHONE?: string;
+  EMAIL_ADDRESS?: string;
 }
 
 /**
@@ -64,7 +73,7 @@ export interface AtsTrusteeWithAppointments {
  */
 export interface StatusMapping {
   appointmentType: 'panel' | 'off-panel' | 'case-by-case' | 'standing';
-  status: 'active' | 'inactive' | 'suspended' | 'terminated';
+  status: 'active' | 'inactive' | 'voluntarily-suspended' | 'terminated';
 }
 
 /**
