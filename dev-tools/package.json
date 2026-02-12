@@ -10,7 +10,7 @@
   "author": "",
   "license": "CC0 v1.0",
   "dependencies": {
-    "@azure/cosmos": "4.9.0",
+    "@azure/cosmos": "4.9.1",
     "@azure/identity": "4.13.0",
     "@types/node": "24.10.9",
     "tsx": "4.21.0"

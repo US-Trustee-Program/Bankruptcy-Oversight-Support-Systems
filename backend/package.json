@@ -36,7 +36,7 @@
     "test:watch": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest watch"
   },
   "dependencies": {
-    "@azure/cosmos": "4.9.0",
+    "@azure/cosmos": "4.9.1",
     "@azure/functions": "4.11.0",
     "@azure/identity": "4.13.0",
     "@azure/keyvault-secrets": "4.10.0",
