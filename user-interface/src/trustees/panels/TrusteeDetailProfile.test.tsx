@@ -73,7 +73,8 @@ describe('TrusteeDetailProfile', () => {
   test('should render public trustee overview section', () => {
     renderWithProps({});
 
-    expect(screen.getByText('Trustee Overview (Public)')).toBeInTheDocument();
+    expect(screen.getByText('Contact Information')).toBeInTheDocument();
+    expect(screen.getByText('Public')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
   });
 
@@ -108,10 +109,8 @@ describe('TrusteeDetailProfile', () => {
   test('should render internal contact information section', () => {
     renderWithProps({});
 
-    expect(screen.getByText('Contact Information (USTP Internal)')).toBeInTheDocument();
-    expect(
-      screen.getByText('USTP Internal information is for internal use only.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Internal')).toBeInTheDocument();
+    expect(screen.getByText('Internal use only.')).toBeInTheDocument();
   });
 
   test('should render internal contact details when available', () => {
@@ -151,8 +150,8 @@ describe('TrusteeDetailProfile', () => {
       'No information added.',
     );
     const internalSection = screen
-      .getByText('Contact Information (USTP Internal)')
-      .closest('.trustee-internal-contact-information');
+      .getByText('Internal')
+      .closest('.contact-information-card-container');
     expect(internalSection).toHaveTextContent('No information added.');
   });
 

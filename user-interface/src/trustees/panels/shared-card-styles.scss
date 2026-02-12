@@ -1,0 +1,25 @@
+// Shared styles for all trustee detail card components
+@mixin trustee-card-styles {
+  width: 18.25rem !important;
+  min-height: 14.875rem !important;
+  margin-bottom: 1.56rem;
+
+  .usa-card__body {
+    padding-top: 1.44rem;
+    padding-right: 1.64rem;
+    padding-bottom: 1.27rem;
+    min-height: 15.875rem;
+  }
+}
+
+@mixin trustee-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.65rem;
+
+  h4 {
+    margin: 0;
+    font-weight: bold;
+  }
+}

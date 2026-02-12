@@ -1,0 +1,49 @@
+.trustee-detail-profile-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+
+  .trustee-profile-section {
+    .trustee-profile-section-heading {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: 0 0 1.5rem 0;
+      line-height: 1.2;
+    }
+
+    .trustee-profile-section-header {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+
+      .trustee-profile-section-heading {
+        margin: 0;
+      }
+
+      #add-another-assistant-button {
+        color: #005ea2;
+        text-decoration: none;
+        font-weight: 600;
+
+        &:hover {
+          color: #1a4480;
+          text-decoration: underline;
+        }
+      }
+    }
+
+    .trustee-profile-cards-row {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .trustee-profile-assistants-grid {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+  }
+}
