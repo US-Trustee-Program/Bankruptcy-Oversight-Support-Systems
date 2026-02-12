@@ -160,6 +160,18 @@ export interface AcmsGateway {
   getMigrationCaseCount(context: ApplicationContext);
 }
 
+export interface AtsGateway {
+  getTrusteesPage(
+    context: ApplicationContext,
+    lastTrusteeId: number | null,
+    pageSize: number,
+  ): Promise<import('../adapters/types/ats.types').AtsTrusteeRecord[]>;
+  getTrusteeAppointments(
+    context: ApplicationContext,
+    trusteeId: number,
+  ): Promise<import('../adapters/types/ats.types').AtsAppointmentRecord[]>;
+}
+
 export type CaseHistoryDocumentType = 'AUDIT_ASSIGNMENT' | 'AUDIT_TRANSFER' | 'AUDIT_CONSOLIDATION';
 
 export interface CasesRepository extends Releasable {

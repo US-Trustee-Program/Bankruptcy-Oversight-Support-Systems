@@ -53,4 +53,46 @@ describe('Testing that database configuration is loaded correctly based on envir
     expect(appConfig.dxtrDbConfig.user).not.toBeNull();
     expect(appConfig.dxtrDbConfig.password).not.toBeNull();
   });
+
+  test('Should configure ATS database with SQL auth', async () => {
+    process.env.ATS_MSSQL_HOST = 'test-server.database.usgovcloudapi.net';
+    process.env.ATS_MSSQL_DATABASE = 'ATS_TEST';
+    process.env.ATS_MSSQL_USER = 'atsUser';
+    process.env.ATS_MSSQL_PASS = 'atsPassword123';
+    process.env.ATS_MSSQL_ENCRYPT = 'true';
+    process.env.ATS_MSSQL_TRUST_UNSIGNED_CERT = 'true';
+
+    const appConfig = new ApplicationConfiguration();
+    expect(appConfig.atsDbConfig).toBeDefined();
+    expect(appConfig.atsDbConfig.server).toEqual('test-server.database.usgovcloudapi.net');
+    expect(appConfig.atsDbConfig.database).toEqual('ATS_TEST');
+    expect(appConfig.atsDbConfig.user).toEqual('atsUser');
+    expect(appConfig.atsDbConfig.password).toEqual('atsPassword123');
+    expect(appConfig.atsDbConfig.options.encrypt).toBeTruthy();
+    expect(appConfig.atsDbConfig.options.trustServerCertificate).toBeTruthy();
+  });
+
+  test('Should configure ATS database with Azure AD auth when no password', async () => {
+    process.env.ATS_MSSQL_HOST = 'test-server.database.usgovcloudapi.net';
+    process.env.ATS_MSSQL_DATABASE = 'ATS_TEST';
+    process.env.ATS_MSSQL_USER = undefined;
+    process.env.ATS_MSSQL_PASS = undefined;
+    process.env.ATS_MSSQL_CLIENT_ID = 'ats-client-id-123';
+
+    const appConfig = new ApplicationConfiguration();
+    expect(appConfig.atsDbConfig).toBeDefined();
+    expect(appConfig.atsDbConfig.authentication).toBeDefined();
+    expect(appConfig.atsDbConfig.authentication.type).toEqual('azure-active-directory-default');
+    expect(appConfig.atsDbConfig.authentication.options.clientId).toEqual('ats-client-id-123');
+  });
+
+  test('Should set ATS database pool configuration', async () => {
+    process.env.ATS_MSSQL_DATABASE = 'ATS_TEST';
+
+    const appConfig = new ApplicationConfiguration();
+    expect(appConfig.atsDbConfig.pool).toBeDefined();
+    expect(appConfig.atsDbConfig.pool.max).toEqual(10);
+    expect(appConfig.atsDbConfig.pool.min).toEqual(0);
+    expect(appConfig.atsDbConfig.pool.idleTimeoutMillis).toEqual(30000);
+  });
 });
