@@ -239,6 +239,16 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
             keys: ['dateFiled', 'caseNumber']
           }
         }
+        {
+          key: {
+            keys: ['debtor.phoneticTokens']
+          }
+        }
+        {
+          key: {
+            keys: ['jointDebtor.phoneticTokens']
+          }
+        }
       ]
     }
   }
