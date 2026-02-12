@@ -35,9 +35,7 @@ export default function MeetingOfCreditorsInfoCard({
           </Button>
         </h3>
       </div>
-      {!zoomInfo && (
-        <div data-testid="zoom-info-empty-message">No information has been entered.</div>
-      )}
+      {!zoomInfo && <div data-testid="zoom-info-empty-message">No information added.</div>}
       {zoomInfo && (
         <div data-testid="zoom-info-content">
           <div className="zoom-link">

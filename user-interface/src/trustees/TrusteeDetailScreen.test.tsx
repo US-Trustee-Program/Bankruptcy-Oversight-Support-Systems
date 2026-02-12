@@ -299,7 +299,7 @@ describe('TrusteeDetailScreen', () => {
     expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
     expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
     expect(screen.getByTestId('zoom-info-empty-message')).toHaveTextContent(
-      'No information has been entered.',
+      'No information added.',
     );
   });
 
