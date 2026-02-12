@@ -170,6 +170,8 @@ export interface AtsGateway {
     context: ApplicationContext,
     trusteeId: number,
   ): Promise<import('../adapters/types/ats.types').AtsAppointmentRecord[]>;
+  getTrusteeCount(context: ApplicationContext): Promise<number>;
+  testConnection(context: ApplicationContext): Promise<boolean>;
 }
 
 export type CaseHistoryDocumentType = 'AUDIT_ASSIGNMENT' | 'AUDIT_TRANSFER' | 'AUDIT_CONSOLIDATION';

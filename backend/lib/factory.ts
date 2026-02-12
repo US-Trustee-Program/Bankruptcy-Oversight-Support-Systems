@@ -9,6 +9,7 @@ import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock
 import { ConnectionPool, config } from 'mssql';
 import {
   AcmsGateway,
+  AtsGateway,
   CaseAssignmentRepository,
   CaseNotesRepository,
   CasesRepository,
@@ -58,6 +59,8 @@ import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.reposito
 import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
 import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
 import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
+import { AtsGatewayImpl } from './adapters/gateways/ats/ats.gateway';
+import { MockAtsGateway } from './adapters/gateways/ats/ats.mock.gateway';
 import { deferRelease } from './deferrable/defer-release';
 import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
@@ -78,6 +81,7 @@ let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
 let storageGateway: StorageGateway;
 let acmsGateway: AcmsGateway;
+let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
 
 let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
@@ -342,6 +346,17 @@ const getAcmsGateway = (context: ApplicationContext): AcmsGateway => {
   return acmsGateway;
 };
 
+const getAtsGateway = (context: ApplicationContext): AtsGateway => {
+  if (!atsGateway) {
+    if (context.config.get('dbMock')) {
+      atsGateway = MockAtsGateway.getInstance();
+    } else {
+      atsGateway = new AtsGatewayImpl(context);
+    }
+  }
+  return atsGateway;
+};
+
 const getOfficeAssigneesRepository = (context: ApplicationContext): OfficeAssigneesRepository => {
   if (context.config.dbMock === true) {
     return MockMongoRepository.getInstance(context);
@@ -386,6 +401,7 @@ const getListsGateway = (context: ApplicationContext): ListsRepository => {
 
 const factory = {
   getAcmsGateway,
+  getAtsGateway,
   getCasesGateway,
   getAssignmentRepository,
   getCaseNotesRepository,
