@@ -35,7 +35,9 @@ async function handleQueueWrite(context: InvocationContext, request: HttpRequest
   const events = caseIds.map((caseId) => ({ caseId }));
 
   // Write to queue via output binding (matching sync-cases PAGE queue format)
-  context.extraOutputs.set(SYNC_CASES_PAGE_QUEUE, events);
+  // Wrap in array because Azure Functions writes each array element as a separate message
+  // and handlePage expects a single message containing an array of events
+  context.extraOutputs.set(SYNC_CASES_PAGE_QUEUE, [events]);
 }
 
 function setup() {

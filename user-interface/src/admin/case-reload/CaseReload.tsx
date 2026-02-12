@@ -9,6 +9,7 @@ import { getDivisionComboOptions, courtSorter } from '@/data-verification/dataVe
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { CASE_NUMBER_REGEX } from '@common/cams/regex';
 
 export function CaseReload() {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -23,7 +24,6 @@ export function CaseReload() {
   const [validationError, setValidationError] = useState<string | null>(null);
   const [reloadError, setReloadError] = useState<string | null>(null);
 
-  // Polling state for Slice 3
   const [pollStatus, setPollStatus] = useState<'idle' | 'polling' | 'success' | 'timeout'>('idle');
 
   const divisionSelectionRef = useRef<ComboBoxRef>(null);
@@ -33,7 +33,7 @@ export function CaseReload() {
   const getCourts = useCallback(() => {
     Api2.getCourts()
       .then((response) => {
-        const sortedOffices = response.data.sort(courtSorter);
+        const sortedOffices = response.data.toSorted(courtSorter);
         const divisionOptions = getDivisionComboOptions(sortedOffices);
         setDivisionsList(divisionOptions);
       })
@@ -73,9 +73,9 @@ export function CaseReload() {
         limit: 1,
         offset: 0,
       });
-      setCosmosCase(searchResponse?.data?.[0] || null);
+      setCosmosCase(searchResponse?.data?.[0] ?? null);
     } catch (error: unknown) {
-      // TODO: Api wrapper discards the fetch Response object and only returns a plain Error
+      // Api wrapper discards the fetch Response object and only returns a plain Error
       // with a formatted string message. This forces us to parse the error message string
       // to extract the status code instead of interrogating response.status directly.
       // Consider refactoring Api to preserve response metadata for better error handling.
@@ -84,15 +84,17 @@ export function CaseReload() {
 
       // Api.get rejects with Error containing message like "404 Error - /path - message"
       // Extract status code from the error message
-      const statusMatch = errorMessage.match(/^(\d{3})\s+Error/);
-      const status = statusMatch ? parseInt(statusMatch[1], 10) : null;
+      const statusMatch = new RegExp(/^(\d{3})\s+Error/).exec(errorMessage);
+      const status = statusMatch ? Number.parseInt(statusMatch[1], 10) : null;
 
       if (status === 404) {
         setValidationError('Case Not Found');
       } else {
         // Extract the actual error message after the path
         // Format: "STATUS Error - /path - actual message"
-        const messageMatch = errorMessage.match(/^(\d{3})\s+Error\s+-\s+[^\s]+\s+-\s+(.+)$/);
+        const messageMatch = new RegExp(/^(\d{3})\s+Error\s+-\s+[^\s]+\s+-\s+(.+)$/).exec(
+          errorMessage,
+        );
         const extractedMessage = messageMatch ? messageMatch[2] : '';
 
         const displayMessage =
@@ -118,20 +120,27 @@ export function CaseReload() {
       // Start polling after 10-second delay
       setPollStatus('polling');
       startPolling(caseId, startTime);
-    } catch (_error: unknown) {
-      setReloadError('Failed to queue case reload - please try again');
-      // Clear validated state so user must re-validate
-      setValidatedCase(null);
-      setCosmosCase(null);
+    } catch (error: unknown) {
+      const message = (error as Error)?.message ?? 'Reason unknown.';
+      setReloadError(`Failed to queue case reload. ${message}`);
     } finally {
       setIsReloading(false);
     }
   }
 
   function isValidatable() {
-    // CaseNumberInput only passes complete case numbers when allowPartialCaseNumber=false
-    // Format is XX-XXXXX (8 chars including hyphen)
-    return divisionCode.trim().length > 0 && caseNumber && caseNumber.length === 8 && !isValidating;
+    // Validate division code is selected
+    if (!divisionCode.trim()) {
+      return false;
+    }
+
+    // Validate case number matches expected format (XX-XXXXX)
+    if (!caseNumber || !CASE_NUMBER_REGEX.test(caseNumber)) {
+      return false;
+    }
+
+    // Not validatable while validation is in progress
+    return !isValidating;
   }
 
   function isReloadable() {
@@ -154,7 +163,7 @@ export function CaseReload() {
 
     // Reset the division combo box
     if (divisionSelectionRef.current) {
-      divisionSelectionRef.current.clearSelection();
+      divisionSelectionRef.current.clearSelections();
     }
   }
 
@@ -187,7 +196,7 @@ export function CaseReload() {
             // Success!
             stopPolling();
             setPollStatus('success');
-            setCosmosCase(newCosmosCase || null);
+            setCosmosCase(newCosmosCase ?? null);
             return;
           }
 
@@ -207,12 +216,12 @@ export function CaseReload() {
   }
 
   function checkSyncCompleted(newCosmosCase: SyncedCase | undefined, startTime: Date): boolean {
-    if (!cosmosCase) {
-      // Was "Not yet synced" - any result is success
-      return !!newCosmosCase;
-    } else {
+    if (cosmosCase) {
       // Was previously synced - check if timestamp updated
       return !!(newCosmosCase && new Date(newCosmosCase.updatedOn) > startTime);
+    } else {
+      // Was "Not yet synced" - any result is success
+      return !!newCosmosCase;
     }
   }
 
@@ -241,7 +250,7 @@ export function CaseReload() {
 
   return (
     <div className="case-reload-admin-panel" data-testid="case-reload-panel">
-      <h2>Reload Case</h2>
+      <h2>Reload Case from DXTR</h2>
 
       {!isLoaded && <LoadingSpinner caption="Loading..."></LoadingSpinner>}
       {isLoaded && (

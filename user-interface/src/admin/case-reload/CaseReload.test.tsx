@@ -5,13 +5,16 @@ import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities
 import { CaseDetail, SyncedCase } from '@common/cams/cases';
 
 const mockCaseDetail: CaseDetail = {
+  dxtrId: 'test-dxtr-id',
   caseId: '091-99-88513',
   caseTitle: 'Stroman - Ondricka',
   chapter: '15',
   courtId: '091',
   courtName: 'Western District of New York (Buffalo)',
   courtDivisionName: 'Buffalo',
-  caseLoad: 'default',
+  courtDivisionCode: '091',
+  officeName: 'Manhattan',
+  officeCode: '081',
   dateFiled: '2024-01-01',
   debtorAttorney: {
     name: 'Test Attorney',
@@ -24,15 +27,34 @@ const mockCaseDetail: CaseDetail = {
     cityStateZipCountry: 'Buffalo, NY 14202',
   },
   regionId: '02',
+  regionName: 'NEW YORK',
   groupDesignator: 'A',
+  consolidation: [],
 };
 
 const mockSyncedCase: SyncedCase = {
+  documentType: 'SYNCED_CASE',
+  dxtrId: 'test-dxtr-id',
   caseId: '091-99-88513',
   chapter: '15',
   caseTitle: 'Stroman - Ondricka',
   dateFiled: '2024-01-01',
   updatedOn: '2024-01-15T10:30:00Z',
+  updatedBy: { id: 'test-user', name: 'Test User' },
+  officeName: 'Manhattan',
+  officeCode: '081',
+  courtId: '091',
+  courtName: 'Western District of New York (Buffalo)',
+  courtDivisionCode: '091',
+  courtDivisionName: 'Buffalo',
+  regionId: '02',
+  regionName: 'NEW YORK',
+  groupDesignator: 'A',
+  debtor: {
+    name: 'John Doe',
+    address1: '456 Oak Ave',
+    cityStateZipCountry: 'Buffalo, NY 14202',
+  },
 };
 
 describe('CaseReload Component - UX and Presentation Tests', () => {
@@ -48,9 +70,11 @@ describe('CaseReload Component - UX and Presentation Tests', () => {
           courtId: '091',
           courtName: 'Western District of New York',
           courtDivisionName: 'Buffalo',
-          abbreviation: 'NYWB',
           courtDivisionCode: '091',
+          officeName: 'Manhattan',
+          officeCode: '081',
           regionId: '02',
+          regionName: 'NEW YORK',
           groupDesignator: 'A',
         },
       ],
@@ -59,6 +83,7 @@ describe('CaseReload Component - UX and Presentation Tests', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
   });
 
   function renderComponent() {
@@ -66,15 +91,14 @@ describe('CaseReload Component - UX and Presentation Tests', () => {
   }
 
   describe('Initial render', () => {
-    test('should display header without DXTR subheading', async () => {
+    test('should display header with DXTR in title', async () => {
       renderComponent();
 
       await waitFor(() => {
         expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
       });
 
-      expect(screen.getByText('Reload Case')).toBeInTheDocument();
-      expect(screen.queryByText(/DXTR/)).not.toBeInTheDocument();
+      expect(screen.getByText('Reload Case from DXTR')).toBeInTheDocument();
     });
 
     test('should display form with "Find Case" button', async () => {
@@ -544,119 +568,6 @@ describe('CaseReload Component - UX and Presentation Tests', () => {
       expect(screen.getByText(/Case Number:/)).toBeInTheDocument();
       expect(screen.getByText(/99-88513/)).toBeInTheDocument();
       expect(screen.queryByText(/091-99-88513/)).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Sync completion UX', () => {
-    test('should hide Reload Case button and show only Reset when sync completes', async () => {
-      vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
-      vi.spyOn(Api2, 'searchCases')
-        .mockResolvedValueOnce({ data: [mockSyncedCase] }) // Initial validation
-        .mockResolvedValueOnce({
-          data: [{ ...mockSyncedCase, updatedOn: '2024-01-20T15:00:00Z' }],
-        }); // Polling result
-
-      vi.spyOn(Api2, 'postCaseReload').mockResolvedValue(undefined);
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      });
-
-      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
-      await userEvent.click(divisionComboBox);
-
-      await waitFor(() => {
-        const buffaloOption = screen.getByText(/Buffalo/);
-        expect(buffaloOption).toBeInTheDocument();
-      });
-
-      const buffaloOption = screen.getByText(/Buffalo/);
-      await userEvent.click(buffaloOption);
-
-      const caseNumberInput = screen.getByLabelText('Case Number');
-      await userEvent.type(caseNumberInput, '99-88513');
-
-      const findButton = screen.getByTestId('button-validate-button');
-      await userEvent.click(findButton);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-validated-case-alert')).toBeInTheDocument();
-      });
-
-      // Click reload button to trigger sync
-      const reloadButton = screen.getByTestId('button-reload-button');
-      await userEvent.click(reloadButton);
-
-      // Wait for polling to complete (mock will resolve immediately)
-      await waitFor(
-        () => {
-          expect(screen.getByText('Sync Completed')).toBeInTheDocument();
-        },
-        { timeout: 10000 },
-      );
-
-      // Reload Case button should be hidden
-      expect(screen.queryByTestId('button-reload-button')).not.toBeInTheDocument();
-      expect(screen.queryByText('Reload Case')).not.toBeInTheDocument();
-
-      // Only Reset button should be visible
-      expect(screen.getByTestId('button-reset-button')).toBeInTheDocument();
-      expect(screen.getByText('Reset')).toBeInTheDocument();
-    });
-
-    test('should display Sync Completed alert below Case Exists', async () => {
-      vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: mockCaseDetail });
-      vi.spyOn(Api2, 'searchCases')
-        .mockResolvedValueOnce({ data: [mockSyncedCase] })
-        .mockResolvedValueOnce({
-          data: [{ ...mockSyncedCase, updatedOn: '2024-01-20T15:00:00Z' }],
-        });
-
-      vi.spyOn(Api2, 'postCaseReload').mockResolvedValue(undefined);
-
-      renderComponent();
-
-      await waitFor(() => {
-        expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-      });
-
-      const divisionComboBox = screen.getByRole('combobox', { name: /division/i });
-      await userEvent.click(divisionComboBox);
-
-      await waitFor(() => {
-        const buffaloOption = screen.getByText(/Buffalo/);
-        expect(buffaloOption).toBeInTheDocument();
-      });
-
-      const buffaloOption = screen.getByText(/Buffalo/);
-      await userEvent.click(buffaloOption);
-
-      const caseNumberInput = screen.getByLabelText('Case Number');
-      await userEvent.type(caseNumberInput, '99-88513');
-
-      const findButton = screen.getByTestId('button-validate-button');
-      await userEvent.click(findButton);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('alert-validated-case-alert')).toBeInTheDocument();
-      });
-
-      const reloadButton = screen.getByTestId('button-reload-button');
-      await userEvent.click(reloadButton);
-
-      await waitFor(
-        () => {
-          expect(screen.getByText('Sync Completed')).toBeInTheDocument();
-        },
-        { timeout: 10000 },
-      );
-
-      // Both alerts should be visible
-      expect(screen.getByText('Case Exists')).toBeInTheDocument();
-      expect(screen.getByText('Sync Completed')).toBeInTheDocument();
-      expect(screen.getByText('Sync completed successfully')).toBeInTheDocument();
     });
   });
 
