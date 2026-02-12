@@ -5,6 +5,8 @@ import {
   transformAppointmentRecord,
   isValidAppointmentForChapter,
   getAppointmentKey,
+  deriveTrusteeStatus,
+  parseTodStatus,
 } from '../../adapters/gateways/ats/ats-mappings';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
@@ -224,13 +226,10 @@ export async function upsertTrustee(
     const existingTrustee = allTrustees.find((t) => t.legacy?.truId === atsTrustee.ID.toString());
 
     if (existingTrustee) {
-      // Update existing trustee
+      // Merge new data into existing document to preserve fields that replaceOne would strip
       context.logger.debug(MODULE_NAME, `Updating existing trustee ${atsTrustee.ID}`);
-      const updated = await repo.updateTrustee(
-        existingTrustee.trusteeId,
-        trusteeInput,
-        SYSTEM_USER,
-      );
+      const merged = { ...existingTrustee, ...trusteeInput };
+      const updated = await repo.updateTrustee(existingTrustee.trusteeId, merged, SYSTEM_USER);
       return { data: updated };
     } else {
       // Create new trustee
@@ -387,6 +386,20 @@ export async function processTrusteeWithAppointments(
         });
       } else {
         appointmentsProcessed = appointmentResult.data;
+      }
+
+      // Derive trustee status from appointment statuses
+      const appointmentStatuses = appointments.map((a) => parseTodStatus(a.STATUS).status);
+      const derivedStatus = deriveTrusteeStatus(appointmentStatuses);
+
+      if (derivedStatus !== trustee.status) {
+        const repo = factory.getTrusteesRepository(context);
+        await repo.updateTrustee(
+          trustee.trusteeId,
+          { ...trustee, status: derivedStatus },
+          SYSTEM_USER,
+        );
+        context.logger.debug(MODULE_NAME, `Updated trustee ${truId} status to '${derivedStatus}'`);
       }
     }
 

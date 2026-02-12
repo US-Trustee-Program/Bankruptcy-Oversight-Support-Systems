@@ -10,7 +10,9 @@ import {
   transformAppointmentRecord,
   isValidAppointmentForChapter,
   getAppointmentKey,
+  deriveTrusteeStatus,
 } from './ats-mappings';
+import { TrusteeStatuses } from '@common/cams/trustees';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../types/ats.types';
 
 describe('ATS Mappings', () => {
@@ -190,6 +192,7 @@ describe('ATS Mappings', () => {
 
       expect(result).toEqual({
         name: 'John A Doe',
+        status: 'active',
         public: {
           address: {
             address1: '123 Main St',
@@ -221,6 +224,7 @@ describe('ATS Mappings', () => {
 
       expect(result).toEqual({
         name: 'Jane Smith',
+        status: 'active',
         public: {
           address: {
             address1: '',
@@ -361,6 +365,38 @@ describe('ATS Mappings', () => {
       const key = getAppointmentKey('123', appointment);
 
       expect(key).toBe('123-usbc-sdny-081-7-panel');
+    });
+  });
+
+  describe('deriveTrusteeStatus', () => {
+    test('should return ACTIVE when no appointments', () => {
+      expect(deriveTrusteeStatus([])).toBe(TrusteeStatuses.ACTIVE);
+    });
+
+    test('should return ACTIVE when any appointment is active', () => {
+      expect(deriveTrusteeStatus(['active', 'inactive', 'terminated'])).toBe(
+        TrusteeStatuses.ACTIVE,
+      );
+    });
+
+    test('should return SUSPENDED when no active but has suspended appointments', () => {
+      expect(deriveTrusteeStatus(['inactive', 'voluntarily-suspended'])).toBe(
+        TrusteeStatuses.SUSPENDED,
+      );
+      expect(deriveTrusteeStatus(['involuntarily-suspended', 'terminated'])).toBe(
+        TrusteeStatuses.SUSPENDED,
+      );
+    });
+
+    test('should return NOT_ACTIVE when all appointments are inactive/terminated/etc', () => {
+      expect(deriveTrusteeStatus(['inactive', 'terminated'])).toBe(TrusteeStatuses.NOT_ACTIVE);
+      expect(deriveTrusteeStatus(['deceased', 'resigned', 'removed'])).toBe(
+        TrusteeStatuses.NOT_ACTIVE,
+      );
+    });
+
+    test('should prioritize ACTIVE over SUSPENDED', () => {
+      expect(deriveTrusteeStatus(['active', 'voluntarily-suspended'])).toBe(TrusteeStatuses.ACTIVE);
     });
   });
 });

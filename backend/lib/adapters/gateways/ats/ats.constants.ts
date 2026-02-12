@@ -1,4 +1,4 @@
-import { AppointmentType, AppointmentStatus } from '@common/cams/trustees';
+import { AppointmentType, AppointmentStatus, TrusteeStatuses } from '@common/cams/trustees';
 
 /**
  * ATS-specific constants for trustee migration
@@ -71,6 +71,12 @@ export const DEFAULT_STATUS_MAPPING = {
   appointmentType: 'panel' as AppointmentType,
   status: 'active' as AppointmentStatus,
 };
+
+/**
+ * Default trustee status for migrated trustees.
+ * Can be updated later based on appointment statuses.
+ */
+export const DEFAULT_TRUSTEE_STATUS = TrusteeStatuses.ACTIVE;
 
 /**
  * Special chapter codes that include appointment type
