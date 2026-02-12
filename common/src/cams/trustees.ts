@@ -98,10 +98,16 @@ export type Trustee = TrusteeData &
     legacy?: LegacyAddress & {
       phone?: string;
       email?: string;
+      truId?: string;
     };
   };
 
-export type TrusteeInput = TrusteeCore & NullableOptionalFields<TrusteeOptionalFields>;
+export type TrusteeInput = TrusteeCore &
+  NullableOptionalFields<TrusteeOptionalFields> & {
+    legacy?: {
+      truId?: string;
+    };
+  };
 
 export type TrusteeOversightAssignment = Auditable &
   Identifiable & {
