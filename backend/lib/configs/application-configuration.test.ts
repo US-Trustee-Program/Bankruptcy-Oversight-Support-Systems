@@ -58,7 +58,7 @@ describe('Testing that database configuration is loaded correctly based on envir
     process.env.ATS_MSSQL_HOST = 'test-server.database.usgovcloudapi.net';
     process.env.ATS_MSSQL_DATABASE = 'ATS_TEST';
     process.env.ATS_MSSQL_USER = 'atsUser';
-    process.env.ATS_MSSQL_PASS = 'atsPassword123';
+    process.env.ATS_MSSQL_PASS = (Math.random() + 1).toString(36).substring(2);
     process.env.ATS_MSSQL_ENCRYPT = 'true';
     process.env.ATS_MSSQL_TRUST_UNSIGNED_CERT = 'true';
 
@@ -67,7 +67,7 @@ describe('Testing that database configuration is loaded correctly based on envir
     expect(appConfig.atsDbConfig.server).toEqual('test-server.database.usgovcloudapi.net');
     expect(appConfig.atsDbConfig.database).toEqual('ATS_TEST');
     expect(appConfig.atsDbConfig.user).toEqual('atsUser');
-    expect(appConfig.atsDbConfig.password).toEqual('atsPassword123');
+    expect(appConfig.atsDbConfig.password).toEqual(process.env.ATS_MSSQL_PASS);
     expect(appConfig.atsDbConfig.options.encrypt).toBeTruthy();
     expect(appConfig.atsDbConfig.options.trustServerCertificate).toBeTruthy();
   });
