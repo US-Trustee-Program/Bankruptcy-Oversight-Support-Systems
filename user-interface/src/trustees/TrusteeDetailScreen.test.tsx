@@ -347,7 +347,9 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter([route]);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
+        expect(
+          screen.getByRole('heading', { level: 2, name: expectedSubheader }),
+        ).toBeInTheDocument();
       });
     },
   );
