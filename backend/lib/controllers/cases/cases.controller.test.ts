@@ -48,6 +48,8 @@ describe('cases controller test', () => {
     });
 
     test('should throw CamsError when use case errors on getCaseDetail', async () => {
+      context.request.method = 'GET';
+      context.request.params = { caseId: caseId1 };
       vi.spyOn(CaseManagement.prototype, 'getCaseDetail').mockRejectedValue(
         new Error('some error'),
       );
@@ -418,7 +420,10 @@ describe('cases controller test', () => {
 
       vi.spyOn(CaseManagement.prototype, 'searchCases').mockRejectedValue(error);
 
-      context.request = mockCamsHttpRequest({ query: { caseNumber } });
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, limit, offset },
+      });
       await expect(controller.handleRequest(context)).rejects.toThrow(UnknownError);
     });
   });
