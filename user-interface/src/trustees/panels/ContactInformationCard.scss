@@ -1,0 +1,19 @@
+@import './shared-card-styles.scss';
+
+.contact-information-card-container {
+  .contact-information-card {
+    @include trustee-card-styles;
+
+    .usa-card__body {
+      .usa-alert-container {
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+      }
+
+      .contact-information-card-header {
+        @include trustee-card-header;
+      }
+    }
+  }
+}
