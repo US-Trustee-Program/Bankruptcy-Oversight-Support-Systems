@@ -1,6 +1,7 @@
 import './TrusteeDetailProfile.scss';
 import { Trustee } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Icon from '@/lib/components/uswds/Icon';
 import TrusteeOverviewCard from './TrusteeOverviewCard';
 import MeetingOfCreditorsInfoCard from './MeetingOfCreditorsInfoCard';
 import OtherInformationCard from './OtherInformationCard';
@@ -52,7 +53,8 @@ export default function TrusteeDetailProfile({
                 aria-label="Add another assistant"
                 onClick={onAddAssistant}
               >
-                + Add Another Assistant
+                <Icon name="add" className="add-icon" />
+                Add Another Assistant
               </Button>
             )}
           </div>
