@@ -24,7 +24,6 @@ import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
-import { CREATE_MODE_ID } from './forms/trusteeForms.constants';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -100,24 +99,21 @@ export default function TrusteeDetailScreen() {
   }, []);
 
   useEffect(() => {
-    const fetchTrusteeDetails = () => {
-      if (trusteeId) {
-        setIsLoading(true);
-        Api2.getTrustee(trusteeId)
-          .then((trusteeResponse) => {
-            setTrustee(trusteeResponse.data);
-          })
-          .catch(() => {
-            globalAlert?.error('Could not get trustee details');
-          })
-          .finally(() => {
-            setIsLoading(false);
-          });
-      }
-      setNavState(mapTrusteeDetailNavState(location.pathname));
-    };
+    if (!trusteeId) return;
 
-    fetchTrusteeDetails();
+    setIsLoading(true);
+    setNavState(mapTrusteeDetailNavState(location.pathname));
+
+    Api2.getTrustee(trusteeId)
+      .then((trusteeResponse) => {
+        setTrustee(trusteeResponse.data);
+      })
+      .catch(() => {
+        globalAlert?.error('Could not get trustee details');
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [location.pathname, trusteeId, globalAlert]);
 
   if (!trusteeId || (!isLoading && !trustee)) {
@@ -189,12 +185,12 @@ export default function TrusteeDetailScreen() {
     {
       path: 'assistant/create',
       subHeading: 'Create Trustee Assistant (USTP Internal)',
-      content: <TrusteeAssistantForm trusteeId={trusteeId} assistantId={CREATE_MODE_ID} />,
+      content: <TrusteeAssistantForm trusteeId={trusteeId} />,
     },
     {
       path: 'assistant/edit/:assistantId',
       subHeading: 'Edit Trustee Assistant (USTP Internal)',
-      content: <TrusteeAssistantForm trusteeId={trusteeId} />,
+      content: <TrusteeAssistantForm trusteeId={trusteeId} trustee={trustee} />,
     },
     {
       path: 'other/edit',

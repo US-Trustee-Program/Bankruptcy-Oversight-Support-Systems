@@ -7,7 +7,7 @@ import FormattedContact from '@/lib/components/cams/FormattedContact';
 export interface TrusteeAssistantCardProps {
   assistant?: TrusteeAssistant;
   index: number;
-  onEdit: (assistantId: string) => void;
+  onEdit: () => void;
   onAdd: () => void;
 }
 
@@ -19,8 +19,8 @@ export default function TrusteeAssistantCard({
 }: Readonly<TrusteeAssistantCardProps>) {
   const isEmpty = !assistant;
   const buttonId = isEmpty ? 'edit-assistant-empty' : `edit-assistant-${index}`;
-  const handleClick = isEmpty ? onAdd : () => onEdit(assistant.id);
-  const buttonLabel = isEmpty ? 'Add assistant' : `Edit assistant ${assistant.name}`;
+  const handleClick = isEmpty ? onAdd : onEdit;
+  const buttonLabel = isEmpty ? 'Add assistant' : `Edit assistant ${assistant?.name ?? ''}`;
 
   return (
     <div className="trustee-assistant-card-container">
