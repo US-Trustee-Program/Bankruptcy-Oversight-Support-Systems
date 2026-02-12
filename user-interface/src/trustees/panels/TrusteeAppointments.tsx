@@ -64,6 +64,32 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     });
   };
 
+  const sortAppointments = (appointments: TrusteeAppointment[]): TrusteeAppointment[] => {
+    return [...appointments].sort((a, b) => {
+      // 1. Group by district (courtName)
+      const districtA = a.courtName || '';
+      const districtB = b.courtName || '';
+      const districtComparison = districtA.localeCompare(districtB);
+      if (districtComparison !== 0) return districtComparison;
+
+      // 2. Sort by city (courtDivisionName) alphabetically
+      const cityA = a.courtDivisionName || '';
+      const cityB = b.courtDivisionName || '';
+      const cityComparison = cityA.localeCompare(cityB);
+      if (cityComparison !== 0) return cityComparison;
+
+      // 3. Sort by chapter in ascending order
+      // Extract numeric value from chapter (e.g., '7' -> 7, '11-subchapter-v' -> 11)
+      const getChapterNumber = (chapter: string): number => {
+        const match = chapter.match(/^(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      };
+      const chapterA = getChapterNumber(a.chapter);
+      const chapterB = getChapterNumber(b.chapter);
+      return chapterA - chapterB;
+    });
+  };
+
   if (appointments.length === 0) {
     return (
       <div className="trustee-appointments-list">
@@ -78,6 +104,8 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     );
   }
 
+  const sortedAppointments = sortAppointments(appointments);
+
   return (
     <div className="trustee-appointments-list">
       <div className="toolbar">
@@ -87,7 +115,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
         </Button>
       </div>
       <div className="appointments-list">
-        {appointments.map((appointment) => (
+        {sortedAppointments.map((appointment) => (
           <AppointmentCard key={appointment.id} appointment={appointment} />
         ))}
       </div>

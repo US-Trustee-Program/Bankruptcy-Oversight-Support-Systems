@@ -229,4 +229,423 @@ describe('TrusteeAppointments', () => {
       state: { existingAppointments: mockAppointments },
     });
   });
+
+  describe('Appointment Grouping and Sorting', () => {
+    test('should group appointments by district (courtName)', async () => {
+      const appointments: TrusteeAppointment[] = [
+        {
+          id: 'appointment-001',
+          trusteeId: 'trustee-123',
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          courtDivisionName: 'Manhattan',
+          courtName: 'Southern District of New York',
+          divisionCode: '1',
+          status: 'active',
+          appointedDate: '2020-01-15T00:00:00.000Z',
+          effectiveDate: '2020-01-15T00:00:00.000Z',
+          createdOn: '2020-01-10T14:30:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2020-01-10T14:30:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-002',
+          trusteeId: 'trustee-123',
+          chapter: '11',
+          appointmentType: 'case-by-case',
+          courtId: '082',
+          courtDivisionName: 'Brooklyn',
+          courtName: 'Eastern District of New York',
+          divisionCode: '2',
+          status: 'active',
+          appointedDate: '2019-03-22T00:00:00.000Z',
+          effectiveDate: '2019-03-22T00:00:00.000Z',
+          createdOn: '2019-03-15T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2019-03-15T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-003',
+          trusteeId: 'trustee-123',
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '081',
+          courtDivisionName: 'White Plains',
+          courtName: 'Southern District of New York',
+          divisionCode: '3',
+          status: 'active',
+          appointedDate: '2021-06-10T00:00:00.000Z',
+          effectiveDate: '2021-06-10T00:00:00.000Z',
+          createdOn: '2021-06-05T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2021-06-05T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+      ];
+
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        const appointmentCards = document.querySelectorAll('.appointment-card-container');
+        expect(appointmentCards).toHaveLength(3);
+      });
+
+      // Get all appointment cards to verify grouping
+      const appointmentCards = document.querySelectorAll('.appointment-card-container');
+      const appointmentInfo = Array.from(appointmentCards).map((card) => {
+        const heading = card.querySelector('.appointment-card-heading');
+        const districtMatch = heading?.textContent?.match(/(Eastern|Southern) District/);
+        return districtMatch ? districtMatch[1] : '';
+      });
+
+      // Verify that Eastern District appointments come before Southern District
+      // (alphabetically grouped)
+      expect(appointmentInfo[0]).toBe('Eastern');
+      expect(appointmentInfo[1]).toBe('Southern');
+      expect(appointmentInfo[2]).toBe('Southern');
+    });
+
+    test('should sort appointments alphabetically by city (courtDivisionName) within each district group', async () => {
+      const appointments: TrusteeAppointment[] = [
+        {
+          id: 'appointment-001',
+          trusteeId: 'trustee-123',
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          courtDivisionName: 'White Plains',
+          courtName: 'Southern District of New York',
+          divisionCode: '1',
+          status: 'active',
+          appointedDate: '2020-01-15T00:00:00.000Z',
+          effectiveDate: '2020-01-15T00:00:00.000Z',
+          createdOn: '2020-01-10T14:30:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2020-01-10T14:30:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-002',
+          trusteeId: 'trustee-123',
+          chapter: '11',
+          appointmentType: 'case-by-case',
+          courtId: '081',
+          courtDivisionName: 'Manhattan',
+          courtName: 'Southern District of New York',
+          divisionCode: '2',
+          status: 'active',
+          appointedDate: '2019-03-22T00:00:00.000Z',
+          effectiveDate: '2019-03-22T00:00:00.000Z',
+          createdOn: '2019-03-15T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2019-03-15T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-003',
+          trusteeId: 'trustee-123',
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '081',
+          courtDivisionName: 'Albany',
+          courtName: 'Southern District of New York',
+          divisionCode: '3',
+          status: 'active',
+          appointedDate: '2021-06-10T00:00:00.000Z',
+          effectiveDate: '2021-06-10T00:00:00.000Z',
+          createdOn: '2021-06-05T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2021-06-05T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+      ];
+
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        const appointmentCards = document.querySelectorAll('.appointment-card-container');
+        expect(appointmentCards).toHaveLength(3);
+      });
+
+      // Get all appointment cards in order
+      const appointmentCards = document.querySelectorAll('.appointment-card-container');
+      const cities = Array.from(appointmentCards).map((card) => {
+        const heading = card.querySelector('.appointment-card-heading');
+        const match = heading?.textContent?.match(/\(([^)]+)\)/);
+        return match ? match[1] : '';
+      });
+
+      // Verify cities are in alphabetical order: Albany, Manhattan, White Plains
+      expect(cities).toEqual(['Albany', 'Manhattan', 'White Plains']);
+    });
+
+    test('should sort appointments by chapter in ascending order when in the same district and city', async () => {
+      const appointments: TrusteeAppointment[] = [
+        {
+          id: 'appointment-001',
+          trusteeId: 'trustee-123',
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '081',
+          courtDivisionName: 'Manhattan',
+          courtName: 'Southern District of New York',
+          divisionCode: '1',
+          status: 'active',
+          appointedDate: '2020-01-15T00:00:00.000Z',
+          effectiveDate: '2020-01-15T00:00:00.000Z',
+          createdOn: '2020-01-10T14:30:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2020-01-10T14:30:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-002',
+          trusteeId: 'trustee-123',
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          courtDivisionName: 'Manhattan',
+          courtName: 'Southern District of New York',
+          divisionCode: '2',
+          status: 'active',
+          appointedDate: '2019-03-22T00:00:00.000Z',
+          effectiveDate: '2019-03-22T00:00:00.000Z',
+          createdOn: '2019-03-15T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2019-03-15T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-003',
+          trusteeId: 'trustee-123',
+          chapter: '11',
+          appointmentType: 'case-by-case',
+          courtId: '081',
+          courtDivisionName: 'Manhattan',
+          courtName: 'Southern District of New York',
+          divisionCode: '3',
+          status: 'active',
+          appointedDate: '2021-06-10T00:00:00.000Z',
+          effectiveDate: '2021-06-10T00:00:00.000Z',
+          createdOn: '2021-06-05T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2021-06-05T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+      ];
+
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        const appointmentCards = document.querySelectorAll('.appointment-card-container');
+        expect(appointmentCards).toHaveLength(3);
+      });
+
+      // Get all appointment cards in order
+      const appointmentCards = document.querySelectorAll('.appointment-card-container');
+      const chapters = Array.from(appointmentCards).map((card) => {
+        const heading = card.querySelector('.appointment-card-heading');
+        const match = heading?.textContent?.match(/Chapter (\d+)/);
+        return match ? match[1] : '';
+      });
+
+      // Verify chapters are in ascending order: 7, 11, 13
+      expect(chapters).toEqual(['7', '11', '13']);
+    });
+
+    test('should apply all sorting rules together: district grouping, then city alphabetically, then chapter ascending', async () => {
+      const appointments: TrusteeAppointment[] = [
+        {
+          id: 'appointment-001',
+          trusteeId: 'trustee-123',
+          chapter: '13',
+          appointmentType: 'standing',
+          courtId: '082',
+          courtDivisionName: 'Brooklyn',
+          courtName: 'Eastern District of New York',
+          divisionCode: '1',
+          status: 'active',
+          appointedDate: '2020-01-15T00:00:00.000Z',
+          effectiveDate: '2020-01-15T00:00:00.000Z',
+          createdOn: '2020-01-10T14:30:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2020-01-10T14:30:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-002',
+          trusteeId: 'trustee-123',
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          courtDivisionName: 'White Plains',
+          courtName: 'Southern District of New York',
+          divisionCode: '2',
+          status: 'active',
+          appointedDate: '2019-03-22T00:00:00.000Z',
+          effectiveDate: '2019-03-22T00:00:00.000Z',
+          createdOn: '2019-03-15T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2019-03-15T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-003',
+          trusteeId: 'trustee-123',
+          chapter: '11',
+          appointmentType: 'case-by-case',
+          courtId: '081',
+          courtDivisionName: 'Manhattan',
+          courtName: 'Southern District of New York',
+          divisionCode: '3',
+          status: 'active',
+          appointedDate: '2021-06-10T00:00:00.000Z',
+          effectiveDate: '2021-06-10T00:00:00.000Z',
+          createdOn: '2021-06-05T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2021-06-05T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-004',
+          trusteeId: 'trustee-123',
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          courtDivisionName: 'Manhattan',
+          courtName: 'Southern District of New York',
+          divisionCode: '4',
+          status: 'active',
+          appointedDate: '2018-11-01T00:00:00.000Z',
+          effectiveDate: '2018-11-01T00:00:00.000Z',
+          createdOn: '2018-10-25T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2018-10-25T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-005',
+          trusteeId: 'trustee-123',
+          chapter: '11',
+          appointmentType: 'case-by-case',
+          courtId: '082',
+          courtDivisionName: 'Brooklyn',
+          courtName: 'Eastern District of New York',
+          divisionCode: '5',
+          status: 'active',
+          appointedDate: '2022-02-14T00:00:00.000Z',
+          effectiveDate: '2022-02-14T00:00:00.000Z',
+          createdOn: '2022-02-10T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2022-02-10T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+      ];
+
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        const appointmentCards = document.querySelectorAll('.appointment-card-container');
+        expect(appointmentCards).toHaveLength(5);
+      });
+
+      // Get all appointment cards in order
+      const appointmentCards = document.querySelectorAll('.appointment-card-container');
+      const appointmentInfo = Array.from(appointmentCards).map((card) => {
+        const heading = card.querySelector('.appointment-card-heading');
+        const districtMatch = heading?.textContent?.match(/(Eastern|Southern) District/);
+        const cityMatch = heading?.textContent?.match(/\(([^)]+)\)/);
+        const chapterMatch = heading?.textContent?.match(/Chapter (\d+)/);
+        return {
+          district: districtMatch ? districtMatch[1] : '',
+          city: cityMatch ? cityMatch[1] : '',
+          chapter: chapterMatch ? chapterMatch[1] : '',
+        };
+      });
+
+      // Expected order:
+      // 1. Eastern District - Brooklyn - Chapter 11
+      // 2. Eastern District - Brooklyn - Chapter 13
+      // 3. Southern District - Manhattan - Chapter 7
+      // 4. Southern District - Manhattan - Chapter 11
+      // 5. Southern District - White Plains - Chapter 7
+      expect(appointmentInfo).toEqual([
+        { district: 'Eastern', city: 'Brooklyn', chapter: '11' },
+        { district: 'Eastern', city: 'Brooklyn', chapter: '13' },
+        { district: 'Southern', city: 'Manhattan', chapter: '7' },
+        { district: 'Southern', city: 'Manhattan', chapter: '11' },
+        { district: 'Southern', city: 'White Plains', chapter: '7' },
+      ]);
+    });
+
+    test('should handle appointments with missing courtName or courtDivisionName gracefully', async () => {
+      const appointments: TrusteeAppointment[] = [
+        {
+          id: 'appointment-001',
+          trusteeId: 'trustee-123',
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          courtDivisionName: 'Manhattan',
+          courtName: 'Southern District of New York',
+          divisionCode: '1',
+          status: 'active',
+          appointedDate: '2020-01-15T00:00:00.000Z',
+          effectiveDate: '2020-01-15T00:00:00.000Z',
+          createdOn: '2020-01-10T14:30:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2020-01-10T14:30:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+        {
+          id: 'appointment-002',
+          trusteeId: 'trustee-123',
+          chapter: '11',
+          appointmentType: 'case-by-case',
+          courtId: '999',
+          divisionCode: '2',
+          status: 'active',
+          appointedDate: '2019-03-22T00:00:00.000Z',
+          effectiveDate: '2019-03-22T00:00:00.000Z',
+          createdOn: '2019-03-15T10:00:00.000Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedOn: '2019-03-15T10:00:00.000Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+        },
+      ];
+
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: appointments });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        const appointmentCards = document.querySelectorAll('.appointment-card-container');
+        expect(appointmentCards).toHaveLength(2);
+      });
+
+      // Verify both appointments are rendered
+      const appointmentCards = document.querySelectorAll('.appointment-card-container');
+      expect(appointmentCards).toHaveLength(2);
+
+      // The appointment with missing court info should appear first (empty string sorts first)
+      const firstCard = appointmentCards[0];
+      expect(firstCard.textContent).toContain('Court not found');
+
+      // The appointment with valid court info should appear second
+      const secondCard = appointmentCards[1];
+      expect(secondCard.textContent).toContain('Southern District of New York');
+      expect(secondCard.textContent).toContain('Manhattan');
+    });
+  });
 });
