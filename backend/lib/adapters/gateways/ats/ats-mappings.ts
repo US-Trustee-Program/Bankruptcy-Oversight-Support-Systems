@@ -22,6 +22,9 @@ import {
   SPECIAL_CHAPTER_CODES,
   STANDARD_CHAPTERS,
   DISTRICT_TO_COURT_MAP,
+  CBC_STATUS_MAP,
+  SUBCHAPTER_V_STATUS_CODES,
+  CODE_1_STANDING_CHAPTERS,
 } from './ats.constants';
 
 const MODULE_NAME = 'ATS-MAPPINGS';
@@ -271,20 +274,49 @@ export function transformTrusteeRecord(
 export function transformAppointmentRecord(
   atsAppointment: AtsAppointmentRecord,
 ): TrusteeAppointmentInput {
+  // Keep original chapter code for CBC lookup
+  const originalChapter = atsAppointment.CHAPTER?.trim().toUpperCase() || '';
+  const statusCode = atsAppointment.STATUS?.trim().toUpperCase() || '';
+
   // Parse chapter and get appointment type if specified
   const chapterMapping = parseChapterAndType(atsAppointment.CHAPTER);
+  let chapter = chapterMapping.chapter as AppointmentChapterType;
 
-  // Parse status to get appointment type and status
-  // If chapter already specified appointment type (like 12CBC), use that
+  // Parse status to get appointment type and status (flat map defaults)
   const statusMapping = parseTodStatus(atsAppointment.STATUS);
-  const appointmentType = chapterMapping.appointmentType || statusMapping.appointmentType;
+  let appointmentType: AppointmentType = statusMapping.appointmentType;
+  let status: AppointmentStatus = statusMapping.status;
+
+  // SPECIAL CASE 1: CBC chapter overrides
+  // CBC chapters override BOTH appointmentType and status from flat map
+  if (CBC_STATUS_MAP[originalChapter]?.[statusCode]) {
+    const cbcOverride = CBC_STATUS_MAP[originalChapter][statusCode];
+    appointmentType = cbcOverride.appointmentType;
+    status = cbcOverride.status;
+  }
+  // SPECIAL CASE 2: V/VR + Chapter 11 → 11-subchapter-v
+  // When CHAPTER=11 and STATUS=V or VR, resolve to '11-subchapter-v'
+  else if (chapter === '11' && SUBCHAPTER_V_STATUS_CODES.has(statusCode)) {
+    chapter = '11-subchapter-v';
+    // Keep appointmentType and status from flat map (pool/out-of-pool with correct status)
+  }
+  // SPECIAL CASE 3: Code 1 + Chapter 12/13 → Standing/Active
+  // Code 1 with Ch12/13 maps to Standing/Active instead of Case-by-Case/Active
+  else if (statusCode === '1' && CODE_1_STANDING_CHAPTERS.has(chapter)) {
+    appointmentType = 'standing';
+    status = 'active';
+  }
+  // SPECIAL CASE 4: Legacy CBC appointmentType from chapter parsing
+  // If chapter parsing gave us an appointmentType (12CBC/13CBC), use that
+  else if (chapterMapping.appointmentType) {
+    appointmentType = chapterMapping.appointmentType;
+  }
 
   // Map district to court ID
   const courtId = getCourtId(atsAppointment.DISTRICT);
 
   // Validate chapter type for CAMS
-  const chapter = chapterMapping.chapter as AppointmentChapterType;
-  if (!['7', '11', '12', '13'].includes(chapter)) {
+  if (!['7', '11', '11-subchapter-v', '12', '13'].includes(chapter)) {
     throw new Error(`Invalid chapter for CAMS: ${chapter}`);
   }
 
@@ -303,7 +335,7 @@ export function transformAppointmentRecord(
     courtId,
     divisionCode: atsAppointment.DIVISION,
     appointedDate,
-    status: statusMapping.status,
+    status,
     effectiveDate,
   };
 }
