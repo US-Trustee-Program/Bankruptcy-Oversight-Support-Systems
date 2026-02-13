@@ -454,6 +454,90 @@ describe('Migrate Trustees Use Case', () => {
       );
     });
 
+    test('should use transformAppointmentRecord for CBC status derivation', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 5,
+        FIRST_NAME: 'Carol',
+        LAST_NAME: 'White',
+      };
+
+      const createdTrustee = {
+        id: 'new-id',
+        trusteeId: 'trustee-555',
+        name: 'Carol White',
+        status: 'active',
+      };
+
+      // CBC chapter with status 3 should map to 'inactive' (not 'resigned' from flat map)
+      const mockAppointments: AtsAppointmentRecord[] = [
+        {
+          TRU_ID: 5,
+          DISTRICT: '02',
+          DIVISION: '081',
+          CHAPTER: '12CBC',
+          STATUS: '3', // CBC override: inactive (flat map would give: standing/resigned)
+        },
+      ];
+
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue({
+        ...createdTrustee,
+        status: 'not active',
+      });
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
+      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
+      mockAppointmentsRepo.createAppointment.mockResolvedValue({});
+
+      const result = await processTrusteeWithAppointments(context, atsTrustee);
+
+      expect(result.success).toBe(true);
+      // Should derive 'not active' status from CBC 'inactive' appointment (not 'resigned' from flat map)
+      expect(mockTrusteesRepo.updateTrustee).toHaveBeenCalledWith(
+        'trustee-555',
+        expect.objectContaining({ status: 'not active' }),
+        expect.anything(),
+      );
+    });
+
+    test('should fall back to parseTodStatus when transformAppointmentRecord fails', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 6,
+        FIRST_NAME: 'Dave',
+        LAST_NAME: 'Black',
+      };
+
+      const createdTrustee = {
+        id: 'new-id',
+        trusteeId: 'trustee-666',
+        name: 'Dave Black',
+        status: 'active',
+      };
+
+      // Invalid district will cause transformAppointmentRecord to throw
+      const mockAppointments: AtsAppointmentRecord[] = [
+        {
+          TRU_ID: 6,
+          DISTRICT: '99', // Invalid district - will cause transform to fail
+          DIVISION: '081',
+          CHAPTER: '7',
+          STATUS: 'PA', // Should fall back to flat map: panel/active
+        },
+      ];
+
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue(createdTrustee);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
+      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
+
+      const result = await processTrusteeWithAppointments(context, atsTrustee);
+
+      expect(result.success).toBe(true);
+      // Should not update trustee status since fallback gives 'active' (same as default)
+      expect(mockTrusteesRepo.updateTrustee).not.toHaveBeenCalled();
+    });
+
     test('should default trustee status to active when no appointments exist', async () => {
       const atsTrustee: AtsTrusteeRecord = {
         ID: 4,
