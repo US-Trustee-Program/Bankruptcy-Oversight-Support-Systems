@@ -369,7 +369,7 @@ export interface QueueGateway {
   using<T = unknown>(
     context: ApplicationContext,
     queueName: LogicalQueueNames,
-  ): { enqueue: (...messages: T[]) => void };
+  ): { enqueue: (...messages: (T | T[])[]) => void };
 }
 
 export interface DataflowsHttpGateway {
