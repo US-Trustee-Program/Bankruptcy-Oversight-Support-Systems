@@ -52,59 +52,45 @@ const makeAppointment = (
 const getAppointmentCards = () =>
   Array.from(document.querySelectorAll('.appointment-card-container'));
 
-const getAppointmentStates = () =>
-  getAppointmentCards().map((card) => {
-    const heading = card.querySelector('.appointment-card-heading');
-    const match = heading?.textContent?.match(/District of ([A-Za-z ]+)/);
-    return match ? match[1].trim() : '';
-  });
+const getAppointmentHeading = (card: Element) =>
+  card.querySelector('.appointment-card-heading')?.textContent ?? '';
 
-const getAppointmentDistricts = () =>
-  getAppointmentCards().map((card) => {
-    const heading = card.querySelector('.appointment-card-heading');
-    const match = heading?.textContent?.match(
-      /(Eastern|Southern|Northern|Central|Western) District/,
-    );
-    return match ? match[1] : '';
-  });
+const parseAppointmentHeading = (heading: string) => {
+  const stateMatch = heading.match(/District of ([A-Za-z ]+)/);
+  const districtMatch = heading.match(/(Eastern|Southern|Northern|Central|Western) District/);
+  const divisionMatch = heading.match(/\(([^)]+)\)/);
+  const chapterMatch = heading.match(/Chapter (\d+)/);
+  const typeMatch = heading.match(/ - ([^-]+)$/);
 
-const getAppointmentDivisions = () =>
-  getAppointmentCards().map((card) => {
-    const heading = card.querySelector('.appointment-card-heading');
-    const match = heading?.textContent?.match(/\(([^)]+)\)/);
-    return match ? match[1] : '';
-  });
+  return {
+    state: stateMatch ? stateMatch[1].trim() : '',
+    district: districtMatch ? districtMatch[1] : '',
+    division: divisionMatch ? divisionMatch[1] : '',
+    chapter: chapterMatch ? chapterMatch[1] : '',
+    type: typeMatch ? typeMatch[1].trim() : '',
+  };
+};
 
-const getAppointmentChapters = () =>
-  getAppointmentCards().map((card) => {
-    const heading = card.querySelector('.appointment-card-heading');
-    const match = heading?.textContent?.match(/Chapter (\d+)/);
-    return match ? match[1] : '';
-  });
+const getParsedAppointments = () =>
+  getAppointmentCards().map((card) => parseAppointmentHeading(getAppointmentHeading(card)));
 
-const getAppointmentTypes = () =>
-  getAppointmentCards().map((card) => {
-    const heading = card.querySelector('.appointment-card-heading');
-    const match = heading?.textContent?.match(/ - ([^-]+)$/);
-    return match ? match[1].trim() : '';
-  });
+const getAppointmentStates = () => getParsedAppointments().map((a) => a.state);
+
+const getAppointmentDistricts = () => getParsedAppointments().map((a) => a.district);
+
+const getAppointmentDivisions = () => getParsedAppointments().map((a) => a.division);
+
+const getAppointmentChapters = () => getParsedAppointments().map((a) => a.chapter);
+
+const getAppointmentTypes = () => getParsedAppointments().map((a) => a.type);
 
 const getAppointmentInfo = () =>
-  getAppointmentCards().map((card) => {
-    const heading = card.querySelector('.appointment-card-heading');
-    const districtMatch = heading?.textContent?.match(
-      /(Eastern|Southern|Northern|Central|Western) District/,
-    );
-    const divisionMatch = heading?.textContent?.match(/\(([^)]+)\)/);
-    const chapterMatch = heading?.textContent?.match(/Chapter (\d+)/);
-    const typeMatch = heading?.textContent?.match(/ - ([^-]+)$/);
-    return {
-      district: districtMatch ? districtMatch[1] : '',
-      division: divisionMatch ? divisionMatch[1] : '',
-      chapter: chapterMatch ? chapterMatch[1] : '',
-      type: typeMatch ? typeMatch[1].trim() : '',
-    };
-  });
+  getParsedAppointments().map(({ district, division, chapter, type }) => ({
+    district,
+    division,
+    chapter,
+    type,
+  }));
 
 // ============================================================================
 // Tests
