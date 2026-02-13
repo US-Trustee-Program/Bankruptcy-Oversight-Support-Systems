@@ -23,8 +23,11 @@ export function Stop(props: StopProps) {
         {message}{' '}
         {showHelpDeskContact && (
           <>
-            Please contact <a href="mailto:UST.Help@ust.doj.gov">UST.Help@ust.doj.gov</a> for
-            assistance.
+            Please contact{' '}
+            <a href="mailto:UST.Help@ust.doj.gov" aria-label="Email: UST.Help@ust.doj.gov">
+              UST.Help@ust.doj.gov
+            </a>{' '}
+            for assistance.
           </>
         )}
       </span>

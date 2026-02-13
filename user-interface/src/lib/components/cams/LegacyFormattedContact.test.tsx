@@ -33,12 +33,12 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.getByTestId('test-address3')).toHaveTextContent('Building 5');
       expect(screen.getByTestId('test-city-state-zip')).toHaveTextContent('Dallas, TX 75201');
 
-      // Phone
-      expect(screen.getByTestId('test-phone-number')).toHaveTextContent('214-555-0123 x456');
+      // Phone (now formatted by parsePhoneNumber and rendered as link via CommsLink)
+      expect(screen.getByTestId('test-phone-number')).toHaveTextContent('214-555-0123 ext. 456');
 
       // Email as link (default behavior)
       expect(screen.getByTestId('test-email')).toBeInTheDocument();
-      const emailLink = screen.getByRole('link');
+      const emailLink = screen.getByRole('link', { name: /email/i });
       expect(emailLink).toHaveAttribute('href', 'mailto:legacy@example.com');
     });
 
@@ -69,6 +69,30 @@ describe('LegacyFormattedAddress component', () => {
       expect(screen.getByTestId('phone-only-phone-number')).toHaveTextContent('555-987-6543');
       expect(screen.queryByTestId('phone-only-address1')).not.toBeInTheDocument();
       expect(screen.queryByTestId('phone-only-email')).not.toBeInTheDocument();
+    });
+
+    test('should render phone as clickable link with aria-label', () => {
+      const phoneOnlyLegacy: LegacyAddress & { phone?: string; email?: string } = {
+        phone: '555-987-6543',
+      };
+
+      renderComponent({ legacy: phoneOnlyLegacy, testIdPrefix: 'phone-link' });
+
+      const phoneLink = screen.getByRole('link', { name: /phone/i });
+      expect(phoneLink).toHaveAttribute('href', 'tel:+15559876543');
+      expect(phoneLink).toHaveAttribute('aria-label', 'Phone: 555-987-6543');
+    });
+
+    test('should render phone with extension as clickable link', () => {
+      const phoneWithExtLegacy: LegacyAddress & { phone?: string; email?: string } = {
+        phone: '555-123-4567 x123',
+      };
+
+      renderComponent({ legacy: phoneWithExtLegacy, testIdPrefix: 'phone-ext' });
+
+      const phoneLink = screen.getByRole('link', { name: /phone/i });
+      expect(phoneLink).toHaveAttribute('href', 'tel:+15551234567;ext=123');
+      expect(phoneLink).toHaveAttribute('aria-label', 'Phone: 555-123-4567 ext. 123');
     });
 
     test('should render email as plain text when emailAsLink is false', () => {
@@ -104,6 +128,20 @@ describe('LegacyFormattedAddress component', () => {
       );
     });
 
+    test('should render email link with descriptive aria-label', () => {
+      const emailLegacy: LegacyAddress & { phone?: string; email?: string } = {
+        email: 'accessible@example.com',
+      };
+
+      renderComponent({
+        legacy: emailLegacy,
+        testIdPrefix: 'aria-email',
+      });
+
+      const emailLink = screen.getByRole('link');
+      expect(emailLink).toHaveAttribute('aria-label', 'Email: accessible@example.com');
+    });
+
     test('should apply custom className', () => {
       renderComponent({ legacy: mockFullLegacy, className: 'custom-legacy-style' });
 
@@ -115,7 +153,10 @@ describe('LegacyFormattedAddress component', () => {
       renderComponent({ legacy: mockFullLegacy });
 
       expect(screen.getByText('123 Legacy St')).not.toHaveAttribute('data-testid');
-      expect(screen.getByText('214-555-0123 x456')).not.toHaveAttribute('data-testid');
+      // Phone is now rendered via CommsLink, verify the container doesn't have testid
+      expect(screen.getByText('214-555-0123 ext. 456').closest('.phone')).not.toHaveAttribute(
+        'data-testid',
+      );
     });
 
     test('should handle legacy with only address1', () => {
@@ -257,11 +298,13 @@ describe('LegacyFormattedAddress component', () => {
     test('should structure phone and email correctly', () => {
       renderComponent({ legacy: mockFullLegacy });
 
-      const phone = screen.getByText('214-555-0123 x456');
-      expect(phone).toHaveClass('phone');
+      // Phone is now rendered via CommsLink, so find the container with the phone link
+      const phoneLink = screen.getByRole('link', { name: /phone/i });
+      expect(phoneLink.closest('.phone')).toBeInTheDocument();
 
-      const emailContainer = screen.getByRole('link').parentElement;
-      expect(emailContainer).toHaveClass('email');
+      // Email link
+      const emailLink = screen.getByRole('link', { name: /email/i });
+      expect(emailLink.closest('.email')).toBeInTheDocument();
     });
   });
 });

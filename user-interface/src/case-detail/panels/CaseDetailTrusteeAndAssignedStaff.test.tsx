@@ -5,6 +5,7 @@ import CaseDetailTrusteeAndAssignedStaff, {
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { parsePhoneNumber } from '@common/phone-helper';
 import Actions from '@common/cams/actions';
 import { AttorneyUser, CamsUser, Staff } from '@common/cams/users';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
@@ -305,11 +306,21 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(mailIcon).toBeInTheDocument();
     });
 
-    test('should display trustee phone number', () => {
+    test('should display trustee phone number as clickable link', () => {
       renderWithProps();
       const phoneElement = screen.getByTestId('case-detail-trustee-phone-number');
       expect(phoneElement).toBeInTheDocument();
-      expect(phoneElement?.textContent).toEqual(TEST_TRUSTEE.legacy?.phone);
+
+      // Phone is now rendered via CommsLink with parsePhoneNumber formatting
+      const parsedPhone = parsePhoneNumber(TEST_TRUSTEE.legacy?.phone ?? '');
+      const expectedLabel = parsedPhone?.extension
+        ? `${parsedPhone.number} ext. ${parsedPhone.extension}`
+        : (parsedPhone?.number ?? '');
+      expect(phoneElement?.textContent).toEqual(expectedLabel);
+
+      // Verify phone is a clickable link with aria-label
+      const phoneLink = phoneElement?.querySelector('a');
+      expect(phoneLink).toHaveAttribute('aria-label', `Phone: ${expectedLabel}`);
     });
 
     test('should display all trustee address fields', () => {

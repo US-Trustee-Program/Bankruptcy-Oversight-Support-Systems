@@ -381,6 +381,85 @@ describe('CommsLink Component', () => {
     });
   });
 
+  describe('Accessibility: aria-label', () => {
+    test('phone link has descriptive aria-label', () => {
+      render(
+        <CommsLink
+          contact={{ phone: { number: '555-123-4567' } } as Omit<ContactInformation, 'address'>}
+          mode="phone-dialer"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Phone: 555-123-4567');
+    });
+
+    test('phone link with extension has descriptive aria-label', () => {
+      render(
+        <CommsLink
+          contact={
+            { phone: { number: '555-123-4567', extension: '123' } } as Omit<
+              ContactInformation,
+              'address'
+            >
+          }
+          mode="phone-dialer"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Phone: 555-123-4567 ext. 123');
+    });
+
+    test('email link has descriptive aria-label', () => {
+      render(
+        <CommsLink
+          contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
+          mode="email"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Email: test@example.com');
+    });
+
+    test('website link has descriptive aria-label indicating new tab', () => {
+      render(
+        <CommsLink
+          contact={{ website: 'https://example.com' } as Omit<ContactInformation, 'address'>}
+          mode="website"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Website: https://example.com (opens in new tab)');
+    });
+
+    test('teams-chat link has descriptive aria-label', () => {
+      render(
+        <CommsLink
+          contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
+          mode="teams-chat"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Start Teams chat with test@example.com');
+    });
+
+    test('teams-call link has descriptive aria-label', () => {
+      render(
+        <CommsLink
+          contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
+          mode="teams-call"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Start Teams call with test@example.com');
+    });
+  });
+
   describe('Mode: website', () => {
     const cases = [
       ['https://example.com', 'https://example.com', 'https://example.com'],
