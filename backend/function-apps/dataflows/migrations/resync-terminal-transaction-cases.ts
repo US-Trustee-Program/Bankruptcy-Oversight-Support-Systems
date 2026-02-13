@@ -1,5 +1,5 @@
 import { app, InvocationContext, output } from '@azure/functions';
-import { CaseSyncEvent } from '@common/queue/dataflow-types';
+import { CaseSyncEvent } from '@common/cams/dataflow-events';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import {
