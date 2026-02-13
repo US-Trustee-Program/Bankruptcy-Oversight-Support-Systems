@@ -124,7 +124,6 @@ describe('TrusteeAssistantForm', () => {
 
   describe('Missing Assistant', () => {
     test('should show error when assistant not found in trustee data', () => {
-      // Mock route with assistantId but trustee has no assistants
       const trusteeWithoutAssistants = MockData.getTrustee({
         trusteeId: TEST_TRUSTEE_ID,
         assistants: [],
