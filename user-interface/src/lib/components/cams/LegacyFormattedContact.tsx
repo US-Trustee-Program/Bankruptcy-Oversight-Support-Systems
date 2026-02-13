@@ -73,9 +73,15 @@ export default function LegacyFormattedContact(props: LegacyFormattedContactProp
   // Handle legacy phone format (simple string)
   if (legacy.phone) {
     const parsedPhone = parsePhoneNumber(legacy.phone);
+    // Fall back to raw phone string if parsing fails or returns empty number
+    const phoneContent = parsedPhone?.number ? (
+      <CommsLink contact={{ phone: parsedPhone }} mode="phone-dialer" />
+    ) : (
+      legacy.phone
+    );
     parts.push(
       <div key="phone" className="phone" data-testid={getTestId('phone-number')}>
-        <CommsLink contact={{ phone: parsedPhone }} mode="phone-dialer" />
+        {phoneContent}
       </div>,
     );
   }
