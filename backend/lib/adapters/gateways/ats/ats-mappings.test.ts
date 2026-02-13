@@ -178,11 +178,32 @@ describe('ATS Mappings', () => {
   });
 
   describe('getCourtId', () => {
-    test('should map district codes to court IDs', () => {
-      expect(getCourtId('01')).toBe('usbc-ma');
-      expect(getCourtId('02')).toBe('usbc-sdny');
-      expect(getCourtId('19')).toBe('usbc-ga');
-      expect(getCourtId('76')).toBe('usbc-dc');
+    test('should map district codes to DXTR court IDs', () => {
+      expect(getCourtId('01')).toBe('0101');
+      expect(getCourtId('02')).toBe('0208');
+      expect(getCourtId('76')).toBe('0090');
+    });
+
+    test('should resolve multi-district states using division code', () => {
+      // Georgia: Northern (32x), Middle (33x), Southern (34x)
+      expect(getCourtId('19', '321')).toBe('113E');
+      expect(getCourtId('19', '331')).toBe('113G');
+      expect(getCourtId('19', '341')).toBe('113J');
+      // Georgia without division falls back to default (Northern)
+      expect(getCourtId('19')).toBe('113E');
+
+      // West Virginia: Northern (24x), Southern (25x)
+      expect(getCourtId('17', '241')).toBe('0424');
+      expect(getCourtId('17', '250')).toBe('0425');
+
+      // Louisiana: Eastern (30x), Middle (31x), Western (36x)
+      expect(getCourtId('24', '302')).toBe('053L');
+      expect(getCourtId('24', '313')).toBe('053N');
+      expect(getCourtId('24', '361')).toBe('0536');
+
+      // Mississippi: Northern (37x), Southern (38x)
+      expect(getCourtId('25', '371')).toBe('0537');
+      expect(getCourtId('25', '381')).toBe('0538');
     });
 
     test('should throw error for invalid district codes', () => {
@@ -382,7 +403,7 @@ describe('ATS Mappings', () => {
       expect(result).toEqual({
         chapter: '7',
         appointmentType: 'panel',
-        courtId: 'usbc-sdny',
+        courtId: '0208',
         divisionCode: '081',
         appointedDate: '2023-01-15',
         status: 'active',
@@ -406,7 +427,7 @@ describe('ATS Mappings', () => {
       expect(result).toEqual({
         chapter: '12',
         appointmentType: 'case-by-case',
-        courtId: 'usbc-sdny',
+        courtId: '0208',
         divisionCode: '081',
         appointedDate: '2023-03-01',
         status: 'active',
@@ -587,7 +608,7 @@ describe('ATS Mappings', () => {
       const appointment = {
         chapter: '7' as const,
         appointmentType: 'panel' as const,
-        courtId: 'usbc-sdny',
+        courtId: '0208',
         divisionCode: '081',
         appointedDate: '2023-01-15',
         status: 'active' as const,
@@ -596,7 +617,7 @@ describe('ATS Mappings', () => {
 
       const key = getAppointmentKey('123', appointment);
 
-      expect(key).toBe('123-usbc-sdny-081-7-panel');
+      expect(key).toBe('123-0208-081-7-panel');
     });
   });
 });

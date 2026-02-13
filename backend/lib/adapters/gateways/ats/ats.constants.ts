@@ -120,85 +120,121 @@ export const SPECIAL_CHAPTER_CODES = {
 export const STANDARD_CHAPTERS = ['7', '11', '12', '13'];
 
 /**
- * Map district codes to court IDs
- * Based on ATS district numbering scheme
+ * Map ATS district codes to DXTR courtId values.
+ * Uses DXTR 4-character court identifiers that match CourtDivisionDetails.courtId.
+ *
+ * For multi-district states where ATS uses a single district code (17, 19, 24, 25),
+ * the default courtId listed here is the primary district. Use MULTI_DISTRICT_COURT_MAP
+ * with the division code for accurate resolution.
  */
 export const DISTRICT_TO_COURT_MAP: Record<string, string> = {
-  '01': 'usbc-ma',
-  '02': 'usbc-sdny',
-  '03': 'usbc-edny',
-  '04': 'usbc-ct',
-  '05': 'usbc-vt',
-  '06': 'usbc-ndny',
-  '07': 'usbc-wdny',
-  '08': 'usbc-nj',
-  '09': 'usbc-edpa',
-  '10': 'usbc-mdpa',
-  '11': 'usbc-wdpa',
-  '12': 'usbc-de',
-  '13': 'usbc-md',
-  '14': 'usbc-edva',
-  '15': 'usbc-wdva',
-  '16': 'usbc-sc',
-  '17': 'usbc-wv',
-  '18': 'usbc-nc',
-  '19': 'usbc-ga',
-  '20': 'usbc-sdfl',
-  '21': 'usbc-mdfl',
-  '22': 'usbc-ndfl',
-  '23': 'usbc-pr',
-  '24': 'usbc-la',
-  '25': 'usbc-ms',
-  '26': 'usbc-edtx',
-  '27': 'usbc-wdtx',
-  '28': 'usbc-ndtx',
-  '29': 'usbc-sdtx',
-  '30': 'usbc-edky',
-  '31': 'usbc-wdky',
-  '32': 'usbc-edmi',
-  '33': 'usbc-wdmi',
-  '34': 'usbc-ndoh',
-  '35': 'usbc-sdoh',
-  '36': 'usbc-edtn',
-  '37': 'usbc-mdtn',
-  '38': 'usbc-wdtn',
-  '39': 'usbc-ndil',
-  '40': 'usbc-cdil',
-  '41': 'usbc-sdil',
-  '42': 'usbc-ndin',
-  '43': 'usbc-sdin',
-  '44': 'usbc-edwi',
-  '45': 'usbc-wdwi',
-  '46': 'usbc-edar',
-  '47': 'usbc-wdar',
-  '48': 'usbc-ndia',
-  '49': 'usbc-sdia',
-  '50': 'usbc-mn',
-  '51': 'usbc-edmo',
-  '52': 'usbc-wdmo',
-  '53': 'usbc-ne',
-  '54': 'usbc-nd',
-  '55': 'usbc-sd',
-  '56': 'usbc-az',
-  '57': 'usbc-ndca',
-  '58': 'usbc-edca',
-  '59': 'usbc-cdca',
-  '60': 'usbc-sdca',
-  '61': 'usbc-hi',
-  '62': 'usbc-id',
-  '63': 'usbc-mt',
-  '64': 'usbc-nv',
-  '65': 'usbc-or',
-  '66': 'usbc-edwa',
-  '67': 'usbc-wdwa',
-  '68': 'usbc-co',
-  '69': 'usbc-ks',
-  '70': 'usbc-nm',
-  '71': 'usbc-edok',
-  '72': 'usbc-ndok',
-  '73': 'usbc-wdok',
-  '74': 'usbc-ut',
-  '75': 'usbc-wy',
-  '76': 'usbc-dc',
-  '77': 'usbc-vi',
+  '01': '0101', // District of Massachusetts
+  '02': '0208', // Southern District of New York
+  '03': '0207', // Eastern District of New York
+  '04': '0205', // District of Connecticut
+  '05': '0210', // District of Vermont
+  '06': '0206', // Northern District of New York
+  '07': '0209', // Western District of New York
+  '08': '0312', // District of New Jersey
+  '09': '0313', // Eastern District of Pennsylvania
+  '10': '0314', // Middle District of Pennsylvania
+  '11': '0315', // Western District of Pennsylvania
+  '12': '0311', // District of Delaware
+  '13': '0416', // District of Maryland
+  '14': '0422', // Eastern District of Virginia
+  '15': '0423', // Western District of Virginia
+  '16': '0420', // District of South Carolina
+  '17': '0424', // West Virginia (default: Northern — see MULTI_DISTRICT_COURT_MAP)
+  '19': '113E', // Georgia (default: Northern — see MULTI_DISTRICT_COURT_MAP)
+  '20': '113C', // Southern District of Florida
+  '21': '113A', // Middle District of Florida
+  '22': '1129', // Northern District of Florida
+  '23': '0104', // District of Puerto Rico
+  '24': '053L', // Louisiana (default: Eastern — see MULTI_DISTRICT_COURT_MAP)
+  '25': '0538', // Mississippi (default: Southern — see MULTI_DISTRICT_COURT_MAP)
+  '26': '0540', // Eastern District of Texas
+  '27': '0542', // Western District of Texas
+  '28': '0539', // Northern District of Texas
+  '29': '0541', // Southern District of Texas
+  '30': '0643', // Eastern District of Kentucky
+  '31': '0644', // Western District of Kentucky
+  '32': '0645', // Eastern District of Michigan
+  '33': '0646', // Western District of Michigan
+  '34': '0647', // Northern District of Ohio
+  '35': '0648', // Southern District of Ohio
+  '36': '0649', // Eastern District of Tennessee
+  '37': '0650', // Middle District of Tennessee
+  '38': '0651', // Western District of Tennessee
+  '39': '0752', // Northern District of Illinois
+  '40': '0753', // Central District of Illinois
+  '41': '0754', // Southern District of Illinois
+  '42': '0755', // Northern District of Indiana
+  '43': '0756', // Southern District of Indiana
+  '44': '0757', // Eastern District of Wisconsin
+  '45': '0758', // Western District of Wisconsin
+  '46': '0860', // Eastern District of Arkansas
+  '47': '0861', // Western District of Arkansas
+  '48': '0862', // Northern District of Iowa
+  '49': '0863', // Southern District of Iowa
+  '50': '0864', // District of Minnesota
+  '51': '0865', // Eastern District of Missouri
+  '52': '0866', // Western District of Missouri
+  '53': '0867', // District of Nebraska
+  '54': '0868', // District of North Dakota
+  '55': '0869', // District of South Dakota
+  '56': '0970', // District of Arizona
+  '57': '0971', // Northern District of California
+  '58': '0972', // Eastern District of California
+  '59': '0973', // Central District of California
+  '60': '0974', // Southern District of California
+  '61': '0975', // District of Hawaii
+  '62': '0976', // District of Idaho
+  '63': '0977', // District of Montana
+  '64': '0978', // District of Nevada
+  '65': '0979', // District of Oregon
+  '66': '0980', // Eastern District of Washington
+  '67': '0981', // Western District of Washington
+  '68': '1082', // District of Colorado
+  '69': '1083', // District of Kansas
+  '70': '1084', // District of New Mexico
+  '71': '1086', // Eastern District of Oklahoma
+  '72': '1085', // Northern District of Oklahoma
+  '73': '1087', // Western District of Oklahoma
+  '74': '1088', // District of Utah
+  '75': '1089', // District of Wyoming
+  '76': '0090', // District of Columbia
+  '77': '0391', // United States Virgin Islands
+};
+
+/**
+ * For multi-district states where ATS uses a single district code, this map
+ * disambiguates using the first 2 digits of the ATS DIVISION code to determine
+ * the correct DXTR courtId.
+ *
+ * District 18 (North Carolina) is omitted — NC courtIds are not yet available
+ * in the DXTR reference data.
+ */
+export const MULTI_DISTRICT_COURT_MAP: Record<string, Record<string, string>> = {
+  '17': {
+    // West Virginia
+    '24': '0424', // Northern District
+    '25': '0425', // Southern District
+  },
+  '19': {
+    // Georgia
+    '32': '113E', // Northern District
+    '33': '113G', // Middle District
+    '34': '113J', // Southern District
+  },
+  '24': {
+    // Louisiana
+    '30': '053L', // Eastern District
+    '31': '053N', // Middle District
+    '36': '0536', // Western District
+  },
+  '25': {
+    // Mississippi
+    '37': '0537', // Northern District
+    '38': '0538', // Southern District
+  },
 };
