@@ -372,6 +372,10 @@ export interface QueueGateway {
   ): { enqueue: (...messages: T[]) => void };
 }
 
+export interface DataflowsHttpGateway {
+  queueCaseReload(context: ApplicationContext, caseId: string): Promise<void>;
+}
+
 export interface UserGroupsRepository extends Releasable {
   upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void>;
   getUserGroupsByNames(context: ApplicationContext, groupNames: string[]): Promise<UserGroup[]>;

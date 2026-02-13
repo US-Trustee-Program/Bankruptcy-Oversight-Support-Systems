@@ -6,6 +6,7 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { getCamsError } from '../../common-errors/error-utilities';
 import CaseReloadUseCase from '../../use-cases/admin/case-reload';
+import { CASE_ID_REGEX } from '@common/cams/regex';
 
 const MODULE_NAME = 'CASE-RELOAD-CONTROLLER';
 const UNSUPPORTED_HTTP_METHOD = 'Unsupported HTTP Method';
@@ -30,6 +31,13 @@ export class CaseReloadController implements CamsController {
       const { caseId } = context.request.body as { caseId?: string };
       if (!caseId || typeof caseId !== 'string' || caseId.trim() === '') {
         throw new BadRequestError(MODULE_NAME, { message: INVALID_REQUEST });
+      }
+
+      // Validate case ID format
+      if (!CASE_ID_REGEX.test(caseId)) {
+        throw new BadRequestError(MODULE_NAME, {
+          message: 'Invalid case ID format. Expected format: XXX-XX-XXXXX',
+        });
       }
 
       // Call use case

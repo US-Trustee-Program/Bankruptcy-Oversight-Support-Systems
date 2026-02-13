@@ -1,17 +1,19 @@
 import './CaseReload.scss';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import CaseNumberInput from '@/lib/components/CaseNumberInput';
-import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import Api2 from '@/lib/models/api2';
 import { CaseDetail, SyncedCase } from '@common/cams/cases';
 import { getDivisionComboOptions, courtSorter } from '@/data-verification/dataVerificationHelper';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
-import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CASE_NUMBER_REGEX } from '@common/cams/regex';
 import { useCaseReloadPolling } from './useCaseReloadPolling';
 import { buildCaseId, parseApiValidationError } from './case-reload-helpers';
+import { CaseSearchForm } from './CaseSearchForm';
+import { ValidatedCaseDisplay } from './ValidatedCaseDisplay';
+import { PollingStatusDisplay } from './PollingStatusDisplay';
+import { CaseReloadActions } from './CaseReloadActions';
+import { ErrorDisplay } from './ErrorDisplay';
 
 export function CaseReload() {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -158,188 +160,37 @@ export function CaseReload() {
       {isLoaded && (
         <div className="case-reload-form">
           {!validatedCase && (
-            <>
-              <div className="grid-row">
-                <div className="grid-col-12">
-                  <ComboBox
-                    id="division-select"
-                    label="Division"
-                    aria-live="off"
-                    onUpdateSelection={handleDivisionSelection}
-                    options={divisionsList}
-                    required={false}
-                    multiSelect={false}
-                    ref={divisionSelectionRef}
-                    disabled={isValidating}
-                  />
-                </div>
-              </div>
-
-              <div className="grid-row">
-                <div className="grid-col-12">
-                  <CaseNumberInput
-                    id="case-number-input"
-                    label="Case Number"
-                    onChange={handleCaseNumberChange}
-                    allowEnterKey={false}
-                    allowPartialCaseNumber={false}
-                    disabled={isValidating}
-                    autoComplete="off"
-                  />
-                </div>
-              </div>
-
-              <div className="grid-row">
-                <div className="grid-col-12">
-                  <Button
-                    id="validate-button"
-                    onClick={handleValidate}
-                    uswdsStyle={UswdsButtonStyle.Default}
-                    disabled={!isValidatable() || isValidating}
-                  >
-                    Find Case
-                  </Button>
-                </div>
-              </div>
-              {isValidating && (
-                <div className="grid-row">
-                  <div className="grid-col-12">
-                    <LoadingSpinner caption="Finding case..." />
-                  </div>
-                </div>
-              )}
-            </>
+            <CaseSearchForm
+              divisionsList={divisionsList}
+              divisionSelectionRef={divisionSelectionRef}
+              isValidating={isValidating}
+              isValidatable={isValidatable()}
+              onDivisionSelection={handleDivisionSelection}
+              onCaseNumberChange={handleCaseNumberChange}
+              onValidate={handleValidate}
+            />
           )}
 
-          {validationError && (
-            <div className="grid-row" data-testid="validation-error-container">
-              <div className="grid-col-12">
-                <Alert
-                  type={UswdsAlertStyle.Error}
-                  title={validationError === 'Case Not Found' ? validationError : 'Error'}
-                  message={validationError === 'Case Not Found' ? undefined : validationError}
-                  show={true}
-                  inline={true}
-                  id="validation-error-alert"
-                />
-              </div>
-            </div>
-          )}
+          <ErrorDisplay validationError={validationError} reloadError={reloadError} />
 
           {validatedCase && (
             <>
-              <div className="grid-row">
-                <div className="grid-col-12">
-                  <Alert
-                    type={UswdsAlertStyle.Success}
-                    title="Case Exists"
-                    show={true}
-                    inline={true}
-                    id="validated-case-alert"
-                  >
-                    <div className="validated-case-details">
-                      <p>
-                        <strong>Division:</strong> {divisionName}
-                      </p>
-                      <p>
-                        <strong>Case Number:</strong> {caseNumber}
-                      </p>
-                      <p>
-                        <strong>Case Title:</strong> {validatedCase.caseTitle}
-                      </p>
-                      <p>
-                        <strong>Sync Status:</strong>{' '}
-                        {cosmosCase
-                          ? `Last synced: ${new Date(cosmosCase.updatedOn).toLocaleString()}`
-                          : 'Not yet synced'}
-                      </p>
-                    </div>
-                  </Alert>
-                </div>
-              </div>
+              <ValidatedCaseDisplay
+                divisionName={divisionName}
+                caseNumber={caseNumber}
+                validatedCase={validatedCase}
+                cosmosCase={cosmosCase}
+              />
 
-              {pollStatus === 'success' && (
-                <div className="grid-row" data-testid="polling-success-container">
-                  <div className="grid-col-12">
-                    <Alert
-                      type={UswdsAlertStyle.Success}
-                      title="Sync Completed"
-                      message="Sync completed successfully"
-                      show={true}
-                      inline={true}
-                      id="polling-success-alert"
-                    />
-                  </div>
-                </div>
-              )}
+              <PollingStatusDisplay pollStatus={pollStatus} isReloading={isReloading} />
 
-              <div className="grid-row">
-                <div className="grid-col-12 button-group">
-                  {pollStatus !== 'success' && (
-                    <Button
-                      id="reload-button"
-                      onClick={handleReload}
-                      uswdsStyle={UswdsButtonStyle.Default}
-                      disabled={!isReloadable() || pollStatus === 'polling' || isReloading}
-                    >
-                      Reload Case
-                    </Button>
-                  )}
-                  <Button
-                    id="reset-button"
-                    onClick={handleReset}
-                    uswdsStyle={UswdsButtonStyle.Outline}
-                  >
-                    Reset
-                  </Button>
-                </div>
-              </div>
-
-              {isReloading && (
-                <div className="grid-row">
-                  <div className="grid-col-12">
-                    <LoadingSpinner caption="Queueing reload..." />
-                  </div>
-                </div>
-              )}
-
-              {pollStatus === 'polling' && (
-                <div className="grid-row" data-testid="polling-status-container">
-                  <div className="grid-col-12">
-                    <LoadingSpinner caption="Waiting for the reload to complete..." />
-                  </div>
-                </div>
-              )}
-
-              {pollStatus === 'timeout' && (
-                <div className="grid-row" data-testid="polling-timeout-container">
-                  <div className="grid-col-12">
-                    <Alert
-                      type={UswdsAlertStyle.Warning}
-                      title="Case reload is taking longer than expected"
-                      message="The sync may still complete in the background"
-                      show={true}
-                      inline={true}
-                      id="polling-timeout-alert"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {reloadError && (
-                <div className="grid-row" data-testid="reload-error-container">
-                  <div className="grid-col-12">
-                    <Alert
-                      type={UswdsAlertStyle.Error}
-                      title="Reload Error"
-                      message={reloadError}
-                      show={true}
-                      inline={true}
-                      id="reload-error-alert"
-                    />
-                  </div>
-                </div>
-              )}
+              <CaseReloadActions
+                pollStatus={pollStatus}
+                isReloadable={isReloadable()}
+                isReloading={isReloading}
+                onReload={handleReload}
+                onReset={handleReset}
+              />
             </>
           )}
         </div>
