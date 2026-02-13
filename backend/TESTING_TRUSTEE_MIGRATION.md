@@ -224,9 +224,60 @@ After migration, validate the data:
    - Search for trustees
    - Verify trustee profiles display correctly
 
+## Testing Appointment Data
+
+### Running Appointment Mapping Tests
+
+```bash
+# Run all mapping tests (includes exhaustive TOD_STATUS_MAP coverage)
+npm test -- lib/adapters/gateways/ats/ats-mappings.test.ts
+
+# Run migration logic tests (includes appointment upsert/dedup)
+npm test -- lib/use-cases/dataflows/migrate-trustees.test.ts
+```
+
+### MongoDB Queries for Verifying Appointment Mapping
+
+```javascript
+// Count appointments per trustee
+db.trustees.aggregate([
+  { $match: { documentType: 'TRUSTEE_APPOINTMENT' } },
+  { $group: { _id: '$trusteeId', count: { $sum: 1 } } },
+  { $sort: { count: -1 } },
+  { $limit: 10 }
+])
+
+// Find appointments by chapter
+db.trustees.find({ documentType: 'TRUSTEE_APPOINTMENT', chapter: '7' }).limit(5)
+
+// Check for case-by-case appointments (migrated from 12CBC/13CBC)
+db.trustees.find({
+  documentType: 'TRUSTEE_APPOINTMENT',
+  appointmentType: 'case-by-case',
+  chapter: { $in: ['12', '13'] }
+})
+
+// Verify status distribution
+db.trustees.aggregate([
+  { $match: { documentType: 'TRUSTEE_APPOINTMENT' } },
+  { $group: { _id: '$status', count: { $sum: 1 } } }
+])
+
+// Find trustees with legacy.truId (all migrated trustees)
+db.trustees.find({ documentType: 'TRUSTEE', 'legacy.truId': { $exists: true } }).count()
+```
+
+### Known ATS Data Quality Issues
+
+- Some ATS records may have invalid chapter/appointment type combinations (e.g., `standing` for chapter 7). These are logged as warnings and skipped during migration.
+- Duplicate appointment records in `CHAPTER_DETAILS` (same TRU_ID, DISTRICT, DIVISION, CHAPTER, and status) are deduplicated by appointment key.
+- Some `TOD STATUS` values may be unrecognized. These default to `panel` / `active` and are logged with a warning.
+- `DATE_APPOINTED` may be null in ATS; the migration defaults to the current date.
+
 ## Notes
 
 - The migration is idempotent for completed trustees
 - Trustees are identified by their TRU_ID from ATS
 - The migration preserves all appointment relationships
 - Status mappings follow the rules in `ats-mappings.ts`
+- The `findTrusteeByLegacyTruId()` method provides efficient lookup by ATS ID without scanning the full collection
