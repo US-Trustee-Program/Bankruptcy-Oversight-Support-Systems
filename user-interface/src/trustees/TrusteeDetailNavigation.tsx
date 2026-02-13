@@ -47,7 +47,7 @@ export default function TrusteeDetailNavigation({
               onClick={() => setActiveNav(TrusteeNavState.TRUSTEE_PROFILE)}
               title="View basic details about the current trustee"
             >
-              Profile
+              Overview
             </NavLink>
           </li>
           <li className="usa-sidenav__item">
