@@ -92,6 +92,70 @@ describe('ATS Mappings', () => {
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
+
+    test.each([
+      ['P', 'panel', 'active'],
+      ['PA', 'panel', 'active'],
+      ['O', 'off-panel', 'active'],
+      ['C', 'case-by-case', 'active'],
+      ['S', 'standing', 'active'],
+      ['E', 'elected', 'active'],
+      ['V', 'converted-case', 'active'],
+      ['PI', 'panel', 'inactive'],
+      ['PS', 'panel', 'voluntarily-suspended'],
+      ['PV', 'panel', 'voluntarily-suspended'],
+      ['PR', 'panel', 'resigned'],
+      ['PT', 'panel', 'terminated'],
+      ['PD', 'panel', 'deceased'],
+      ['OI', 'off-panel', 'inactive'],
+      ['OR', 'off-panel', 'resigned'],
+      ['OT', 'off-panel', 'terminated'],
+      ['OD', 'off-panel', 'deceased'],
+      ['CI', 'case-by-case', 'inactive'],
+      ['CR', 'case-by-case', 'resigned'],
+      ['SI', 'standing', 'inactive'],
+      ['SR', 'standing', 'resigned'],
+      ['ST', 'standing', 'terminated'],
+      ['SD', 'standing', 'deceased'],
+    ])(
+      'should map letter code "%s" to appointmentType=%s, status=%s',
+      (code, expectedType, expectedStatus) => {
+        const result = parseTodStatus(code);
+        expect(result.appointmentType).toBe(expectedType);
+        expect(result.status).toBe(expectedStatus);
+      },
+    );
+
+    test.each([
+      ['1', 'panel', 'active'],
+      ['2', 'panel', 'inactive'],
+      ['3', 'panel', 'voluntarily-suspended'],
+      ['4', 'panel', 'involuntarily-suspended'],
+      ['5', 'off-panel', 'active'],
+      ['6', 'off-panel', 'inactive'],
+      ['7', 'off-panel', 'resigned'],
+      ['8', 'off-panel', 'terminated'],
+      ['9', 'case-by-case', 'active'],
+      ['10', 'case-by-case', 'inactive'],
+      ['11', 'standing', 'active'],
+      ['12', 'standing', 'inactive'],
+      ['13', 'elected', 'active'],
+      ['14', 'elected', 'inactive'],
+      ['15', 'converted-case', 'active'],
+      ['16', 'converted-case', 'inactive'],
+    ])(
+      'should map numeric code "%s" to appointmentType=%s, status=%s',
+      (code, expectedType, expectedStatus) => {
+        const result = parseTodStatus(code);
+        expect(result.appointmentType).toBe(expectedType);
+        expect(result.status).toBe(expectedStatus);
+      },
+    );
+
+    test('should handle whitespace around status codes', () => {
+      expect(parseTodStatus(' PA ')).toEqual({ appointmentType: 'panel', status: 'active' });
+      expect(parseTodStatus(' 1 ')).toEqual({ appointmentType: 'panel', status: 'active' });
+    });
   });
 
   describe('getDivisionOfficeName', () => {
@@ -246,7 +310,7 @@ describe('ATS Mappings', () => {
   describe('transformAppointmentRecord', () => {
     test('should transform standard appointment', () => {
       const atsAppointment: AtsAppointmentRecord = {
-        ID: 123,
+        TRU_ID: 123,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '7',
@@ -270,7 +334,7 @@ describe('ATS Mappings', () => {
 
     test('should handle case-by-case chapter appointments', () => {
       const atsAppointment: AtsAppointmentRecord = {
-        ID: 123,
+        TRU_ID: 123,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '12CBC',
@@ -294,7 +358,7 @@ describe('ATS Mappings', () => {
 
     test('should use current date if dates are missing', () => {
       const atsAppointment: AtsAppointmentRecord = {
-        ID: 123,
+        TRU_ID: 123,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '7',
@@ -310,7 +374,7 @@ describe('ATS Mappings', () => {
 
     test('should throw error for invalid district', () => {
       const atsAppointment: AtsAppointmentRecord = {
-        ID: 123,
+        TRU_ID: 123,
         DISTRICT: '99',
         DIVISION: '081',
         CHAPTER: '7',
@@ -337,6 +401,13 @@ describe('ATS Mappings', () => {
       expect(isValidAppointmentForChapter('11', 'standing')).toBe(false);
     });
 
+    test('should validate chapter 11-subchapter-v appointments', () => {
+      expect(isValidAppointmentForChapter('11-subchapter-v', 'pool')).toBe(true);
+      expect(isValidAppointmentForChapter('11-subchapter-v', 'out-of-pool')).toBe(true);
+      expect(isValidAppointmentForChapter('11-subchapter-v', 'panel')).toBe(false);
+      expect(isValidAppointmentForChapter('11-subchapter-v', 'case-by-case')).toBe(false);
+    });
+
     test('should validate chapter 12 appointments', () => {
       expect(isValidAppointmentForChapter('12', 'standing')).toBe(true);
       expect(isValidAppointmentForChapter('12', 'case-by-case')).toBe(true);
@@ -347,6 +418,11 @@ describe('ATS Mappings', () => {
       expect(isValidAppointmentForChapter('13', 'standing')).toBe(true);
       expect(isValidAppointmentForChapter('13', 'case-by-case')).toBe(true);
       expect(isValidAppointmentForChapter('13', 'panel')).toBe(false);
+    });
+
+    test('should return false for unknown chapter', () => {
+      // Cast to bypass type checking for edge case test
+      expect(isValidAppointmentForChapter('99' as never, 'panel')).toBe(false);
     });
   });
 

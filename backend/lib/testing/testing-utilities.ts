@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import { ApplicationContext } from '../adapters/types/basic';
 import { HttpRequest, InvocationContext } from '@azure/functions';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -6,6 +7,15 @@ import { CamsHttpMethod, CamsHttpRequest } from '../adapters/types/http';
 import ContextCreator from '../../function-apps/azure/application-context-creator';
 import { LoggerImpl } from '../adapters/services/logger.service';
 import { CamsError } from '../common-errors/cams-error';
+
+/**
+ * Generate a test credential for use in test fixtures.
+ * Extracted to a function to avoid SAST CWE-259 findings
+ * on inline password assignments.
+ */
+export function generateTestCredential(): string {
+  return randomUUID();
+}
 
 const invocationContext = new InvocationContext();
 

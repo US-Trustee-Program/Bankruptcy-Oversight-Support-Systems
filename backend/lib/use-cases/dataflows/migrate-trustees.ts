@@ -220,10 +220,8 @@ export async function upsertTrustee(
     // Transform ATS record to CAMS format
     const trusteeInput = transformTrusteeRecord(atsTrustee);
 
-    // Check if trustee already exists by legacy.truId
-    // We need to search through all trustees to find one with matching legacy.truId
-    const allTrustees = await repo.listTrustees();
-    const existingTrustee = allTrustees.find((t) => t.legacy?.truId === atsTrustee.ID.toString());
+    // Check if trustee already exists by legacy.truId using indexed query
+    const existingTrustee = await repo.findTrusteeByLegacyTruId(atsTrustee.ID.toString());
 
     if (existingTrustee) {
       // Merge new data into existing document to preserve fields that replaceOne would strip
@@ -258,6 +256,9 @@ export async function upsertAppointments(
     let successCount = 0;
     const processedKeys = new Set<string>();
 
+    // Fetch existing appointments once before the loop to avoid N+1 queries
+    const existingAppointments = await repo.getTrusteeAppointments(trustee.trusteeId);
+
     for (const atsAppointment of atsAppointments) {
       try {
         // Transform ATS appointment to CAMS format
@@ -286,7 +287,6 @@ export async function upsertAppointments(
         processedKeys.add(appointmentKey);
 
         // Check if appointment already exists
-        const existingAppointments = await repo.getTrusteeAppointments(trustee.trusteeId);
         const existingAppointment = existingAppointments.find(
           (a) =>
             a.courtId === appointmentInput.courtId &&

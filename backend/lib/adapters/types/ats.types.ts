@@ -2,6 +2,8 @@
  * ATS-specific type definitions for trustee migration
  */
 
+import { AppointmentType, AppointmentStatus } from '@common/cams/trustees';
+
 /**
  * Raw trustee record from ATS TRUSTEES table
  */
@@ -72,8 +74,8 @@ export interface AtsTrusteeWithAppointments {
  * Mapping result for TOD STATUS to appointment type and status
  */
 export interface StatusMapping {
-  appointmentType: 'panel' | 'off-panel' | 'case-by-case' | 'standing';
-  status: 'active' | 'inactive' | 'voluntarily-suspended' | 'terminated';
+  appointmentType: AppointmentType;
+  status: AppointmentStatus;
 }
 
 /**

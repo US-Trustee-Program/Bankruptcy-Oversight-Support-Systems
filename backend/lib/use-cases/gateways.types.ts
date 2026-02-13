@@ -248,6 +248,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   createTrusteeHistory(history: Creatable<TrusteeHistory>): Promise<void>;
   listTrusteeHistory(trusteeId: string): Promise<TrusteeHistory[]>;
   listTrustees(): Promise<Trustee[]>;
+  findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null>;
   updateTrustee(
     id: string,
     input: Partial<TrusteeInput>,
