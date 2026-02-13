@@ -8,11 +8,12 @@ This guide explains how to test the trustee profile migration from ATS to CAMS l
 2. **Environment Variables**: Ensure your `.env` file has the ATS database configuration:
    ```
    ATS_MSSQL_HOST=sql-ustp-cams.database.usgovcloudapi.net
-   ATS_MSSQL_DATABASE=ATS_REP_SUB
+   ATS_MSSQL_DATABASE=ATS_SUB
    ATS_MSSQL_USER=CloudSA32e9dec1
    ATS_MSSQL_PASS=<password>
    ATS_MSSQL_ENCRYPT=true
    ATS_MSSQL_TRUST_UNSIGNED_CERT=true
+   CAMS_ENABLED_DATAFLOWS=SYNC_OFFICE_STAFF,LOAD_E2E_DB,MIGRATE_TRUSTEES
    ```
 
 3. **MongoDB**: Ensure MongoDB is running locally or you have a connection string in your `.env`:
@@ -178,6 +179,109 @@ The migration is designed to be resumable:
   npx tsx scripts/test-trustee-migration-local.ts run 200
   ```
 
+## Phase 3: Status Mapping Corrections
+
+### Overview
+
+Phase 3 corrected the status mappings from ATS `TOD STATUS` codes to CAMS appointment types and statuses. The corrections ensure accurate appointment data migration.
+
+### Key Mapping Changes
+
+#### 1. Letter Code Corrections
+- **PI**: `inactive` → `voluntarily-suspended` (Panel appointments temporarily suspended)
+- **O**: `off-panel` → `converted-case` (Converted case appointments)
+- **V**: `converted-case` → `pool` (Chapter 11 Subchapter V pool)
+- **NP**: New code → `off-panel` / `resigned`
+- **VR**: New code → `out-of-pool` / `resigned` (Chapter 11 Subchapter V)
+
+#### 2. Numeric Code Corrections
+Replaced 16 numeric codes with 9 correct codes:
+- **Status 1**: `case-by-case` / `active` (default for Ch11)
+- **Status 3**: `standing` / `resigned`
+- **Status 5**: `standing` / `terminated`
+- **Status 6**: `standing` / `terminated`
+- **Status 7**: `standing` / `deceased`
+- **Status 8**: `case-by-case` / `active`
+- **Status 9**: `case-by-case` / `inactive`
+- **Status 10**: `case-by-case` / `inactive`
+- **Status 12**: `case-by-case` / `active`
+
+#### 3. Special Case Handling
+
+**CBC Chapter Overrides** (`12CBC`, `13CBC`):
+- CBC chapters override BOTH `appointmentType` and `status` from the flat map
+- All CBC appointments map to `case-by-case` appointment type
+- Status codes have special meanings within CBC context:
+  - 12CBC: Status 1, 2 → `active`; Status 3, 5, 7 → `inactive`
+  - 13CBC: Status 1 → `active`; Status 3 → `inactive`
+
+**Chapter 11 Subchapter V** (Status V or VR):
+- When Chapter = 11 and Status = V or VR, chapter resolves to `11-subchapter-v`
+- V → `pool` / `active`
+- VR → `out-of-pool` / `resigned`
+
+**Code 1 Chapter-Dependent Override** (Ch12/Ch13):
+- Status code '1' with Chapter 12 or 13 maps to `standing` / `active`
+- Status code '1' with Chapter 11 maps to `case-by-case` / `active` (default)
+
+### Testing Status Mappings
+
+#### Run Mapping Tests
+```bash
+# Test all status mappings (91 test cases)
+npm test -- lib/adapters/gateways/ats/ats-mappings.test.ts
+
+# Test migration logic with status derivation
+npm test -- lib/use-cases/dataflows/migrate-trustees.test.ts
+```
+
+#### Mock Data for Testing
+A comprehensive SQL file with 155 test records is available:
+- **File**: `backend/mock-chapter-details.sql`
+- **Coverage**: All letter codes, numeric codes, CBC chapters, and edge cases
+- **Trustees**: 20 real TRU_IDs from ATS database
+- Use this file to populate test data in ATS for local testing
+
+#### Verify Status Mappings in MongoDB
+
+```javascript
+// Count appointments by type
+db.trustees.aggregate([
+  { $match: { documentType: 'TRUSTEE_APPOINTMENT' } },
+  { $group: { _id: '$appointmentType', count: { $sum: 1 } } },
+  { $sort: { count: -1 } }
+])
+
+// Check Subchapter V appointments
+db.trustees.find({
+  documentType: 'TRUSTEE_APPOINTMENT',
+  chapter: '11-subchapter-v'
+}).limit(5)
+
+// Verify CBC case-by-case appointments
+db.trustees.find({
+  documentType: 'TRUSTEE_APPOINTMENT',
+  chapter: { $in: ['12', '13'] },
+  appointmentType: 'case-by-case'
+}).limit(5)
+
+// Check status distribution
+db.trustees.aggregate([
+  { $match: { documentType: 'TRUSTEE_APPOINTMENT' } },
+  { $group: { _id: { type: '$appointmentType', status: '$status' }, count: { $sum: 1 } } },
+  { $sort: { '_id.type': 1, '_id.status': 1 } }
+])
+```
+
+### Status Derivation Logic
+
+Trustee-level status is derived from appointment statuses:
+1. If any appointment is `active` → Trustee is **ACTIVE**
+2. If any appointment is `voluntarily-suspended` or `involuntarily-suspended` → Trustee is **SUSPENDED**
+3. Otherwise → Trustee is **NOT_ACTIVE**
+
+The derivation uses `transformAppointmentRecord()` to account for CBC overrides and chapter-dependent logic, ensuring accurate trustee status calculation.
+
 ## Troubleshooting
 
 ### Connection Issues
@@ -269,15 +373,26 @@ db.trustees.find({ documentType: 'TRUSTEE', 'legacy.truId': { $exists: true } })
 
 ### Known ATS Data Quality Issues
 
-- Some ATS records may have invalid chapter/appointment type combinations (e.g., `standing` for chapter 7). These are logged as warnings and skipped during migration.
-- Duplicate appointment records in `CHAPTER_DETAILS` (same TRU_ID, DISTRICT, DIVISION, CHAPTER, and status) are deduplicated by appointment key.
-- Some `TOD STATUS` values may be unrecognized. These default to `panel` / `active` and are logged with a warning.
-- `DATE_APPOINTED` may be null in ATS; the migration defaults to the current date.
+- **Invalid Chapter/Appointment Type Combinations**: Some ATS records may have invalid combinations (e.g., `standing` for chapter 7). These are logged as warnings and skipped during migration.
+- **Duplicate Appointments**: Duplicate records in `CHAPTER_DETAILS` (same TRU_ID, DISTRICT, DIVISION, CHAPTER, and appointment type) are deduplicated by appointment key.
+- **Unrecognized TOD STATUS Values**: Unknown status codes default to `panel` / `active` and are logged with a warning. Phase 3 added support for PI, NP, VR, O, E, and V status codes.
+- **NULL or Missing STATUS Values**: Records with NULL or empty STATUS are logged but may cause transformation errors. The migration includes fallback logic to use flat map defaults when full transformation fails.
+- **Missing DATE_APPOINTED**: The migration defaults to the current date when `DATE_APPOINTED` is null.
+- **Status Code 2**: Status code '2' is not defined in the current mapping and triggers a warning. It's handled as a special case in CBC chapters only (12CBC status 2 → `active`).
 
 ## Notes
 
 - The migration is idempotent for completed trustees
 - Trustees are identified by their TRU_ID from ATS
 - The migration preserves all appointment relationships
-- Status mappings follow the rules in `ats-mappings.ts`
+- **Status mappings follow Phase 3 corrections** (see Phase 3 section above):
+  - Letter codes: PA, PI, NP, E, O, V, VR, C, S
+  - Numeric codes: 1, 3, 5, 6, 7, 8, 9, 10, 12
+  - CBC chapter overrides for 12CBC and 13CBC
+  - Subchapter V resolution (V, VR → 11-subchapter-v)
+  - Code 1 chapter-dependent override (Ch12/13 → standing)
+- All mappings are defined in `lib/adapters/gateways/ats/ats.constants.ts`
+- Transformation logic is in `lib/adapters/gateways/ats/ats-mappings.ts`
+- Status derivation uses full `transformAppointmentRecord()` for CBC-aware resolution
 - The `findTrusteeByLegacyTruId()` method provides efficient lookup by ATS ID without scanning the full collection
+- Mock data for comprehensive testing is available in `backend/mock-chapter-details.sql`
