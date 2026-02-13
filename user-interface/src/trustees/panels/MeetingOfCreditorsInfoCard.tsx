@@ -6,6 +6,7 @@ import { formatMeetingId } from '@/lib/utils/zoomInfo';
 import { copyHTMLToClipboard } from '@/lib/utils/clipBoard';
 import Icon from '@/lib/components/uswds/Icon';
 import { formatPhoneNumber } from '@common/phone-helper';
+import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 
 interface ZoomInfoCardProps {
   zoomInfo?: ZoomInfo;
@@ -36,31 +37,15 @@ export default function MeetingOfCreditorsInfoCard({
             {!zoomInfo && <div data-testid="zoom-info-empty-message">No information added.</div>}
             {zoomInfo && (
               <div data-testid="zoom-info-content">
-                <div className="zoom-link">
-                  <a
-                    href={zoomInfo.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="usa-link comms-link"
-                    data-testid="zoom-link"
-                    aria-label={`Zoom Link: ${zoomInfo.link}`}
-                  >
-                    <IconLabel icon="launch" label="Zoom Link" location="left" />
-                  </a>
-                  <span className="usa-sr-only">{`: ${zoomInfo.link}`}</span>
+                <div className="zoom-link" data-testid="zoom-link">
+                  <CommsLink
+                    contact={{ website: zoomInfo.link }}
+                    mode="website"
+                    label="Zoom Link"
+                  />
                 </div>
                 <div className="zoom-phone" data-testid="zoom-phone">
-                  <a
-                    href={`tel:${zoomInfo.phone}`}
-                    className="usa-link comms-link"
-                    aria-label={`Phone: ${zoomInfo.phone}`}
-                  >
-                    <IconLabel
-                      icon="phone"
-                      label={formatPhoneNumber(zoomInfo.phone)}
-                      location="left"
-                    />
-                  </a>
+                  <CommsLink contact={{ phone: { number: zoomInfo.phone } }} mode="phone-dialer" />
                 </div>
                 <div className="zoom-meeting-id" data-testid="zoom-meeting-id">
                   Meeting ID: {formatMeetingId(zoomInfo.meetingId)}

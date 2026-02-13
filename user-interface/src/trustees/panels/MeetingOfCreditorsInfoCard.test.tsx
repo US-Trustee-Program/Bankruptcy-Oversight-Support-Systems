@@ -40,7 +40,8 @@ describe('MeetingOfCreditorsInfoCard', () => {
   test('should render zoom link when zoomInfo is provided', () => {
     render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} onEdit={mockOnEdit} />);
 
-    const zoomLink = screen.getByTestId('zoom-link');
+    const zoomLinkContainer = screen.getByTestId('zoom-link');
+    const zoomLink = zoomLinkContainer.querySelector('a');
     expect(zoomLink).toHaveAttribute('href', 'https://zoom.us/j/123456789');
     expect(zoomLink).toHaveAttribute('target', '_blank');
     expect(zoomLink).toHaveAttribute('rel', 'noopener noreferrer');
@@ -50,7 +51,7 @@ describe('MeetingOfCreditorsInfoCard', () => {
     render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} onEdit={mockOnEdit} />);
 
     const phoneLink = screen.getByTestId('zoom-phone').querySelector('a');
-    expect(phoneLink).toHaveAttribute('href', 'tel:1-555-123-4567');
+    expect(phoneLink).toHaveAttribute('href', 'tel:+115551234567');
   });
 
   test('should render passcode', () => {

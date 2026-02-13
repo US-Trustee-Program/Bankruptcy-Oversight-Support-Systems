@@ -30,7 +30,6 @@ export default function TrusteeDetailProfile({
   return (
     <div className="right-side-screen-content">
       <div className="trustee-detail-profile-container">
-        {/* Contact Information Section */}
         <section className="trustee-profile-section">
           <h2 className="trustee-profile-section-heading">Contact Information</h2>
           <div className="trustee-profile-cards-row">
@@ -42,7 +41,6 @@ export default function TrusteeDetailProfile({
           </div>
         </section>
 
-        {/* Assistant(s) Section */}
         <section className="trustee-profile-section">
           <div className="trustee-profile-section-header">
             <h2 className="trustee-profile-section-heading">Assistant(s)</h2>
@@ -76,7 +74,6 @@ export default function TrusteeDetailProfile({
           </div>
         </section>
 
-        {/* 341 Meeting and Other Information Section */}
         <section className="trustee-profile-section">
           <h2 className="trustee-profile-section-heading">341 Meeting and Other Information</h2>
           <div className="trustee-profile-cards-row">
