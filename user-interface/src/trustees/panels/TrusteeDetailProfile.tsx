@@ -75,7 +75,7 @@ export default function TrusteeDetailProfile({
               </div>
             )}
             {!trustee.software && (!trustee.banks || trustee.banks.length === 0) && (
-              <div data-testid="no-other-information">No information has been entered.</div>
+              <div data-testid="no-other-information">No information added.</div>
             )}
           </div>
         </div>
