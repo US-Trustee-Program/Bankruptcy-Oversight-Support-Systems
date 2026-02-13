@@ -225,7 +225,8 @@ The contents of these files must be:
   "IsEncrypted": false,
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AzureWebJobsStorage": "--SEE AzureWebJobsStorage BELOW--"
+    "CAMS_API_STORAGE_CONNECTION": "--SEE Storage Connections BELOW--",
+    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "--SEE Storage Connections BELOW--"
   },
   "ConnectionStrings": {},
   "Host": {
@@ -243,7 +244,7 @@ The contents of these files must be:
   "Values": {
     "MyTaskHub": "--A NAME UNIQUE TO YOU--",
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AzureWebJobsStorage": "--SEE AzureWebJobsStorage BELOW--"
+    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "--SEE Storage Connections BELOW--"
   },
   "ConnectionStrings": {},
   "Host": {
@@ -253,13 +254,19 @@ The contents of these files must be:
 }
 ```
 
-###### AzureWebJobsStorage
+###### Storage Connections
 
-A sufficiently privileged user can retrieve the `AzureWebJobsStorage` connection string for the
-`api` and `dataflows` function apps with the following Azure CLI command:
+CAMS uses explicit, CAMS-prefixed environment variables for storage account connections:
+
+- `CAMS_API_STORAGE_CONNECTION` - API's own storage account for runtime operations
+- `CAMS_DATAFLOWS_STORAGE_CONNECTION` - Dataflows storage account for queue writes
+
+For local development using Azurite, both can point to `UseDevelopmentStorage=true`.
+
+A sufficiently privileged user can retrieve connection strings from deployed environments with:
 
 ```sh
-az functionapp config appsettings list -g {resource-group-name} -n {function-app-name} --query "[?name=='AzureWebJobsStorage']"
+az functionapp config appsettings list -g {resource-group-name} -n {function-app-name} --query "[?name=='CAMS_API_STORAGE_CONNECTION' || name=='CAMS_DATAFLOWS_STORAGE_CONNECTION']"
 ```
 
 Replace `{resource-group-name}` and `{function-app-name}` with their respective values in the
