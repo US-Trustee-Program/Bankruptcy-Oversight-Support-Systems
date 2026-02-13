@@ -224,7 +224,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           value: cosmosDatabaseName
         }
         {
-          name: 'AzureWebJobsStorage'
+          name: 'CAMS_DATAFLOWS_STORAGE_CONNECTION'
           value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
         }
       ])
@@ -239,7 +239,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     name: 'slotConfigNames'
     properties: {
       appSettingNames: [
-        'AzureWebJobsStorage'
+        'CAMS_DATAFLOWS_STORAGE_CONNECTION'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
       ]
@@ -277,7 +277,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
             value: e2eDatabaseName
           }
           {
-            name: 'AzureWebJobsStorage'
+            name: 'CAMS_DATAFLOWS_STORAGE_CONNECTION'
             value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
           }
         ])
