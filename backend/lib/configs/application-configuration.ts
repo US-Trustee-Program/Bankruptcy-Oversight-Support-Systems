@@ -17,7 +17,6 @@ export class ApplicationConfiguration {
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
   public readonly phoneticSimilarityThreshold: number;
-  public readonly dataflowsBaseUrl: string;
   public readonly adminKey: string;
   public readonly apiStorageConnection: string;
   public readonly dataflowsStorageConnection: string;
@@ -34,7 +33,6 @@ export class ApplicationConfiguration {
     this.phoneticSimilarityThreshold = parseFloat(
       process.env.PHONETIC_SIMILARITY_THRESHOLD ?? '0.83',
     );
-    this.dataflowsBaseUrl = process.env.CAMS_DATAFLOWS_BASE_URL;
     this.adminKey = process.env.ADMIN_KEY;
     this.apiStorageConnection = process.env.CAMS_API_STORAGE_CONNECTION;
     this.dataflowsStorageConnection = process.env.CAMS_DATAFLOWS_STORAGE_CONNECTION;
