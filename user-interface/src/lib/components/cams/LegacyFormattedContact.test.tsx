@@ -142,6 +142,23 @@ describe('LegacyFormattedAddress component', () => {
       expect(emailLink).toHaveAttribute('aria-label', 'Email: accessible@example.com');
     });
 
+    test('should fall back to raw phone string when parsing returns empty number', () => {
+      // Edge case: phone string that parsePhoneNumber can't extract a number from
+      const unparsablePhoneLegacy: LegacyAddress & { phone?: string; email?: string } = {
+        phone: 'ext. 123', // Only extension, no base number
+      };
+
+      renderComponent({
+        legacy: unparsablePhoneLegacy,
+        testIdPrefix: 'fallback-phone',
+      });
+
+      // Should display raw phone string as fallback (no link)
+      expect(screen.getByTestId('fallback-phone-phone-number')).toHaveTextContent('ext. 123');
+      // No phone link should be rendered since parsing failed
+      expect(screen.queryByRole('link', { name: /phone/i })).not.toBeInTheDocument();
+    });
+
     test('should apply custom className', () => {
       renderComponent({ legacy: mockFullLegacy, className: 'custom-legacy-style' });
 

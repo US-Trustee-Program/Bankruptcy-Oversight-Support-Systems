@@ -435,6 +435,19 @@ describe('CommsLink Component', () => {
       expect(link).toHaveAttribute('aria-label', 'Website: https://example.com (opens in new tab)');
     });
 
+    test('website link aria-label uses custom label when provided', () => {
+      render(
+        <CommsLink
+          contact={{ website: 'https://example.com' } as Omit<ContactInformation, 'address'>}
+          mode="website"
+          label="Company Site"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Website: Company Site (opens in new tab)');
+    });
+
     test('teams-chat link has descriptive aria-label', () => {
       render(
         <CommsLink
