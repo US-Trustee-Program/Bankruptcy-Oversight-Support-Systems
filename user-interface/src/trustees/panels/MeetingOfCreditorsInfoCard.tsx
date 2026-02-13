@@ -57,7 +57,7 @@ export default function MeetingOfCreditorsInfoCard({
               className="usa-link comms-link"
               aria-label={`Phone: ${zoomInfo.phone}`}
             >
-              <IconLabel icon="phone" label="Phone" location="left" />
+              <IconLabel icon="phone" label={formatPhoneNumber(zoomInfo.phone)} location="left" />
             </a>
             <span className="usa-sr-only">{`: ${zoomInfo.phone}`}</span>
           </div>
