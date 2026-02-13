@@ -438,7 +438,7 @@ describe('Migrate Trustees Use Case', () => {
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
       mockTrusteesRepo.updateTrustee.mockResolvedValue({
         ...createdTrustee,
-        status: 'voluntarily-suspended',
+        status: 'suspended',
       });
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
       mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
@@ -449,7 +449,7 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.success).toBe(true);
       expect(mockTrusteesRepo.updateTrustee).toHaveBeenCalledWith(
         'trustee-789',
-        expect.objectContaining({ status: 'voluntarily-suspended' }),
+        expect.objectContaining({ status: 'suspended' }),
         expect.anything(),
       );
     });
