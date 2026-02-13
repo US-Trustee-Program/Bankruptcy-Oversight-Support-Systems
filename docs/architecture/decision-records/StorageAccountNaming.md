@@ -35,8 +35,7 @@ Accepted
   - If runtime requires it, can create alias pointing to same value as `CAMS_API_STORAGE_CONNECTION`
 - **Documentation**: Deviates from Azure Functions defaults, requires clear documentation
 
-### Configuration Requirements
-- API function app: Both `CAMS_API_STORAGE_CONNECTION` and `CAMS_DATAFLOWS_STORAGE_CONNECTION`
-- Dataflows function app: Only `CAMS_DATAFLOWS_STORAGE_CONNECTION`
-- Both must be configured in Bicep templates, local.settings.json, and stored in KeyVault
-- Slot-specific settings must include both connection names
+### Configuration Impact
+- Function apps requiring multiple storage accounts must configure all necessary connection variables
+- Infrastructure templates, local development settings, and secure storage must all use the CAMS-prefixed names
+- Deployment slot configurations must maintain consistent naming across environments

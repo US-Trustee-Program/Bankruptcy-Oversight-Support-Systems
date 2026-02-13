@@ -16,7 +16,7 @@ The phonetic token backfill migration populates the `phoneticTokens` field on ex
    CAMS_ENABLED_DATAFLOWS=BACKFILL_PHONETIC_TOKENS
    ```
 
-2. **Azure Storage connection** configured via `AzureWebJobsStorage` in `local.settings.json`
+2. **Azure Storage connection** configured via `CAMS_DATAFLOWS_STORAGE_CONNECTION` in `local.settings.json`
 
 3. **MongoDB write access** to the cases collection
 
@@ -200,7 +200,7 @@ Cases that fail 3+ times end up in the hard-stop queue for manual review.
 | Variable | Purpose | Example |
 |----------|---------|---------|
 | `CAMS_ENABLED_DATAFLOWS` | Enable the migration module | `BACKFILL_PHONETIC_TOKENS` |
-| `AzureWebJobsStorage` | Azure Storage connection | Connection string |
+| `CAMS_DATAFLOWS_STORAGE_CONNECTION` | Dataflows storage account connection | Connection string |
 
 ### Queue Names
 

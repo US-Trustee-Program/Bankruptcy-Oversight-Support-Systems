@@ -10,11 +10,9 @@ Using a shared storage account was considered but rejected because it violates A
 
 ## Decision
 
-API uses direct queue writes to Dataflows storage account via `ApiToDataflowsGateway`. The gateway is the single interface for API→dataflows communication.
+API writes messages directly to queues in Dataflows' storage account using cross-storage-account access.
 
-API is configured with `CAMS_DATAFLOWS_STORAGE_CONNECTION` environment variable containing the connection string to Dataflows' storage account. The gateway uses Azure Functions output bindings to write messages directly to queues in the Dataflows storage account.
-
-API use cases MUST use `ApiToDataflowsGateway` for all dataflows communication. Direct use of storage queue infrastructure is prohibited.
+API use cases communicate with Dataflows through a domain gateway abstraction that encapsulates queue infrastructure. This gateway is the single interface for API→dataflows communication, ensuring consistent patterns and preventing direct coupling to storage queue details.
 
 ## Status
 
@@ -25,7 +23,7 @@ Accepted (supersedes HTTP bridge pattern)
 ### Benefits
 - Simpler architecture: No HTTP hop, no bridge endpoints to maintain
 - Better performance: Direct queue writes, no HTTP latency
-- Clearer domain API: Gateway methods like `queueCaseAssignmentEvent()` express intent
+- Clearer domain API: Gateway interface expresses business intent
 - Standard Azure pattern: Cross-storage-account access via connection strings
 
 ### Trade-offs
