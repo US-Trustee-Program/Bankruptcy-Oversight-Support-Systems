@@ -20,7 +20,7 @@ test.describe('Trustee Assistants', () => {
   test('trustee profile with no assistants should not have accessibility issues', async ({
     page,
   }) => {
-    await page.waitForSelector('.trustee-assistant-information', { state: 'visible' });
+    await page.waitForSelector('.trustee-profile-assistants-grid', { state: 'visible' });
 
     await page.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
