@@ -107,10 +107,8 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const { trusteeId, trustee } = props;
   const assistantId = routeParams.assistantId;
 
-  // Determine mode: create if no assistantId, edit if assistantId exists
   const isCreateMode = !assistantId;
 
-  // Find assistant from trustee.assistants array if in edit mode
   const assistant = isCreateMode
     ? undefined
     : trustee?.assistants?.find((a) => a.id === assistantId);
@@ -135,7 +133,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
     navigate.navigateTo(`/trustees/${trusteeId}`);
   }, [navigate, trusteeId]);
 
-  // If in edit mode and assistant not found, show error
   if (!isCreateMode && !assistant) {
     return (
       <Stop id="assistant-not-found-alert" title="Error" message="Assistant not found." asError />
