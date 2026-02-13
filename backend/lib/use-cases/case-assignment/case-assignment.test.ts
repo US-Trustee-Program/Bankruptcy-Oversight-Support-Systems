@@ -95,6 +95,8 @@ describe('Case assignment tests', () => {
     const caseId = '081-23-01176';
     const role = CamsRole.TrialAttorney;
 
+    let assignmentEventSpy: ReturnType<typeof vi.fn>;
+
     beforeEach(async () => {
       applicationContext = await createMockApplicationContext({
         env: {
@@ -118,6 +120,12 @@ describe('Case assignment tests', () => {
           }
         },
       );
+
+      assignmentEventSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueCaseAssignmentEvent: assignmentEventSpy,
+        queueCaseReload: vi.fn(),
+      });
     });
 
     afterEach(() => {
@@ -354,7 +362,6 @@ describe('Case assignment tests', () => {
       expect(createAssignment).toHaveBeenCalledTimes(1);
 
       expect(assignmentEventSpy).toHaveBeenCalledWith(
-        expect.anything(),
         expect.objectContaining({ ...assignmentTwo }),
       );
     });
@@ -401,7 +408,6 @@ describe('Case assignment tests', () => {
       expect(updateAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(updateAssignment).toHaveBeenCalledTimes(1);
       expect(assignmentEventSpy).toHaveBeenCalledWith(
-        expect.anything(),
         expect.objectContaining({ ...assignmentOne }),
       );
     });
