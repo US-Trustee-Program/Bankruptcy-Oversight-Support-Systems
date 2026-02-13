@@ -64,7 +64,6 @@ describe('TrusteeAssistantForm', () => {
     trustee?: Trustee;
     assistantId?: string; // For mocking useParams
   }) {
-    // Mock useParams to return the assistantId if provided (edit mode) or undefined (create mode)
     mockUseParams.mockReturnValue({ assistantId: props.assistantId });
 
     return render(
