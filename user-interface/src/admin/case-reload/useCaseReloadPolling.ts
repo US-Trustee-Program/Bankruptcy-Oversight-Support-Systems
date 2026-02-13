@@ -7,26 +7,22 @@ type PollStatus = 'idle' | 'polling' | 'success' | 'timeout';
 export function useCaseReloadPolling(initialCase: SyncedCase | null) {
   const [pollStatus, setPollStatus] = useState<PollStatus>('idle');
   const [latestCase, setLatestCase] = useState<SyncedCase | null>(initialCase);
-  const [currentCase, setCurrentCase] = useState<SyncedCase | null>(initialCase);
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initialPollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Update currentCase when initialCase changes
-  useEffect(() => {
-    setCurrentCase(initialCase);
-  }, [initialCase]);
+  const wasPreviouslySynced = !!initialCase;
 
   const checkSyncCompleted = useCallback(
-    (newCase: SyncedCase | undefined, startTime: Date): boolean => {
-      if (currentCase) {
+    (wasPreviouslySynced: boolean, newCase: SyncedCase | undefined, startTime: Date): boolean => {
+      if (wasPreviouslySynced) {
         // Was previously synced - check if timestamp updated
         return !!(newCase && new Date(newCase.updatedOn) > startTime);
       }
       // Was "Not yet synced" - any result is success
       return !!newCase;
     },
-    [currentCase],
+    [],
   );
 
   const stopPolling = useCallback(() => {
@@ -68,7 +64,7 @@ export function useCaseReloadPolling(initialCase: SyncedCase | null) {
             const newCosmosCase = searchResponse?.data?.[0];
 
             // Check for success
-            const syncCompleted = checkSyncCompleted(newCosmosCase, startTime);
+            const syncCompleted = checkSyncCompleted(wasPreviouslySynced, newCosmosCase, startTime);
 
             if (syncCompleted) {
               // Success!
@@ -90,7 +86,7 @@ export function useCaseReloadPolling(initialCase: SyncedCase | null) {
         }, pollInterval);
       }, initialDelay);
     },
-    [checkSyncCompleted, stopPolling],
+    [checkSyncCompleted, stopPolling, wasPreviouslySynced],
   );
 
   // Cleanup on unmount
