@@ -84,7 +84,7 @@ export type TrusteeAssistant = {
 
 type TrusteeCore = {
   name: string;
-  status?: TrusteeStatus;
+  status?: AppointmentStatus;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
   assistant?: TrusteeAssistant;

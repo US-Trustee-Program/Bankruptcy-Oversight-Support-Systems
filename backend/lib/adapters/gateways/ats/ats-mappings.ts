@@ -186,7 +186,10 @@ export function formatZipCode(
  * @param atsTrustee - Raw trustee record from ATS
  * @returns Trustee input for CAMS
  */
-export function transformTrusteeRecord(atsTrustee: AtsTrusteeRecord): TrusteeInput {
+export function transformTrusteeRecord(
+  atsTrustee: AtsTrusteeRecord,
+  status?: AppointmentStatus,
+): TrusteeInput {
   // Build full name string
   const nameParts = [];
   if (atsTrustee.FIRST_NAME) nameParts.push(atsTrustee.FIRST_NAME);
@@ -225,7 +228,7 @@ export function transformTrusteeRecord(atsTrustee: AtsTrusteeRecord): TrusteeInp
 
   const trusteeInput: TrusteeInput = {
     name: fullName,
-    status: DEFAULT_TRUSTEE_STATUS,
+    status: status || DEFAULT_TRUSTEE_STATUS,
     public: publicContact,
     legacy: {
       truId: atsTrustee.ID.toString(),
