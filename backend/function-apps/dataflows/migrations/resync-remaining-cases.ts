@@ -6,7 +6,7 @@ import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
-import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
+import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
