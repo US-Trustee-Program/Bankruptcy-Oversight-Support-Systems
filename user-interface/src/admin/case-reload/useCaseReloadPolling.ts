@@ -7,20 +7,26 @@ type PollStatus = 'idle' | 'polling' | 'success' | 'timeout';
 export function useCaseReloadPolling(initialCase: SyncedCase | null) {
   const [pollStatus, setPollStatus] = useState<PollStatus>('idle');
   const [latestCase, setLatestCase] = useState<SyncedCase | null>(initialCase);
+  const [currentCase, setCurrentCase] = useState<SyncedCase | null>(initialCase);
 
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initialPollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Update currentCase when initialCase changes
+  useEffect(() => {
+    setCurrentCase(initialCase);
+  }, [initialCase]);
+
   const checkSyncCompleted = useCallback(
     (newCase: SyncedCase | undefined, startTime: Date): boolean => {
-      if (initialCase) {
+      if (currentCase) {
         // Was previously synced - check if timestamp updated
         return !!(newCase && new Date(newCase.updatedOn) > startTime);
       }
       // Was "Not yet synced" - any result is success
       return !!newCase;
     },
-    [initialCase],
+    [currentCase],
   );
 
   const stopPolling = useCallback(() => {

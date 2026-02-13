@@ -5,6 +5,7 @@ import { CASE_ID_REGEX } from '@common/cams/regex';
 
 const MODULE_NAME = 'QUEUE-SYNC-CASES-PAGE';
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
+const MAX_CASE_IDS_PER_REQUEST = 500;
 
 /**
  * HTTP trigger to write case IDs directly to sync-cases-page queue.
@@ -22,6 +23,12 @@ async function handleQueueWrite(context: InvocationContext, request: HttpRequest
 
   if (!Array.isArray(caseIds) || caseIds.length === 0) {
     throw new Error('Invalid payload - caseIds must be non-empty array');
+  }
+
+  if (caseIds.length > MAX_CASE_IDS_PER_REQUEST) {
+    throw new Error(
+      `Invalid payload - caseIds array exceeds maximum of ${MAX_CASE_IDS_PER_REQUEST} items`,
+    );
   }
 
   // Validate each case ID format (XXX-XX-XXXXX)

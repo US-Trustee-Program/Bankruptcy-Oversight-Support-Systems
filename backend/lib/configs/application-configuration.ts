@@ -17,6 +17,8 @@ export class ApplicationConfiguration {
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
   public readonly phoneticSimilarityThreshold: number;
+  public readonly dataflowsBaseUrl: string;
+  public readonly adminKey: string;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -30,6 +32,8 @@ export class ApplicationConfiguration {
     this.phoneticSimilarityThreshold = parseFloat(
       process.env.PHONETIC_SIMILARITY_THRESHOLD ?? '0.83',
     );
+    this.dataflowsBaseUrl = process.env.CAMS_DATAFLOWS_BASE_URL;
+    this.adminKey = process.env.ADMIN_KEY;
   }
 
   private getAppServerConfig(): ServerType {

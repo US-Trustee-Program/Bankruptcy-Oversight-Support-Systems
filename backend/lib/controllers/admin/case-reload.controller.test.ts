@@ -79,6 +79,37 @@ describe('Case Reload Controller tests', () => {
     await expect(controller.handleRequest(context)).rejects.toThrow(expected);
   });
 
+  test('should reject request with invalid caseId format', async () => {
+    const context = await createMockApplicationContext();
+    context.session.user.roles.push(CamsRole.SuperUser);
+    context.request.method = 'POST';
+    context.request.body = { caseId: 'invalid-format' };
+
+    const expected = expect.objectContaining({
+      status: HttpStatusCodes.BAD_REQUEST,
+      message: 'Invalid case ID format. Expected format: XXX-XX-XXXXX',
+    });
+    await expect(controller.handleRequest(context)).rejects.toThrow(expected);
+  });
+
+  test('should accept valid caseId format XXX-XX-XXXXX', async () => {
+    const context = await createMockApplicationContext();
+    context.session.user.roles.push(CamsRole.SuperUser);
+    context.request.method = 'POST';
+    const caseId = '081-12-34567';
+    context.request.body = { caseId };
+
+    const queueCaseReloadSpy = vi.spyOn(CaseReloadUseCase, 'queueCaseReload').mockResolvedValue();
+
+    const response = await controller.handleRequest(context);
+
+    expect(queueCaseReloadSpy).toHaveBeenCalledWith(context, caseId);
+    expect(response).toEqual({
+      headers: expect.anything(),
+      statusCode: 201,
+    });
+  });
+
   test('should queue case reload and return 201 on success', async () => {
     const context = await createMockApplicationContext();
     context.session.user.roles.push(CamsRole.SuperUser);

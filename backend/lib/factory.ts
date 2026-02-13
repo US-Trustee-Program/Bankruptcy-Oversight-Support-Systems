@@ -75,6 +75,8 @@ import {
   ServerConfigError,
   UNSUPPORTED_AUTHENTICATION_PROVIDER,
 } from './common-errors/server-config-error';
+import { DataflowsHttpGateway } from './use-cases/gateways.types';
+import { DataflowsHttpGatewayImpl } from './adapters/gateways/dataflows/dataflows.http.gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -397,6 +399,10 @@ const getListsGateway = (context: ApplicationContext): ListsRepository => {
   return repo;
 };
 
+const getDataflowsHttpGateway = (_context: ApplicationContext): DataflowsHttpGateway => {
+  return new DataflowsHttpGatewayImpl();
+};
+
 const factory = {
   getAcmsGateway,
   getCasesGateway,
@@ -428,6 +434,7 @@ const factory = {
   getQueueGateway,
   getListsGateway,
   getUserGroupsRepository,
+  getDataflowsHttpGateway,
 };
 
 export default factory;
