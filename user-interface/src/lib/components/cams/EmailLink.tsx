@@ -13,10 +13,11 @@ export default function EmailLink(props: EmailLinkProps): JSX.Element {
   const { email, subject, className, 'data-testid': dataTestId, 'aria-label': ariaLabel } = props;
 
   const href = subject ? `mailto:${email}?subject=${subject}` : `mailto:${email}`;
+  const effectiveAriaLabel = ariaLabel ?? `Email: ${email}`;
 
   return (
-    <div data-testid={dataTestId} aria-label={ariaLabel} className={className}>
-      <a href={href}>
+    <div data-testid={dataTestId} className={className}>
+      <a href={href} aria-label={effectiveAriaLabel}>
         <IconLabel icon="mail_outline" label={email} />
       </a>
     </div>
