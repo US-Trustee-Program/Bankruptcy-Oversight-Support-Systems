@@ -45,10 +45,10 @@ describe('ATS Gateway', () => {
       expect(appointments.length).toBeGreaterThan(0);
       expect(appointments[0].TRU_ID).toBe(1);
 
-      // Check for special case-by-case appointment for trustee 1
+      // Check for CBC appointment for trustee 1 (status '1' = case-by-case, active)
       const cbcAppointment = appointments.find((a) => a.CHAPTER === '12CBC');
       expect(cbcAppointment).toBeDefined();
-      expect(cbcAppointment?.STATUS).toBe('C');
+      expect(cbcAppointment?.STATUS).toBe('1');
     });
 
     test('should return correct trustee count', async () => {
