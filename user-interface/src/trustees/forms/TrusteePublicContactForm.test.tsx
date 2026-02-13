@@ -520,4 +520,41 @@ describe('TrusteePublicContactForm Tests', () => {
 
     expect(companyNameInput).toHaveValue('Updated Company Name');
   });
+
+  test('should display error messages for all empty required fields on submit', async () => {
+    renderWithProps({
+      action: 'create',
+      cancelTo: '/trustees',
+      trusteeId: '',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      const nameError = document.getElementById('trustee-name-input__error-message');
+      expect(nameError).toBeInTheDocument();
+    });
+
+    const address1Error = document.getElementById('trustee-address1-input__error-message');
+    expect(address1Error).toBeInTheDocument();
+
+    const cityError = document.getElementById('trustee-city-input__error-message');
+    expect(cityError).toBeInTheDocument();
+
+    const stateError = document.getElementById('trustee-state-input__error-message');
+    expect(stateError).toBeInTheDocument();
+
+    const zipError = document.getElementById('trustee-zip-input__error-message');
+    expect(zipError).toBeInTheDocument();
+
+    const phoneError = document.getElementById('trustee-phone-input__error-message');
+    expect(phoneError).toBeInTheDocument();
+
+    const emailError = document.getElementById('trustee-email-input__error-message');
+    expect(emailError).toBeInTheDocument();
+  });
 });
