@@ -20,8 +20,9 @@ export class DataflowsHttpGatewayImpl implements DataflowsHttpGateway {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const normalizedDataflowsBaseUrl = dataflowsBaseUrl.replace(/\/+$/, '');
 
-      const response = await fetch(`${dataflowsBaseUrl}/sync-cases-page`, {
+      const response = await fetch(`${normalizedDataflowsBaseUrl}/sync-cases-page`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
