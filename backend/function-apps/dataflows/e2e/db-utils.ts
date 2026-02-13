@@ -3,7 +3,7 @@ import factory from '../../../lib/factory';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { ConsolidationOrder, TransferOrder } from '@common/cams/orders';
 import { CamsUserReference, UserGroup } from '@common/cams/users';
-import { CaseSyncEvent } from '@common/queue/dataflow-types';
+import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { Trustee } from '@common/cams/trustees';
 
 /**

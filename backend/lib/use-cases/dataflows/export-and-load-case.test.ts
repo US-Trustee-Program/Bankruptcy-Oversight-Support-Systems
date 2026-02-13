@@ -6,7 +6,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { UnknownError } from '../../common-errors/unknown-error';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { CaseSyncEvent } from '@common/queue/dataflow-types';
+import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import ExportAndLoadCase from './export-and-load-case';
 
 function mockCaseSyncEvent(override: Partial<CaseSyncEvent> = {}): CaseSyncEvent {
