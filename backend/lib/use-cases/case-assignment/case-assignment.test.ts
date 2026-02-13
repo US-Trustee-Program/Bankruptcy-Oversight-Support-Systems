@@ -11,7 +11,7 @@ import CaseManagement from '../cases/case-management';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { ConsolidationOrder } from '@common/cams/orders';
-import OfficeAssigneesUseCase from '../../use-cases/offices/office-assignees';
+import factory from '../../factory';
 import { OfficeStaff } from '../../adapters/gateways/mongo/offices.mongo.repository';
 import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { MANHATTAN } from '@common/cams/test-utilities/courts.mock';
@@ -317,9 +317,11 @@ describe('Case assignment tests', () => {
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
         }),
       );
-      const assignmentEventSpy = vi
-        .spyOn(OfficeAssigneesUseCase, 'handleCaseAssignmentEvent')
-        .mockResolvedValue();
+      const queueCaseAssignmentEventSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueCaseAssignmentEvent: queueCaseAssignmentEventSpy,
+        queueCaseReload: vi.fn(),
+      });
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
 
@@ -370,9 +372,11 @@ describe('Case assignment tests', () => {
         }),
       );
       vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
-      const assignmentEventSpy = vi
-        .spyOn(OfficeAssigneesUseCase, 'handleCaseAssignmentEvent')
-        .mockResolvedValue();
+      const queueCaseAssignmentEventSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueCaseAssignmentEvent: queueCaseAssignmentEventSpy,
+        queueCaseReload: vi.fn(),
+      });
 
       const assignments = [];
 

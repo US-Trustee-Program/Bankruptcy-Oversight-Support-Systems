@@ -1,6 +1,6 @@
 import factory from '../../factory';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { CaseAssignmentRepository, QueueGateway } from '../gateways.types';
+import { CaseAssignmentRepository, ApiToDataflowsGateway } from '../gateways.types';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CaseAssignmentHistory } from '@common/cams/history';
 import CaseManagement from '../cases/case-management';
@@ -8,7 +8,6 @@ import { CamsUserReference, getCourtDivisionCodes } from '@common/cams/users';
 import { CamsRole, CamsRoleType } from '@common/cams/roles';
 import { AssignmentError } from './assignment.exception';
 import { createAuditRecord } from '@common/cams/auditable';
-import OfficeAssigneesUseCase from '../offices/office-assignees';
 import { mapDivisionCodeToUstpOffice } from '@common/cams/offices';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 
@@ -17,12 +16,12 @@ const MODULE_NAME = 'CASE-ASSIGNMENT';
 export class CaseAssignmentUseCase {
   private context: ApplicationContext;
   private assignmentRepository: CaseAssignmentRepository;
-  private queueGateway: QueueGateway;
+  private apiToDataflowsGateway: ApiToDataflowsGateway;
 
   constructor(applicationContext: ApplicationContext) {
     this.context = applicationContext;
     this.assignmentRepository = factory.getAssignmentRepository(applicationContext);
-    this.queueGateway = factory.getQueueGateway(applicationContext);
+    this.apiToDataflowsGateway = factory.getApiToDataflowsGateway(applicationContext);
   }
 
   // TODO: createTrialAttorneyAssignments should not take a role, or should be renamed
@@ -192,7 +191,7 @@ export class CaseAssignmentUseCase {
     await casesRepo.createCaseHistory(history);
 
     for (const assignment of [...addedAssignments, ...removedAssignments]) {
-      await OfficeAssigneesUseCase.handleCaseAssignmentEvent(context, assignment);
+      await this.apiToDataflowsGateway.queueCaseAssignmentEvent(assignment);
     }
 
     context.logger.info(

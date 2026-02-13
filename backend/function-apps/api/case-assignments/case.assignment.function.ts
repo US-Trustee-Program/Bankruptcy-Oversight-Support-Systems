@@ -3,7 +3,6 @@ import { CaseAssignmentController } from '../../../lib/controllers/case-assignme
 import ContextCreator from '../../azure/application-context-creator';
 import { initializeApplicationInsights } from '../../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { extraOutputs } from '../queue-outputs';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION';
 
@@ -36,5 +35,4 @@ app.http('case-assignments', {
   authLevel: 'anonymous',
   handler,
   route: 'case-assignments/{id?}',
-  extraOutputs,
 });
