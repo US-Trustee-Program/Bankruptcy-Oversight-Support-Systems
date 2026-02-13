@@ -223,6 +223,7 @@ describe('Migrate Trustees Use Case', () => {
       },
       createdOn: '2023-01-01',
       updatedOn: '2023-01-01',
+      updatedBy: { id: 'SYSTEM', name: 'System' },
     };
 
     test('should create new appointments', async () => {
@@ -409,7 +410,7 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.appointmentsProcessed).toBe(1);
     });
 
-    test('should derive trustee status from inactive appointments', async () => {
+    test('should set trustee status from appointment status', async () => {
       const atsTrustee: AtsTrusteeRecord = {
         ID: 3,
         FIRST_NAME: 'Bob',
@@ -429,20 +430,16 @@ describe('Migrate Trustees Use Case', () => {
           DISTRICT: '02',
           DIVISION: '081',
           CHAPTER: '7',
-          STATUS: 'PI', // panel, inactive
-        },
-        {
-          TRU_ID: 3,
-          DISTRICT: '02',
-          DIVISION: '081',
-          CHAPTER: '13',
-          STATUS: 'SR', // standing, resigned
+          STATUS: 'PI', // panel, voluntarily-suspended
         },
       ];
 
       mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockTrusteesRepo.updateTrustee.mockResolvedValue({ ...createdTrustee, status: 'not active' });
+      mockTrusteesRepo.updateTrustee.mockResolvedValue({
+        ...createdTrustee,
+        status: 'voluntarily-suspended',
+      });
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
       mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
@@ -452,9 +449,34 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.success).toBe(true);
       expect(mockTrusteesRepo.updateTrustee).toHaveBeenCalledWith(
         'trustee-789',
-        expect.objectContaining({ status: 'not active' }),
+        expect.objectContaining({ status: 'voluntarily-suspended' }),
         expect.anything(),
       );
+    });
+
+    test('should default trustee status to active when no appointments exist', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 4,
+        FIRST_NAME: 'Alice',
+        LAST_NAME: 'Brown',
+      };
+
+      const createdTrustee = {
+        id: 'new-id',
+        trusteeId: 'trustee-101',
+        name: 'Alice Brown',
+        status: 'active',
+      };
+
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue([]);
+
+      const result = await processTrusteeWithAppointments(context, atsTrustee);
+
+      expect(result.success).toBe(true);
+      // Trustee should not be updated since status is already 'active' (the default)
+      expect(mockTrusteesRepo.updateTrustee).not.toHaveBeenCalled();
     });
 
     test('should handle trustee with no appointments', async () => {

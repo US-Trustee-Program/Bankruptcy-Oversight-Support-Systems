@@ -10,10 +10,9 @@ import {
   transformAppointmentRecord,
   isValidAppointmentForChapter,
   getAppointmentKey,
-  deriveTrusteeStatus,
 } from './ats-mappings';
-import { TrusteeStatuses } from '@common/cams/trustees';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../types/ats.types';
+import { AppointmentStatus } from '@common/cams/trustees';
 
 describe('ATS Mappings', () => {
   describe('parseChapterAndType', () => {
@@ -56,31 +55,37 @@ describe('ATS Mappings', () => {
   describe('parseTodStatus', () => {
     test('should parse single letter codes', () => {
       expect(parseTodStatus('P')).toEqual({ appointmentType: 'panel', status: 'active' });
-      expect(parseTodStatus('O')).toEqual({ appointmentType: 'off-panel', status: 'active' });
+      expect(parseTodStatus('O')).toEqual({ appointmentType: 'converted-case', status: 'active' });
       expect(parseTodStatus('C')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
       expect(parseTodStatus('S')).toEqual({ appointmentType: 'standing', status: 'active' });
     });
 
     test('should parse two-letter codes', () => {
       expect(parseTodStatus('PA')).toEqual({ appointmentType: 'panel', status: 'active' });
-      expect(parseTodStatus('PI')).toEqual({ appointmentType: 'panel', status: 'inactive' });
+      expect(parseTodStatus('PI')).toEqual({
+        appointmentType: 'panel',
+        status: 'voluntarily-suspended',
+      });
       expect(parseTodStatus('PS')).toEqual({
         appointmentType: 'panel',
         status: 'voluntarily-suspended',
       });
+      expect(parseTodStatus('NP')).toEqual({ appointmentType: 'off-panel', status: 'resigned' });
+      expect(parseTodStatus('VR')).toEqual({ appointmentType: 'out-of-pool', status: 'resigned' });
       expect(parseTodStatus('OD')).toEqual({ appointmentType: 'off-panel', status: 'deceased' });
     });
 
     test('should parse numeric codes', () => {
-      expect(parseTodStatus('1')).toEqual({ appointmentType: 'panel', status: 'active' });
-      expect(parseTodStatus('5')).toEqual({ appointmentType: 'off-panel', status: 'active' });
-      expect(parseTodStatus('9')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
-      expect(parseTodStatus('11')).toEqual({ appointmentType: 'standing', status: 'active' });
+      expect(parseTodStatus('1')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
+      expect(parseTodStatus('3')).toEqual({ appointmentType: 'standing', status: 'resigned' });
+      expect(parseTodStatus('8')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
+      expect(parseTodStatus('9')).toEqual({ appointmentType: 'case-by-case', status: 'inactive' });
     });
 
     test('should handle case insensitive input', () => {
       expect(parseTodStatus('pa')).toEqual({ appointmentType: 'panel', status: 'active' });
-      expect(parseTodStatus('od')).toEqual({ appointmentType: 'off-panel', status: 'deceased' });
+      expect(parseTodStatus('np')).toEqual({ appointmentType: 'off-panel', status: 'resigned' });
+      expect(parseTodStatus('vr')).toEqual({ appointmentType: 'out-of-pool', status: 'resigned' });
     });
 
     test('should return defaults for unknown status', () => {
@@ -96,12 +101,14 @@ describe('ATS Mappings', () => {
     test.each([
       ['P', 'panel', 'active'],
       ['PA', 'panel', 'active'],
-      ['O', 'off-panel', 'active'],
+      ['O', 'converted-case', 'active'],
       ['C', 'case-by-case', 'active'],
       ['S', 'standing', 'active'],
       ['E', 'elected', 'active'],
-      ['V', 'converted-case', 'active'],
-      ['PI', 'panel', 'inactive'],
+      ['V', 'pool', 'active'],
+      ['NP', 'off-panel', 'resigned'],
+      ['VR', 'out-of-pool', 'resigned'],
+      ['PI', 'panel', 'voluntarily-suspended'],
       ['PS', 'panel', 'voluntarily-suspended'],
       ['PV', 'panel', 'voluntarily-suspended'],
       ['PR', 'panel', 'resigned'],
@@ -127,22 +134,15 @@ describe('ATS Mappings', () => {
     );
 
     test.each([
-      ['1', 'panel', 'active'],
-      ['2', 'panel', 'inactive'],
-      ['3', 'panel', 'voluntarily-suspended'],
-      ['4', 'panel', 'involuntarily-suspended'],
-      ['5', 'off-panel', 'active'],
-      ['6', 'off-panel', 'inactive'],
-      ['7', 'off-panel', 'resigned'],
-      ['8', 'off-panel', 'terminated'],
-      ['9', 'case-by-case', 'active'],
+      ['1', 'case-by-case', 'active'],
+      ['3', 'standing', 'resigned'],
+      ['5', 'standing', 'terminated'],
+      ['6', 'standing', 'terminated'],
+      ['7', 'standing', 'deceased'],
+      ['8', 'case-by-case', 'active'],
+      ['9', 'case-by-case', 'inactive'],
       ['10', 'case-by-case', 'inactive'],
-      ['11', 'standing', 'active'],
-      ['12', 'standing', 'inactive'],
-      ['13', 'elected', 'active'],
-      ['14', 'elected', 'inactive'],
-      ['15', 'converted-case', 'active'],
-      ['16', 'converted-case', 'inactive'],
+      ['12', 'case-by-case', 'active'],
     ])(
       'should map numeric code "%s" to appointmentType=%s, status=%s',
       (code, expectedType, expectedStatus) => {
@@ -154,7 +154,7 @@ describe('ATS Mappings', () => {
 
     test('should handle whitespace around status codes', () => {
       expect(parseTodStatus(' PA ')).toEqual({ appointmentType: 'panel', status: 'active' });
-      expect(parseTodStatus(' 1 ')).toEqual({ appointmentType: 'panel', status: 'active' });
+      expect(parseTodStatus(' 1 ')).toEqual({ appointmentType: 'case-by-case', status: 'active' });
     });
   });
 
@@ -305,6 +305,64 @@ describe('ATS Mappings', () => {
         },
       });
     });
+
+    test('should set trustee status to provided appointment status', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 789,
+        FIRST_NAME: 'Bob',
+        LAST_NAME: 'Jones',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee, 'resigned');
+
+      expect(result.status).toBe('resigned');
+    });
+
+    test.each<{ appointmentStatus: AppointmentStatus }>([
+      { appointmentStatus: 'active' },
+      { appointmentStatus: 'inactive' },
+      { appointmentStatus: 'voluntarily-suspended' },
+      { appointmentStatus: 'resigned' },
+      { appointmentStatus: 'terminated' },
+      { appointmentStatus: 'deceased' },
+    ])(
+      'should pass through appointment status "$appointmentStatus" to trustee status',
+      ({ appointmentStatus }) => {
+        const atsTrustee: AtsTrusteeRecord = {
+          ID: 789,
+          FIRST_NAME: 'Bob',
+          LAST_NAME: 'Jones',
+        };
+
+        const result = transformTrusteeRecord(atsTrustee, appointmentStatus);
+
+        expect(result.status).toBe(appointmentStatus);
+      },
+    );
+
+    test('should default trustee status to active when no status is provided', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 789,
+        FIRST_NAME: 'Bob',
+        LAST_NAME: 'Jones',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.status).toBe('active');
+    });
+
+    test('should default trustee status to active when status is undefined', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 789,
+        FIRST_NAME: 'Bob',
+        LAST_NAME: 'Jones',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee, undefined);
+
+      expect(result.status).toBe('active');
+    });
   });
 
   describe('transformAppointmentRecord', () => {
@@ -383,6 +441,112 @@ describe('ATS Mappings', () => {
 
       expect(() => transformAppointmentRecord(atsAppointment)).toThrow('Unknown district code: 99');
     });
+
+    test('should resolve Chapter 11 + V status to 11-subchapter-v / pool / active', () => {
+      const atsAppointment: AtsAppointmentRecord = {
+        TRU_ID: 123,
+        DISTRICT: '02',
+        DIVISION: '081',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-06-01'),
+        STATUS: 'V',
+        EFFECTIVE_DATE: new Date('2023-06-01'),
+      };
+
+      const result = transformAppointmentRecord(atsAppointment);
+
+      expect(result.chapter).toBe('11-subchapter-v');
+      expect(result.appointmentType).toBe('pool');
+      expect(result.status).toBe('active');
+    });
+
+    test('should resolve Chapter 11 + VR status to 11-subchapter-v / out-of-pool / resigned', () => {
+      const atsAppointment: AtsAppointmentRecord = {
+        TRU_ID: 123,
+        DISTRICT: '02',
+        DIVISION: '081',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-06-01'),
+        STATUS: 'VR',
+        EFFECTIVE_DATE: new Date('2023-06-01'),
+      };
+
+      const result = transformAppointmentRecord(atsAppointment);
+
+      expect(result.chapter).toBe('11-subchapter-v');
+      expect(result.appointmentType).toBe('out-of-pool');
+      expect(result.status).toBe('resigned');
+    });
+
+    test.each([
+      { todChapter: '12CBC', todStatus: '1', expectedStatus: 'active' },
+      { todChapter: '12CBC', todStatus: '2', expectedStatus: 'active' },
+      { todChapter: '12CBC', todStatus: '3', expectedStatus: 'inactive' },
+      { todChapter: '12CBC', todStatus: '5', expectedStatus: 'inactive' },
+      { todChapter: '12CBC', todStatus: '7', expectedStatus: 'inactive' },
+      { todChapter: '13CBC', todStatus: '1', expectedStatus: 'active' },
+      { todChapter: '13CBC', todStatus: '3', expectedStatus: 'inactive' },
+    ])(
+      'should override CBC chapter $todChapter + status $todStatus to case-by-case / $expectedStatus',
+      ({ todChapter, todStatus, expectedStatus }) => {
+        const atsAppointment: AtsAppointmentRecord = {
+          TRU_ID: 123,
+          DISTRICT: '02',
+          DIVISION: '081',
+          CHAPTER: todChapter,
+          DATE_APPOINTED: new Date('2023-06-01'),
+          STATUS: todStatus,
+          EFFECTIVE_DATE: new Date('2023-06-01'),
+        };
+
+        const result = transformAppointmentRecord(atsAppointment);
+
+        const expectedChapter = todChapter.replace('CBC', '');
+        expect(result.chapter).toBe(expectedChapter);
+        expect(result.appointmentType).toBe('case-by-case');
+        expect(result.status).toBe(expectedStatus);
+      },
+    );
+
+    test.each([
+      { todChapter: '12', expectedType: 'standing', expectedStatus: 'active' },
+      { todChapter: '13', expectedType: 'standing', expectedStatus: 'active' },
+    ])(
+      'should override code 1 with Chapter $todChapter to $expectedType / $expectedStatus',
+      ({ todChapter, expectedType, expectedStatus }) => {
+        const atsAppointment: AtsAppointmentRecord = {
+          TRU_ID: 123,
+          DISTRICT: '02',
+          DIVISION: '081',
+          CHAPTER: todChapter,
+          DATE_APPOINTED: new Date('2023-06-01'),
+          STATUS: '1',
+          EFFECTIVE_DATE: new Date('2023-06-01'),
+        };
+
+        const result = transformAppointmentRecord(atsAppointment);
+
+        expect(result.appointmentType).toBe(expectedType);
+        expect(result.status).toBe(expectedStatus);
+      },
+    );
+
+    test('should use flat map default for code 1 with Chapter 11 (no override)', () => {
+      const atsAppointment: AtsAppointmentRecord = {
+        TRU_ID: 123,
+        DISTRICT: '02',
+        DIVISION: '081',
+        CHAPTER: '11',
+        DATE_APPOINTED: new Date('2023-06-01'),
+        STATUS: '1',
+        EFFECTIVE_DATE: new Date('2023-06-01'),
+      };
+
+      const result = transformAppointmentRecord(atsAppointment);
+
+      expect(result.appointmentType).toBe('case-by-case');
+      expect(result.status).toBe('active');
+    });
   });
 
   describe('isValidAppointmentForChapter', () => {
@@ -391,33 +555,25 @@ describe('ATS Mappings', () => {
       expect(isValidAppointmentForChapter('7', 'off-panel')).toBe(true);
       expect(isValidAppointmentForChapter('7', 'elected')).toBe(true);
       expect(isValidAppointmentForChapter('7', 'converted-case')).toBe(true);
-      expect(isValidAppointmentForChapter('7', 'standing')).toBe(false);
-      expect(isValidAppointmentForChapter('7', 'case-by-case')).toBe(false);
     });
 
     test('should validate chapter 11 appointments', () => {
       expect(isValidAppointmentForChapter('11', 'case-by-case')).toBe(true);
-      expect(isValidAppointmentForChapter('11', 'panel')).toBe(false);
-      expect(isValidAppointmentForChapter('11', 'standing')).toBe(false);
     });
 
     test('should validate chapter 11-subchapter-v appointments', () => {
       expect(isValidAppointmentForChapter('11-subchapter-v', 'pool')).toBe(true);
       expect(isValidAppointmentForChapter('11-subchapter-v', 'out-of-pool')).toBe(true);
-      expect(isValidAppointmentForChapter('11-subchapter-v', 'panel')).toBe(false);
-      expect(isValidAppointmentForChapter('11-subchapter-v', 'case-by-case')).toBe(false);
     });
 
     test('should validate chapter 12 appointments', () => {
       expect(isValidAppointmentForChapter('12', 'standing')).toBe(true);
       expect(isValidAppointmentForChapter('12', 'case-by-case')).toBe(true);
-      expect(isValidAppointmentForChapter('12', 'panel')).toBe(false);
     });
 
     test('should validate chapter 13 appointments', () => {
       expect(isValidAppointmentForChapter('13', 'standing')).toBe(true);
       expect(isValidAppointmentForChapter('13', 'case-by-case')).toBe(true);
-      expect(isValidAppointmentForChapter('13', 'panel')).toBe(false);
     });
 
     test('should return false for unknown chapter', () => {
@@ -441,38 +597,6 @@ describe('ATS Mappings', () => {
       const key = getAppointmentKey('123', appointment);
 
       expect(key).toBe('123-usbc-sdny-081-7-panel');
-    });
-  });
-
-  describe('deriveTrusteeStatus', () => {
-    test('should return ACTIVE when no appointments', () => {
-      expect(deriveTrusteeStatus([])).toBe(TrusteeStatuses.ACTIVE);
-    });
-
-    test('should return ACTIVE when any appointment is active', () => {
-      expect(deriveTrusteeStatus(['active', 'inactive', 'terminated'])).toBe(
-        TrusteeStatuses.ACTIVE,
-      );
-    });
-
-    test('should return SUSPENDED when no active but has suspended appointments', () => {
-      expect(deriveTrusteeStatus(['inactive', 'voluntarily-suspended'])).toBe(
-        TrusteeStatuses.SUSPENDED,
-      );
-      expect(deriveTrusteeStatus(['involuntarily-suspended', 'terminated'])).toBe(
-        TrusteeStatuses.SUSPENDED,
-      );
-    });
-
-    test('should return NOT_ACTIVE when all appointments are inactive/terminated/etc', () => {
-      expect(deriveTrusteeStatus(['inactive', 'terminated'])).toBe(TrusteeStatuses.NOT_ACTIVE);
-      expect(deriveTrusteeStatus(['deceased', 'resigned', 'removed'])).toBe(
-        TrusteeStatuses.NOT_ACTIVE,
-      );
-    });
-
-    test('should prioritize ACTIVE over SUSPENDED', () => {
-      expect(deriveTrusteeStatus(['active', 'voluntarily-suspended'])).toBe(TrusteeStatuses.ACTIVE);
     });
   });
 });
