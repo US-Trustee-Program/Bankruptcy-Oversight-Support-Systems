@@ -22,6 +22,7 @@ import {
   SPECIAL_CHAPTER_CODES,
   STANDARD_CHAPTERS,
   DISTRICT_TO_COURT_MAP,
+  MULTI_DISTRICT_COURT_MAP,
   CBC_STATUS_MAP,
   SUBCHAPTER_V_STATUS_CODES,
   CODE_1_STANDING_CHAPTERS,
@@ -104,17 +105,32 @@ export function getDivisionOfficeName(divisionCode: string): string {
 }
 
 /**
- * Map district code to court ID.
+ * Map district code to DXTR court ID.
  *
- * @param districtCode - 2-character district code
- * @returns Court ID
+ * For multi-district states (WV, GA, LA, MS), the division code is used
+ * to disambiguate which federal district the appointment belongs to.
+ *
+ * @param districtCode - 2-character ATS district code
+ * @param divisionCode - Optional 3-character ATS division code for disambiguation
+ * @returns DXTR court ID
  */
-export function getCourtId(districtCode: string): string {
+export function getCourtId(districtCode: string, divisionCode?: string): string {
   if (!districtCode) {
     throw new Error('District code is required');
   }
 
   const trimmedDistrict = districtCode.trim();
+
+  // For multi-district states, use division code to resolve the correct courtId
+  if (divisionCode && MULTI_DISTRICT_COURT_MAP[trimmedDistrict]) {
+    const divisionPrefix = divisionCode.trim().substring(0, 2);
+    const resolved = MULTI_DISTRICT_COURT_MAP[trimmedDistrict][divisionPrefix];
+    if (resolved) {
+      return resolved;
+    }
+    // Fall through to default courtId from main map
+  }
+
   const courtId = DISTRICT_TO_COURT_MAP[trimmedDistrict];
 
   if (!courtId) {
@@ -312,8 +328,8 @@ export function transformAppointmentRecord(
     appointmentType = chapterMapping.appointmentType;
   }
 
-  // Map district to court ID
-  const courtId = getCourtId(atsAppointment.DISTRICT);
+  // Map district to court ID (pass division for multi-district state disambiguation)
+  const courtId = getCourtId(atsAppointment.DISTRICT, atsAppointment.DIVISION);
 
   // Validate chapter type for CAMS
   if (!['7', '11', '11-subchapter-v', '12', '13'].includes(chapter)) {

@@ -266,7 +266,7 @@ describe('Migrate Trustees Use Case', () => {
         trusteeId: 'trustee-100',
         chapter: '7',
         appointmentType: 'panel',
-        courtId: 'usbc-sdny',
+        courtId: '0208',
         divisionCode: '081',
         status: 'active',
         appointedDate: '2023-01-15',

@@ -286,22 +286,26 @@ export async function upsertAppointments(
 
         processedKeys.add(appointmentKey);
 
-        // Check if appointment already exists
+        // Check if appointment already exists.
+        // Match without courtId since it is derived from district/division and may
+        // change during re-migration with corrected mappings.
+        // TODO (CAMS-596): Add the courtId condition back in here
+        // a.courtId === appointmentInput.courtId &&
         const existingAppointment = existingAppointments.find(
           (a) =>
-            a.courtId === appointmentInput.courtId &&
             a.divisionCode === appointmentInput.divisionCode &&
             a.chapter === appointmentInput.chapter &&
             a.appointmentType === appointmentInput.appointmentType,
         );
 
         if (existingAppointment) {
-          // Update existing appointment
+          // Merge new data into existing document to ensure all fields are updated
           context.logger.debug(MODULE_NAME, `Updating existing appointment ${appointmentKey}`);
+          const merged = { ...existingAppointment, ...appointmentInput };
           await repo.updateAppointment(
             trustee.trusteeId,
             existingAppointment.id,
-            appointmentInput,
+            merged,
             SYSTEM_USER,
           );
         } else {
