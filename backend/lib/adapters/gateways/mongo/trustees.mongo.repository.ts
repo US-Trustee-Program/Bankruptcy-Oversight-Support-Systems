@@ -23,6 +23,11 @@ export type TrusteeDocument = Trustee & {
   documentType: 'TRUSTEE';
 };
 
+// Type augmentation for dot-notation queries on nested fields
+type TrusteeDocumentQueryable = TrusteeDocument & {
+  'legacy.truId'?: string;
+};
+
 type TrusteeOversightAssignmentDocument = TrusteeOversightAssignment & {
   documentType: 'TRUSTEE_OVERSIGHT_ASSIGNMENT';
 };
@@ -102,6 +107,16 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to retrieve trustees list.',
       });
+    }
+  }
+
+  async findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null> {
+    try {
+      const doc = using<TrusteeDocumentQueryable>();
+      const query = and(doc('documentType').equals('TRUSTEE'), doc('legacy.truId').equals(truId));
+      return await this.getAdapter<TrusteeDocumentQueryable>().findOne(query);
+    } catch (_originalError) {
+      return null;
     }
   }
 

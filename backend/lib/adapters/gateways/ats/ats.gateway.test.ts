@@ -1,7 +1,10 @@
 import { vi } from 'vitest';
 import { AtsGatewayImpl } from './ats.gateway';
 import { MockAtsGateway } from './ats.mock.gateway';
-import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import {
+  createMockApplicationContext,
+  generateTestCredential,
+} from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
 
 describe('ATS Gateway', () => {
@@ -40,7 +43,7 @@ describe('ATS Gateway', () => {
     test('should return trustee appointments', async () => {
       const appointments = await gateway.getTrusteeAppointments(context, 1);
       expect(appointments.length).toBeGreaterThan(0);
-      expect(appointments[0].ID).toBe(1);
+      expect(appointments[0].TRU_ID).toBe(1);
 
       // Check for special case-by-case appointment for trustee 1
       const cbcAppointment = appointments.find((a) => a.CHAPTER === '12CBC');
@@ -78,7 +81,7 @@ describe('ATS Gateway', () => {
         server: 'test-server',
         database: 'test-db',
         user: 'test-user',
-        password: (Math.random() + 1).toString(36).substring(2),
+        password: generateTestCredential(),
         port: 1433,
         requestTimeout: 15000,
         pool: {
@@ -149,7 +152,7 @@ describe('ATS Gateway', () => {
       mockExecuteQuery.mockResolvedValue({
         results: [
           {
-            ID: 123,
+            TRU_ID: 123,
             DISTRICT: '02',
             DIVISION: '081',
             CHAPTER: '7',
@@ -167,7 +170,7 @@ describe('ATS Gateway', () => {
       );
 
       expect(appointments).toHaveLength(1);
-      expect(appointments[0].ID).toBe(123);
+      expect(appointments[0].TRU_ID).toBe(123);
     });
 
     test('should get total trustee count', async () => {

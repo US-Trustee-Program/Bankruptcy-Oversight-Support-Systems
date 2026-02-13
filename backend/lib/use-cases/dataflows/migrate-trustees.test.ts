@@ -4,6 +4,7 @@ import {
   getPageOfTrustees,
   getTrusteeAppointments,
   upsertTrustee,
+  upsertAppointments,
   processTrusteeWithAppointments,
   processPageOfTrustees,
   getTotalTrusteeCount,
@@ -39,6 +40,7 @@ describe('Migrate Trustees Use Case', () => {
 
     mockTrusteesRepo = {
       listTrustees: vi.fn().mockResolvedValue([]),
+      findTrusteeByLegacyTruId: vi.fn().mockResolvedValue(null),
       createTrustee: vi.fn(),
       updateTrustee: vi.fn(),
     };
@@ -132,7 +134,7 @@ describe('Migrate Trustees Use Case', () => {
     test('should get appointments for a trustee', async () => {
       const mockAppointments: AtsAppointmentRecord[] = [
         {
-          ID: 1,
+          TRU_ID: 1,
           DISTRICT: '02',
           DIVISION: '081',
           CHAPTER: '7',
@@ -163,7 +165,7 @@ describe('Migrate Trustees Use Case', () => {
         name: 'John Doe',
       };
 
-      mockTrusteesRepo.listTrustees.mockResolvedValue([]);
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
 
       const result = await upsertTrustee(context, atsTrustee);
@@ -195,7 +197,7 @@ describe('Migrate Trustees Use Case', () => {
         name: 'John Doe',
       };
 
-      mockTrusteesRepo.listTrustees.mockResolvedValue([existingTrustee]);
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(existingTrustee);
       mockTrusteesRepo.updateTrustee.mockResolvedValue(updatedTrustee);
 
       const result = await upsertTrustee(context, atsTrustee);
@@ -207,6 +209,165 @@ describe('Migrate Trustees Use Case', () => {
         expect.anything(),
       );
       expect(mockTrusteesRepo.createTrustee).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('upsertAppointments', () => {
+    const mockTrustee = {
+      id: 'doc-id',
+      trusteeId: 'trustee-100',
+      name: 'Test Trustee',
+      status: 'active' as const,
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+      },
+      createdOn: '2023-01-01',
+      updatedOn: '2023-01-01',
+    };
+
+    test('should create new appointments', async () => {
+      const atsAppointments: AtsAppointmentRecord[] = [
+        {
+          TRU_ID: 100,
+          DISTRICT: '02',
+          DIVISION: '081',
+          CHAPTER: '7',
+          STATUS: 'PA',
+          DATE_APPOINTED: new Date('2023-01-15'),
+          EFFECTIVE_DATE: new Date('2023-01-15'),
+        },
+      ];
+
+      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
+      mockAppointmentsRepo.createAppointment.mockResolvedValue({});
+
+      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
+
+      expect(result.data).toBe(1);
+      expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
+    });
+
+    test('should update existing appointments instead of creating duplicates', async () => {
+      const atsAppointments: AtsAppointmentRecord[] = [
+        {
+          TRU_ID: 100,
+          DISTRICT: '02',
+          DIVISION: '081',
+          CHAPTER: '7',
+          STATUS: 'PI',
+          DATE_APPOINTED: new Date('2023-01-15'),
+          EFFECTIVE_DATE: new Date('2023-06-01'),
+        },
+      ];
+
+      const existingAppointment = {
+        id: 'appt-existing',
+        trusteeId: 'trustee-100',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: 'usbc-sdny',
+        divisionCode: '081',
+        status: 'active',
+        appointedDate: '2023-01-15',
+        effectiveDate: '2023-01-15',
+      };
+
+      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([existingAppointment]);
+      mockAppointmentsRepo.updateAppointment.mockResolvedValue({});
+
+      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
+
+      expect(result.data).toBe(1);
+      expect(mockAppointmentsRepo.updateAppointment).toHaveBeenCalledTimes(1);
+      expect(mockAppointmentsRepo.createAppointment).not.toHaveBeenCalled();
+    });
+
+    test('should skip duplicate appointments in source data', async () => {
+      const atsAppointments: AtsAppointmentRecord[] = [
+        {
+          TRU_ID: 100,
+          DISTRICT: '02',
+          DIVISION: '081',
+          CHAPTER: '7',
+          STATUS: 'PA',
+          DATE_APPOINTED: new Date('2023-01-15'),
+          EFFECTIVE_DATE: new Date('2023-01-15'),
+        },
+        {
+          TRU_ID: 100,
+          DISTRICT: '02',
+          DIVISION: '081',
+          CHAPTER: '7',
+          STATUS: 'PA',
+          DATE_APPOINTED: new Date('2023-01-15'),
+          EFFECTIVE_DATE: new Date('2023-01-15'),
+        },
+      ];
+
+      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
+      mockAppointmentsRepo.createAppointment.mockResolvedValue({});
+
+      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
+
+      expect(result.data).toBe(1);
+      expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
+    });
+
+    test('should skip invalid appointment type for chapter with warning', async () => {
+      // Standing is not valid for chapter 7
+      const atsAppointments: AtsAppointmentRecord[] = [
+        {
+          TRU_ID: 100,
+          DISTRICT: '02',
+          DIVISION: '081',
+          CHAPTER: '7',
+          STATUS: 'S', // standing - invalid for chapter 7
+          DATE_APPOINTED: new Date('2023-01-15'),
+          EFFECTIVE_DATE: new Date('2023-01-15'),
+        },
+      ];
+
+      const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
+
+      expect(result.data).toBe(0);
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('Invalid appointment type'),
+      );
+      expect(mockAppointmentsRepo.createAppointment).not.toHaveBeenCalled();
+    });
+
+    test('should continue processing when one appointment transformation fails', async () => {
+      const atsAppointments: AtsAppointmentRecord[] = [
+        {
+          TRU_ID: 100,
+          DISTRICT: '99', // Invalid district - will throw
+          DIVISION: '081',
+          CHAPTER: '7',
+          STATUS: 'PA',
+          DATE_APPOINTED: new Date('2023-01-15'),
+          EFFECTIVE_DATE: new Date('2023-01-15'),
+        },
+        {
+          TRU_ID: 100,
+          DISTRICT: '02', // Valid
+          DIVISION: '081',
+          CHAPTER: '7',
+          STATUS: 'PA',
+          DATE_APPOINTED: new Date('2023-02-15'),
+          EFFECTIVE_DATE: new Date('2023-02-15'),
+        },
+      ];
+
+      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
+      mockAppointmentsRepo.createAppointment.mockResolvedValue({});
+
+      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
+
+      // First one fails (invalid district), second one succeeds
+      expect(result.data).toBe(1);
     });
   });
 
@@ -226,7 +387,7 @@ describe('Migrate Trustees Use Case', () => {
 
       const mockAppointments: AtsAppointmentRecord[] = [
         {
-          ID: 1,
+          TRU_ID: 1,
           DISTRICT: '02',
           DIVISION: '081',
           CHAPTER: '7',
@@ -234,7 +395,7 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockTrusteesRepo.listTrustees.mockResolvedValue([]);
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
       mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
@@ -279,7 +440,7 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockTrusteesRepo.listTrustees.mockResolvedValue([]);
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
       mockTrusteesRepo.updateTrustee.mockResolvedValue({ ...createdTrustee, status: 'not active' });
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
@@ -309,7 +470,7 @@ describe('Migrate Trustees Use Case', () => {
         name: 'Jane Smith',
       };
 
-      mockTrusteesRepo.listTrustees.mockResolvedValue([]);
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue([]);
 
@@ -327,7 +488,7 @@ describe('Migrate Trustees Use Case', () => {
         { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith' },
       ];
 
-      mockTrusteesRepo.listTrustees.mockResolvedValue([]);
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue({
         id: 'new-id',
         trusteeId: 'trustee-123',

@@ -65,7 +65,7 @@ export class MockAtsGateway implements AtsGateway {
     // Return mock appointments for testing
     const mockAppointments: AtsAppointmentRecord[] = [
       {
-        ID: trusteeId,
+        TRU_ID: trusteeId,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '7',
@@ -74,12 +74,12 @@ export class MockAtsGateway implements AtsGateway {
         EFFECTIVE_DATE: new Date('2023-01-15'),
       },
       {
-        ID: trusteeId,
+        TRU_ID: trusteeId,
         DISTRICT: '02',
         DIVISION: '071',
         CHAPTER: '13',
         DATE_APPOINTED: new Date('2023-06-01'),
-        STATUS: 'P',
+        STATUS: 'S',
         EFFECTIVE_DATE: new Date('2023-06-01'),
       },
     ];
@@ -87,7 +87,7 @@ export class MockAtsGateway implements AtsGateway {
     // Add special case appointments for testing mapping logic
     if (trusteeId === 1) {
       mockAppointments.push({
-        ID: trusteeId,
+        TRU_ID: trusteeId,
         DISTRICT: '02',
         DIVISION: '081',
         CHAPTER: '12CBC',
