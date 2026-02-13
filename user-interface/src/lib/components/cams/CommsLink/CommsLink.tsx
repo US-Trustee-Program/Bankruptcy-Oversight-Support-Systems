@@ -71,7 +71,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     target = '_blank';
     href = formatWebsiteUrl(website);
     labelToUse = label ?? website;
-    ariaLabel = `Website: ${website} (opens in new tab)`;
+    ariaLabel = `Website: ${labelToUse} (opens in new tab)`;
     iconToUse = icon ?? 'launch';
   } else if (mode === 'phone-dialer' && number) {
     // Always display the phone number, even if it doesn't match our expected format
