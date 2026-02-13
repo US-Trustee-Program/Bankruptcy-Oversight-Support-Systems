@@ -13,7 +13,7 @@ import factory from '../../factory';
 import { RuntimeState } from '../gateways.types';
 import { MaybeData } from './queue-types';
 import { CamsUserReference } from '@common/cams/users';
-import { Trustee } from '@common/cams/trustees';
+import { Trustee, AppointmentStatus } from '@common/cams/trustees';
 
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
@@ -389,7 +389,25 @@ export async function processTrusteeWithAppointments(
       }
 
       // Derive trustee status from appointment statuses
-      const appointmentStatuses = appointments.map((a) => parseTodStatus(a.STATUS).status);
+      // Use full transformation to account for CBC overrides and code-1 chapter-dependent logic
+      const appointmentStatuses: AppointmentStatus[] = appointments.map((a) => {
+        try {
+          const transformed = transformAppointmentRecord(a);
+          return transformed.status;
+        } catch (_error) {
+          // If transformation fails, fall back to flat map status
+          context.logger.warn(
+            MODULE_NAME,
+            `Failed to transform appointment for status derivation, using flat map`,
+            {
+              trusteeId: a.TRU_ID,
+              chapter: a.CHAPTER,
+              status: a.STATUS,
+            },
+          );
+          return parseTodStatus(a.STATUS).status;
+        }
+      });
       const derivedStatus = deriveTrusteeStatus(appointmentStatuses);
 
       if (derivedStatus !== trustee.status) {
