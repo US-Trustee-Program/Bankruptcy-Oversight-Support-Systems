@@ -15,14 +15,16 @@ export const TOD_STATUS_MAP: Record<
   // Single letter codes - default to 'active' status
   P: { appointmentType: 'panel', status: 'active' },
   PA: { appointmentType: 'panel', status: 'active' },
-  O: { appointmentType: 'off-panel', status: 'active' },
+  O: { appointmentType: 'converted-case', status: 'active' },
   C: { appointmentType: 'case-by-case', status: 'active' },
   S: { appointmentType: 'standing', status: 'active' },
   E: { appointmentType: 'elected', status: 'active' },
-  V: { appointmentType: 'converted-case', status: 'active' },
+  V: { appointmentType: 'pool', status: 'active' },
+  NP: { appointmentType: 'off-panel', status: 'resigned' },
+  VR: { appointmentType: 'out-of-pool', status: 'resigned' },
 
   // Panel variations
-  PI: { appointmentType: 'panel', status: 'inactive' },
+  PI: { appointmentType: 'panel', status: 'voluntarily-suspended' },
   PS: { appointmentType: 'panel', status: 'voluntarily-suspended' },
   PV: { appointmentType: 'panel', status: 'voluntarily-suspended' },
   PR: { appointmentType: 'panel', status: 'resigned' },
@@ -46,22 +48,15 @@ export const TOD_STATUS_MAP: Record<
   SD: { appointmentType: 'standing', status: 'deceased' },
 
   // Numeric codes
-  '1': { appointmentType: 'panel', status: 'active' },
-  '2': { appointmentType: 'panel', status: 'inactive' },
-  '3': { appointmentType: 'panel', status: 'voluntarily-suspended' },
-  '4': { appointmentType: 'panel', status: 'involuntarily-suspended' },
-  '5': { appointmentType: 'off-panel', status: 'active' },
-  '6': { appointmentType: 'off-panel', status: 'inactive' },
-  '7': { appointmentType: 'off-panel', status: 'resigned' },
-  '8': { appointmentType: 'off-panel', status: 'terminated' },
-  '9': { appointmentType: 'case-by-case', status: 'active' },
+  '1': { appointmentType: 'case-by-case', status: 'active' },
+  '3': { appointmentType: 'standing', status: 'resigned' },
+  '5': { appointmentType: 'standing', status: 'terminated' },
+  '6': { appointmentType: 'standing', status: 'terminated' },
+  '7': { appointmentType: 'standing', status: 'deceased' },
+  '8': { appointmentType: 'case-by-case', status: 'active' },
+  '9': { appointmentType: 'case-by-case', status: 'inactive' },
   '10': { appointmentType: 'case-by-case', status: 'inactive' },
-  '11': { appointmentType: 'standing', status: 'active' },
-  '12': { appointmentType: 'standing', status: 'inactive' },
-  '13': { appointmentType: 'elected', status: 'active' },
-  '14': { appointmentType: 'elected', status: 'inactive' },
-  '15': { appointmentType: 'converted-case', status: 'active' },
-  '16': { appointmentType: 'converted-case', status: 'inactive' },
+  '12': { appointmentType: 'case-by-case', status: 'active' },
 };
 
 /**
@@ -77,6 +72,39 @@ export const DEFAULT_STATUS_MAPPING = {
  * Can be updated later based on appointment statuses.
  */
 export const DEFAULT_TRUSTEE_STATUS = TrusteeStatuses.ACTIVE;
+
+/**
+ * CBC chapter status overrides.
+ * When TOD Chapter includes 'CBC', this map overrides BOTH appointmentType and status.
+ */
+export const CBC_STATUS_MAP: Record<
+  string,
+  Record<string, { appointmentType: AppointmentType; status: AppointmentStatus }>
+> = {
+  '12CBC': {
+    '1': { appointmentType: 'case-by-case', status: 'active' },
+    '2': { appointmentType: 'case-by-case', status: 'active' },
+    '3': { appointmentType: 'case-by-case', status: 'inactive' },
+    '5': { appointmentType: 'case-by-case', status: 'inactive' },
+    '7': { appointmentType: 'case-by-case', status: 'inactive' },
+  },
+  '13CBC': {
+    '1': { appointmentType: 'case-by-case', status: 'active' },
+    '3': { appointmentType: 'case-by-case', status: 'inactive' },
+  },
+};
+
+/**
+ * Status codes that indicate Subchapter V appointments (Chapter 11).
+ * When combined with Chapter 11, these resolve to '11-subchapter-v'.
+ */
+export const SUBCHAPTER_V_STATUS_CODES = new Set(['V', 'VR']);
+
+/**
+ * Chapters where status code '1' maps to Standing/Active instead of Case-by-Case/Active.
+ * This is a chapter-dependent override applied after the flat map lookup.
+ */
+export const CODE_1_STANDING_CHAPTERS = new Set(['12', '13']);
 
 /**
  * Special chapter codes that include appointment type
