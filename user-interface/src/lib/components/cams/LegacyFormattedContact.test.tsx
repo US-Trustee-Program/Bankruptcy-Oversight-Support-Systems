@@ -124,7 +124,7 @@ describe('LegacyFormattedAddress component', () => {
       const emailLink = screen.getByRole('link');
       expect(emailLink).toHaveAttribute(
         'href',
-        'mailto:subject@example.com?subject=Important Matter',
+        'mailto:subject@example.com?subject=Important%20Matter',
       );
     });
 
