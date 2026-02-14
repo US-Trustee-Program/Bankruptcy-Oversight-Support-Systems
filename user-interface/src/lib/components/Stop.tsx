@@ -1,4 +1,5 @@
 import Alert, { UswdsAlertStyle } from './uswds/Alert';
+import CommsLink from './cams/CommsLink/CommsLink';
 
 type StopProps = {
   id: string;
@@ -23,7 +24,8 @@ export function Stop(props: StopProps) {
         {message}{' '}
         {showHelpDeskContact && (
           <>
-            Please contact <a href="mailto:UST.Help@ust.doj.gov">UST.Help@ust.doj.gov</a> for
+            Please contact{' '}
+            <CommsLink contact={{ email: 'UST.Help@ust.doj.gov' }} mode="email" hideIcon /> for
             assistance.
           </>
         )}
