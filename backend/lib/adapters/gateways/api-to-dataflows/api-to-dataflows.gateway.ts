@@ -21,7 +21,17 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
   }
 
   private enqueue(queue: StorageQueueOutput, ...messages: unknown[]): void {
-    const output = this.context.extraOutputs as InvocationContextExtraOutputs;
+    const output = this.context.extraOutputs as InvocationContextExtraOutputs | undefined;
+
+    // No-op when extraOutputs unavailable (e.g., BDD tests running in Express)
+    if (!output) {
+      this.context.logger.warn(
+        'API-TO-DATAFLOWS-GATEWAY',
+        `Cannot enqueue to ${queue.queueName}: extraOutputs unavailable (likely running in Express/BDD context)`,
+      );
+      return;
+    }
+
     output.set(queue, messages);
   }
 }
