@@ -56,18 +56,7 @@ export function completeTrace(trace: DataflowTrace, result: TraceResult): void {
     `DATAFLOW_COMPLETE module=${trace.moduleName} handler=${trace.handlerName} docs=${result.documentsWritten} failed=${result.documentsFailed} duration=${durationMs}ms instance=${trace.instanceId} success=${result.success}`,
   );
 
-  const client = getAppInsightsClient() as {
-    trackEvent: (event: {
-      name: string;
-      properties: Record<string, string>;
-      measurements: Record<string, number>;
-    }) => void;
-    trackMetric: (metric: {
-      name: string;
-      value: number;
-      properties: Record<string, string>;
-    }) => void;
-  } | null;
+  const client = getAppInsightsClient();
 
   if (!client) return;
 
