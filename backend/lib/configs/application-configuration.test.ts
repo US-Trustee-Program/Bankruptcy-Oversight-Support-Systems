@@ -6,7 +6,10 @@ describe('Testing that database configuration is loaded correctly based on envir
 
   beforeEach(() => {
     vi.resetModules();
-    process.env = {};
+    process.env = {
+      CAMS_API_STORAGE_CONNECTION: 'UseDevelopmentStorage=true',
+      CAMS_DATAFLOWS_STORAGE_CONNECTION: 'UseDevelopmentStorage=true',
+    };
   });
 
   afterEach(() => {
