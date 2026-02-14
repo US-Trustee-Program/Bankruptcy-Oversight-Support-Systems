@@ -1,2 +1,5 @@
 # Bicep build artifacts (compiled JSON files)
 cloud-deployment/**/*.json
+
+# Workbook templates are source files, not build artifacts
+!cloud-deployment/lib/workbooks/*.json
