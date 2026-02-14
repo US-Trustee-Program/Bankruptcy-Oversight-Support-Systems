@@ -201,6 +201,8 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     properties: {
       appSettingNames: [
         'AzureWebJobsStorage'
+        'CAMS_API_STORAGE_CONNECTION'
+        'CAMS_DATAFLOWS_STORAGE_CONNECTION'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
       ]
@@ -272,6 +274,14 @@ var baseApiFunctionAppConfigProperties = {
         name: 'AzureWebJobsStorage'
         value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
       }
+      {
+        name: 'CAMS_API_STORAGE_CONNECTION'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
+      }
+      {
+        name: 'CAMS_DATAFLOWS_STORAGE_CONNECTION'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
+      }
     ])
     cors: {
       allowedOrigins: apiCorsAllowOrigins
@@ -297,6 +307,14 @@ var baseApiFunctionAppConfigProperties = {
       {
         name: 'AzureWebJobsStorage'
         value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionSlotStorageAccount.listKeys().keys[0].value}'
+      }
+      {
+        name: 'CAMS_API_STORAGE_CONNECTION'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionSlotStorageAccount.listKeys().keys[0].value}'
+      }
+      {
+        name: 'CAMS_DATAFLOWS_STORAGE_CONNECTION'
+        value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
       }
     ])
     cors: {

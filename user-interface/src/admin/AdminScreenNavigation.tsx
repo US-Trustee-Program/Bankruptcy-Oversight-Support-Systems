@@ -6,6 +6,7 @@ export enum AdminNavState {
   UNKNOWN,
   PRIVILEGED_IDENTITY,
   BANKRUPTCY_SOFTWARE,
+  CASE_RELOAD,
 }
 
 export function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: AdminNavState): string {
@@ -50,6 +51,17 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             title="Manage bankruptcy software"
           >
             Bankruptcy Software
+          </NavLink>
+        </li>
+        <li className="usa-sidenav__item">
+          <NavLink
+            to="/admin/case-reload"
+            data-testid="case-reload-nav-link"
+            className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.CASE_RELOAD)}
+            onClick={() => setActiveNav(AdminNavState.CASE_RELOAD)}
+            title="Manually reload cases from DXTR"
+          >
+            Reload Case
           </NavLink>
         </li>
       </ul>

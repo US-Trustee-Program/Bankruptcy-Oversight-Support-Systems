@@ -1,8 +1,8 @@
-import { buildQueueName } from './dataflows-common';
+import { buildQueueName } from '../function-apps/dataflows/dataflows-common';
 import { output } from '@azure/functions';
-import ModuleNames from './module-names';
+import ModuleNames from '../function-apps/dataflows/module-names';
 
-export const STORAGE_QUEUE_CONNECTION = 'AzureWebJobsStorage';
+export const STORAGE_QUEUE_CONNECTION = 'CAMS_DATAFLOWS_STORAGE_CONNECTION';
 
 const connection = STORAGE_QUEUE_CONNECTION;
 
@@ -23,5 +23,10 @@ export const CASE_CLOSED_EVENT_QUEUE = output.storageQueue({
 
 export const CASE_CLOSED_EVENT_DLQ = output.storageQueue({
   queueName: buildQueueName(ModuleNames.CASE_CLOSED_EVENT, 'DLQ'),
+  connection,
+});
+
+export const SYNC_CASES_PAGE_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.SYNC_CASES_PAGE),
   connection,
 });

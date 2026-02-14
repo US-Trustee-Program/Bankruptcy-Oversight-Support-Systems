@@ -23,6 +23,7 @@ export const WEBSITE_RELAXED_REGEX =
   /^(?:https?:\/\/)?(?:(?!-)[-a-zA-Z0-9]{1,63}(?<!-)\.)+[a-zA-Z]{2,63}(?::\d+)?(?:\/[-a-zA-Z0-9()@:%_+.~#?&=/]*)?$/;
 
 export const CASE_NUMBER_REGEX = /^\d{2}-\d{5}$/;
+export const CASE_ID_REGEX = /^\d{3}-\d{2}-\d{5}$/;
 
 /**
  * Checks if a string contains any protocol pattern (e.g., ftp:, mailto:, etc.)

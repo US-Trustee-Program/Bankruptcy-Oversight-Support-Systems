@@ -1,0 +1,39 @@
+.case-reload-admin-panel {
+  padding: 1.5rem;
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+
+  .case-reload-form {
+    margin-top: 0.5rem;
+
+    .grid-row {
+      margin-bottom: 0.75rem;
+    }
+
+    .usa-alert-container.inline-alert {
+      margin-left: 0;
+
+      .usa-alert {
+        margin-left: 0;
+      }
+    }
+
+    .validated-case-details {
+      p {
+        margin: 0.25rem 0;
+      }
+    }
+
+    .button-group {
+      display: flex;
+      gap: 1rem;
+
+      button {
+        margin-top: 0;
+      }
+    }
+  }
+}

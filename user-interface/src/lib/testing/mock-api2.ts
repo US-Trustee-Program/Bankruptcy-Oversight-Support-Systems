@@ -2573,6 +2573,10 @@ async function deleteBank(_ignore: string) {
   return;
 }
 
+async function postCaseReload(_caseId: string) {
+  return;
+}
+
 async function getTrusteeOversightAssignments(
   trusteeId: string,
 ): Promise<ResponseBody<TrusteeOversightAssignment[]>> {
@@ -2668,6 +2672,7 @@ const MockApi2 = {
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   getOversightStaff,
+  postCaseReload,
 };
 
 export default MockApi2;

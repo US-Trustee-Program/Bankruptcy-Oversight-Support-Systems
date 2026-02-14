@@ -17,6 +17,9 @@ export class ApplicationConfiguration {
   public readonly authConfig: AuthorizationConfig;
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
   public readonly phoneticSimilarityThreshold: number;
+  public readonly adminKey: string;
+  public readonly apiStorageConnection: string;
+  public readonly dataflowsStorageConnection: string;
 
   constructor() {
     this.dbMock = process.env.DATABASE_MOCK?.toLowerCase() === 'true';
@@ -30,6 +33,16 @@ export class ApplicationConfiguration {
     this.phoneticSimilarityThreshold = parseFloat(
       process.env.PHONETIC_SIMILARITY_THRESHOLD ?? '0.83',
     );
+    this.adminKey = process.env.ADMIN_KEY;
+    this.apiStorageConnection = process.env.CAMS_API_STORAGE_CONNECTION;
+    this.dataflowsStorageConnection = process.env.CAMS_DATAFLOWS_STORAGE_CONNECTION;
+
+    if (!this.apiStorageConnection) {
+      throw new Error('CAMS_API_STORAGE_CONNECTION is required');
+    }
+    if (!this.dataflowsStorageConnection) {
+      throw new Error('CAMS_DATAFLOWS_STORAGE_CONNECTION is required');
+    }
   }
 
   private getAppServerConfig(): ServerType {

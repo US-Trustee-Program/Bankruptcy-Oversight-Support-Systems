@@ -13,7 +13,7 @@ import BackfillPhoneticTokensUseCase, {
 } from '../../../lib/use-cases/dataflows/backfill-phonetic-tokens';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CamsError } from '../../../lib/common-errors/cams-error';
-import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
+import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 
 const MODULE_NAME = ModuleNames.BACKFILL_PHONETIC_TOKENS;
