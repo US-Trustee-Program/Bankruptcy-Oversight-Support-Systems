@@ -5,3 +5,13 @@ export function initializeApplicationInsights() {
     appInsights.setup().start();
   }
 }
+
+export function getAppInsightsClient(): unknown | null {
+  try {
+    /* eslint-disable-next-line @typescript-eslint/no-require-imports */
+    const appInsights = require('applicationinsights');
+    return appInsights.defaultClient ?? null;
+  } catch {
+    return null;
+  }
+}
