@@ -6,10 +6,11 @@ import { mapDivisionCodeToUstpOffice } from '@common/cams/offices';
 import { CaseAssignment } from '@common/cams/assignments';
 import { isCaseOpen } from '@common/cams/cases';
 import { OfficeAssignee } from '../gateways.types';
+import { DocumentCountSummary } from '../dataflow.types';
 
 const MODULE_NAME = 'MIGRATE-OFFICE-ASSIGNEES-USE-CASE';
 
-async function migrateAssignments(context: ApplicationContext) {
+async function migrateAssignments(context: ApplicationContext): Promise<DocumentCountSummary> {
   const assignmentsRepo = factory.getAssignmentRepository(context);
   const allAssignments = await assignmentsRepo.getAllActiveAssignments();
 
@@ -60,6 +61,7 @@ async function migrateAssignments(context: ApplicationContext) {
   );
 
   context.logger.info(MODULE_NAME, 'Office assignees migration results', summary);
+  return summary;
 }
 
 async function createOfficeAssignee(

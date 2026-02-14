@@ -72,7 +72,7 @@ describe('orders controller tests', () => {
       .mockResolvedValue(syncResponse);
 
     const controller = new OrdersController(applicationContext);
-    await expect(controller.handleTimer(applicationContext)).resolves.toBeFalsy();
+    await expect(controller.handleTimer(applicationContext)).resolves.toEqual(syncResponse);
     expect(syncOrdersSpy).toHaveBeenCalled();
   });
 

@@ -1,4 +1,5 @@
 import { OfficesUseCase } from '../../use-cases/offices/offices';
+import { DocumentCountSummary } from '../../use-cases/dataflow.types';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
@@ -10,16 +11,18 @@ import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 
 const MODULE_NAME = 'OFFICES-CONTROLLER';
 
-export class OfficesController implements CamsController, CamsTimerController {
+export class OfficesController
+  implements CamsController, CamsTimerController<DocumentCountSummary>
+{
   private readonly useCase: OfficesUseCase;
 
   constructor() {
     this.useCase = new OfficesUseCase();
   }
 
-  public async handleTimer(context: ApplicationContext): Promise<void> {
+  public async handleTimer(context: ApplicationContext): Promise<DocumentCountSummary> {
     try {
-      await this.useCase.syncOfficeStaff(context);
+      return await this.useCase.syncOfficeStaff(context);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {

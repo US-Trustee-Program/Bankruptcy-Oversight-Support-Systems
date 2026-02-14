@@ -18,6 +18,7 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
+import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
@@ -68,6 +69,7 @@ const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTabl
  */
 async function handleStart(_ignore: StartMessage, context: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(context);
+  const trace = startTrace(MODULE_NAME, 'handleStart', context.invocationId, logger);
   const migrationStartTimestamp = new Date().toISOString();
   logger.info(
     MODULE_NAME,
@@ -75,11 +77,27 @@ async function handleStart(_ignore: StartMessage, context: InvocationContext) {
   );
 
   const isEmpty = await emptyMigrationTable(context);
-  if (!isEmpty) return;
+  if (!isEmpty) {
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { reason: 'migration table not empty' },
+    });
+    return;
+  }
 
   const count = await loadMigrationTable(context);
 
-  if (count === 0) return;
+  if (count === 0) {
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { reason: 'no cases to migrate' },
+    });
+    return;
+  }
 
   let start = 0;
   let end = 0;
@@ -93,6 +111,12 @@ async function handleStart(_ignore: StartMessage, context: InvocationContext) {
   context.extraOutputs.set(PAGE, pages);
 
   await storeRuntimeState(context, migrationStartTimestamp);
+  completeTrace(trace, {
+    documentsWritten: 0,
+    documentsFailed: 0,
+    success: true,
+    details: { pagesQueued: String(pages.length), totalCases: String(count) },
+  });
 }
 
 /**
@@ -104,6 +128,8 @@ async function handleStart(_ignore: StartMessage, context: InvocationContext) {
  * @param invocationContext
  */
 async function handlePage(range: RangeMessage, invocationContext: InvocationContext) {
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
+  const trace = startTrace(MODULE_NAME, 'handlePage', invocationContext.invocationId, logger);
   const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, invocationContext);
 
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
@@ -111,12 +137,26 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
 
   const failedEvents = processedEvents.filter((event) => !!event.error);
   invocationContext.extraOutputs.set(DLQ, failedEvents);
+  const successCount = processedEvents.length - failedEvents.length;
+  completeTrace(trace, {
+    documentsWritten: successCount,
+    documentsFailed: failedEvents.length,
+    success: true,
+    details: { totalEvents: String(events.length) },
+  });
 }
 
 async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
+  const trace = startTrace(MODULE_NAME, 'handleError', invocationContext.invocationId, logger);
   if (isNotFoundError(event.error)) {
     logger.info(MODULE_NAME, `Abandoning attempt to sync ${event.caseId}: ${event.error.message}.`);
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 1,
+      success: true,
+      details: { disposition: 'abandoned' },
+    });
     return;
   }
   logger.info(
@@ -125,11 +165,18 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
   );
   delete event.error;
   invocationContext.extraOutputs.set(RETRY, [event]);
+  completeTrace(trace, {
+    documentsWritten: 0,
+    documentsFailed: 1,
+    success: true,
+    details: { disposition: 'queued-for-retry' },
+  });
 }
 
 async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const trace = startTrace(MODULE_NAME, 'handleRetry', invocationContext.invocationId, logger);
 
   const RETRY_LIMIT = 3;
   if (!event.retryCount) {
@@ -141,6 +188,12 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
   if (event.retryCount > RETRY_LIMIT) {
     invocationContext.extraOutputs.set(HARD_STOP, [event]);
     logger.info(MODULE_NAME, `Too many attempts to sync ${filterToExtendedAscii(event.caseId)}.`);
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 1,
+      success: true,
+      details: { disposition: 'hard-stop', retryCount: String(event.retryCount) },
+    });
   } else {
     if (!event.bCase) {
       const exportResult = await ExportAndLoadCase.exportCase(context, event);
@@ -152,6 +205,12 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
           exportResult.error ??
           new UnknownError(MODULE_NAME, { message: 'Expected case detail was not returned.' });
         invocationContext.extraOutputs.set(DLQ, [event]);
+        completeTrace(trace, {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: true,
+          details: { disposition: 'export-failed', retryCount: String(event.retryCount) },
+        });
         return;
       }
     }
@@ -161,12 +220,24 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
     if (loadResult.error) {
       event.error = loadResult.error;
       invocationContext.extraOutputs.set(DLQ, [event]);
+      completeTrace(trace, {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: true,
+        details: { disposition: 'load-failed', retryCount: String(event.retryCount) },
+      });
+    } else {
+      logger.info(
+        MODULE_NAME,
+        `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}.`,
+      );
+      completeTrace(trace, {
+        documentsWritten: 1,
+        documentsFailed: 0,
+        success: true,
+        details: { disposition: 'retry-succeeded', retryCount: String(event.retryCount) },
+      });
     }
-
-    logger.info(
-      MODULE_NAME,
-      `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}.`,
-    );
   }
 }
 

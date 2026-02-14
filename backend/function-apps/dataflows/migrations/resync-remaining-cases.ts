@@ -9,6 +9,7 @@ import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
+import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 
 const MODULE_NAME = 'RESYNC-REMAINING-CASES';
 const PAGE_SIZE = 100;
@@ -59,10 +60,17 @@ async function handleStart(
 ) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const trace = startTrace(MODULE_NAME, 'handleStart', invocationContext.invocationId, logger);
 
   const cutoffDate = message.cutoffDate;
   if (!cutoffDate) {
     logger.error(MODULE_NAME, 'cutoffDate is required in the start message.');
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      details: { reason: 'missing cutoffDate' },
+    });
     return;
   }
 
@@ -74,6 +82,12 @@ async function handleStart(
     remainingCount: 0,
   };
   invocationContext.extraOutputs.set(PAGE, cursorMessage);
+  completeTrace(trace, {
+    documentsWritten: 0,
+    documentsFailed: 0,
+    success: true,
+    details: { cutoffDate },
+  });
 }
 
 async function handlePage(
@@ -82,6 +96,7 @@ async function handlePage(
 ) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const trace = startTrace(MODULE_NAME, 'handlePage', invocationContext.invocationId, logger);
 
   const result = await ResyncRemainingCasesUseCase.getPageOfRemainingCasesByCursor(
     context,
@@ -92,6 +107,12 @@ async function handlePage(
 
   if (result.error || !result.data) {
     logger.error(MODULE_NAME, `Failed to get page of remaining cases: ${result.error?.message}`);
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: result.error?.message,
+    });
     throw result.error;
   }
 
@@ -102,6 +123,12 @@ async function handlePage(
       MODULE_NAME,
       `REMAINING_CASES_TOTAL=${cursor.remainingCount} — No more remaining cases to resync. Migration complete.`,
     );
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { reason: 'no more cases' },
+    });
     return;
   }
 
@@ -139,6 +166,14 @@ async function handlePage(
       `REMAINING_CASES_TOTAL=${remainingCount} — Resync complete. ${successCount} succeeded, ${failedEvents.length} failed.`,
     );
   }
+
+  const successCount = processedEvents.length - failedEvents.length;
+  completeTrace(trace, {
+    documentsWritten: successCount,
+    documentsFailed: failedEvents.length,
+    success: true,
+    details: { totalCases: String(caseIds.length) },
+  });
 }
 
 function routeErrorForInitialAttempt(
@@ -161,7 +196,15 @@ function routeErrorForInitialAttempt(
 
 async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
+  const trace = startTrace(MODULE_NAME, 'handleError', invocationContext.invocationId, logger);
+  const abandoned = isNotFoundError(event.error);
   routeErrorForInitialAttempt(event, invocationContext, logger);
+  completeTrace(trace, {
+    documentsWritten: 0,
+    documentsFailed: 1,
+    success: true,
+    details: { disposition: abandoned ? 'abandoned' : 'queued-for-retry' },
+  });
 }
 
 function incrementRetryCount(
@@ -183,10 +226,19 @@ function incrementRetryCount(
 async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const trace = startTrace(MODULE_NAME, 'handleRetry', invocationContext.invocationId, logger);
 
   const RETRY_LIMIT = 3;
   const shouldStop = incrementRetryCount(event, RETRY_LIMIT, invocationContext, logger);
-  if (shouldStop) return;
+  if (shouldStop) {
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 1,
+      success: true,
+      details: { disposition: 'hard-stop', retryCount: String(event.retryCount) },
+    });
+    return;
+  }
 
   logger.info(
     MODULE_NAME,
@@ -197,10 +249,22 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
 
   if (processed.error) {
     invocationContext.extraOutputs.set(DLQ, [processed]);
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 1,
+      success: true,
+      details: { disposition: 'retry-failed', retryCount: String(event.retryCount) },
+    });
     return;
   }
 
   logger.info(MODULE_NAME, `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}`);
+  completeTrace(trace, {
+    documentsWritten: 1,
+    documentsFailed: 0,
+    success: true,
+    details: { disposition: 'retry-succeeded', retryCount: String(event.retryCount) },
+  });
 }
 
 function setup() {

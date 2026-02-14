@@ -26,16 +26,16 @@ type UpdateOrderResponse = CamsHttpResponseInit;
 type SyncOrdersResponse = CamsHttpResponseInit<SyncOrdersStatus>;
 type ManageConsolidationResponse = CamsHttpResponseInit<ConsolidationOrder[]>;
 
-export class OrdersController implements CamsController, CamsTimerController {
+export class OrdersController implements CamsController, CamsTimerController<SyncOrdersStatus> {
   private readonly useCase: OrdersUseCase;
 
   constructor(context: ApplicationContext) {
     this.useCase = new OrdersUseCase(context);
   }
 
-  public async handleTimer(context: ApplicationContext): Promise<void> {
+  public async handleTimer(context: ApplicationContext): Promise<SyncOrdersStatus> {
     try {
-      await this.useCase.syncOrders(context);
+      return await this.useCase.syncOrders(context);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     } finally {

@@ -7,6 +7,7 @@ import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constant
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import UsersHelpers from '../users/users.helpers';
 import { sanitizeDeep } from '../validations';
+import { DocumentCountSummary } from '../dataflow.types';
 
 const MODULE_NAME = 'OFFICES-USE-CASE';
 export const DEFAULT_STAFF_TTL = 60 * 60 * 25;
@@ -33,7 +34,7 @@ export class OfficesUseCase {
     return await repository.getDistinctAssigneesByOffice(officeCode);
   }
 
-  public async syncOfficeStaff(context: ApplicationContext): Promise<object> {
+  public async syncOfficeStaff(context: ApplicationContext): Promise<DocumentCountSummary> {
     const officesGateway = factory.getOfficesGateway(context);
     const repository = factory.getOfficesRepository(context);
     const userGroupSource = await factory.getUserGroupGateway(context);
@@ -90,6 +91,8 @@ export class OfficesUseCase {
 
     // Write users with roles to the repo for each office.
     const officesWithUsers: UstpOfficeDetails[] = [];
+    let totalSuccess = 0;
+    let totalFailure = 0;
     for (const officeGroup of officeGroups) {
       const office = { ...groupToOfficeMap.get(officeGroup.name), staff: [] };
 
@@ -129,6 +132,8 @@ export class OfficesUseCase {
           `Failed to sync ${failureCount} users to the ${office.officeName} office.`,
         );
       }
+      totalSuccess += successCount;
+      totalFailure += failureCount;
       officesWithUsers.push(office);
     }
 
@@ -143,7 +148,7 @@ export class OfficesUseCase {
     const runtimeStateRepo = factory.getOfficeStaffSyncStateRepo(context);
 
     await runtimeStateRepo.upsert(result);
-    return result;
+    return { success: totalSuccess, fail: totalFailure };
   }
 }
 
