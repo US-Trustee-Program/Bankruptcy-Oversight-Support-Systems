@@ -42,7 +42,7 @@ describe('String sanitization functions', () => {
   });
 
   describe('maskToExtendedAscii', () => {
-    const testStrings = [
+    const testStrings: [string, string, string | undefined][] = [
       ['Hello World', 'Hello World', undefined],
       ['Bell' + String.fromCharCode(0x07), 'Bell', undefined],
       ['Café', 'Café', undefined],

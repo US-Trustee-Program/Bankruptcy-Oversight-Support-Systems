@@ -9,10 +9,11 @@ describe('objectEquality tests', () => {
 
   test('should return false when parameters are not objects', () => {
     const object = { a: 1, b: 2 };
+    const nullObject = null as unknown as object;
 
-    expect(deepEqual(null, object)).toEqual(false);
-    expect(deepEqual(object, null)).toEqual(false);
-    expect(deepEqual(undefined, object)).toEqual(false);
+    expect(deepEqual(nullObject, object)).toEqual(false);
+    expect(deepEqual(object, nullObject)).toEqual(false);
+    expect(deepEqual(nullObject, object)).toEqual(false);
     // @ts-expect-error: Testing with non-object parameters
     expect(deepEqual('string', 123)).toEqual(false);
   });

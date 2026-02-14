@@ -93,7 +93,9 @@ describe('orders model tests', () => {
       expect(summary).toHaveProperty(summaryProperties[idx]);
     }
     for (const idx in consolidationOnlyProperties) {
-      expect(summary[consolidationOnlyProperties[idx]]).toBeUndefined();
+      expect(
+        (summary as Record<string, unknown>)[consolidationOnlyProperties[idx]],
+      ).toBeUndefined();
     }
   });
 
@@ -118,7 +120,7 @@ describe('orders model tests', () => {
   });
 
   describe('generateConsolidationId', () => {
-    const idTests = [
+    const idTests: [[number, OrderStatus, number?], string][] = [
       [[1000, 'pending'], '1000/pending'],
       [[1000, 'pending', 0], '1000/pending'],
       [[2000, 'approved', 0], '2000/approved/0'],
@@ -127,7 +129,7 @@ describe('orders model tests', () => {
     ];
     test.each(idTests)(
       'should generate expected consolidation id for %s',
-      (args: [number, OrderStatus, number | undefined], expected: string) => {
+      (args: [number, OrderStatus, number?], expected: string) => {
         expect(generateConsolidationId(...args)).toEqual(expected);
       },
     );
