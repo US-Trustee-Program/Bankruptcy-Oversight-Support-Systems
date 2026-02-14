@@ -3,6 +3,7 @@ import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-co
 import ContextCreator from '../../azure/application-context-creator';
 import MigrateOfficeAssigneesUseCase from '../../../lib/use-cases/dataflows/migrate-office-assignees';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
+import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 
 const MODULE_NAME = 'MIGRATE-ASSIGNEES';
 
@@ -14,7 +15,13 @@ const START = output.storageQueue({
 
 async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
-  await MigrateOfficeAssigneesUseCase.migrateAssignments(context);
+  const trace = startTrace(MODULE_NAME, 'start', invocationContext.invocationId, context.logger);
+  const summary = await MigrateOfficeAssigneesUseCase.migrateAssignments(context);
+  completeTrace(trace, {
+    documentsWritten: summary.success,
+    documentsFailed: summary.fail,
+    success: true,
+  });
 }
 
 function setup() {
