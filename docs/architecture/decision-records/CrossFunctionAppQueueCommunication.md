@@ -16,7 +16,7 @@ API use cases communicate with Dataflows through a domain gateway abstraction th
 
 ## Status
 
-Accepted (supersedes HTTP bridge pattern)
+Accepted
 
 ## Consequences
 
