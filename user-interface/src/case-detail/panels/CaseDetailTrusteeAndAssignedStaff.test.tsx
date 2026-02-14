@@ -297,8 +297,11 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       const emailLink = emailElement?.querySelector('a');
       expect(emailLink).toBeInTheDocument();
       expect(emailLink?.textContent).toContain(TEST_TRUSTEE.legacy?.email);
+      const expectedSubject = encodeURIComponent(
+        `${getCaseNumber(BASE_TEST_CASE_DETAIL.caseId)} - ${BASE_TEST_CASE_DETAIL.caseTitle}`,
+      );
       expect(emailLink?.getAttribute('href')).toEqual(
-        `mailto:${TEST_TRUSTEE.legacy?.email}?subject=${getCaseNumber(BASE_TEST_CASE_DETAIL.caseId)} - ${BASE_TEST_CASE_DETAIL.caseTitle}`,
+        `mailto:${TEST_TRUSTEE.legacy?.email}?subject=${expectedSubject}`,
       );
 
       // Verify mail icon is present

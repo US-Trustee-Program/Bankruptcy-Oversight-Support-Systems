@@ -11,6 +11,7 @@ type CommsLinkProps = {
   label?: string;
   icon?: string;
   emailSubject?: string;
+  hideIcon?: boolean;
 };
 
 const NON_DIGITS = /\D/g;
@@ -30,7 +31,7 @@ function toTelephoneUri(number: string, extension?: string) {
 }
 
 function CommsLink(props: Readonly<CommsLinkProps>) {
-  const { contact, mode, label, icon, emailSubject } = props;
+  const { contact, mode, label, icon, emailSubject, hideIcon } = props;
   const { email, website, phone } = contact;
   const { number, extension } = phone ?? {};
 
@@ -84,6 +85,12 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     iconToUse = icon ?? 'phone';
   }
 
+  const linkContent = hideIcon ? (
+    labelToUse
+  ) : (
+    <IconLabel label={labelToUse} icon={iconToUse} location="left" />
+  );
+
   if (href) {
     return (
       <a
@@ -93,14 +100,14 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
         rel="noopener noreferrer"
         aria-label={ariaLabel}
       >
-        <IconLabel label={labelToUse} icon={iconToUse} location="left" />
+        {linkContent}
       </a>
     );
   } else if (labelToUse && iconToUse !== 'error') {
     // Display non-link content if we have a label and it's not an error state
-    return <IconLabel label={labelToUse} icon={iconToUse} location="left" />;
+    return <>{linkContent}</>;
   } else {
-    return <IconLabel label={labelToUse} icon={iconToUse} location="left" />;
+    return <>{linkContent}</>;
   }
 }
 
