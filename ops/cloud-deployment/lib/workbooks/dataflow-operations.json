@@ -1,0 +1,232 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Dataflow Operations\n\nMonitor dataflow sync and migration health, throughput, and instance distribution."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "time-range",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 },
+                { "durationMs": 259200000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 2592000000 }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 86400000
+            }
+          },
+          {
+            "id": "module-filter",
+            "version": "KqlParameterItem/1.0",
+            "name": "ModuleName",
+            "type": 2,
+            "isRequired": false,
+            "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| distinct tostring(customDimensions.moduleName)\n| order by Column1 asc",
+            "typeSettings": {
+              "additionalResourceOptions": [ "value::all" ],
+              "showDefault": false
+            },
+            "value": "value::all"
+          }
+        ]
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Dataflow Summary"
+      },
+      "name": "summary-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| where '{ModuleName}' == 'value::all' or tostring(customDimensions.moduleName) == '{ModuleName}'\n| extend moduleName = tostring(customDimensions.moduleName),\n         instanceId = tostring(customDimensions.instanceId),\n         success = tostring(customDimensions.success),\n         docs = toint(customMeasurements.documentsWritten),\n         failed = toint(customMeasurements.documentsFailed),\n         durationMs = toreal(customMeasurements.durationMs)\n| summarize totalDocs=sum(docs),\n            totalFailed=sum(failed),\n            totalDurationMs=sum(durationMs),\n            invocations=count(),\n            handlerFailures=countif(success == \"false\"),\n            instances=dcount(instanceId)\n    by moduleName, bin(timestamp, 1h)\n| order by timestamp desc",
+        "size": 0,
+        "title": "Hourly Dataflow Summary",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "totalFailed",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  { "operator": ">", "thresholdValue": "0", "representation": "2", "text": "{0,0}" },
+                  { "operator": "Default", "representation": "success", "text": "{0,0}" }
+                ]
+              }
+            },
+            {
+              "columnMatch": "handlerFailures",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  { "operator": ">", "thresholdValue": "0", "representation": "4", "text": "{0,0}" },
+                  { "operator": "Default", "representation": "success", "text": "{0,0}" }
+                ]
+              }
+            }
+          ],
+          "labelSettings": [
+            { "columnId": "moduleName", "label": "Module" },
+            { "columnId": "totalDocs", "label": "Docs Written" },
+            { "columnId": "totalFailed", "label": "Docs Failed" },
+            { "columnId": "totalDurationMs", "label": "Total Duration (ms)" },
+            { "columnId": "invocations", "label": "Invocations" },
+            { "columnId": "handlerFailures", "label": "Handler Failures" },
+            { "columnId": "instances", "label": "Instances" }
+          ]
+        }
+      },
+      "name": "dataflow-summary-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Throughput Over Time"
+      },
+      "name": "throughput-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| where '{ModuleName}' == 'value::all' or tostring(customDimensions.moduleName) == '{ModuleName}'\n| where customDimensions.handlerName in (\"handlePage\", \"handleRetry\", \"handleError\")\n| extend moduleName = tostring(customDimensions.moduleName),\n         docs = toint(customMeasurements.documentsWritten),\n         failed = toint(customMeasurements.documentsFailed),\n         instanceId = tostring(customDimensions.instanceId)\n| summarize docsWritten = sum(docs),\n            docsFailed = sum(failed),\n            pages = count(),\n            activeInstances = dcount(instanceId)\n  by moduleName, bin(timestamp, 5m)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Document Throughput (5-minute intervals)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "timechart",
+        "chartSettings": {
+          "xAxis": "timestamp",
+          "yAxis": [ "docsWritten", "docsFailed" ],
+          "seriesLabelSettings": [
+            { "seriesName": "docsWritten", "label": "Docs Written" },
+            { "seriesName": "docsFailed", "label": "Docs Failed" }
+          ]
+        }
+      },
+      "name": "throughput-chart"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| where '{ModuleName}' == 'value::all' or tostring(customDimensions.moduleName) == '{ModuleName}'\n| where customDimensions.handlerName in (\"handlePage\", \"handleRetry\", \"handleError\")\n| extend moduleName = tostring(customDimensions.moduleName),\n         durationMs = toreal(customMeasurements.durationMs)\n| summarize avgDurationMs = avg(durationMs),\n            p95DurationMs = percentile(durationMs, 95),\n            maxDurationMs = max(durationMs)\n  by moduleName, bin(timestamp, 5m)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Handler Duration Trends (5-minute intervals)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "timechart"
+      },
+      "name": "duration-chart"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Instance Distribution"
+      },
+      "name": "instance-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| where '{ModuleName}' == 'value::all' or tostring(customDimensions.moduleName) == '{ModuleName}'\n| extend moduleName = tostring(customDimensions.moduleName),\n         instanceId = tostring(customDimensions.instanceId),\n         docs = toint(customMeasurements.documentsWritten),\n         failed = toint(customMeasurements.documentsFailed)\n| summarize invocations=count(), totalDocs=sum(docs), totalFailed=sum(failed)\n    by moduleName, instanceId\n| order by moduleName asc, invocations desc",
+        "size": 0,
+        "title": "Work Distribution Across Instances",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "labelSettings": [
+            { "columnId": "moduleName", "label": "Module" },
+            { "columnId": "instanceId", "label": "Instance" },
+            { "columnId": "invocations", "label": "Invocations" },
+            { "columnId": "totalDocs", "label": "Docs Written" },
+            { "columnId": "totalFailed", "label": "Docs Failed" }
+          ]
+        }
+      },
+      "name": "instance-distribution-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Queue Completion"
+      },
+      "name": "queue-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let allEvents = customEvents\n| where name == \"DataflowHandlerComplete\"\n| where '{ModuleName}' == 'value::all' or tostring(customDimensions.moduleName) == '{ModuleName}'\n| extend moduleName = tostring(customDimensions.moduleName),\n         handlerName = tostring(customDimensions.handlerName),\n         pagesQueued = toint(customDimensions.pagesQueued),\n         totalCases = tostring(customDimensions.totalCases),\n         docs = toint(customMeasurements.documentsWritten),\n         failed = toint(customMeasurements.documentsFailed);\nallEvents\n| summarize expectedPages = sumif(pagesQueued, handlerName in (\"handleStart\", \"start\")),\n            actualPages = countif(handlerName == \"handlePage\"),\n            retries = countif(handlerName == \"handleRetry\"),\n            errorHandles = countif(handlerName == \"handleError\"),\n            totalDocsWritten = sumif(docs, handlerName in (\"handlePage\", \"handleRetry\", \"handleError\")),\n            totalDocsFailed = sumif(failed, handlerName in (\"handlePage\", \"handleRetry\", \"handleError\")),\n            totalCases = take_anyif(totalCases, handlerName in (\"handleStart\", \"start\")),\n            startTime = minif(timestamp, handlerName in (\"handleStart\", \"start\")),\n            firstPageTime = minif(timestamp, handlerName == \"handlePage\"),\n            lastPageTime = maxif(timestamp, handlerName in (\"handlePage\", \"handleRetry\", \"handleError\"))\n  by moduleName\n| extend pagesDropped = expectedPages - actualPages,\n         queuePickupDelayMs = datetime_diff('millisecond', firstPageTime, startTime),\n         processingDurationMin = datetime_diff('minute', lastPageTime, firstPageTime)",
+        "size": 0,
+        "title": "Queue Completion by Module",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "pagesDropped",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  { "operator": ">", "thresholdValue": "0", "representation": "4", "text": "{0,0}" },
+                  { "operator": "Default", "representation": "success", "text": "{0,0}" }
+                ]
+              }
+            }
+          ],
+          "labelSettings": [
+            { "columnId": "moduleName", "label": "Module" },
+            { "columnId": "expectedPages", "label": "Expected Pages" },
+            { "columnId": "actualPages", "label": "Actual Pages" },
+            { "columnId": "pagesDropped", "label": "Pages Dropped" },
+            { "columnId": "retries", "label": "Retries" },
+            { "columnId": "errorHandles", "label": "Error Handles" },
+            { "columnId": "totalDocsWritten", "label": "Docs Written" },
+            { "columnId": "totalDocsFailed", "label": "Docs Failed" },
+            { "columnId": "totalCases", "label": "Total Cases" },
+            { "columnId": "queuePickupDelayMs", "label": "Queue Pickup (ms)" },
+            { "columnId": "processingDurationMin", "label": "Processing (min)" }
+          ]
+        }
+      },
+      "name": "queue-completion-table"
+    }
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
+  "styleSettings": {},
+  "fallbackResourceIds": []
+}

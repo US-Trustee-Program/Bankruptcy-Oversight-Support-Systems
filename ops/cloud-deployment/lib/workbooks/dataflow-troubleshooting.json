@@ -1,0 +1,350 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Dataflow Troubleshooting\n\nInvestigate dataflow failures, partial failures, and error patterns."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "time-range",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 },
+                { "durationMs": 259200000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 2592000000 }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 86400000
+            }
+          },
+          {
+            "id": "module-filter",
+            "version": "KqlParameterItem/1.0",
+            "name": "ModuleName",
+            "type": 2,
+            "isRequired": false,
+            "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| distinct tostring(customDimensions.moduleName)\n| order by Column1 asc",
+            "typeSettings": {
+              "additionalResourceOptions": [ "value::all" ],
+              "showDefault": false
+            },
+            "value": "value::all"
+          }
+        ]
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Handler Failures\n\nHandler-level failures where the handler itself threw an exception. Use the invocation ID to drill into logs below."
+      },
+      "name": "failures-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| where customDimensions.success == \"false\"\n| where '{ModuleName}' == 'value::all' or tostring(customDimensions.moduleName) == '{ModuleName}'\n| extend moduleName = tostring(customDimensions.moduleName),\n         handlerName = tostring(customDimensions.handlerName),\n         instanceId = tostring(customDimensions.instanceId),\n         invocationId = tostring(customDimensions.invocationId),\n         durationMs = toreal(customMeasurements.durationMs),\n         error = tostring(customDimensions.error),\n         reason = tostring(customDimensions.reason)\n| project timestamp, moduleName, handlerName, instanceId, durationMs, error, reason, invocationId\n| order by timestamp desc",
+        "size": 0,
+        "title": "Handler Failures",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "error",
+              "formatter": 1,
+              "formatOptions": {
+                "customColumnWidthSetting": "40%"
+              }
+            }
+          ],
+          "labelSettings": [
+            { "columnId": "timestamp", "label": "Time" },
+            { "columnId": "moduleName", "label": "Module" },
+            { "columnId": "handlerName", "label": "Handler" },
+            { "columnId": "instanceId", "label": "Instance" },
+            { "columnId": "durationMs", "label": "Duration (ms)" },
+            { "columnId": "error", "label": "Error" },
+            { "columnId": "reason", "label": "Reason" },
+            { "columnId": "invocationId", "label": "Invocation ID" }
+          ]
+        }
+      },
+      "name": "handler-failures-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Partial Failures\n\nHandlers that completed successfully but had individual document failures (items routed to DLQ)."
+      },
+      "name": "partial-failures-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| where customDimensions.success == \"true\"\n| where '{ModuleName}' == 'value::all' or tostring(customDimensions.moduleName) == '{ModuleName}'\n| extend moduleName = tostring(customDimensions.moduleName),\n         handlerName = tostring(customDimensions.handlerName),\n         instanceId = tostring(customDimensions.instanceId),\n         invocationId = tostring(customDimensions.invocationId),\n         docs = toint(customMeasurements.documentsWritten),\n         failed = toint(customMeasurements.documentsFailed),\n         durationMs = toreal(customMeasurements.durationMs)\n| where failed > 0\n| project timestamp, moduleName, handlerName, docs, failed, durationMs, instanceId, invocationId\n| order by timestamp desc",
+        "size": 0,
+        "title": "Partial Failures (Successful Handlers with Document Failures)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "failed",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  { "operator": ">", "thresholdValue": "0", "representation": "2", "text": "{0,0}" },
+                  { "operator": "Default", "representation": "success", "text": "{0,0}" }
+                ]
+              }
+            }
+          ],
+          "labelSettings": [
+            { "columnId": "timestamp", "label": "Time" },
+            { "columnId": "moduleName", "label": "Module" },
+            { "columnId": "handlerName", "label": "Handler" },
+            { "columnId": "docs", "label": "Docs Written" },
+            { "columnId": "failed", "label": "Docs Failed" },
+            { "columnId": "durationMs", "label": "Duration (ms)" },
+            { "columnId": "instanceId", "label": "Instance" },
+            { "columnId": "invocationId", "label": "Invocation ID" }
+          ]
+        }
+      },
+      "name": "partial-failures-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Errors by Invocation\n\nFailed or partially-failed invocations with correlated error logs and exceptions."
+      },
+      "name": "errors-by-invocation-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| where customDimensions.success == \"false\"\n    or toint(customMeasurements.documentsFailed) > 0\n| where '{ModuleName}' == 'value::all' or tostring(customDimensions.moduleName) == '{ModuleName}'\n| extend invocationId = tostring(customDimensions.invocationId),\n         moduleName = tostring(customDimensions.moduleName),\n         handlerName = tostring(customDimensions.handlerName),\n         success = tostring(customDimensions.success),\n         docs = toint(customMeasurements.documentsWritten),\n         failed = toint(customMeasurements.documentsFailed),\n         error = tostring(customDimensions.error)\n| join kind=leftouter (\n    traces\n    | where severityLevel >= 2\n    | extend invocationId = tostring(customDimensions.InvocationId)\n    | where isnotempty(invocationId)\n    | summarize\n        errorMessages = make_list_if(message, severityLevel >= 3, 10),\n        warnMessages = make_list_if(message, severityLevel == 2, 10)\n      by invocationId\n  ) on invocationId\n| join kind=leftouter (\n    exceptions\n    | extend invocationId = tostring(customDimensions.InvocationId)\n    | where isnotempty(invocationId)\n    | summarize\n        exceptions = make_list(strcat(type, \": \", outerMessage), 10)\n      by invocationId\n  ) on invocationId\n| project timestamp, moduleName, handlerName, success, docs, failed, error,\n         errorMessages, warnMessages, exceptions, invocationId\n| order by timestamp desc",
+        "size": 0,
+        "title": "Errors by Invocation (with Correlated Logs)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "success",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  { "operator": "==", "thresholdValue": "false", "representation": "4", "text": "Failed" },
+                  { "operator": "Default", "representation": "success", "text": "OK" }
+                ]
+              }
+            },
+            {
+              "columnMatch": "error",
+              "formatter": 1,
+              "formatOptions": {
+                "customColumnWidthSetting": "25%"
+              }
+            },
+            {
+              "columnMatch": "errorMessages",
+              "formatter": 1,
+              "formatOptions": {
+                "customColumnWidthSetting": "25%"
+              }
+            }
+          ],
+          "labelSettings": [
+            { "columnId": "timestamp", "label": "Time" },
+            { "columnId": "moduleName", "label": "Module" },
+            { "columnId": "handlerName", "label": "Handler" },
+            { "columnId": "success", "label": "Status" },
+            { "columnId": "docs", "label": "Docs Written" },
+            { "columnId": "failed", "label": "Docs Failed" },
+            { "columnId": "error", "label": "Scrubbed Error" },
+            { "columnId": "errorMessages", "label": "Error Logs" },
+            { "columnId": "warnMessages", "label": "Warning Logs" },
+            { "columnId": "exceptions", "label": "Exceptions" },
+            { "columnId": "invocationId", "label": "Invocation ID" }
+          ]
+        }
+      },
+      "name": "errors-by-invocation-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Error Distribution\n\nCategorized error patterns across invocations. Normalizes case IDs and GUIDs to group similar errors.\n\n> To use this panel, select a specific module above and set the time range to cover a single run."
+      },
+      "name": "error-distribution-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let targetModule = '{ModuleName}';\nlet invocationIds = customEvents\n| where name == \"DataflowHandlerComplete\"\n| where targetModule == 'value::all' or tostring(customDimensions.moduleName) == targetModule\n| extend invocationId = tostring(customDimensions.invocationId)\n| distinct invocationId;\nlet errorLogs = traces\n| where severityLevel >= 2\n| extend invocationId = tostring(customDimensions.InvocationId)\n| where invocationId in (invocationIds)\n| extend level = case(severityLevel == 3, \"ERROR\", severityLevel == 2, \"WARNING\", \"OTHER\"),\n         rawMessage = extract(@\"\\[INVOCATION [^\\]]+\\]\\s*(.*)\", 1, message)\n| where isnotempty(rawMessage)\n| extend normalizedMessage = replace_regex(rawMessage, @\"\\b\\d{3}-\\d{2}-\\d{5}\\b\", \"<caseId>\")\n| extend normalizedMessage = replace_regex(normalizedMessage, @\"\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\b\", \"<guid>\");\nerrorLogs\n| summarize occurrences = count(),\n            distinctInvocations = dcount(invocationId),\n            firstSeen = min(timestamp),\n            lastSeen = max(timestamp),\n            sampleMessage = take_any(rawMessage)\n  by level, normalizedMessage\n| order by occurrences desc",
+        "size": 0,
+        "title": "Error Distribution (Categorized Patterns)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "level",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  { "operator": "==", "thresholdValue": "ERROR", "representation": "4", "text": "ERROR" },
+                  { "operator": "==", "thresholdValue": "WARNING", "representation": "2", "text": "WARNING" },
+                  { "operator": "Default", "representation": "unknown", "text": "{0}" }
+                ]
+              }
+            },
+            {
+              "columnMatch": "normalizedMessage",
+              "formatter": 1,
+              "formatOptions": {
+                "customColumnWidthSetting": "30%"
+              }
+            },
+            {
+              "columnMatch": "sampleMessage",
+              "formatter": 1,
+              "formatOptions": {
+                "customColumnWidthSetting": "30%"
+              }
+            }
+          ],
+          "labelSettings": [
+            { "columnId": "level", "label": "Level" },
+            { "columnId": "normalizedMessage", "label": "Error Pattern" },
+            { "columnId": "occurrences", "label": "Occurrences" },
+            { "columnId": "distinctInvocations", "label": "Invocations" },
+            { "columnId": "firstSeen", "label": "First Seen" },
+            { "columnId": "lastSeen", "label": "Last Seen" },
+            { "columnId": "sampleMessage", "label": "Sample Message" }
+          ]
+        }
+      },
+      "name": "error-distribution-table"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Invocation Drilldown\n\nPaste an invocation ID below to see the full timeline of events, logs, and exceptions for a single handler execution."
+      },
+      "name": "drilldown-header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "invocation-id",
+            "version": "KqlParameterItem/1.0",
+            "name": "InvocationId",
+            "type": 1,
+            "isRequired": false,
+            "value": ""
+          }
+        ]
+      },
+      "name": "drilldown-parameters"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let targetInvocationId = '{InvocationId}';\nlet summary = customEvents\n| where name == \"DataflowHandlerComplete\"\n| where customDimensions.invocationId == targetInvocationId\n| extend moduleName = tostring(customDimensions.moduleName),\n         handlerName = tostring(customDimensions.handlerName),\n         instanceId = tostring(customDimensions.instanceId),\n         success = tostring(customDimensions.success),\n         error = tostring(customDimensions.error),\n         docs = toint(customMeasurements.documentsWritten),\n         failed = toint(customMeasurements.documentsFailed),\n         durationMs = toreal(customMeasurements.durationMs)\n| project timestamp, source=\"SUMMARY\", severity=\"info\",\n         message=strcat(\"module=\", moduleName, \" handler=\", handlerName,\n                         \" docs=\", docs, \" failed=\", failed,\n                         \" duration=\", durationMs, \"ms success=\", success,\n                         iff(isnotempty(error), strcat(\" error=\", error), \"\")),\n         moduleName, handlerName;\nlet logs = traces\n| where customDimensions.InvocationId == targetInvocationId\n   or message contains targetInvocationId\n| extend severity = case(\n           severityLevel == 1, \"info\",\n           severityLevel == 2, \"warning\",\n           severityLevel == 3, \"error\",\n           \"debug\")\n| project timestamp, source=\"LOG\", severity, message,\n         moduleName=\"\", handlerName=\"\";\nlet errors = exceptions\n| where customDimensions.InvocationId == targetInvocationId\n| project timestamp, source=\"EXCEPTION\", severity=\"error\",\n         message=strcat(type, \": \", outerMessage),\n         moduleName=\"\", handlerName=\"\";\nsummary\n| union logs\n| union errors\n| order by timestamp asc",
+        "size": 0,
+        "title": "Invocation Timeline",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "visualization": "table",
+        "conditionalVisibility": {
+          "parameterName": "InvocationId",
+          "comparison": "isNotEqualTo",
+          "value": ""
+        },
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "source",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "colors",
+                "thresholdsGrid": [
+                  { "operator": "==", "thresholdValue": "SUMMARY", "representation": "blue", "text": "SUMMARY" },
+                  { "operator": "==", "thresholdValue": "LOG", "representation": null, "text": "LOG" },
+                  { "operator": "==", "thresholdValue": "EXCEPTION", "representation": "redBright", "text": "EXCEPTION" },
+                  { "operator": "Default", "text": "{0}" }
+                ]
+              }
+            },
+            {
+              "columnMatch": "severity",
+              "formatter": 18,
+              "formatOptions": {
+                "thresholdsOptions": "icons",
+                "thresholdsGrid": [
+                  { "operator": "==", "thresholdValue": "error", "representation": "4", "text": "error" },
+                  { "operator": "==", "thresholdValue": "warning", "representation": "2", "text": "warning" },
+                  { "operator": "Default", "representation": "success", "text": "{0}" }
+                ]
+              }
+            },
+            {
+              "columnMatch": "message",
+              "formatter": 1,
+              "formatOptions": {
+                "customColumnWidthSetting": "60%"
+              }
+            }
+          ],
+          "labelSettings": [
+            { "columnId": "timestamp", "label": "Time" },
+            { "columnId": "source", "label": "Source" },
+            { "columnId": "severity", "label": "Severity" },
+            { "columnId": "message", "label": "Message" }
+          ]
+        }
+      },
+      "name": "invocation-drilldown-table"
+    }
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
+  "styleSettings": {},
+  "fallbackResourceIds": []
+}
