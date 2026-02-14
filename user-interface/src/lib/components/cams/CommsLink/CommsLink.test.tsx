@@ -532,4 +532,34 @@ describe('CommsLink Component', () => {
       expect(iconLabel.getAttribute('data-icon')).toBe('custom-icon');
     });
   });
+
+  describe('hideIcon prop', () => {
+    test('renders link without icon when hideIcon is true', () => {
+      render(
+        <CommsLink
+          contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
+          mode="email"
+          hideIcon
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveTextContent('test@example.com');
+      expect(link).toHaveAttribute('aria-label', 'Email: test@example.com');
+      // Icon should not be present
+      expect(screen.queryByTestId('icon-label')).not.toBeInTheDocument();
+    });
+
+    test('renders link with icon by default', () => {
+      render(
+        <CommsLink
+          contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
+          mode="email"
+        />,
+      );
+
+      // Icon should be present
+      expect(screen.getByTestId('icon-label')).toBeInTheDocument();
+    });
+  });
 });
