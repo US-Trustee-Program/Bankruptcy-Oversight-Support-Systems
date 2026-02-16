@@ -3,7 +3,7 @@ import {
   getPageOfTrustees,
   getTrusteeAppointments,
   upsertTrustee,
-  upsertAppointments,
+  createAppointments,
   processTrusteeWithAppointments,
   processPageOfTrustees,
   getTotalTrusteeCount,
@@ -48,9 +48,7 @@ describe('Migrate Trustees Use Case', () => {
     };
 
     mockAppointmentsRepo = {
-      getTrusteeAppointments: vi.fn().mockResolvedValue([]),
       createAppointment: vi.fn(),
-      updateAppointment: vi.fn(),
     };
 
     mockRuntimeStateRepo = {
@@ -214,7 +212,7 @@ describe('Migrate Trustees Use Case', () => {
     });
   });
 
-  describe('upsertAppointments', () => {
+  describe('createAppointments', () => {
     const mockTrustee = {
       id: 'doc-id',
       trusteeId: 'trustee-100',
@@ -241,48 +239,12 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
-      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
+      const result = await createAppointments(context, mockTrustee, atsAppointments);
 
       expect(result.data).toBe(1);
       expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
-    });
-
-    test('should update existing appointments instead of creating duplicates', async () => {
-      const atsAppointments: AtsAppointmentRecord[] = [
-        {
-          TRU_ID: 100,
-          DISTRICT: '02',
-          DIVISION: '081',
-          CHAPTER: '7',
-          STATUS: 'PI',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-06-01'),
-        },
-      ];
-
-      const existingAppointment = {
-        id: 'appt-existing',
-        trusteeId: 'trustee-100',
-        chapter: '7',
-        appointmentType: 'panel',
-        courtId: '0208',
-        divisionCode: '081',
-        status: 'active',
-        appointedDate: '2023-01-15',
-        effectiveDate: '2023-01-15',
-      };
-
-      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([existingAppointment]);
-      mockAppointmentsRepo.updateAppointment.mockResolvedValue({});
-
-      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
-
-      expect(result.data).toBe(1);
-      expect(mockAppointmentsRepo.updateAppointment).toHaveBeenCalledTimes(1);
-      expect(mockAppointmentsRepo.createAppointment).not.toHaveBeenCalled();
     });
 
     test('should skip duplicate appointments in source data', async () => {
@@ -307,10 +269,9 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
-      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
+      const result = await createAppointments(context, mockTrustee, atsAppointments);
 
       expect(result.data).toBe(1);
       expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
@@ -332,7 +293,7 @@ describe('Migrate Trustees Use Case', () => {
 
       const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
 
-      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
+      const result = await createAppointments(context, mockTrustee, atsAppointments);
 
       expect(result.data).toBe(0);
       expect(loggerWarnSpy).toHaveBeenCalledWith(
@@ -364,10 +325,9 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
-      const result = await upsertAppointments(context, mockTrustee, atsAppointments);
+      const result = await createAppointments(context, mockTrustee, atsAppointments);
 
       // First one fails (invalid district), second one succeeds
       expect(result.data).toBe(1);
@@ -401,7 +361,6 @@ describe('Migrate Trustees Use Case', () => {
       mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
-      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
       const result = await processTrusteeWithAppointments(context, atsTrustee);
@@ -443,7 +402,6 @@ describe('Migrate Trustees Use Case', () => {
         status: 'suspended',
       });
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
-      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
       const result = await processTrusteeWithAppointments(context, atsTrustee);
@@ -488,7 +446,6 @@ describe('Migrate Trustees Use Case', () => {
         status: 'not active',
       });
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
-      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
       const result = await processTrusteeWithAppointments(context, atsTrustee);
@@ -531,7 +488,6 @@ describe('Migrate Trustees Use Case', () => {
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
       mockTrusteesRepo.updateTrustee.mockResolvedValue(createdTrustee);
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
-      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([]);
 
       const result = await processTrusteeWithAppointments(context, atsTrustee);
 

@@ -149,10 +149,11 @@ export async function upsertTrustee(
 }
 
 /**
- * Upsert appointments for a trustee.
- * Uses a unique key (trusteeId-courtId-divisionCode-chapter-appointmentType) to prevent duplicates.
+ * Create appointments for a trustee.
+ * Uses a unique key (trusteeId-courtId-divisionCode-chapter-appointmentType) to prevent duplicates
+ * within the same migration batch.
  */
-export async function upsertAppointments(
+export async function createAppointments(
   context: ApplicationContext,
   trustee: Trustee,
   atsAppointments: AtsAppointmentRecord[],
@@ -162,9 +163,6 @@ export async function upsertAppointments(
     const processedKeys = new Set<string>();
     let successCount = 0;
 
-    // Fetch existing appointments once before the loop to avoid N+1 queries
-    const existingAppointments = await repo.getTrusteeAppointments(trustee.trusteeId);
-
     for (const atsAppointment of atsAppointments) {
       const result = await processSingleAppointment(
         context,
@@ -172,7 +170,6 @@ export async function upsertAppointments(
         trustee,
         atsAppointment,
         processedKeys,
-        existingAppointments,
       );
       if (result.success) successCount++;
     }
@@ -188,7 +185,7 @@ export async function upsertAppointments(
       error: getCamsError(
         originalError,
         MODULE_NAME,
-        `Failed to upsert appointments for trustee ${trustee.trusteeId}`,
+        `Failed to create appointments for trustee ${trustee.trusteeId}`,
       ),
     };
   }
@@ -232,7 +229,7 @@ export async function processTrusteeWithAppointments(
     let appointmentsProcessed = 0;
 
     if (appointments && appointments.length > 0) {
-      const appointmentResult = await upsertAppointments(context, trustee, appointments);
+      const appointmentResult = await createAppointments(context, trustee, appointments);
       if (appointmentResult.error) {
         context.logger.error(MODULE_NAME, `Failed to process appointments for trustee ${truId}`, {
           error: appointmentResult.error.message,

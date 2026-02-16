@@ -10,7 +10,6 @@ import {
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { Trustee, AppointmentStatus } from '@common/cams/trustees';
-import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { CamsUserReference } from '@common/cams/users';
 
 const MODULE_NAME = 'APPOINTMENTS-SYNC-HELPERS';
@@ -30,7 +29,7 @@ type AppointmentProcessResult = { success: boolean };
 
 /**
  * Process a single appointment for a trustee.
- * Handles validation, duplicate detection, and upsert logic.
+ * Handles validation, duplicate detection, and creation.
  */
 export async function processSingleAppointment(
   context: ApplicationContext,
@@ -38,7 +37,6 @@ export async function processSingleAppointment(
   trustee: Trustee,
   atsAppointment: AtsAppointmentRecord,
   processedKeys: Set<string>,
-  existingAppointments: TrusteeAppointment[],
 ): Promise<AppointmentProcessResult> {
   try {
     // Transform ATS appointment to CAMS format
@@ -53,7 +51,7 @@ export async function processSingleAppointment(
       return { success: false };
     }
 
-    // Generate unique key to prevent duplicates
+    // Generate unique key to prevent duplicates within this migration batch
     const appointmentKey = getAppointmentKey(trustee.trusteeId, appointmentInput);
 
     // Skip if we've already processed this appointment (duplicate in source data)
@@ -64,27 +62,8 @@ export async function processSingleAppointment(
 
     processedKeys.add(appointmentKey);
 
-    // Check if appointment already exists.
-    // Match on courtId, divisionCode, chapter, and appointmentType for uniqueness.
-    // TODO: CAMS-596 revisit logic for existing appointments
-    const existingAppointment = existingAppointments.find(
-      (a) =>
-        a.courtId === appointmentInput.courtId &&
-        a.divisionCode === appointmentInput.divisionCode &&
-        a.chapter === appointmentInput.chapter &&
-        a.appointmentType === appointmentInput.appointmentType,
-    );
-
-    if (existingAppointment) {
-      // Merge new data into existing document to ensure all fields are updated
-      context.logger.debug(MODULE_NAME, `Updating existing appointment ${appointmentKey}`);
-      const merged = { ...existingAppointment, ...appointmentInput };
-      await repo.updateAppointment(trustee.trusteeId, existingAppointment.id, merged, SYSTEM_USER);
-    } else {
-      // Create new appointment
-      context.logger.debug(MODULE_NAME, `Creating new appointment ${appointmentKey}`);
-      await repo.createAppointment(trustee.trusteeId, appointmentInput, SYSTEM_USER);
-    }
+    context.logger.debug(MODULE_NAME, `Creating appointment ${appointmentKey}`);
+    await repo.createAppointment(trustee.trusteeId, appointmentInput, SYSTEM_USER);
 
     return { success: true };
   } catch (appointmentError) {
