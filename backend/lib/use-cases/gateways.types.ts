@@ -1,4 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
+import { AtsTrusteeRecord, AtsAppointmentRecord } from '../adapters/types/ats.types';
+import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
 import { ConsolidationOrder, Order, RawOrderSync, TransferOrderAction } from '@common/cams/orders';
 import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from '@common/cams/events';
 import { CaseHistory } from '@common/cams/history';
@@ -166,18 +168,18 @@ export interface AtsGateway {
     context: ApplicationContext,
     lastTrusteeId: number | null,
     pageSize: number,
-  ): Promise<import('../adapters/types/ats.types').AtsTrusteeRecord[]>;
+  ): Promise<AtsTrusteeRecord[]>;
   getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: number,
-  ): Promise<import('../adapters/types/ats.types').AtsAppointmentRecord[]>;
+  ): Promise<AtsAppointmentRecord[]>;
   getTrusteeCount(context: ApplicationContext): Promise<number>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
     context: ApplicationContext,
     query: string,
-    input?: import('../adapters/types/database').DbTableFieldSpec[],
-  ): Promise<import('../adapters/types/database').QueryResults>;
+    input?: DbTableFieldSpec[],
+  ): Promise<QueryResults>;
 }
 
 export type CaseHistoryDocumentType = 'AUDIT_ASSIGNMENT' | 'AUDIT_TRANSFER' | 'AUDIT_CONSOLIDATION';
