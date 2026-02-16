@@ -6,6 +6,14 @@ import { sanitizeDeep } from '@common/cams/sanitization';
 import { getAppInsights } from '../hooks/UseApplicationInsights';
 import { SeverityLevel } from '@microsoft/applicationinsights-web';
 
+export class CamsHttpError extends Error {
+  status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
+}
+
 const beforeHooks: (() => Promise<void>)[] = [];
 const afterHooks: ((response: Response) => Promise<void>)[] = [];
 
@@ -106,7 +114,7 @@ export default class Api {
         return data.length > 1 ? JSON.parse(data) : undefined;
       } else {
         const error = await response.json();
-        return Promise.reject(new Error(error.message));
+        return Promise.reject(new CamsHttpError(response.status, error.message));
       }
     } catch (e: unknown) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));
@@ -127,9 +135,14 @@ export default class Api {
         return data;
       } else {
         if (response.status >= 500) {
-          return Promise.reject(new Error(data.message));
+          return Promise.reject(new CamsHttpError(response.status, data.message));
         }
-        return Promise.reject(new Error(`${response.status} Error - ${path} - ${data.message}`));
+        return Promise.reject(
+          new CamsHttpError(
+            response.status,
+            `${response.status} Error - ${path} - ${data.message}`,
+          ),
+        );
       }
     } catch (e) {
       return Promise.reject(new Error(`500 Error - Server Error ${(e as Error).message}`));

@@ -3,6 +3,7 @@ import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mon
 import QueryBuilder from '../../../../query/query-builder';
 import QueryPipeline from '../../../../query/query-pipeline';
 import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
+import { GatewayTimeoutError } from '../../../../common-errors/gateway-timeout';
 
 const { and, orderBy } = QueryBuilder;
 
@@ -386,6 +387,21 @@ describe('Mongo adapter', () => {
         module: ADAPTER_MODULE_NAME,
       }),
     );
+  });
+
+  test('should throw GatewayTimeoutError when a timeout error occurs', async () => {
+    const timeoutError = new Error(
+      'Query failed. Request timed out. Retries due to rate limiting: False.',
+    );
+    aggregate.mockRejectedValue(timeoutError);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(
+      expect.objectContaining({
+        status: 504,
+        message: 'Query failed. Search request timed out.',
+      }),
+    );
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(GatewayTimeoutError);
   });
 
   test('should handle errors', async () => {
