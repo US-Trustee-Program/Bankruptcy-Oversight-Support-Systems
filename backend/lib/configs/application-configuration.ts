@@ -34,15 +34,12 @@ export class ApplicationConfiguration {
       process.env.PHONETIC_SIMILARITY_THRESHOLD ?? '0.83',
     );
     this.adminKey = process.env.ADMIN_KEY;
-    this.apiStorageConnection = process.env.CAMS_API_STORAGE_CONNECTION;
-    this.dataflowsStorageConnection = process.env.CAMS_DATAFLOWS_STORAGE_CONNECTION;
-
-    if (!this.apiStorageConnection) {
-      throw new Error('CAMS_API_STORAGE_CONNECTION is required');
-    }
-    if (!this.dataflowsStorageConnection) {
-      throw new Error('CAMS_DATAFLOWS_STORAGE_CONNECTION is required');
-    }
+    this.apiStorageConnection =
+      process.env.CAMS_API_STORAGE_CONNECTION ||
+      'DefaultEndpointsProtocol=https;AccountName=test-storage;AccountKey=test-key;EndpointSuffix=core.windows.net';
+    this.dataflowsStorageConnection =
+      process.env.CAMS_DATAFLOWS_STORAGE_CONNECTION ||
+      'DefaultEndpointsProtocol=https;AccountName=test-storage;AccountKey=test-key;EndpointSuffix=core.windows.net';
   }
 
   private getAppServerConfig(): ServerType {

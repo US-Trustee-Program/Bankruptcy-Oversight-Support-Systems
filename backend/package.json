@@ -32,7 +32,7 @@
     "start:api": "(cd function-apps/api && npm run start)",
     "start:dataflows": "(cd function-apps/dataflows && npm run start)",
     "start:express": "tsx --watch express/server.ts",
-    "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' CAMS_API_STORAGE_CONNECTION='UseDevelopmentStorage=true' CAMS_DATAFLOWS_STORAGE_CONNECTION='UseDevelopmentStorage=true' vitest run",
+    "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest run",
     "test:watch": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest watch"
   },
   "dependencies": {

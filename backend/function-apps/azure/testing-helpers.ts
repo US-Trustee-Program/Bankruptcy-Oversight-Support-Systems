@@ -14,8 +14,6 @@ export function createMockAzureFunctionContext(
   process.env = {
     DATABASE_MOCK: 'true',
     MOCK_AUTH: 'true',
-    CAMS_API_STORAGE_CONNECTION: 'UseDevelopmentStorage=true',
-    CAMS_DATAFLOWS_STORAGE_CONNECTION: 'UseDevelopmentStorage=true',
     ...env,
   };
 

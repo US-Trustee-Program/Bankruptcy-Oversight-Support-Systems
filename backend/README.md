@@ -15,14 +15,14 @@ CAMS uses explicit, CAMS-prefixed environment variables for storage account conn
 
 ### Local Development Setup
 
-Configure local.settings.json for each function app:
+Configure local.settings.json for each function app with your actual storage connection strings.
 
 **backend/function-apps/api/local.settings.json:**
 ```json
 {
   "Values": {
-    "CAMS_API_STORAGE_CONNECTION": "UseDevelopmentStorage=true",
-    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "UseDevelopmentStorage=true"
+    "CAMS_API_STORAGE_CONNECTION": "<your-connection-string>",
+    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "<your-connection-string>"
   }
 }
 ```
@@ -31,12 +31,14 @@ Configure local.settings.json for each function app:
 ```json
 {
   "Values": {
-    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "UseDevelopmentStorage=true"
+    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "<your-connection-string>"
   }
 }
 ```
 
-For local development, both can point to the same Azurite instance since queues are namespaced by name.
+### Unit Tests
+
+Unit tests use dummy storage connection strings and **do not** require actual storage accounts. ApplicationConfiguration automatically provides non-functional default connection strings when environment variables are not set, satisfying configuration validation without attempting actual connections.
 
 ## API to Dataflows Communication
 

@@ -264,7 +264,7 @@ CAMS uses explicit, CAMS-prefixed environment variables for storage account conn
 - `CAMS_API_STORAGE_CONNECTION` - API's own storage account for runtime operations
 - `CAMS_DATAFLOWS_STORAGE_CONNECTION` - Dataflows storage account for queue writes
 
-For local development using Azurite, all can point to `UseDevelopmentStorage=true`.
+These environment variables need to be configured in `local.settings.json` for running the function apps locally, or in CI environment variables for deployed environments.
 
 A sufficiently privileged user can retrieve connection strings from deployed environments with:
 
