@@ -44,8 +44,6 @@ import {
 } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 import { Identifiable } from '@common/cams/document';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../adapters/types/ats.types';
-import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
 
 export type ReplaceResult = {
   id: string;
