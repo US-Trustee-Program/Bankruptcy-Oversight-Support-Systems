@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { getCamsUserReference } from '@common/cams/session';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
 import { BadRequestError } from '../../common-errors/bad-request';

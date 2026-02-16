@@ -289,10 +289,10 @@ export async function upsertAppointments(
         // Check if appointment already exists.
         // Match without courtId since it is derived from district/division and may
         // change during re-migration with corrected mappings.
-        // TODO (CAMS-596): Add the courtId condition back in here
-        // a.courtId === appointmentInput.courtId &&
+        // TODO: CAMS-596 revisit logic for existing appointments
         const existingAppointment = existingAppointments.find(
           (a) =>
+            a.courtId === appointmentInput.courtId &&
             a.divisionCode === appointmentInput.divisionCode &&
             a.chapter === appointmentInput.chapter &&
             a.appointmentType === appointmentInput.appointmentType,

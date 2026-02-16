@@ -7,7 +7,7 @@ import { LOGIN_BASE_PATH, LOGIN_PATHS } from './login-library';
 import { Session, SessionProps } from './Session';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
-import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICE_DATA_MAP } from '@common/cams/test-utilities/offices.mock';
 import * as sessionEndLogout from './session-end-logout';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 

@@ -23,6 +23,7 @@ import {
   STANDARD_CHAPTERS,
   DISTRICT_TO_COURT_MAP,
   MULTI_DISTRICT_COURT_MAP,
+  DIVISION_TO_COURT_MAP,
   CBC_STATUS_MAP,
   SUBCHAPTER_V_STATUS_CODES,
   CODE_1_STANDING_CHAPTERS,
@@ -107,11 +108,13 @@ export function getDivisionOfficeName(divisionCode: string): string {
 /**
  * Map district code to DXTR court ID.
  *
- * For multi-district states (WV, GA, LA, MS), the division code is used
- * to disambiguate which federal district the appointment belongs to.
+ * When a division code is provided, it is used as the primary lookup via
+ * DIVISION_TO_COURT_MAP since it maps directly to the correct court.
+ * Falls back to district-based resolution (with multi-district disambiguation)
+ * when the division code is not recognized.
  *
  * @param districtCode - 2-character ATS district code
- * @param divisionCode - Optional 3-character ATS division code for disambiguation
+ * @param divisionCode - Optional 3-character ATS division code
  * @returns DXTR court ID
  */
 export function getCourtId(districtCode: string, divisionCode?: string): string {
@@ -119,16 +122,25 @@ export function getCourtId(districtCode: string, divisionCode?: string): string 
     throw new Error('District code is required');
   }
 
+  // Primary: resolve courtId directly from division code
+  if (divisionCode) {
+    const trimmedDivision = divisionCode.trim();
+    const divisionCourtId = DIVISION_TO_COURT_MAP[trimmedDivision];
+    if (divisionCourtId) {
+      return divisionCourtId;
+    }
+  }
+
+  // Fallback: resolve from district code
   const trimmedDistrict = districtCode.trim();
 
-  // For multi-district states, use division code to resolve the correct courtId
+  // For multi-district states, use division code prefix to disambiguate
   if (divisionCode && MULTI_DISTRICT_COURT_MAP[trimmedDistrict]) {
     const divisionPrefix = divisionCode.trim().substring(0, 2);
     const resolved = MULTI_DISTRICT_COURT_MAP[trimmedDistrict][divisionPrefix];
     if (resolved) {
       return resolved;
     }
-    // Fall through to default courtId from main map
   }
 
   const courtId = DISTRICT_TO_COURT_MAP[trimmedDistrict];
