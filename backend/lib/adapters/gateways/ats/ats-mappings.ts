@@ -6,7 +6,10 @@ import {
   TrusteeStatuses,
   TrusteeStatus,
 } from '@common/cams/trustees';
-import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  TrusteeAppointmentInput,
+  chapterAppointmentTypeMap,
+} from '@common/cams/trustee-appointments';
 import { ContactInformation } from '@common/cams/contact';
 import { USTP_OFFICE_NAME_MAP } from '../dxtr/dxtr.constants';
 import {
@@ -415,15 +418,7 @@ export function isValidAppointmentForChapter(
   chapter: AppointmentChapterType,
   appointmentType: AppointmentType,
 ): boolean {
-  const validCombinations: Record<AppointmentChapterType, AppointmentType[]> = {
-    '7': ['panel', 'off-panel', 'elected', 'converted-case'],
-    '11': ['case-by-case'],
-    '11-subchapter-v': ['pool', 'out-of-pool'],
-    '12': ['standing', 'case-by-case'],
-    '13': ['standing', 'case-by-case'],
-  };
-
-  const validTypes = validCombinations[chapter];
+  const validTypes = chapterAppointmentTypeMap[chapter];
   return validTypes ? validTypes.includes(appointmentType) : false;
 }
 
