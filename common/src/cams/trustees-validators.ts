@@ -46,7 +46,7 @@ export const phoneExtension = V.optional(
 );
 
 export const email = V.checkFirst(V.matches(EMAIL_REGEX, FIELD_VALIDATION_MESSAGES.EMAIL)).then(
-  V.maxLength(50),
+  V.maxLength(254),
 );
 
 export const website = V.optional(
