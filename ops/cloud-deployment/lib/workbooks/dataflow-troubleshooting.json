@@ -41,7 +41,7 @@
             "name": "ModuleName",
             "type": 2,
             "isRequired": false,
-            "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| distinct tostring(customDimensions.moduleName)\n| order by Column1 asc",
+            "query": "customEvents\n| where name == \"DataflowHandlerComplete\"\n| extend moduleName = tostring(customDimensions.moduleName)\n| distinct moduleName\n| order by moduleName asc",
             "typeSettings": {
               "additionalResourceOptions": [ "value::all" ],
               "showDefault": false
