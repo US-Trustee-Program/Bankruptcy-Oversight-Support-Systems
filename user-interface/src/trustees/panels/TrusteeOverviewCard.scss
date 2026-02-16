@@ -1,0 +1,18 @@
+@import './shared-card-styles.scss';
+
+.trustee-overview-card-container {
+  .trustee-overview-card {
+    @include trustee-card-styles;
+
+    .usa-card__body {
+      .trustee-overview-card-header {
+        @include trustee-card-header;
+      }
+
+      .trustee-name {
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
+      }
+    }
+  }
+}
