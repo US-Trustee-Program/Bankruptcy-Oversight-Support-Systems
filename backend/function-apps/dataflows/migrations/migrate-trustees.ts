@@ -9,6 +9,7 @@ import {
   StartMessage,
 } from '../dataflows-common';
 import * as MigrateTrusteesUseCase from '../../../lib/use-cases/dataflows/migrate-trustees';
+import * as MigrationStateService from '../../../lib/use-cases/dataflows/trustee-migration-state.service';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
@@ -66,7 +67,7 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  const stateResult = await MigrateTrusteesUseCase.getOrCreateMigrationState(context);
+  const stateResult = await MigrationStateService.getOrCreateMigrationState(context);
 
   if (stateResult.error) {
     invocationContext.extraOutputs.set(
@@ -118,7 +119,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   const { logger } = context;
 
   // Read current state to get counts
-  const stateResult = await MigrateTrusteesUseCase.getOrCreateMigrationState(context);
+  const stateResult = await MigrationStateService.getOrCreateMigrationState(context);
   if (stateResult.error) {
     invocationContext.extraOutputs.set(
       DLQ,
@@ -158,7 +159,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     // No more trustees to process - mark as completed
     logger.info(MODULE_NAME, `No more trustees to migrate. Migration complete.`);
 
-    await MigrateTrusteesUseCase.completeMigration(context, currentState);
+    await MigrationStateService.completeMigration(context, currentState);
     return;
   }
 
@@ -174,7 +175,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
 
   if (processResult.error) {
     // Update state with FAILED status
-    await MigrateTrusteesUseCase.failMigration(context, currentState, processResult.error.message);
+    await MigrationStateService.failMigration(context, currentState, processResult.error.message);
 
     invocationContext.extraOutputs.set(
       DLQ,
@@ -189,7 +190,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   const newErrors = currentErrors + errors;
 
   // Update state with new cursor position
-  const updateResult = await MigrateTrusteesUseCase.updateMigrationState(context, {
+  const updateResult = await MigrationStateService.updateMigrationState(context, {
     ...currentState,
     lastTrusteeId,
     processedCount: newProcessedCount,

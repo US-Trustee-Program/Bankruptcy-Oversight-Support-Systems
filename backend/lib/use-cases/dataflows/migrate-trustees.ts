@@ -1,37 +1,17 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../adapters/types/ats.types';
-import {
-  transformTrusteeRecord,
-  transformAppointmentRecord,
-  isValidAppointmentForChapter,
-  getAppointmentKey,
-  deriveTrusteeStatus,
-  parseTodStatus,
-} from '../../adapters/gateways/ats/ats-mappings';
+import { transformTrusteeRecord } from '../../adapters/gateways/ats/ats-mappings';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
-import { RuntimeState } from '../gateways.types';
 import { MaybeData } from './queue-types';
 import { CamsUserReference } from '@common/cams/users';
-import { Trustee, AppointmentStatus } from '@common/cams/trustees';
+import { Trustee } from '@common/cams/trustees';
+import {
+  processSingleAppointment,
+  deriveStatusFromAppointments,
+} from './appointments-sync.helpers';
 
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
-
-/**
- * Runtime state for tracking trustee migration progress.
- * Stored in MongoDB runtime-state collection for resumability.
- */
-export type TrusteeMigrationState = RuntimeState & {
-  documentType: 'TRUSTEE_MIGRATION_STATE';
-  lastTrusteeId: number | null;
-  processedCount: number;
-  appointmentsProcessedCount: number;
-  errors: number;
-  startedAt: string;
-  lastUpdatedAt: string;
-  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
-  divisionMappingVersion: string;
-};
 
 /**
  * Result of processing a single trustee with appointments
@@ -62,89 +42,6 @@ const SYSTEM_USER: CamsUserReference = {
   id: 'SYSTEM',
   name: 'ATS Migration',
 };
-
-/**
- * Get or create the migration state document.
- * Used for tracking progress and enabling resume capability.
- */
-export async function getOrCreateMigrationState(
-  context: ApplicationContext,
-): Promise<MaybeData<TrusteeMigrationState>> {
-  try {
-    const repo = factory.getRuntimeStateRepository<TrusteeMigrationState>(context);
-
-    // Try to find existing state by reading with documentType
-    try {
-      const existingState = await repo.read('TRUSTEE_MIGRATION_STATE');
-      if (existingState) {
-        context.logger.info(
-          MODULE_NAME,
-          `Resuming migration from trustee ID ${existingState.lastTrusteeId}`,
-        );
-        return { data: existingState };
-      }
-    } catch (_e) {
-      // State doesn't exist yet, create new one
-    }
-
-    // Create new state
-    const newState: TrusteeMigrationState = {
-      documentType: 'TRUSTEE_MIGRATION_STATE',
-      lastTrusteeId: null,
-      processedCount: 0,
-      appointmentsProcessedCount: 0,
-      errors: 0,
-      startedAt: new Date().toISOString(),
-      lastUpdatedAt: new Date().toISOString(),
-      status: 'IN_PROGRESS',
-      divisionMappingVersion: '1.0.0', // Track version of division mapping used
-    };
-
-    await repo.upsert(newState);
-    context.logger.info(MODULE_NAME, 'Starting new trustee migration');
-    return { data: newState };
-  } catch (originalError) {
-    return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to get or create migration state'),
-    };
-  }
-}
-
-/**
- * Update the migration state with progress.
- */
-export async function updateMigrationState(
-  context: ApplicationContext,
-  updates: Partial<TrusteeMigrationState>,
-): Promise<MaybeData<void>> {
-  try {
-    const repo = factory.getRuntimeStateRepository<TrusteeMigrationState>(context);
-    const existingState = await repo.read('TRUSTEE_MIGRATION_STATE');
-    if (!existingState) {
-      return {
-        error: getCamsError(
-          new Error('Migration state not found'),
-          MODULE_NAME,
-          'Cannot update non-existent migration state',
-        ),
-      };
-    }
-
-    const fullState: TrusteeMigrationState = {
-      ...existingState,
-      ...updates,
-      lastUpdatedAt: new Date().toISOString(),
-    };
-
-    await repo.upsert(fullState);
-
-    return { data: undefined };
-  } catch (originalError) {
-    return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to update migration state'),
-    };
-  }
-}
 
 /**
  * Get a page of trustees from ATS using cursor-based pagination.
@@ -262,79 +159,22 @@ export async function upsertAppointments(
 ): Promise<MaybeData<number>> {
   try {
     const repo = factory.getTrusteeAppointmentsRepository(context);
-    let successCount = 0;
     const processedKeys = new Set<string>();
+    let successCount = 0;
 
     // Fetch existing appointments once before the loop to avoid N+1 queries
     const existingAppointments = await repo.getTrusteeAppointments(trustee.trusteeId);
 
     for (const atsAppointment of atsAppointments) {
-      try {
-        // Transform ATS appointment to CAMS format
-        const appointmentInput = transformAppointmentRecord(atsAppointment);
-
-        // Validate appointment type for chapter
-        if (
-          !isValidAppointmentForChapter(appointmentInput.chapter, appointmentInput.appointmentType)
-        ) {
-          context.logger.warn(
-            MODULE_NAME,
-            `Invalid appointment type ${appointmentInput.appointmentType} for chapter ${appointmentInput.chapter}`,
-          );
-          continue;
-        }
-
-        // Generate unique key to prevent duplicates
-        const appointmentKey = getAppointmentKey(trustee.trusteeId, appointmentInput);
-
-        // Skip if we've already processed this appointment (duplicate in source data)
-        if (processedKeys.has(appointmentKey)) {
-          context.logger.debug(MODULE_NAME, `Skipping duplicate appointment ${appointmentKey}`);
-          continue;
-        }
-
-        processedKeys.add(appointmentKey);
-
-        // Check if appointment already exists.
-        // Match without courtId since it is derived from district/division and may
-        // change during re-migration with corrected mappings.
-        // TODO: CAMS-596 revisit logic for existing appointments
-        const existingAppointment = existingAppointments.find(
-          (a) =>
-            a.courtId === appointmentInput.courtId &&
-            a.divisionCode === appointmentInput.divisionCode &&
-            a.chapter === appointmentInput.chapter &&
-            a.appointmentType === appointmentInput.appointmentType,
-        );
-
-        if (existingAppointment) {
-          // Merge new data into existing document to ensure all fields are updated
-          context.logger.debug(MODULE_NAME, `Updating existing appointment ${appointmentKey}`);
-          const merged = { ...existingAppointment, ...appointmentInput };
-          await repo.updateAppointment(
-            trustee.trusteeId,
-            existingAppointment.id,
-            merged,
-            SYSTEM_USER,
-          );
-        } else {
-          // Create new appointment
-          context.logger.debug(MODULE_NAME, `Creating new appointment ${appointmentKey}`);
-          await repo.createAppointment(trustee.trusteeId, appointmentInput, SYSTEM_USER);
-        }
-
-        successCount++;
-      } catch (appointmentError) {
-        // Log error but continue processing other appointments
-        context.logger.error(
-          MODULE_NAME,
-          `Failed to process appointment for trustee ${trustee.trusteeId}`,
-          {
-            error: getCamsError(appointmentError, MODULE_NAME).message,
-            appointment: atsAppointment,
-          },
-        );
-      }
+      const result = await processSingleAppointment(
+        context,
+        repo,
+        trustee,
+        atsAppointment,
+        processedKeys,
+        existingAppointments,
+      );
+      if (result.success) successCount++;
     }
 
     context.logger.info(
@@ -402,26 +242,7 @@ export async function processTrusteeWithAppointments(
       }
 
       // Derive trustee status from appointment statuses
-      // Use full transformation to account for CBC overrides and code-1 chapter-dependent logic
-      const appointmentStatuses: AppointmentStatus[] = appointments.map((a) => {
-        try {
-          const transformed = transformAppointmentRecord(a);
-          return transformed.status;
-        } catch (_error) {
-          // If transformation fails, fall back to flat map status
-          context.logger.warn(
-            MODULE_NAME,
-            `Failed to transform appointment for status derivation, using flat map`,
-            {
-              trusteeId: a.TRU_ID,
-              chapter: a.CHAPTER,
-              status: a.STATUS,
-            },
-          );
-          return parseTodStatus(a.STATUS).status;
-        }
-      });
-      const derivedStatus = deriveTrusteeStatus(appointmentStatuses);
+      const derivedStatus = deriveStatusFromAppointments(context, appointments);
 
       if (derivedStatus !== trustee.status) {
         const repo = factory.getTrusteesRepository(context);
@@ -511,35 +332,4 @@ export async function getTotalTrusteeCount(
       error: getCamsError(originalError, MODULE_NAME, 'Failed to get total trustee count'),
     };
   }
-}
-
-/**
- * Mark the migration as completed.
- */
-export async function completeMigration(
-  context: ApplicationContext,
-  state: TrusteeMigrationState,
-): Promise<MaybeData<void>> {
-  return updateMigrationState(context, {
-    ...state,
-    status: 'COMPLETED',
-    lastUpdatedAt: new Date().toISOString(),
-  });
-}
-
-/**
- * Mark the migration as failed.
- */
-export async function failMigration(
-  context: ApplicationContext,
-  state: TrusteeMigrationState,
-  error: string,
-): Promise<MaybeData<void>> {
-  context.logger.error(MODULE_NAME, `Migration failed: ${error}`);
-
-  return updateMigrationState(context, {
-    ...state,
-    status: 'FAILED',
-    lastUpdatedAt: new Date().toISOString(),
-  });
 }
