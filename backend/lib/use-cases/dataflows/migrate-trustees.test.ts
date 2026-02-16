@@ -634,6 +634,7 @@ describe('Migrate Trustees Use Case', () => {
         divisionMappingVersion: '1.0.0',
       };
 
+      mockRuntimeStateRepo.read.mockResolvedValue(state);
       mockRuntimeStateRepo.upsert.mockResolvedValue(undefined);
 
       const result = await completeMigration(context, state);
@@ -661,6 +662,7 @@ describe('Migrate Trustees Use Case', () => {
         divisionMappingVersion: '1.0.0',
       };
 
+      mockRuntimeStateRepo.read.mockResolvedValue(state);
       mockRuntimeStateRepo.upsert.mockResolvedValue(undefined);
 
       const result = await failMigration(context, state, 'Test error');

@@ -119,13 +119,22 @@ export async function updateMigrationState(
 ): Promise<MaybeData<void>> {
   try {
     const repo = factory.getRuntimeStateRepository<TrusteeMigrationState>(context);
+    const existingState = await repo.read('TRUSTEE_MIGRATION_STATE');
+    if (!existingState) {
+      return {
+        error: getCamsError(
+          new Error('Migration state not found'),
+          MODULE_NAME,
+          'Cannot update non-existent migration state',
+        ),
+      };
+    }
 
-    // We need to merge updates with the existing state
     const fullState: TrusteeMigrationState = {
-      documentType: 'TRUSTEE_MIGRATION_STATE',
+      ...existingState,
       ...updates,
       lastUpdatedAt: new Date().toISOString(),
-    } as TrusteeMigrationState;
+    };
 
     await repo.upsert(fullState);
 
