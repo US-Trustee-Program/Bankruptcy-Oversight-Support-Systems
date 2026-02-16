@@ -71,6 +71,21 @@
       "matchPackageNames": ["!/^actions//", "!/^github//"]
     },
     {
+      "description": "Group Vitest and related testing packages",
+      "matchPackageNames": ["vitest", "@vitest/coverage-v8", "@vitest/ui", "@vitest/eslint-plugin"],
+      "groupName": "vitest"
+    },
+    {
+      "description": "Group TypeScript ESLint packages",
+      "matchPackageNames": ["typescript-eslint", "@typescript-eslint/eslint-plugin", "@typescript-eslint/parser"],
+      "groupName": "typescript-eslint"
+    },
+    {
+      "description": "Group Okta packages",
+      "matchPackageNames": ["@okta/okta-auth-js", "@okta/okta-react", "@okta/okta-sdk-nodejs", "@okta/jwt-verifier"],
+      "groupName": "okta"
+    },
+    {
       "description": "Require 30-day wait for x.0.0 major versions",
       "matchUpdateTypes": ["major"],
       "matchNewValue": "/\\.0\\.0$/",
