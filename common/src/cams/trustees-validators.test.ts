@@ -147,13 +147,17 @@ describe('trustees-validators', () => {
     test.each([
       { value: 'user@example.com', expected: VALID },
       { value: 'test.user+tag@domain.co.uk', expected: VALID },
-      { value: 'a'.repeat(40) + '@test.com', expected: VALID },
+      { value: 'a'.repeat(244) + '@test.com', expected: VALID },
       { value: 'invalid', expected: { reasons: [FIELD_VALIDATION_MESSAGES.EMAIL] } },
       { value: '@example.com', expected: { reasons: [FIELD_VALIDATION_MESSAGES.EMAIL] } },
       { value: 'user@', expected: { reasons: [FIELD_VALIDATION_MESSAGES.EMAIL] } },
       {
-        value: 'a'.repeat(50) + '@test.com',
-        expected: { reasons: ['Max length 50 characters'] },
+        value: 'a'.repeat(255) + '@test.com',
+        expected: { reasons: ['Max length 254 characters'] },
+      },
+      {
+        value: undefined,
+        expected: { reasons: [FIELD_VALIDATION_MESSAGES.EMAIL] },
       },
     ])('should validate email: $value', ({ value, expected }) => {
       expect(TV.email(value)).toEqual(expected);
@@ -192,7 +196,7 @@ describe('trustees-validators', () => {
       {
         value: '',
         expected: {
-          reasons: [FIELD_VALIDATION_MESSAGES.ZOOM_LINK, FIELD_VALIDATION_MESSAGES.ZOOM_LINK],
+          reasons: [FIELD_VALIDATION_MESSAGES.ZOOM_LINK],
         },
       },
       {
