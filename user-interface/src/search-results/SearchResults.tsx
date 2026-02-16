@@ -4,8 +4,8 @@ import { CaseSummary, SyncedCase } from '@common/cams/cases';
 import Table, { TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 
-const SEARCH_RESULTS_WARNING_THRESHOLD = 10000;
 import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { CamsHttpError } from '@/lib/models/api';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { Pagination } from '@/lib/components/uswds/Pagination';
@@ -96,14 +96,18 @@ function SearchResults(props: SearchResultsProps) {
     }
   }
 
-  function handleSearchError() {
+  function handleSearchError(error: unknown) {
     setSearchResults(null);
     setEmptyResponse(true);
+    const isTimeout = error instanceof CamsHttpError && error.status === 504;
+    const persistentIssueMessage =
+      'If the problem persists, please submit a feedback request describing the issue.';
     setAlertInfo({
       type: UswdsAlertStyle.Error,
-      title: 'Search Results Not Available',
-      message:
-        'We are unable to retrieve search results at this time. Please try again later. If the problem persists, please submit a feedback request describing the issue.',
+      title: isTimeout ? 'Unable To Display Search Results' : 'Search Results Not Available',
+      message: isTimeout
+        ? `Try narrowing your search filters and try again. ${persistentIssueMessage}`
+        : `We are unable to retrieve search results at this time. Please try again later. ${persistentIssueMessage}`,
       timeOut: 30,
     });
   }
@@ -156,10 +160,7 @@ function SearchResults(props: SearchResultsProps) {
   }, [searchPredicate]);
 
   const totalCount = searchResults?.pagination?.totalCount ?? 0;
-  const isLimitReached = totalCount >= SEARCH_RESULTS_WARNING_THRESHOLD;
-  const displayCount = isLimitReached
-    ? `${new Intl.NumberFormat('en-US').format(SEARCH_RESULTS_WARNING_THRESHOLD)}+`
-    : new Intl.NumberFormat('en-US').format(totalCount);
+  const displayCount = new Intl.NumberFormat('en-US').format(totalCount);
 
   return (
     <div {...otherProps} className="search-results">
@@ -203,20 +204,6 @@ function SearchResults(props: SearchResultsProps) {
       )}
       {!isSearching && !emptyResponse && (
         <div>
-          {isLimitReached && (
-            <div className="search-alert">
-              <Alert
-                id="search-limit-alert"
-                className="measure-6"
-                message={`Showing first ${new Intl.NumberFormat('en-US').format(SEARCH_RESULTS_WARNING_THRESHOLD)} cases.`}
-                type={UswdsAlertStyle.Info}
-                show={true}
-                slim={true}
-                inline={true}
-                role="alert"
-              ></Alert>
-            </div>
-          )}
           <Table
             id={id}
             className="case-list"
