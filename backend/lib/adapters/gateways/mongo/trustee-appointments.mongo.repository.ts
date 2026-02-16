@@ -51,22 +51,26 @@ export class TrusteeAppointmentsMongoRepository
     TrusteeAppointmentsMongoRepository.dropInstance();
   }
 
-  async read(id: string): Promise<TrusteeAppointment> {
+  async read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment> {
     try {
       const doc = using<TrusteeAppointmentDocument>();
-      const query = and(doc('documentType').equals('TRUSTEE_APPOINTMENT'), doc('id').equals(id));
+      const query = and(
+        doc('documentType').equals('TRUSTEE_APPOINTMENT'),
+        doc('id').equals(appointmentId),
+        doc('trusteeId').equals(trusteeId),
+      );
       const appointment = await this.getAdapter<TrusteeAppointmentDocument>().findOne(query);
 
       if (!appointment) {
         throw new NotFoundError(MODULE_NAME, {
-          message: `Trustee appointment with ID ${id} not found.`,
+          message: `Trustee appointment with ID ${appointmentId} not found.`,
         });
       }
 
       return appointment;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to retrieve trustee appointment with ID ${id}.`,
+        message: `Failed to retrieve trustee appointment with ID ${appointmentId}.`,
       });
     }
   }
@@ -124,6 +128,7 @@ export class TrusteeAppointmentsMongoRepository
       const query = and(
         doc('documentType').equals('TRUSTEE_APPOINTMENT'),
         doc('id').equals(appointmentId),
+        doc('trusteeId').equals(trusteeId),
       );
 
       const existingAppointment =
@@ -133,14 +138,6 @@ export class TrusteeAppointmentsMongoRepository
         throw new NotFoundError(MODULE_NAME, {
           message: `Trustee appointment with ID ${appointmentId} not found.`,
         });
-      }
-
-      if (existingAppointment.trusteeId !== trusteeId) {
-        const error: Error & { code?: string } = new Error(
-          `Appointment ${appointmentId} does not belong to trustee ${trusteeId}`,
-        );
-        error.code = 'TRUSTEE_APPOINTMENT_FORBIDDEN';
-        throw error;
       }
 
       const updatedAppointment: TrusteeAppointmentDocument = {

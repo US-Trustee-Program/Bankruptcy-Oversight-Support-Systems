@@ -308,7 +308,7 @@ function CaseNoteFormModal_(props: CaseNoteFormModalProps, ref: React.Ref<CaseNo
 
   function hide() {
     if (modalRef.current?.hide) {
-      modalRef.current?.hide({});
+      modalRef.current?.hide();
     }
 
     if (modalOpenOptions.caseId && props.onModalClosed) {

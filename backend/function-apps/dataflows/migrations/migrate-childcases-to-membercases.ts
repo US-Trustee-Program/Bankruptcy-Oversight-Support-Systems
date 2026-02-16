@@ -8,6 +8,7 @@ import { ConsolidationOrder } from '@common/cams/orders';
 import QueryBuilder from '../../../lib/query/query-builder';
 import { Document as MongoDocument } from 'mongodb';
 import { CaseHistory } from '@common/cams/history';
+import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 
 const { and, using } = QueryBuilder;
 
@@ -40,6 +41,7 @@ const HARD_STOP = output.storageQueue({
 async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+  const trace = startTrace(MODULE_NAME, 'start', invocationContext.invocationId, logger);
 
   try {
     logger.info(MODULE_NAME, 'Starting migration of childCases to memberCases...');
@@ -153,12 +155,27 @@ async function start(_ignore: StartMessage, invocationContext: InvocationContext
       MODULE_NAME,
       `Total migration complete. Orders: ${result.modifiedCount}, Audit records: ${totalModified}`,
     );
+    completeTrace(trace, {
+      documentsWritten: result.modifiedCount + totalModified,
+      documentsFailed: 0,
+      success: true,
+      details: {
+        ordersModified: String(result.modifiedCount),
+        auditRecordsModified: String(totalModified),
+      },
+    });
   } catch (originalError) {
     const error = getCamsError(
       originalError,
       MODULE_NAME,
       'Failed to rename consolidation field from childCases to memberCases.',
     );
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: error.message,
+    });
     logger.camsError(error);
     invocationContext.extraOutputs.set(HARD_STOP, [
       {

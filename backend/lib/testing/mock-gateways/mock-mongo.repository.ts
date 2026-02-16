@@ -18,6 +18,7 @@ import {
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
   TrusteesRepository,
+  TrusteeAssistantsRepository,
   UpdateResult,
   UserGroupsRepository,
   UserSessionCacheRepository,
@@ -45,6 +46,7 @@ export class MockMongoRepository
     OfficeAssigneesRepository,
     TrusteesRepository,
     TrusteeAppointmentsRepository,
+    TrusteeAssistantsRepository,
     ListsRepository,
     UserGroupsRepository
 {
@@ -220,6 +222,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getCaseIdsRemainingToSync(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   deleteMany(_ignore: any): Promise<void> {
     throw new Error('Method not implemented.');
   }
@@ -305,6 +311,22 @@ export class MockMongoRepository
   }
 
   getTrusteeAppointments(_ignore: any): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  getTrusteeAssistants(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  createAssistant(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateAssistant(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  deleteAssistant(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

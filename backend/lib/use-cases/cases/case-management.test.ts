@@ -578,7 +578,7 @@ describe('Case management tests', () => {
 
         const predicate: CasesSearchPredicate = {
           ...basePredicate,
-          caseNumber: '001',
+          caseNumber: '00-00001',
         };
 
         const result = await useCaseWithPhonetic.searchCases(contextWithPhonetic, predicate, false);

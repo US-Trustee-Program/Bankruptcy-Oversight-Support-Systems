@@ -1,11 +1,11 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteesRepository } from '../gateways.types';
+import { TrusteesRepository, TrusteeAssistantsRepository } from '../gateways.types';
 import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { Trustee, TrusteeHistory, TrusteeInput, TrusteeAssistant } from '@common/cams/trustees';
+import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
 import {
   trusteeName,
   companyName,
@@ -21,8 +21,6 @@ import {
   email,
   website,
   zoomInfoSpec,
-  assistantName,
-  assistantTitle,
 } from '@common/cams/trustees-validators';
 import { createAuditRecord } from '@common/cams/auditable';
 import { deepEqual } from '@common/object-equality';
@@ -61,22 +59,10 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
   email: [V.optional(V.nullable(email))],
 };
 
-const assistantContactInformationSpec: ValidationSpec<ContactInformation> = {
-  ...contactInformationSpec,
-  address: [V.optional(V.nullable(V.spec(addressSpec)))],
-};
-
-const assistantSpec: ValidationSpec<TrusteeAssistant> = {
-  name: [assistantName],
-  title: [V.optional(assistantTitle)],
-  contact: [V.optional(V.spec(assistantContactInformationSpec))],
-};
-
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
   name: [trusteeName],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
-  assistant: [V.optional(V.spec(assistantSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
   software: [V.optional(V.length(0, 100))],
   zoomInfo: [V.optional(V.nullable(V.spec(zoomInfoSpec)))],
@@ -84,9 +70,11 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
 
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
+  private readonly trusteeAssistantsRepository: TrusteeAssistantsRepository;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = factory.getTrusteesRepository(context);
+    this.trusteeAssistantsRepository = factory.getTrusteeAssistantsRepository(context);
   }
 
   private checkValidation(validatorResult: ValidatorResult) {
@@ -185,7 +173,14 @@ export class TrusteesUseCase {
       // Retrieve individual trustee from repository
       const trustee = await this.trusteesRepository.read(trusteeId);
 
-      context.logger.info(MODULE_NAME, `Retrieved trustee ${trusteeId}`);
+      // Fetch and populate assistants array
+      const assistants = await this.trusteeAssistantsRepository.getTrusteeAssistants(trusteeId);
+      trustee.assistants = assistants;
+
+      context.logger.info(
+        MODULE_NAME,
+        `Retrieved trustee ${trusteeId} with ${assistants.length} assistants`,
+      );
       return trustee;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
@@ -313,20 +308,6 @@ export class TrusteesUseCase {
               trusteeId,
               before: existingTrustee.zoomInfo,
               after: updatedTrustee.zoomInfo,
-            },
-            userReference,
-          ),
-        );
-      }
-
-      if (!deepEqual(existingTrustee.assistant, updatedTrustee.assistant)) {
-        await this.trusteesRepository.createTrusteeHistory(
-          createAuditRecord(
-            {
-              documentType: 'AUDIT_ASSISTANT',
-              trusteeId,
-              before: normalizeForUndefined(existingTrustee.assistant),
-              after: normalizeForUndefined(updatedTrustee.assistant),
             },
             userReference,
           ),

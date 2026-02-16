@@ -130,7 +130,8 @@ describe('offices use case tests', () => {
     const logSpy = vi.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
 
     const useCase = new OfficesUseCase();
-    await useCase.syncOfficeStaff(applicationContext);
+    const result = await useCase.syncOfficeStaff(applicationContext);
+    expect(result).toEqual({ success: 2, fail: 1 });
     expect(putSpy).toHaveBeenCalledTimes(seattleUsers.length);
     seattleUsers.forEach((_, idx) => {
       expect(putSpy).toHaveBeenCalledWith(seattleOfficeCode, seattleUsers[idx]);
@@ -159,7 +160,8 @@ describe('offices use case tests', () => {
     const logSpy = vi.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
     vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
     const useCase = new OfficesUseCase();
-    await useCase.syncOfficeStaff(applicationContext);
+    const result = await useCase.syncOfficeStaff(applicationContext);
+    expect(result).toEqual({ success: 3, fail: 0 });
     expect(putSpy).toHaveBeenCalledTimes(users.length);
     expect(logSpy).toHaveBeenCalledWith(
       expect.anything(),
@@ -189,7 +191,8 @@ describe('offices use case tests', () => {
     const logSpy = vi.spyOn(applicationContext.logger, 'info').mockImplementation(() => {});
     vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue('');
     const useCase = new OfficesUseCase();
-    await useCase.syncOfficeStaff(applicationContext);
+    const result = await useCase.syncOfficeStaff(applicationContext);
+    expect(result).toEqual({ success: 0, fail: 2 });
     expect(putSpy).toHaveBeenCalledTimes(users.length);
     expect(logSpy).toHaveBeenCalledWith(
       expect.anything(),

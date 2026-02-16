@@ -19,6 +19,9 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignment } from '@common/cams/assignments';
+import { validateObject, flatten, ValidatorResult } from '@common/cams/validation';
+import { casesSearchPredicateSpec } from '@common/cams/search-validators';
+import { BadRequestError } from '../../common-errors/bad-request';
 
 const MODULE_NAME = 'CASE-MANAGEMENT-USE-CASE';
 
@@ -45,9 +48,17 @@ export default class CaseManagement {
 
   constructor(applicationContext: ApplicationContext, casesGateway?: CasesInterface) {
     this.assignmentRepository = factory.getAssignmentRepository(applicationContext);
-    this.casesGateway = casesGateway ? casesGateway : factory.getCasesGateway(applicationContext);
+    this.casesGateway = casesGateway || factory.getCasesGateway(applicationContext);
     this.officesGateway = factory.getOfficesGateway(applicationContext);
     this.casesRepository = factory.getCasesRepository(applicationContext);
+  }
+
+  private checkValidation(validatorResult: ValidatorResult) {
+    if (!validatorResult.valid) {
+      const validationErrors = flatten(validatorResult.reasonMap || {});
+      const collectedErrors = 'Search validation failed: ' + validationErrors.join('. ') + '.';
+      throw new BadRequestError(MODULE_NAME, { message: collectedErrors });
+    }
   }
 
   private shouldUsePhoneticSearch(
@@ -73,6 +84,8 @@ export default class CaseManagement {
     includeAssignments: boolean,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>> {
     try {
+      // RULE 3: Backend validation (security boundary)
+      this.checkValidation(validateObject(casesSearchPredicateSpec, predicate));
       if (predicate.assignments && predicate.assignments.length > 0) {
         const caseIdSet = new Set<string>();
         for (const user of predicate.assignments) {
@@ -133,15 +146,15 @@ export default class CaseManagement {
 
       return { metadata: searchResult.metadata, data: Array.from(casesMap.values()) };
     } catch (originalError) {
-      if (!isCamsError(originalError)) {
+      if (isCamsError(originalError)) {
+        throw originalError;
+      } else {
         throw new UnknownError(MODULE_NAME, {
           message:
             'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
           originalError,
           status: 500,
         });
-      } else {
-        throw originalError;
       }
     }
   }
@@ -171,8 +184,7 @@ export default class CaseManagement {
     caseId: string,
   ): Promise<CaseSummary> {
     try {
-      const caseSummary = await this.casesGateway.getCaseSummary(applicationContext, caseId);
-      return caseSummary;
+      return await this.casesGateway.getCaseSummary(applicationContext, caseId);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

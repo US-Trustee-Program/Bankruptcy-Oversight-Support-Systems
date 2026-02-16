@@ -35,6 +35,7 @@ import {
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
@@ -1767,13 +1768,60 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
             countryCode: 'US',
           },
         },
+        assistants: [
+          {
+            id: 'assistant-001',
+            trusteeId: 'ab6b007b-deb3-4f88-b376-0f3786ce75d3',
+            name: 'Test Assistant One',
+            title: 'Senior Assistant',
+            contact: {
+              address: {
+                address1: '123 Main St',
+                city: 'Test City',
+                state: 'NY',
+                zipCode: '10001',
+                countryCode: 'US' as const,
+              },
+              phone: { number: '555-123-4567' },
+              email: 'assistant1@example.com',
+            },
+            updatedBy: { id: 'user-1', name: 'Admin User' },
+            updatedOn: '2025-01-01T00:00:00.000Z',
+          },
+          {
+            id: 'assistant-002',
+            trusteeId: 'ab6b007b-deb3-4f88-b376-0f3786ce75d3',
+            name: 'Test Assistant Two',
+            title: 'Junior Assistant',
+            contact: {
+              address: {
+                address1: '456 Oak Ave',
+                city: 'Another City',
+                state: 'CA',
+                zipCode: '90001',
+                countryCode: 'US' as const,
+              },
+              phone: { number: '555-987-6543' },
+              email: 'assistant2@example.com',
+            },
+            updatedBy: { id: 'user-1', name: 'Admin User' },
+            updatedOn: '2025-01-02T00:00:00.000Z',
+          },
+        ],
       },
     };
   } else if (path.match(/\/trustees/)) {
     response = {
       data: [
         {
+          id: 'trustee-001',
+          trusteeId: 'trustee-001',
           name: 'John Doe',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: {
+            id: 'user-1',
+            name: 'Mock User',
+          },
           legacy: {
             address1: '8904 Marquardt Keys',
             address2: 'Apt. 284',
@@ -1784,7 +1832,14 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           },
         },
         {
+          id: 'trustee-002',
+          trusteeId: 'trustee-002',
           name: 'Jane Smith',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: {
+            id: 'user-1',
+            name: 'Mock User',
+          },
           legacy: {
             address1: '18098 Kitty Canyon',
             address2: 'Suite 449',
@@ -1795,7 +1850,14 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           },
         },
         {
+          id: 'trustee-003',
+          trusteeId: 'trustee-003',
           name: 'Bob Johnson',
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: {
+            id: 'user-1',
+            name: 'Mock User',
+          },
           legacy: {
             address1: '68622 Judd Highway',
             address2: 'Suite 147',
@@ -2384,6 +2446,68 @@ async function putTrusteeAppointment(
   return put(`/trustees/${trusteeId}/appointments/${appointmentId}`, appointment, {});
 }
 
+async function getTrusteeAssistants(_trusteeId: string) {
+  return {
+    data: [] as TrusteeAssistant[],
+  };
+}
+
+async function getAssistant(trusteeId: string, assistantId: string) {
+  return {
+    data: {
+      id: assistantId,
+      trusteeId,
+      name: 'Jane Doe',
+      title: 'Paralegal',
+      contact: {
+        address: {
+          address1: '123 Main St',
+          city: 'Springfield',
+          state: 'IL',
+          zipCode: '62701',
+          countryCode: 'US',
+        },
+        phone: { number: '555-123-4567' },
+        email: 'jane.doe@example.com',
+      },
+      updatedBy: { id: 'user-1', name: 'Admin User' },
+      updatedOn: new Date().toISOString(),
+    } as TrusteeAssistant,
+  };
+}
+
+async function createTrusteeAssistant(trusteeId: string, assistant: TrusteeAssistantInput) {
+  return {
+    data: {
+      id: randomId(),
+      trusteeId,
+      ...assistant,
+      updatedBy: { id: 'user-1', name: 'Admin User' },
+      updatedOn: new Date().toISOString(),
+    } as TrusteeAssistant,
+  };
+}
+
+async function updateTrusteeAssistant(
+  trusteeId: string,
+  assistantId: string,
+  assistant: TrusteeAssistantInput,
+) {
+  return {
+    data: {
+      id: assistantId,
+      trusteeId,
+      ...assistant,
+      updatedBy: { id: 'user-1', name: 'Admin User' },
+      updatedOn: new Date().toISOString(),
+    } as TrusteeAssistant,
+  };
+}
+
+async function deleteTrusteeAssistant(_trusteeId: string, _assistantId: string) {
+  return;
+}
+
 async function getBankruptcySoftwareList() {
   return {
     data: [
@@ -2501,6 +2625,11 @@ const MockApi2 = {
   getTrusteeAppointments,
   postTrusteeAppointment,
   putTrusteeAppointment,
+  getTrusteeAssistants,
+  getAssistant,
+  createTrusteeAssistant,
+  updateTrusteeAssistant,
+  deleteTrusteeAssistant,
   postTrustee,
   patchTrustee,
   deletePrivilegedIdentityUser,

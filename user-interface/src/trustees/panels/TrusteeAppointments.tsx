@@ -64,6 +64,52 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     });
   };
 
+  const getStateFromCourtName = (courtName: string): string => {
+    // Extract state name from court name patterns like:
+    // "Southern District of New York" -> "New York"
+    // "District of Columbia" -> "Columbia"
+    // "Eastern District of California" -> "California"
+    const match = courtName.match(/District of (.+)$/i);
+    return match ? match[1] : courtName;
+  };
+
+  const getChapterNumber = (chapter: string): number => {
+    // Extract numeric value from chapter (e.g., '7' -> 7, '11-subchapter-v' -> 11)
+    const match = chapter.match(/^(\d+)/);
+    return match ? parseInt(match[1], 10) : 0;
+  };
+
+  const sortAppointments = (appointments: TrusteeAppointment[]): TrusteeAppointment[] => {
+    return [...appointments].sort((a, b) => {
+      // 1. Sort by state alphabetically (derived from courtName)
+      const stateA = getStateFromCourtName(a.courtName || '');
+      const stateB = getStateFromCourtName(b.courtName || '');
+      const stateComparison = stateA.localeCompare(stateB);
+      if (stateComparison !== 0) return stateComparison;
+
+      // 2. Sort by district name (courtName) alphabetically within each state
+      const districtA = a.courtName || '';
+      const districtB = b.courtName || '';
+      const districtComparison = districtA.localeCompare(districtB);
+      if (districtComparison !== 0) return districtComparison;
+
+      // 3. Sort by division (courtDivisionName) alphabetically within each district
+      const divisionA = a.courtDivisionName || '';
+      const divisionB = b.courtDivisionName || '';
+      const divisionComparison = divisionA.localeCompare(divisionB);
+      if (divisionComparison !== 0) return divisionComparison;
+
+      // 4. Sort by chapter in ascending order within each division
+      const chapterA = getChapterNumber(a.chapter);
+      const chapterB = getChapterNumber(b.chapter);
+      const chapterComparison = chapterA - chapterB;
+      if (chapterComparison !== 0) return chapterComparison;
+
+      // 5. Sort by appointment type alphabetically within each chapter
+      return a.appointmentType.localeCompare(b.appointmentType);
+    });
+  };
+
   if (appointments.length === 0) {
     return (
       <div className="trustee-appointments-list">
@@ -78,6 +124,8 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
     );
   }
 
+  const sortedAppointments = sortAppointments(appointments);
+
   return (
     <div className="trustee-appointments-list">
       <div className="toolbar">
@@ -87,7 +135,7 @@ export default function TrusteeAppointments(props: Readonly<TrusteeAppointmentsP
         </Button>
       </div>
       <div className="appointments-list">
-        {appointments.map((appointment) => (
+        {sortedAppointments.map((appointment) => (
           <AppointmentCard key={appointment.id} appointment={appointment} />
         ))}
       </div>

@@ -49,14 +49,14 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
       modalRef.current?.show({});
     },
     hide: () => {
-      modalRef.current?.hide({});
+      modalRef.current?.hide();
     },
   }));
 
   const handleAssignAttorney = useCallback(async () => {
     if (selectedAttorney) {
       if (currentAssignment && currentAssignment.user.id === selectedAttorney.id) {
-        modalRef.current?.hide({});
+        modalRef.current?.hide();
         return;
       }
 
@@ -69,7 +69,7 @@ const TrusteeAttorneyAssignmentModal = forwardRef<
         );
         onAssignment(true);
         globalAlert?.success('Attorney assigned successfully');
-        modalRef.current?.hide({});
+        modalRef.current?.hide();
       } catch (err) {
         globalAlert?.error(err instanceof Error ? err.message : 'Failed to assign attorney');
       } finally {

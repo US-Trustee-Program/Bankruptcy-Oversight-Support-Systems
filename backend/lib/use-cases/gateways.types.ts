@@ -32,6 +32,7 @@ import {
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Auditable } from '@common/cams/auditable';
 import {
   BankList,
@@ -206,6 +207,11 @@ export interface CasesRepository extends Releasable {
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
   ) => Promise<T[]>;
+  getCaseIdsRemainingToSync(
+    cutoffDate: string,
+    lastId: string | null,
+    limit: number,
+  ): Promise<{ caseId: string; _id: string }[]>;
 }
 
 export interface OfficesRepository
@@ -264,7 +270,8 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   ): Promise<TrusteeOversightAssignment>;
 }
 
-export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>, Releasable {
+export interface TrusteeAppointmentsRepository extends Releasable {
+  read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
   createAppointment(
     trusteeId: string,
@@ -277,6 +284,23 @@ export interface TrusteeAppointmentsRepository extends Reads<TrusteeAppointment>
     appointmentInput: TrusteeAppointmentInput,
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;
+}
+
+export interface TrusteeAssistantsRepository extends Releasable {
+  read(trusteeId: string, assistantId: string): Promise<TrusteeAssistant>;
+  getTrusteeAssistants(trusteeId: string): Promise<TrusteeAssistant[]>;
+  createAssistant(
+    trusteeId: string,
+    input: TrusteeAssistantInput,
+    user: CamsUserReference,
+  ): Promise<TrusteeAssistant>;
+  updateAssistant(
+    trusteeId: string,
+    assistantId: string,
+    input: TrusteeAssistantInput,
+    user: CamsUserReference,
+  ): Promise<TrusteeAssistant>;
+  deleteAssistant(trusteeId: string, assistantId: string): Promise<void>;
 }
 
 export type RuntimeStateDocumentType =
@@ -296,9 +320,17 @@ export type OrderSyncState = RuntimeState & {
   txId: string;
 };
 
-export type CasesSyncState = RuntimeState & {
+// Legacy sync state shape (pre-dual-sync-date)
+export type LegacyCasesSyncState = RuntimeState & {
   documentType: 'CASES_SYNC_STATE';
   lastSyncDate: string;
+};
+
+// Current sync state shape with dual sync dates
+export type CasesSyncState = RuntimeState & {
+  documentType: 'CASES_SYNC_STATE';
+  lastCasesSyncDate: string;
+  lastTransactionsSyncDate: string;
 };
 
 export type OfficeStaffSyncState = RuntimeState & {
