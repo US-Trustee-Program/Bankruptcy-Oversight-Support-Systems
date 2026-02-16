@@ -1,6 +1,7 @@
 import { ApplicationContext } from '../../types/basic';
 import { AtsGateway } from '../../../use-cases/gateways.types';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../types/ats.types';
+import { DbTableFieldSpec, QueryResults } from '../../types/database';
 
 const MODULE_NAME = 'ATS-MOCK-GATEWAY';
 
@@ -357,5 +358,19 @@ export class MockAtsGateway implements AtsGateway {
   async testConnection(context: ApplicationContext): Promise<boolean> {
     context.logger.debug(MODULE_NAME, 'Mock: Testing connection');
     return true; // Mock always succeeds
+  }
+
+  async executeQuery(
+    context: ApplicationContext,
+    _query: string,
+    _input?: DbTableFieldSpec[],
+  ): Promise<QueryResults> {
+    context.logger.warn(
+      MODULE_NAME,
+      'Mock: executeQuery called but not implemented in MockAtsGateway',
+    );
+    throw new Error(
+      'MockAtsGateway.executeQuery() is not implemented. Use a spy to mock this method in tests if needed.',
+    );
   }
 }
