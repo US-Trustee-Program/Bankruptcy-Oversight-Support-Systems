@@ -1348,32 +1348,61 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('getUpdatedCaseIds', () => {
-    test('should return a list of updated case ids', async () => {
-      const recordset = MockData.buildArray(MockData.randomCaseId, 100).map((caseId) => {
-        return { caseId };
+    test('should return case ids and latest sync date from first record', async () => {
+      const latestCasesSyncDate = '2025-02-11T10:30:00.124Z';
+      const latestTransactionsSyncDate = '2025-02-11T12:45:00.789Z';
+
+      // Mock results for AO_CS query
+      const casesRecordset = MockData.buildArray(MockData.randomCaseId, 50).map((caseId, idx) => {
+        const syncDate = idx === 0 ? latestCasesSyncDate : '2025-02-10T08:00:00.000Z';
+        return { caseId, latestSyncDate: syncDate };
       });
 
-      const executeResults: QueryResults = {
-        success: true,
-        results: {
-          recordset,
+      // Mock results for AO_TX query
+      const transactionsRecordset = MockData.buildArray(MockData.randomCaseId, 50).map(
+        (caseId, idx) => {
+          const syncDate = idx === 0 ? latestTransactionsSyncDate : '2025-02-10T09:00:00.000Z';
+          return { caseId, latestSyncDate: syncDate };
         },
+      );
+
+      const casesResults: QueryResults = {
+        success: true,
+        results: { recordset: casesRecordset },
         message: '',
       };
 
-      const expectedReturn = recordset.map((record) => record.caseId);
+      const transactionsResults: QueryResults = {
+        success: true,
+        results: { recordset: transactionsRecordset },
+        message: '',
+      };
 
-      querySpy.mockImplementationOnce(async () => {
-        return executeResults;
-      });
+      // All case IDs from both queries (Set handles deduplication)
+      const allCaseIds = new Set([
+        ...casesRecordset.map((r) => r.caseId),
+        ...transactionsRecordset.map((r) => r.caseId),
+      ]);
 
-      const startDate = new Date().toISOString();
-      const actual = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, startDate);
-      expect(actual).toEqual(expectedReturn);
+      // Mock both query calls - cases first, then transactions
+      querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(transactionsResults);
+
+      const casesStart = new Date().toISOString();
+      const transactionsStart = new Date().toISOString();
+      const actual = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        casesStart,
+        transactionsStart,
+      );
+
+      expect(actual.caseIds).toHaveLength(allCaseIds.size);
+      expect(actual.latestCasesSyncDate).toEqual(latestCasesSyncDate);
+      expect(actual.latestTransactionsSyncDate).toEqual(latestTransactionsSyncDate);
     });
 
-    test('should return an empty array', async () => {
-      const mockResults: QueryResults = {
+    test('should return empty array and original start dates when no results', async () => {
+      const emptyResults: QueryResults = {
         success: true,
         results: {
           recordset: [],
@@ -1381,9 +1410,139 @@ describe('Test DXTR Gateway', () => {
         message: '',
       };
 
-      querySpy.mockReturnValue(mockResults);
-      const actual = await testCasesDxtrGateway.getUpdatedCaseIds(applicationContext, 'foo');
-      expect(actual).toEqual([]);
+      const casesStart = '2025-02-11T08:00:00.000Z';
+      const transactionsStart = '2025-02-11T09:00:00.000Z';
+
+      // Both queries return empty
+      querySpy.mockResolvedValueOnce(emptyResults);
+      querySpy.mockResolvedValueOnce(emptyResults);
+
+      const actual = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        casesStart,
+        transactionsStart,
+      );
+
+      expect(actual).toEqual({
+        caseIds: [],
+        latestCasesSyncDate: casesStart,
+        latestTransactionsSyncDate: transactionsStart,
+      });
+    });
+
+    test('should return cases updated via LAST_UPDATE_DATE (from AO_CS)', async () => {
+      const casesResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
+        { caseId: '081-21-12345', latestSyncDate: '2025-02-11T09:00:00.000Z' },
+      ]);
+      const emptyResults = makeQueryResults([]);
+
+      // Cases query returns data, transactions query is empty
+      querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(emptyResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+      );
+
+      expect(result.caseIds).toEqual(['081-20-10508', '081-21-12345']);
+      expect(result.latestCasesSyncDate).toEqual('2025-02-11T10:00:00.000Z');
+    });
+
+    test('should include cases with terminal transactions from AO_TX', async () => {
+      const emptyResults = makeQueryResults([]);
+      const transactionsResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' },
+      ]);
+
+      // Cases query is empty, transactions query returns data
+      querySpy.mockResolvedValueOnce(emptyResults);
+      querySpy.mockResolvedValueOnce(transactionsResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+      );
+
+      expect(result.caseIds).toContain('081-20-10508');
+      expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T14:00:00.000Z');
+    });
+
+    test('should deduplicate cases found in both AO_CS and AO_TX queries', async () => {
+      // Same case ID returned from both queries
+      const casesResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
+      ]);
+      const transactionsResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' },
+      ]);
+
+      querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(transactionsResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+      );
+
+      expect(result.caseIds).toEqual(['081-20-10508']); // Only once, Set handles deduplication
+      expect(result.latestCasesSyncDate).toEqual('2025-02-11T10:00:00.000Z');
+      expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T14:00:00.000Z');
+    });
+  });
+
+  describe('getCasesWithTerminalTransactionBlindSpot', () => {
+    test('should return cases with TX_DATE > LAST_UPDATE_DATE', async () => {
+      const mockResults = makeQueryResults([
+        { caseId: '081-20-10508' },
+        { caseId: '081-21-12345' },
+      ]);
+      querySpy.mockResolvedValue(mockResults);
+
+      const result = await testCasesDxtrGateway.getCasesWithTerminalTransactionBlindSpot(
+        applicationContext,
+        '2018-01-01',
+      );
+
+      expect(result).toEqual(['081-20-10508', '081-21-12345']);
+      expect(querySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.stringContaining(
+          "TX.TX_DATE AT TIME ZONE 'UTC' > C.LAST_UPDATE_DATE AT TIME ZONE 'UTC'",
+        ),
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'cutoffDate', value: '2018-01-01' }),
+        ]),
+      );
+    });
+
+    test('should include all terminal transaction codes', async () => {
+      querySpy.mockResolvedValue(makeQueryResults([]));
+
+      await testCasesDxtrGateway.getCasesWithTerminalTransactionBlindSpot(
+        applicationContext,
+        '2018-01-01',
+      );
+
+      const query = querySpy.mock.calls[0][2];
+      expect(query).toContain("TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')");
+    });
+
+    test('should filter by TX_TYPE = O', async () => {
+      querySpy.mockResolvedValue(makeQueryResults([]));
+
+      await testCasesDxtrGateway.getCasesWithTerminalTransactionBlindSpot(
+        applicationContext,
+        '2018-01-01',
+      );
+
+      const query = querySpy.mock.calls[0][2];
+      expect(query).toContain("TX.TX_TYPE = 'O'");
     });
   });
 });

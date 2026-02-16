@@ -24,6 +24,7 @@ import { Debtor, DebtorAttorney, Party, LegacyAddress, LegacyTrustee } from '../
 import { PhoneNumber, Address, ContactInformation } from '../contact';
 import { Trustee, TrusteeHistory, TrusteeInput } from '../trustees';
 import { TrusteeAppointment } from '../trustee-appointments';
+import { TrusteeAssistant } from '../trustee-assistants';
 import { COURT_DIVISIONS } from './courts.mock';
 import { TRIAL_ATTORNEYS } from './attorneys.mock';
 import { ConsolidationOrderSummary } from '../history';
@@ -582,9 +583,6 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
   if (sanitizedOverride.software === null) {
     sanitizedOverride.software = undefined;
   }
-  if (sanitizedOverride.assistant === null) {
-    sanitizedOverride.assistant = undefined;
-  }
 
   // Create a properly typed result
   const result: Trustee = {
@@ -596,7 +594,6 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
     public: trusteeInput.public,
     // Optional fields with proper types
     internal: sanitizedOverride.internal || trusteeInput.internal,
-    assistant: sanitizedOverride.assistant,
     banks: sanitizedOverride.banks,
     software: sanitizedOverride.software,
     zoomInfo: sanitizedOverride.zoomInfo,
@@ -649,6 +646,21 @@ function getTrusteeAppointment(override: Partial<TrusteeAppointment> = {}): Trus
     appointedDate: getDateBeforeToday().toISOString(),
     status: 'active',
     effectiveDate: getDateBeforeToday().toISOString(),
+    createdOn: getDateBeforeToday().toISOString(),
+    createdBy: getCamsUserReference(),
+    updatedOn: getDateBeforeToday().toISOString(),
+    updatedBy: getCamsUserReference(),
+    ...override,
+  };
+}
+
+function getTrusteeAssistant(override: Partial<TrusteeAssistant> = {}): TrusteeAssistant {
+  return {
+    id: faker.string.uuid(),
+    trusteeId: faker.string.uuid(),
+    name: faker.person.fullName(),
+    title: faker.person.jobTitle(),
+    contact: getContactInformation(),
     createdOn: getDateBeforeToday().toISOString(),
     createdBy: getCamsUserReference(),
     updatedOn: getDateBeforeToday().toISOString(),
@@ -1109,6 +1121,7 @@ const MockData = {
   getTrusteeInput,
   getChapter13Trustee,
   getTrusteeAppointment,
+  getTrusteeAssistant,
   getTrusteeHistory,
   getLegacyTrustee,
 };

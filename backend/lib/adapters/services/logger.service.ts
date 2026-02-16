@@ -13,6 +13,12 @@ type LogType = 'debug' | 'info' | 'warn' | 'error';
 
 const disallowedProperties = ['ssn', 'taxId', 'ein', 'itin'];
 
+const piiRegex = /\b\d{3}[- ]?\d{2}[- ]?\d{4}\b|\b\d{2}[- ]?\d{7}\b/gm;
+
+export function scrubMessage(message: string): string {
+  return message.replace(piiRegex, '[REDACTED]');
+}
+
 export class LoggerImpl implements LoggerHelper {
   private readonly provider: LoggerProvider;
   private readonly invocationId: string;
@@ -27,7 +33,7 @@ export class LoggerImpl implements LoggerHelper {
   }
 
   private logMessage(logType: LogType, moduleName: string, message: string, data?: unknown) {
-    const logString = `[${logType.toUpperCase()}] [${moduleName}] [INVOCATION ${this.invocationId}] ${this.scrubMessage(message)} ${
+    const logString = `[${logType.toUpperCase()}] [${moduleName}] [INVOCATION ${this.invocationId}] ${scrubMessage(message)} ${
       undefined != data
         ? JSON.stringify(data, (key, value) => {
             let disallowed = false;
@@ -41,11 +47,6 @@ export class LoggerImpl implements LoggerHelper {
         : ''
     }`;
     this.provider(this.neutralizeOutput(logString.trim()));
-  }
-
-  private scrubMessage(message: string) {
-    const piiRegex = /\b\d{3}[- ]?\d{2}[- ]?\d{4}\b|\b\d{2}[- ]?\d{7}\b/gm;
-    return message.replace(piiRegex, '[REDACTED]');
   }
 
   info(moduleName: string, message: string, data?: unknown) {

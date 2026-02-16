@@ -173,7 +173,7 @@ const assignAttorneyModalUseCase = (
 
   const hide = () => {
     if (controls.modalRef.current?.hide) {
-      controls.modalRef.current?.hide({});
+      controls.modalRef.current?.hide();
     }
   };
 

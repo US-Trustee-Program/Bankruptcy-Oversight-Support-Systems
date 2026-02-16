@@ -2,9 +2,10 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseBasics, CaseDetail, CaseSummary } from '@common/cams/cases';
 import { CasesSearchPredicate } from '@common/api/search';
 
-export type CasesSyncMeta = {
+export type UpdatedCaseIds = {
   caseIds: string[];
-  lastTxId: string;
+  latestCasesSyncDate: string;
+  latestTransactionsSyncDate: string;
 };
 
 type TransactionIdRangeForDate = {
@@ -26,7 +27,16 @@ export interface CasesInterface {
 
   getSuggestedCases(applicationContext: ApplicationContext, caseId: string): Promise<CaseSummary[]>;
 
-  getUpdatedCaseIds(applicationContext: ApplicationContext, start: string): Promise<string[]>;
+  getUpdatedCaseIds(
+    applicationContext: ApplicationContext,
+    casesStart: string,
+    transactionsStart: string,
+  ): Promise<UpdatedCaseIds>;
+
+  getCasesWithTerminalTransactionBlindSpot(
+    context: ApplicationContext,
+    cutoffDate: string,
+  ): Promise<string[]>;
 
   findTransactionIdRangeForDate(
     context: ApplicationContext,

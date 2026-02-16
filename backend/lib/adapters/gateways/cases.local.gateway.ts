@@ -1,4 +1,8 @@
-import { CasesInterface, TransactionIdRangeForDate } from '../../use-cases/cases/cases.interface';
+import {
+  CasesInterface,
+  TransactionIdRangeForDate,
+  UpdatedCaseIds,
+} from '../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
 import { GatewayHelper } from './gateway-helper';
 import { getMonthDayYearStringFromDate } from '../utils/date-helper';
@@ -123,7 +127,19 @@ export class CasesLocalGateway implements CasesInterface {
 
   public async getUpdatedCaseIds(
     _applicationContext: ApplicationContext,
-    _start: string,
+    casesStart: string,
+    transactionsStart: string,
+  ): Promise<UpdatedCaseIds> {
+    return {
+      caseIds: [],
+      latestCasesSyncDate: casesStart,
+      latestTransactionsSyncDate: transactionsStart,
+    };
+  }
+
+  public async getCasesWithTerminalTransactionBlindSpot(
+    _context: ApplicationContext,
+    _cutoffDate: string,
   ): Promise<string[]> {
     throw new Error('Not implemented');
   }

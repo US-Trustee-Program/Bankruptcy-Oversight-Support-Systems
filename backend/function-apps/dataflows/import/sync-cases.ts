@@ -13,6 +13,7 @@ import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-st
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CaseSyncEvent } from '@common/queue/dataflow-types';
+import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
@@ -48,14 +49,17 @@ const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
  * @param {InvocationContext} invocationContext
  */
 async function handleStart(startMessage: StartMessage, invocationContext: InvocationContext) {
+  const logger = ContextCreator.getLogger(invocationContext);
+  const trace = startTrace(MODULE_NAME, 'handleStart', invocationContext.invocationId, logger);
   try {
     const context = await ContextCreator.getApplicationContext({ invocationContext });
-    const { events, lastSyncDate } = await SyncCases.getCaseIds(
+    const { events, lastCasesSyncDate, lastTransactionsSyncDate } = await SyncCases.getCaseIds(
       context,
       startMessage['lastSyncDate'],
     );
 
     if (!events.length) {
+      completeTrace(trace, { documentsWritten: 0, documentsFailed: 0, success: true });
       return;
     }
 
@@ -70,8 +74,20 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
     }
     invocationContext.extraOutputs.set(PAGE, pages);
 
-    await CasesRuntimeState.storeRuntimeState(context, lastSyncDate);
+    await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { pagesQueued: String(pages.length), totalEvents: String(events.length) },
+    });
   } catch (originalError) {
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: originalError instanceof Error ? originalError.message : String(originalError),
+    });
     invocationContext.extraOutputs.set(
       DLQ,
       buildQueueError(originalError, MODULE_NAME, HANDLE_START),
@@ -86,11 +102,20 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
  * @param {InvocationContext} invocationContext
  */
 async function handlePage(events: CaseSyncEvent[], invocationContext: InvocationContext) {
+  const logger = ContextCreator.getLogger(invocationContext);
+  const trace = startTrace(MODULE_NAME, 'handlePage', invocationContext.invocationId, logger);
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
 
   const failedEvents = processedEvents.filter((event) => !!event.error);
   invocationContext.extraOutputs.set(DLQ, failedEvents);
+  const successCount = processedEvents.length - failedEvents.length;
+  completeTrace(trace, {
+    documentsWritten: successCount,
+    documentsFailed: failedEvents.length,
+    success: true,
+    details: { totalEvents: String(events.length) },
+  });
 }
 
 function setup() {

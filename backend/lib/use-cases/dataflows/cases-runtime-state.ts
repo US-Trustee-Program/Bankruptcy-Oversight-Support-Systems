@@ -5,12 +5,17 @@ import { getCamsError } from '../../common-errors/error-utilities';
 
 const MODULE_NAME = 'CASE-RUNTIME-STATE';
 
-async function storeRuntimeState(context: ApplicationContext, lastSyncDate: string) {
+async function storeRuntimeState(
+  context: ApplicationContext,
+  lastCasesSyncDate: string,
+  lastTransactionsSyncDate: string,
+) {
   const runtimeStateRepo = factory.getCasesSyncStateRepo(context);
   try {
     const newSyncState: CasesSyncState = {
       documentType: 'CASES_SYNC_STATE',
-      lastSyncDate,
+      lastCasesSyncDate,
+      lastTransactionsSyncDate,
     };
     await runtimeStateRepo.upsert(newSyncState);
     context.logger.info(MODULE_NAME, `Wrote runtime state: `, newSyncState);

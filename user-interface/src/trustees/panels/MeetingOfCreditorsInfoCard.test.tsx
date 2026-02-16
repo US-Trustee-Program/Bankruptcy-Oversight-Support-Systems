@@ -29,18 +29,19 @@ describe('MeetingOfCreditorsInfoCard', () => {
     expect(screen.getByTestId('zoom-info-heading')).toHaveTextContent('341 Meeting');
   });
 
-  test('should render "No information has been entered" when zoomInfo is undefined', () => {
+  test('should render "No information added" when zoomInfo is undefined', () => {
     render(<MeetingOfCreditorsInfoCard zoomInfo={undefined} onEdit={mockOnEdit} />);
 
     expect(screen.getByTestId('zoom-info-empty-message')).toHaveTextContent(
-      'No information has been entered.',
+      'No information added.',
     );
   });
 
   test('should render zoom link when zoomInfo is provided', () => {
     render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} onEdit={mockOnEdit} />);
 
-    const zoomLink = screen.getByTestId('zoom-link');
+    const zoomLinkContainer = screen.getByTestId('zoom-link');
+    const zoomLink = zoomLinkContainer.querySelector('a');
     expect(zoomLink).toHaveAttribute('href', 'https://zoom.us/j/123456789');
     expect(zoomLink).toHaveAttribute('target', '_blank');
     expect(zoomLink).toHaveAttribute('rel', 'noopener noreferrer');
@@ -50,7 +51,7 @@ describe('MeetingOfCreditorsInfoCard', () => {
     render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} onEdit={mockOnEdit} />);
 
     const phoneLink = screen.getByTestId('zoom-phone').querySelector('a');
-    expect(phoneLink).toHaveAttribute('href', 'tel:1-555-123-4567');
+    expect(phoneLink).toHaveAttribute('href', 'tel:+115551234567');
   });
 
   test('should render passcode', () => {

@@ -7,7 +7,7 @@ param databaseName string
 @description('List of objects with following properties: name, partitionKey1')
 param databaseCollections array
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2023-09-15' existing = {
+resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' existing = {
   name: accountName
 }
 
@@ -237,6 +237,16 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
         {
           key: {
             keys: ['dateFiled', 'caseNumber']
+          }
+        }
+        {
+          key: {
+            keys: ['debtor.phoneticTokens']
+          }
+        }
+        {
+          key: {
+            keys: ['jointDebtor.phoneticTokens']
           }
         }
       ]

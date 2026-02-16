@@ -5,6 +5,6 @@ export interface CamsController {
   handleRequest(context: ApplicationContext): Promise<CamsHttpResponseInit<object | undefined>>;
 }
 
-export interface CamsTimerController {
-  handleTimer(context: ApplicationContext): Promise<void>;
+export interface CamsTimerController<T = void> {
+  handleTimer(context: ApplicationContext): Promise<T>;
 }

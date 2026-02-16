@@ -1,0 +1,23 @@
+@import './shared-card-styles.scss';
+
+.other-information-card-container {
+  .other-information-card {
+    @include trustee-card-styles;
+
+    .usa-card__body {
+      .other-information-card-header {
+        @include trustee-card-header;
+      }
+
+      .trustee-bank,
+      .trustee-software {
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+  }
+}

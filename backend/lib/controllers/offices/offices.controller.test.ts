@@ -21,11 +21,12 @@ describe('offices controller tests', () => {
   });
 
   test('should return successful when handleTimer is called', async () => {
+    const summary = { success: 5, fail: 1 };
     const syncOfficeStaff = vi
       .spyOn(OfficesUseCase.prototype, 'syncOfficeStaff')
-      .mockResolvedValue(undefined);
+      .mockResolvedValue(summary);
     const controller = new OfficesController();
-    await expect(controller.handleTimer(applicationContext)).resolves.toBeFalsy();
+    await expect(controller.handleTimer(applicationContext)).resolves.toEqual(summary);
     expect(syncOfficeStaff).toHaveBeenCalled();
   });
 

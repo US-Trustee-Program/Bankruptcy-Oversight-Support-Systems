@@ -1,5 +1,29 @@
-.trustee-meeting-of-creditors-information {
-  #copy-meeting-of-creditors-info {
-    margin-top: 0.75rem;
+@import './shared-card-styles.scss';
+
+.meeting-of-creditors-card-container {
+  .meeting-of-creditors-card {
+    @include trustee-card-styles;
+
+    .usa-card__body {
+      .meeting-of-creditors-card-header {
+        @include trustee-card-header;
+      }
+
+      .zoom-link,
+      .zoom-phone,
+      .zoom-meeting-id,
+      .zoom-passcode {
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      #copy-meeting-of-creditors-info {
+        margin-top: 0.75rem;
+      }
+    }
   }
 }

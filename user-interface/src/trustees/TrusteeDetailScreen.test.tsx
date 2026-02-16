@@ -277,11 +277,11 @@ describe('TrusteeDetailScreen', () => {
 
     expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
     expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
-    expect(screen.getByTestId('zoom-link')).toHaveAttribute(
-      'href',
-      'https://us02web.zoom.us/j/1234567890',
-    );
-    expect(screen.getByTestId('zoom-phone')).toHaveTextContent('123-456-7890');
+    const zoomLinkContainer = screen.getByTestId('zoom-link');
+    const zoomLink = zoomLinkContainer.querySelector('a');
+    expect(zoomLink).toHaveAttribute('href', 'https://us02web.zoom.us/j/1234567890');
+    const zoomPhoneContainer = screen.getByTestId('zoom-phone');
+    expect(zoomPhoneContainer).toHaveTextContent('123-456-7890');
     expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 123 456 7890');
     expect(screen.getByTestId('zoom-passcode')).toHaveTextContent(`Passcode: ${testPasscode}`);
   });
@@ -299,7 +299,7 @@ describe('TrusteeDetailScreen', () => {
     expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
     expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
     expect(screen.getByTestId('zoom-info-empty-message')).toHaveTextContent(
-      'No information has been entered.',
+      'No information added.',
     );
   });
 
@@ -347,7 +347,9 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter([route]);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
+        expect(
+          screen.getByRole('heading', { level: 2, name: expectedSubheader }),
+        ).toBeInTheDocument();
       });
     },
   );
@@ -429,7 +431,7 @@ describe('TrusteeDetailScreen', () => {
   });
 
   test('should navigate to assistant create route when assistant button is clicked and no assistant exists', async () => {
-    const trusteeWithoutAssistant = { ...mockTrustee, assistant: undefined };
+    const trusteeWithoutAssistant = { ...mockTrustee, assistants: undefined };
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithoutAssistant });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
 
@@ -439,28 +441,34 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    const assistantButton = screen.getByTestId('button-edit-assistant');
+    const assistantButton = screen.getByTestId('button-edit-assistant-empty');
     assistantButton.click();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/assistant/create');
   });
 
-  test('should navigate to assistant edit route when assistant button is clicked and assistant exists', async () => {
+  test('should navigate to assistant create route when add another assistant button is clicked', async () => {
     const trusteeWithAssistant = {
       ...mockTrustee,
-      assistant: {
-        name: 'Jane Smith',
-        contact: {
-          email: 'jane.smith@example.com',
-          phone: { number: '555-987-6543' },
-          address: {
-            address1: '456 Oak St',
-            city: 'Springfield',
-            state: 'IL',
-            zipCode: '62701',
-            countryCode: 'US' as const,
+      assistants: [
+        {
+          id: 'assistant-1',
+          trusteeId: '123',
+          name: 'Jane Smith',
+          contact: {
+            email: 'jane.smith@example.com',
+            phone: { number: '555-987-6543' },
+            address: {
+              address1: '456 Oak St',
+              city: 'Springfield',
+              state: 'IL',
+              zipCode: '62701',
+              countryCode: 'US' as const,
+            },
           },
+          updatedBy: { id: 'user-1', name: 'Admin User' },
+          updatedOn: '2024-01-01T00:00:00Z',
         },
-      },
+      ],
     };
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithAssistant });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
@@ -471,8 +479,8 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    const assistantButton = screen.getByTestId('button-edit-assistant');
-    assistantButton.click();
-    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/assistant/edit');
+    const addAnotherButton = screen.getByTestId('button-add-another-assistant-button');
+    addAnotherButton.click();
+    expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/assistant/create');
   });
 });

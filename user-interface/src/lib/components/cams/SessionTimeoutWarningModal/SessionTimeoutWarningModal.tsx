@@ -44,7 +44,7 @@ function SessionTimeoutWarningModal_(
       modalRef.current?.show({});
     },
     hide: () => {
-      modalRef.current?.hide({});
+      modalRef.current?.hide();
     },
   }));
 
