@@ -9,7 +9,7 @@ import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import { BrowserRouter } from 'react-router-dom';
 import { describe } from 'vitest';
 import SuggestedTransferCases, {

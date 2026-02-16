@@ -5,7 +5,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 
 describe('office-assignees use case tests', () => {
   test('should migrate existing assignments', async () => {

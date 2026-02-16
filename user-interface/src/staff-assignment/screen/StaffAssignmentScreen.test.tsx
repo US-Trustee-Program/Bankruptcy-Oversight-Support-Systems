@@ -15,7 +15,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 describe('StaffAssignmentScreen', () => {

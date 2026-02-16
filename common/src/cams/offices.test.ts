@@ -1,8 +1,5 @@
-import {
-  mapDivisionCodeToUstpOffice,
-  UstpOfficeDetails,
-  MOCKED_USTP_OFFICES_ARRAY,
-} from './offices';
+import { mapDivisionCodeToUstpOffice, UstpOfficeDetails } from './offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from './test-utilities/offices.mock';
 
 describe('offices tests', () => {
   describe('mapDivisionCodeToUstpOffice', () => {

@@ -49,7 +49,7 @@ import { CamsJwtClaims } from '../jwt';
 import { Pagination } from '../../api/pagination';
 import DateHelper from '../../date-helper';
 import { CamsRole, CamsRoleType } from '../roles';
-import { MOCKED_USTP_OFFICES_ARRAY } from '../offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from './offices.mock';
 import { REGION_02_GROUP_NY, SUPERUSER } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
 import { SYSTEM_USER_REFERENCE } from '../auditable';

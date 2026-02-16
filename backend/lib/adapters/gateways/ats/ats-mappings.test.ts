@@ -455,7 +455,7 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '99',
-        DIVISION: '081',
+        DIVISION: '999',
         CHAPTER: '7',
         STATUS: 'PA',
       };
