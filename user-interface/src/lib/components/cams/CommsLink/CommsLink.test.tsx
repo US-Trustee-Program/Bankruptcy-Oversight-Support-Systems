@@ -435,20 +435,33 @@ describe('CommsLink Component', () => {
       expect(link).toHaveAttribute('aria-label', 'Website: https://example.com (opens in new tab)');
     });
 
-    test('website link aria-label uses custom label when provided', () => {
+    test('website link aria-label uses custom label directly when provided', () => {
       render(
         <CommsLink
           contact={{ website: 'https://example.com' } as Omit<ContactInformation, 'address'>}
           mode="website"
-          label="Company Site"
+          label="Zoom Link"
         />,
       );
 
       const link = screen.getByRole('link');
-      expect(link).toHaveAttribute('aria-label', 'Website: Company Site (opens in new tab)');
+      expect(link).toHaveAttribute('aria-label', 'Zoom Link (opens in new tab)');
     });
 
-    test('teams-chat link has descriptive aria-label', () => {
+    test('teams-chat link has descriptive aria-label with name when provided', () => {
+      render(
+        <CommsLink
+          contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
+          mode="teams-chat"
+          name="John Smith"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Start Teams chat with John Smith');
+    });
+
+    test('teams-chat link falls back to email when name not provided', () => {
       render(
         <CommsLink
           contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
@@ -460,7 +473,20 @@ describe('CommsLink Component', () => {
       expect(link).toHaveAttribute('aria-label', 'Start Teams chat with test@example.com');
     });
 
-    test('teams-call link has descriptive aria-label', () => {
+    test('teams-call link has descriptive aria-label with name when provided', () => {
+      render(
+        <CommsLink
+          contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
+          mode="teams-call"
+          name="Jane Doe"
+        />,
+      );
+
+      const link = screen.getByRole('link');
+      expect(link).toHaveAttribute('aria-label', 'Start Teams call with Jane Doe');
+    });
+
+    test('teams-call link falls back to email when name not provided', () => {
       render(
         <CommsLink
           contact={{ email: 'test@example.com' } as Omit<ContactInformation, 'address'>}
