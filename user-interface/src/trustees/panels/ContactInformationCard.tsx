@@ -5,7 +5,7 @@ import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
-export interface ContactInformationCardProps {
+interface ContactInformationCardProps {
   internalContact?: Partial<ContactInformation>;
   onEdit: () => void;
 }

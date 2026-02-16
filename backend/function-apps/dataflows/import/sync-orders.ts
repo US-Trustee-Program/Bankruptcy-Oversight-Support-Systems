@@ -3,15 +3,33 @@ import ContextCreator from '../../azure/application-context-creator';
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
 import { toAzureError } from '../../azure/functions';
 import { buildFunctionName, buildHttpTrigger } from '../dataflows-common';
+import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 
 const MODULE_NAME = 'SYNC-ORDERS';
 
 async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
+  const trace = startTrace(
+    MODULE_NAME,
+    'timerTrigger',
+    invocationContext.invocationId,
+    context.logger,
+  );
   try {
     const ordersController = new OrdersController(context);
-    await ordersController.handleTimer(context);
+    const status = await ordersController.handleTimer(context);
+    completeTrace(trace, {
+      documentsWritten: status.length,
+      documentsFailed: 0,
+      success: true,
+    });
   } catch (error) {
+    completeTrace(trace, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    });
     toAzureError(context.logger, MODULE_NAME, error);
   }
 }
