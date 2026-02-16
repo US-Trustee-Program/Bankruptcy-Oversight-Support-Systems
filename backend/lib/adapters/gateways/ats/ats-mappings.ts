@@ -294,6 +294,62 @@ export function transformTrusteeRecord(
 }
 
 /**
+ * Apply special-case overrides for appointment chapter, type, and status.
+ * Handles CBC overrides, subchapter-v detection, code-1 standing rules, and legacy CBC types.
+ *
+ * @param chapterMapping - Parsed chapter mapping from ATS
+ * @param originalChapter - Original chapter code (for CBC lookup)
+ * @param statusCode - Status code from ATS
+ * @param statusMapping - Parsed status mapping from ATS
+ * @returns Resolved chapter, appointment type, and status
+ */
+function applyAppointmentOverrides(
+  chapterMapping: ChapterMapping,
+  originalChapter: string,
+  statusCode: string,
+  statusMapping: StatusMapping,
+): {
+  chapter: AppointmentChapterType;
+  appointmentType: AppointmentType;
+  status: AppointmentStatus;
+} {
+  const chapter = chapterMapping.chapter as AppointmentChapterType;
+  let appointmentType: AppointmentType = statusMapping.appointmentType;
+  const status: AppointmentStatus = statusMapping.status;
+
+  // SPECIAL CASE 1: CBC chapter overrides
+  // CBC chapters override BOTH appointmentType and status from flat map
+  const cbcOverride = CBC_STATUS_MAP[originalChapter]?.[statusCode];
+  if (cbcOverride) {
+    return {
+      chapter,
+      appointmentType: cbcOverride.appointmentType,
+      status: cbcOverride.status,
+    };
+  }
+
+  // SPECIAL CASE 2: V/VR + Chapter 11 → 11-subchapter-v
+  // When CHAPTER=11 and STATUS=V or VR, resolve to '11-subchapter-v'
+  if (chapter === '11' && SUBCHAPTER_V_STATUS_CODES.has(statusCode)) {
+    return { chapter: '11-subchapter-v', appointmentType, status };
+  }
+
+  // SPECIAL CASE 3: Code 1 + Chapter 12/13 → Standing/Active
+  // Code 1 with Ch12/13 maps to Standing/Active instead of Case-by-Case/Active
+  if (statusCode === '1' && CODE_1_STANDING_CHAPTERS.has(chapter)) {
+    return { chapter, appointmentType: 'standing', status: 'active' };
+  }
+
+  // SPECIAL CASE 4: Legacy CBC appointmentType from chapter parsing
+  // If chapter parsing gave us an appointmentType (12CBC/13CBC), use that
+  if (chapterMapping.appointmentType) {
+    appointmentType = chapterMapping.appointmentType;
+  }
+
+  return { chapter, appointmentType, status };
+}
+
+/**
  * Transform ATS appointment record to CAMS appointment input format.
  *
  * @param atsAppointment - Raw appointment record from ATS
@@ -308,37 +364,17 @@ export function transformAppointmentRecord(
 
   // Parse chapter and get appointment type if specified
   const chapterMapping = parseChapterAndType(atsAppointment.CHAPTER);
-  let chapter = chapterMapping.chapter as AppointmentChapterType;
 
   // Parse status to get appointment type and status (flat map defaults)
   const statusMapping = parseTodStatus(atsAppointment.STATUS);
-  let appointmentType: AppointmentType = statusMapping.appointmentType;
-  let status: AppointmentStatus = statusMapping.status;
 
-  // SPECIAL CASE 1: CBC chapter overrides
-  // CBC chapters override BOTH appointmentType and status from flat map
-  if (CBC_STATUS_MAP[originalChapter]?.[statusCode]) {
-    const cbcOverride = CBC_STATUS_MAP[originalChapter][statusCode];
-    appointmentType = cbcOverride.appointmentType;
-    status = cbcOverride.status;
-  }
-  // SPECIAL CASE 2: V/VR + Chapter 11 → 11-subchapter-v
-  // When CHAPTER=11 and STATUS=V or VR, resolve to '11-subchapter-v'
-  else if (chapter === '11' && SUBCHAPTER_V_STATUS_CODES.has(statusCode)) {
-    chapter = '11-subchapter-v';
-    // Keep appointmentType and status from flat map (pool/out-of-pool with correct status)
-  }
-  // SPECIAL CASE 3: Code 1 + Chapter 12/13 → Standing/Active
-  // Code 1 with Ch12/13 maps to Standing/Active instead of Case-by-Case/Active
-  else if (statusCode === '1' && CODE_1_STANDING_CHAPTERS.has(chapter)) {
-    appointmentType = 'standing';
-    status = 'active';
-  }
-  // SPECIAL CASE 4: Legacy CBC appointmentType from chapter parsing
-  // If chapter parsing gave us an appointmentType (12CBC/13CBC), use that
-  else if (chapterMapping.appointmentType) {
-    appointmentType = chapterMapping.appointmentType;
-  }
+  // Apply special-case overrides
+  const { chapter, appointmentType, status } = applyAppointmentOverrides(
+    chapterMapping,
+    originalChapter,
+    statusCode,
+    statusMapping,
+  );
 
   // Map district to court ID (pass division for multi-district state disambiguation)
   const courtId = getCourtId(atsAppointment.DISTRICT, atsAppointment.DIVISION);
