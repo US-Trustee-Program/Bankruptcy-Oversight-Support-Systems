@@ -1,6 +1,5 @@
 import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest';
 import {
-  getOrCreateMigrationState,
   getPageOfTrustees,
   getTrusteeAppointments,
   upsertTrustee,
@@ -8,10 +7,13 @@ import {
   processTrusteeWithAppointments,
   processPageOfTrustees,
   getTotalTrusteeCount,
+} from './migrate-trustees';
+import {
+  getOrCreateMigrationState,
   completeMigration,
   failMigration,
   TrusteeMigrationState,
-} from './migrate-trustees';
+} from './trustee-migration-state.service';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
