@@ -54,8 +54,7 @@ export const website = V.optional(
   V.maxLength(255, FIELD_VALIDATION_MESSAGES.WEBSITE_MAX_LENGTH),
 );
 
-export const zoomLink = V.useValidators(
-  V.minLength(1, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
+export const zoomLink = V.checkFirst(V.minLength(1, FIELD_VALIDATION_MESSAGES.ZOOM_LINK)).then(
   V.matches(WEBSITE_RELAXED_REGEX, FIELD_VALIDATION_MESSAGES.ZOOM_LINK),
   V.maxLength(255, FIELD_VALIDATION_MESSAGES.ZOOM_LINK_MAX_LENGTH),
 );
