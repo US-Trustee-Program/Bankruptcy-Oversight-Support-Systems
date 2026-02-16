@@ -19,6 +19,7 @@ import { TrusteeInput } from '@common/cams/trustees';
 import { TrusteePublicFormData, trusteePublicSpec } from './trusteeForms.types';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
 import { normalizeFormData } from './trusteeForms.utils';
+import { scrollToFirstError } from '@/lib/utils/form-helpers';
 
 const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePublicFormData => {
   return {
@@ -197,6 +198,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
         }),
       );
       setFieldErrors(newFieldErrors);
+      scrollToFirstError();
     }
     return !!results.valid;
   };
@@ -244,6 +246,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
       </div>
 
       <form
+        noValidate
         aria-label={`${isCreate ? 'Create' : 'Edit'} Trustee`}
         data-testid="trustee-public-form"
         onSubmit={handleSubmit}

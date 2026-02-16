@@ -1,6 +1,6 @@
 import './TrusteeAssistantForm.scss';
 import './TrusteeContactForm.scss';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -19,7 +19,6 @@ import ZipCodeInput from '@/lib/components/ZipCodeInput';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeAssistantFormData, trusteeAssistantSpec } from './trusteeForms.types';
 import { validateEach, validateObject } from '@common/cams/validation';
-import { CREATE_MODE_ID } from './trusteeForms.constants';
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { normalizeFormData } from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
@@ -29,6 +28,7 @@ import TrusteeAssistantRemovalModal, {
   TrusteeAssistantRemovalModalRef,
 } from '../modals/TrusteeAssistantRemovalModal';
 import { Address, PhoneNumber } from '@common/cams/contact';
+import { Trustee } from '@common/cams/trustees';
 
 const getInitialFormData = (assistant?: TrusteeAssistant): TrusteeAssistantFormData => {
   if (!assistant) {
@@ -93,35 +93,25 @@ export function validateField(
 
 type TrusteeAssistantFormProps = {
   trusteeId: string;
-  assistantId?: string;
-  assistant?: TrusteeAssistant;
+  trustee?: Trustee;
 };
 
 function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const flags = useFeatureFlags();
-
   const globalAlert = useGlobalAlert();
   const session = LocalStorage.getSession();
   const debounce = useDebounce();
   const routeParams = useParams<{ assistantId?: string }>();
+  const navigate = useCamsNavigator();
 
-  const { trusteeId } = props;
-  const assistantId = props.assistantId || routeParams.assistantId;
+  const { trusteeId, trustee } = props;
+  const assistantId = routeParams.assistantId;
 
-  if (!assistantId) {
-    return (
-      <Stop
-        id="missing-assistant-id-alert"
-        title="Error"
-        message="Assistant ID is required."
-        asError
-      />
-    );
-  }
+  const isCreateMode = !assistantId;
 
-  const isCreateMode = assistantId === CREATE_MODE_ID;
-
-  const [assistant, setAssistant] = useState<TrusteeAssistant | undefined>(props.assistant);
+  const assistant = isCreateMode
+    ? undefined
+    : trustee?.assistants?.find((a) => a.id === assistantId);
 
   type FieldErrors = Partial<Record<keyof TrusteeAssistantFormData | '$', string[] | undefined>>;
 
@@ -131,26 +121,25 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const [saveAlert, setSaveAlert] = useState<string | null>(null);
   const partialAddressAlertRef = useRef<AlertRefType>(null);
 
-  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
-  const navigate = useCamsNavigator();
-
   const deleteModalId = 'delete-assistant-modal';
   const deleteModalRef = useRef<TrusteeAssistantRemovalModalRef>(null);
   const openDeleteModalButtonRef = useRef<OpenModalButtonRef>(null);
 
-  // Load assistant data when in edit mode
-  useEffect(() => {
-    if (!isCreateMode && assistantId) {
-      Api2.getAssistant(trusteeId, assistantId)
-        .then((response) => {
-          setAssistant(response.data);
-          setFormData(getInitialFormData(response.data));
-        })
-        .catch((error) => {
-          globalAlert?.error(`Failed to load assistant: ${error.message}`);
-        });
-    }
-  }, [isCreateMode, assistantId, trusteeId, globalAlert]);
+  const handleCancel = useCallback(() => {
+    navigate.navigateTo(`/trustees/${trusteeId}`);
+  }, [navigate, trusteeId]);
+
+  const handleDeleteSuccess = useCallback(() => {
+    navigate.navigateTo(`/trustees/${trusteeId}`);
+  }, [navigate, trusteeId]);
+
+  if (!isCreateMode && !assistant) {
+    return (
+      <Stop id="assistant-not-found-alert" title="Error" message="Assistant not found." asError />
+    );
+  }
+
+  const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   function getAddressInfo({
     address1,
@@ -230,14 +219,6 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
       validateFieldAndUpdate('zipCode', value);
     }, 300);
   };
-
-  const handleCancel = useCallback(() => {
-    navigate.navigateTo(`/trustees/${trusteeId}`);
-  }, [navigate, trusteeId]);
-
-  const handleDeleteSuccess = useCallback(() => {
-    navigate.navigateTo(`/trustees/${trusteeId}`);
-  }, [navigate, trusteeId]);
 
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();

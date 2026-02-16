@@ -36,7 +36,7 @@ describe('TrusteeDetailNavigation', () => {
   const navigationLinks = [
     {
       testId: 'trustee-profile-nav-link',
-      text: 'Profile',
+      text: 'Overview',
       href: '/trustees/12345',
       title: 'View basic details about the current trustee',
       state: TrusteeNavState.TRUSTEE_PROFILE,

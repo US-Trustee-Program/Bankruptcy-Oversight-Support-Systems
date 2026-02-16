@@ -277,11 +277,11 @@ describe('TrusteeDetailScreen', () => {
 
     expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
     expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
-    expect(screen.getByTestId('zoom-link')).toHaveAttribute(
-      'href',
-      'https://us02web.zoom.us/j/1234567890',
-    );
-    expect(screen.getByTestId('zoom-phone')).toHaveTextContent('123-456-7890');
+    const zoomLinkContainer = screen.getByTestId('zoom-link');
+    const zoomLink = zoomLinkContainer.querySelector('a');
+    expect(zoomLink).toHaveAttribute('href', 'https://us02web.zoom.us/j/1234567890');
+    const zoomPhoneContainer = screen.getByTestId('zoom-phone');
+    expect(zoomPhoneContainer).toHaveTextContent('123-456-7890');
     expect(screen.getByTestId('zoom-meeting-id')).toHaveTextContent('Meeting ID: 123 456 7890');
     expect(screen.getByTestId('zoom-passcode')).toHaveTextContent(`Passcode: ${testPasscode}`);
   });
@@ -347,7 +347,9 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter([route]);
 
       await waitFor(() => {
-        expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(expectedSubheader);
+        expect(
+          screen.getByRole('heading', { level: 2, name: expectedSubheader }),
+        ).toBeInTheDocument();
       });
     },
   );

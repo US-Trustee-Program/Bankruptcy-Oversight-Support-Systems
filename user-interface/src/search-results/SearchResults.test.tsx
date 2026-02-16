@@ -7,6 +7,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { SearchResultsHeader } from '@/search/SearchResultsHeader';
 import { SearchResultsRow } from '@/search/SearchResultsRow';
 import Api2 from '@/lib/models/api2';
+import { CamsHttpError } from '@/lib/models/api';
 
 describe('SearchResults component tests', () => {
   let caseList: SyncedCase[];
@@ -128,10 +129,8 @@ describe('SearchResults component tests', () => {
     });
   });
 
-  test('should show the error alert when an error is encountered', async () => {
-    vi.spyOn(Api2, 'searchCases').mockRejectedValue({
-      error: { message: 'SomeError' },
-    });
+  test('should show the generic error alert when a non-timeout error is encountered', async () => {
+    vi.spyOn(Api2, 'searchCases').mockRejectedValue(new Error('SomeError'));
 
     renderWithProps();
 
@@ -148,6 +147,25 @@ describe('SearchResults component tests', () => {
       searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).toBeInTheDocument();
       expect(searchErrorAlert).toBeVisible();
+      expect(searchErrorAlert).toHaveTextContent('Search Results Not Available');
+    });
+  });
+
+  test('should show the timeout error alert when a 504 error is encountered', async () => {
+    vi.spyOn(Api2, 'searchCases').mockRejectedValue(new CamsHttpError(504, 'Gateway Timeout'));
+
+    renderWithProps();
+
+    let searchErrorAlert = document.querySelector('#search-error-alert');
+    expect(searchErrorAlert).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      searchErrorAlert = document.querySelector('#search-error-alert');
+      expect(searchErrorAlert).toBeInTheDocument();
+      expect(searchErrorAlert).toBeVisible();
+      expect(searchErrorAlert).toHaveTextContent('Unable To Display Search Results');
+      expect(searchErrorAlert).toHaveTextContent('Try narrowing your search filters');
     });
   });
 
