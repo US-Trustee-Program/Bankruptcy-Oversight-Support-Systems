@@ -17,30 +17,25 @@ export class CaseReloadController implements CamsController {
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<object | undefined>> {
     try {
-      // SuperUser validation
       if (!context.session.user.roles.includes(CamsRole.SuperUser)) {
         throw new ForbiddenError(MODULE_NAME);
       }
 
-      // Method validation
       if (context.request.method !== 'POST') {
         throw new BadRequestError(MODULE_NAME, { message: UNSUPPORTED_HTTP_METHOD });
       }
 
-      // Extract and validate caseId
       const { caseId } = context.request.body as { caseId?: string };
       if (!caseId || typeof caseId !== 'string' || caseId.trim() === '') {
         throw new BadRequestError(MODULE_NAME, { message: INVALID_REQUEST });
       }
 
-      // Validate case ID format
       if (!CASE_ID_REGEX.test(caseId)) {
         throw new BadRequestError(MODULE_NAME, {
           message: 'Invalid case ID format. Expected format: XXX-XX-XXXXX',
         });
       }
 
-      // Call use case
       await CaseReloadUseCase.queueCaseReload(context, caseId);
 
       return httpSuccess({ statusCode: 201 });
