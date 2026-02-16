@@ -46,31 +46,6 @@ export interface AtsAppointmentRecord {
 }
 
 /**
- * Predicate for querying trustees with pagination
- */
-export interface AtsTrusteePredicate {
-  lastTrusteeId: number | null;
-  pageSize: number;
-}
-
-/**
- * Result of a paginated trustee query
- */
-export interface AtsTrusteePage {
-  trustees: AtsTrusteeRecord[];
-  hasMore: boolean;
-  totalProcessed: number;
-}
-
-/**
- * Combined trustee with appointments for processing
- */
-export interface AtsTrusteeWithAppointments {
-  trustee: AtsTrusteeRecord;
-  appointments: AtsAppointmentRecord[];
-}
-
-/**
  * Mapping result for TOD STATUS to appointment type and status
  */
 export interface StatusMapping {
@@ -84,16 +59,4 @@ export interface StatusMapping {
 export interface ChapterMapping {
   chapter: string;
   appointmentType?: 'case-by-case';
-}
-
-/**
- * Migration statistics for tracking progress
- */
-export interface MigrationStats {
-  trusteesProcessed: number;
-  appointmentsProcessed: number;
-  errors: number;
-  lastTrusteeId: number | null;
-  startTime: Date;
-  lastUpdateTime: Date;
 }

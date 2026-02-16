@@ -200,5 +200,3 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     }
   }
 }
-
-export default AtsGatewayImpl;
