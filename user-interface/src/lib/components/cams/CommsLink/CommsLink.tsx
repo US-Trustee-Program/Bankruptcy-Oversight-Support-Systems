@@ -12,6 +12,7 @@ type CommsLinkProps = {
   icon?: string;
   emailSubject?: string;
   hideIcon?: boolean;
+  name?: string;
 };
 
 const NON_DIGITS = /\D/g;
@@ -31,7 +32,7 @@ function toTelephoneUri(number: string, extension?: string) {
 }
 
 function CommsLink(props: Readonly<CommsLinkProps>) {
-  const { contact, mode, label, icon, emailSubject, hideIcon } = props;
+  const { contact, mode, label, icon, emailSubject, hideIcon, name } = props;
   const { email, website, phone } = contact;
   const { number, extension } = phone ?? {};
 
@@ -53,12 +54,12 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
   if (isValidEmail && mode === 'teams-chat') {
     href = `msteams://teams.microsoft.com/l/chat/0/0?users=${email}`;
     labelToUse = label ?? 'Chat';
-    ariaLabel = `Start Teams chat with ${email}`;
+    ariaLabel = `Start Teams chat with ${name ?? email}`;
     iconToUse = icon ?? 'chat';
   } else if (isValidEmail && mode === 'teams-call') {
     href = `msteams://teams.microsoft.com/l/call/0/0?users=${email}`;
     labelToUse = label ?? 'Talk';
-    ariaLabel = `Start Teams call with ${email}`;
+    ariaLabel = `Start Teams call with ${name ?? email}`;
     iconToUse = icon ?? 'forum';
   } else if (isValidEmail && mode === 'email') {
     href = `mailto:${email}`;
@@ -72,7 +73,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     target = '_blank';
     href = formatWebsiteUrl(website);
     labelToUse = label ?? website;
-    ariaLabel = `Website: ${labelToUse} (opens in new tab)`;
+    ariaLabel = label ? `${label} (opens in new tab)` : `Website: ${website} (opens in new tab)`;
     iconToUse = icon ?? 'launch';
   } else if (mode === 'phone-dialer' && number) {
     // Always display the phone number, even if it doesn't match our expected format
