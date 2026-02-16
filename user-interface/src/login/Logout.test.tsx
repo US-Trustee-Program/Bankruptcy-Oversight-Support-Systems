@@ -11,22 +11,26 @@ import { SessionEnd } from './SessionEnd';
 import { BrowserRouter } from 'react-router-dom';
 
 describe('Logout', () => {
-  const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
-  const oktaProviderComponent = vi
-    .spyOn(oktaProviderModule, 'OktaProvider')
-    .mockImplementation((props: PropsWithChildren) => {
-      return <>{props.children}</>;
-    });
-  const oktaLogoutComponent = vi.spyOn(oktaLogoutModule, 'OktaLogout').mockImplementation(() => {
-    return <SessionEnd />;
-  });
-  const mockLogoutComponent = vi.spyOn(mockLogoutModule, 'MockLogout').mockImplementation(() => {
-    return <SessionEnd />;
-  });
-  const sessionEndComponent = vi.spyOn(sessionEndModule, 'SessionEnd');
+  let getLoginProviderFromEnv: ReturnType<typeof vi.spyOn>;
+  let oktaProviderComponent: ReturnType<typeof vi.spyOn>;
+  let oktaLogoutComponent: ReturnType<typeof vi.spyOn>;
+  let mockLogoutComponent: ReturnType<typeof vi.spyOn>;
+  let sessionEndComponent: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
+    oktaProviderComponent = vi
+      .spyOn(oktaProviderModule, 'OktaProvider')
+      .mockImplementation((props: PropsWithChildren) => {
+        return <>{props.children}</>;
+      });
+    oktaLogoutComponent = vi.spyOn(oktaLogoutModule, 'OktaLogout').mockImplementation(() => {
+      return <SessionEnd />;
+    });
+    mockLogoutComponent = vi.spyOn(mockLogoutModule, 'MockLogout').mockImplementation(() => {
+      return <SessionEnd />;
+    });
+    sessionEndComponent = vi.spyOn(sessionEndModule, 'SessionEnd');
   });
 
   test('should render OktaProvider for okta provider type', async () => {

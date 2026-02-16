@@ -40,10 +40,10 @@ function renderWithProps(
 }
 
 describe('TrusteeInternalContactForm Tests', () => {
-  const navigateTo = vi.fn();
-  const navigatorMock = {
-    navigateTo,
-    redirectTo: vi.fn(),
+  let navigateTo: (destination: string) => void;
+  let navigatorMock: {
+    navigateTo: (destination: string) => void;
+    redirectTo: (destination: string) => void;
   };
   const immediateDebounce: ReturnType<typeof DebounceModule.default> = (
     cb: () => void,
@@ -54,6 +54,11 @@ describe('TrusteeInternalContactForm Tests', () => {
   let userEvent: CamsUserEvent;
 
   beforeEach(() => {
+    navigateTo = vi.fn();
+    navigatorMock = {
+      navigateTo,
+      redirectTo: vi.fn(),
+    };
     userEvent = TestingUtilities.setupUserEvent();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
 
@@ -61,10 +66,6 @@ describe('TrusteeInternalContactForm Tests', () => {
       'trustee-management': true,
     } as FeatureFlagSet);
     vi.spyOn(useCamsNavigatorModule, 'default').mockReturnValue(navigatorMock);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should show disabled message when feature flag is disabled', async () => {

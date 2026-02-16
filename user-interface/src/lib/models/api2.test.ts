@@ -540,4 +540,10 @@ async function callApiFunction(fn: (args: any) => unknown, args: unknown, api: A
     deleteSpy.mock.calls.length,
   );
   expect(spyCalls).toEqual(1);
+  // Restore spies after each call to prevent accumulation within the test
+  getSpy.mockRestore();
+  patchSpy.mockRestore();
+  postSpy.mockRestore();
+  putSpy.mockRestore();
+  deleteSpy.mockRestore();
 }
