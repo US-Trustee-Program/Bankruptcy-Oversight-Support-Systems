@@ -2,7 +2,7 @@ import './OtherInformationCard.scss';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
-export interface OtherInformationCardProps {
+interface OtherInformationCardProps {
   banks?: string[];
   software?: string;
   onEdit: () => void;

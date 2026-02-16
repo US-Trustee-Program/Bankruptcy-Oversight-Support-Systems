@@ -4,7 +4,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 
-export interface TrusteeOverviewCardProps {
+interface TrusteeOverviewCardProps {
   trustee: Trustee;
   onEdit: () => void;
 }
