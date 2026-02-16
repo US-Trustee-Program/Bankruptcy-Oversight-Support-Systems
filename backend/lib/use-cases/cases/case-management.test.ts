@@ -479,6 +479,20 @@ describe('Case management tests', () => {
       );
     });
 
+    test('should pass through GatewayTimeoutError from repository', async () => {
+      const { GatewayTimeoutError } = await import('../../common-errors/gateway-timeout');
+      const error = new GatewayTimeoutError('CASES-MONGO-REPOSITORY', {
+        message: 'Query failed. Search request timed out.',
+      });
+      vi.spyOn(useCase.casesRepository, 'searchCases').mockRejectedValue(error);
+      await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Query failed. Search request timed out.',
+          status: 504,
+        }),
+      );
+    });
+
     test('should throw CamsError', async () => {
       const error = new CamsError('TEST', { message: 'test error' });
       vi.spyOn(useCase.casesRepository, 'searchCases').mockRejectedValue(error);
