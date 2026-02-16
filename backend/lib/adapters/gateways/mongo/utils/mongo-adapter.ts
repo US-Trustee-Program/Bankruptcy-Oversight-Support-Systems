@@ -4,6 +4,7 @@ import { CamsError, isCamsError } from '../../../../common-errors/cams-error';
 import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
+import { GatewayTimeoutError } from '../../../../common-errors/gateway-timeout';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import { ConditionOrConjunction, Query, SortSpec } from '../../../../query/query-builder';
 import QueryPipeline, { isPaginate, isPipeline, Pipeline } from '../../../../query/query-pipeline';
@@ -382,6 +383,12 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 
   private handleError(error: unknown, message: string, data?: object): CamsError {
+    if (!isCamsError(error) && isTimeoutError(error)) {
+      return new GatewayTimeoutError(this.moduleName, {
+        message: `Query failed. Search request timed out.`,
+        originalError: error instanceof Error ? error : undefined,
+      });
+    }
     let mongoError: MongoServerError;
     let err: Error;
     if (!isCamsError(error)) {
@@ -399,6 +406,11 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       data,
     });
   }
+}
+
+function isTimeoutError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  return message.includes('timed out');
 }
 
 function createOrGetId<T>(item: CamsItem<T>): CamsItem<T> {
