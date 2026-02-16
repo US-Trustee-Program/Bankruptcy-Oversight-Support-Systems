@@ -20,6 +20,9 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    // BDD tests use their own spy management via spyOnAllGateways/clearAllRepositorySpies
+    // restoreMocks: true interferes with this pattern
+    restoreMocks: false,
     setupFiles: path.resolve(__dirname, './helpers/setup-tests.ts'),
     // Run BDD full-stack tests + common unit tests + helper infrastructure tests
     include: [
@@ -34,7 +37,6 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'json', 'json-summary'],
       reportsDirectory: './test/bdd/coverage',
-      all: true, // Track all files matching include patterns, even if not imported
       include: ['user-interface/src/**/*.{ts,tsx}', 'backend/lib/**/*.ts', 'common/src/**/*.ts'],
       exclude: [
         '**/*.test.{ts,tsx}',

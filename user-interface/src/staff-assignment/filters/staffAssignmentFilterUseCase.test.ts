@@ -56,6 +56,9 @@ describe('staff assignment filter use case tests', () => {
   beforeEach(() => {
     const session = MockData.getCamsSession();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    // Reset the vi.fn() mocks before creating spies on them
+    mockStore.setOfficeAssignees = vi.fn();
+    mockStore.setOfficeAssigneesError = vi.fn();
     setOfficeAssigneesSpy = vi.spyOn(mockStore, 'setOfficeAssignees');
     setOfficeAssigneesErrorSpy = vi.spyOn(mockStore, 'setOfficeAssigneesError');
     mockFeatureFlags = {
@@ -63,10 +66,6 @@ describe('staff assignment filter use case tests', () => {
       'chapter-twelve-enabled': true,
     };
     vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('assigneesToComboOptions should return valid comboOptions for supplied assignees and unassigned option', async () => {

@@ -50,10 +50,6 @@ describe('search screen', () => {
     userEvent = TestingUtilities.setupUserEvent();
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
   function renderWithoutProps() {
     render(
       <BrowserRouter>
@@ -261,7 +257,6 @@ describe('search screen', () => {
     const casesSearchPredicate: CasesSearchPredicate = {
       caseNumber,
       limit: 25,
-      divisionCodes: expect.anything(),
       offset: 0,
       excludeMemberConsolidations: false,
       excludeClosedCases: true,
@@ -334,7 +329,11 @@ describe('search screen', () => {
   });
 
   test('should show the no results alert when no results are available', async () => {
-    vi.spyOn(Api2, 'searchCases').mockResolvedValueOnce(emptySearchResponseBody);
+    const emptySpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(emptySearchResponseBody);
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+      meta: { self: '' },
+      data: MockData.getCourts(),
+    });
     renderWithoutProps();
 
     let table = document.querySelector('.search-results table');
@@ -353,6 +352,9 @@ describe('search screen', () => {
       expect(noResultsAlert).toBeInTheDocument();
       expect(noResultsAlert).toBeVisible();
     });
+
+    // Now change the mock to return results for the next search
+    emptySpy.mockResolvedValue(searchResponseBody);
 
     const caseNumberInput: HTMLInputElement = screen.getByTestId('basic-search-field');
     await userEvent.type(caseNumberInput, '00-11111');
@@ -860,10 +862,6 @@ describe('debtor name search', () => {
     searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     userEvent = TestingUtilities.setupUserEvent();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   function renderWithFeatureFlag(enabled: boolean) {
