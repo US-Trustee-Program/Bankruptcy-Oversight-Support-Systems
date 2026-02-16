@@ -17,10 +17,10 @@ describe('CSS Highlight API integration', () => {
     </html>
   `);
 
-  let highlightConstructorMock: ReturnType<typeof vi.fn>;
+  let highlightConstructorMock: ReturnType<typeof vi.fn<(...args: unknown[]) => void>>;
 
   beforeEach(() => {
-    highlightConstructorMock = vi.fn();
+    highlightConstructorMock = vi.fn<(...args: unknown[]) => void>();
     class Highlight {
       constructor(...args: unknown[]) {
         highlightConstructorMock(...args);
