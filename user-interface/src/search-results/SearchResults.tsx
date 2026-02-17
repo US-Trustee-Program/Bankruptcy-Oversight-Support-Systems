@@ -104,7 +104,7 @@ function SearchResults(props: SearchResultsProps) {
       'If the problem persists, please submit a feedback request describing the issue.';
     setAlertInfo({
       type: UswdsAlertStyle.Error,
-      title: isTimeout ? 'Unable To Display Search Results' : 'Search Results Not Available',
+      title: isTimeout ? 'Unable to display search results' : 'Search results not available',
       message: isTimeout
         ? `Try narrowing your search filters and try again. ${persistentIssueMessage}`
         : `We are unable to retrieve search results at this time. Please try again later. ${persistentIssueMessage}`,
