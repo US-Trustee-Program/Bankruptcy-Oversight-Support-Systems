@@ -115,8 +115,13 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const doc = using<TrusteeDocumentQueryable>();
       const query = and(doc('documentType').equals('TRUSTEE'), doc('legacy.truId').equals(truId));
       return await this.getAdapter<TrusteeDocumentQueryable>().findOne(query);
-    } catch (_originalError) {
-      return null;
+    } catch (originalError) {
+      if (originalError instanceof NotFoundError) {
+        return null;
+      }
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustee by legacy TRU_ID ${truId}.`,
+      });
     }
   }
 
