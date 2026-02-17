@@ -6,22 +6,20 @@ import { CamsRole } from '@common/cams/roles';
 import TrusteeOversightAssignmentModal, {
   TrusteeOversightAssignmentModalRef,
 } from '../modals/TrusteeOversightAssignmentModal';
-import './ParalegalAssignmentSection.scss';
+import './AuditorAssignmentCard.scss';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
-interface ParalegalAssignmentSectionProps {
+interface AuditorAssignmentCardProps {
   trusteeId: string;
   assignments: TrusteeOversightAssignment[];
   onAssignmentChange: () => void;
   isLoading?: boolean;
 }
 
-export default function ParalegalAssignmentSection(
-  props: Readonly<ParalegalAssignmentSectionProps>,
-) {
+export default function AuditorAssignmentCard(props: Readonly<AuditorAssignmentCardProps>) {
   const { trusteeId, assignments, onAssignmentChange, isLoading = false } = props;
   const modalRef = useRef<TrusteeOversightAssignmentModalRef>(null);
-  const paralegalAssignment = assignments.find((a) => a.role === CamsRole.OversightParalegal);
+  const auditorAssignment = assignments.find((a) => a.role === CamsRole.OversightAuditor);
 
   const handleAssignment = useCallback(
     (isAssigned: boolean) => {
@@ -33,52 +31,49 @@ export default function ParalegalAssignmentSection(
   );
 
   const openAssignmentModal = useCallback(() => {
-    modalRef.current?.show(paralegalAssignment);
-  }, [paralegalAssignment]);
+    modalRef.current?.show(auditorAssignment);
+  }, [auditorAssignment]);
 
   if (isLoading) {
     return (
-      <LoadingSpinner
-        id="paralegal-assignments-loading"
-        caption="Loading paralegal assignments..."
-      />
+      <LoadingSpinner id="auditor-assignments-loading" caption="Loading auditor assignments..." />
     );
   }
 
   return (
-    <div className="paralegal-assignment-card-container" data-testid="paralegal-assignment-section">
-      <div className="paralegal-assignment-card usa-card">
+    <div className="auditor-assignment-card-container" data-testid="auditor-assignment-section">
+      <div className="auditor-assignment-card usa-card">
         <div className="usa-card__container">
           <div className="usa-card__body">
-            <div className="paralegal-assignment-card-header">
-              <h4>Paralegal</h4>
+            <div className="auditor-assignment-card-header">
+              <h4>Auditor</h4>
               <Button
-                id={paralegalAssignment ? 'edit-paralegal-assignment' : 'add-paralegal-assignment'}
+                id={auditorAssignment ? 'edit-auditor-assignment' : 'add-auditor-assignment'}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 aria-label={
-                  paralegalAssignment
-                    ? "Edit trustee's assigned paralegal"
-                    : 'Add assigned paralegal to trustee'
+                  auditorAssignment
+                    ? "Edit trustee's assigned auditor"
+                    : 'Add assigned auditor to trustee'
                 }
                 title={
-                  paralegalAssignment
-                    ? "Edit trustee's assigned paralegal"
-                    : 'Add assigned paralegal to trustee'
+                  auditorAssignment
+                    ? "Edit trustee's assigned auditor"
+                    : 'Add assigned auditor to trustee'
                 }
                 onClick={openAssignmentModal}
               >
                 <IconLabel
-                  icon={paralegalAssignment ? 'edit' : 'add_circle'}
-                  label={paralegalAssignment ? 'Edit' : 'Add'}
+                  icon={auditorAssignment ? 'edit' : 'add_circle'}
+                  label={auditorAssignment ? 'Edit' : 'Add'}
                 />
               </Button>
             </div>
-            {paralegalAssignment ? (
-              <div data-testid="paralegal-assignments-display">
-                <div className="paralegal-name">{paralegalAssignment.user.name}</div>
+            {auditorAssignment ? (
+              <div data-testid="auditor-assignments-display">
+                <div className="auditor-name">{auditorAssignment.user.name}</div>
               </div>
             ) : (
-              <div data-testid="no-paralegal-assigned">No paralegal assigned</div>
+              <div data-testid="no-auditor-assigned">No auditor assigned</div>
             )}
           </div>
         </div>
@@ -86,9 +81,9 @@ export default function ParalegalAssignmentSection(
 
       <TrusteeOversightAssignmentModal
         ref={modalRef}
-        modalId={`assign-paralegal-modal-${trusteeId}`}
+        modalId={`assign-auditor-modal-${trusteeId}`}
         trusteeId={trusteeId}
-        role={CamsRole.OversightParalegal}
+        role={CamsRole.OversightAuditor}
         onAssignment={handleAssignment}
       />
     </div>

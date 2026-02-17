@@ -7,10 +7,10 @@ import { CamsRole } from '@common/cams/roles';
 import TrusteeAttorneyAssignmentModal, {
   TrusteeAttorneyAssignmentModalRef,
 } from '../modals/TrusteeAttorneyAssignmentModal';
-import './AttorneyAssignmentSection.scss';
+import './AttorneyAssignmentCard.scss';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
-interface AttorneyAssignmentSectionProps {
+interface AttorneyAssignmentCardProps {
   trusteeId: string;
   assignments: TrusteeOversightAssignment[];
   attorneys: AttorneyUser[];
@@ -18,7 +18,7 @@ interface AttorneyAssignmentSectionProps {
   isLoading?: boolean;
 }
 
-export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssignmentSectionProps>) {
+export default function AttorneyAssignmentCard(props: Readonly<AttorneyAssignmentCardProps>) {
   const { trusteeId, assignments, attorneys, onAssignmentChange, isLoading = false } = props;
   const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
   const attorneyAssignment = assignments.find((a) => a.role === CamsRole.OversightAttorney);

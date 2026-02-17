@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { vi, describe, test, expect } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import ParalegalAssignmentSection from './ParalegalAssignmentSection';
+import AuditorAssignmentCard from './AuditorAssignmentCard';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
 import { CamsRole } from '@common/cams/roles';
 
@@ -35,16 +35,16 @@ vi.mock('../modals/TrusteeOversightAssignmentModal', () => {
   };
 });
 
-describe('ParalegalAssignmentSection', () => {
+describe('AuditorAssignmentCard', () => {
   const mockAssignments: TrusteeOversightAssignment[] = [
     {
       id: 'assignment-1',
       trusteeId: 'trustee-123',
       user: {
-        id: 'paralegal-1',
-        name: 'John Doe',
+        id: 'auditor-1',
+        name: 'Jane Smith',
       },
-      role: CamsRole.OversightParalegal,
+      role: CamsRole.OversightAuditor,
       createdBy: { id: 'user-1', name: 'Admin User' },
       createdOn: '2023-01-01T00:00:00Z',
       updatedBy: { id: 'user-1', name: 'Admin User' },
@@ -69,12 +69,12 @@ describe('ParalegalAssignmentSection', () => {
 
     return render(
       <BrowserRouter>
-        <ParalegalAssignmentSection {...defaults} {...override} />
+        <AuditorAssignmentCard {...defaults} {...override} />
       </BrowserRouter>,
     );
   };
 
-  test('should show no assignment state when no paralegal assigned', () => {
+  test('should show no assignment state when no auditor assigned', () => {
     const onAssignmentChange = vi.fn();
 
     renderWithRouter({
@@ -83,11 +83,11 @@ describe('ParalegalAssignmentSection', () => {
       onAssignmentChange,
     });
 
-    expect(screen.getByTestId('no-paralegal-assigned')).toBeInTheDocument();
-    expect(screen.getByTestId('no-paralegal-assigned')).toHaveTextContent('No paralegal assigned');
+    expect(screen.getByTestId('no-auditor-assigned')).toBeInTheDocument();
+    expect(screen.getByTestId('no-auditor-assigned')).toHaveTextContent('No auditor assigned');
   });
 
-  test('should display assigned paralegal information', () => {
+  test('should display assigned auditor information', () => {
     const onAssignmentChange = vi.fn();
 
     renderWithRouter({
@@ -96,10 +96,10 @@ describe('ParalegalAssignmentSection', () => {
       onAssignmentChange,
     });
 
-    expect(screen.getByTestId('paralegal-assignments-display')).toBeInTheDocument();
+    expect(screen.getByTestId('auditor-assignments-display')).toBeInTheDocument();
   });
 
-  test('should show edit button when paralegal is assigned', () => {
+  test('should show edit button when auditor is assigned', () => {
     const onAssignmentChange = vi.fn();
 
     renderWithRouter({
@@ -108,7 +108,7 @@ describe('ParalegalAssignmentSection', () => {
       onAssignmentChange,
     });
 
-    const editButton = screen.getByTestId('button-edit-paralegal-assignment');
+    const editButton = screen.getByTestId('button-edit-auditor-assignment');
     expect(editButton).toBeInTheDocument();
   });
 
@@ -122,10 +122,10 @@ describe('ParalegalAssignmentSection', () => {
       isLoading: true,
     });
 
-    expect(screen.getByTestId('paralegal-assignments-loading')).toBeInTheDocument();
+    expect(screen.getByTestId('auditor-assignments-loading')).toBeInTheDocument();
   });
 
-  test('should show paralegal name when assignment exists', () => {
+  test('should show auditor name when assignment exists', () => {
     const onAssignmentChange = vi.fn();
 
     renderWithRouter({
@@ -134,9 +134,9 @@ describe('ParalegalAssignmentSection', () => {
       onAssignmentChange,
     });
 
-    expect(screen.getByTestId('paralegal-assignments-display')).toBeInTheDocument();
-    const displayArea = screen.getByTestId('paralegal-assignments-display');
-    expect(displayArea).toHaveTextContent('John Doe');
+    expect(screen.getByTestId('auditor-assignments-display')).toBeInTheDocument();
+    const displayArea = screen.getByTestId('auditor-assignments-display');
+    expect(displayArea).toHaveTextContent('Jane Smith');
   });
 
   test('should call onAssignmentChange when handleAssignment is triggered', () => {

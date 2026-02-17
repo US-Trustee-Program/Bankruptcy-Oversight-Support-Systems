@@ -5,9 +5,9 @@ import Api2 from '@/lib/models/api2';
 import { AttorneyUser } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import AttorneyAssignmentSection from './AttorneyAssignmentSection';
-import AuditorAssignmentSection from './AuditorAssignmentSection';
-import ParalegalAssignmentSection from './ParalegalAssignmentSection';
+import AttorneyAssignmentCard from './AttorneyAssignmentCard';
+import AuditorAssignmentCard from './AuditorAssignmentCard';
+import ParalegalAssignmentCard from './ParalegalAssignmentCard';
 
 interface TrusteeAssignedStaffProps {
   trusteeId: string;
@@ -53,7 +53,7 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
         {attorneysError && <Alert type={UswdsAlertStyle.Error}>{attorneysError}</Alert>}
 
         <div className="assigned-staff-cards">
-          <AttorneyAssignmentSection
+          <AttorneyAssignmentCard
             trusteeId={trusteeId}
             assignments={assignments}
             attorneys={attorneys}
@@ -61,14 +61,14 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
             isLoading={isLoading || attorneysLoading}
           />
 
-          <AuditorAssignmentSection
+          <AuditorAssignmentCard
             trusteeId={trusteeId}
             assignments={assignments}
             onAssignmentChange={refreshAssignments}
             isLoading={isLoading}
           />
 
-          <ParalegalAssignmentSection
+          <ParalegalAssignmentCard
             trusteeId={trusteeId}
             assignments={assignments}
             onAssignmentChange={refreshAssignments}
