@@ -1,4 +1,7 @@
 .comms-link {
+  // Allow long URLs/emails to wrap even without natural break points
+  overflow-wrap: anywhere;
+
   span.cams-icon-label {
     text-decoration: inherit;
   }
