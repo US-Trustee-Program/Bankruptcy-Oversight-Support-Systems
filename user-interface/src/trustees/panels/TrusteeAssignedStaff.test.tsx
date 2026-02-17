@@ -39,7 +39,10 @@ describe('TrusteeAssignedStaff', () => {
   };
 
   beforeEach(() => {
-    vi.restoreAllMocks();
+    // Reset the vi.fn() mocks before each test
+    mockUseTrusteeAssignments.getTrusteeOversightAssignments = vi.fn();
+    mockUseTrusteeAssignments.assignAttorneyToTrustee = vi.fn();
+    mockUseTrusteeAssignments.clearError = vi.fn();
     vi.spyOn(UseTrusteeAssignmentsModule, 'useTrusteeAssignments').mockReturnValue(
       mockUseTrusteeAssignments,
     );

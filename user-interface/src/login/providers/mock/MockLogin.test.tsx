@@ -9,25 +9,25 @@ import { SessionProps } from '@/login/Session';
 import { blankConfiguration } from '@/lib/testing/mock-configuration';
 
 describe('MockLogin', () => {
-  const fetchSpy = vi
-    .spyOn(global, 'fetch')
-    .mockImplementation(
-      (_input: string | URL | Request, _init?: RequestInit): Promise<Response> => {
-        return Promise.resolve({
-          ok: true,
-          json: vi.fn().mockResolvedValue({ data: { value: MockData.getJwt() } }),
-        } as unknown as Response);
-      },
-    );
-
-  vi.spyOn(SessionModule, 'Session').mockImplementation((props: SessionProps) => {
-    return <>{props.children}</>;
-  });
-
   let userEvent: CamsUserEvent;
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    fetchSpy = vi
+      .spyOn(global, 'fetch')
+      .mockImplementation(
+        (_input: string | URL | Request, _init?: RequestInit): Promise<Response> => {
+          return Promise.resolve({
+            ok: true,
+            json: vi.fn().mockResolvedValue({ data: { value: MockData.getJwt() } }),
+          } as unknown as Response);
+        },
+      );
+
+    vi.spyOn(SessionModule, 'Session').mockImplementation((props: SessionProps) => {
+      return <>{props.children}</>;
+    });
+
     userEvent = TestingUtilities.setupUserEvent();
   });
 

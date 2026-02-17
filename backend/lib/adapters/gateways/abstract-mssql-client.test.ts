@@ -15,7 +15,7 @@ vi.mock('mssql', async (importOriginal) => {
   const actual = await importOriginal<typeof import('mssql')>();
   return {
     ...actual,
-    ConnectionPool: vi.fn().mockImplementation(() => {
+    ConnectionPool: vi.fn().mockImplementation(function () {
       return {
         connect: vi.fn().mockImplementation(
           (): Promise<sqlConnect> =>

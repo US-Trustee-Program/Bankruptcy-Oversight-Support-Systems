@@ -50,10 +50,6 @@ describe('search screen', () => {
     userEvent = TestingUtilities.setupUserEvent();
   });
 
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
   function renderWithoutProps() {
     render(
       <BrowserRouter>
@@ -78,13 +74,11 @@ describe('search screen', () => {
     });
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
-    // Make first search request...
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
     await userEvent.click(expandButton!);
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      // wait for the default state alert to be removed
       expect(document.querySelector('#default-state-alert')).not.toBeInTheDocument();
     });
 
@@ -179,7 +173,6 @@ describe('search screen', () => {
 
     await userEvent.click(expandButton);
 
-    // Make first search request....
     let itemToSelect = userDivisions.length + 1;
     await TestingUtilities.toggleComboBoxItemSelection('court-selections-search', itemToSelect);
 
@@ -193,7 +186,6 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      // wait for loading to disappear
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
       expect(document.querySelector('.search-results table')).toBeVisible();
     });
@@ -215,7 +207,6 @@ describe('search screen', () => {
       includeAssignments,
     );
 
-    // Make second search request...
     await userEvent.click(expandButton);
     await TestingUtilities.toggleComboBoxItemSelection('court-selections-search', ++itemToSelect);
 
@@ -230,7 +221,6 @@ describe('search screen', () => {
 
     const loadingSpinner = document.querySelector('.loading-spinner');
     await waitFor(() => {
-      // wait for loading to disappear
       expect(loadingSpinner).not.toBeInTheDocument();
       expect(document.querySelector('.search-results table')).toBeVisible();
     });
@@ -243,7 +233,6 @@ describe('search screen', () => {
       includeAssignments,
     );
 
-    // clear division selection
     const clearButton = document.querySelector('#court-selections-search .clear-all-button');
     expect(clearButton).toBeInTheDocument();
 
@@ -261,7 +250,6 @@ describe('search screen', () => {
     const casesSearchPredicate: CasesSearchPredicate = {
       caseNumber,
       limit: 25,
-      divisionCodes: expect.anything(),
       offset: 0,
       excludeMemberConsolidations: false,
       excludeClosedCases: true,
@@ -269,7 +257,6 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    // Clear the default search on initial render.
     searchCasesSpy.mockClear();
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
@@ -284,7 +271,6 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      // wait for loading to disappear
       expect(document.querySelector('.search-results table')).toBeVisible();
     });
 
@@ -305,7 +291,6 @@ describe('search screen', () => {
     const incompleteCaseNumber = '12123';
     renderWithoutProps();
 
-    // Clear the default search on initial render.
     searchCasesSpy.mockClear();
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
@@ -334,7 +319,11 @@ describe('search screen', () => {
   });
 
   test('should show the no results alert when no results are available', async () => {
-    vi.spyOn(Api2, 'searchCases').mockResolvedValueOnce(emptySearchResponseBody);
+    const emptySpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(emptySearchResponseBody);
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+      meta: { self: '' },
+      data: MockData.getCourts(),
+    });
     renderWithoutProps();
 
     let table = document.querySelector('.search-results table');
@@ -353,6 +342,8 @@ describe('search screen', () => {
       expect(noResultsAlert).toBeInTheDocument();
       expect(noResultsAlert).toBeVisible();
     });
+
+    emptySpy.mockResolvedValue(searchResponseBody);
 
     const caseNumberInput: HTMLInputElement = screen.getByTestId('basic-search-field');
     await userEvent.type(caseNumberInput, '00-11111');
@@ -476,23 +467,18 @@ describe('search screen', () => {
     const initialCheckbox = screen.getByTestId('checkbox-include-closed');
     expect(initialCheckbox).not.toBeChecked();
 
-    // Click the checkbox label to include closed cases
     await userEvent.click(document.querySelector('#checkbox-include-closed-click-target')!);
 
-    // Click search button to perform search
     const searchButton = screen.getByTestId('button-search-submit');
     await userEvent.click(searchButton);
 
-    // Wait for search to complete
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
 
-    // Now check if the checkbox is checked
     const checkedCheckbox = screen.getByTestId('checkbox-include-closed');
     expect(checkedCheckbox).toBeChecked();
 
-    // Verify that search was called with excludeClosedCases set to false
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         excludeClosedCases: false,
@@ -500,22 +486,17 @@ describe('search screen', () => {
       includeAssignments,
     );
 
-    // Click the checkbox label again to exclude closed cases
     await userEvent.click(document.querySelector('#checkbox-include-closed-click-target')!);
 
-    // Click search button to perform search
     await userEvent.click(searchButton);
 
-    // Wait for search to complete
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
 
-    // Now check if the checkbox is unchecked
     const uncheckedCheckbox = screen.getByTestId('checkbox-include-closed');
     expect(uncheckedCheckbox).not.toBeChecked();
 
-    // Verify that search was called with excludeClosedCases set to true
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
         excludeClosedCases: true,
@@ -529,7 +510,6 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    // Clear the default search on initial render.
     searchCasesSpy.mockClear();
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
@@ -539,22 +519,18 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    // Type case number
     await userEvent.type(caseNumberInput, caseNumber);
 
-    // Trigger form submission (simulating Enter key press which submits the form)
     const form = screen.getByTestId('filter-and-search-panel');
     fireEvent.submit(form);
 
     await waitFor(() => {
-      // wait for loading to disappear
       expect(document.querySelector('.search-results table')).toBeVisible();
     });
 
     const rows = document.querySelectorAll('#search-results-table-body > tr');
     expect(rows).toHaveLength(caseList.length);
 
-    // Verify that search was called with correct predicate including case number
     expect(searchCasesSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         caseNumber,
@@ -572,21 +548,17 @@ describe('search screen', () => {
       expect(document.querySelector('.search-results table')).not.toBeInTheDocument();
     });
 
-    // Select a chapter
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
 
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
     await userEvent.click(expandButton!);
 
-    // Get the filter-and-search form
     const filterAndSearchPanel = screen.getByTestId('filter-and-search-panel');
     expect(filterAndSearchPanel).toBeInTheDocument();
 
-    // Trigger form submission (simulating Enter key press which submits the form)
     fireEvent.submit(filterAndSearchPanel);
 
     await waitFor(() => {
-      // wait for the default state alert to be removed
       expect(document.querySelector('#default-state-alert')).not.toBeInTheDocument();
     });
 
@@ -613,7 +585,6 @@ describe('search screen', () => {
     renderWithoutProps();
     await TestingUtilities.waitForDocumentBody();
 
-    // Clear the default search on initial render.
     searchCasesSpy.mockClear();
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
@@ -622,11 +593,9 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    // Type incomplete case number and press Enter
     await userEvent.type(caseNumberInput, '12345');
     await userEvent.keyboard('{Enter}');
 
-    // Wait for any potential async updates to settle
     await waitFor(
       () => {
         expect(searchCasesSpy).not.toHaveBeenCalled();
@@ -641,7 +610,6 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    // Clear the default search on initial render.
     searchCasesSpy.mockClear();
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
@@ -650,7 +618,6 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    // First search - type case number and submit form
     await userEvent.type(caseNumberInput, firstCaseNumber);
     const form = screen.getByTestId('filter-and-search-panel');
     fireEvent.submit(form);
@@ -659,7 +626,6 @@ describe('search screen', () => {
       expect(document.querySelector('.search-results table')).toBeVisible();
     });
 
-    // Verify first search was called
     expect(searchCasesSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         caseNumber: firstCaseNumber,
@@ -669,12 +635,10 @@ describe('search screen', () => {
 
     const firstCallCount = searchCasesSpy.mock.calls.length;
 
-    // Clear the input and type a new case number
     await userEvent.clear(caseNumberInput);
     await userEvent.type(caseNumberInput, secondCaseNumber);
     fireEvent.submit(form);
 
-    // Wait for the search to be triggered and complete
     await waitFor(() => {
       expect(searchCasesSpy.mock.calls.length).toBeGreaterThan(firstCallCount);
     });
@@ -683,7 +647,6 @@ describe('search screen', () => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
 
-    // Verify second search was called with correct parameters
     expect(searchCasesSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         caseNumber: secondCaseNumber,
@@ -706,10 +669,8 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    // Type invalid case number
     await userEvent.type(caseNumberInput, '55');
 
-    // Wait for debounced validation to run
     await waitFor(
       () => {
         const errorMessage = screen.queryByText(/Must be 7 digits/i);
@@ -718,7 +679,6 @@ describe('search screen', () => {
       { timeout: 1000 },
     );
 
-    // Search button should be disabled
     const searchButton = screen.getByTestId('button-search-submit');
     expect(searchButton).toBeDisabled();
   });
@@ -726,7 +686,6 @@ describe('search screen', () => {
   test('should clear error when valid case number is entered after invalid one', async () => {
     renderWithoutProps();
 
-    // Clear the default search on initial render
     searchCasesSpy.mockClear();
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
@@ -735,10 +694,8 @@ describe('search screen', () => {
       expect(caseNumberInput).toBeEnabled();
     });
 
-    // Type invalid case number
     await userEvent.type(caseNumberInput, '55');
 
-    // Wait for error to appear
     await waitFor(
       () => {
         const errorMessage = screen.queryByText(/Must be 7 digits/i);
@@ -747,11 +704,9 @@ describe('search screen', () => {
       { timeout: 1000 },
     );
 
-    // Clear and type valid case number
     await userEvent.clear(caseNumberInput);
     await userEvent.type(caseNumberInput, '12-34567');
 
-    // Wait for error to clear
     await waitFor(
       () => {
         const errorMessage = screen.queryByText(/Must be 7 digits/i);
@@ -760,7 +715,6 @@ describe('search screen', () => {
       { timeout: 1000 },
     );
 
-    // Search button should be enabled (because we have a valid case number AND default division codes)
     const searchButton = screen.getByTestId('button-search-submit');
     expect(searchButton).not.toBeDisabled();
   });
@@ -775,11 +729,8 @@ describe('search screen', () => {
 
     const searchButton = screen.getByTestId('button-search-submit');
 
-    // Try to click search button (it should be disabled)
     expect(searchButton).toBeDisabled();
 
-    // The button being disabled prevents the click, but let's verify the state
-    // by checking that no search was triggered
     expect(searchCasesSpy).not.toHaveBeenCalled();
   });
 
@@ -792,7 +743,6 @@ describe('search screen', () => {
       expect(searchButton).not.toBeDisabled();
     });
 
-    // No validation error alert should be visible
     const validationAlert = screen.queryByTestId('search-validation-alert');
     expect(validationAlert).not.toBeInTheDocument();
   });
@@ -860,10 +810,6 @@ describe('debtor name search', () => {
     searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     userEvent = TestingUtilities.setupUserEvent();
-  });
-
-  afterEach(() => {
-    vi.clearAllMocks();
   });
 
   function renderWithFeatureFlag(enabled: boolean) {
@@ -1054,7 +1000,6 @@ describe('debtor name search', () => {
       expect((debtorNameInput as HTMLInputElement).value).toBe('J');
     });
 
-    // Type second character
     await userEvent.type(debtorNameInput, 'o');
 
     await waitFor(() => {

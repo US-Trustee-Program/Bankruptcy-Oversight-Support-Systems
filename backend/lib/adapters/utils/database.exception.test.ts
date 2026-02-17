@@ -28,10 +28,16 @@ const mockConnect = vi.fn().mockImplementation(
 );
 vi.mock('mssql', () => {
   return {
-    ConnectionError: vi.fn().mockReturnValue(connectionError),
-    RequestError: vi.fn().mockReturnValue(requestError),
-    MSSQLError: vi.fn().mockReturnValue(mssqlError),
-    ConnectionPool: vi.fn().mockImplementation(() => {
+    ConnectionError: vi.fn().mockImplementation(function (this: ConnectionError) {
+      return connectionError;
+    }),
+    RequestError: vi.fn().mockImplementation(function (this: RequestError) {
+      return requestError;
+    }),
+    MSSQLError: vi.fn().mockImplementation(function (this: MSSQLError) {
+      return mssqlError;
+    }),
+    ConnectionPool: vi.fn().mockImplementation(function () {
       return {
         connect: mockConnect,
       };
