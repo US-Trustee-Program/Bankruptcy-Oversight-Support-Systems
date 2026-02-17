@@ -120,7 +120,11 @@ export async function upsertTrustee(
     if (existingTrustee) {
       // Merge new data into existing document to preserve fields that replaceOne would strip
       context.logger.debug(MODULE_NAME, `Updating existing trustee ${atsTrustee.ID}`);
-      const merged = { ...existingTrustee, ...trusteeInput };
+      const merged = {
+        ...existingTrustee,
+        ...trusteeInput,
+        legacy: { ...existingTrustee.legacy, ...trusteeInput.legacy },
+      };
       const updated = await repo.updateTrustee(existingTrustee.trusteeId, merged, SYSTEM_USER);
       return { data: updated };
     } else {
