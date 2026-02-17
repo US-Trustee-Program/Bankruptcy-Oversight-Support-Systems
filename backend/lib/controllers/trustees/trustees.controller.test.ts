@@ -67,18 +67,16 @@ describe('TrusteesController', () => {
       updateTrustee: vi.fn(),
     } as unknown as vi.Mocked<TrusteesUseCase>;
 
-    (TrusteesUseCase as vi.MockedClass<typeof TrusteesUseCase>).mockImplementation(
-      () => mockUseCase,
-    );
+    (TrusteesUseCase as vi.MockedClass<typeof TrusteesUseCase>).mockImplementation(function (
+      this: TrusteesUseCase,
+    ) {
+      return mockUseCase;
+    });
 
     controller = new TrusteesController(context);
 
     // Mock feature flag to be enabled by default
     context.featureFlags['trustee-management'] = true;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('Feature flag protection', () => {

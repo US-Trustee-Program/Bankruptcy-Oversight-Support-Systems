@@ -11,7 +11,11 @@ import {
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../../../testing/testing-constants';
 
 describe('Test case docket DXTR Gateway', () => {
-  const querySpy = vi.spyOn(database, 'executeQuery');
+  let querySpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    querySpy = vi.spyOn(database, 'executeQuery');
+  });
 
   describe('getCaseDocket', () => {
     test('should query the database with the correct predicate values for case id', async () => {

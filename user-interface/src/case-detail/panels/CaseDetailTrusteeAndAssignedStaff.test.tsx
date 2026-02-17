@@ -67,14 +67,17 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
     meta: { self: 'self-url' },
     data: staffByRole,
   };
-  vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
 
   // Mock for AssignAttorneyModal
   const officeAttorneyListResponse: ResponseBody<AttorneyUser[]> = {
     meta: { self: 'self-url' },
     data: attorneyList,
   };
-  vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(officeAttorneyListResponse);
+
+  beforeEach(() => {
+    vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
+    vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(officeAttorneyListResponse);
+  });
 
   function renderWithProps(props?: Partial<CaseDetailTrusteeAndAssignedStaffProps>) {
     const defaultProps: CaseDetailTrusteeAndAssignedStaffProps = {
