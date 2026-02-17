@@ -10,6 +10,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { AppointmentType } from '@common/cams/trustees';
+import * as courtUtils from '@/lib/utils/court-utils';
 
 const TEST_TRUSTEE_ID = 'test-trustee-123';
 const TEST_APPOINTED_DATE = '2024-01-01';
@@ -22,8 +23,8 @@ const chapter = {
 };
 
 const courtDivisionName = {
-  alaskaJ: 'District of Alaska - Juneau',
-  alaskaN: 'District of Alaska - Nome',
+  alaskaJ: 'District of Alaska (Juneau)',
+  alaskaN: 'District of Alaska (Nome)',
 };
 
 const appointmentType = {
@@ -1340,6 +1341,50 @@ describe('TrusteeAppointmentForm Tests', () => {
       // Verify they are in alphabetical order
       const sortedTexts = [...optionTexts].sort((a, b) => a.localeCompare(b));
       expect(optionTexts).toEqual(sortedTexts);
+    });
+  });
+
+  describe('District Dropdown Sorting Tests', () => {
+    test('should call sortByCourtLocation when loading districts', async () => {
+      const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
+
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(sortSpy).toHaveBeenCalled();
+      });
+
+      // Verify it was called with the courts data from the API
+      const callArgs = sortSpy.mock.calls[0];
+      expect(callArgs[0]).toBeInstanceOf(Array);
+      expect(callArgs[0].length).toBeGreaterThan(0);
+      // Should have court data with state field
+      expect(callArgs[0][0]).toHaveProperty('state');
+    });
+
+    test('should display district options in parentheses format', async () => {
+      // Verifies options use "District (Division)" format, not "District - Division"
+      // Sorting behavior is tested in court-utils.test.ts
+      renderWithProps();
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      await userEvent.click(document.querySelector('#district-expand')!);
+
+      await waitFor(() => {
+        expect(screen.getByText(courtDivisionName.alaskaJ)).toBeVisible();
+      });
+
+      const optionItems = document.querySelectorAll('#district-item-list li[role="option"]');
+      const optionTexts = Array.from(optionItems).map((item) => item.textContent || '');
+
+      expect(optionTexts.length).toBeGreaterThan(0);
+      optionTexts.forEach((text) => {
+        expect(text).toMatch(/\(.+\)$/); // Should end with (something)
+        expect(text).not.toMatch(/ - [^-]+$/); // Should NOT have " - something" at end
+      });
     });
   });
 });
