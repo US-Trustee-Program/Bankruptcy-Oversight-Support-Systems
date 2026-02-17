@@ -6,7 +6,11 @@ import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities
 
 describe('Tests for USWDS Input component.', () => {
   const ref = React.createRef<InputRef>();
-  const youChangedMe = vi.fn();
+  let youChangedMe: React.ChangeEventHandler<HTMLInputElement>;
+
+  beforeEach(() => {
+    youChangedMe = vi.fn();
+  });
 
   const renderWithoutProps = () => {
     render(
@@ -15,10 +19,6 @@ describe('Tests for USWDS Input component.', () => {
       </div>,
     );
   };
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
 
   test('Should change value when ref.setValue() is called and set value back to original when ref.resetValue() is called.', async () => {
     renderWithoutProps();

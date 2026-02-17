@@ -30,11 +30,11 @@ describe('StaffAssignmentRowInternal', () => {
     },
   };
 
-  TestingUtilities.spyOnUseState();
-  const globalAlert = TestingUtilities.spyOnGlobalAlert();
+  let globalAlert: ReturnType<typeof TestingUtilities.spyOnGlobalAlert>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    TestingUtilities.spyOnUseState();
+    globalAlert = TestingUtilities.spyOnGlobalAlert();
   });
 
   test('should handle successful assignment update', async () => {

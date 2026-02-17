@@ -6,8 +6,10 @@ describe('form-helpers', () => {
     let mockElement: HTMLDivElement;
     let mockInput: HTMLInputElement;
     let querySelectorSpy: ReturnType<typeof vi.spyOn>;
-    let scrollIntoViewSpy: ReturnType<typeof vi.fn>;
-    let focusSpy: ReturnType<typeof vi.fn>;
+    let scrollIntoViewSpy: ReturnType<
+      typeof vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>
+    >;
+    let focusSpy: ReturnType<typeof vi.fn<(options?: FocusOptions) => void>>;
 
     beforeEach(() => {
       mockInput = document.createElement('input');
@@ -15,8 +17,8 @@ describe('form-helpers', () => {
       mockElement.classList.add('usa-input-group--error');
       mockElement.appendChild(mockInput);
 
-      scrollIntoViewSpy = vi.fn();
-      focusSpy = vi.fn();
+      scrollIntoViewSpy = vi.fn<(arg?: boolean | ScrollIntoViewOptions) => void>();
+      focusSpy = vi.fn<(options?: FocusOptions) => void>();
       mockElement.scrollIntoView = scrollIntoViewSpy;
       mockInput.focus = focusSpy;
 

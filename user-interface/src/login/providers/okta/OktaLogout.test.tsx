@@ -13,7 +13,10 @@ describe('OktaLogout', () => {
       },
     };
   });
-  vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);
+
+  beforeEach(() => {
+    vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);
+  });
 
   test('should render the SessionEnd component', async () => {
     render(

@@ -11,15 +11,18 @@ describe('AuthenticationRoutes', () => {
   const noOp = () => {
     return <></>;
   };
-  const loginComponent = vi.spyOn(loginModule, 'Login').mockImplementation(noOp);
-  const loginContinueComponent = vi
-    .spyOn(loginContinueModule, 'LoginContinue')
-    .mockImplementation(noOp);
-  const logoutComponent = vi.spyOn(logoutModule, 'Logout').mockImplementation(noOp);
-  const sessionEndComponent = vi.spyOn(sessionEndModule, 'SessionEnd').mockImplementation(noOp);
+  let loginComponent: ReturnType<typeof vi.spyOn>;
+  let loginContinueComponent: ReturnType<typeof vi.spyOn>;
+  let logoutComponent: ReturnType<typeof vi.spyOn>;
+  let sessionEndComponent: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    loginComponent = vi.spyOn(loginModule, 'Login').mockImplementation(noOp);
+    loginContinueComponent = vi
+      .spyOn(loginContinueModule, 'LoginContinue')
+      .mockImplementation(noOp);
+    logoutComponent = vi.spyOn(logoutModule, 'Logout').mockImplementation(noOp);
+    sessionEndComponent = vi.spyOn(sessionEndModule, 'SessionEnd').mockImplementation(noOp);
   });
 
   function renderWithPath(path: string) {

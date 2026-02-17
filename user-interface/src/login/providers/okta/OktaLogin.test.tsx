@@ -16,10 +16,9 @@ describe('OktaLogin', () => {
       authState,
     };
   });
-  vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);
 
-  afterEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => {
+    vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);
   });
 
   test('should allow the user to login via Okta', async () => {

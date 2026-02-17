@@ -13,7 +13,7 @@ vi.mock('mssql', async (importOriginal) => {
   const actual = await importOriginal<typeof import('mssql')>();
   return {
     ...actual,
-    ConnectionPool: vi.fn().mockImplementation(() => {
+    ConnectionPool: vi.fn().mockImplementation(function () {
       return {
         request: vi.fn().mockImplementation(() => ({
           input: vi.fn(),
