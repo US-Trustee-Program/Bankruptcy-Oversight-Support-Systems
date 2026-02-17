@@ -10,6 +10,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import * as useCamsNavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { AppointmentType } from '@common/cams/trustees';
+import * as courtUtils from '@/lib/utils/court-utils';
 
 const TEST_TRUSTEE_ID = 'test-trustee-123';
 const TEST_APPOINTED_DATE = '2024-01-01';
@@ -1344,49 +1345,46 @@ describe('TrusteeAppointmentForm Tests', () => {
   });
 
   describe('District Dropdown Sorting Tests', () => {
-    test('should display district options in correct format and sort order', async () => {
-      // Using default mock data which has Alaska (AK) and Washington (WA) courts
-      // This test verifies:
-      // 1. Options use parentheses format: "District (Division)"
-      // 2. Sorted by state name (Alaska before Washington)
-      // 3. Sorted by division name within same district
+    test('should call sortByCourtLocation when loading districts', async () => {
+      const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
+
       renderWithProps();
 
-      // Wait for form to render
+      await waitFor(() => {
+        expect(sortSpy).toHaveBeenCalled();
+      });
+
+      // Verify it was called with the courts data from the API
+      const callArgs = sortSpy.mock.calls[0];
+      expect(callArgs[0]).toBeInstanceOf(Array);
+      expect(callArgs[0].length).toBeGreaterThan(0);
+      // Should have court data with state field
+      expect(callArgs[0][0]).toHaveProperty('state');
+    });
+
+    test('should display district options in parentheses format', async () => {
+      // Verifies options use "District (Division)" format, not "District - Division"
+      // Sorting behavior is tested in court-utils.test.ts
+      renderWithProps();
+
       await waitFor(() => {
         expect(document.querySelector('#district')).toBeInTheDocument();
       });
 
-      // Open the district dropdown
       await userEvent.click(document.querySelector('#district-expand')!);
 
-      // Wait for options to be visible
       await waitFor(() => {
         expect(screen.getByText(courtDivisionName.alaskaJ)).toBeVisible();
       });
 
-      // Get all district options while dropdown is open
       const optionItems = document.querySelectorAll('#district-item-list li[role="option"]');
       const optionTexts = Array.from(optionItems).map((item) => item.textContent || '');
 
-      // 1. Verify all options use parentheses format, not dash format
       expect(optionTexts.length).toBeGreaterThan(0);
       optionTexts.forEach((text) => {
         expect(text).toMatch(/\(.+\)$/); // Should end with (something)
         expect(text).not.toMatch(/ - [^-]+$/); // Should NOT have " - something" at end
       });
-
-      // 2. Verify Alaska appears before Washington (sorted by state name)
-      const alaskaIndex = optionTexts.findIndex((text) => text.includes('Alaska'));
-      const washingtonIndex = optionTexts.findIndex((text) => text.includes('Washington'));
-      expect(alaskaIndex).toBeGreaterThanOrEqual(0);
-      expect(washingtonIndex).toBeGreaterThanOrEqual(0);
-      expect(alaskaIndex).toBeLessThan(washingtonIndex);
-
-      // 3. Verify Alaska divisions are sorted alphabetically
-      const alaskaOptions = optionTexts.filter((text) => text.includes('Alaska'));
-      const sortedAlaskaOptions = [...alaskaOptions].sort((a, b) => a.localeCompare(b));
-      expect(alaskaOptions).toEqual(sortedAlaskaOptions);
     });
   });
 });

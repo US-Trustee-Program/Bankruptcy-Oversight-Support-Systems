@@ -14,6 +14,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import * as courtUtils from '@/lib/utils/court-utils';
 
 describe('Review Orders screen', () => {
   beforeEach(async () => {
@@ -27,6 +28,24 @@ describe('Review Orders screen', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+  });
+
+  test('should call sortByCourtLocation when loading courts', async () => {
+    const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(sortSpy).toHaveBeenCalled();
+    });
+
+    // Verify it was called with court data
+    const callArgs = sortSpy.mock.calls[0];
+    expect(callArgs[0]).toBeInstanceOf(Array);
   });
 
   // TODO: Unskip this test.
