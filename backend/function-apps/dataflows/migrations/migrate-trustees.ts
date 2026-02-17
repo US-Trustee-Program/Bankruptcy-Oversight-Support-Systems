@@ -10,7 +10,7 @@ import {
 } from '../dataflows-common';
 import * as MigrateTrusteesUseCase from '../../../lib/use-cases/dataflows/migrate-trustees';
 import * as MigrationStateService from '../../../lib/use-cases/dataflows/trustee-migration-state.service';
-import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import { buildQueueError, QueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
 import ModuleNames from '../module-names';
@@ -234,17 +234,31 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
  * handleError
  *
  * Route failed events to retry queue for another attempt.
+ * Distinguishes between QueueError payloads (infrastructure failures from handleStart/handlePage)
+ * and TrusteeEvent payloads (individual trustee failures from handleRetry).
+ * QueueError payloads are logged and sent to HARD_STOP since they cannot be retried as trustee events.
  */
-async function handleError(event: TrusteeEvent, invocationContext: InvocationContext) {
+async function handleError(event: TrusteeEvent | QueueError, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
+  if ('type' in event && event.type === 'QUEUE_ERROR') {
+    const queueError = event as QueueError;
+    logger.error(
+      MODULE_NAME,
+      `Infrastructure error in ${queueError.activityName}: ${queueError.error?.message ?? 'Unknown error'}. Routing to hard-stop.`,
+    );
+    invocationContext.extraOutputs.set(HARD_STOP, [event]);
+    return;
+  }
+
+  const trusteeEvent = event as TrusteeEvent;
   logger.error(
     MODULE_NAME,
-    `Error encountered migrating trustee ${event.ID}: ${event.error?.message ?? 'Unknown error'}.`,
+    `Error encountered migrating trustee ${trusteeEvent.ID}: ${trusteeEvent.error?.message ?? 'Unknown error'}.`,
   );
 
-  delete event.error;
-  invocationContext.extraOutputs.set(RETRY, [event]);
+  delete trusteeEvent.error;
+  invocationContext.extraOutputs.set(RETRY, [trusteeEvent]);
 }
 
 /**
@@ -301,7 +315,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: DLQ.queueName,
     handler: handleError,
-    extraOutputs: [RETRY],
+    extraOutputs: [RETRY, HARD_STOP],
   });
 
   app.storageQueue(HANDLE_RETRY, {
