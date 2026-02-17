@@ -30,8 +30,6 @@ import {
   CODE_1_STANDING_CHAPTERS,
 } from './ats.constants';
 
-const MODULE_NAME = 'ATS-MAPPINGS';
-
 /**
  * Parse chapter code from ATS, handling special case-by-case codes.
  *
@@ -68,19 +66,15 @@ export function parseChapterAndType(todChapter: string): ChapterMapping {
  */
 export function parseTodStatus(todStatus: string): StatusMapping {
   if (!todStatus) {
-    console.warn(`${MODULE_NAME}: Empty TOD STATUS, using defaults`);
     return DEFAULT_STATUS_MAPPING;
   }
 
   const trimmedStatus = todStatus.trim().toUpperCase();
 
-  // Check if we have a mapping for this status
   if (TOD_STATUS_MAP[trimmedStatus]) {
     return TOD_STATUS_MAP[trimmedStatus];
   }
 
-  // Log unknown status and return default
-  console.warn(`${MODULE_NAME}: Unknown TOD STATUS '${todStatus}', using defaults`);
   return DEFAULT_STATUS_MAPPING;
 }
 
@@ -99,7 +93,6 @@ export function getDivisionOfficeName(divisionCode: string): string {
   const officeName = USTP_OFFICE_NAME_MAP.get(trimmedCode);
 
   if (!officeName) {
-    console.warn(`${MODULE_NAME}: Unknown division code '${divisionCode}'`);
     return 'Unknown';
   }
 
