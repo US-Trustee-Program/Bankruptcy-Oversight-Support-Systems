@@ -425,7 +425,7 @@ describe('ATS Mappings', () => {
       });
     });
 
-    test('should use current date if dates are missing', () => {
+    test('should throw if DATE_APPOINTED is missing', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
@@ -434,11 +434,9 @@ describe('ATS Mappings', () => {
         STATUS: 'PA',
       };
 
-      const result = transformAppointmentRecord(atsAppointment);
-      const today = new Date().toISOString().split('T')[0];
-
-      expect(result.appointedDate).toBe(today);
-      expect(result.effectiveDate).toBe(today);
+      expect(() => transformAppointmentRecord(atsAppointment)).toThrow(
+        'DATE_APPOINTED is required',
+      );
     });
 
     test('should throw error for invalid district', () => {
