@@ -72,7 +72,7 @@
     },
     {
       "description": "Group Vitest and related testing packages",
-      "matchPackageNames": ["vitest", "@vitest/coverage-v8", "@vitest/ui", "@vitest/eslint-plugin"],
+      "matchPackageNames": ["vitest", "@vitest/coverage-v8"],
       "groupName": "vitest"
     },
     {
