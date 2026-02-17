@@ -23,17 +23,9 @@
       }
 
       #add-another-assistant-button {
-        color: #005ea2;
-        text-decoration: none;
-        font-weight: normal;
         display: flex;
         align-items: center;
         gap: 0;
-
-        &:hover {
-          color: #1a4480;
-          text-decoration: underline;
-        }
 
         .add-icon {
           width: 1.5rem;

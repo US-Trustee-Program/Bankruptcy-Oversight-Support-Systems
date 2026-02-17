@@ -18,6 +18,7 @@ export default function TrusteeAssistantCard({
   onAdd,
 }: Readonly<TrusteeAssistantCardProps>) {
   const isEmpty = !assistant;
+  const isNameOnly = assistant && !assistant.title && !assistant.contact;
   const buttonId = isEmpty ? 'edit-assistant-empty' : `edit-assistant-${index}`;
   const handleClick = isEmpty ? onAdd : onEdit;
   const buttonLabel = isEmpty ? 'Add assistant' : `Edit assistant ${assistant?.name ?? ''}`;
@@ -42,7 +43,12 @@ export default function TrusteeAssistantCard({
               </Button>
             </div>
             {isEmpty && <div data-testid="no-assistant-information">No information added.</div>}
-            {!isEmpty && (
+            {!isEmpty && isNameOnly && (
+              <div data-testid={`assistant-name-only-${index}`}>
+                No additional information added.
+              </div>
+            )}
+            {!isEmpty && !isNameOnly && (
               <>
                 {assistant.title && (
                   <div className="assistant-title" data-testid={`assistant-title-${index}`}>
