@@ -6,10 +6,7 @@ import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { CamsUserReference } from '@common/cams/users';
 import { Trustee } from '@common/cams/trustees';
-import {
-  processSingleAppointment,
-  deriveStatusFromAppointments,
-} from './appointments-sync.helpers';
+import { processSingleAppointment } from './appointments-sync.helpers';
 
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
@@ -236,19 +233,6 @@ export async function processTrusteeWithAppointments(
         });
       } else {
         appointmentsProcessed = appointmentResult.data;
-      }
-
-      // Derive trustee status from appointment statuses
-      const derivedStatus = deriveStatusFromAppointments(context, appointments);
-
-      if (derivedStatus !== trustee.status) {
-        const repo = factory.getTrusteesRepository(context);
-        await repo.updateTrustee(
-          trustee.trusteeId,
-          { ...trustee, status: derivedStatus },
-          SYSTEM_USER,
-        );
-        context.logger.debug(MODULE_NAME, `Updated trustee ${truId} status to '${derivedStatus}'`);
       }
     }
 
