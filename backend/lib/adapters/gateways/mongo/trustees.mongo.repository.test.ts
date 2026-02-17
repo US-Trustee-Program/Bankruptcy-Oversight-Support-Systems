@@ -13,6 +13,7 @@ import {
   getTheThrownError,
 } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
 
 describe('TrusteesMongoRepository', () => {
@@ -185,6 +186,49 @@ describe('TrusteesMongoRepository', () => {
         leftOperand: { name: 'documentType' },
         rightOperand: 'TRUSTEE',
       });
+    });
+  });
+
+  describe('findTrusteeByLegacyTruId', () => {
+    test('should return trustee when found by legacy TRU_ID', async () => {
+      const mockTrustee = {
+        id: 'trustee-123',
+        trusteeId: 'trustee-123',
+        name: 'John Doe',
+        public: sampleTrusteeInput.public,
+        documentType: 'TRUSTEE',
+        legacy: { truId: '42' },
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUser,
+      };
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(
+        mockTrustee as TrusteeDocument,
+      );
+
+      const result = await repository.findTrusteeByLegacyTruId('42');
+
+      expect(result).toEqual(mockTrustee);
+    });
+
+    test('should return null when no trustee is found', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new NotFoundError('TEST'),
+      );
+
+      const result = await repository.findTrusteeByLegacyTruId('nonexistent');
+
+      expect(result).toBeNull();
+    });
+
+    test('should propagate non-NotFoundError exceptions', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.findTrusteeByLegacyTruId('42')).rejects.toThrow();
     });
   });
 

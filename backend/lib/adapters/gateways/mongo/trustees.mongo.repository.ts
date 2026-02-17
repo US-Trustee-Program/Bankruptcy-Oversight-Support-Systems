@@ -12,7 +12,7 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
-import { NotFoundError } from '../../../common-errors/not-found-error';
+import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
@@ -116,7 +116,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const query = and(doc('documentType').equals('TRUSTEE'), doc('legacy.truId').equals(truId));
       return await this.getAdapter<TrusteeDocumentQueryable>().findOne(query);
     } catch (originalError) {
-      if (originalError instanceof NotFoundError) {
+      if (isNotFoundError(originalError)) {
         return null;
       }
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
