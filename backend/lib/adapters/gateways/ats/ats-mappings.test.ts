@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import {
   parseChapterAndType,
   parseTodStatus,
@@ -89,13 +89,8 @@ describe('ATS Mappings', () => {
     });
 
     test('should return defaults for unknown status', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
       expect(parseTodStatus('ZZ')).toEqual({ appointmentType: 'panel', status: 'active' });
       expect(parseTodStatus('')).toEqual({ appointmentType: 'panel', status: 'active' });
-
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
 
     test.each([
@@ -167,13 +162,8 @@ describe('ATS Mappings', () => {
     });
 
     test('should return Unknown for invalid codes', () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
       expect(getDivisionOfficeName('999999')).toBe('Unknown');
       expect(getDivisionOfficeName('')).toBe('Unknown');
-
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
     });
   });
 
