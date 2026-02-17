@@ -4,6 +4,7 @@ import { CamsRoleType } from './roles';
 export type CamsUserReference = {
   id: string;
   name: string;
+  email?: string;
 };
 
 export type Staff = CamsUserReference & {

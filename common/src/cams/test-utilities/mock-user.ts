@@ -33,6 +33,7 @@ export const SUPERUSER = {
   user: {
     id: '==MOCKUSER=user@fake.com==',
     name: "Martha's Son",
+    email: 'user@fake.com',
     roles: [CamsRole.SuperUser],
     offices: [],
   },
@@ -48,6 +49,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'manAtty0001',
       name: 'Jessica Pearson',
+      email: 'jpearson@fake.com',
       roles: [CamsRole.TrialAttorney, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
     },
@@ -58,6 +60,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'manAtty0002',
       name: 'Jack McCoy',
+      email: 'jmccoy@fake.com',
       roles: [CamsRole.TrialAttorney],
       offices: [REGION_02_GROUP_NY],
     },
@@ -68,6 +71,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'seaAtty0001',
       name: 'Saul Goodman',
+      email: 'sgoodman@fake.com',
       roles: [CamsRole.TrialAttorney],
       offices: [REGION_02_GROUP_SE],
     },
@@ -78,6 +82,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'seaAtty0002',
       name: 'Rachel Zane',
+      email: 'rzane@fake.com',
       roles: [CamsRole.TrialAttorney],
       offices: [REGION_02_GROUP_SE],
     },
@@ -88,6 +93,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'bert@fake.com',
       name: 'Bert',
+      email: 'bert@fake.com',
       roles: [CamsRole.DataVerifier, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
     },
@@ -98,6 +104,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'earnie@fake.com',
       name: 'Earnie',
+      email: 'earnie@fake.com',
       roles: [CamsRole.DataVerifier],
       offices: [REGION_02_GROUP_SE],
     },
@@ -108,6 +115,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'manAUST0001',
       name: 'Charlie',
+      email: 'charlie@fake.com',
       roles: [CamsRole.CaseAssignmentManager, CamsRole.PrivilegedIdentityUser],
       offices: [REGION_02_GROUP_NY],
     },
@@ -118,6 +126,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'bufAUST0001',
       name: 'Daniel',
+      email: 'daniel@fake.com',
       roles: [CamsRole.CaseAssignmentManager],
       offices: [REGION_02_GROUP_SE],
     },
@@ -128,6 +137,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'delAUST0001',
       name: 'Emma',
+      email: 'emma@fake.com',
       roles: [CamsRole.CaseAssignmentManager],
       offices: [REGION_03_GROUP_WL],
     },
@@ -138,6 +148,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'unhoused',
       name: 'Unhoused',
+      email: 'unhoused@fake.com',
       roles: [CamsRole.CaseAssignmentManager, CamsRole.DataVerifier],
       offices: [],
     },
@@ -148,6 +159,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'nobody',
       name: 'Nobody',
+      email: 'nobody@fake.com',
       roles: [],
       offices: [],
     },
@@ -158,6 +170,7 @@ const MockUsers: MockUser[] = [
     user: {
       id: 'trusteeadmin',
       name: 'Terry',
+      email: 'trusteeadmin@fake.com',
       roles: [CamsRole.TrusteeAdmin],
       offices: [REGION_02_GROUP_NY],
     },

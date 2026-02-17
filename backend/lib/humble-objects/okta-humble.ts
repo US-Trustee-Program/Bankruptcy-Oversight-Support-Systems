@@ -118,6 +118,7 @@ class OktaHumble {
           name:
             oktaUser.profile.displayName ??
             oktaUser.profile.lastName + ', ' + oktaUser.profile.firstName,
+          email: oktaUser.profile.email,
         });
       }
     } catch (originalError) {
@@ -135,6 +136,7 @@ class OktaHumble {
       return {
         id: user.id,
         name: user.profile.displayName ?? user.profile.lastName + ', ' + user.profile.firstName,
+        email: user.profile.email,
       };
     } catch (originalError) {
       if (isOktaApiError(originalError) && originalError.status === 401) {

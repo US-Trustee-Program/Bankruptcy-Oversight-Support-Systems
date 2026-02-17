@@ -8,6 +8,7 @@ import TrusteeOversightAssignmentModal, {
 } from '../modals/TrusteeOversightAssignmentModal';
 import './AuditorAssignmentCard.scss';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import StaffContactLinks from './StaffContactLinks';
 
 interface AuditorAssignmentCardProps {
   trusteeId: string;
@@ -71,6 +72,7 @@ export default function AuditorAssignmentCard(props: Readonly<AuditorAssignmentC
             {auditorAssignment ? (
               <div data-testid="auditor-assignments-display">
                 <div className="auditor-name">{auditorAssignment.user.name}</div>
+                <StaffContactLinks user={auditorAssignment.user} />
               </div>
             ) : (
               <div data-testid="no-auditor-assigned">No auditor assigned</div>
