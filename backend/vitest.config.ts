@@ -12,13 +12,13 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    restoreMocks: true,
     include: ['**/?(*.)+(spec|test).[jt]s?(x)'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/?(*.)+(integration).(spec|test).[jt]s?(x)'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json', 'json-summary'],
       reportsDirectory: './coverage',
-      all: true,
       include: ['**/*.[jt]s'],
       exclude: [
         '<rootDir>/node_modules/',

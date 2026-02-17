@@ -5,10 +5,10 @@ const body = { a: 'a-value', b: false };
 const headers = { 'X-my-custom-header': 'hello-world' };
 
 describe('http adapter tests', () => {
-  const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(new Response());
+  let fetchSpy: ReturnType<typeof vi.spyOn>;
 
-  afterEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => {
+    fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue(new Response());
   });
 
   test('should GET', async () => {

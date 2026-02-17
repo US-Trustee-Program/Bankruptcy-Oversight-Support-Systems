@@ -38,7 +38,7 @@ repos:
         args: ['--baseline', '.secrets.baseline']
         exclude: package.lock.json
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.36.1
+    rev: 0.36.2
     hooks:
       - id: check-github-workflows
         args: ['--verbose']

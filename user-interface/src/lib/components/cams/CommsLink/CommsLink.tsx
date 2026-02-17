@@ -11,6 +11,8 @@ type CommsLinkProps = {
   label?: string;
   icon?: string;
   emailSubject?: string;
+  hideIcon?: boolean;
+  name?: string;
 };
 
 const NON_DIGITS = /\D/g;
@@ -30,7 +32,7 @@ function toTelephoneUri(number: string, extension?: string) {
 }
 
 function CommsLink(props: Readonly<CommsLinkProps>) {
-  const { contact, mode, label, icon, emailSubject } = props;
+  const { contact, mode, label, icon, emailSubject, hideIcon, name } = props;
   const { email, website, phone } = contact;
   const { number, extension } = phone ?? {};
 
@@ -45,16 +47,19 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
 
   let href = '';
   let labelToUse = label ?? '';
+  let ariaLabel = '';
   let iconToUse = 'error';
   let target = undefined;
 
   if (isValidEmail && mode === 'teams-chat') {
     href = `msteams://teams.microsoft.com/l/chat/0/0?users=${email}`;
     labelToUse = label ?? 'Chat';
+    ariaLabel = `Start Teams chat with ${name ?? email}`;
     iconToUse = icon ?? 'chat';
   } else if (isValidEmail && mode === 'teams-call') {
     href = `msteams://teams.microsoft.com/l/call/0/0?users=${email}`;
     labelToUse = label ?? 'Talk';
+    ariaLabel = `Start Teams call with ${name ?? email}`;
     iconToUse = icon ?? 'forum';
   } else if (isValidEmail && mode === 'email') {
     href = `mailto:${email}`;
@@ -62,11 +67,13 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
       href += `?subject=${encodeURIComponent(emailSubject)}`;
     }
     labelToUse = label ?? email!;
+    ariaLabel = `Email: ${email}`;
     iconToUse = icon ?? 'mail';
   } else if (mode === 'website' && website) {
     target = '_blank';
     href = formatWebsiteUrl(website);
     labelToUse = label ?? website;
+    ariaLabel = label ? `${label} (opens in new tab)` : `Website: ${website} (opens in new tab)`;
     iconToUse = icon ?? 'launch';
   } else if (mode === 'phone-dialer' && number) {
     // Always display the phone number, even if it doesn't match our expected format
@@ -75,20 +82,33 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
       href = toTelephoneUri(number, extension);
     }
     labelToUse = label ?? (extension ? `${number} ext. ${extension}` : number);
+    ariaLabel = `Phone: ${labelToUse}`;
     iconToUse = icon ?? 'phone';
   }
 
+  const linkContent = hideIcon ? (
+    labelToUse
+  ) : (
+    <IconLabel label={labelToUse} icon={iconToUse} location="left" />
+  );
+
   if (href) {
     return (
-      <a href={href} className="usa-link comms-link" target={target} rel="noopener noreferrer">
-        <IconLabel label={labelToUse} icon={iconToUse} location="left" />
+      <a
+        href={href}
+        className="usa-link comms-link"
+        target={target}
+        rel="noopener noreferrer"
+        aria-label={ariaLabel}
+      >
+        {linkContent}
       </a>
     );
   } else if (labelToUse && iconToUse !== 'error') {
     // Display non-link content if we have a label and it's not an error state
-    return <IconLabel label={labelToUse} icon={iconToUse} location="left" />;
+    return <>{linkContent}</>;
   } else {
-    return <IconLabel label={labelToUse} icon={iconToUse} location="left" />;
+    return <>{linkContent}</>;
   }
 }
 

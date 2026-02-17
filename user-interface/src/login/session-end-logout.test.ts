@@ -10,38 +10,33 @@ const { nowInSeconds } = DateHelper;
 describe('Session End Logout tests', () => {
   const host = 'camshost';
   const protocol = 'http:';
-  const assign = vi.fn();
-
-  const mockLocation: Location = {
-    assign,
-    host,
-    protocol,
-    hash: '',
-    hostname: '',
-    href: '',
-    origin: '',
-    pathname: '',
-    port: '',
-    search: '',
-    reload: vi.fn(),
-    replace: vi.fn(),
-    ancestorOrigins: {
-      length: 0,
-      item: vi.fn(),
-      contains: vi.fn(),
-      [Symbol.iterator]: vi.fn(),
-    },
-  } as const;
-
+  let assign: (url: string | URL) => void;
   const logoutUri = protocol + '//' + host + LOGOUT_PATH;
 
   beforeEach(() => {
+    assign = vi.fn();
+    const mockLocation: Location = {
+      assign,
+      host,
+      protocol,
+      hash: '',
+      hostname: '',
+      href: '',
+      origin: '',
+      pathname: '',
+      port: '',
+      search: '',
+      reload: vi.fn(),
+      replace: vi.fn(),
+      ancestorOrigins: {
+        length: 0,
+        item: vi.fn(),
+        contains: vi.fn(),
+        [Symbol.iterator]: vi.fn(),
+      },
+    } as const;
     // @ts-expect-error `location` is a readonly property. As this is just a test, we do not care.
     window.location = { ...mockLocation };
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   test('should redirect if session doesnt exist', () => {
