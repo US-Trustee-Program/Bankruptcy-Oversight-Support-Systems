@@ -137,7 +137,7 @@ describe('AttorneyAssignmentSection', () => {
       onAssignmentChange,
     });
 
-    const editButton = screen.getByTestId('button-test');
+    const editButton = screen.getByTestId('button-edit-attorney-assignment');
     expect(editButton).toBeInTheDocument();
   });
 

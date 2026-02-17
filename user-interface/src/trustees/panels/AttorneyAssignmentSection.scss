@@ -1,45 +1,18 @@
-.attorney-assignment-section {
-  .section-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 1rem;
+@import './shared-card-styles.scss';
 
-    h3 {
-      margin: 0;
-      margin-right: 0.75rem;
-    }
-  }
+.attorney-assignment-card-container {
+  .attorney-assignment-card {
+    @include trustee-card-styles;
 
-  .no-assignment-state {
-    .usa-alert {
-      margin-bottom: 1rem;
-    }
-  }
-
-  .assignment-display {
-    .assignment-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-
-      .attorney-info {
-        display: flex;
-        flex-direction: column;
-
-        .assignment-role {
-          color: #666;
-        }
+    .usa-card__body {
+      .attorney-assignment-card-header {
+        @include trustee-card-header;
       }
-    }
 
-    .assignment-audit-link {
-      margin-top: 1rem;
-      display: flex;
-      justify-content: flex-end;
+      .attorney-name {
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
+      }
     }
   }
 }
