@@ -28,7 +28,7 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import { ResponseBody } from '@common/api/response';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
-import { courtSorter } from './dataVerificationHelper';
+import { sortByCourtLocation } from '@/lib/utils/court-utils';
 import { Stop } from '@/lib/components/Stop';
 
 export default function DataVerificationScreen() {
@@ -73,7 +73,7 @@ export default function DataVerificationScreen() {
     Api2.getCourts()
       .then((response) => {
         const courts = (response as ResponseBody<CourtDivisionDetails[]>).data;
-        setCourts(courts.sort(courtSorter));
+        setCourts(sortByCourtLocation(courts));
         setRegionsMap(
           courts.reduce((regionsMap, court) => {
             if (!regionsMap.has(court.regionId)) {
