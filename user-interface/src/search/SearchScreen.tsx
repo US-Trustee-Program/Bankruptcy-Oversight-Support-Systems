@@ -9,7 +9,8 @@ import CaseNumberInput from '@/lib/components/CaseNumberInput';
 import Input from '@/lib/components/uswds/Input';
 import Api2 from '@/lib/models/api2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
-import { courtSorter, getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
+import { getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
+import { sortByCourtLocation } from '@/lib/utils/court-utils';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
@@ -143,7 +144,7 @@ export default function SearchScreen() {
   const getCourts = useCallback(() => {
     Api2.getCourts()
       .then((response) => {
-        const newOfficesList = response.data.sort(courtSorter);
+        const newOfficesList = sortByCourtLocation(response.data);
         const officeComboOptions = getDivisionComboOptions(newOfficesList);
         const filteredDivisionCodes = getDivisionComboOptions(
           newOfficesList.filter((office) =>
