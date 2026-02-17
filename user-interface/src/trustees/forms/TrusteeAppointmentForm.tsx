@@ -7,6 +7,7 @@ import useFeatureFlags, { TRUSTEE_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags
 import Api2 from '@/lib/models/api2';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import LocalStorage from '@/lib/utils/local-storage';
+import { sortByCourtLocation } from '@/lib/utils/court-utils';
 import { CamsRole } from '@common/cams/roles';
 import useCamsNavigator from '@/lib/hooks/UseCamsNavigator';
 import { Stop } from '@/lib/components/Stop';
@@ -146,10 +147,12 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     const loadDistricts = async () => {
       try {
         const response = await Api2.getCourts();
-        const options = response.data.map((district) => ({
+        const sortedCourts = sortByCourtLocation(response.data);
+        const options = sortedCourts.map((district) => ({
           value: `${district.courtId}|${district.courtDivisionCode}`,
-          label: `${district.courtName} - ${district.courtDivisionName}`,
+          label: `${district.courtName} (${district.courtDivisionName})`,
         }));
+
         setDistrictOptions(options);
       } catch (err) {
         globalAlert?.error('Failed to load districts');
