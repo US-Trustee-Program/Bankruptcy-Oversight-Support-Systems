@@ -8,6 +8,8 @@ import { azureToCamsHttpRequest } from './functions';
 import { UnauthorizedError } from '../../lib/common-errors/unauthorized-error';
 import factory from '../../lib/factory';
 import { sanitizeDeep } from '../../lib/use-cases/validations';
+import { ObservabilityGateway } from '../../lib/use-cases/gateways.types';
+import { AppInsightsObservability } from '../../lib/adapters/services/observability';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
@@ -22,6 +24,7 @@ function getLogger(invocationContext: InvocationContext) {
 type ContextCreatorArgs = {
   invocationContext: InvocationContext;
   logger?: LoggerImpl;
+  observability?: ObservabilityGateway;
   request?: HttpRequest;
 };
 
@@ -45,7 +48,7 @@ async function applicationContextCreator<B = unknown>(
 async function getApplicationContext<B = unknown>(
   args: ContextCreatorArgs,
 ): Promise<ApplicationContext<B>> {
-  const { invocationContext, logger, request } = args;
+  const { invocationContext, logger, observability, request } = args;
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
 
@@ -53,6 +56,7 @@ async function getApplicationContext<B = unknown>(
     config,
     featureFlags,
     logger: logger ?? ContextCreator.getLogger(invocationContext),
+    observability: observability ?? new AppInsightsObservability(),
     invocationId: invocationContext.invocationId,
     request: request ? await azureToCamsHttpRequest<B>(request) : undefined,
     session: undefined,

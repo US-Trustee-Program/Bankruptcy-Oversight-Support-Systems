@@ -9,7 +9,8 @@ import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
-import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
+import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
+import { completeDataflowTrace } from '../dataflow-telemetry.types';
 
 const MODULE_NAME = 'RESYNC-REMAINING-CASES';
 const PAGE_SIZE = 100;
@@ -60,12 +61,12 @@ async function handleStart(
 ) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
-  const trace = startTrace(MODULE_NAME, 'handleStart', invocationContext.invocationId, logger);
+  const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const cutoffDate = message.cutoffDate;
   if (!cutoffDate) {
     logger.error(MODULE_NAME, 'cutoffDate is required in the start message.');
-    completeTrace(trace, {
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,
@@ -82,7 +83,7 @@ async function handleStart(
     remainingCount: 0,
   };
   invocationContext.extraOutputs.set(PAGE, cursorMessage);
-  completeTrace(trace, {
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleStart', logger, {
     documentsWritten: 0,
     documentsFailed: 0,
     success: true,
@@ -96,7 +97,7 @@ async function handlePage(
 ) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
-  const trace = startTrace(MODULE_NAME, 'handlePage', invocationContext.invocationId, logger);
+  const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const result = await ResyncRemainingCasesUseCase.getPageOfRemainingCasesByCursor(
     context,
@@ -107,7 +108,7 @@ async function handlePage(
 
   if (result.error || !result.data) {
     logger.error(MODULE_NAME, `Failed to get page of remaining cases: ${result.error?.message}`);
-    completeTrace(trace, {
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,
@@ -123,7 +124,7 @@ async function handlePage(
       MODULE_NAME,
       `REMAINING_CASES_TOTAL=${cursor.remainingCount} — No more remaining cases to resync. Migration complete.`,
     );
-    completeTrace(trace, {
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: true,
@@ -168,7 +169,7 @@ async function handlePage(
   }
 
   const successCount = processedEvents.length - failedEvents.length;
-  completeTrace(trace, {
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
     documentsWritten: successCount,
     documentsFailed: failedEvents.length,
     success: true,
@@ -196,10 +197,11 @@ function routeErrorForInitialAttempt(
 
 async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const trace = startTrace(MODULE_NAME, 'handleError', invocationContext.invocationId, logger);
+  const observability = new AppInsightsObservability();
+  const trace = observability.startTrace(invocationContext.invocationId);
   const abandoned = isNotFoundError(event.error);
   routeErrorForInitialAttempt(event, invocationContext, logger);
-  completeTrace(trace, {
+  completeDataflowTrace(observability, trace, MODULE_NAME, 'handleError', logger, {
     documentsWritten: 0,
     documentsFailed: 1,
     success: true,
@@ -226,12 +228,12 @@ function incrementRetryCount(
 async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
-  const trace = startTrace(MODULE_NAME, 'handleRetry', invocationContext.invocationId, logger);
+  const trace = context.observability.startTrace(invocationContext.invocationId);
 
   const RETRY_LIMIT = 3;
   const shouldStop = incrementRetryCount(event, RETRY_LIMIT, invocationContext, logger);
   if (shouldStop) {
-    completeTrace(trace, {
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
       documentsWritten: 0,
       documentsFailed: 1,
       success: true,
@@ -249,7 +251,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
 
   if (processed.error) {
     invocationContext.extraOutputs.set(DLQ, [processed]);
-    completeTrace(trace, {
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
       documentsWritten: 0,
       documentsFailed: 1,
       success: true,
@@ -259,7 +261,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
   }
 
   logger.info(MODULE_NAME, `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}`);
-  completeTrace(trace, {
+  completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
     documentsWritten: 1,
     documentsFailed: 0,
     success: true,

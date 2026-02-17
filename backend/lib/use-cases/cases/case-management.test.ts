@@ -19,6 +19,7 @@ import { TransferOrder } from '@common/cams/orders';
 import { ConsolidationTo } from '@common/cams/events';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CaseAssignmentUseCase } from '../case-assignment/case-assignment';
+import { ObservabilityGateway } from '../gateways.types';
 
 async function createCaseManagementTestContext(options: {
   user: CamsUser;
@@ -499,6 +500,193 @@ describe('Case management tests', () => {
       await expect(useCase.searchCases(applicationContext, { caseNumber }, false)).rejects.toThrow(
         error,
       );
+    });
+
+    describe('search observability', () => {
+      const mockTrace = {
+        invocationId: 'mock-invocation',
+        instanceId: 'local',
+        startTime: Date.now(),
+      };
+
+      function getMockObservabilityGateway(): ObservabilityGateway {
+        return {
+          startTrace: vi.fn().mockReturnValue(mockTrace),
+          completeTrace: vi.fn(),
+        };
+      }
+
+      test('should call startTrace at entry', async () => {
+        const mockGateway = getMockObservabilityGateway();
+        applicationContext.observability = mockGateway;
+        vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
+          metadata: { total: 0 },
+          data: [],
+        });
+
+        await useCase.searchCases(applicationContext, { caseNumber: '00-00000' }, false);
+
+        expect(mockGateway.startTrace).toHaveBeenCalledWith(applicationContext.invocationId);
+      });
+
+      test('should call completeTrace with correct result on standard search success', async () => {
+        const mockGateway = getMockObservabilityGateway();
+        applicationContext.observability = mockGateway;
+        const mockCases = [MockData.getSyncedCase({ override: { caseId: '001' } })];
+        vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
+          metadata: { total: 1 },
+          data: mockCases,
+        });
+
+        await useCase.searchCases(
+          applicationContext,
+          { caseNumber: '00-00000', chapters: ['7'], excludeClosedCases: true },
+          false,
+        );
+
+        expect(mockGateway.completeTrace).toHaveBeenCalledWith(
+          mockTrace,
+          'SearchComplete',
+          expect.objectContaining({
+            success: true,
+            properties: expect.objectContaining({
+              searchType: 'standard',
+              caseNumberUsed: 'true',
+              debtorNameUsed: 'false',
+              chaptersUsed: 'true',
+              divisionCodesUsed: 'false',
+              excludeClosedCases: 'true',
+            }),
+            measurements: expect.objectContaining({
+              resultCount: 1,
+              totalCount: 1,
+            }),
+          }),
+          expect.arrayContaining([
+            expect.objectContaining({ name: 'SearchDuration' }),
+            expect.objectContaining({ name: 'SearchResultCount', value: 1 }),
+            expect.objectContaining({ name: 'SearchTotalCount', value: 1 }),
+          ]),
+        );
+      });
+
+      test('should call completeTrace with phonetic search type when phonetic is used', async () => {
+        const mockCases = [MockData.getSyncedCase({ override: { caseId: '001' } })];
+        const { useCase: uc } = await createCaseManagementTestContext({
+          user,
+          phoneticSearchEnabled: true,
+        });
+        const mockGateway = getMockObservabilityGateway();
+
+        vi.spyOn(uc.casesRepository, 'searchCasesWithPhoneticTokens').mockResolvedValue({
+          metadata: { total: 1 },
+          data: mockCases,
+        });
+
+        const ctx = await createMockApplicationContext({ env: { STARTING_MONTH: '-6' } });
+        ctx.featureFlags['phonetic-search-enabled'] = true;
+        ctx.session = await createMockApplicationContextSession({ user });
+        ctx.observability = mockGateway;
+
+        await uc.searchCases(ctx, { debtorName: 'John Smith', chapters: ['15'] }, false);
+
+        expect(mockGateway.completeTrace).toHaveBeenCalledWith(
+          mockTrace,
+          'SearchComplete',
+          expect.objectContaining({
+            success: true,
+            properties: expect.objectContaining({
+              searchType: 'phonetic',
+              debtorNameUsed: 'true',
+            }),
+          }),
+          expect.anything(),
+        );
+      });
+
+      test('should call completeTrace with success false on error', async () => {
+        const mockGateway = getMockObservabilityGateway();
+        applicationContext.observability = mockGateway;
+        const error = new Error('test error');
+        vi.spyOn(useCase.casesRepository, 'searchCases').mockRejectedValue(error);
+
+        await expect(
+          useCase.searchCases(applicationContext, { caseNumber: '00-00000' }, false),
+        ).rejects.toThrow();
+
+        expect(mockGateway.completeTrace).toHaveBeenCalledWith(
+          mockTrace,
+          'SearchComplete',
+          expect.objectContaining({
+            success: false,
+            error: expect.stringContaining('test error'),
+          }),
+          expect.anything(),
+        );
+      });
+
+      test('should call completeTrace on early return when no assignment caseIds found', async () => {
+        const mockGateway = getMockObservabilityGateway();
+        applicationContext.observability = mockGateway;
+        const assignmentUser = MockData.getCamsUser({
+          offices: [REGION_02_GROUP_NY, REGION_02_GROUP_BU],
+        });
+        vi.spyOn(useCase.assignmentRepository, 'findAssignmentsByAssignee').mockResolvedValue([]);
+
+        await useCase.searchCases(applicationContext, { assignments: [assignmentUser] }, false);
+
+        expect(mockGateway.completeTrace).toHaveBeenCalledWith(
+          mockTrace,
+          'SearchComplete',
+          expect.objectContaining({
+            success: true,
+            measurements: expect.objectContaining({
+              resultCount: 0,
+              totalCount: 0,
+            }),
+          }),
+          expect.anything(),
+        );
+      });
+
+      test('should derive boolean flags correctly from predicate', async () => {
+        const { useCase: uc } = await createCaseManagementTestContext({ user });
+        const mockGateway = getMockObservabilityGateway();
+
+        vi.spyOn(uc.casesRepository, 'searchCases').mockResolvedValue({
+          metadata: { total: 0 },
+          data: [],
+        });
+
+        const ctx = await createMockApplicationContext({ env: { STARTING_MONTH: '-6' } });
+        ctx.session = await createMockApplicationContextSession({ user });
+        ctx.observability = mockGateway;
+
+        await uc.searchCases(
+          ctx,
+          {
+            debtorName: 'Smith',
+            chapters: ['7', '13'],
+            excludeClosedCases: true,
+          },
+          false,
+        );
+
+        expect(mockGateway.completeTrace).toHaveBeenCalledWith(
+          mockTrace,
+          'SearchComplete',
+          expect.objectContaining({
+            properties: expect.objectContaining({
+              debtorNameUsed: 'true',
+              caseNumberUsed: 'false',
+              divisionCodesUsed: 'false',
+              chaptersUsed: 'true',
+              excludeClosedCases: 'true',
+            }),
+          }),
+          expect.anything(),
+        );
+      });
     });
 
     describe('phonetic filtering', () => {

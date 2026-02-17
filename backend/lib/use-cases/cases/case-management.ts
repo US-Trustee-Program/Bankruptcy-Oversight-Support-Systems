@@ -10,6 +10,7 @@ import {
   CamsPaginationResponse,
   CaseAssignmentRepository,
   CasesRepository,
+  ObservabilityTrace,
 } from '../gateways.types';
 import { buildOfficeCode } from '../offices/offices';
 import { getCamsError } from '../../common-errors/error-utilities';
@@ -78,11 +79,70 @@ export default class CaseManagement {
     return true;
   }
 
+  private buildSearchProperties(
+    predicate: CasesSearchPredicate,
+    searchType: string,
+  ): Record<string, string> {
+    return {
+      searchType,
+      debtorNameUsed: String(!!predicate.debtorName?.trim()),
+      caseNumberUsed: String(!!predicate.caseNumber?.trim()),
+      divisionCodesUsed: String((predicate.divisionCodes?.length ?? 0) > 0),
+      chaptersUsed: String((predicate.chapters?.length ?? 0) > 0),
+      excludeClosedCases: String(predicate.excludeClosedCases === true),
+    };
+  }
+
+  private buildSearchMeasurements(
+    predicate: CasesSearchPredicate,
+    resultCount: number,
+    totalCount: number,
+  ): Record<string, number> {
+    return {
+      resultCount,
+      totalCount,
+      pageOffset: predicate.offset ?? 0,
+      pageLimit: predicate.limit ?? 25,
+    };
+  }
+
+  private completeSearchTrace(
+    context: ApplicationContext,
+    trace: ObservabilityTrace,
+    predicate: CasesSearchPredicate,
+    searchType: string,
+    resultCount: number,
+    totalCount: number,
+    success: boolean,
+    error?: string,
+  ): void {
+    const measurements = this.buildSearchMeasurements(predicate, resultCount, totalCount);
+    const properties = this.buildSearchProperties(predicate, searchType);
+
+    context.observability.completeTrace(
+      trace,
+      'SearchComplete',
+      {
+        success,
+        properties,
+        measurements,
+        error,
+      },
+      [
+        { name: 'SearchDuration', value: Date.now() - trace.startTime },
+        { name: 'SearchResultCount', value: resultCount },
+        { name: 'SearchTotalCount', value: totalCount },
+      ],
+    );
+  }
+
   public async searchCases(
     context: ApplicationContext,
     predicate: CasesSearchPredicate,
     includeAssignments: boolean,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>> {
+    const trace = context.observability.startTrace(context.invocationId);
+
     try {
       // RULE 3: Backend validation (security boundary)
       this.checkValidation(validateObject(casesSearchPredicateSpec, predicate));
@@ -100,6 +160,7 @@ export default class CaseManagement {
         // if we're requesting cases with specific assignments, and none are found, return [] early
 
         if (predicate.caseIds.length === 0) {
+          this.completeSearchTrace(context, trace, predicate, 'standard', 0, 0, true);
           return { metadata: { total: 0 }, data: [] };
         }
       }
@@ -144,8 +205,30 @@ export default class CaseManagement {
         }
       }
 
+      const searchType = usePhoneticSearch ? 'phonetic' : 'standard';
+      this.completeSearchTrace(
+        context,
+        trace,
+        predicate,
+        searchType,
+        searchResult.data.length,
+        searchResult.metadata.total,
+        true,
+      );
+
       return { metadata: searchResult.metadata, data: Array.from(casesMap.values()) };
     } catch (originalError) {
+      this.completeSearchTrace(
+        context,
+        trace,
+        predicate,
+        'standard',
+        0,
+        0,
+        false,
+        String(originalError),
+      );
+
       if (isCamsError(originalError)) {
         throw originalError;
       } else {

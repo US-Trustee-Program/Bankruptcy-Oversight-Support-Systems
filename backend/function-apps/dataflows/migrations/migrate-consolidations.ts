@@ -10,7 +10,8 @@ import {
 import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orders.controller';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
-import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
+import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
+import { completeDataflowTrace } from '../dataflow-telemetry.types';
 
 const MODULE_NAME = 'MIGRATE-CONSOLIDATIONS';
 const PAGE_SIZE = 10;
@@ -43,7 +44,8 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
  */
 async function handleStart(bounds: AcmsBounds, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const trace = startTrace(MODULE_NAME, 'handleStart', invocationContext.invocationId, logger);
+  const observability = new AppInsightsObservability();
+  const trace = observability.startTrace(invocationContext.invocationId);
   let totalQueued = 0;
   for (const chapter of bounds.chapters) {
     for (const divisionCode of bounds.divisionCodes) {
@@ -58,7 +60,7 @@ async function handleStart(bounds: AcmsBounds, invocationContext: InvocationCont
       totalQueued++;
     }
   }
-  completeTrace(trace, {
+  completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
     documentsWritten: 0,
     documentsFailed: 0,
     success: true,
@@ -78,12 +80,17 @@ async function handleStart(bounds: AcmsBounds, invocationContext: InvocationCont
  */
 async function handlePage(page: AcmsEtlQueueItem[], invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const trace = startTrace(MODULE_NAME, 'handlePage', invocationContext.invocationId, logger);
+  const observability = new AppInsightsObservability();
+  const trace = observability.startTrace(invocationContext.invocationId);
   logger.debug(MODULE_NAME, `Processing page of ${page.length} migrations.`);
   for (const event of page) {
     await migrateConsolidation(event, invocationContext);
   }
-  completeTrace(trace, { documentsWritten: page.length, documentsFailed: 0, success: true });
+  completeDataflowTrace(observability, trace, MODULE_NAME, 'handlePage', logger, {
+    documentsWritten: page.length,
+    documentsFailed: 0,
+    success: true,
+  });
 }
 
 /**
