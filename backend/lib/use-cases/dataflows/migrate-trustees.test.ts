@@ -358,6 +358,8 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
+      mockAppointments[0].DATE_APPOINTED = new Date('2023-01-15');
+
       mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
