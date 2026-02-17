@@ -147,7 +147,7 @@ describe('SearchResults component tests', () => {
       searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).toBeInTheDocument();
       expect(searchErrorAlert).toBeVisible();
-      expect(searchErrorAlert).toHaveTextContent('Search Results Not Available');
+      expect(searchErrorAlert).toHaveTextContent('Search results not available');
     });
   });
 
@@ -164,7 +164,7 @@ describe('SearchResults component tests', () => {
       searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).toBeInTheDocument();
       expect(searchErrorAlert).toBeVisible();
-      expect(searchErrorAlert).toHaveTextContent('Unable To Display Search Results');
+      expect(searchErrorAlert).toHaveTextContent('Unable to display search results');
       expect(searchErrorAlert).toHaveTextContent('Try narrowing your search filters');
     });
   });
