@@ -1,7 +1,6 @@
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-
-type PollStatus = 'idle' | 'polling' | 'success' | 'timeout';
+import { PollStatus } from './case-reload-types';
 
 interface PollingStatusDisplayProps {
   pollStatus: PollStatus;

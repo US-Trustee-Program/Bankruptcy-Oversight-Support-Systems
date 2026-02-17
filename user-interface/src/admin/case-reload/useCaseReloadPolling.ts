@@ -1,8 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import Api2 from '@/lib/models/api2';
 import { SyncedCase } from '@common/cams/cases';
-
-type PollStatus = 'idle' | 'polling' | 'success' | 'timeout';
+import { PollStatus } from './case-reload-types';
 
 export function useCaseReloadPolling(initialCase: SyncedCase | null) {
   const [pollStatus, setPollStatus] = useState<PollStatus>('idle');

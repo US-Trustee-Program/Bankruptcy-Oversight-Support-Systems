@@ -1,6 +1,5 @@
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-
-type PollStatus = 'idle' | 'polling' | 'success' | 'timeout';
+import { PollStatus } from './case-reload-types';
 
 interface CaseReloadActionsProps {
   pollStatus: PollStatus;
