@@ -576,3 +576,14 @@ resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
   name: sqlIdentityName
   scope: resourceGroup(sqlIdentityRG)
 }
+
+//Deploy Dataflow Workbooks
+
+module dataflowWorkbooks 'lib/workbooks/dataflow-workbooks.bicep' = if (createApplicationInsights) {
+  name: '${dataflowsFunctionName}-workbooks-module'
+  scope: resourceGroup()
+  params: {
+    location: location
+    appInsightsResourceId: dataflowsFunctionAppInsights.outputs.id
+  }
+}
