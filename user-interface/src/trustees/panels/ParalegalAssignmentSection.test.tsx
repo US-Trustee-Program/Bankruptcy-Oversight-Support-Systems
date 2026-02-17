@@ -108,7 +108,7 @@ describe('ParalegalAssignmentSection', () => {
       onAssignmentChange,
     });
 
-    const editButton = screen.getByTestId('button-test');
+    const editButton = screen.getByTestId('button-edit-paralegal-assignment');
     expect(editButton).toBeInTheDocument();
   });
 

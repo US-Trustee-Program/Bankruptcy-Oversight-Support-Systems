@@ -41,49 +41,43 @@ export default function AuditorAssignmentSection(props: Readonly<AuditorAssignme
   }
 
   return (
-    <div
-      className="auditor-assignment-section record-detail-card-list"
-      data-testid="auditor-assignment-section"
-    >
-      {auditorAssignment ? (
-        <div className="record-detail-card">
-          <div className="title-bar">
-            <h3>
-              Auditor
+    <div className="auditor-assignment-card-container" data-testid="auditor-assignment-section">
+      <div className="auditor-assignment-card usa-card">
+        <div className="usa-card__container">
+          <div className="usa-card__body">
+            <div className="auditor-assignment-card-header">
+              <h4>Auditor</h4>
               <Button
+                id={auditorAssignment ? 'edit-auditor-assignment' : 'add-auditor-assignment'}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit trustee's assigned auditor"
-                title="Edit trustee's assigned auditor"
+                aria-label={
+                  auditorAssignment
+                    ? "Edit trustee's assigned auditor"
+                    : 'Add assigned auditor to trustee'
+                }
+                title={
+                  auditorAssignment
+                    ? "Edit trustee's assigned auditor"
+                    : 'Add assigned auditor to trustee'
+                }
                 onClick={openAssignmentModal}
               >
-                <IconLabel icon="edit" label="Edit" />
+                <IconLabel
+                  icon={auditorAssignment ? 'edit' : 'add_circle'}
+                  label={auditorAssignment ? 'Edit' : 'Add'}
+                />
               </Button>
-            </h3>
-          </div>
-          <div className="assignment-display" data-testid="auditor-assignments-display">
-            <div className="trustee-auditor-name">{auditorAssignment.user.name}</div>
+            </div>
+            {auditorAssignment ? (
+              <div data-testid="auditor-assignments-display">
+                <div className="auditor-name">{auditorAssignment.user.name}</div>
+              </div>
+            ) : (
+              <div data-testid="no-auditor-assigned">No auditor assigned</div>
+            )}
           </div>
         </div>
-      ) : (
-        <div className="record-detail-card">
-          <div className="title-bar">
-            <h3>
-              Auditor
-              <Button
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Add assigned auditor to trustee"
-                title="Add assigned auditor to trustee"
-                onClick={openAssignmentModal}
-              >
-                <IconLabel icon="add_circle" label="Add" />
-              </Button>
-            </h3>
-          </div>
-          <div className="no-assignment-state" data-testid="no-auditor-assigned">
-            No auditor assigned
-          </div>
-        </div>
-      )}
+      </div>
 
       <TrusteeOversightAssignmentModal
         ref={modalRef}

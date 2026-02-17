@@ -1,17 +1,17 @@
-.paralegal-assignment-section {
-  .assignment-display {
-    .assignment-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 1rem;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      margin-bottom: 1rem;
+@import './shared-card-styles.scss';
 
-      .paralegal-info {
-        display: flex;
-        flex-direction: column;
+.paralegal-assignment-card-container {
+  .paralegal-assignment-card {
+    @include trustee-card-styles;
+
+    .usa-card__body {
+      .paralegal-assignment-card-header {
+        @include trustee-card-header;
+      }
+
+      .paralegal-name {
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
       }
     }
   }

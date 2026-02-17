@@ -46,49 +46,43 @@ export default function ParalegalAssignmentSection(
   }
 
   return (
-    <div
-      className="paralegal-assignment-section record-detail-card-list"
-      data-testid="paralegal-assignment-section"
-    >
-      {paralegalAssignment ? (
-        <div className="record-detail-card">
-          <div className="title-bar">
-            <h3>
-              Paralegal
+    <div className="paralegal-assignment-card-container" data-testid="paralegal-assignment-section">
+      <div className="paralegal-assignment-card usa-card">
+        <div className="usa-card__container">
+          <div className="usa-card__body">
+            <div className="paralegal-assignment-card-header">
+              <h4>Paralegal</h4>
               <Button
+                id={paralegalAssignment ? 'edit-paralegal-assignment' : 'add-paralegal-assignment'}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit trustee's assigned paralegal"
-                title="Edit trustee's assigned paralegal"
+                aria-label={
+                  paralegalAssignment
+                    ? "Edit trustee's assigned paralegal"
+                    : 'Add assigned paralegal to trustee'
+                }
+                title={
+                  paralegalAssignment
+                    ? "Edit trustee's assigned paralegal"
+                    : 'Add assigned paralegal to trustee'
+                }
                 onClick={openAssignmentModal}
               >
-                <IconLabel icon="edit" label="Edit" />
+                <IconLabel
+                  icon={paralegalAssignment ? 'edit' : 'add_circle'}
+                  label={paralegalAssignment ? 'Edit' : 'Add'}
+                />
               </Button>
-            </h3>
-          </div>
-          <div className="assignment-display" data-testid="paralegal-assignments-display">
-            <div className="trustee-paralegal-name">{paralegalAssignment.user.name}</div>
+            </div>
+            {paralegalAssignment ? (
+              <div data-testid="paralegal-assignments-display">
+                <div className="paralegal-name">{paralegalAssignment.user.name}</div>
+              </div>
+            ) : (
+              <div data-testid="no-paralegal-assigned">No paralegal assigned</div>
+            )}
           </div>
         </div>
-      ) : (
-        <div className="record-detail-card">
-          <div className="title-bar">
-            <h3>
-              Paralegal
-              <Button
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Add assigned paralegal to trustee"
-                title="Add assigned paralegal to trustee"
-                onClick={openAssignmentModal}
-              >
-                <IconLabel icon="add_circle" label="Add" />
-              </Button>
-            </h3>
-          </div>
-          <div className="no-assignment-state" data-testid="no-paralegal-assigned">
-            No paralegal assigned
-          </div>
-        </div>
-      )}
+      </div>
 
       <TrusteeOversightAssignmentModal
         ref={modalRef}

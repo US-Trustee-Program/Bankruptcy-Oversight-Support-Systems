@@ -1,3 +1,4 @@
+import './TrusteeAssignedStaff.scss';
 import { useEffect, useState } from 'react';
 import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import Api2 from '@/lib/models/api2';
@@ -47,32 +48,33 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
 
   return (
     <div className="right-side-screen-content">
-      <div className="record-detail-container">
+      <div className="trustee-assigned-staff-container">
         {error && <Alert type={UswdsAlertStyle.Error}>{error}</Alert>}
         {attorneysError && <Alert type={UswdsAlertStyle.Error}>{attorneysError}</Alert>}
 
-        <AttorneyAssignmentSection
-          trusteeId={trusteeId}
-          assignments={assignments}
-          attorneys={attorneys}
-          onAssignmentChange={refreshAssignments}
-          isLoading={isLoading || attorneysLoading}
-        />
+        <div className="assigned-staff-cards">
+          <AttorneyAssignmentSection
+            trusteeId={trusteeId}
+            assignments={assignments}
+            attorneys={attorneys}
+            onAssignmentChange={refreshAssignments}
+            isLoading={isLoading || attorneysLoading}
+          />
 
-        <AuditorAssignmentSection
-          trusteeId={trusteeId}
-          assignments={assignments}
-          onAssignmentChange={refreshAssignments}
-          isLoading={isLoading}
-        />
-      </div>
-      <div className="record-detail-container">
-        <ParalegalAssignmentSection
-          trusteeId={trusteeId}
-          assignments={assignments}
-          onAssignmentChange={refreshAssignments}
-          isLoading={isLoading}
-        />
+          <AuditorAssignmentSection
+            trusteeId={trusteeId}
+            assignments={assignments}
+            onAssignmentChange={refreshAssignments}
+            isLoading={isLoading}
+          />
+
+          <ParalegalAssignmentSection
+            trusteeId={trusteeId}
+            assignments={assignments}
+            onAssignmentChange={refreshAssignments}
+            isLoading={isLoading}
+          />
+        </div>
       </div>
     </div>
   );

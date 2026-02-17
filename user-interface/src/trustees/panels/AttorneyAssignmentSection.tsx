@@ -43,49 +43,43 @@ export default function AttorneyAssignmentSection(props: Readonly<AttorneyAssign
   }
 
   return (
-    <div
-      className="attorney-assignment-section record-detail-card-list"
-      data-testid="attorney-assignment-section"
-    >
-      {attorneyAssignment ? (
-        <div className="record-detail-card">
-          <div className="title-bar">
-            <h3>
-              Attorney
+    <div className="attorney-assignment-card-container" data-testid="attorney-assignment-section">
+      <div className="attorney-assignment-card usa-card">
+        <div className="usa-card__container">
+          <div className="usa-card__body">
+            <div className="attorney-assignment-card-header">
+              <h4>Attorney</h4>
               <Button
+                id={attorneyAssignment ? 'edit-attorney-assignment' : 'add-attorney-assignment'}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit trustee's assigned attorney"
-                title="Edit trustee's assigned attorney"
+                aria-label={
+                  attorneyAssignment
+                    ? "Edit trustee's assigned attorney"
+                    : 'Add assigned attorney to trustee'
+                }
+                title={
+                  attorneyAssignment
+                    ? "Edit trustee's assigned attorney"
+                    : 'Add assigned attorney to trustee'
+                }
                 onClick={openAssignmentModal}
               >
-                <IconLabel icon="edit" label="Edit" />
+                <IconLabel
+                  icon={attorneyAssignment ? 'edit' : 'add_circle'}
+                  label={attorneyAssignment ? 'Edit' : 'Add'}
+                />
               </Button>
-            </h3>
-          </div>
-          <div className="assignment-display" data-testid="attorney-assignments-display">
-            <div className="trustee-attorney-name">{attorneyAssignment.user.name}</div>
+            </div>
+            {attorneyAssignment ? (
+              <div data-testid="attorney-assignments-display">
+                <div className="attorney-name">{attorneyAssignment.user.name}</div>
+              </div>
+            ) : (
+              <div data-testid="no-attorney-assigned">No attorney assigned</div>
+            )}
           </div>
         </div>
-      ) : (
-        <div className="record-detail-card">
-          <div className="title-bar">
-            <h3>
-              Attorney
-              <Button
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Add assigned attorney to trustee"
-                title="Add assigned attorney to trustee"
-                onClick={openAssignmentModal}
-              >
-                <IconLabel icon="add_circle" label="Add" />
-              </Button>
-            </h3>
-          </div>
-          <div className="no-assignment-state" data-testid="no-attorney-assigned">
-            No attorney assigned
-          </div>
-        </div>
-      )}
+      </div>
 
       <TrusteeAttorneyAssignmentModal
         ref={modalRef}
