@@ -22,8 +22,8 @@ const chapter = {
 };
 
 const courtDivisionName = {
-  alaskaJ: 'District of Alaska - Juneau',
-  alaskaN: 'District of Alaska - Nome',
+  alaskaJ: 'District of Alaska (Juneau)',
+  alaskaN: 'District of Alaska (Nome)',
 };
 
 const appointmentType = {
@@ -1340,6 +1340,53 @@ describe('TrusteeAppointmentForm Tests', () => {
       // Verify they are in alphabetical order
       const sortedTexts = [...optionTexts].sort((a, b) => a.localeCompare(b));
       expect(optionTexts).toEqual(sortedTexts);
+    });
+  });
+
+  describe('District Dropdown Sorting Tests', () => {
+    test('should display district options in correct format and sort order', async () => {
+      // Using default mock data which has Alaska (AK) and Washington (WA) courts
+      // This test verifies:
+      // 1. Options use parentheses format: "District (Division)"
+      // 2. Sorted by state name (Alaska before Washington)
+      // 3. Sorted by division name within same district
+      renderWithProps();
+
+      // Wait for form to render
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      // Open the district dropdown
+      await userEvent.click(document.querySelector('#district-expand')!);
+
+      // Wait for options to be visible
+      await waitFor(() => {
+        expect(screen.getByText(courtDivisionName.alaskaJ)).toBeVisible();
+      });
+
+      // Get all district options while dropdown is open
+      const optionItems = document.querySelectorAll('#district-item-list li[role="option"]');
+      const optionTexts = Array.from(optionItems).map((item) => item.textContent || '');
+
+      // 1. Verify all options use parentheses format, not dash format
+      expect(optionTexts.length).toBeGreaterThan(0);
+      optionTexts.forEach((text) => {
+        expect(text).toMatch(/\(.+\)$/); // Should end with (something)
+        expect(text).not.toMatch(/ - [^-]+$/); // Should NOT have " - something" at end
+      });
+
+      // 2. Verify Alaska appears before Washington (sorted by state name)
+      const alaskaIndex = optionTexts.findIndex((text) => text.includes('Alaska'));
+      const washingtonIndex = optionTexts.findIndex((text) => text.includes('Washington'));
+      expect(alaskaIndex).toBeGreaterThanOrEqual(0);
+      expect(washingtonIndex).toBeGreaterThanOrEqual(0);
+      expect(alaskaIndex).toBeLessThan(washingtonIndex);
+
+      // 3. Verify Alaska divisions are sorted alphabetically
+      const alaskaOptions = optionTexts.filter((text) => text.includes('Alaska'));
+      const sortedAlaskaOptions = [...alaskaOptions].sort((a, b) => a.localeCompare(b));
+      expect(alaskaOptions).toEqual(sortedAlaskaOptions);
     });
   });
 });

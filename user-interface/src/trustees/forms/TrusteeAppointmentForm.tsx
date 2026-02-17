@@ -144,12 +144,39 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
   useEffect(() => {
     const loadDistricts = async () => {
+      // Extract state name from court name patterns like:
+      // "Southern District of New York" -> "New York"
+      // "District of Columbia" -> "Columbia"
+      const getStateFromCourtName = (courtName: string): string => {
+        const match = courtName.match(/District of (.+)$/i);
+        return match ? match[1] : courtName;
+      };
+
       try {
         const response = await Api2.getCourts();
-        const options = response.data.map((district) => ({
-          value: `${district.courtId}|${district.courtDivisionCode}`,
-          label: `${district.courtName} - ${district.courtDivisionName}`,
-        }));
+        const options = response.data
+          .map((district) => ({
+            value: `${district.courtId}|${district.courtDivisionCode}`,
+            label: `${district.courtName} (${district.courtDivisionName})`,
+            _courtName: district.courtName,
+            _divisionName: district.courtDivisionName,
+          }))
+          .sort((a, b) => {
+            // Sort by state name (extracted from courtName)
+            const stateA = getStateFromCourtName(a._courtName);
+            const stateB = getStateFromCourtName(b._courtName);
+            const stateComparison = stateA.localeCompare(stateB);
+            if (stateComparison !== 0) return stateComparison;
+
+            // Then by court name within state
+            const courtComparison = a._courtName.localeCompare(b._courtName);
+            if (courtComparison !== 0) return courtComparison;
+
+            // Then by division name within court
+            return a._divisionName.localeCompare(b._divisionName);
+          })
+          .map(({ value, label }) => ({ value, label }));
+
         setDistrictOptions(options);
       } catch (err) {
         globalAlert?.error('Failed to load districts');
