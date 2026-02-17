@@ -8,6 +8,7 @@ import TrusteeOversightAssignmentModal, {
 } from '../modals/TrusteeOversightAssignmentModal';
 import './ParalegalAssignmentCard.scss';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import StaffContactLinks from './StaffContactLinks';
 
 interface ParalegalAssignmentCardProps {
   trusteeId: string;
@@ -74,6 +75,7 @@ export default function ParalegalAssignmentCard(props: Readonly<ParalegalAssignm
             {paralegalAssignment ? (
               <div data-testid="paralegal-assignments-display">
                 <div className="paralegal-name">{paralegalAssignment.user.name}</div>
+                <StaffContactLinks user={paralegalAssignment.user} />
               </div>
             ) : (
               <div data-testid="no-paralegal-assigned">No paralegal assigned</div>

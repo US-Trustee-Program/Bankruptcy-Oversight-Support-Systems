@@ -9,6 +9,7 @@ import TrusteeAttorneyAssignmentModal, {
 } from '../modals/TrusteeAttorneyAssignmentModal';
 import './AttorneyAssignmentCard.scss';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import StaffContactLinks from './StaffContactLinks';
 
 interface AttorneyAssignmentCardProps {
   trusteeId: string;
@@ -73,6 +74,7 @@ export default function AttorneyAssignmentCard(props: Readonly<AttorneyAssignmen
             {attorneyAssignment ? (
               <div data-testid="attorney-assignments-display">
                 <div className="attorney-name">{attorneyAssignment.user.name}</div>
+                <StaffContactLinks user={attorneyAssignment.user} />
               </div>
             ) : (
               <div data-testid="no-attorney-assigned">No attorney assigned</div>
