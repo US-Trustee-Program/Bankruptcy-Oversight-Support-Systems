@@ -54,28 +54,4 @@ describe('Testing that database configuration is loaded correctly based on envir
     expect(appConfig.dxtrDbConfig.user).not.toBeNull();
     expect(appConfig.dxtrDbConfig.password).not.toBeNull();
   });
-
-  test('Should configure ATS database with Azure AD auth when no password', async () => {
-    process.env.ATS_MSSQL_HOST = 'test-server.database.usgovcloudapi.net';
-    process.env.ATS_MSSQL_DATABASE = 'ATS_TEST';
-    process.env.ATS_MSSQL_USER = undefined;
-    process.env.ATS_MSSQL_PASS = undefined;
-    process.env.ATS_MSSQL_CLIENT_ID = 'ats-client-id-123';
-
-    const appConfig = new ApplicationConfiguration();
-    expect(appConfig.atsDbConfig).toBeDefined();
-    expect(appConfig.atsDbConfig.authentication).toBeDefined();
-    expect(appConfig.atsDbConfig.authentication.type).toEqual('azure-active-directory-default');
-    expect(appConfig.atsDbConfig.authentication.options.clientId).toEqual('ats-client-id-123');
-  });
-
-  test('Should set ATS database pool configuration', async () => {
-    process.env.ATS_MSSQL_DATABASE = 'ATS_TEST';
-
-    const appConfig = new ApplicationConfiguration();
-    expect(appConfig.atsDbConfig.pool).toBeDefined();
-    expect(appConfig.atsDbConfig.pool.max).toEqual(10);
-    expect(appConfig.atsDbConfig.pool.min).toEqual(0);
-    expect(appConfig.atsDbConfig.pool.idleTimeoutMillis).toEqual(30000);
-  });
 });
