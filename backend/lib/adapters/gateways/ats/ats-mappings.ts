@@ -379,9 +379,10 @@ export function transformAppointmentRecord(
   }
 
   // Format dates
-  const appointedDate = atsAppointment.DATE_APPOINTED
-    ? atsAppointment.DATE_APPOINTED.toISOString().split('T')[0]
-    : new Date().toISOString().split('T')[0];
+  if (!atsAppointment.DATE_APPOINTED) {
+    throw new Error('DATE_APPOINTED is required');
+  }
+  const appointedDate = atsAppointment.DATE_APPOINTED.toISOString().split('T')[0];
 
   const effectiveDate = atsAppointment.EFFECTIVE_DATE
     ? atsAppointment.EFFECTIVE_DATE.toISOString().split('T')[0]
