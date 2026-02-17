@@ -4,9 +4,8 @@ import { transformTrusteeRecord } from '../../adapters/gateways/ats/ats-mappings
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
-import { CamsUserReference } from '@common/cams/users';
 import { Trustee } from '@common/cams/trustees';
-import { processSingleAppointment } from './appointments-sync.helpers';
+import { processSingleAppointment, SYSTEM_USER } from './appointments-sync.helpers';
 
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
@@ -31,14 +30,6 @@ type TrusteePageResult = {
 };
 
 type TrusteePageMaybeResult = MaybeData<TrusteePageResult>;
-
-/**
- * System user reference for audit trail
- */
-const SYSTEM_USER: CamsUserReference = {
-  id: 'SYSTEM',
-  name: 'ATS Migration',
-};
 
 /**
  * Get a page of trustees from ATS using cursor-based pagination.

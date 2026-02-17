@@ -15,7 +15,7 @@ const MODULE_NAME = 'APPOINTMENTS-SYNC-HELPERS';
 /**
  * System user reference for audit trail
  */
-const SYSTEM_USER: CamsUserReference = {
+export const SYSTEM_USER: CamsUserReference = {
   id: 'SYSTEM',
   name: 'ATS Migration',
 };

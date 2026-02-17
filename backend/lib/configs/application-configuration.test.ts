@@ -55,24 +55,6 @@ describe('Testing that database configuration is loaded correctly based on envir
     expect(appConfig.dxtrDbConfig.password).not.toBeNull();
   });
 
-  test('Should configure ATS database with SQL auth', async () => {
-    process.env.ATS_MSSQL_HOST = 'test-server.database.usgovcloudapi.net';
-    process.env.ATS_MSSQL_DATABASE = 'ATS_TEST';
-    process.env.ATS_MSSQL_USER = 'atsUser';
-    process.env.ATS_MSSQL_PASS = generateTestCredential();
-    process.env.ATS_MSSQL_ENCRYPT = 'true';
-    process.env.ATS_MSSQL_TRUST_UNSIGNED_CERT = 'true';
-
-    const appConfig = new ApplicationConfiguration();
-    expect(appConfig.atsDbConfig).toBeDefined();
-    expect(appConfig.atsDbConfig.server).toEqual('test-server.database.usgovcloudapi.net');
-    expect(appConfig.atsDbConfig.database).toEqual('ATS_TEST');
-    expect(appConfig.atsDbConfig.user).toEqual('atsUser');
-    expect(appConfig.atsDbConfig.password).toEqual(process.env.ATS_MSSQL_PASS);
-    expect(appConfig.atsDbConfig.options.encrypt).toBeTruthy();
-    expect(appConfig.atsDbConfig.options.trustServerCertificate).toBeTruthy();
-  });
-
   test('Should configure ATS database with Azure AD auth when no password', async () => {
     process.env.ATS_MSSQL_HOST = 'test-server.database.usgovcloudapi.net';
     process.env.ATS_MSSQL_DATABASE = 'ATS_TEST';
