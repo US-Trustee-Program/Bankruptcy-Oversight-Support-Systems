@@ -1,22 +1,23 @@
+import { usStates } from '@common/cams/us-states';
+
 /**
- * Extracts state name from court name patterns for sorting purposes.
+ * Maps a 2-letter state code to its full state name for sorting purposes.
  *
  * Examples:
- * - "Southern District of New York" → "New York"
- * - "District of Columbia" → "Columbia"
- * - "District of Idaho" → "Idaho"
- * - "Northern District of Iowa" → "Iowa"
+ * - "NY" → "New York"
+ * - "CA" → "California"
+ * - "DC" → "District of Columbia"
  *
- * This extraction is necessary because court names have varying prefixes
- * (Northern, Southern, Eastern, Western, Central, District of) that would
- * cause incorrect alphabetical sorting if sorted by the full court name.
+ * This mapping is necessary because sorting by 2-letter codes produces
+ * incorrect alphabetical order (e.g., "NV" before "NY" instead of
+ * "Nevada" before "New York").
  *
- * @param courtName - The full court name (e.g., "Southern District of New York")
- * @returns The extracted state name, or the original string if pattern doesn't match
+ * @param stateCode - The 2-letter state code (e.g., "NY")
+ * @returns The full state name, or the original code if not found
  */
-export function getStateFromCourtName(courtName: string): string {
-  const match = courtName.match(/District of (.+)$/i);
-  return match ? match[1] : courtName;
+export function getStateNameFromCode(stateCode: string): string {
+  const state = usStates.find((s) => s.code === stateCode);
+  return state ? state.name : stateCode;
 }
 
 /**
@@ -33,6 +34,7 @@ function getChapterNumber(chapter: string): number {
  * Properties are optional to support types like TrusteeAppointment where they may be undefined.
  */
 interface CourtLocationSortable {
+  state?: string;
   courtName?: string;
   courtDivisionName?: string;
   chapter?: string;
@@ -48,13 +50,13 @@ interface SortOptions {
  * Optionally includes chapter and appointment type sorting for appointments.
  *
  * Sort order:
- * 1. State name (extracted from courtName) - alphabetically
+ * 1. State name (from state code, mapped to full name) - alphabetically
  * 2. Court name - alphabetically within state
  * 3. Division name - alphabetically within court
  * 4. Chapter number - ascending (only if includeAppointmentDetails: true)
  * 5. Appointment type - alphabetically (only if includeAppointmentDetails: true)
  *
- * @param items - Array of items with courtName and courtDivisionName
+ * @param items - Array of items with state, courtName and courtDivisionName
  * @param options - Optional settings
  * @param options.includeAppointmentDetails - If true, also sorts by chapter and appointmentType
  * @returns New sorted array (does not mutate original)
@@ -64,9 +66,9 @@ export function sortByCourtLocation<T extends CourtLocationSortable>(
   options?: SortOptions,
 ): T[] {
   return [...items].sort((a, b) => {
-    // 1. Sort by state name (extracted from courtName)
-    const stateA = getStateFromCourtName(a.courtName || '');
-    const stateB = getStateFromCourtName(b.courtName || '');
+    // 1. Sort by state name (mapped from state code to full name)
+    const stateA = getStateNameFromCode(a.state || '');
+    const stateB = getStateNameFromCode(b.state || '');
     const stateComparison = stateA.localeCompare(stateB);
     if (stateComparison !== 0) return stateComparison;
 

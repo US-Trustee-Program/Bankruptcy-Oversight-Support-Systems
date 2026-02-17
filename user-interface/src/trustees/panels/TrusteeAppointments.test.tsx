@@ -6,6 +6,7 @@ import Api2 from '@/lib/models/api2';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
+import * as courtUtils from '@/lib/utils/court-utils';
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
@@ -290,6 +291,17 @@ describe('TrusteeAppointments', () => {
   });
 
   describe('Appointment Grouping and Sorting', () => {
+    test('should call sortByCourtLocation with includeAppointmentDetails option', async () => {
+      const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
+      vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({ data: mockAppointments });
+
+      renderComponent('trustee-123');
+
+      await waitFor(() => {
+        expect(sortSpy).toHaveBeenCalledWith(mockAppointments, { includeAppointmentDetails: true });
+      });
+    });
+
     test('should sort appointments by state first (derived from courtName)', async () => {
       const appointments: TrusteeAppointment[] = [
         makeAppointment('appointment-001', {

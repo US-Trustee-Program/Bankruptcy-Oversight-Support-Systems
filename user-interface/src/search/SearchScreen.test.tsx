@@ -14,6 +14,7 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import * as UseFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
+import * as courtUtils from '@/lib/utils/court-utils';
 
 describe('search screen', () => {
   const userOffices = [REGION_02_GROUP_NY];
@@ -121,6 +122,20 @@ describe('search screen', () => {
         document.querySelector('#case-chapter-search-item-list li.selected'),
       ).not.toBeInTheDocument();
     });
+  });
+
+  test('should call sortByCourtLocation when loading courts', async () => {
+    const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(sortSpy).toHaveBeenCalled();
+    });
+
+    // Verify it was called with court data
+    const callArgs = sortSpy.mock.calls[0];
+    expect(callArgs[0]).toBeInstanceOf(Array);
   });
 
   test('should place default court divisions at the top of the combobox list', async () => {
