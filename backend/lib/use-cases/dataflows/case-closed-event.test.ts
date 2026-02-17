@@ -6,8 +6,12 @@ import CaseClosedEventUseCase from './case-closed-event';
 describe('case closed event use case', () => {
   describe('handleCaseClosedEvent', () => {
     const event = { caseId: '000-11-22222' };
-    const deleteMany = vi.spyOn(MockMongoRepository.prototype, 'deleteMany');
+    let deleteMany: ReturnType<typeof vi.spyOn>;
     const { handleCaseClosedEvent } = CaseClosedEventUseCase;
+
+    beforeEach(() => {
+      deleteMany = vi.spyOn(MockMongoRepository.prototype, 'deleteMany');
+    });
 
     test('should proxy a message to pass caseId to deleteCaseAssignment', async () => {
       deleteMany.mockResolvedValue();

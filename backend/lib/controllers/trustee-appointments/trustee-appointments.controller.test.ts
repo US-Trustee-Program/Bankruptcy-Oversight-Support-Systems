@@ -40,14 +40,12 @@ describe('TrusteeAppointmentsController', () => {
 
     (
       TrusteeAppointmentsUseCase as MockedClass<typeof TrusteeAppointmentsUseCase>
-    ).mockImplementation(() => mockUseCase);
+    ).mockImplementation(function (this: TrusteeAppointmentsUseCase) {
+      return mockUseCase;
+    });
 
     controller = new TrusteeAppointmentsController(context);
     context.featureFlags['trustee-management'] = true;
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
   });
 
   describe('Feature flag protection', () => {

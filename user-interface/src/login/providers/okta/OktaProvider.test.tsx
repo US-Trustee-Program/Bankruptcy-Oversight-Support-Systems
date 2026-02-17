@@ -14,18 +14,19 @@ describe('OktaProvider', () => {
     redirectUri: 'http://localhost:3000/login-continue',
   };
 
-  const getLoginConfigurationFromEnv = vi
-    .spyOn(libraryModule, 'getLoginConfiguration')
-    .mockReturnValue(mockConfiguration);
-
-  const securityComponent = vi
-    .spyOn(oktaReactModule, 'Security')
-    .mockImplementation((props: PropsWithChildren) => {
-      return <>{props.children}</>;
-    });
+  let getLoginConfigurationFromEnv: ReturnType<typeof vi.spyOn>;
+  let securityComponent: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    getLoginConfigurationFromEnv = vi
+      .spyOn(libraryModule, 'getLoginConfiguration')
+      .mockReturnValue(mockConfiguration);
+
+    securityComponent = vi
+      .spyOn(oktaReactModule, 'Security')
+      .mockImplementation((props: PropsWithChildren) => {
+        return <>{props.children}</>;
+      });
   });
 
   test('should configure <Security> and render children.', async () => {
