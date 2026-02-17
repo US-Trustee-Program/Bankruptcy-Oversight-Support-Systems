@@ -34,10 +34,9 @@ describe('OktaSession', () => {
       authState,
     };
   });
-  vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);
 
-  afterEach(() => {
-    vi.clearAllMocks();
+  beforeEach(() => {
+    vi.spyOn(oktaReactModule, 'useOktaAuth').mockImplementation(useOktaAuth);
   });
 
   test('should pass properties to the Session component', async () => {

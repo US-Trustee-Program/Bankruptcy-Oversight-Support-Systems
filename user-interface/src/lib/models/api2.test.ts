@@ -531,13 +531,23 @@ async function callApiFunction(fn: (args: any) => unknown, args: unknown, api: A
   const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: stuff });
   const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: stuff });
   const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue({ data: stuff });
-  await fn(args);
-  const spyCalls = sum(
-    getSpy.mock.calls.length,
-    patchSpy.mock.calls.length,
-    postSpy.mock.calls.length,
-    putSpy.mock.calls.length,
-    deleteSpy.mock.calls.length,
-  );
-  expect(spyCalls).toEqual(1);
+  try {
+    await fn(args);
+    const spyCalls = sum(
+      getSpy.mock.calls.length,
+      patchSpy.mock.calls.length,
+      postSpy.mock.calls.length,
+      putSpy.mock.calls.length,
+      deleteSpy.mock.calls.length,
+    );
+    expect(spyCalls).toEqual(1);
+  } finally {
+    // Restore spies after each call to prevent accumulation within the test
+    // Use finally to ensure cleanup even if the test throws
+    getSpy.mockRestore();
+    patchSpy.mockRestore();
+    postSpy.mockRestore();
+    putSpy.mockRestore();
+    deleteSpy.mockRestore();
+  }
 }

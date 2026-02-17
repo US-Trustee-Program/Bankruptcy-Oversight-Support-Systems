@@ -5,6 +5,7 @@ import CaseDetailTrusteeAndAssignedStaff, {
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { parsePhoneNumber } from '@common/phone-helper';
 import Actions from '@common/cams/actions';
 import { AttorneyUser, CamsUser, Staff } from '@common/cams/users';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
@@ -66,14 +67,17 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
     meta: { self: 'self-url' },
     data: staffByRole,
   };
-  vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
 
   // Mock for AssignAttorneyModal
   const officeAttorneyListResponse: ResponseBody<AttorneyUser[]> = {
     meta: { self: 'self-url' },
     data: attorneyList,
   };
-  vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(officeAttorneyListResponse);
+
+  beforeEach(() => {
+    vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
+    vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(officeAttorneyListResponse);
+  });
 
   function renderWithProps(props?: Partial<CaseDetailTrusteeAndAssignedStaffProps>) {
     const defaultProps: CaseDetailTrusteeAndAssignedStaffProps = {
@@ -296,8 +300,11 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       const emailLink = emailElement?.querySelector('a');
       expect(emailLink).toBeInTheDocument();
       expect(emailLink?.textContent).toContain(TEST_TRUSTEE.legacy?.email);
+      const expectedSubject = encodeURIComponent(
+        `${getCaseNumber(BASE_TEST_CASE_DETAIL.caseId)} - ${BASE_TEST_CASE_DETAIL.caseTitle}`,
+      );
       expect(emailLink?.getAttribute('href')).toEqual(
-        `mailto:${TEST_TRUSTEE.legacy?.email}?subject=${getCaseNumber(BASE_TEST_CASE_DETAIL.caseId)} - ${BASE_TEST_CASE_DETAIL.caseTitle}`,
+        `mailto:${TEST_TRUSTEE.legacy?.email}?subject=${expectedSubject}`,
       );
 
       // Verify mail icon is present
@@ -305,11 +312,21 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(mailIcon).toBeInTheDocument();
     });
 
-    test('should display trustee phone number', () => {
+    test('should display trustee phone number as clickable link', () => {
       renderWithProps();
       const phoneElement = screen.getByTestId('case-detail-trustee-phone-number');
       expect(phoneElement).toBeInTheDocument();
-      expect(phoneElement?.textContent).toEqual(TEST_TRUSTEE.legacy?.phone);
+
+      // Phone is now rendered via CommsLink with parsePhoneNumber formatting
+      const parsedPhone = parsePhoneNumber(TEST_TRUSTEE.legacy?.phone ?? '');
+      const expectedLabel = parsedPhone?.extension
+        ? `${parsedPhone.number} ext. ${parsedPhone.extension}`
+        : (parsedPhone?.number ?? '');
+      expect(phoneElement?.textContent).toEqual(expectedLabel);
+
+      // Verify phone is a clickable link with aria-label
+      const phoneLink = phoneElement?.querySelector('a');
+      expect(phoneLink).toHaveAttribute('aria-label', `Phone: ${expectedLabel}`);
     });
 
     test('should display all trustee address fields', () => {

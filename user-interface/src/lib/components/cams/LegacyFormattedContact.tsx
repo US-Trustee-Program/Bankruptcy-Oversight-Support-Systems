@@ -1,7 +1,8 @@
 import './FormattedContact.scss';
 import { LegacyAddress } from '@common/cams/parties';
 import { JSX } from 'react';
-import EmailLink from './EmailLink';
+import CommsLink from './CommsLink/CommsLink';
+import { parsePhoneNumber } from '@common/phone-helper';
 
 export type LegacyFormattedContactProps = {
   className?: string;
@@ -70,9 +71,16 @@ export default function LegacyFormattedContact(props: LegacyFormattedContactProp
 
   // Handle legacy phone format (simple string)
   if (legacy.phone) {
+    const parsedPhone = parsePhoneNumber(legacy.phone);
+    // Fall back to raw phone string if parsing fails or returns empty number
+    const phoneContent = parsedPhone?.number ? (
+      <CommsLink contact={{ phone: parsedPhone }} mode="phone-dialer" />
+    ) : (
+      legacy.phone
+    );
     parts.push(
       <div key="phone" className="phone" data-testid={getTestId('phone-number')}>
-        {legacy.phone}
+        {phoneContent}
       </div>,
     );
   }
@@ -81,13 +89,9 @@ export default function LegacyFormattedContact(props: LegacyFormattedContactProp
   if (legacy.email) {
     if (emailAsLink) {
       parts.push(
-        <EmailLink
-          key="email"
-          email={legacy.email}
-          className="email"
-          data-testid={getTestId('email')}
-          subject={emailSubject}
-        />,
+        <div key="email" className="email" data-testid={getTestId('email')}>
+          <CommsLink contact={{ email: legacy.email }} mode="email" emailSubject={emailSubject} />
+        </div>,
       );
     } else {
       parts.push(

@@ -2,17 +2,17 @@ import { vi } from 'vitest';
 
 // Type definitions for the mock editor
 interface MockEditorCommands {
-  focus: ReturnType<typeof vi.fn>;
-  clearContent: ReturnType<typeof vi.fn>;
-  setContent: ReturnType<typeof vi.fn>;
+  focus: ReturnType<typeof vi.fn<() => void>>;
+  clearContent: ReturnType<typeof vi.fn<() => void>>;
+  setContent: ReturnType<typeof vi.fn<(...args: unknown[]) => void>>;
 }
 
 export interface MockEditor {
-  getHTML: ReturnType<typeof vi.fn>;
-  getText: ReturnType<typeof vi.fn>;
-  setContent: ReturnType<typeof vi.fn>;
-  clearContent: ReturnType<typeof vi.fn>;
-  setEditable: ReturnType<typeof vi.fn>;
+  getHTML: ReturnType<typeof vi.fn<() => string | null>>;
+  getText: ReturnType<typeof vi.fn<() => string | null>>;
+  setContent: ReturnType<typeof vi.fn<(...args: unknown[]) => void>>;
+  clearContent: ReturnType<typeof vi.fn<() => void>>;
+  setEditable: ReturnType<typeof vi.fn<(val: boolean) => void>>;
   commands: MockEditorCommands;
   isEditable: boolean;
   onUpdate: (...args: unknown[]) => void;
@@ -87,56 +87,96 @@ export const LIST_BUTTONS = [
 
 // Mock editor factory function
 export function createMockEditor(): MockEditor {
-  const mockOnUpdate = vi.fn();
-  const mockDocTextBetween = vi.fn().mockReturnValue('');
+  const mockOnUpdate = vi.fn<(...args: unknown[]) => void>();
+  const mockDocTextBetween = vi
+    .fn<(from: number, to: number, separator: string) => string>()
+    .mockReturnValue('');
 
   const mockEditor: MockEditor = {
-    getHTML: vi.fn().mockReturnValue('<p>test content</p>'),
-    getText: vi.fn().mockReturnValue('test content'),
-    setContent: vi.fn(),
-    clearContent: vi.fn(),
-    setEditable: vi.fn((val: boolean) => {
+    getHTML: vi.fn<() => string | null>().mockReturnValue('<p>test content</p>'),
+    getText: vi.fn<() => string | null>().mockReturnValue('test content'),
+    setContent: vi.fn<(...args: unknown[]) => void>(),
+    clearContent: vi.fn<() => void>(),
+    setEditable: vi.fn<(val: boolean) => void>((val: boolean) => {
       mockEditor.isEditable = val;
     }),
     commands: {
-      focus: vi.fn(),
-      clearContent: vi.fn(),
-      setContent: vi.fn(),
+      focus: vi.fn<() => void>(),
+      clearContent: vi.fn<() => void>(),
+      setContent: vi.fn<(...args: unknown[]) => void>(),
     },
     isEditable: true,
     onUpdate: (...args: unknown[]) => mockOnUpdate(...args),
-    chain: vi.fn(() => ({
-      focus: vi.fn(() => ({
-        toggleBold: vi.fn(() => ({ run: vi.fn() })),
-        toggleItalic: vi.fn(() => ({ run: vi.fn() })),
-        toggleUnderline: vi.fn(() => ({ run: vi.fn() })),
-        toggleOrderedList: vi.fn(() => ({ run: vi.fn() })),
-        toggleBulletList: vi.fn(() => ({ run: vi.fn() })),
-        toggleLink: vi.fn(() => ({ run: vi.fn() })),
-        insertContent: vi.fn((...args: unknown[]) => {
-          // Simulate inserting a link for test assertions
-          const html = typeof args[0] === 'string' ? args[0] : '';
-          mockEditor.getHTML.mockReturnValue(`<p>${html}</p>`);
-          // Extract text between > and < for getText
-          const match = html.match(/>(.*?)<\/a>/);
-          mockEditor.getText.mockReturnValue(match ? match[1] : html);
-          return { run: vi.fn() };
-        }),
+    chain: vi.fn<
+      (...args: unknown[]) => {
+        focus: (...args: unknown[]) => {
+          toggleBold: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleItalic: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleUnderline: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleOrderedList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleBulletList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleLink: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          insertContent: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+        };
+      }
+    >(() => ({
+      focus: vi.fn<
+        (...args: unknown[]) => {
+          toggleBold: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleItalic: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleUnderline: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleOrderedList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleBulletList: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          toggleLink: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+          insertContent: (...args: unknown[]) => { run: (...args: unknown[]) => void };
+        }
+      >(() => ({
+        toggleBold: vi.fn<(...args: unknown[]) => { run: (...args: unknown[]) => void }>(() => ({
+          run: vi.fn<(...args: unknown[]) => void>(),
+        })),
+        toggleItalic: vi.fn<(...args: unknown[]) => { run: (...args: unknown[]) => void }>(() => ({
+          run: vi.fn<(...args: unknown[]) => void>(),
+        })),
+        toggleUnderline: vi.fn<(...args: unknown[]) => { run: (...args: unknown[]) => void }>(
+          () => ({ run: vi.fn<(...args: unknown[]) => void>() }),
+        ),
+        toggleOrderedList: vi.fn<(...args: unknown[]) => { run: (...args: unknown[]) => void }>(
+          () => ({ run: vi.fn<(...args: unknown[]) => void>() }),
+        ),
+        toggleBulletList: vi.fn<(...args: unknown[]) => { run: (...args: unknown[]) => void }>(
+          () => ({ run: vi.fn<(...args: unknown[]) => void>() }),
+        ),
+        toggleLink: vi.fn<(...args: unknown[]) => { run: (...args: unknown[]) => void }>(() => ({
+          run: vi.fn<(...args: unknown[]) => void>(),
+        })),
+        insertContent: vi.fn<(...args: unknown[]) => { run: (...args: unknown[]) => void }>(
+          (...args: unknown[]) => {
+            // Simulate inserting a link for test assertions
+            const html = typeof args[0] === 'string' ? args[0] : '';
+            mockEditor.getHTML.mockReturnValue(`<p>${html}</p>`);
+            // Extract text between > and < for getText
+            const match = html.match(/>(.*?)<\/a>/);
+            mockEditor.getText.mockReturnValue(match ? match[1] : html);
+            return { run: vi.fn<(...args: unknown[]) => void>() };
+          },
+        ),
       })),
     })),
-    isActive: vi.fn(() => false),
-    getAttributes: vi.fn((_type: string) => {
+    isActive: vi.fn<(mark: string) => boolean>(() => false),
+    getAttributes: vi.fn<(type: string) => { href: string; text: string }>((_type: string) => {
       // Always return an object with href and text as strings
       return { href: '', text: '' };
     }),
-    insertContent: vi.fn((html: string) => {
-      // Simulate inserting a link for test assertions
-      mockEditor.getHTML.mockReturnValue(`<p>${html}</p>`);
-      // Extract text between > and < for getText
-      const match = html.match(/>(.*?)<\/a>/);
-      mockEditor.getText.mockReturnValue(match ? match[1] : html);
-      return { run: vi.fn() };
-    }),
+    insertContent: vi.fn<(html: string) => { run: (...args: unknown[]) => void }>(
+      (html: string) => {
+        // Simulate inserting a link for test assertions
+        mockEditor.getHTML.mockReturnValue(`<p>${html}</p>`);
+        // Extract text between > and < for getText
+        const match = html.match(/>(.*?)<\/a>/);
+        mockEditor.getText.mockReturnValue(match ? match[1] : html);
+        return { run: vi.fn<(...args: unknown[]) => void>() };
+      },
+    ),
     state: {
       selection: {
         empty: true,
@@ -157,13 +197,13 @@ export function resetMockEditor(mockEditor: MockEditor): void {
   // Reset all mock functions
   Object.values(mockEditor).forEach((value) => {
     if (value && typeof value === 'object' && 'mockReset' in value) {
-      (value as ReturnType<typeof vi.fn>).mockReset();
+      (value as ReturnType<typeof vi.fn<(...args: unknown[]) => unknown>>).mockReset();
     }
   });
 
   Object.values(mockEditor.commands).forEach((value) => {
     if (value && typeof value === 'object' && 'mockReset' in value) {
-      (value as ReturnType<typeof vi.fn>).mockReset();
+      (value as ReturnType<typeof vi.fn<(...args: unknown[]) => unknown>>).mockReset();
     }
   });
 
@@ -171,10 +211,20 @@ export function resetMockEditor(mockEditor: MockEditor): void {
   mockEditor.isEditable = true;
   mockEditor.getHTML.mockReturnValue('<p>test content</p>');
   mockEditor.getText.mockReturnValue('test content');
-  (mockEditor.isActive as ReturnType<typeof vi.fn>).mockReturnValue(false);
-  (mockEditor.getAttributes as ReturnType<typeof vi.fn>).mockReturnValue({ href: '', text: '' });
+  (mockEditor.isActive as ReturnType<typeof vi.fn<(mark: string) => boolean>>).mockReturnValue(
+    false,
+  );
+  (
+    mockEditor.getAttributes as ReturnType<
+      typeof vi.fn<(type: string) => { href: string; text: string }>
+    >
+  ).mockReturnValue({ href: '', text: '' });
   mockEditor.state.selection.empty = true;
   mockEditor.state.selection.from = 0;
   mockEditor.state.selection.to = 0;
-  (mockEditor.state.doc.textBetween as ReturnType<typeof vi.fn>).mockReturnValue('');
+  (
+    mockEditor.state.doc.textBetween as ReturnType<
+      typeof vi.fn<(from: number, to: number, separator: string) => string>
+    >
+  ).mockReturnValue('');
 }

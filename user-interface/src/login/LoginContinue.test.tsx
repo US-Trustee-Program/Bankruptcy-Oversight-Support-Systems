@@ -12,31 +12,34 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 
 describe('LoginContinue', () => {
-  const getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
-  const oktaProviderComponent = vi
-    .spyOn(oktaProviderModule, 'OktaProvider')
-    .mockImplementation((props: PropsWithChildren) => {
-      return <>{props.children}</>;
-    });
-  const oktaSessionComponent = vi
-    .spyOn(oktaSessionModule, 'OktaSession')
-    .mockImplementation((props: PropsWithChildren) => {
-      return (
-        <Session
-          accessToken={MockData.getJwt()}
-          provider="okta"
-          user={{ id: 'mockId', name: 'Mock User' }}
-          expires={Number.MAX_SAFE_INTEGER}
-          issuer="http://issuer/"
-        >
-          {props.children}
-        </Session>
-      );
-    });
-  const badConfigurationComponent = vi.spyOn(badConfigurationModule, 'BadConfiguration');
+  let getLoginProviderFromEnv: ReturnType<typeof vi.spyOn>;
+  let oktaProviderComponent: ReturnType<typeof vi.spyOn>;
+  let oktaSessionComponent: ReturnType<typeof vi.spyOn>;
+  let badConfigurationComponent: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    getLoginProviderFromEnv = vi.spyOn(libraryModule, 'getLoginProvider');
+    oktaProviderComponent = vi
+      .spyOn(oktaProviderModule, 'OktaProvider')
+      .mockImplementation((props: PropsWithChildren) => {
+        return <>{props.children}</>;
+      });
+    oktaSessionComponent = vi
+      .spyOn(oktaSessionModule, 'OktaSession')
+      .mockImplementation((props: PropsWithChildren) => {
+        return (
+          <Session
+            accessToken={MockData.getJwt()}
+            provider="okta"
+            user={{ id: 'mockId', name: 'Mock User' }}
+            expires={Number.MAX_SAFE_INTEGER}
+            issuer="http://issuer/"
+          >
+            {props.children}
+          </Session>
+        );
+      });
+    badConfigurationComponent = vi.spyOn(badConfigurationModule, 'BadConfiguration');
   });
 
   test('should render OktaProvider for okta provider type', async () => {
