@@ -1,0 +1,108 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Debtor Name Search\n\nMonitor frontend search behavior: filter usage, search volume, and user interaction patterns."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "time-range",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 },
+                { "durationMs": 259200000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 2592000000 }
+              ],
+              "allowCustom": true
+            },
+            "value": {
+              "durationMs": 86400000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Search Volume Over Time"
+      },
+      "name": "search-volume-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'search'\n| where timestamp {TimeRange}\n| summarize SearchCount = count() by bin(timestamp, 1h)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Searches per Hour",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      },
+      "name": "searches-per-hour"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Filter Usage Breakdown"
+      },
+      "name": "filter-usage-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'search'\n| where timestamp {TimeRange}\n| extend filters = parse_json(tostring(customDimensions.filters))\n| summarize\n    DebtorName = countif(tostring(filters.debtorName) != ''),\n    CaseNumber = countif(tostring(filters.caseNumber) != ''),\n    Chapters = countif(tostring(filters.chapters) != '[]' and tostring(filters.chapters) != ''),\n    DivisionCodes = countif(tostring(filters.divisionCodes) != '[]' and tostring(filters.divisionCodes) != ''),\n    ExcludeClosedCases = countif(tostring(filters.excludeClosedCases) == 'true')",
+        "size": 0,
+        "title": "Filter Usage Counts",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "categoricalbar"
+      },
+      "name": "filter-usage-counts"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Search Details"
+      },
+      "name": "search-details-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'search'\n| where timestamp {TimeRange}\n| extend filters = parse_json(tostring(customDimensions.filters))\n| project\n    timestamp,\n    HasDebtorName = iff(tostring(filters.debtorName) != '', 'Yes', 'No'),\n    HasCaseNumber = iff(tostring(filters.caseNumber) != '', 'Yes', 'No'),\n    Chapters = tostring(filters.chapters),\n    ExcludeClosed = tostring(filters.excludeClosedCases)\n| order by timestamp desc\n| take 100",
+        "size": 0,
+        "title": "Recent Searches (last 100)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      },
+      "name": "recent-searches"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

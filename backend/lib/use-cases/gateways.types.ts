@@ -392,6 +392,38 @@ export interface ApiToDataflowsGateway {
   queueCaseReload(caseId: string): Promise<void>;
 }
 
+export interface ObservabilityTrace {
+  invocationId: string;
+  instanceId: string;
+  startTime: number;
+}
+
+export interface TraceCompletion {
+  success: boolean;
+  properties: Record<string, string>;
+  measurements: Record<string, number>;
+  error?: string;
+}
+
+export interface ObservabilityGateway {
+  startTrace(invocationId: string): ObservabilityTrace;
+  completeTrace(
+    trace: ObservabilityTrace,
+    eventName: string,
+    completion: TraceCompletion,
+    metrics?: { name: string; value: number }[],
+  ): void;
+}
+
+export type LogicalQueueNames = 'CASE_ASSIGNMENT_EVENT' | 'CASE_CLOSED_EVENT';
+
+export interface QueueGateway {
+  using<T = unknown>(
+    context: ApplicationContext,
+    queueName: LogicalQueueNames,
+  ): { enqueue: (...messages: T[]) => void };
+}
+
 export interface UserGroupsRepository extends Releasable {
   upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void>;
   getUserGroupsByNames(context: ApplicationContext, groupNames: string[]): Promise<UserGroup[]>;
