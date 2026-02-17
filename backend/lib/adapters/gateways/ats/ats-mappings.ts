@@ -3,8 +3,6 @@ import {
   AppointmentStatus,
   AppointmentType,
   TrusteeInput,
-  TrusteeStatuses,
-  TrusteeStatus,
 } from '@common/cams/trustees';
 import {
   TrusteeAppointmentInput,
@@ -431,37 +429,4 @@ export function isValidAppointmentForChapter(
  */
 export function getAppointmentKey(trusteeId: string, appointment: TrusteeAppointmentInput): string {
   return `${trusteeId}-${appointment.courtId}-${appointment.divisionCode}-${appointment.chapter}-${appointment.appointmentType}`;
-}
-
-/**
- * Derive trustee-level status from their appointment statuses.
- *
- * Priority:
- * 1. If any appointment is 'active', trustee is ACTIVE
- * 2. If any appointment is suspended, trustee is SUSPENDED
- * 3. Otherwise, trustee is NOT_ACTIVE
- *
- * Returns ACTIVE when there are no appointments (default).
- *
- * @param appointmentStatuses - Statuses from all of a trustee's appointments
- * @returns Derived trustee status
- */
-export function deriveTrusteeStatus(appointmentStatuses: AppointmentStatus[]): TrusteeStatus {
-  if (appointmentStatuses.length === 0) {
-    return TrusteeStatuses.ACTIVE;
-  }
-
-  if (appointmentStatuses.some((s) => s === 'active')) {
-    return TrusteeStatuses.ACTIVE;
-  }
-
-  if (
-    appointmentStatuses.some(
-      (s) => s === 'voluntarily-suspended' || s === 'involuntarily-suspended',
-    )
-  ) {
-    return TrusteeStatuses.SUSPENDED;
-  }
-
-  return TrusteeStatuses.NOT_ACTIVE;
 }

@@ -1,4 +1,4 @@
-import { AppointmentType, AppointmentStatus, TrusteeStatuses } from '@common/cams/trustees';
+import { AppointmentType, AppointmentStatus } from '@common/cams/trustees';
 
 /**
  * ATS-specific constants for trustee migration
@@ -71,7 +71,7 @@ export const DEFAULT_STATUS_MAPPING = {
  * Default trustee status for migrated trustees.
  * Can be updated later based on appointment statuses.
  */
-export const DEFAULT_TRUSTEE_STATUS = TrusteeStatuses.ACTIVE;
+export const DEFAULT_TRUSTEE_STATUS: AppointmentStatus = 'active';
 
 /**
  * CBC chapter status overrides.

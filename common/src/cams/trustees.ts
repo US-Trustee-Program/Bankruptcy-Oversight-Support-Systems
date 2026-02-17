@@ -62,14 +62,6 @@ export function formatAppointmentType(appointmentType: AppointmentType): string 
   return appointmentTypeLabels[appointmentType];
 }
 
-export const TrusteeStatuses = {
-  ACTIVE: 'active',
-  NOT_ACTIVE: 'not active',
-  SUSPENDED: 'suspended',
-} as const;
-
-export type TrusteeStatus = (typeof TrusteeStatuses)[keyof typeof TrusteeStatuses];
-
 export type ZoomInfo = {
   link: string;
   phone: string;

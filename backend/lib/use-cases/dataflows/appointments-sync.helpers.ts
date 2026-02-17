@@ -4,12 +4,10 @@ import {
   transformAppointmentRecord,
   isValidAppointmentForChapter,
   getAppointmentKey,
-  deriveTrusteeStatus,
-  parseTodStatus,
 } from '../../adapters/gateways/ats/ats-mappings';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
-import { Trustee, AppointmentStatus } from '@common/cams/trustees';
+import { Trustee } from '@common/cams/trustees';
 import { CamsUserReference } from '@common/cams/users';
 
 const MODULE_NAME = 'APPOINTMENTS-SYNC-HELPERS';
@@ -78,35 +76,4 @@ export async function processSingleAppointment(
     );
     return { success: false };
   }
-}
-
-/**
- * Derive trustee status from appointment statuses.
- * Uses full transformation to account for CBC overrides and code-1 chapter-dependent logic.
- * Falls back to flat map status if transformation fails.
- */
-export function deriveStatusFromAppointments(
-  context: ApplicationContext,
-  appointments: AtsAppointmentRecord[],
-): AppointmentStatus {
-  const appointmentStatuses: AppointmentStatus[] = appointments.map((a) => {
-    try {
-      const transformed = transformAppointmentRecord(a);
-      return transformed.status;
-    } catch (_error) {
-      // If transformation fails, fall back to flat map status
-      context.logger.warn(
-        MODULE_NAME,
-        `Failed to transform appointment for status derivation, using flat map`,
-        {
-          trusteeId: a.TRU_ID,
-          chapter: a.CHAPTER,
-          status: a.STATUS,
-        },
-      );
-      return parseTodStatus(a.STATUS).status;
-    }
-  });
-
-  return deriveTrusteeStatus(appointmentStatuses);
 }
