@@ -58,7 +58,7 @@
     "@tiptap/extensions": "3.18.0",
     "@tiptap/react": "3.18.0",
     "@types/jsdom": "21.1.7",
-    "@types/node": "24.10.9",
+    "@types/node": "24.10.10",
     "@types/react": "19.2.10",
     "@types/react-dom": "19.2.3",
     "@uswds/uswds": "3.13.0",
