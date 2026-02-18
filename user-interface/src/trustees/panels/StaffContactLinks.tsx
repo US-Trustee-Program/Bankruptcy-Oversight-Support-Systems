@@ -15,9 +15,19 @@ export default function StaffContactLinks(props: Readonly<StaffContactLinksProps
 
   return (
     <div className="staff-contact-links">
-      <CommsLink contact={{ email: user.email }} mode="email" name={user.name} />
-      <CommsLink contact={{ email: user.email }} mode="teams-chat" name={user.name} />
-      <CommsLink contact={{ email: user.email }} mode="teams-call" name={user.name} />
+      <CommsLink contact={{ email: user.email }} mode="email" name={user.name} label={user.email} />
+      <CommsLink
+        contact={{ email: user.email }}
+        mode="teams-chat"
+        name={user.name}
+        label="Chat on Teams"
+      />
+      <CommsLink
+        contact={{ email: user.email }}
+        mode="teams-call"
+        name={user.name}
+        label="Call on Teams"
+      />
     </div>
   );
 }
