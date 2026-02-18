@@ -4,15 +4,14 @@ import { vi, describe, test, expect } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AttorneyAssignmentCard from './AttorneyAssignmentCard';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { AttorneyUser } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 
-vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
+vi.mock('../modals/TrusteeOversightAssignmentModal', () => {
   return {
     default: (() => {
       interface MockModalProps {
         onAssignmentCreated?: (assignment: TrusteeOversightAssignment) => void;
-        onAssignment?: (assignment: TrusteeOversightAssignment) => void;
+        onAssignment?: (isAssigned: boolean) => void;
       }
 
       const MockModal = React.forwardRef((props: MockModalProps, ref) => {
@@ -24,45 +23,19 @@ vi.mock('../modals/TrusteeAttorneyAssignmentModal', () => {
         return props.onAssignment ? (
           <button
             data-testid="mock-assignment-created-trigger"
-            onClick={() =>
-              props.onAssignment!({
-                id: 'new-assignment-1',
-                trusteeId: 'trustee-123',
-                user: { id: 'user-1', name: 'New Attorney' },
-                role: CamsRole.OversightAttorney,
-                updatedOn: '2024-01-01T00:00:00Z',
-                updatedBy: { id: 'user-1', name: 'Test User' },
-                createdOn: '2024-01-01T00:00:00Z',
-                createdBy: { id: 'user-1', name: 'Test User' },
-              })
-            }
+            onClick={() => props.onAssignment!(true)}
           >
             Trigger Assignment Created
           </button>
         ) : null;
       });
-      MockModal.displayName = 'MockTrusteeAttorneyAssignmentModal';
+      MockModal.displayName = 'MockTrusteeOversightAssignmentModal';
       return MockModal;
     })(),
   };
 });
 
 describe('AttorneyAssignmentCard', () => {
-  const mockAttorneys: AttorneyUser[] = [
-    {
-      id: 'attorney-1',
-      name: 'John Doe',
-      offices: [],
-      roles: [CamsRole.TrialAttorney],
-    },
-    {
-      id: 'attorney-2',
-      name: 'Jane Smith',
-      offices: [],
-      roles: [CamsRole.TrialAttorney],
-    },
-  ];
-
   const mockAssignments: TrusteeOversightAssignment[] = [
     {
       id: 'assignment-1',
@@ -83,7 +56,6 @@ describe('AttorneyAssignmentCard', () => {
     override?: Partial<{
       trusteeId: string;
       assignments: TrusteeOversightAssignment[];
-      attorneys: AttorneyUser[];
       onAssignmentChange: () => void;
       isLoading?: boolean;
     }>,
@@ -91,7 +63,6 @@ describe('AttorneyAssignmentCard', () => {
     const defaults = {
       trusteeId: 'trustee-123',
       assignments: [] as TrusteeOversightAssignment[],
-      attorneys: mockAttorneys,
       onAssignmentChange: vi.fn() as unknown as () => void,
       isLoading: false,
     } as const;
@@ -168,7 +139,7 @@ describe('AttorneyAssignmentCard', () => {
     expect(displayArea).toHaveTextContent('John Doe');
   });
 
-  test('should call onAssignmentChange when handleAssignmentCreated is triggered', () => {
+  test('should call onAssignmentChange when handleAssignment is triggered', () => {
     const onAssignmentChange = vi.fn();
 
     renderWithRouter({

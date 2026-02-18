@@ -2,29 +2,14 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeAssignedStaff from './TrusteeAssignedStaff';
 import * as UseTrusteeAssignmentsModule from '@/trustees/modals/UseTrusteeAssignments';
-import { AttorneyUser, Staff } from '@common/cams/users';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
+import { Staff } from '@common/cams/users';
 
 describe('TrusteeAssignedStaff', () => {
-  const mockAttorneys: AttorneyUser[] = [
-    {
-      id: 'attorney-1',
-      name: 'Attorney Smith',
-      offices: [],
-      roles: [CamsRole.OversightAttorney],
-    },
-    {
-      id: 'attorney-2',
-      name: 'Attorney Jones',
-      offices: [],
-      roles: [CamsRole.OversightAttorney],
-    },
-  ];
-
   const mockStaffByRole: Record<OversightRoleType, Staff[]> = {
-    [CamsRole.OversightAttorney]: mockAttorneys,
+    [CamsRole.OversightAttorney]: [],
     [CamsRole.OversightAuditor]: [],
     [CamsRole.OversightParalegal]: [],
   };
@@ -54,14 +39,6 @@ describe('TrusteeAssignedStaff', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
-    });
-  });
-
-  test('should load attorneys on mount', async () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    await waitFor(() => {
-      expect(Api2.getOversightStaff).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -106,18 +83,6 @@ describe('TrusteeAssignedStaff', () => {
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load assignments');
-  });
-
-  test('should display error alert when attorneys fail to load', async () => {
-    vi.spyOn(Api2, 'getOversightStaff').mockRejectedValue(new Error('Failed to load attorneys'));
-
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    await waitFor(() => {
-      const alerts = screen.getAllByRole('alert');
-      const alertTexts = alerts.map((alert) => alert.textContent);
-      expect(alertTexts).toContain('Failed to load attorneys');
-    });
   });
 
   test('should show alert container when error is present', () => {
@@ -204,7 +169,11 @@ describe('TrusteeAssignedStaff', () => {
       ).toBeInTheDocument();
     });
 
-    await TestingUtilities.toggleComboBoxItemSelection('attorney-search', 0);
+    await waitFor(() => {
+      expect(Api2.getOversightStaff).toHaveBeenCalled();
+    });
+
+    await TestingUtilities.toggleComboBoxItemSelection('staff-search', 0);
 
     const submitButton = screen.getByTestId(
       'button-assign-attorney-modal-trustee-123-submit-button',

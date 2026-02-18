@@ -2,11 +2,10 @@ import { useRef, useCallback } from 'react';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { TrusteeOversightAssignment } from '@common/cams/trustees';
-import { AttorneyUser } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
-import TrusteeAttorneyAssignmentModal, {
-  TrusteeAttorneyAssignmentModalRef,
-} from '../modals/TrusteeAttorneyAssignmentModal';
+import TrusteeOversightAssignmentModal, {
+  TrusteeOversightAssignmentModalRef,
+} from '../modals/TrusteeOversightAssignmentModal';
 import './AttorneyAssignmentCard.scss';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import StaffContactLinks from './StaffContactLinks';
@@ -14,14 +13,13 @@ import StaffContactLinks from './StaffContactLinks';
 interface AttorneyAssignmentCardProps {
   trusteeId: string;
   assignments: TrusteeOversightAssignment[];
-  attorneys: AttorneyUser[];
   onAssignmentChange: () => void;
   isLoading?: boolean;
 }
 
 export default function AttorneyAssignmentCard(props: Readonly<AttorneyAssignmentCardProps>) {
-  const { trusteeId, assignments, attorneys, onAssignmentChange, isLoading = false } = props;
-  const modalRef = useRef<TrusteeAttorneyAssignmentModalRef>(null);
+  const { trusteeId, assignments, onAssignmentChange, isLoading = false } = props;
+  const modalRef = useRef<TrusteeOversightAssignmentModalRef>(null);
   const attorneyAssignment = assignments.find((a) => a.role === CamsRole.OversightAttorney);
 
   const handleAssignment = useCallback(
@@ -34,8 +32,8 @@ export default function AttorneyAssignmentCard(props: Readonly<AttorneyAssignmen
   );
 
   const openAssignmentModal = useCallback(() => {
-    modalRef.current?.show();
-  }, []);
+    modalRef.current?.show(attorneyAssignment);
+  }, [attorneyAssignment]);
 
   if (isLoading) {
     return (
@@ -83,12 +81,11 @@ export default function AttorneyAssignmentCard(props: Readonly<AttorneyAssignmen
         </div>
       </div>
 
-      <TrusteeAttorneyAssignmentModal
+      <TrusteeOversightAssignmentModal
         ref={modalRef}
         modalId={`assign-attorney-modal-${trusteeId}`}
         trusteeId={trusteeId}
-        attorneys={attorneys}
-        currentAssignment={attorneyAssignment}
+        role={CamsRole.OversightAttorney}
         onAssignment={handleAssignment}
       />
     </div>
