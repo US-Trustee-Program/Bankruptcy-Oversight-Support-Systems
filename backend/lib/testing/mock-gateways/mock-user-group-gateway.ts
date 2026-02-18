@@ -3,7 +3,7 @@ import { CamsUser, CamsUserGroup, CamsUserReference } from '@common/cams/users';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { UserGroupGateway, UserGroupGatewayConfig } from '../../adapters/types/authorization';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import MockUsers from '@common/cams/test-utilities/mock-user';
 import { getCamsUserReference } from '@common/cams/session';

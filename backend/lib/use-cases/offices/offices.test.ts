@@ -5,7 +5,7 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import factory from '../../factory';
 import { CamsUserGroup, Staff } from '@common/cams/users';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import StaffUseCase from '../staff/staff';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '@common/cams/roles';

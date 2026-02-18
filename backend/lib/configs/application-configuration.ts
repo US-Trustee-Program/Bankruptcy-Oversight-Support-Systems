@@ -11,6 +11,7 @@ export class ApplicationConfiguration {
   public readonly server: ServerType;
   public readonly dxtrDbConfig: IDbConfig;
   public readonly acmsDbConfig: IDbConfig;
+  public readonly atsDbConfig: IDbConfig;
   public readonly dbMock: boolean;
   public readonly documentDbConfig: DocumentDbConfig;
   public readonly featureFlagKey: string;
@@ -23,6 +24,7 @@ export class ApplicationConfiguration {
     this.server = this.getAppServerConfig();
     this.dxtrDbConfig = this.getDxtrDbConfig(process.env.MSSQL_DATABASE_DXTR);
     this.acmsDbConfig = this.getAcmsDbConfig(process.env.ACMS_MSSQL_DATABASE);
+    this.atsDbConfig = this.getAtsDbConfig(process.env.ATS_MSSQL_DATABASE);
     this.documentDbConfig = this.getDocumentDbConfig();
     this.featureFlagKey = process.env.FEATURE_FLAG_SDK_KEY;
     this.authConfig = getAuthorizationConfig();
@@ -97,6 +99,53 @@ export class ApplicationConfiguration {
     const password = process.env.ACMS_MSSQL_PASS;
     const identityClientId = process.env.ACMS_MSSQL_CLIENT_ID;
     const requestTimeout = parseInt(process.env.ACMS_MSSQL_REQUEST_TIMEOUT ?? '15000');
+
+    const config: IDbConfig = {
+      server,
+      port,
+      database,
+      requestTimeout,
+    };
+
+    const useSqlAuth = user && password;
+    if (useSqlAuth) {
+      config.user = user;
+      config.password = password;
+    } else {
+      config.authentication = {
+        type: authType,
+      };
+
+      // If client id is not set here, ensure that AZURE_CLIENT_ID is set when using DefaultAzureCredential
+      if (identityClientId) {
+        config.authentication.options = { clientId: identityClientId };
+      }
+    }
+
+    config.pool = {
+      max: 10,
+      min: 0,
+      idleTimeoutMillis: 30 * 1000,
+    };
+
+    config.options = {
+      encrypt,
+      trustServerCertificate,
+    };
+
+    return config;
+  }
+
+  private getAtsDbConfig(database: string): IDbConfig {
+    const server = process.env.ATS_MSSQL_HOST;
+    const port: number = Number(process.env.ATS_MSSQL_PORT) || 1433;
+    const encrypt: boolean = Boolean(process.env.ATS_MSSQL_ENCRYPT);
+    const trustServerCertificate: boolean = Boolean(process.env.ATS_MSSQL_TRUST_UNSIGNED_CERT);
+    const authType = process.env.ATS_MSSQL_AUTH_TYPE || 'azure-active-directory-default';
+    const user = process.env.ATS_MSSQL_USER;
+    const password = process.env.ATS_MSSQL_PASS;
+    const identityClientId = process.env.ATS_MSSQL_CLIENT_ID;
+    const requestTimeout = parseInt(process.env.ATS_MSSQL_REQUEST_TIMEOUT ?? '15000');
 
     const config: IDbConfig = {
       server,

@@ -6,7 +6,7 @@ import { CamsRole } from '@common/cams/roles';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';

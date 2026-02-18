@@ -62,8 +62,6 @@ export function formatAppointmentType(appointmentType: AppointmentType): string 
   return appointmentTypeLabels[appointmentType];
 }
 
-export const TRUSTEE_STATUS_VALUES = ['active', 'not active', 'suspended'] as const;
-
 export type ZoomInfo = {
   link: string;
   phone: string;
@@ -73,6 +71,7 @@ export type ZoomInfo = {
 
 type TrusteeCore = {
   name: string;
+  status?: AppointmentStatus;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
   assistants?: TrusteeAssistant[];
@@ -93,10 +92,17 @@ export type Trustee = TrusteeData &
     legacy?: LegacyAddress & {
       phone?: string;
       email?: string;
+      truId?: string;
     };
   };
 
-export type TrusteeInput = TrusteeCore & NullableOptionalFields<TrusteeOptionalFields>;
+// this is needed to map migrated ChapterDetails to our migrated Trustees
+export type TrusteeInput = TrusteeCore &
+  NullableOptionalFields<TrusteeOptionalFields> & {
+    legacy?: {
+      truId?: string;
+    };
+  };
 
 export type TrusteeOversightAssignment = Auditable &
   Identifiable & {
