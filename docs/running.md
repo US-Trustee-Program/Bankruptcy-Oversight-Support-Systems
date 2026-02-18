@@ -110,6 +110,7 @@ MONGO_CONNECTION_STRING={MongoDb connection string}
 SERVER_PORT=7071
 DATABASE_MOCK={a string: true | false}
 CAMS_INFO_SHA=''
+CAMS_DATAFLOWS_STORAGE_CONNECTION={connection string for dataflows storage account}
 ```
 
 ###### Authentication Configuration
@@ -225,9 +226,7 @@ The contents of these files must be:
   "IsEncrypted": false,
   "Values": {
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AzureWebJobsStorage": "--SEE Storage Connections BELOW--",
-    "CAMS_API_STORAGE_CONNECTION": "--SEE Storage Connections BELOW--",
-    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "--SEE Storage Connections BELOW--"
+    "AzureWebJobsStorage": "--SEE Storage Connections BELOW--"
   },
   "ConnectionStrings": {},
   "Host": {
@@ -245,8 +244,7 @@ The contents of these files must be:
   "Values": {
     "MyTaskHub": "--A NAME UNIQUE TO YOU--",
     "FUNCTIONS_WORKER_RUNTIME": "node",
-    "AzureWebJobsStorage": "--SEE Storage Connections BELOW--",
-    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "--SEE Storage Connections BELOW--"
+    "AzureWebJobsStorage": "--SEE Storage Connections BELOW--"
   },
   "ConnectionStrings": {},
   "Host": {
@@ -258,18 +256,20 @@ The contents of these files must be:
 
 ###### Storage Connections
 
-CAMS uses explicit, CAMS-prefixed environment variables for storage account connections:
+CAMS uses two types of storage connections:
 
-- `AzureWebJobsStorage` - Required by Azure Functions runtime (set to same value as CAMS_API_STORAGE_CONNECTION for API, CAMS_DATAFLOWS_STORAGE_CONNECTION for dataflows)
-- `CAMS_API_STORAGE_CONNECTION` - API's own storage account for runtime operations
-- `CAMS_DATAFLOWS_STORAGE_CONNECTION` - Dataflows storage account for queue writes
+**Runtime Storage (local.settings.json)**
+- `AzureWebJobsStorage` - Required by Azure Functions runtime for timer coordination, host management, and key storage
+- Configure separately for API and dataflows function apps in their respective `local.settings.json` files
 
-These environment variables need to be configured in `local.settings.json` for running the function apps locally, or in CI environment variables for deployed environments.
+**Application Storage (backend/.env)**
+- `CAMS_DATAFLOWS_STORAGE_CONNECTION` - Dataflows storage account for application queues
+- Configure in `backend/.env` file as shown in the Basic Configuration section above
 
 A sufficiently privileged user can retrieve connection strings from deployed environments with:
 
 ```sh
-az functionapp config appsettings list -g {resource-group-name} -n {function-app-name} --query "[?name=='AzureWebJobsStorage' || name=='CAMS_API_STORAGE_CONNECTION' || name=='CAMS_DATAFLOWS_STORAGE_CONNECTION']"
+az functionapp config appsettings list -g {resource-group-name} -n {function-app-name} --query "[?name=='AzureWebJobsStorage']"
 ```
 
 Replace `{resource-group-name}` and `{function-app-name}` with their respective values in the

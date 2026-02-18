@@ -2,22 +2,29 @@
 
 ## Context
 
-Azure Functions uses `AzureWebJobsStorage` as the default environment variable for storage account connection strings. This works well when a function app only needs one storage account.
+Azure Functions requires `AzureWebJobsStorage` for runtime operations (timer coordination, host management, key storage). This is a requirement of the Azure Functions platform itself.
 
-CAMS architecture requires API to access multiple storage accounts:
-- Its own storage account for runtime operations (host state, durable functions, etc.)
-- Dataflows storage account for writing queue messages
+CAMS architecture also requires both function apps to access the dataflows storage account:
+- API writes event messages to dataflows queues
+- Dataflows reads messages from those queues
 
-Using the single `AzureWebJobsStorage` variable name doesn't support this multi-storage-account pattern.
+Initially, CAMS tried to use `AzureWebJobsApiStorage` and `AzureWebJobsDataflowsStorage` to handle both runtime and application storage. However, this conflated two separate concerns and created confusion about which connection served which purpose.
 
 ## Decision
 
-CAMS uses explicit, CAMS-prefixed environment variable names for all storage connections:
+CAMS separates runtime storage from application storage using two different configuration mechanisms:
 
-- `CAMS_API_STORAGE_CONNECTION` - API's own storage account
-- `CAMS_DATAFLOWS_STORAGE_CONNECTION` - Dataflows storage account
+**Runtime Storage (Azure Functions requirement)**
+- `AzureWebJobsStorage` - Required by Azure Functions runtime for each function app
+- Configured in `local.settings.json` for local development
+- Set by Bicep deployment for cloud environments
+- Each function app has its own runtime storage account
 
-All Azure Function Apps in CAMS (API, Dataflows) use this naming convention instead of `AzureWebJobsStorage`.
+**Application Storage (CAMS application logic)**
+- `CAMS_DATAFLOWS_STORAGE_CONNECTION` - Connection to the dataflows storage account for application queues
+- Configured in `backend/.env` for local development
+- Set by Bicep deployment for cloud environments
+- Shared by both API (writes) and dataflows (reads)
 
 ## Status
 
@@ -26,16 +33,17 @@ Accepted
 ## Consequences
 
 ### Benefits
-- **Clarity**: Explicit naming makes it obvious which storage account is referenced
-- **Multi-storage support**: Pattern extends naturally to additional storage accounts if needed
-- **Consistency**: CAMS naming convention (`CAMS_*`) applied uniformly across infrastructure
+- **Separation of concerns**: Runtime requirements separate from application logic
+- **CAMS naming convention**: Application variables use `CAMS_` prefix consistently
+- **Clarity**: Clear distinction between Azure Functions infrastructure and CAMS business logic
+- **Simpler configuration**: Runtime storage uses standard Azure Functions variables; application storage uses CAMS conventions
 
 ### Trade-offs
-- **Azure Functions Runtime**: Requires verification that runtime works without `AzureWebJobsStorage`
-  - If runtime requires it, can create alias pointing to same value as `CAMS_API_STORAGE_CONNECTION`
-- **Documentation**: Deviates from Azure Functions defaults, requires clear documentation
+- **Two configuration locations**: Runtime storage in `local.settings.json`, application storage in `.env`
+- **Migration required**: Existing deployments using `AzureWebJobsApiStorage`/`AzureWebJobsDataflowsStorage` must be updated
 
 ### Configuration Impact
-- Function apps requiring multiple storage accounts must configure all necessary connection variables
-- Infrastructure templates, local development settings, and secure storage must all use the CAMS-prefixed names
-- Deployment slot configurations must maintain consistent naming across environments
+- `local.settings.json` only contains `AzureWebJobsStorage` and Azure Functions-specific settings
+- `backend/.env` contains all CAMS application settings including `CAMS_DATAFLOWS_STORAGE_CONNECTION`
+- Deployment slot configurations must include both runtime and application storage settings
+- Infrastructure templates (Bicep) must set both `AzureWebJobsStorage` and `CAMS_DATAFLOWS_STORAGE_CONNECTION`

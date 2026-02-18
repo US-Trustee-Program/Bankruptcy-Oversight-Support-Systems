@@ -22,27 +22,27 @@ const PAGE_SIZE = 100;
 // Queues
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const PAGE = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'page'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const DLQ = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'dlq'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const RETRY = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'retry'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const HARD_STOP = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 // Registered function names

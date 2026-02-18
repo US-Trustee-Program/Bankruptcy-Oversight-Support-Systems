@@ -18,7 +18,6 @@ export class ApplicationConfiguration {
   public readonly userGroupGatewayConfig: UserGroupGatewayConfig;
   public readonly phoneticSimilarityThreshold: number;
   public readonly adminKey: string;
-  public readonly apiStorageConnection: string;
   public readonly dataflowsStorageConnection: string;
 
   constructor() {
@@ -34,9 +33,6 @@ export class ApplicationConfiguration {
       process.env.PHONETIC_SIMILARITY_THRESHOLD ?? '0.83',
     );
     this.adminKey = process.env.ADMIN_KEY;
-    this.apiStorageConnection =
-      process.env.CAMS_API_STORAGE_CONNECTION ||
-      'DefaultEndpointsProtocol=https;AccountName=test-storage;AccountKey=test-key;EndpointSuffix=core.windows.net';
     this.dataflowsStorageConnection =
       process.env.CAMS_DATAFLOWS_STORAGE_CONNECTION ||
       'DefaultEndpointsProtocol=https;AccountName=test-storage;AccountKey=test-key;EndpointSuffix=core.windows.net';

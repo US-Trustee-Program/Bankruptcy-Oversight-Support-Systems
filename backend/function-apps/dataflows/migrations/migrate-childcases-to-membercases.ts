@@ -27,7 +27,7 @@ const START = output.storageQueue({
 
 const HARD_STOP = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 /**

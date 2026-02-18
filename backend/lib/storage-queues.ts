@@ -2,7 +2,8 @@ import { buildQueueName } from '../function-apps/dataflows/dataflows-common';
 import { output } from '@azure/functions';
 import ModuleNames from '../function-apps/dataflows/module-names';
 
-export const STORAGE_QUEUE_CONNECTION = 'CAMS_DATAFLOWS_STORAGE_CONNECTION';
+// Connection name for Azure Functions bindings. Set via environment variable: CAMS_DATAFLOWS_STORAGE_CONNECTION
+export const STORAGE_QUEUE_CONNECTION = 'DataflowsStorage';
 
 const connection = STORAGE_QUEUE_CONNECTION;
 

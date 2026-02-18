@@ -14,6 +14,7 @@ import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
@@ -21,17 +22,17 @@ const PAGE_SIZE = 100;
 // Queues
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const PAGE = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'page'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const DLQ = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'dlq'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 // Registered function names

@@ -16,7 +16,7 @@ The phonetic token backfill migration populates the `phoneticTokens` field on ex
    CAMS_ENABLED_DATAFLOWS=BACKFILL_PHONETIC_TOKENS
    ```
 
-2. **Azure Storage connection** configured via `CAMS_DATAFLOWS_STORAGE_CONNECTION` in `local.settings.json`
+2. **Azure Storage connection** configured via `CAMS_DATAFLOWS_STORAGE_CONNECTION` in `backend/.env`
 
 3. **MongoDB write access** to the cases collection
 

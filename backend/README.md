@@ -4,25 +4,31 @@
 
 ### Storage Connections
 
-CAMS uses explicit, CAMS-prefixed environment variables for storage account connections:
+CAMS storage configuration follows these conventions:
 
-#### API Function App
-- `CAMS_API_STORAGE_CONNECTION`: API's own storage account for runtime operations
-- `CAMS_DATAFLOWS_STORAGE_CONNECTION`: Dataflows storage account for queue writes
+#### Azure Functions Runtime Storage
+Both function apps require `AzureWebJobsStorage` for Azure Functions runtime operations (timer coordination, host management, key storage):
 
-#### Dataflows Function App
-- `CAMS_DATAFLOWS_STORAGE_CONNECTION`: Dataflows storage account
+- Set in `local.settings.json` for local development
+- Set by Bicep deployment for cloud environments
+
+#### Application Queue Storage
+The dataflows storage account connection is used for application-level queues. Configure this in the backend `.env` file:
+
+```
+CAMS_DATAFLOWS_STORAGE_CONNECTION=<connection-string>
+```
+
+This environment variable is read by `ApplicationConfiguration` and used by both API (to write events) and dataflows (to read events).
 
 ### Local Development Setup
-
-Configure local.settings.json for each function app with your actual storage connection strings.
 
 **backend/function-apps/api/local.settings.json:**
 ```json
 {
   "Values": {
-    "CAMS_API_STORAGE_CONNECTION": "<your-connection-string>",
-    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "<your-connection-string>"
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "<your-api-storage-connection-string>"
   }
 }
 ```
@@ -31,9 +37,16 @@ Configure local.settings.json for each function app with your actual storage con
 ```json
 {
   "Values": {
-    "CAMS_DATAFLOWS_STORAGE_CONNECTION": "<your-connection-string>"
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsStorage": "<your-dataflows-storage-connection-string>",
+    "MyTaskHub": "<unique-name>"
   }
 }
+```
+
+**backend/.env:**
+```
+CAMS_DATAFLOWS_STORAGE_CONNECTION=<dataflows-storage-connection-string>
 ```
 
 ### Unit Tests

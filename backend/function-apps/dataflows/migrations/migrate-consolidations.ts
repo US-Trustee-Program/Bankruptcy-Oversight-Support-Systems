@@ -18,17 +18,17 @@ const PAGE_SIZE = 10;
 // Queues
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const PAGE = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'page'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 const HARD_STOP = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 // Registered function names
