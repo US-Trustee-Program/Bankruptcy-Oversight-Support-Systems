@@ -54,4 +54,18 @@ describe('StaffContactLinks', () => {
     expect(screen.getByLabelText('Start Teams chat with Jane Smith')).toBeInTheDocument();
     expect(screen.getByLabelText('Start Teams call with Jane Smith')).toBeInTheDocument();
   });
+
+  test('should render with correct visible text labels', () => {
+    const user: CamsUserReference = {
+      id: 'user-1',
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+    };
+
+    render(<StaffContactLinks user={user} />);
+
+    expect(screen.getByText('john.doe@example.com')).toBeInTheDocument();
+    expect(screen.getByText('Chat on Teams')).toBeInTheDocument();
+    expect(screen.getByText('Call on Teams')).toBeInTheDocument();
+  });
 });

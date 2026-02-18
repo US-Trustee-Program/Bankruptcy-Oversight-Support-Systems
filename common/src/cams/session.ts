@@ -9,6 +9,6 @@ export type CamsSession = {
 };
 
 export function getCamsUserReference<T extends CamsUserReference>(user: T): CamsUserReference {
-  const { id, name, ..._ } = user;
-  return { id, name };
+  const { id, name, email } = user;
+  return { id, name, ...(email && { email }) };
 }
