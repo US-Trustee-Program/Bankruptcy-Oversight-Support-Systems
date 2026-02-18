@@ -17,10 +17,10 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
 
   async queueCaseReload(caseId: string): Promise<void> {
     const event: CaseSyncEvent = { caseId, type: 'CASE_CHANGED' };
-    this.enqueue(SYNC_CASES_PAGE_QUEUE, event);
+    this.enqueue(SYNC_CASES_PAGE_QUEUE, [event]);
   }
 
-  private enqueue(queue: StorageQueueOutput, ...messages: unknown[]): void {
+  private enqueue(queue: StorageQueueOutput, message: unknown): void {
     const output = this.context.extraOutputs as InvocationContextExtraOutputs | undefined;
 
     // No-op when extraOutputs unavailable (e.g., BDD tests running in Express)
@@ -32,6 +32,6 @@ export class ApiToDataflowsGatewayImpl implements ApiToDataflowsGateway {
       return;
     }
 
-    output.set(queue, messages);
+    output.set(queue, message);
   }
 }
