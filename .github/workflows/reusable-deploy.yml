@@ -64,6 +64,43 @@ jobs:
             --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ inputs.environmentHash }} isBranchDeployment=${{ inputs.deployBranch }}' \
             -l ${{ secrets.AZ_LOCATION }}
 
+      - name: Get or create Log Analytics workspace for branch
+        id: analyticsWorkspace
+        if: inputs.deployBicep == 'true'
+        run: |
+          if [[ "${{ inputs.deployBranch }}" == "true" ]]; then
+            # Branch deployment - use branch-specific workspace
+            WORKSPACE_NAME="law-${{ inputs.stackName }}"
+            echo "Branch deployment - using workspace: ${WORKSPACE_NAME}"
+
+            # Check if workspace exists
+            WORKSPACE_ID=$(az monitor log-analytics workspace show \
+              -g ${{ secrets.AZ_ANALYTICS_RG }} \
+              -n "${WORKSPACE_NAME}" \
+              --query "id" -o tsv 2>/dev/null || echo "")
+
+            if [[ -z "${WORKSPACE_ID}" ]]; then
+              # Create the workspace if it doesn't exist
+              echo "Creating Log Analytics workspace: ${WORKSPACE_NAME}"
+              az deployment group create \
+                -g ${{ secrets.AZ_ANALYTICS_RG }} \
+                -f ./ops/cloud-deployment/lib/analytics/log-analytics-workspace.bicep \
+                -p workspaceName="${WORKSPACE_NAME}" \
+                   location=${{ secrets.AZ_LOCATION }} \
+                   tags='{"isBranchDeployment":"true","branchHashId":"${{ inputs.environmentHash }}"}'
+
+              WORKSPACE_ID=$(az monitor log-analytics workspace show \
+                -g ${{ secrets.AZ_ANALYTICS_RG }} \
+                -n "${WORKSPACE_NAME}" \
+                --query "id" -o tsv)
+            fi
+            echo "analyticsWorkspaceId=${WORKSPACE_ID}" >> $GITHUB_OUTPUT
+          else
+            # Main deployment - use shared workspace from secret
+            echo "Main deployment - using shared workspace"
+            echo "analyticsWorkspaceId=${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy Azure resources
         id: azure-deploy
         if: inputs.deployBicep == 'true'
@@ -85,7 +122,7 @@ jobs:
             --ustpIssueCollectorHash ${{ secrets.USTP_ISSUE_COLLECTOR_HASH }} \
             --createAlerts ${{ inputs.ghaEnvironment == 'Main-Gov' }} \
             --deployAppInsights true \
-            --analyticsWorkspaceId ${{ secrets.AZ_ANALYTICS_WORKSPACE_ID }} \
+            --analyticsWorkspaceId ${{ steps.analyticsWorkspace.outputs.analyticsWorkspaceId }} \
             --webappPlanType ${{ vars.AZ_PLAN_TYPE }} \
             --loginProvider ${{ vars.CAMS_LOGIN_PROVIDER }} \
             --loginProviderConfig '${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}' \
