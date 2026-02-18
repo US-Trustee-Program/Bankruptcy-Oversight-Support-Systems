@@ -278,12 +278,10 @@ flowchart LR
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
         Variables_NODE_VERSION["NODE_VERSION"]
-        Workflow_Inputs["Workflow Inputs"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
-        subgraph setup_subgraph["Setup"]
-        end
+        setup["Setup"]
         subgraph accessibility_test_subgraph["accessibility-test"]
             accessibility_test_vars["NODE_VERSION"]
         end
@@ -326,9 +324,9 @@ flowchart LR
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
     security_scan ==>|"needs"| deploy_subgraph
-    setup_subgraph ==>|"needs"| build_subgraph
-    setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
-    setup_subgraph ==>|"needs"| deploy_subgraph
+    setup ==>|"needs"| build_subgraph
+    setup ==>|"needs"| deploy_code_slot_subgraph
+    setup ==>|"needs"| deploy_subgraph
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
     unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
@@ -339,13 +337,12 @@ flowchart LR
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
     class continuous_deployment_workflow mainWorkflow
     class Variables external
-    class Workflow_Inputs external
     class accessibility_test_subgraph jobSubgraph
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class security_scan job
-    class setup_subgraph jobSubgraph
+    class setup job
     class unit_test_backend_subgraph jobSubgraph
     class unit_test_common_subgraph jobSubgraph
     class unit_test_frontend_subgraph jobSubgraph
@@ -802,12 +799,10 @@ flowchart LR
         Variables_CAMS_SERVER_PORT["CAMS_SERVER_PORT"]
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
         Variables_NODE_VERSION["NODE_VERSION"]
-        Workflow_Inputs["Workflow Inputs"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
-        subgraph setup_subgraph["Setup"]
-        end
+        setup["Setup"]
         subgraph accessibility_test_subgraph["accessibility-test"]
             accessibility_test_vars["NODE_VERSION"]
         end
@@ -850,9 +845,9 @@ flowchart LR
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
     security_scan ==>|"needs"| deploy_subgraph
-    setup_subgraph ==>|"needs"| build_subgraph
-    setup_subgraph ==>|"needs"| deploy_code_slot_subgraph
-    setup_subgraph ==>|"needs"| deploy_subgraph
+    setup ==>|"needs"| build_subgraph
+    setup ==>|"needs"| deploy_code_slot_subgraph
+    setup ==>|"needs"| deploy_subgraph
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
     unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
@@ -863,13 +858,12 @@ flowchart LR
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
     class continuous_deployment_workflow mainWorkflow
     class Variables external
-    class Workflow_Inputs external
     class accessibility_test_subgraph jobSubgraph
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class security_scan job
-    class setup_subgraph jobSubgraph
+    class setup job
     class unit_test_backend_subgraph jobSubgraph
     class unit_test_common_subgraph jobSubgraph
     class unit_test_frontend_subgraph jobSubgraph
