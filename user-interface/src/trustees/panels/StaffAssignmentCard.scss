@@ -1,15 +1,15 @@
 @import './shared-card-styles.scss';
 
-.paralegal-assignment-card-container {
-  .paralegal-assignment-card {
+.staff-assignment-card-container {
+  .staff-assignment-card {
     @include trustee-card-styles;
 
     .usa-card__body {
-      .paralegal-assignment-card-header {
+      .staff-assignment-card-header {
         @include trustee-card-header;
       }
 
-      .paralegal-name {
+      .staff-name {
         margin-bottom: 0.4rem;
         line-height: 1.5;
       }
