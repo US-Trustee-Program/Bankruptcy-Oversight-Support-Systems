@@ -149,6 +149,7 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
       return {
         id: user.id,
         name: user.name,
+        email: user.email,
         offices: await UsersHelpers.getOfficesFromGroupNames(context, groupNames),
         roles: UsersHelpers.getRolesFromGroupNames(groupNames),
       };
