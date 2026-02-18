@@ -14,19 +14,20 @@ export type AlertDetails = {
   timeOut: number;
 };
 
-export type AlertProps = PropsWithChildren & {
+type AlertBaseProps = PropsWithChildren & {
   id?: string;
   message?: string;
   type: UswdsAlertStyle;
   role?: 'status' | 'alert';
-  slim?: boolean;
   timeout?: number;
-  title?: string;
   className?: string;
   inline?: boolean;
   show?: boolean;
   noIcon?: true;
 };
+
+export type AlertProps = AlertBaseProps &
+  ({ slim?: boolean; title?: never } | { slim?: false; title?: string });
 
 export enum UswdsAlertStyle {
   Info = 'usa-alert--info',

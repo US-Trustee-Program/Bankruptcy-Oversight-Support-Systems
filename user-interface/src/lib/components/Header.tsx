@@ -220,7 +220,6 @@ export const Header = () => {
             <Alert
               type={UswdsAlertStyle.Warning}
               title="System maintenance"
-              slim={true}
               inline={true}
               show={true}
             >

@@ -439,7 +439,6 @@ export default function SearchScreen() {
                 title="Enter search terms"
                 type={UswdsAlertStyle.Info}
                 show={true}
-                slim={true}
                 inline={true}
                 role="alert"
               ></Alert>
