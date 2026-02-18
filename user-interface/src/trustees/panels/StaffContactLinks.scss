@@ -1,0 +1,10 @@
+.staff-contact-links {
+  display: flex;
+  gap: 0.15rem;
+  margin-top: 0.15rem;
+  flex-wrap: wrap;
+
+  .comms-link {
+    font-size: 0.9rem;
+  }
+}
