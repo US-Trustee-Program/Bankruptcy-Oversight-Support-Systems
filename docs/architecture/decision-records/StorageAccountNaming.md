@@ -22,8 +22,6 @@ CAMS uses Azure Functions v4 naming convention with descriptive suffixes:
 - `AzureWebJobsStorage` - Dataflows storage account for runtime operations
 - `AzureWebJobsDataflowsStorage` - Dataflows storage account for queue triggers (same value as `AzureWebJobsStorage`)
 
-Both storage connections must be set because the shared `lib/storage-queues.ts` module defines bindings with `connection: 'DataflowsStorage'`, which causes Azure Functions runtime to look for `AzureWebJobsDataflowsStorage` in both function apps.
-
 The `AzureWebJobs` prefix follows Azure Functions v4 conventions, while the suffix (`DataflowsStorage`) provides clarity about which storage account is referenced.
 
 ## Status
