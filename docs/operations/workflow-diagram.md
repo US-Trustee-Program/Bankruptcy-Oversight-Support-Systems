@@ -301,7 +301,7 @@ flowchart LR
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>azResourceGrpNetworkEncrypted<br/>dataflowsFunctionName<br/>deployBicep<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>azResourceGrpNetworkEncrypted<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
             deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]
@@ -825,7 +825,7 @@ flowchart LR
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
         subgraph deploy_subgraph["Cloud Resource Deployment"]
-            deploy_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>azResourceGrpNetworkEncrypted<br/>dataflowsFunctionName<br/>deployBicep<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
+            deploy_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>azResourceGrpNetworkEncrypted<br/>dataflowsFunctionName<br/>deployVnet<br/>environmentHash<br/>ghaEnvironment<br/>slotName<br/>stackName<br/>webappName"]
         end
         subgraph deploy_code_slot_subgraph["Slot Code Deployment"]
             deploy_code_slot_vars["apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>environmentHash<br/>ghaEnvironment<br/>initialDeployment<br/>slotName<br/>stackName<br/>webappName"]

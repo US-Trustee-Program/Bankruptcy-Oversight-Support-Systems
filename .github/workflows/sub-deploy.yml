@@ -36,16 +36,12 @@ on:
       deployBranch:
         required: true
         type: string
-      deployBicep:
-        required: true
-        type: string
 
 jobs:
   deploy-infra:
     name: Azure Infrastructure
     uses: ./.github/workflows/reusable-deploy.yml
-    if:
-      ${{ ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true')) && (inputs.deployBicep == 'true') }}
+    if: ${{ (github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true') }}
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
@@ -54,7 +50,6 @@ jobs:
       environmentHash: ${{ inputs.environmentHash }}
       deployVnet: ${{ inputs.deployVnet }}
       deployBranch: ${{ inputs.deployBranch }}
-      deployBicep: ${{ inputs.deployBicep }}
     secrets: inherit # pragma: allowlist secret
 
   build-frontend-deployment-artifact:

@@ -103,7 +103,6 @@ jobs:
       deployVnet: ${{ needs.setup.outputs.deployVnet }}
       slotName: ${{ needs.setup.outputs.slotName }}
       deployBranch: ${{ github.ref != 'refs/heads/main' }}
-      deployBicep: ${{ needs.setup.outputs.deployBicep }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-code-slot:
