@@ -6,7 +6,9 @@ CAMS uses separate Azure Function Apps for API and Dataflows. Following Azure be
 
 When API needs to enqueue work for Dataflows, the challenge is writing to Dataflows' storage queues from API's execution context.
 
-Using a shared storage account was considered but rejected because it violates Azure best practices, creates operational coupling, and reduces isolation.
+Alternative approaches considered:
+- **Shared storage account**: Rejected for the simplicity of direct queue writes. No compelling need to provision a third storage account.
+- **HTTP bridge with third storage account**: Considered and initially implemented, but rejected for the simplicity of direct queue writes. A bridge adds unnecessary complexity between API and Dataflows at this time..
 
 ## Decision
 
