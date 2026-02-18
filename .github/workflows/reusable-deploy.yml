@@ -21,9 +21,6 @@ on:
       deployVnet:
         required: true
         type: string
-      deployBranch:
-        default: 'false'
-        type: string
 
 jobs:
   deploy-azure-infrastructure:
@@ -57,7 +54,7 @@ jobs:
           ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
             --file ./ops/cloud-deployment/lib/subscription/ustp-cams-rg.bicep \
-            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ inputs.environmentHash }} isBranchDeployment=${{ inputs.deployBranch }}' \
+            --parameters 'databaseResourceGroupName=${{ secrets.AZURE_RG }} networkResourceGroupName=${{ steps.rgNetwork.outputs.out }} webappResourceGroupName=${{ steps.rgApp.outputs.out }} analyticsResourceGroupName=${{ secrets.AZ_ANALYTICS_RG }} azSubscription=${{ secrets.AZURE_SUBSCRIPTION }} branchName=${{ github.ref_name }} branchHashId=${{ inputs.environmentHash }} isBranchDeployment=${{ github.ref != 'refs/heads/main' }}' \
             -l ${{ secrets.AZ_LOCATION }}
 
       - name: Deploy Azure resources
