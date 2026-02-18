@@ -173,7 +173,6 @@ function SearchResults(props: SearchResultsProps) {
             title={alertInfo.title}
             type={UswdsAlertStyle.Error}
             show={true}
-            slim={true}
             inline={true}
             role="alert"
           ></Alert>
@@ -188,7 +187,6 @@ function SearchResults(props: SearchResultsProps) {
             title="No cases found"
             type={UswdsAlertStyle.Info}
             show={true}
-            slim={true}
             inline={true}
             role="alert"
           ></Alert>
