@@ -15,7 +15,6 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
-      enableBicepDeployment: "true"
 
   execute-dast-scan:
     needs: [setup]

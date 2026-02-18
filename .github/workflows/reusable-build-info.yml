@@ -6,9 +6,6 @@ on:
       environment:
         required: true
         type: string
-      enableBicepDeployment:
-        required: true
-        type: string
     outputs:
       stackName:
         description: 'Application name'
@@ -107,9 +104,6 @@ jobs:
           echo "Api Function Name: $apiFunctionName"
           dataflowsFunctionName="${stackName}-dataflows"
           echo "Data Flows Function Name: $dataflowsFunctionName"
-
-          # Deployment flags
-          echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
 
           # Expected job output values
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT

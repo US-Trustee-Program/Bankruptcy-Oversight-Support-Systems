@@ -279,12 +279,10 @@ flowchart LR
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
         Variables_NODE_VERSION["NODE_VERSION"]
         Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
         subgraph setup_subgraph["Setup"]
-            setup_vars["enableBicepDeployment"]
         end
         subgraph accessibility_test_subgraph["accessibility-test"]
             accessibility_test_vars["NODE_VERSION"]
@@ -315,7 +313,6 @@ flowchart LR
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
         Variables --> Variables_NODE_VERSION
-        Workflow_Inputs --> Workflow_Inputs_enableBicepDeployment
     Variables_CAMS_BASE_PATH -.-> build_subgraph
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
     Variables_CAMS_SERVER_PORT -.-> build_subgraph
@@ -325,7 +322,6 @@ flowchart LR
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
-    Workflow_Inputs_enableBicepDeployment -.-> setup_subgraph
     accessibility_test_subgraph ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
@@ -807,12 +803,10 @@ flowchart LR
         Variables_CAMS_SERVER_PROTOCOL["CAMS_SERVER_PROTOCOL"]
         Variables_NODE_VERSION["NODE_VERSION"]
         Workflow_Inputs["Workflow Inputs"]
-        Workflow_Inputs_enableBicepDeployment["enableBicepDeployment"]
     end
 
     subgraph continuous_deployment_workflow["Continuous Deployment"]
         subgraph setup_subgraph["Setup"]
-            setup_vars["enableBicepDeployment"]
         end
         subgraph accessibility_test_subgraph["accessibility-test"]
             accessibility_test_vars["NODE_VERSION"]
@@ -843,7 +837,6 @@ flowchart LR
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
         Variables --> Variables_NODE_VERSION
-        Workflow_Inputs --> Workflow_Inputs_enableBicepDeployment
     Variables_CAMS_BASE_PATH -.-> build_subgraph
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
     Variables_CAMS_SERVER_PORT -.-> build_subgraph
@@ -853,7 +846,6 @@ flowchart LR
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
-    Workflow_Inputs_enableBicepDeployment -.-> setup_subgraph
     accessibility_test_subgraph ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph

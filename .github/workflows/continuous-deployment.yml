@@ -21,16 +21,6 @@ on:
         options:
           - 'false'
           - 'true'
-      enableBicepDeployment:
-        description:
-          'enableBicepDeployment: (Currently ignored - bicep always deploys) Execute main.bicep deployment for application component Azure
-          resources'
-        required: true
-        default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
 
 jobs:
   setup:
@@ -39,7 +29,6 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
-      enableBicepDeployment: ${{ inputs.enableBicepDeployment }}
 
   accessibility-test:
     uses: ./.github/workflows/reusable-accessibility.yml
