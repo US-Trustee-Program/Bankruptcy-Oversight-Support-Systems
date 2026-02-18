@@ -67,20 +67,10 @@
 
 .usa-alert__hidden {
   visibility: hidden;
-  animation-name: usaAlertFadeOut;
-  animation-duration: 250ms;
-  animation-timing-function: 0;
-  animation-iteration-count: 1;
-  animation-direction: normal;
 }
 
 .usa-alert__visible {
   visibility: visible;
-  animation-name: usaAlertFadeIn;
-  animation-duration: 250ms;
-  animation-timing-function: 0;
-  animation-iteration-count: 1;
-  animation-direction: normal;
 }
 
 .usa-alert-container.inline-alert {
@@ -96,28 +86,6 @@
     max-width: none;
     margin: 0.5rem auto;
     box-shadow: none;
-  }
-}
-
-@keyframes usaAlertFadeIn {
-  from {
-    opacity: 0;
-    visibility: hidden;
-  }
-  to {
-    opacity: 1;
-    visibility: visible;
-  }
-}
-
-@keyframes usaAlertFadeOut {
-  from {
-    opacity: 1;
-    visibility: visible;
-  }
-  to {
-    opacity: 0;
-    visibility: hidden;
   }
 }
 
