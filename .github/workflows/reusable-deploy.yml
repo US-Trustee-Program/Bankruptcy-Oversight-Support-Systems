@@ -24,9 +24,6 @@ on:
       deployBranch:
         default: 'false'
         type: string
-      deployBicep:
-        required: true
-        type: string
 
 jobs:
   deploy-azure-infrastructure:
@@ -56,7 +53,6 @@ jobs:
 
       - name: Create Azure resource groups
         id: azure-resource-group
-        if: inputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy-rg.sh \
             --show-what-if \
@@ -66,7 +62,6 @@ jobs:
 
       - name: Deploy Azure resources
         id: azure-deploy
-        if: inputs.deployBicep == 'true'
         run: |
           ./ops/scripts/pipeline/azure-deploy.sh \
             --resource-group ${{ steps.rgApp.outputs.out }} \
