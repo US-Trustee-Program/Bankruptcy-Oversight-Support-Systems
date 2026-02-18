@@ -12,7 +12,7 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
-import { NotFoundError } from '../../../common-errors/not-found-error';
+import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
@@ -21,6 +21,11 @@ const { using, and } = QueryBuilder;
 
 export type TrusteeDocument = Trustee & {
   documentType: 'TRUSTEE';
+};
+
+// Type augmentation for dot-notation queries on nested fields
+type TrusteeDocumentQueryable = TrusteeDocument & {
+  'legacy.truId'?: string;
 };
 
 type TrusteeOversightAssignmentDocument = TrusteeOversightAssignment & {
@@ -101,6 +106,21 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to retrieve trustees list.',
+      });
+    }
+  }
+
+  async findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null> {
+    try {
+      const doc = using<TrusteeDocumentQueryable>();
+      const query = and(doc('documentType').equals('TRUSTEE'), doc('legacy.truId').equals(truId));
+      return await this.getAdapter<TrusteeDocumentQueryable>().findOne(query);
+    } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        return null;
+      }
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustee by legacy TRU_ID ${truId}.`,
       });
     }
   }

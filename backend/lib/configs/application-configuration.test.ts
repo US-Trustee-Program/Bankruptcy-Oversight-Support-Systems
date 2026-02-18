@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { ApplicationConfiguration } from './application-configuration';
+import { generateTestCredential } from '../testing/testing-utilities';
 
 describe('Testing that database configuration is loaded correctly based on environment variables', () => {
   const originalEnv = { ...process.env };
@@ -47,7 +48,7 @@ describe('Testing that database configuration is loaded correctly based on envir
 
   test('Should use sql auth', async () => {
     process.env.MSSQL_USER = 'tester';
-    process.env.MSSQL_PASS = (Math.random() + 1).toString(36);
+    process.env.MSSQL_PASS = generateTestCredential();
 
     const appConfig = new ApplicationConfiguration();
     expect(appConfig.dxtrDbConfig.user).not.toBeNull();

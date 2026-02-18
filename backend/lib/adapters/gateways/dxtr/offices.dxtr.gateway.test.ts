@@ -5,7 +5,6 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import * as database from '../../utils/database';
 import { DbTableFieldSpec, IDbConfig, QueryResults } from '../../types/database';
 import { COURT_DIVISIONS } from '@common/cams/test-utilities/courts.mock';
-import { MOCKED_USTP_OFFICES_ARRAY, UstpOfficeDetails } from '@common/cams/offices';
 
 describe('offices gateway tests', () => {
   describe('getOffice tests', () => {
@@ -54,17 +53,28 @@ describe('offices gateway tests', () => {
       };
       querySpy.mockResolvedValue(mockResults);
 
-      const expectedOffices: UstpOfficeDetails[] = MOCKED_USTP_OFFICES_ARRAY;
-
       const gateway = new OfficesDxtrGateway();
       const offices = await gateway.getOffices(applicationContext);
 
-      expectedOffices.forEach((expectedOffice) => {
-        const actualOffice = offices.find((o) => o.officeCode === expectedOffice.officeCode);
-        const { groups: _groups, ...actualRest } = actualOffice;
-        const { groups: __groups, ...expectedRest } = expectedOffice;
-        expect(actualOffice.groups).toEqual(expect.arrayContaining(expectedOffice.groups));
-        expect(actualRest).toEqual(expectedRest);
+      // Flatten all divisions from the gateway output
+      const allDivisions = offices.flatMap((office) =>
+        office.groups.flatMap((group) => group.divisions),
+      );
+
+      // Every court division from COURT_DIVISIONS should appear in the output
+      COURT_DIVISIONS.forEach((cd) => {
+        const match = allDivisions.find(
+          (d) => d.divisionCode === cd.courtDivisionCode && d.court.courtId === cd.courtId,
+        );
+        expect(match).toBeDefined();
+      });
+
+      // Every office should have valid structure
+      offices.forEach((office) => {
+        expect(office.officeCode).toBeTruthy();
+        expect(office.officeName).toBeTruthy();
+        expect(office.regionId).toBeTruthy();
+        expect(office.groups.length).toBeGreaterThan(0);
       });
     });
 

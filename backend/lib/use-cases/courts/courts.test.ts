@@ -3,7 +3,7 @@ import { CourtsUseCase } from './courts';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { OfficesUseCase } from '../offices/offices';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import { ustpOfficeToCourtDivision } from '@common/cams/courts';
 
 describe('Courts use case tests', () => {

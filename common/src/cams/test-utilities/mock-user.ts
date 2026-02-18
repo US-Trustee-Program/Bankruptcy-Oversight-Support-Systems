@@ -1,4 +1,4 @@
-import { MOCKED_USTP_OFFICE_DATA_MAP, MOCKED_USTP_OFFICES_ARRAY } from '../offices';
+import { MOCKED_USTP_OFFICE_DATA_MAP, MOCKED_USTP_OFFICES_ARRAY } from './offices.mock';
 import { CamsRole } from '../roles';
 import { CamsUser } from '../users';
 

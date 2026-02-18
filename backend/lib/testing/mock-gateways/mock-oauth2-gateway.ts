@@ -6,7 +6,7 @@ import { CamsUser } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
 import { CamsJwt, CamsJwtClaims } from '@common/cams/jwt';
 import { OpenIdConnectGateway } from '../../adapters/types/authorization';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import DateHelper from '@common/date-helper';
 
 const MODULE_NAME = 'MOCK-OAUTH2-GATEWAY';

@@ -3,7 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import OfficeAssigneesUseCase from './office-assignees';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/offices';
+import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import { CaseAssignment } from '@common/cams/assignments';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockData from '@common/cams/test-utilities/mock-data';

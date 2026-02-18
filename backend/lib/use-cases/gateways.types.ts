@@ -1,4 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
+import { AtsTrusteeRecord, AtsAppointmentRecord } from '../adapters/types/ats.types';
+import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
 import { ConsolidationOrder, Order, RawOrderSync, TransferOrderAction } from '@common/cams/orders';
 import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from '@common/cams/events';
 import { CaseHistory } from '@common/cams/history';
@@ -161,6 +163,25 @@ export interface AcmsGateway {
   getMigrationCaseCount(context: ApplicationContext);
 }
 
+export interface AtsGateway {
+  getTrusteesPage(
+    context: ApplicationContext,
+    lastTrusteeId: number | null,
+    pageSize: number,
+  ): Promise<AtsTrusteeRecord[]>;
+  getTrusteeAppointments(
+    context: ApplicationContext,
+    trusteeId: number,
+  ): Promise<AtsAppointmentRecord[]>;
+  getTrusteeCount(context: ApplicationContext): Promise<number>;
+  testConnection(context: ApplicationContext): Promise<boolean>;
+  executeQuery(
+    context: ApplicationContext,
+    query: string,
+    input?: DbTableFieldSpec[],
+  ): Promise<QueryResults>;
+}
+
 export type CaseHistoryDocumentType = 'AUDIT_ASSIGNMENT' | 'AUDIT_TRANSFER' | 'AUDIT_CONSOLIDATION';
 
 export interface CasesRepository extends Releasable {
@@ -235,6 +256,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   createTrusteeHistory(history: Creatable<TrusteeHistory>): Promise<void>;
   listTrusteeHistory(trusteeId: string): Promise<TrusteeHistory[]>;
   listTrustees(): Promise<Trustee[]>;
+  findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null>;
   updateTrustee(
     id: string,
     input: Partial<TrusteeInput>,
@@ -287,7 +309,8 @@ export type RuntimeStateDocumentType =
   | 'ORDERS_SYNC_STATE'
   | 'OFFICE_STAFF_SYNC_STATE'
   | 'CASES_SYNC_STATE'
-  | 'PHONETIC_BACKFILL_STATE';
+  | 'PHONETIC_BACKFILL_STATE'
+  | 'TRUSTEE_MIGRATION_STATE';
 
 export type RuntimeState = {
   id?: string;
