@@ -90,7 +90,6 @@ export function CaseReload() {
 
       await Api2.postCaseReload(caseId);
 
-      // Start polling
       startPolling(caseId);
     } catch (error: unknown) {
       const message = (error as Error)?.message ?? 'Reason unknown.';
@@ -101,17 +100,14 @@ export function CaseReload() {
   }
 
   function isValidatable() {
-    // Validate division code is selected
     if (!divisionCode.trim()) {
       return false;
     }
 
-    // Validate case number matches expected format (XX-XXXXX)
     if (!caseNumber || !CASE_NUMBER_REGEX.test(caseNumber)) {
       return false;
     }
 
-    // Not validatable while validation is in progress
     return !isValidating;
   }
 
@@ -120,10 +116,8 @@ export function CaseReload() {
   }
 
   function handleReset() {
-    // Reset polling hook (stops polling and clears cosmosCase)
     reset();
 
-    // Clear all state
     setDivisionCode('');
     setDivisionName('');
     setCaseNumber('');
@@ -131,7 +125,6 @@ export function CaseReload() {
     setValidationError(null);
     setReloadError(null);
 
-    // Reset the division combo box
     if (divisionSelectionRef.current) {
       divisionSelectionRef.current.clearSelections();
     }

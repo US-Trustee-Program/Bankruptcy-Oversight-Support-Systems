@@ -27,10 +27,5 @@ Accepted
 - Standard Azure pattern: Cross-storage-account access via connection strings
 
 ### Trade-offs
-- API requires connection string to Dataflows storage account (write access to queues)
+- API requires a connection string to the Dataflows storage account with write access to its queues
 - Configuration complexity: Two storage connections required in API
-- Security consideration: Connection strings grant broad access (mitigated by principle of least usage in code)
-
-### Future Enhancement
-- Migrate to managed identity with role-based access control (RBAC) for more granular permissions
-- API would use Storage Queue Data Message Sender role on Dataflows storage account

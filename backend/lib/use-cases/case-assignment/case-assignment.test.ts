@@ -325,11 +325,6 @@ describe('Case assignment tests', () => {
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
         }),
       );
-      const queueCaseAssignmentEventSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-        queueCaseAssignmentEvent: queueCaseAssignmentEventSpy,
-        queueCaseReload: vi.fn(),
-      });
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
 
@@ -379,11 +374,6 @@ describe('Case assignment tests', () => {
         }),
       );
       vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
-      const queueCaseAssignmentEventSpy = vi.fn().mockResolvedValue(undefined);
-      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
-        queueCaseAssignmentEvent: queueCaseAssignmentEventSpy,
-        queueCaseReload: vi.fn(),
-      });
 
       const assignments = [];
 
