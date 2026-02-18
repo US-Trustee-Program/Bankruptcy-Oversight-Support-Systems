@@ -57,7 +57,7 @@ describe('cases common functions tests', () => {
       },
     );
 
-    const consolidationCases = [
+    const consolidationCases: [string, Partial<CaseDetail>, boolean, boolean][] = [
       [
         'is lead',
         { consolidation: [{ documentType: 'CONSOLIDATION_FROM' }] } as Partial<CaseDetail>,
@@ -86,7 +86,7 @@ describe('cases common functions tests', () => {
       },
     );
 
-    const transferCases = [
+    const transferCases: [string, Partial<CaseDetail>, boolean][] = [
       [
         'is transferred from',
         { transfers: [{ documentType: 'TRANSFER_FROM' }] } as Partial<CaseDetail>,
