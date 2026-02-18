@@ -10,5 +10,7 @@ export type CamsSession = {
 
 export function getCamsUserReference<T extends CamsUserReference>(user: T): CamsUserReference {
   const { id, name, email } = user;
-  return { id, name, ...(email && { email }) };
+  const userRef: CamsUserReference = { id, name };
+  if (email) userRef.email = email;
+  return userRef;
 }
