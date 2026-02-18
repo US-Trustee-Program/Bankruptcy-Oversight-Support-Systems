@@ -2,9 +2,8 @@ import './TrusteeAssignedStaff.scss';
 import { useEffect } from 'react';
 import { useTrusteeAssignments } from '@/trustees/modals/UseTrusteeAssignments';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import AttorneyAssignmentCard from './AttorneyAssignmentCard';
-import AuditorAssignmentCard from './AuditorAssignmentCard';
-import ParalegalAssignmentCard from './ParalegalAssignmentCard';
+import StaffAssignmentCard from './StaffAssignmentCard';
+import { CamsRole } from '@common/cams/roles';
 
 interface TrusteeAssignedStaffProps {
   trusteeId: string;
@@ -28,21 +27,24 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
         {error && <Alert type={UswdsAlertStyle.Error}>{error}</Alert>}
 
         <div className="assigned-staff-cards">
-          <AttorneyAssignmentCard
+          <StaffAssignmentCard
+            role={CamsRole.OversightAttorney}
             trusteeId={trusteeId}
             assignments={assignments}
             onAssignmentChange={refreshAssignments}
             isLoading={isLoading}
           />
 
-          <AuditorAssignmentCard
+          <StaffAssignmentCard
+            role={CamsRole.OversightAuditor}
             trusteeId={trusteeId}
             assignments={assignments}
             onAssignmentChange={refreshAssignments}
             isLoading={isLoading}
           />
 
-          <ParalegalAssignmentCard
+          <StaffAssignmentCard
+            role={CamsRole.OversightParalegal}
             trusteeId={trusteeId}
             assignments={assignments}
             onAssignmentChange={refreshAssignments}
