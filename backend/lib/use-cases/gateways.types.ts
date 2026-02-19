@@ -21,6 +21,7 @@ import {
 } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CaseAssignment } from '@common/cams/assignments';
+import { CaseAssignmentEvent } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
 import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
@@ -386,13 +387,9 @@ export type OfficeAssignee = {
   name: string;
 };
 
-export type LogicalQueueNames = 'CASE_ASSIGNMENT_EVENT' | 'CASE_CLOSED_EVENT';
-
-export interface QueueGateway {
-  using<T = unknown>(
-    context: ApplicationContext,
-    queueName: LogicalQueueNames,
-  ): { enqueue: (...messages: T[]) => void };
+export interface ApiToDataflowsGateway {
+  queueCaseAssignmentEvent(event: CaseAssignmentEvent): Promise<void>;
+  queueCaseReload(caseId: string): Promise<void>;
 }
 
 export interface UserGroupsRepository extends Releasable {

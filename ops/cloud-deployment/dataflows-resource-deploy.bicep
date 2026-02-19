@@ -227,6 +227,10 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           name: 'AzureWebJobsStorage'
           value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
         }
+        {
+          name: 'AzureWebJobsDataflowsStorage'
+          value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
+        }
       ])
     })
   }
@@ -240,6 +244,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     properties: {
       appSettingNames: [
         'AzureWebJobsStorage'
+        'AzureWebJobsDataflowsStorage'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
       ]
@@ -278,6 +283,10 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           }
           {
             name: 'AzureWebJobsStorage'
+            value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
+          }
+          {
+            name: 'AzureWebJobsDataflowsStorage'
             value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
           }
         ])

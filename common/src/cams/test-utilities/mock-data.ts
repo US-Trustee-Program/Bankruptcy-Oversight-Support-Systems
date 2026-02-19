@@ -54,7 +54,7 @@ import { MOCKED_USTP_OFFICES_ARRAY } from './offices.mock';
 import { REGION_02_GROUP_NY, SUPERUSER } from './mock-user';
 import { RoleAndOfficeGroupNames } from '../privileged-identity';
 import { SYSTEM_USER_REFERENCE } from '../auditable';
-import { CaseSyncEvent } from '../../queue/dataflow-types';
+import { CaseSyncEvent } from '../dataflow-events';
 
 const { getIsoDate, getTodaysIsoDate, sortDates, nowInSeconds } = DateHelper;
 

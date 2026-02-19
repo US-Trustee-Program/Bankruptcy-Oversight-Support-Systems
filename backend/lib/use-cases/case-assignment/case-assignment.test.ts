@@ -11,7 +11,7 @@ import CaseManagement from '../cases/case-management';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { ConsolidationOrder } from '@common/cams/orders';
-import OfficeAssigneesUseCase from '../../use-cases/offices/office-assignees';
+import factory from '../../factory';
 import { OfficeStaff } from '../../adapters/gateways/mongo/offices.mongo.repository';
 import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { MANHATTAN } from '@common/cams/test-utilities/courts.mock';
@@ -95,6 +95,8 @@ describe('Case assignment tests', () => {
     const caseId = '081-23-01176';
     const role = CamsRole.TrialAttorney;
 
+    let assignmentEventSpy: ReturnType<typeof vi.fn>;
+
     beforeEach(async () => {
       applicationContext = await createMockApplicationContext({
         env: {
@@ -118,6 +120,12 @@ describe('Case assignment tests', () => {
           }
         },
       );
+
+      assignmentEventSpy = vi.fn().mockResolvedValue(undefined);
+      vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
+        queueCaseAssignmentEvent: assignmentEventSpy,
+        queueCaseReload: vi.fn(),
+      });
     });
 
     afterEach(() => {
@@ -317,9 +325,6 @@ describe('Case assignment tests', () => {
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
         }),
       );
-      const assignmentEventSpy = vi
-        .spyOn(OfficeAssigneesUseCase, 'handleCaseAssignmentEvent')
-        .mockResolvedValue();
 
       const assignments = [attorneyJaneSmith, attorneyJoeNobel];
 
@@ -352,7 +357,6 @@ describe('Case assignment tests', () => {
       expect(createAssignment).toHaveBeenCalledTimes(1);
 
       expect(assignmentEventSpy).toHaveBeenCalledWith(
-        expect.anything(),
         expect.objectContaining({ ...assignmentTwo }),
       );
     });
@@ -370,9 +374,6 @@ describe('Case assignment tests', () => {
         }),
       );
       vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
-      const assignmentEventSpy = vi
-        .spyOn(OfficeAssigneesUseCase, 'handleCaseAssignmentEvent')
-        .mockResolvedValue();
 
       const assignments = [];
 
@@ -397,7 +398,6 @@ describe('Case assignment tests', () => {
       expect(updateAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(updateAssignment).toHaveBeenCalledTimes(1);
       expect(assignmentEventSpy).toHaveBeenCalledWith(
-        expect.anything(),
         expect.objectContaining({ ...assignmentOne }),
       );
     });
