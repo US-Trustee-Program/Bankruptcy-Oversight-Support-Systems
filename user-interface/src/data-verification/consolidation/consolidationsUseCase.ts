@@ -82,6 +82,9 @@ const consolidationUseCase = (
 
   const handleAddCaseAction = () => {
     if (store.caseToAdd) {
+      if (!store.order.memberCases) {
+        store.order.memberCases = [];
+      }
       store.order.memberCases.push(store.caseToAdd);
       if (store.caseToAdd.isLeadCase) {
         handleMarkLeadCase(store.caseToAdd);
@@ -134,7 +137,9 @@ const consolidationUseCase = (
       store.setIsLookingForCase(true);
       store.setAddCaseNumberError('');
       store.setCaseToAdd(null);
-      const caseExists = !!store.order.memberCases.find((bCase) => bCase.caseId === caseIdToVerify);
+      const caseExists = !!(store.order.memberCases ?? []).find(
+        (bCase) => bCase.caseId === caseIdToVerify,
+      );
       if (caseExists) {
         store.setAddCaseNumberError('This case is already included in the consolidation.');
         store.setIsLookingForCase(false);
@@ -419,7 +424,7 @@ const consolidationUseCase = (
       let isDataEnhanced = true;
       const assignmentCalls = [];
       const associationCalls = [];
-      for (const bCase of store.order.memberCases) {
+      for (const bCase of store.order.memberCases ?? []) {
         assignmentCalls.push(
           Api2.getCaseAssignments(bCase.caseId)
             .then((response) => {
