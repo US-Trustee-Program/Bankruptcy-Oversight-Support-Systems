@@ -228,9 +228,6 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       dataflowsStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsStorageConnectionString
       dataflowsSlotStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsSlotStorageConnectionString
     }
-    dependsOn: [
-      ustpDataflowsFunction
-    ]
 }
 
 module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
