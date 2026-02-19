@@ -101,6 +101,10 @@ param maxObjectKeyCount string
 
 param gitSha string
 
+param dataflowsStorageConnectionString string
+
+param dataflowsSlotStorageConnectionString string
+
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
@@ -275,7 +279,7 @@ var baseApiFunctionAppConfigProperties = {
       }
       {
         name: 'AzureWebJobsDataflowsStorage'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
+        value: dataflowsStorageConnectionString
       }
     ])
     cors: {
@@ -305,7 +309,7 @@ var baseApiFunctionAppConfigProperties = {
       }
       {
         name: 'AzureWebJobsDataflowsStorage'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
+        value: dataflowsSlotStorageConnectionString
       }
     ])
     cors: {
