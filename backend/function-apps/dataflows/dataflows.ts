@@ -1,6 +1,4 @@
 import * as dotenv from 'dotenv';
-import { initializeApplicationInsights } from '../azure/app-insights';
-
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 import CaseAssignmentEvent from './events/case-assignment-event';
@@ -95,9 +93,7 @@ class DataflowSetupMap {
 }
 const dataflows = new DataflowSetupMap();
 
-// Setup environment and AppInsights.
 dotenv.config();
-initializeApplicationInsights();
 
 // Register data flows.
 dataflows.register(

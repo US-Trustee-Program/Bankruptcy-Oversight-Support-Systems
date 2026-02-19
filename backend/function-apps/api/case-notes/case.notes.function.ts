@@ -1,13 +1,10 @@
 import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
-import { initializeApplicationInsights } from '../../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { CaseNotesController } from '../../../lib/controllers/case-notes/case.notes.controller';
 import { CaseNoteInput } from '@common/cams/cases';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION';
-
-initializeApplicationInsights();
 
 export default async function handler(
   request: HttpRequest,
