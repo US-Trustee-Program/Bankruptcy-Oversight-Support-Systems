@@ -12,8 +12,8 @@
     "start": "func start --javascript"
   },
   "dependencies": {
-    "@azure/functions": "4.11.0",
-    "mongodb": "7.0.0",
+    "@azure/functions": "4.11.1",
+    "mongodb": "7.1.0",
     "mssql": "12.2.0",
     "dotenv": "17.2.3",
     "express": "5.2.1",
