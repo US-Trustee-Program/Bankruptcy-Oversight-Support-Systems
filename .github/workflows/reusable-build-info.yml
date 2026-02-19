@@ -6,9 +6,6 @@ on:
       environment:
         required: true
         type: string
-      enableBicepDeployment:
-        required: true
-        type: string
     outputs:
       stackName:
         description: 'Application name'
@@ -37,9 +34,6 @@ on:
       deployVnet:
         description: ''
         value: ${{ jobs.build-info.outputs.deployVnet }}
-      deployBicep:
-        description: ''
-        value: ${{ jobs.build-info.outputs.deployBicep }}
       initialDeployment:
         description: ''
         value: ${{ jobs.build-info.outputs.initialDeployment }}
@@ -62,7 +56,6 @@ jobs:
       azResourceGrpNetworkEncrypted: ${{ steps.rgNetwork.outputs.out }}
       environmentHash: ${{ steps.check-env.outputs.environmentHash }}
       slotName: ${{ steps.build-info.outputs.slotName }}
-      deployBicep: ${{ steps.check-bicep.outputs.deployBicep }}
       deployVnet: ${{ steps.check-deployment.outputs.deployVnet }}
       initialDeployment: ${{ steps.check-deployment.outputs.initialDeployment }}
     steps:
@@ -107,9 +100,6 @@ jobs:
           echo "Api Function Name: $apiFunctionName"
           dataflowsFunctionName="${stackName}-dataflows"
           echo "Data Flows Function Name: $dataflowsFunctionName"
-
-          # Deployment flags
-          echo "Bicep Deployment Flag: ${{ inputs.enableBicepDeployment == 'true' }}"
 
           # Expected job output values
           echo "azResourceGrpApp=${{ secrets.AZ_APP_RG }}${resourceGroupSuffix}" >> $GITHUB_OUTPUT
@@ -158,12 +148,3 @@ jobs:
           deployVnet=$(./ops/scripts/pipeline/check-for-network.sh --resource-group ${{ steps.rgNetworkDecode.outputs.out }} --vnet-name "${{ vars.AZ_NETWORK_VNET_NAME }}" --is-initial-deployment "${initialDeployment}")
           echo "deployVnet=${deployVnet}" >> $GITHUB_OUTPUT
           echo "Deploy Vnet: ${deployVnet}"
-
-      - name: Check Bicep Deployment
-        id: check-bicep
-        run: |
-          # Always deploy bicep to avoid deployment issues
-          # The conditional logic and script are kept for potential future use
-          deployBicep=true
-          echo "Deploy Bicep: $deployBicep"
-          echo "deployBicep=${deployBicep}" >> $GITHUB_OUTPUT
