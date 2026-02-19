@@ -182,4 +182,103 @@ describe('DebtorCard', () => {
     const counselCard = container.querySelector('.debtor-counsel-card');
     expect(counselCard).toBeInTheDocument();
   });
+
+  describe('Alias names', () => {
+    test('renders primary name without aliases when aliases not provided', () => {
+      render(<DebtorCard {...defaultProps} />);
+
+      expect(screen.getByTestId('test-debtor-name')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.queryByText(/^Alias:/)).not.toBeInTheDocument();
+    });
+
+    test('renders primary name with multiple aliases', () => {
+      const debtorWithAliases: Debtor = {
+        ...mockDebtor,
+        aliases: {
+          names: ['John Smith', 'J. Doe', 'Johnny Doe'],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithAliases} />);
+
+      expect(screen.getByTestId('test-debtor-name')).toBeInTheDocument();
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-name-0')).toBeInTheDocument();
+      expect(screen.getByText('Alias: John Smith')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-name-1')).toBeInTheDocument();
+      expect(screen.getByText('Alias: J. Doe')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-name-2')).toBeInTheDocument();
+      expect(screen.getByText('Alias: Johnny Doe')).toBeInTheDocument();
+    });
+
+    test('each alias has "Alias:" prefix', () => {
+      const debtorWithAliases: Debtor = {
+        ...mockDebtor,
+        aliases: {
+          names: ['John Smith', 'J. Doe'],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithAliases} />);
+
+      const aliasElements = screen.getAllByText(/^Alias:/);
+      expect(aliasElements).toHaveLength(2);
+      expect(aliasElements[0]).toHaveTextContent('Alias: John Smith');
+      expect(aliasElements[1]).toHaveTextContent('Alias: J. Doe');
+    });
+
+    test('each alias has unique test ID', () => {
+      const debtorWithAliases: Debtor = {
+        ...mockDebtor,
+        aliases: {
+          names: ['John Smith', 'J. Doe', 'Johnny Doe'],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithAliases} />);
+
+      expect(screen.getByTestId('test-debtor-alias-name-0')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-name-1')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-name-2')).toBeInTheDocument();
+    });
+
+    test('does not render aliases section when aliases undefined', () => {
+      const debtorWithoutAliases: Debtor = {
+        ...mockDebtor,
+        aliases: undefined,
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithoutAliases} />);
+
+      expect(screen.getByTestId('test-debtor-name')).toBeInTheDocument();
+      expect(screen.queryByText(/^Alias:/)).not.toBeInTheDocument();
+    });
+
+    test('does not render aliases section when aliases.names is empty array', () => {
+      const debtorWithEmptyAliases: Debtor = {
+        ...mockDebtor,
+        aliases: {
+          names: [],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithEmptyAliases} />);
+
+      expect(screen.getByTestId('test-debtor-name')).toBeInTheDocument();
+      expect(screen.queryByText(/^Alias:/)).not.toBeInTheDocument();
+    });
+
+    test('does not render aliases section when aliases.names is undefined', () => {
+      const debtorWithUndefinedNames: Debtor = {
+        ...mockDebtor,
+        aliases: {},
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithUndefinedNames} />);
+
+      expect(screen.getByTestId('test-debtor-name')).toBeInTheDocument();
+      expect(screen.queryByText(/^Alias:/)).not.toBeInTheDocument();
+    });
+  });
 });

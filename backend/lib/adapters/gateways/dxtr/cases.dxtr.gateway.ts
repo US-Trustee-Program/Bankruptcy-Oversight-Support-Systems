@@ -823,13 +823,28 @@ class CasesDxtrGateway implements CasesInterface {
     courtId: string,
     debtorPartyCode: DebtorPartyCode,
   ): Promise<Debtor | undefined> {
-    return this.queryParties<Debtor>(
+    const debtor = await this.queryParties<Debtor>(
       applicationContext,
       dxtrId,
       courtId,
       debtorPartyCode,
       this.partyQueryCallback,
     );
+
+    if (debtor) {
+      const aliasNames = await this.queryPartyAliases(
+        applicationContext,
+        dxtrId,
+        courtId,
+        debtorPartyCode,
+      );
+
+      if (aliasNames && aliasNames.length > 0) {
+        debtor.aliases = { names: aliasNames };
+      }
+    }
+
+    return debtor;
   }
 
   private async queryTrustee(
@@ -915,6 +930,76 @@ class CasesDxtrGateway implements CasesInterface {
     );
 
     return handleQueryResult<T>(applicationContext, queryResult, MODULE_NAME, mapper);
+  }
+
+  private async queryPartyAliases(
+    applicationContext: ApplicationContext,
+    dxtrId: string,
+    courtId: string,
+    partyCode: PartyCode,
+  ): Promise<string[]> {
+    const input: DbTableFieldSpec[] = [];
+
+    input.push(
+      {
+        name: 'dxtrId',
+        type: mssql.VarChar,
+        value: dxtrId,
+      },
+      {
+        name: 'courtId',
+        type: mssql.VarChar,
+        value: courtId,
+      },
+      {
+        name: 'partyCode',
+        type: mssql.VarChar,
+        value: partyCode,
+      },
+    );
+
+    const query = `SELECT
+      TRIM(CONCAT(
+        PY_FIRST_NAME,
+        ' ',
+        PY_MIDDLE_NAME,
+        ' ',
+        PY_LAST_NAME,
+        ' ',
+        PY_GENERATION
+      )) as aliasName
+      FROM [dbo].[AO_ALIAS]
+      WHERE
+        CS_CASEID = @dxtrId AND
+        COURT_ID = @courtId AND
+        PY_ROLE = @partyCode
+    `;
+
+    try {
+      const queryResult: QueryResults = await executeQuery(
+        applicationContext,
+        applicationContext.config.dxtrDbConfig,
+        query,
+        input,
+      );
+
+      const aliasSet = new Set<string>();
+      if (queryResult.success && queryResult.results) {
+        (queryResult.results as mssql.IResult<{ aliasName: string }>).recordset.forEach(
+          (record) => {
+            const aliasName = removeExtraSpaces(record.aliasName);
+            if (aliasName) {
+              aliasSet.add(aliasName);
+            }
+          },
+        );
+      }
+
+      return Array.from(aliasSet).sort();
+    } catch (error) {
+      applicationContext.logger.warn(MODULE_NAME, 'Failed to query party aliases', error);
+      return [];
+    }
   }
 
   private async queryDebtorAttorney(
