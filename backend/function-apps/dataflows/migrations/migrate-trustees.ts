@@ -12,7 +12,7 @@ import * as MigrateTrusteesUseCase from '../../../lib/use-cases/dataflows/migrat
 import * as MigrationStateService from '../../../lib/use-cases/dataflows/trustee-migration-state.service';
 import { buildQueueError, QueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CamsError } from '../../../lib/common-errors/cams-error';
-import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
+import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 import { AtsTrusteeRecord } from '../../../lib/adapters/types/ats.types';
 

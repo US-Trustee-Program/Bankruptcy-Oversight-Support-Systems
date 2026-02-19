@@ -1,7 +1,7 @@
 import { app, InvocationContext, output } from '@azure/functions';
 import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-common';
 import ContextCreator from '../../azure/application-context-creator';
-import { STORAGE_QUEUE_CONNECTION } from '../storage-queues';
+import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import Factory from '../../../lib/factory';
 import { ConsolidationOrder } from '@common/cams/orders';
@@ -27,7 +27,7 @@ const START = output.storageQueue({
 
 const HARD_STOP = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
-  connection: 'AzureWebJobsStorage',
+  connection: STORAGE_QUEUE_CONNECTION,
 });
 
 /**
