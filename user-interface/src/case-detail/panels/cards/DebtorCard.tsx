@@ -35,6 +35,11 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
 
               <div className="info-group">
                 <div data-testid={`${testIdPrefix}-name`}>{debtor.name}</div>
+                {debtor.aliases?.names?.map((aliasName, index) => (
+                  <div key={index} data-testid={`${testIdPrefix}-alias-name-${index}`}>
+                    Alias: {aliasName}
+                  </div>
+                ))}
               </div>
 
               {(debtor.ssn || debtor.taxId) && (
