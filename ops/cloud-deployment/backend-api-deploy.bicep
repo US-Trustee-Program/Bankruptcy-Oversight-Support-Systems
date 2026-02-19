@@ -102,10 +102,10 @@ param maxObjectKeyCount string
 param gitSha string
 
 @secure()
-param dataflowsStorageConnectionString securestring
+param dataflowsStorageConnectionString string
 
 @secure()
-param dataflowsSlotStorageConnectionString securestring
+param dataflowsSlotStorageConnectionString string
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
