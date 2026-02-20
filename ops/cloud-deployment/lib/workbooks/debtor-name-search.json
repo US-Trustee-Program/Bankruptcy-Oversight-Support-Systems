@@ -18,12 +18,15 @@
             "type": 4,
             "isRequired": true,
             "value": {
-              "durationMs": 259200000
+              "durationMs": 3600000
             },
             "typeSettings": {
               "selectableValues": [
                 {
                   "durationMs": 300000
+                },
+                {
+                  "durationMs": 900000
                 },
                 {
                   "durationMs": 1800000
@@ -78,9 +81,10 @@
         "query": "customEvents | where name == 'search' | where timestamp {TimeRange} | summarize SearchCount = count() by bin(timestamp, 1h) | order by timestamp asc",
         "size": 0,
         "title": "Searches Per Hour",
+        "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "timechart"
+        "visualization": "barchart"
       },
       "name": "searches-per-hour"
     },
@@ -245,7 +249,7 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "customEvents | where name == 'search' | extend offset = todouble(customMeasurements.offset) | summarize MaxPageInSession = max(round((offset / 50) + 1, 0)), TotalEvents = count() by Intent = 'Debtor Name Used', session_Id | summarize AvgPageReached = avg(MaxPageInSession), MaxPageReached = max(MaxPageInSession), TotalEvents = sum(TotalEvents) by Intent",
+              "query": "customEvents \n| where name == 'search' \n| where timestamp {TimeRange}\n| extend offset = todouble(customMeasurements.offset)\n| extend CurrentPage = toint(offset / 25) + 1\n| summarize \n    AvgPageReached = round(avg(CurrentPage), 2), \n    MaxPageReached = max(CurrentPage), \n    TotalSearchActions = count()\n    by Intent = 'Debtor Name Used'",
               "size": 3,
               "title": "Pagination Depth",
               "timeContextFromParameter": "TimeRange",
@@ -259,13 +263,27 @@
             "type": 3,
             "content": {
               "version": "KqlItem/1.0",
-              "query": "let details = pageViews | where name contains 'Case Detail' | project ViewTime = timestamp, session_Id, name; customEvents | where name == 'search' | extend offset = todouble(customMeasurements.offset) | sort by session_Id asc, timestamp asc | extend NextSearchStart = next(timestamp) | join kind=leftouter details on session_Id | extend Outcome = iif(ViewTime > timestamp and (isempty(NextSearchStart) or ViewTime < NextSearchStart), '✅ Clicked', '❌ Abandoned') | project SearchTime = timestamp, Outcome, CaseID = iif(Outcome == '✅ Clicked', extract('/case-detail/([^/]+)', 1, name), '') | order by SearchTime desc",
+              "query": "let details = pageViews \n| where name contains 'Case Detail' \n| summarize take_any(*) by id, session_Id // Changed remote_Item_Id to id\n| project ViewTime = timestamp, session_Id, name; \ncustomEvents \n| where name == 'search' \n| where timestamp {TimeRange} \n| summarize take_any(*) by itemId, session_Id // Collapses the search \"double\" telemetry\n| extend d = customDimensions \n| extend offset = todouble(customMeasurements.offset), \n         Chapters = tostring(d.chapters) \n| sort by session_Id asc, timestamp asc \n| extend NextSearchStart = next(timestamp) \n| join kind=leftouter details on session_Id \n| extend Outcome = iif(ViewTime > timestamp and (isempty(NextSearchStart) or ViewTime < NextSearchStart), '✅ Clicked', '❌ Abandoned') \n| project SearchTime = timestamp, Outcome, Chapters, CaseID = iif(Outcome == '✅ Clicked', extract('/case-detail/([^/]+)', 1, name), '') \n| summarize take_any(*) by SearchTime, Outcome, Chapters, CaseID \n| order by SearchTime desc",
               "size": 0,
               "title": "Individual Session Deep Dive",
               "timeContextFromParameter": "TimeRange",
               "queryType": 0,
               "resourceType": "microsoft.insights/components",
-              "visualization": "grid"
+              "visualization": "grid",
+              "gridSettings": {
+                "sortBy": [
+                  {
+                    "itemKey": "SearchTime",
+                    "sortOrder": 2
+                  }
+                ]
+              },
+              "sortBy": [
+                {
+                  "itemKey": "SearchTime",
+                  "sortOrder": 2
+                }
+              ]
             },
             "name": "debtor-name-searches"
           }
