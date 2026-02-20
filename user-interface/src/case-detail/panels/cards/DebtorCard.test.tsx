@@ -42,6 +42,16 @@ describe('DebtorCard', () => {
     testIdPrefix: 'test-debtor',
   };
 
+  // Builder helpers
+  const buildDebtor = (overrides?: Partial<Debtor>): Debtor => ({
+    ...mockDebtor,
+    ...overrides,
+  });
+
+  const buildAdditionalIdentifiers = (
+    identifiers?: Partial<NonNullable<Debtor['additionalIdentifiers']>>,
+  ): Debtor['additionalIdentifiers'] | undefined => (identifiers ? { ...identifiers } : undefined);
+
   test('renders debtor card with title', () => {
     render(<DebtorCard {...defaultProps} />);
 
@@ -181,5 +191,117 @@ describe('DebtorCard', () => {
 
     const counselCard = container.querySelector('.debtor-counsel-card');
     expect(counselCard).toBeInTheDocument();
+  });
+
+  describe('Alias names', () => {
+    test.each`
+      description                                     | additionalIdentifiers
+      ${'additionalIdentifiers is undefined'}         | ${undefined}
+      ${'additionalIdentifiers.names is empty array'} | ${{ names: [] }}
+      ${'additionalIdentifiers.names is undefined'}   | ${{}}
+    `('does not render alias names when $description', ({ additionalIdentifiers }) => {
+      render(<DebtorCard {...defaultProps} debtor={buildDebtor({ additionalIdentifiers })} />);
+
+      expect(screen.getByTestId('test-debtor-name')).toBeInTheDocument();
+      expect(screen.queryByText(/^Alias:/)).not.toBeInTheDocument();
+    });
+
+    test.each`
+      names                                     | expectedCount
+      ${['John Smith', 'J. Doe']}               | ${2}
+      ${['John Smith', 'J. Doe', 'Johnny Doe']} | ${3}
+    `(
+      'renders alias names with prefix and unique IDs for $expectedCount names',
+      ({ names, expectedCount: _expectedCount }) => {
+        render(
+          <DebtorCard
+            {...defaultProps}
+            debtor={buildDebtor({
+              additionalIdentifiers: buildAdditionalIdentifiers({ names }),
+            })}
+          />,
+        );
+
+        expect(screen.getByTestId('test-debtor-name')).toBeInTheDocument();
+        expect(screen.getByText('John Doe')).toBeInTheDocument();
+
+        names.forEach((name: string, index: number) => {
+          const testId = `test-debtor-alias-name-${index}`;
+          expect(screen.getByTestId(testId)).toBeInTheDocument();
+          expect(screen.getByTestId(testId)).toHaveTextContent(`Alias: ${name}`);
+        });
+      },
+    );
+  });
+
+  describe('Alias SSNs and Tax IDs', () => {
+    test.each`
+      description           | debtorOverrides
+      ${'alias SSNs empty'} | ${{ ssn: '111-11-1111', additionalIdentifiers: { ssns: [] } }}
+      ${'alias EINs empty'} | ${{ ssn: undefined, taxId: '12-3456789', additionalIdentifiers: { taxIds: [] } }}
+    `('does not render additional identifiers when $description', ({ debtorOverrides }) => {
+      render(<DebtorCard {...defaultProps} debtor={buildDebtor(debtorOverrides)} />);
+
+      if (debtorOverrides.ssn) {
+        expect(screen.getByTestId('test-debtor-ssn')).toBeInTheDocument();
+        expect(screen.queryByTestId('test-debtor-alias-ssn-0')).not.toBeInTheDocument();
+      }
+
+      if (debtorOverrides.taxId) {
+        expect(screen.getByTestId('test-debtor-taxId')).toBeInTheDocument();
+        expect(screen.queryByTestId('test-debtor-alias-taxId-0')).not.toBeInTheDocument();
+      }
+    });
+
+    test.each`
+      type      | primaryValue     | primaryTestId          | additionalValues                  | additionalTestIdPrefix
+      ${'SSNs'} | ${'111-11-1111'} | ${'test-debtor-ssn'}   | ${['222-22-2222', '333-33-3333']} | ${'test-debtor-alias-ssn'}
+      ${'EINs'} | ${'12-3456789'}  | ${'test-debtor-taxId'} | ${['98-7654321', '11-1111111']}   | ${'test-debtor-alias-taxId'}
+    `(
+      'renders multiple additional $type with unique IDs',
+      ({ type, primaryValue, primaryTestId, additionalValues, additionalTestIdPrefix }) => {
+        const debtor = buildDebtor({
+          ssn: type === 'SSNs' ? primaryValue : undefined,
+          taxId: type === 'EINs' ? primaryValue : undefined,
+          additionalIdentifiers: buildAdditionalIdentifiers(
+            type === 'SSNs' ? { ssns: additionalValues } : { taxIds: additionalValues },
+          ),
+        });
+
+        render(<DebtorCard {...defaultProps} debtor={debtor} />);
+
+        expect(screen.getByTestId(primaryTestId)).toBeInTheDocument();
+        expect(screen.getByText(primaryValue)).toBeInTheDocument();
+
+        additionalValues.forEach((value: string, index: number) => {
+          const testId = `${additionalTestIdPrefix}-${index}`;
+          expect(screen.getByTestId(testId)).toBeInTheDocument();
+          expect(screen.getByText(value)).toBeInTheDocument();
+        });
+      },
+    );
+
+    test('renders all three types of additionalIdentifiers together', () => {
+      render(
+        <DebtorCard
+          {...defaultProps}
+          debtor={buildDebtor({
+            ssn: '111-11-1111',
+            taxId: '12-3456789',
+            additionalIdentifiers: buildAdditionalIdentifiers({
+              names: ['John Smith'],
+              ssns: ['222-22-2222'],
+              taxIds: ['98-7654321'],
+            }),
+          })}
+        />,
+      );
+
+      expect(screen.getByTestId('test-debtor-alias-name-0')).toHaveTextContent('Alias: John Smith');
+      expect(screen.getByText('111-11-1111')).toBeInTheDocument();
+      expect(screen.getByText('222-22-2222')).toBeInTheDocument();
+      expect(screen.getByText('12-3456789')).toBeInTheDocument();
+      expect(screen.getByText('98-7654321')).toBeInTheDocument();
+    });
   });
 });

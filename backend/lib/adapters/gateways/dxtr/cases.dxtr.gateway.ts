@@ -823,13 +823,28 @@ class CasesDxtrGateway implements CasesInterface {
     courtId: string,
     debtorPartyCode: DebtorPartyCode,
   ): Promise<Debtor | undefined> {
-    return this.queryParties<Debtor>(
+    const debtor = await this.queryParties<Debtor>(
       applicationContext,
       dxtrId,
       courtId,
       debtorPartyCode,
       this.partyQueryCallback,
     );
+
+    if (!debtor) return undefined;
+
+    const additionalIdentifiers = await this.queryPartyAdditionalIdentifiers(
+      applicationContext,
+      dxtrId,
+      courtId,
+      debtorPartyCode,
+    );
+
+    if (additionalIdentifiers) {
+      debtor.additionalIdentifiers = additionalIdentifiers;
+    }
+
+    return debtor;
   }
 
   private async queryTrustee(
@@ -915,6 +930,123 @@ class CasesDxtrGateway implements CasesInterface {
     );
 
     return handleQueryResult<T>(applicationContext, queryResult, MODULE_NAME, mapper);
+  }
+
+  private buildAdditionalIdentifiersFromRecords(
+    records: { aliasType: string; value: string }[] | undefined,
+  ): { names: string[]; ssns: string[]; taxIds: string[] } | undefined {
+    if (!records || records.length === 0) return undefined;
+
+    const nameSet = new Set<string>();
+    const ssnSet = new Set<string>();
+    const taxIdSet = new Set<string>();
+
+    const sets: Record<string, Set<string>> = {
+      name: nameSet,
+      ssn: ssnSet,
+      taxId: taxIdSet,
+    };
+
+    for (const record of records) {
+      const value = record.value?.trim();
+      if (!value) continue;
+
+      if (record.aliasType === 'name') {
+        const cleanedName = removeExtraSpaces(value);
+        if (cleanedName) sets.name.add(cleanedName);
+      } else if (sets[record.aliasType]) {
+        sets[record.aliasType].add(value);
+      }
+    }
+
+    const names = Array.from(nameSet).sort();
+    const ssns = Array.from(ssnSet).sort();
+    const taxIds = Array.from(taxIdSet).sort();
+
+    return names.length || ssns.length || taxIds.length ? { names, ssns, taxIds } : undefined;
+  }
+
+  private async queryPartyAdditionalIdentifiers(
+    applicationContext: ApplicationContext,
+    dxtrId: string,
+    courtId: string,
+    partyCode: PartyCode,
+  ): Promise<{ names: string[]; ssns: string[]; taxIds: string[] } | undefined> {
+    const input: DbTableFieldSpec[] = [
+      {
+        name: 'dxtrId',
+        type: mssql.VarChar,
+        value: dxtrId,
+      },
+      {
+        name: 'courtId',
+        type: mssql.VarChar,
+        value: courtId,
+      },
+      {
+        name: 'partyCode',
+        type: mssql.VarChar,
+        value: partyCode,
+      },
+    ];
+
+    const query = `
+      SELECT 'name' as aliasType, TRIM(CONCAT(
+        PY_FIRST_NAME,
+        ' ',
+        PY_MIDDLE_NAME,
+        ' ',
+        PY_LAST_NAME,
+        ' ',
+        PY_GENERATION
+      )) as value
+      FROM [dbo].[AO_ALIAS]
+      WHERE
+        CS_CASEID = @dxtrId AND
+        COURT_ID = @courtId AND
+        PY_ROLE = @partyCode
+
+      UNION
+
+      SELECT 'ssn' as aliasType, PY_SSN as value
+      FROM [dbo].[AO_SSN]
+      WHERE
+        CS_CASEID = @dxtrId AND
+        COURT_ID = @courtId AND
+        PY_ROLE = @partyCode
+
+      UNION
+
+      SELECT 'taxId' as aliasType, PY_TAXID as value
+      FROM [dbo].[AO_TAXID]
+      WHERE
+        CS_CASEID = @dxtrId AND
+        COURT_ID = @courtId AND
+        PY_ROLE = @partyCode
+    `;
+
+    try {
+      const queryResult: QueryResults = await executeQuery(
+        applicationContext,
+        applicationContext.config.dxtrDbConfig,
+        query,
+        input,
+      );
+
+      const records =
+        queryResult.success && queryResult.results
+          ? (queryResult.results as mssql.IResult<{ aliasType: string; value: string }>).recordset
+          : undefined;
+
+      return this.buildAdditionalIdentifiersFromRecords(records);
+    } catch (error) {
+      applicationContext.logger.warn(
+        MODULE_NAME,
+        "Failed to query party's additional identifiers",
+        error,
+      );
+      return undefined;
+    }
   }
 
   private async queryDebtorAttorney(
