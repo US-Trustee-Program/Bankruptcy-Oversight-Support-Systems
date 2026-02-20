@@ -285,6 +285,29 @@ describe('Consolidation UseCase tests', () => {
     expect(store.order.memberCases).toContain(mockAddCase);
   });
 
+  test('should initialize memberCases and add case when handleAddCaseAction is called and memberCases is undefined', () => {
+    store.order.memberCases = undefined as unknown as ConsolidationOrderCase[];
+    store.setCaseToAdd(mockAddCase);
+
+    useCase.handleAddCaseAction();
+    expect(store.order.memberCases).toEqual([mockAddCase]);
+  });
+
+  test('should not throw when handleOnExpand is called and memberCases is undefined', async () => {
+    store.order.memberCases = undefined as unknown as ConsolidationOrderCase[];
+
+    await expect(useCase.handleOnExpand()).resolves.not.toThrow();
+    expect(onExpand).toHaveBeenCalledWith(`order-list-${store.order.id}`);
+  });
+
+  test('should not throw when verifyCaseCanBeAdded is called and memberCases is undefined', () => {
+    store.order.memberCases = undefined as unknown as ConsolidationOrderCase[];
+    store.caseToAddCourt = '101';
+    store.caseToAddCaseNumber = '23-12345';
+
+    expect(() => useCase.verifyCaseCanBeAdded()).not.toThrow();
+  });
+
   test('should set selected cases', () => {
     expect(store.selectedCases).toEqual([]);
     const selections = MockData.buildArray(MockData.getConsolidatedOrderCase, 3);
