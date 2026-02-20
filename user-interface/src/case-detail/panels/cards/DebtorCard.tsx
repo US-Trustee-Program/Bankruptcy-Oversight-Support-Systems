@@ -35,14 +35,20 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
 
               <div className="info-group">
                 <div data-testid={`${testIdPrefix}-name`}>{debtor.name}</div>
-                {debtor.additionalIdentifiers?.names?.map((aliasName, index) => (
-                  <div
-                    key={`${aliasName}-${index}`}
-                    data-testid={`${testIdPrefix}-alias-name-${index}`}
-                  >
-                    <strong>Alias:</strong> {aliasName}
-                  </div>
-                ))}
+                {debtor.additionalIdentifiers?.names &&
+                  debtor.additionalIdentifiers.names.length > 0 && (
+                    <dl>
+                      {debtor.additionalIdentifiers.names.map((aliasName, index) => (
+                        <div
+                          key={`${aliasName}-${index}`}
+                          data-testid={`${testIdPrefix}-alias-name-${index}`}
+                        >
+                          <dt className="case-detail-item-name">Alias:</dt>{' '}
+                          <dd className="case-detail-item-value">{aliasName}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
               </div>
 
               {(debtor.ssn ||
@@ -53,7 +59,7 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                   <dl>
                     {debtor.ssn && (
                       <div data-testid={`${testIdPrefix}-ssn`}>
-                        <dt className="case-detail-item-name">SSN:</dt>
+                        <dt className="case-detail-item-name">SSN:</dt>{' '}
                         <dd className="case-detail-item-value">{debtor.ssn}</dd>
                       </div>
                     )}
@@ -62,13 +68,13 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                         key={`${ssn}-${index}`}
                         data-testid={`${testIdPrefix}-alias-ssn-${index}`}
                       >
-                        <dt className="case-detail-item-name">Additional SSN:</dt>
+                        <dt className="case-detail-item-name">Additional SSN:</dt>{' '}
                         <dd className="case-detail-item-value">{ssn}</dd>
                       </div>
                     ))}
                     {debtor.taxId && (
                       <div data-testid={`${testIdPrefix}-taxId`}>
-                        <dt className="case-detail-item-name">EIN:</dt>
+                        <dt className="case-detail-item-name">EIN:</dt>{' '}
                         <dd className="case-detail-item-value">{debtor.taxId}</dd>
                       </div>
                     )}
@@ -77,7 +83,7 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                         key={`${taxId}-${index}`}
                         data-testid={`${testIdPrefix}-alias-taxId-${index}`}
                       >
-                        <dt className="case-detail-item-name">Additional EIN:</dt>
+                        <dt className="case-detail-item-name">Additional EIN:</dt>{' '}
                         <dd className="case-detail-item-value">{taxId}</dd>
                       </div>
                     ))}

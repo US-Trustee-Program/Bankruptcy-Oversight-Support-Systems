@@ -12,6 +12,10 @@
       grid-template-columns: 1fr;
     }
 
+    dl > div {
+      gap: 0;
+    }
+
     dt, dd {
       display: inline;
       margin: 0;
