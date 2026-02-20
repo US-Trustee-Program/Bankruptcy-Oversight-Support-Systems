@@ -14,6 +14,11 @@
     "logLevel": {
       "default": "Debug",
       "Host.Results": "Information",
+      "Host.Aggregator": "Warning",
+      "Host.Triggers.Queue": "Warning",
+      "Microsoft.Azure.WebJobs.Host.Queues": "Warning",
+      "Azure.Core": "Warning",
+      "Azure.Identity": "Warning",
       "Function": "Information",
       "Worker": "Information"
     }

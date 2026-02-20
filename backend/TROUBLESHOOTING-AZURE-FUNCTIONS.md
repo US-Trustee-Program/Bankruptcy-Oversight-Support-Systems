@@ -840,6 +840,82 @@ BRANCH D: Platform issues
 
 ---
 
+## Log Level Configuration
+
+The `host.json` files in both function apps (`api` and `dataflows`) configure logging to reduce noise while preserving custom application logs.
+
+### Current Configuration
+
+```json
+"logLevel": {
+  "default": "Debug",
+  "Host.Results": "Information",
+  "Host.Aggregator": "Warning",
+  "Host.Triggers.Queue": "Warning",
+  "Microsoft.Azure.WebJobs.Host.Queues": "Warning",
+  "Azure.Core": "Warning",
+  "Azure.Identity": "Warning",
+  "Function": "Information",
+  "Worker": "Information"
+}
+```
+
+### Log Category Reference
+
+| Category | Level | Purpose |
+|----------|-------|---------|
+| `default` | Debug | Captures all custom `logger.debug()`, `logger.info()`, etc. calls from application code |
+| `Host.Results` | Information | Function execution results and completion status |
+| `Host.Aggregator` | Warning | **Suppressed**: Function execution aggregation metrics (chatty) |
+| `Host.Triggers.Queue` | Warning | **Suppressed**: Queue polling logs like "will wait 2000 ms before polling again" |
+| `Microsoft.Azure.WebJobs.Host.Queues` | Warning | **Suppressed**: Queue message processing details |
+| `Azure.Core` | Warning | **Suppressed**: Azure SDK HTTP request/response logs |
+| `Azure.Identity` | Warning | **Suppressed**: Token acquisition and refresh logs |
+| `Function` | Information | Function-level logs from the Azure Functions runtime |
+| `Worker` | Information | Node.js worker process logs |
+
+### Why These Are Suppressed
+
+**Queue Polling Logs**: With `maxPollingInterval: "00:00:02"` (2 seconds), each queue-triggered function generates ~30 logs/minute just for polling. With multiple queue functions (SYNC-CASES, MIGRATE-CASES, etc.), this creates GB-scale log ingestion.
+
+**Azure SDK Logs**: The Azure SDK logs every HTTP request to Azure services (Cosmos DB, Storage, etc.) at Debug/Information level. These are useful for debugging connectivity but generate excessive volume in production.
+
+**Host Aggregator**: Emits periodic aggregation metrics that duplicate what Application Insights already captures.
+
+### What's Preserved
+
+All custom application logging is preserved:
+- `logger.debug()` calls in migrations and use cases
+- `logger.info()` progress tracking
+- `logger.warn()` and `logger.error()` for issues
+- `completeTrace()` observability events
+- Custom `trackEvent()` calls to Application Insights
+
+### Adding New Suppressions
+
+If you identify another chatty log category, add it to the `logLevel` section in both:
+- `backend/function-apps/api/host.json`
+- `backend/function-apps/dataflows/host.json`
+
+Common candidates for suppression:
+- `Microsoft.Azure.Cosmos` - Cosmos DB operation logs
+- `MongoDB.Driver` - MongoDB driver logs
+- `Microsoft.Data.SqlClient` - SQL client logs
+
+### Verifying Log Reduction
+
+After deploying, query Application Insights to verify:
+
+```kql
+// Check log volume by category
+traces
+| where timestamp > ago(1h)
+| summarize count() by tostring(customDimensions.Category)
+| order by count_ desc
+```
+
+---
+
 ## Last Updated
 
-January 2026 - Based on successful migration from tsc+tsc-alias to esbuild bundling.
+February 2026 - Added log level configuration documentation for queue polling suppression.
