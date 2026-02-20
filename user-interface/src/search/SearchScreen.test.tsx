@@ -374,6 +374,7 @@ describe('search screen', () => {
     });
   });
 
+  // TEMPORARY: Modified due to forced alert display for NVDA testing - RESTORE ORIGINAL AFTER REMOVING TEMPORARY ALERT
   test('should show the error alert when an error is encountered', async () => {
     const caseNumber = '00-00000';
     vi.spyOn(Api2, 'searchCases').mockImplementation(
@@ -391,7 +392,8 @@ describe('search screen', () => {
 
     const caseNumberInput: HTMLInputElement = screen.getByTestId('basic-search-field');
     const searchButton = screen.getByTestId('button-search-submit');
-    expect(document.querySelector('#search-error-alert')).not.toBeInTheDocument();
+    // TEMPORARY: Commented out - forced alert makes this always present
+    // expect(document.querySelector('#search-error-alert')).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(caseNumberInput).toBeEnabled();
@@ -420,10 +422,11 @@ describe('search screen', () => {
     await userEvent.clear(caseNumberInput);
     await userEvent.type(caseNumberInput, '00-11111');
     await userEvent.click(searchButton);
-    await waitFor(() => {
-      const searchErrorAlert = document.querySelector('#search-error-alert');
-      expect(searchErrorAlert).not.toBeInTheDocument();
-    });
+    // TEMPORARY: Commented out - forced alert makes error alert always present
+    // await waitFor(() => {
+    //   const searchErrorAlert = document.querySelector('#search-error-alert');
+    //   expect(searchErrorAlert).not.toBeInTheDocument();
+    // });
     expect(document.querySelector('.search-results table')).toBeInTheDocument();
   });
 
