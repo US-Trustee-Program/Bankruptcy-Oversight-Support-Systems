@@ -61,6 +61,35 @@
   background-size: 1.5rem;
 }
 
+// Custom compact alert styling for alerts with titles
+// This provides slim-like appearance while maintaining NVDA compatibility
+.usa-alert.usa-alert--compact-with-title {
+  .usa-alert__body {
+    // Reduced vertical padding like slim variant
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    min-height: 0;
+
+    // Smaller icon like slim variant
+    &::before {
+      background-size: 1.5rem;
+      width: 1.5rem;
+      height: 1.5rem;
+    }
+  }
+
+  // Ensure heading and text have appropriate spacing
+  .usa-alert__heading {
+    margin-bottom: 0.25rem;
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+
+  .usa-alert__text {
+    margin-top: 0;
+  }
+}
+
 .usa-alert__unset {
   visibility: hidden;
 }

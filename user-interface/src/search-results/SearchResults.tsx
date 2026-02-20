@@ -162,19 +162,29 @@ function SearchResults(props: SearchResultsProps) {
   const totalCount = searchResults?.pagination?.totalCount ?? 0;
   const displayCount = new Intl.NumberFormat('en-US').format(totalCount);
 
+  // TEMPORARY: Force alert to display for NVDA testing - REMOVE AFTER TESTING
+  const testAlertInfo = {
+    type: UswdsAlertStyle.Error,
+    title: 'Unable to display search results',
+    message:
+      'Try narrowing your search filters and try again. If the problem persists, please submit a feedback request describing the issue.',
+    timeOut: 0,
+  };
+
   return (
     <div {...otherProps} className="search-results">
-      {alertInfo && (
+      {(alertInfo || testAlertInfo) && (
         <div className="search-alert">
           <Alert
             id="search-error-alert"
             className="measure-6"
-            message={alertInfo.message}
-            title={alertInfo.title}
+            message={(alertInfo || testAlertInfo).message}
+            title={(alertInfo || testAlertInfo).title}
             type={UswdsAlertStyle.Error}
             show={true}
             inline={true}
             role="alert"
+            compact={true}
           ></Alert>
         </div>
       )}
@@ -189,6 +199,7 @@ function SearchResults(props: SearchResultsProps) {
             show={true}
             inline={true}
             role="alert"
+            compact={true}
           ></Alert>
         </div>
       )}

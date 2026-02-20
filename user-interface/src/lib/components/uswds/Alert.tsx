@@ -24,6 +24,7 @@ type AlertBaseProps = PropsWithChildren & {
   inline?: boolean;
   show?: boolean;
   noIcon?: true;
+  compact?: boolean;
 };
 
 export type AlertProps = AlertBaseProps &
@@ -57,6 +58,7 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
 
   if (props.slim) classes += ' usa-alert--slim';
   if (props.noIcon) classes += ' usa-alert--no-icon';
+  if (props.compact && props.title) classes += ' usa-alert--compact-with-title';
 
   function show() {
     setIsVisible(IsVisible.True);
