@@ -831,34 +831,17 @@ class CasesDxtrGateway implements CasesInterface {
       this.partyQueryCallback,
     );
 
-    if (debtor) {
-      const additionalIdentifiers = await this.queryPartyAliases(
-        applicationContext,
-        dxtrId,
-        courtId,
-        debtorPartyCode,
-      );
+    if (!debtor) return undefined;
 
-      const hasAliases =
-        additionalIdentifiers.names.length > 0 ||
-        additionalIdentifiers.ssns.length > 0 ||
-        additionalIdentifiers.taxIds.length > 0;
+    const additionalIdentifiers = await this.queryPartyAdditionalIdentifiers(
+      applicationContext,
+      dxtrId,
+      courtId,
+      debtorPartyCode,
+    );
 
-      if (hasAliases) {
-        debtor.additionalIdentifiers = {};
-
-        if (additionalIdentifiers.names.length > 0) {
-          debtor.additionalIdentifiers.names = additionalIdentifiers.names;
-        }
-
-        if (additionalIdentifiers.ssns.length > 0) {
-          debtor.additionalIdentifiers.ssns = additionalIdentifiers.ssns;
-        }
-
-        if (additionalIdentifiers.taxIds.length > 0) {
-          debtor.additionalIdentifiers.taxIds = additionalIdentifiers.taxIds;
-        }
-      }
+    if (additionalIdentifiers) {
+      debtor.additionalIdentifiers = additionalIdentifiers;
     }
 
     return debtor;
@@ -949,15 +932,47 @@ class CasesDxtrGateway implements CasesInterface {
     return handleQueryResult<T>(applicationContext, queryResult, MODULE_NAME, mapper);
   }
 
-  private async queryPartyAliases(
+  private buildAdditionalIdentifiersFromRecords(
+    records: { aliasType: string; value: string }[] | undefined,
+  ): { names: string[]; ssns: string[]; taxIds: string[] } | undefined {
+    if (!records || records.length === 0) return undefined;
+
+    const nameSet = new Set<string>();
+    const ssnSet = new Set<string>();
+    const taxIdSet = new Set<string>();
+
+    const sets: Record<string, Set<string>> = {
+      name: nameSet,
+      ssn: ssnSet,
+      taxId: taxIdSet,
+    };
+
+    for (const record of records) {
+      const value = record.value?.trim();
+      if (!value) continue;
+
+      if (record.aliasType === 'name') {
+        const cleanedName = removeExtraSpaces(value);
+        if (cleanedName) sets.name.add(cleanedName);
+      } else if (sets[record.aliasType]) {
+        sets[record.aliasType].add(value);
+      }
+    }
+
+    const names = Array.from(nameSet).sort();
+    const ssns = Array.from(ssnSet).sort();
+    const taxIds = Array.from(taxIdSet).sort();
+
+    return names.length || ssns.length || taxIds.length ? { names, ssns, taxIds } : undefined;
+  }
+
+  private async queryPartyAdditionalIdentifiers(
     applicationContext: ApplicationContext,
     dxtrId: string,
     courtId: string,
     partyCode: PartyCode,
-  ): Promise<{ names: string[]; ssns: string[]; taxIds: string[] }> {
-    const input: DbTableFieldSpec[] = [];
-
-    input.push(
+  ): Promise<{ names: string[]; ssns: string[]; taxIds: string[] } | undefined> {
+    const input: DbTableFieldSpec[] = [
       {
         name: 'dxtrId',
         type: mssql.VarChar,
@@ -973,7 +988,7 @@ class CasesDxtrGateway implements CasesInterface {
         type: mssql.VarChar,
         value: partyCode,
       },
-    );
+    ];
 
     const query = `
       SELECT 'name' as aliasType, TRIM(CONCAT(
@@ -1018,42 +1033,19 @@ class CasesDxtrGateway implements CasesInterface {
         input,
       );
 
-      const nameSet = new Set<string>();
-      const ssnSet = new Set<string>();
-      const taxIdSet = new Set<string>();
+      const records =
+        queryResult.success && queryResult.results
+          ? (queryResult.results as mssql.IResult<{ aliasType: string; value: string }>).recordset
+          : undefined;
 
-      if (queryResult.success && queryResult.results) {
-        (
-          queryResult.results as mssql.IResult<{ aliasType: string; value: string }>
-        ).recordset.forEach((record) => {
-          const value = record.value?.trim();
-          if (!value) return;
-
-          if (record.aliasType === 'name') {
-            const cleanedName = removeExtraSpaces(value);
-            if (cleanedName) {
-              nameSet.add(cleanedName);
-            }
-          } else if (record.aliasType === 'ssn') {
-            ssnSet.add(value);
-          } else if (record.aliasType === 'taxId') {
-            taxIdSet.add(value);
-          }
-        });
-      }
-
-      return {
-        names: Array.from(nameSet).sort(),
-        ssns: Array.from(ssnSet).sort(),
-        taxIds: Array.from(taxIdSet).sort(),
-      };
+      return this.buildAdditionalIdentifiersFromRecords(records);
     } catch (error) {
       applicationContext.logger.warn(
         MODULE_NAME,
         "Failed to query party's additional identifiers",
         error,
       );
-      return { names: [], ssns: [], taxIds: [] };
+      return undefined;
     }
   }
 

@@ -1594,7 +1594,7 @@ describe('Test DXTR Gateway', () => {
     });
   });
 
-  describe('queryPartyAliases tests', () => {
+  describe('queryPartyAdditionalIdentifiers tests', () => {
     test('should return deduplicated, sorted, and formatted additionalIdentifiers (names, SSNs, tax IDs)', async () => {
       const aliasQueryResult = makeQueryResults([
         { aliasType: 'name', value: 'Zachary Smith' },
@@ -1610,7 +1610,7 @@ describe('Test DXTR Gateway', () => {
       ]);
       querySpy.mockResolvedValueOnce(aliasQueryResult);
 
-      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAliases(
+      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
         applicationContext,
         '12345',
         'NYSB',
@@ -1639,7 +1639,7 @@ describe('Test DXTR Gateway', () => {
       ]);
       querySpy.mockResolvedValueOnce(aliasQueryResult);
 
-      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAliases(
+      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
         applicationContext,
         '12345',
         'NYSB',
@@ -1651,32 +1651,32 @@ describe('Test DXTR Gateway', () => {
       expect(additionalIdentifiers.taxIds).toEqual(['12-3456789']);
     });
 
-    test('should return empty arrays when no additionalIdentifiers exist', async () => {
+    test('should return undefined when no additionalIdentifiers exist', async () => {
       const aliasQueryResult = makeQueryResults([]);
       querySpy.mockResolvedValueOnce(aliasQueryResult);
 
-      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAliases(
+      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
         applicationContext,
         '12345',
         'NYSB',
         'db',
       );
 
-      expect(additionalIdentifiers).toEqual({ names: [], ssns: [], taxIds: [] });
+      expect(additionalIdentifiers).toBeUndefined();
     });
 
-    test('should return empty arrays and log warning on query failure', async () => {
+    test('should return undefined and log warning on query failure', async () => {
       const logSpy = vi.spyOn(applicationContext.logger, 'warn');
       querySpy.mockRejectedValueOnce(new Error('Database connection failed'));
 
-      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAliases(
+      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
         applicationContext,
         '12345',
         'NYSB',
         'db',
       );
 
-      expect(additionalIdentifiers).toEqual({ names: [], ssns: [], taxIds: [] });
+      expect(additionalIdentifiers).toBeUndefined();
       expect(logSpy).toHaveBeenCalledWith(
         'CASES-DXTR-GATEWAY',
         "Failed to query party's additional identifiers",
@@ -1688,7 +1688,12 @@ describe('Test DXTR Gateway', () => {
       const aliasQueryResult = makeQueryResults([]);
       querySpy.mockResolvedValueOnce(aliasQueryResult);
 
-      await testCasesDxtrGateway.queryPartyAliases(applicationContext, '12345', 'NYSB', 'db');
+      await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
+        applicationContext,
+        '12345',
+        'NYSB',
+        'db',
+      );
 
       const query = querySpy.mock.calls[0][2];
       expect(query).toContain('CS_CASEID = @dxtrId');
