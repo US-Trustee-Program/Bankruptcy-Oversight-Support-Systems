@@ -12,8 +12,14 @@
       grid-template-columns: 1fr;
     }
 
+    dt, dd {
+      display: inline;
+      margin: 0;
+    }
+
     .case-detail-item-name {
       font-weight: 700;
+      padding-right: 0;
     }
   }
 }
