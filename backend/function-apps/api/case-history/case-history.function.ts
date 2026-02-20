@@ -2,14 +2,11 @@ import * as dotenv from 'dotenv';
 import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { CaseHistoryController } from '../../../lib/controllers/case-history/case-history.controller';
-import { initializeApplicationInsights } from '../../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 const MODULE_NAME = 'CASE-HISTORY-FUNCTION';
 
 dotenv.config();
-
-initializeApplicationInsights();
 
 export default async function handler(
   request: HttpRequest,

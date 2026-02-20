@@ -1,15 +1,12 @@
 import * as dotenv from 'dotenv';
 import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
-import { initializeApplicationInsights } from '../../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { TrusteeHistoryController } from '../../../lib/controllers/trustee-history/trustee-history.controller';
 
 const MODULE_NAME = 'TRUSTEE-HISTORY-FUNCTION';
 
 dotenv.config();
-
-initializeApplicationInsights();
 
 export default async function handler(
   request: HttpRequest,

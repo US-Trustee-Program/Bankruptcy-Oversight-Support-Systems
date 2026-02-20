@@ -2,12 +2,9 @@ import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { CaseDocketController } from '../../../lib/controllers/case-docket/case-docket.controller';
-import { initializeApplicationInsights } from '../../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 dotenv.config();
-
-initializeApplicationInsights();
 
 const MODULE_NAME = 'CASE-DOCKET-FUNCTION';
 

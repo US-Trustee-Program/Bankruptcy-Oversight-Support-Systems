@@ -9,6 +9,7 @@ import { UnauthorizedError } from '../lib/common-errors/unauthorized-error';
 import factory from '../lib/factory';
 import { sanitizeDeep } from '../lib/use-cases/validations';
 import { getCamsError } from '../lib/common-errors/error-utilities';
+import { AppInsightsObservability } from '../lib/adapters/services/observability';
 
 const MODULE_NAME = 'EXPRESS-CONTEXT-CREATOR';
 
@@ -67,6 +68,7 @@ async function getApplicationContext<B = unknown>(
     config,
     featureFlags,
     logger,
+    observability: new AppInsightsObservability(),
     invocationId: requestId,
     request: expressToCamsHttpRequest<B>(request),
     session: undefined,
