@@ -1595,13 +1595,18 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('queryPartyAliases tests', () => {
-    test('should return deduplicated, sorted, and formatted alias names', async () => {
+    test('should return deduplicated, sorted, and formatted aliases (names, SSNs, tax IDs)', async () => {
       const aliasQueryResult = makeQueryResults([
-        { aliasName: 'Zachary Smith' },
-        { aliasName: 'John   Q.   Smith' }, // extra spaces
-        { aliasName: 'John   Q.   Smith' }, // duplicate
-        { aliasName: 'Adam Brown' },
-        { aliasName: 'Michael  J  Smith' }, // extra spaces
+        { aliasType: 'name', value: 'Zachary Smith' },
+        { aliasType: 'name', value: 'John   Q.   Smith' },
+        { aliasType: 'name', value: 'John   Q.   Smith' },
+        { aliasType: 'name', value: 'Adam Brown' },
+        { aliasType: 'name', value: 'Michael  J  Smith' },
+        { aliasType: 'ssn', value: '222-22-2222' },
+        { aliasType: 'ssn', value: '111-11-1111' },
+        { aliasType: 'ssn', value: '111-11-1111' },
+        { aliasType: 'taxId', value: '98-7654321' },
+        { aliasType: 'taxId', value: '12-3456789' },
       ]);
       querySpy.mockResolvedValueOnce(aliasQueryResult);
 
@@ -1612,16 +1617,25 @@ describe('Test DXTR Gateway', () => {
         'db',
       );
 
-      expect(aliases).toEqual(['Adam Brown', 'John Q. Smith', 'Michael J Smith', 'Zachary Smith']);
-      expect(aliases.length).toBe(4); // duplicate removed
+      expect(aliases.names).toEqual([
+        'Adam Brown',
+        'John Q. Smith',
+        'Michael J Smith',
+        'Zachary Smith',
+      ]);
+      expect(aliases.ssns).toEqual(['111-11-1111', '222-22-2222']);
+      expect(aliases.taxIds).toEqual(['12-3456789', '98-7654321']);
     });
 
-    test('should filter out empty/null names', async () => {
+    test('should filter out empty/null values', async () => {
       const aliasQueryResult = makeQueryResults([
-        { aliasName: 'John Smith' },
-        { aliasName: '   ' },
-        { aliasName: 'Jane Doe' },
-        { aliasName: '' },
+        { aliasType: 'name', value: 'John Smith' },
+        { aliasType: 'name', value: '   ' },
+        { aliasType: 'name', value: 'Jane Doe' },
+        { aliasType: 'name', value: '' },
+        { aliasType: 'ssn', value: '111-11-1111' },
+        { aliasType: 'ssn', value: '' },
+        { aliasType: 'taxId', value: '12-3456789' },
       ]);
       querySpy.mockResolvedValueOnce(aliasQueryResult);
 
@@ -1632,10 +1646,12 @@ describe('Test DXTR Gateway', () => {
         'db',
       );
 
-      expect(aliases).toEqual(['Jane Doe', 'John Smith']);
+      expect(aliases.names).toEqual(['Jane Doe', 'John Smith']);
+      expect(aliases.ssns).toEqual(['111-11-1111']);
+      expect(aliases.taxIds).toEqual(['12-3456789']);
     });
 
-    test('should return empty array when no aliases exist', async () => {
+    test('should return empty arrays when no aliases exist', async () => {
       const aliasQueryResult = makeQueryResults([]);
       querySpy.mockResolvedValueOnce(aliasQueryResult);
 
@@ -1646,10 +1662,10 @@ describe('Test DXTR Gateway', () => {
         'db',
       );
 
-      expect(aliases).toEqual([]);
+      expect(aliases).toEqual({ names: [], ssns: [], taxIds: [] });
     });
 
-    test('should return empty array and log warning on query failure', async () => {
+    test('should return empty arrays and log warning on query failure', async () => {
       const logSpy = vi.spyOn(applicationContext.logger, 'warn');
       querySpy.mockRejectedValueOnce(new Error('Database connection failed'));
 
@@ -1660,7 +1676,7 @@ describe('Test DXTR Gateway', () => {
         'db',
       );
 
-      expect(aliases).toEqual([]);
+      expect(aliases).toEqual({ names: [], ssns: [], taxIds: [] });
       expect(logSpy).toHaveBeenCalledWith(
         'CASES-DXTR-GATEWAY',
         'Failed to query party aliases',
@@ -1668,7 +1684,7 @@ describe('Test DXTR Gateway', () => {
       );
     });
 
-    test('should use correct SQL join keys in query', async () => {
+    test('should use correct SQL join keys and query all three tables', async () => {
       const aliasQueryResult = makeQueryResults([]);
       querySpy.mockResolvedValueOnce(aliasQueryResult);
 
@@ -1679,15 +1695,18 @@ describe('Test DXTR Gateway', () => {
       expect(query).toContain('COURT_ID = @courtId');
       expect(query).toContain('PY_ROLE = @partyCode');
       expect(query).toContain('FROM [dbo].[AO_ALIAS]');
+      expect(query).toContain('FROM [dbo].[AO_SSN]');
+      expect(query).toContain('FROM [dbo].[AO_TAXID]');
+      expect(query).toContain('UNION');
     });
   });
 
   describe('queryDebtorParty with aliases tests', () => {
-    test('should add aliases.names to Debtor when aliases exist', async () => {
+    test('should add aliases.names to Debtor when name aliases exist', async () => {
       const debtorQueryResult = makeQueryResults([buildDebtor()]);
       const aliasQueryResult = makeQueryResults([
-        { aliasName: 'Michael J Smith' },
-        { aliasName: 'John Smith' },
+        { aliasType: 'name', value: 'Michael J Smith' },
+        { aliasType: 'name', value: 'John Smith' },
       ]);
 
       querySpy.mockResolvedValueOnce(debtorQueryResult);
@@ -1703,6 +1722,81 @@ describe('Test DXTR Gateway', () => {
       expect(debtor).toBeDefined();
       expect(debtor?.aliases).toBeDefined();
       expect(debtor?.aliases?.names).toEqual(['John Smith', 'Michael J Smith']);
+    });
+
+    test('should add aliases.ssns when alias SSNs exist', async () => {
+      const debtorQueryResult = makeQueryResults([buildDebtor({ ssn: '111-11-1111' })]);
+      const aliasQueryResult = makeQueryResults([
+        { aliasType: 'ssn', value: '222-22-2222' },
+        { aliasType: 'ssn', value: '333-33-3333' },
+      ]);
+
+      querySpy.mockResolvedValueOnce(debtorQueryResult);
+      querySpy.mockResolvedValueOnce(aliasQueryResult);
+
+      const debtor = await testCasesDxtrGateway.queryDebtorParty(
+        applicationContext,
+        '12345',
+        'NYSB',
+        'db',
+      );
+
+      expect(debtor).toBeDefined();
+      expect(debtor?.aliases).toBeDefined();
+      expect(debtor?.aliases?.ssns).toEqual(['222-22-2222', '333-33-3333']);
+      expect(debtor?.ssn).toBe('111-11-1111');
+    });
+
+    test('should add aliases.taxIds when alias tax IDs exist', async () => {
+      const debtorQueryResult = makeQueryResults([buildDebtor({ taxId: '12-3456789' })]);
+      const aliasQueryResult = makeQueryResults([
+        { aliasType: 'taxId', value: '98-7654321' },
+        { aliasType: 'taxId', value: '11-1111111' },
+      ]);
+
+      querySpy.mockResolvedValueOnce(debtorQueryResult);
+      querySpy.mockResolvedValueOnce(aliasQueryResult);
+
+      const debtor = await testCasesDxtrGateway.queryDebtorParty(
+        applicationContext,
+        '12345',
+        'NYSB',
+        'db',
+      );
+
+      expect(debtor).toBeDefined();
+      expect(debtor?.aliases).toBeDefined();
+      expect(debtor?.aliases?.taxIds).toEqual(['11-1111111', '98-7654321']);
+      expect(debtor?.taxId).toBe('12-3456789');
+    });
+
+    test('should handle all three alias types together', async () => {
+      const debtorQueryResult = makeQueryResults([
+        buildDebtor({ ssn: '111-11-1111', taxId: '12-3456789' }),
+      ]);
+      const aliasQueryResult = makeQueryResults([
+        { aliasType: 'name', value: 'John Smith' },
+        { aliasType: 'ssn', value: '222-22-2222' },
+        { aliasType: 'taxId', value: '98-7654321' },
+      ]);
+
+      querySpy.mockResolvedValueOnce(debtorQueryResult);
+      querySpy.mockResolvedValueOnce(aliasQueryResult);
+
+      const debtor = await testCasesDxtrGateway.queryDebtorParty(
+        applicationContext,
+        '12345',
+        'NYSB',
+        'db',
+      );
+
+      expect(debtor).toBeDefined();
+      expect(debtor?.aliases).toBeDefined();
+      expect(debtor?.aliases?.names).toEqual(['John Smith']);
+      expect(debtor?.aliases?.ssns).toEqual(['222-22-2222']);
+      expect(debtor?.aliases?.taxIds).toEqual(['98-7654321']);
+      expect(debtor?.ssn).toBe('111-11-1111');
+      expect(debtor?.taxId).toBe('12-3456789');
     });
 
     test('should not add aliases property when no aliases exist', async () => {
@@ -1742,7 +1836,7 @@ describe('Test DXTR Gateway', () => {
 
     test('should work for joint debtor with aliases', async () => {
       const jointDebtorQueryResult = makeQueryResults([buildJointDebtor()]);
-      const aliasQueryResult = makeQueryResults([{ aliasName: 'Jane Smith' }]);
+      const aliasQueryResult = makeQueryResults([{ aliasType: 'name', value: 'Jane Smith' }]);
 
       querySpy.mockResolvedValueOnce(jointDebtorQueryResult);
       querySpy.mockResolvedValueOnce(aliasQueryResult);

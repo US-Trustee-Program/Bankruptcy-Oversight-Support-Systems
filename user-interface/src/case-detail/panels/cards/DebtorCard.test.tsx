@@ -281,4 +281,129 @@ describe('DebtorCard', () => {
       expect(screen.queryByText(/^Alias:/)).not.toBeInTheDocument();
     });
   });
+
+  describe('Alias SSNs and Tax IDs', () => {
+    test('renders multiple alias SSNs', () => {
+      const debtorWithAliasSSNs: Debtor = {
+        ...mockDebtor,
+        ssn: '111-11-1111',
+        aliases: {
+          ssns: ['222-22-2222', '333-33-3333'],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithAliasSSNs} />);
+
+      expect(screen.getByTestId('test-debtor-ssn')).toBeInTheDocument();
+      expect(screen.getByText('111-11-1111')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-ssn-0')).toBeInTheDocument();
+      expect(screen.getByText('222-22-2222')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-ssn-1')).toBeInTheDocument();
+      expect(screen.getByText('333-33-3333')).toBeInTheDocument();
+    });
+
+    test('renders multiple alias tax IDs', () => {
+      const debtorWithAliasTaxIds: Debtor = {
+        ...mockDebtor,
+        taxId: '12-3456789',
+        ssn: undefined,
+        aliases: {
+          taxIds: ['98-7654321', '11-1111111'],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithAliasTaxIds} />);
+
+      expect(screen.getByTestId('test-debtor-taxId')).toBeInTheDocument();
+      expect(screen.getByText('12-3456789')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-taxId-0')).toBeInTheDocument();
+      expect(screen.getByText('98-7654321')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-taxId-1')).toBeInTheDocument();
+      expect(screen.getByText('11-1111111')).toBeInTheDocument();
+    });
+
+    test('renders all three types of aliases together', () => {
+      const debtorWithAllAliases: Debtor = {
+        ...mockDebtor,
+        ssn: '111-11-1111',
+        taxId: '12-3456789',
+        aliases: {
+          names: ['John Smith'],
+          ssns: ['222-22-2222'],
+          taxIds: ['98-7654321'],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithAllAliases} />);
+
+      expect(screen.getByText('Alias: John Smith')).toBeInTheDocument();
+      expect(screen.getByText('111-11-1111')).toBeInTheDocument();
+      expect(screen.getByText('222-22-2222')).toBeInTheDocument();
+      expect(screen.getByText('12-3456789')).toBeInTheDocument();
+      expect(screen.getByText('98-7654321')).toBeInTheDocument();
+    });
+
+    test('each alias SSN has unique test ID', () => {
+      const debtorWithAliasSSNs: Debtor = {
+        ...mockDebtor,
+        ssn: '111-11-1111',
+        aliases: {
+          ssns: ['222-22-2222', '333-33-3333', '444-44-4444'],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithAliasSSNs} />);
+
+      expect(screen.getByTestId('test-debtor-alias-ssn-0')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-ssn-1')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-ssn-2')).toBeInTheDocument();
+    });
+
+    test('each alias tax ID has unique test ID', () => {
+      const debtorWithAliasTaxIds: Debtor = {
+        ...mockDebtor,
+        ssn: undefined,
+        taxId: '12-3456789',
+        aliases: {
+          taxIds: ['98-7654321', '11-1111111'],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithAliasTaxIds} />);
+
+      expect(screen.getByTestId('test-debtor-alias-taxId-0')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-taxId-1')).toBeInTheDocument();
+    });
+
+    test('does not render alias SSNs section when empty', () => {
+      const debtorWithEmptyAliases: Debtor = {
+        ...mockDebtor,
+        ssn: '111-11-1111',
+        aliases: {
+          ssns: [],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithEmptyAliases} />);
+
+      expect(screen.getByTestId('test-debtor-ssn')).toBeInTheDocument();
+      expect(screen.queryByTestId('test-debtor-alias-ssn-0')).not.toBeInTheDocument();
+    });
+
+    test('does not render alias tax IDs section when empty', () => {
+      const debtorWithEmptyAliases: Debtor = {
+        ...mockDebtor,
+        ssn: undefined,
+        taxId: '12-3456789',
+        aliases: {
+          taxIds: [],
+        },
+      };
+
+      render(<DebtorCard {...defaultProps} debtor={debtorWithEmptyAliases} />);
+
+      expect(screen.getByTestId('test-debtor-taxId')).toBeInTheDocument();
+      expect(screen.queryByTestId('test-debtor-alias-taxId-0')).not.toBeInTheDocument();
+    });
+  });
 });

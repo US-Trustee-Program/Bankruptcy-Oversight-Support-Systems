@@ -27,6 +27,8 @@ export type Debtor = Party &
     phoneticTokens?: string[];
     aliases?: {
       names?: string[];
+      ssns?: string[];
+      taxIds?: string[];
     };
   };
 
