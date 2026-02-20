@@ -5,6 +5,37 @@
     padding: 0.5rem 0;
     font-size: 1rem;
   }
+
+  .usa-date-picker {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+
+    // Hide the native calendar picker indicator
+    input[type='date']::-webkit-calendar-picker-indicator {
+      display: none;
+    }
+
+    // Custom calendar button styling
+    .calendar-picker-button {
+      position: absolute;
+      right: .5rem;
+      top: 1rem;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem;
+
+      &:hover {
+        opacity: 0.7;
+      }
+
+      &:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+    }
+  }
 }
 
 .usa-form-group {

@@ -12,6 +12,7 @@ import React, {
 import Validators from 'common/src/cams/validators';
 import { ValidatorFunction } from 'common/src/cams/validation';
 import DateHelper, { DEFAULT_MIN_DATE } from 'common/src/date-helper';
+import Icon from './Icon';
 
 export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   id: string;
@@ -248,6 +249,17 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
     });
   };
 
+  const handleCalendarButtonClick = () => {
+    if (!inputRef.current) return;
+    const { current } = inputRef;
+
+    if (typeof current.showPicker === 'function') {
+      current.showPicker();
+    } else {
+      current.focus();
+    }
+  };
+
   return (
     <div className={`usa-form-group date-picker ${props.className ?? ''}`}>
       <label className="usa-label" id={id + '-label'} htmlFor={id}>
@@ -273,6 +285,17 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
           required={props.required}
           ref={inputRef}
         />
+        <button
+          type="button"
+          className="calendar-picker-button"
+          onClick={handleCalendarButtonClick}
+          disabled={isDisabled}
+          title="Show calendar to select date"
+          aria-label="Show calendar to select date"
+          aria-controls={id}
+        >
+          <Icon name="calendar_today"></Icon>
+        </button>
       </div>
       {dateValue && (
         <span id={`${id}-current-value`} className="usa-sr-only">

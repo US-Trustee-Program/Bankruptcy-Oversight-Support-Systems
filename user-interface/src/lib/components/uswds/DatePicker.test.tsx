@@ -793,3 +793,77 @@ describe('DatePicker announcement formatting', () => {
     expect(announcement).toHaveClass('usa-sr-only');
   });
 });
+
+describe('DatePicker calendar button', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('should open date picker when calendar button is clicked', () => {
+    renderWithProps();
+
+    const inputEl = screen.getByTestId(DEFAULT_ID) as HTMLInputElement;
+
+    // Mock showPicker method
+    const showPickerMock = vi.fn();
+    Object.defineProperty(inputEl, 'showPicker', {
+      value: showPickerMock,
+      writable: true,
+    });
+
+    const calendarButton = document.querySelector('.calendar-picker-button') as HTMLButtonElement;
+    expect(calendarButton).toBeInTheDocument();
+
+    fireEvent.click(calendarButton);
+
+    expect(showPickerMock).toHaveBeenCalledTimes(1);
+  });
+
+  test('should disable calendar button when input is disabled', async () => {
+    const view = renderWithProps();
+
+    const calendarButton = document.querySelector('.calendar-picker-button') as HTMLButtonElement;
+    expect(calendarButton).toBeEnabled();
+
+    act(() => view.disable(true));
+
+    await waitFor(() => {
+      expect(calendarButton).toBeDisabled();
+    });
+  });
+
+  test('should enable calendar button when input is enabled', async () => {
+    const view = renderWithProps({ disabled: true });
+
+    const calendarButton = document.querySelector('.calendar-picker-button') as HTMLButtonElement;
+    expect(calendarButton).toBeDisabled();
+
+    act(() => view.disable(false));
+
+    await waitFor(() => {
+      expect(calendarButton).toBeEnabled();
+    });
+  });
+
+  test('should focus input when showPicker is not available', () => {
+    renderWithProps();
+
+    const inputEl = screen.getByTestId(DEFAULT_ID) as HTMLInputElement;
+    // Remove showPicker to simulate older browsers
+    Object.defineProperty(inputEl, 'showPicker', {
+      value: undefined,
+      writable: true,
+    });
+
+    const calendarButton = document.querySelector('.calendar-picker-button') as HTMLButtonElement;
+
+    // Input should not be focused initially
+    expect(inputEl).not.toHaveFocus();
+
+    // Click the calendar button
+    fireEvent.click(calendarButton);
+
+    // Input should be focused as fallback
+    expect(inputEl).toHaveFocus();
+  });
+});
