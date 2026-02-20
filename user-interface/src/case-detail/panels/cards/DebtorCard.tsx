@@ -36,7 +36,10 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
               <div className="info-group">
                 <div data-testid={`${testIdPrefix}-name`}>{debtor.name}</div>
                 {debtor.additionalIdentifiers?.names?.map((aliasName, index) => (
-                  <div key={index} data-testid={`${testIdPrefix}-alias-name-${index}`}>
+                  <div
+                    key={`${aliasName}-${index}`}
+                    data-testid={`${testIdPrefix}-alias-name-${index}`}
+                  >
                     <strong>Alias:</strong> {aliasName}
                   </div>
                 ))}
@@ -55,7 +58,10 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                       </div>
                     )}
                     {debtor.additionalIdentifiers?.ssns?.map((ssn, index) => (
-                      <div key={index} data-testid={`${testIdPrefix}-alias-ssn-${index}`}>
+                      <div
+                        key={`${ssn}-${index}`}
+                        data-testid={`${testIdPrefix}-alias-ssn-${index}`}
+                      >
                         <dt className="case-detail-item-name">Additional SSN:</dt>
                         <dd className="case-detail-item-value">{ssn}</dd>
                       </div>
@@ -67,7 +73,10 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                       </div>
                     )}
                     {debtor.additionalIdentifiers?.taxIds?.map((taxId, index) => (
-                      <div key={index} data-testid={`${testIdPrefix}-alias-taxId-${index}`}>
+                      <div
+                        key={`${taxId}-${index}`}
+                        data-testid={`${testIdPrefix}-alias-taxId-${index}`}
+                      >
                         <dt className="case-detail-item-name">Additional EIN:</dt>
                         <dd className="case-detail-item-value">{taxId}</dd>
                       </div>
