@@ -832,7 +832,7 @@ class CasesDxtrGateway implements CasesInterface {
     );
 
     if (debtor) {
-      const aliases = await this.queryPartyAliases(
+      const additionalIdentifiers = await this.queryPartyAliases(
         applicationContext,
         dxtrId,
         courtId,
@@ -840,21 +840,23 @@ class CasesDxtrGateway implements CasesInterface {
       );
 
       const hasAliases =
-        aliases.names.length > 0 || aliases.ssns.length > 0 || aliases.taxIds.length > 0;
+        additionalIdentifiers.names.length > 0 ||
+        additionalIdentifiers.ssns.length > 0 ||
+        additionalIdentifiers.taxIds.length > 0;
 
       if (hasAliases) {
-        debtor.aliases = {};
+        debtor.additionalIdentifiers = {};
 
-        if (aliases.names.length > 0) {
-          debtor.aliases.names = aliases.names;
+        if (additionalIdentifiers.names.length > 0) {
+          debtor.additionalIdentifiers.names = additionalIdentifiers.names;
         }
 
-        if (aliases.ssns.length > 0) {
-          debtor.aliases.ssns = aliases.ssns;
+        if (additionalIdentifiers.ssns.length > 0) {
+          debtor.additionalIdentifiers.ssns = additionalIdentifiers.ssns;
         }
 
-        if (aliases.taxIds.length > 0) {
-          debtor.aliases.taxIds = aliases.taxIds;
+        if (additionalIdentifiers.taxIds.length > 0) {
+          debtor.additionalIdentifiers.taxIds = additionalIdentifiers.taxIds;
         }
       }
     }
@@ -1046,7 +1048,11 @@ class CasesDxtrGateway implements CasesInterface {
         taxIds: Array.from(taxIdSet).sort(),
       };
     } catch (error) {
-      applicationContext.logger.warn(MODULE_NAME, 'Failed to query party aliases', error);
+      applicationContext.logger.warn(
+        MODULE_NAME,
+        "Failed to query party's additional identifiers",
+        error,
+      );
       return { names: [], ssns: [], taxIds: [] };
     }
   }

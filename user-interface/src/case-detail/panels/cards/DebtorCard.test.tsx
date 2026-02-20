@@ -184,7 +184,7 @@ describe('DebtorCard', () => {
   });
 
   describe('Alias names', () => {
-    test('renders primary name without aliases when aliases not provided', () => {
+    test('renders primary name without additionalIdentifiers when additionalIdentifiers not provided', () => {
       render(<DebtorCard {...defaultProps} />);
 
       expect(screen.getByTestId('test-debtor-name')).toBeInTheDocument();
@@ -192,10 +192,10 @@ describe('DebtorCard', () => {
       expect(screen.queryByText(/^Alias:/)).not.toBeInTheDocument();
     });
 
-    test('renders primary name with multiple aliases', () => {
+    test('renders primary name with multiple additionalIdentifiers', () => {
       const debtorWithAliases: Debtor = {
         ...mockDebtor,
-        aliases: {
+        additionalIdentifiers: {
           names: ['John Smith', 'J. Doe', 'Johnny Doe'],
         },
       };
@@ -205,33 +205,31 @@ describe('DebtorCard', () => {
       expect(screen.getByTestId('test-debtor-name')).toBeInTheDocument();
       expect(screen.getByText('John Doe')).toBeInTheDocument();
       expect(screen.getByTestId('test-debtor-alias-name-0')).toBeInTheDocument();
-      expect(screen.getByText('Alias: John Smith')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-name-0')).toHaveTextContent('Alias: John Smith');
       expect(screen.getByTestId('test-debtor-alias-name-1')).toBeInTheDocument();
-      expect(screen.getByText('Alias: J. Doe')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-name-1')).toHaveTextContent('Alias: J. Doe');
       expect(screen.getByTestId('test-debtor-alias-name-2')).toBeInTheDocument();
-      expect(screen.getByText('Alias: Johnny Doe')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-name-2')).toHaveTextContent('Alias: Johnny Doe');
     });
 
     test('each alias has "Alias:" prefix', () => {
       const debtorWithAliases: Debtor = {
         ...mockDebtor,
-        aliases: {
+        additionalIdentifiers: {
           names: ['John Smith', 'J. Doe'],
         },
       };
 
       render(<DebtorCard {...defaultProps} debtor={debtorWithAliases} />);
 
-      const aliasElements = screen.getAllByText(/^Alias:/);
-      expect(aliasElements).toHaveLength(2);
-      expect(aliasElements[0]).toHaveTextContent('Alias: John Smith');
-      expect(aliasElements[1]).toHaveTextContent('Alias: J. Doe');
+      expect(screen.getByTestId('test-debtor-alias-name-0')).toHaveTextContent('Alias: John Smith');
+      expect(screen.getByTestId('test-debtor-alias-name-1')).toHaveTextContent('Alias: J. Doe');
     });
 
     test('each alias has unique test ID', () => {
       const debtorWithAliases: Debtor = {
         ...mockDebtor,
-        aliases: {
+        additionalIdentifiers: {
           names: ['John Smith', 'J. Doe', 'Johnny Doe'],
         },
       };
@@ -243,10 +241,10 @@ describe('DebtorCard', () => {
       expect(screen.getByTestId('test-debtor-alias-name-2')).toBeInTheDocument();
     });
 
-    test('does not render aliases section when aliases undefined', () => {
+    test('does not render additionalIdentifiers section when additionalIdentifiers undefined', () => {
       const debtorWithoutAliases: Debtor = {
         ...mockDebtor,
-        aliases: undefined,
+        additionalIdentifiers: undefined,
       };
 
       render(<DebtorCard {...defaultProps} debtor={debtorWithoutAliases} />);
@@ -255,10 +253,10 @@ describe('DebtorCard', () => {
       expect(screen.queryByText(/^Alias:/)).not.toBeInTheDocument();
     });
 
-    test('does not render aliases section when aliases.names is empty array', () => {
+    test('does not render additionalIdentifiers section when additionalIdentifiers.names is empty array', () => {
       const debtorWithEmptyAliases: Debtor = {
         ...mockDebtor,
-        aliases: {
+        additionalIdentifiers: {
           names: [],
         },
       };
@@ -269,10 +267,10 @@ describe('DebtorCard', () => {
       expect(screen.queryByText(/^Alias:/)).not.toBeInTheDocument();
     });
 
-    test('does not render aliases section when aliases.names is undefined', () => {
+    test('does not render additionalIdentifiers section when additionalIdentifiers.names is undefined', () => {
       const debtorWithUndefinedNames: Debtor = {
         ...mockDebtor,
-        aliases: {},
+        additionalIdentifiers: {},
       };
 
       render(<DebtorCard {...defaultProps} debtor={debtorWithUndefinedNames} />);
@@ -287,7 +285,7 @@ describe('DebtorCard', () => {
       const debtorWithAliasSSNs: Debtor = {
         ...mockDebtor,
         ssn: '111-11-1111',
-        aliases: {
+        additionalIdentifiers: {
           ssns: ['222-22-2222', '333-33-3333'],
         },
       };
@@ -307,7 +305,7 @@ describe('DebtorCard', () => {
         ...mockDebtor,
         taxId: '12-3456789',
         ssn: undefined,
-        aliases: {
+        additionalIdentifiers: {
           taxIds: ['98-7654321', '11-1111111'],
         },
       };
@@ -322,12 +320,12 @@ describe('DebtorCard', () => {
       expect(screen.getByText('11-1111111')).toBeInTheDocument();
     });
 
-    test('renders all three types of aliases together', () => {
+    test('renders all three types of additionalIdentifiers together', () => {
       const debtorWithAllAliases: Debtor = {
         ...mockDebtor,
         ssn: '111-11-1111',
         taxId: '12-3456789',
-        aliases: {
+        additionalIdentifiers: {
           names: ['John Smith'],
           ssns: ['222-22-2222'],
           taxIds: ['98-7654321'],
@@ -336,7 +334,7 @@ describe('DebtorCard', () => {
 
       render(<DebtorCard {...defaultProps} debtor={debtorWithAllAliases} />);
 
-      expect(screen.getByText('Alias: John Smith')).toBeInTheDocument();
+      expect(screen.getByTestId('test-debtor-alias-name-0')).toHaveTextContent('Alias: John Smith');
       expect(screen.getByText('111-11-1111')).toBeInTheDocument();
       expect(screen.getByText('222-22-2222')).toBeInTheDocument();
       expect(screen.getByText('12-3456789')).toBeInTheDocument();
@@ -347,7 +345,7 @@ describe('DebtorCard', () => {
       const debtorWithAliasSSNs: Debtor = {
         ...mockDebtor,
         ssn: '111-11-1111',
-        aliases: {
+        additionalIdentifiers: {
           ssns: ['222-22-2222', '333-33-3333', '444-44-4444'],
         },
       };
@@ -364,7 +362,7 @@ describe('DebtorCard', () => {
         ...mockDebtor,
         ssn: undefined,
         taxId: '12-3456789',
-        aliases: {
+        additionalIdentifiers: {
           taxIds: ['98-7654321', '11-1111111'],
         },
       };
@@ -379,7 +377,7 @@ describe('DebtorCard', () => {
       const debtorWithEmptyAliases: Debtor = {
         ...mockDebtor,
         ssn: '111-11-1111',
-        aliases: {
+        additionalIdentifiers: {
           ssns: [],
         },
       };
@@ -395,7 +393,7 @@ describe('DebtorCard', () => {
         ...mockDebtor,
         ssn: undefined,
         taxId: '12-3456789',
-        aliases: {
+        additionalIdentifiers: {
           taxIds: [],
         },
       };

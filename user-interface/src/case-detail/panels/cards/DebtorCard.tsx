@@ -35,14 +35,17 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
 
               <div className="info-group">
                 <div data-testid={`${testIdPrefix}-name`}>{debtor.name}</div>
-                {debtor.aliases?.names?.map((aliasName, index) => (
+                {debtor.additionalIdentifiers?.names?.map((aliasName, index) => (
                   <div key={index} data-testid={`${testIdPrefix}-alias-name-${index}`}>
-                    Alias: {aliasName}
+                    <strong>Alias:</strong> {aliasName}
                   </div>
                 ))}
               </div>
 
-              {(debtor.ssn || debtor.taxId || debtor.aliases?.ssns || debtor.aliases?.taxIds) && (
+              {(debtor.ssn ||
+                debtor.taxId ||
+                debtor.additionalIdentifiers?.ssns ||
+                debtor.additionalIdentifiers?.taxIds) && (
                 <div className="info-group">
                   <dl>
                     {debtor.ssn && (
@@ -51,9 +54,9 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                         <dd className="case-detail-item-value">{debtor.ssn}</dd>
                       </div>
                     )}
-                    {debtor.aliases?.ssns?.map((ssn, index) => (
+                    {debtor.additionalIdentifiers?.ssns?.map((ssn, index) => (
                       <div key={index} data-testid={`${testIdPrefix}-alias-ssn-${index}`}>
-                        <dt className="case-detail-item-name">SSN:</dt>
+                        <dt className="case-detail-item-name">Additional SSN:</dt>
                         <dd className="case-detail-item-value">{ssn}</dd>
                       </div>
                     ))}
@@ -63,9 +66,9 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                         <dd className="case-detail-item-value">{debtor.taxId}</dd>
                       </div>
                     )}
-                    {debtor.aliases?.taxIds?.map((taxId, index) => (
+                    {debtor.additionalIdentifiers?.taxIds?.map((taxId, index) => (
                       <div key={index} data-testid={`${testIdPrefix}-alias-taxId-${index}`}>
-                        <dt className="case-detail-item-name">EIN:</dt>
+                        <dt className="case-detail-item-name">Additional EIN:</dt>
                         <dd className="case-detail-item-value">{taxId}</dd>
                       </div>
                     ))}

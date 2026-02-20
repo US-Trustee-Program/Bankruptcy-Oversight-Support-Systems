@@ -331,6 +331,13 @@ const caseDetails = {
     phone: '1-204-717-9520',
     extension: '516854',
     email: 'Aiyana47@hotmail.com',
+    ssn: '111-22-3333',
+    taxId: '12-3456789',
+    additionalIdentifiers: {
+      names: ['T. Shields', 'Trevor A. Shields'],
+      ssns: ['222-33-4444', '333-44-5555'],
+      taxIds: ['98-7654321', '11-1111111'],
+    },
   },
   officeName: 'Santa Ana',
   officeCode: '8',
@@ -371,6 +378,22 @@ const caseDetails = {
     },
   ],
   petitionLabel: 'Voluntary',
+  jointDebtor: {
+    name: 'Morgan Shields',
+    address1: '347 Balmoral Road',
+    address2: 'Apt. 717',
+    address3: 'suite 100',
+    cityStateZipCountry: 'Kyleehaven, NH, 33462, US',
+    phone: '1-204-717-9521',
+    email: 'morgan.shields@hotmail.com',
+    ssn: '444-55-6666',
+    taxId: '22-3456789',
+    additionalIdentifiers: {
+      names: ['M. Shields', 'Morgan B. Shields'],
+      ssns: ['555-66-7777', '666-77-8888'],
+      taxIds: ['33-4444444', '44-5555555'],
+    },
+  },
   trustee: {
     name: 'Frances Armstrong',
     legacy: {
