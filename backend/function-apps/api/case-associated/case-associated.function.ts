@@ -1,15 +1,12 @@
 import * as dotenv from 'dotenv';
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
-import { initializeApplicationInsights } from '../../azure/app-insights';
 import { CaseAssociatedController } from '../../../lib/controllers/case-associated/case-associated.controller';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 
 dotenv.config();
 
 const MODULE_NAME = 'CASE-ASSOCIATED-FUNCTION';
-
-initializeApplicationInsights();
 
 export default async function handler(
   request: HttpRequest,

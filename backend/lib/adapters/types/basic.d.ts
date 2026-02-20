@@ -2,13 +2,14 @@ import { ApplicationConfiguration } from '../../configs/application-configuratio
 import { CamsSession } from '@common/cams/session';
 import { CamsHttpRequest } from './http';
 import { Closable } from '../../deferrable/defer-close';
-import { Releasable } from '../../use-cases/gateways.types';
+import { ObservabilityGateway, Releasable } from '../../use-cases/gateways.types';
 import { LoggerImpl } from '../services/logger.service';
 
 export interface ApplicationContext<B = unknown> {
   config: ApplicationConfiguration;
   featureFlags: FeatureFlagSet;
   logger: LoggerImpl;
+  observability: ObservabilityGateway;
   session?: CamsSession;
   invocationId: string;
   request?: CamsHttpRequest<B>;

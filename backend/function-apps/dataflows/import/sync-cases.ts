@@ -12,9 +12,10 @@ import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
-import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
+import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
@@ -51,16 +52,24 @@ const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
  */
 async function handleStart(startMessage: StartMessage, invocationContext: InvocationContext) {
   const logger = ContextCreator.getLogger(invocationContext);
-  const trace = startTrace(MODULE_NAME, 'handleStart', invocationContext.invocationId, logger);
+  const observability = new AppInsightsObservability();
+  const trace = observability.startTrace(invocationContext.invocationId);
   try {
-    const context = await ContextCreator.getApplicationContext({ invocationContext });
+    const context = await ContextCreator.getApplicationContext({
+      invocationContext,
+      observability,
+    });
     const { events, lastCasesSyncDate, lastTransactionsSyncDate } = await SyncCases.getCaseIds(
       context,
       startMessage['lastSyncDate'],
     );
 
     if (!events.length) {
-      completeTrace(trace, { documentsWritten: 0, documentsFailed: 0, success: true });
+      completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+      });
       return;
     }
 
@@ -76,14 +85,14 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
     invocationContext.extraOutputs.set(PAGE, pages);
 
     await CasesRuntimeState.storeRuntimeState(context, lastCasesSyncDate, lastTransactionsSyncDate);
-    completeTrace(trace, {
+    completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: true,
       details: { pagesQueued: String(pages.length), totalEvents: String(events.length) },
     });
   } catch (originalError) {
-    completeTrace(trace, {
+    completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,
@@ -103,20 +112,26 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
  * @param {InvocationContext} invocationContext
  */
 async function handlePage(events: CaseSyncEvent[], invocationContext: InvocationContext) {
-  const logger = ContextCreator.getLogger(invocationContext);
-  const trace = startTrace(MODULE_NAME, 'handlePage', invocationContext.invocationId, logger);
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+  const trace = appContext.observability.startTrace(invocationContext.invocationId);
   const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
 
   const failedEvents = processedEvents.filter((event) => !!event.error);
   invocationContext.extraOutputs.set(DLQ, failedEvents);
   const successCount = processedEvents.length - failedEvents.length;
-  completeTrace(trace, {
-    documentsWritten: successCount,
-    documentsFailed: failedEvents.length,
-    success: true,
-    details: { totalEvents: String(events.length) },
-  });
+  completeDataflowTrace(
+    appContext.observability,
+    trace,
+    MODULE_NAME,
+    'handlePage',
+    appContext.logger,
+    {
+      documentsWritten: successCount,
+      documentsFailed: failedEvents.length,
+      success: true,
+      details: { totalEvents: String(events.length) },
+    },
+  );
 }
 
 function setup() {

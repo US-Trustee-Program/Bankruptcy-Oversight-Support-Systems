@@ -3,8 +3,8 @@ import { buildFunctionName, buildQueueName, StartMessage } from '../dataflows-co
 import ContextCreator from '../../azure/application-context-creator';
 import MigrateOfficeAssigneesUseCase from '../../../lib/use-cases/dataflows/migrate-office-assignees';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
-import { startTrace, completeTrace } from '../../../lib/adapters/services/dataflow-observability';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const MODULE_NAME = 'MIGRATE-ASSIGNEES';
 
@@ -16,17 +16,17 @@ const START = output.storageQueue({
 
 async function start(_ignore: StartMessage, invocationContext: InvocationContext) {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
-  const trace = startTrace(MODULE_NAME, 'start', invocationContext.invocationId, context.logger);
+  const trace = context.observability.startTrace(invocationContext.invocationId);
   try {
     const summary = await MigrateOfficeAssigneesUseCase.migrateAssignments(context);
-    completeTrace(trace, {
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'start', context.logger, {
       documentsWritten: summary.success,
       documentsFailed: summary.fail,
       success: true,
     });
   } catch (originalError) {
     const error = getCamsError(originalError, MODULE_NAME, 'Failed to migrate office assignees.');
-    completeTrace(trace, {
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'start', context.logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,

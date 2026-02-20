@@ -1,0 +1,299 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Search Dashboard\nMonitor frontend search behavior: filter usage, search volume, and user interaction patterns."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 3600000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 300000
+                },
+                {
+                  "durationMs": 900000
+                },
+                {
+                  "durationMs": 1800000
+                },
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 432000000
+                },
+                {
+                  "durationMs": 604800000
+                }
+              ]
+            },
+            "name": "TimeRange",
+            "label": "Time Range"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Search Volume Over Time"
+      },
+      "name": "search-volume-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents | where name == 'search' | where timestamp {TimeRange} | summarize SearchCount = count() by bin(timestamp, 1h) | order by timestamp asc",
+        "size": 0,
+        "title": "Searches Per Hour",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      },
+      "name": "searches-per-hour"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Filter Usage Analysis"
+      },
+      "name": "filter-usage-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents | where name == 'search' | where timestamp {TimeRange} | extend d = customDimensions | summarize DebtorName = countif(tobool(d.debtorNameUsed) == true or tostring(d.debtorNameUsed) =~ 'true'), CaseNumber = countif(isnotempty(tostring(d.caseNumber))), Chapters = countif(isnotempty(tostring(d.chapters)) and tostring(d.chapters) != '[]'), DivisionCodes = countif(isnotempty(tostring(d.divisionCodes)) and tostring(d.divisionCodes) != '[]'), ExcludeClosedCases = countif(tobool(d.excludeClosedCases) == true or tostring(d.excludeClosedCases) =~ 'true') | project DebtorName, CaseNumber, Chapters, DivisionCodes, ExcludeClosedCases",
+        "size": 0,
+        "title": "Filter Usage Counts",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "unstackedbar",
+        "chartSettings": {
+          "xAxis": "DebtorName"
+        }
+      },
+      "name": "filter-usage-counts"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Search Details"
+      },
+      "name": "search-details-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents | where name == 'search' | where timestamp {TimeRange} | extend d = customDimensions | project timestamp, HasDebtorName = iff(tobool(d.debtorNameUsed) == true or tostring(d.debtorNameUsed) =~ 'true', 'Yes', 'No'), HasCaseNumber = iff(isnotempty(tostring(d.caseNumber)), 'Yes', 'No'), Chapters = tostring(d.chapters), ExcludeClosed = tostring(d.excludeClosedCases) | order by timestamp desc | take 100",
+        "size": 0,
+        "title": "Recent Searches",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "grid"
+      },
+      "name": "recent-searches"
+    },
+    {
+      "type": 12,
+      "content": {
+        "version": "NotebookGroup/1.0",
+        "groupType": "editable",
+        "items": [
+          {
+            "type": 1,
+            "content": {
+              "json": "# Debtor Name Search"
+            },
+            "name": "text - 4"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "customEvents | where name == 'search' | extend offset = todouble(customMeasurements.offset) | sort by session_Id asc, timestamp asc | extend SecondsSinceLastAction = datetime_diff('second', timestamp, prev(timestamp)) | extend IsNewNameSearch = iif(offset == 0 and (prev(session_Id) != session_Id or SecondsSinceLastAction > 5), 1, 0) | summarize TotalEvents = count() by Intent = 'Debtor Name Used'",
+              "size": 3,
+              "title": "Debtor Name Field Usage",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "piechart"
+            },
+            "customWidth": "50",
+            "name": "percent-with-debtor-name",
+            "styleSettings": {
+              "maxWidth": "50"
+            }
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let details = pageViews | where name contains \"Case Detail\" | project ViewTime = timestamp, session_Id;\ncustomEvents\n| where name == \"search\"\n| where operation_Name == \"/search\"\n| extend offset = todouble(customMeasurements.offset)\n| sort by session_Id asc, timestamp asc\n| extend SecondsSinceLastAction = datetime_diff('second', timestamp, prev(timestamp))\n| extend IsNewNameSearch = iif(offset == 0 and (prev(session_Id) != session_Id or SecondsSinceLastAction > 5), 1, 0)\n| extend SearchGroupId = row_cumsum(IsNewNameSearch)\n| extend NextSearchStart = next(timestamp)\n| join kind=leftouter details on session_Id\n| extend isSuccess = iif(ViewTime > timestamp and (isempty(NextSearchStart) or ViewTime < NextSearchStart), 1, 0)\n| summarize \n    MaxPageReached = max(round((offset / 50) + 1, 0)),\n    SearchSuccess = max(isSuccess)\n    by session_Id, SearchGroupId\n| summarize \n    TotalUserSearches = count(),\n    SuccessfulSearches = sum(SearchSuccess),\n    AvgPageDepth = round(avg(MaxPageReached), 2)\n| where TotalUserSearches > 0\n| extend ClickThroughRate = round(toreal(SuccessfulSearches) / TotalUserSearches * 100, 2)\n| project ClickThroughRate, AvgPageDepth, TotalUserSearches",
+              "size": 3,
+              "title": "Debtor Name Search CTR and Pagination Depth",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "tiles",
+              "tileSettings": {
+                "titleContent": {},
+                "leftContent": {
+                  "columnMatch": "ClickThroughRate",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "colors",
+                    "thresholdsGrid": [
+                      {
+                        "operator": ">",
+                        "thresholdValue": "80",
+                        "representation": "green",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": ">",
+                        "thresholdValue": "50",
+                        "representation": "yellow",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "<",
+                        "thresholdValue": "50",
+                        "representation": "redBright",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "lightBlue",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  }
+                },
+                "rightContent": {
+                  "columnMatch": "AvgPageDepth",
+                  "formatter": 18,
+                  "formatOptions": {
+                    "thresholdsOptions": "colors",
+                    "thresholdsGrid": [
+                      {
+                        "operator": "<",
+                        "thresholdValue": "3",
+                        "representation": "green",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": ">=",
+                        "thresholdValue": "3",
+                        "representation": "redBright",
+                        "text": "{0}{1}"
+                      },
+                      {
+                        "operator": "Default",
+                        "thresholdValue": null,
+                        "representation": "lightBlue",
+                        "text": "{0}{1}"
+                      }
+                    ]
+                  }
+                },
+                "showBorder": true,
+                "size": "auto"
+              }
+            },
+            "customWidth": "0",
+            "name": "ctr-pagination-visual",
+            "styleSettings": {
+              "maxWidth": "50"
+            }
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "customEvents \n| where name == 'search' \n| where timestamp {TimeRange}\n| extend offset = todouble(customMeasurements.offset)\n| extend CurrentPage = toint(offset / 25) + 1\n| summarize \n    AvgPageReached = round(avg(CurrentPage), 2), \n    MaxPageReached = max(CurrentPage), \n    TotalSearchActions = count()\n    by Intent = 'Debtor Name Used'",
+              "size": 3,
+              "title": "Pagination Depth",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "table"
+            },
+            "name": "pagination-depth"
+          },
+          {
+            "type": 3,
+            "content": {
+              "version": "KqlItem/1.0",
+              "query": "let details = pageViews \n| where name contains 'Case Detail' \n| summarize take_any(*) by id, session_Id // Changed remote_Item_Id to id\n| project ViewTime = timestamp, session_Id, name; \ncustomEvents \n| where name == 'search' \n| where timestamp {TimeRange} \n| summarize take_any(*) by itemId, session_Id // Collapses the search \"double\" telemetry\n| extend d = customDimensions \n| extend offset = todouble(customMeasurements.offset), \n         Chapters = tostring(d.chapters) \n| sort by session_Id asc, timestamp asc \n| extend NextSearchStart = next(timestamp) \n| join kind=leftouter details on session_Id \n| extend Outcome = iif(ViewTime > timestamp and (isempty(NextSearchStart) or ViewTime < NextSearchStart), '✅ Clicked', '❌ Abandoned') \n| project SearchTime = timestamp, Outcome, Chapters, CaseID = iif(Outcome == '✅ Clicked', extract('/case-detail/([^/]+)', 1, name), '') \n| summarize take_any(*) by SearchTime, Outcome, Chapters, CaseID \n| order by SearchTime desc",
+              "size": 0,
+              "title": "Individual Session Deep Dive",
+              "timeContextFromParameter": "TimeRange",
+              "queryType": 0,
+              "resourceType": "microsoft.insights/components",
+              "visualization": "grid",
+              "gridSettings": {
+                "sortBy": [
+                  {
+                    "itemKey": "SearchTime",
+                    "sortOrder": 2
+                  }
+                ]
+              },
+              "sortBy": [
+                {
+                  "itemKey": "SearchTime",
+                  "sortOrder": 2
+                }
+              ]
+            },
+            "name": "debtor-name-searches"
+          }
+        ]
+      },
+      "name": "debtor-name-analysis-group"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-f64e59/providers/Microsoft.Insights/components/appi-ustp-cams-dev-f64e59-webapp"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

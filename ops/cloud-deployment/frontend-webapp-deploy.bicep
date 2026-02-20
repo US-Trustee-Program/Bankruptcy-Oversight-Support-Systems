@@ -178,6 +178,14 @@ module webappInsights 'lib/app-insights/webapp-insights.bicep' = {
   ]
 }
 
+module searchWorkbooks 'lib/workbooks/search-workbooks.bicep' = if (createApplicationInsights) {
+  name: '${webappName}-search-workbooks-module'
+  params: {
+    location: location
+    appInsightsResourceId: webappInsights.outputs.id
+  }
+}
+
 var applicationSettings = concat(
   [
     {

@@ -1,13 +1,10 @@
 import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
 import { CaseAssignmentController } from '../../../lib/controllers/case-assignment/case.assignment.controller';
 import ContextCreator from '../../azure/application-context-creator';
-import { initializeApplicationInsights } from '../../azure/app-insights';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { CASE_ASSIGNMENT_EVENT_QUEUE } from '../../../lib/storage-queues';
 
 const MODULE_NAME = 'CASE-ASSIGNMENT-FUNCTION';
-
-initializeApplicationInsights();
 
 export default async function handler(
   request: HttpRequest,
