@@ -4,7 +4,7 @@ import ContextCreator from '../../azure/application-context-creator';
 import MigrateOfficeAssigneesUseCase from '../../../lib/use-cases/dataflows/migrate-office-assignees';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
-import { completeDataflowTrace } from '../dataflow-telemetry.types';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const MODULE_NAME = 'MIGRATE-ASSIGNEES';
 

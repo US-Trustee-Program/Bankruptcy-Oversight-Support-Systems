@@ -11,7 +11,7 @@ import AcmsOrdersController from '../../../lib/controllers/acms-orders/acms-orde
 import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
-import { completeDataflowTrace } from '../dataflow-telemetry.types';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const MODULE_NAME = 'MIGRATE-CONSOLIDATIONS';
 const PAGE_SIZE = 10;

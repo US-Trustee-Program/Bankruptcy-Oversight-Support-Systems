@@ -15,7 +15,7 @@ import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
-import { completeDataflowTrace } from '../dataflow-telemetry.types';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;

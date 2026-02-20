@@ -3,7 +3,7 @@ import ContextCreator from '../../azure/application-context-creator';
 import { OrdersController } from '../../../lib/controllers/orders/orders.controller';
 import { toAzureError } from '../../azure/functions';
 import { buildFunctionName, buildHttpTrigger } from '../dataflows-common';
-import { completeDataflowTrace } from '../dataflow-telemetry.types';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const MODULE_NAME = 'SYNC-ORDERS';
 

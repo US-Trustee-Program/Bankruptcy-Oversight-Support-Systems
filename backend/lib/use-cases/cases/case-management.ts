@@ -142,6 +142,9 @@ export default class CaseManagement {
     includeAssignments: boolean,
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>> {
     const trace = context.observability.startTrace(context.invocationId);
+    const phoneticSearchEnabled = context.featureFlags?.['phonetic-search-enabled'] === true;
+    const usePhoneticSearch = this.shouldUsePhoneticSearch(predicate, phoneticSearchEnabled);
+    const searchType = usePhoneticSearch ? 'phonetic' : 'standard';
 
     try {
       // RULE 3: Backend validation (security boundary)
@@ -171,9 +174,6 @@ export default class CaseManagement {
           await this.casesRepository.getConsolidationMemberCaseIds(predicate);
         predicate.excludedCaseIds = consolidationMemberCaseIds;
       }
-
-      const phoneticSearchEnabled = context.featureFlags?.['phonetic-search-enabled'] === true;
-      const usePhoneticSearch = this.shouldUsePhoneticSearch(predicate, phoneticSearchEnabled);
 
       let searchResult: CamsPaginationResponse<ResourceActions<SyncedCase>>;
 
@@ -205,7 +205,6 @@ export default class CaseManagement {
         }
       }
 
-      const searchType = usePhoneticSearch ? 'phonetic' : 'standard';
       this.completeSearchTrace(
         context,
         trace,
@@ -222,7 +221,7 @@ export default class CaseManagement {
         context,
         trace,
         predicate,
-        'standard',
+        searchType,
         0,
         0,
         false,

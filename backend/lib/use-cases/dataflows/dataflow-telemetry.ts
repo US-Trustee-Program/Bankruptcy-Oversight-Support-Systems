@@ -1,5 +1,5 @@
-import { LoggerImpl } from '../../lib/adapters/services/logger.service';
-import { ObservabilityGateway, ObservabilityTrace } from '../../lib/use-cases/gateways.types';
+import { LoggerImpl } from '../../adapters/services/logger.service';
+import { ObservabilityGateway, ObservabilityTrace } from '../gateways.types';
 
 export interface DataflowTraceResult {
   documentsWritten: number;
