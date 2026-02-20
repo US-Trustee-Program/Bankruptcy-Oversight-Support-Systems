@@ -59,7 +59,7 @@ jobs:
 
       - name: Deploy Branch Log Analytics Workspace
         id: branch-law
-        if: ${{ inputs.deployBranch == 'true' }}
+        if: ${{ github.ref != 'refs/heads/main' }}
         run: |
           set -euo pipefail
 
@@ -84,7 +84,7 @@ jobs:
       - name: Determine Analytics Workspace ID
         id: analytics-workspace
         run: |
-          if [[ "${{ inputs.deployBranch }}" == "true" ]]; then
+          if [[ "${{ github.ref }}" != "refs/heads/main" ]]; then
             echo "Using branch-specific workspace"
             echo "workspaceId=${{ steps.branch-law.outputs.workspaceId }}" >> $GITHUB_OUTPUT
           else
