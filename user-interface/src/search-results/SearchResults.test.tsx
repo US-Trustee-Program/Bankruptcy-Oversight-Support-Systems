@@ -129,8 +129,8 @@ describe('SearchResults component tests', () => {
     });
   });
 
-  // TEMPORARY: Skipped due to forced alert display for NVDA testing - UNSKIP AFTER REMOVING TEMPORARY ALERT
-  test.skip('should show the generic error alert when a non-timeout error is encountered', async () => {
+  // TEMPORARY: Modified due to forced alert display for NVDA testing - RESTORE ORIGINAL AFTER REMOVING TEMPORARY ALERT
+  test('should show the generic error alert when a non-timeout error is encountered', async () => {
     vi.spyOn(Api2, 'searchCases').mockRejectedValue(new Error('SomeError'));
 
     renderWithProps();
@@ -139,7 +139,8 @@ describe('SearchResults component tests', () => {
     expect(table).not.toBeInTheDocument();
 
     let searchErrorAlert = document.querySelector('#search-error-alert');
-    expect(searchErrorAlert).not.toBeInTheDocument();
+    // TEMPORARY: Commented out - forced alert makes this always present
+    // expect(searchErrorAlert).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
@@ -148,18 +149,20 @@ describe('SearchResults component tests', () => {
       searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).toBeInTheDocument();
       expect(searchErrorAlert).toBeVisible();
+      // TEMPORARY: Actual errors override forced alert, so this still shows the correct message
       expect(searchErrorAlert).toHaveTextContent('Search results not available');
     });
   });
 
-  // TEMPORARY: Skipped due to forced alert display for NVDA testing - UNSKIP AFTER REMOVING TEMPORARY ALERT
-  test.skip('should show the timeout error alert when a 504 error is encountered', async () => {
+  // TEMPORARY: Modified due to forced alert display for NVDA testing - RESTORE ORIGINAL AFTER REMOVING TEMPORARY ALERT
+  test('should show the timeout error alert when a 504 error is encountered', async () => {
     vi.spyOn(Api2, 'searchCases').mockRejectedValue(new CamsHttpError(504, 'Gateway Timeout'));
 
     renderWithProps();
 
     let searchErrorAlert = document.querySelector('#search-error-alert');
-    expect(searchErrorAlert).not.toBeInTheDocument();
+    // TEMPORARY: Commented out - forced alert makes this always present
+    // expect(searchErrorAlert).not.toBeInTheDocument();
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
