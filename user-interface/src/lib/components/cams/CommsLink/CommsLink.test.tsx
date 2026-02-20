@@ -117,7 +117,7 @@ describe('CommsLink Component', () => {
 
       const iconLabel = screen.getByTestId('icon-label');
       expect(iconLabel).toHaveTextContent('Talk');
-      expect(iconLabel.getAttribute('data-icon')).toBe('forum');
+      expect(iconLabel.getAttribute('data-icon')).toBe('phone');
     });
 
     test('renders teams-call link with custom label and icon', () => {

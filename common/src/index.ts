@@ -45,4 +45,4 @@ export * from './normalization';
 export * from './object-equality';
 
 // Export queue types
-export * from './queue/dataflow-types';
+export * from './cams/dataflow-events';

@@ -225,6 +225,8 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       maxObjectDepth: maxObjectDepth
       maxObjectKeyCount: maxObjectKeyCount
       gitSha: gitSha
+      dataflowsStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsStorageConnectionString
+      dataflowsSlotStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsSlotStorageConnectionString
     }
 }
 

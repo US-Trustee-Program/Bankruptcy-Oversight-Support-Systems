@@ -101,6 +101,12 @@ param maxObjectKeyCount string
 
 param gitSha string
 
+@secure()
+param dataflowsStorageConnectionString string
+
+@secure()
+param dataflowsSlotStorageConnectionString string
+
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
@@ -201,6 +207,7 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
     properties: {
       appSettingNames: [
         'AzureWebJobsStorage'
+        'AzureWebJobsDataflowsStorage'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
       ]
@@ -272,6 +279,10 @@ var baseApiFunctionAppConfigProperties = {
         name: 'AzureWebJobsStorage'
         value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
       }
+      {
+        name: 'AzureWebJobsDataflowsStorage'
+        value: dataflowsStorageConnectionString
+      }
     ])
     cors: {
       allowedOrigins: apiCorsAllowOrigins
@@ -297,6 +308,10 @@ var baseApiFunctionAppConfigProperties = {
       {
         name: 'AzureWebJobsStorage'
         value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionSlotStorageAccount.listKeys().keys[0].value}'
+      }
+      {
+        name: 'AzureWebJobsDataflowsStorage'
+        value: dataflowsSlotStorageConnectionString
       }
     ])
     cors: {
