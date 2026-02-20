@@ -33,15 +33,11 @@ on:
       slotName:
         required: true
         type: string
-      deployBranch:
-        required: true
-        type: string
 
 jobs:
   deploy-infra:
     name: Azure Infrastructure
     uses: ./.github/workflows/reusable-deploy.yml
-    if: ${{ (github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true') }}
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpAppEncrypted: ${{ inputs.azResourceGrpAppEncrypted }}
@@ -49,7 +45,6 @@ jobs:
       stackName: ${{ inputs.stackName }}
       environmentHash: ${{ inputs.environmentHash }}
       deployVnet: ${{ inputs.deployVnet }}
-      deployBranch: ${{ inputs.deployBranch }}
     secrets: inherit # pragma: allowlist secret
 
   build-frontend-deployment-artifact:
@@ -74,7 +69,6 @@ jobs:
     name: Supporting Infrastructure
     uses: ./.github/workflows/reusable-infrastructure-deploy.yml
     needs: [deploy-infra]
-    if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
