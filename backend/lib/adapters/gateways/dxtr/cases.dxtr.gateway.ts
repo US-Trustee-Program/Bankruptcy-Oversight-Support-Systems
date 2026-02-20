@@ -832,15 +832,30 @@ class CasesDxtrGateway implements CasesInterface {
     );
 
     if (debtor) {
-      const aliasNames = await this.queryPartyAliases(
+      const aliases = await this.queryPartyAliases(
         applicationContext,
         dxtrId,
         courtId,
         debtorPartyCode,
       );
 
-      if (aliasNames && aliasNames.length > 0) {
-        debtor.aliases = { names: aliasNames };
+      const hasAliases =
+        aliases.names.length > 0 || aliases.ssns.length > 0 || aliases.taxIds.length > 0;
+
+      if (hasAliases) {
+        debtor.aliases = {};
+
+        if (aliases.names.length > 0) {
+          debtor.aliases.names = aliases.names;
+        }
+
+        if (aliases.ssns.length > 0) {
+          debtor.aliases.ssns = aliases.ssns;
+        }
+
+        if (aliases.taxIds.length > 0) {
+          debtor.aliases.taxIds = aliases.taxIds;
+        }
       }
     }
 
@@ -937,7 +952,7 @@ class CasesDxtrGateway implements CasesInterface {
     dxtrId: string,
     courtId: string,
     partyCode: PartyCode,
-  ): Promise<string[]> {
+  ): Promise<{ names: string[]; ssns: string[]; taxIds: string[] }> {
     const input: DbTableFieldSpec[] = [];
 
     input.push(
@@ -958,8 +973,8 @@ class CasesDxtrGateway implements CasesInterface {
       },
     );
 
-    const query = `SELECT
-      TRIM(CONCAT(
+    const query = `
+      SELECT 'name' as aliasType, TRIM(CONCAT(
         PY_FIRST_NAME,
         ' ',
         PY_MIDDLE_NAME,
@@ -967,8 +982,26 @@ class CasesDxtrGateway implements CasesInterface {
         PY_LAST_NAME,
         ' ',
         PY_GENERATION
-      )) as aliasName
+      )) as value
       FROM [dbo].[AO_ALIAS]
+      WHERE
+        CS_CASEID = @dxtrId AND
+        COURT_ID = @courtId AND
+        PY_ROLE = @partyCode
+
+      UNION
+
+      SELECT 'ssn' as aliasType, PY_SSN as value
+      FROM [dbo].[AO_SSN]
+      WHERE
+        CS_CASEID = @dxtrId AND
+        COURT_ID = @courtId AND
+        PY_ROLE = @partyCode
+
+      UNION
+
+      SELECT 'taxId' as aliasType, PY_TAXID as value
+      FROM [dbo].[AO_TAXID]
       WHERE
         CS_CASEID = @dxtrId AND
         COURT_ID = @courtId AND
@@ -983,22 +1016,38 @@ class CasesDxtrGateway implements CasesInterface {
         input,
       );
 
-      const aliasSet = new Set<string>();
+      const nameSet = new Set<string>();
+      const ssnSet = new Set<string>();
+      const taxIdSet = new Set<string>();
+
       if (queryResult.success && queryResult.results) {
-        (queryResult.results as mssql.IResult<{ aliasName: string }>).recordset.forEach(
-          (record) => {
-            const aliasName = removeExtraSpaces(record.aliasName);
-            if (aliasName) {
-              aliasSet.add(aliasName);
+        (
+          queryResult.results as mssql.IResult<{ aliasType: string; value: string }>
+        ).recordset.forEach((record) => {
+          const value = record.value?.trim();
+          if (!value) return;
+
+          if (record.aliasType === 'name') {
+            const cleanedName = removeExtraSpaces(value);
+            if (cleanedName) {
+              nameSet.add(cleanedName);
             }
-          },
-        );
+          } else if (record.aliasType === 'ssn') {
+            ssnSet.add(value);
+          } else if (record.aliasType === 'taxId') {
+            taxIdSet.add(value);
+          }
+        });
       }
 
-      return Array.from(aliasSet).sort();
+      return {
+        names: Array.from(nameSet).sort(),
+        ssns: Array.from(ssnSet).sort(),
+        taxIds: Array.from(taxIdSet).sort(),
+      };
     } catch (error) {
       applicationContext.logger.warn(MODULE_NAME, 'Failed to query party aliases', error);
-      return [];
+      return { names: [], ssns: [], taxIds: [] };
     }
   }
 
