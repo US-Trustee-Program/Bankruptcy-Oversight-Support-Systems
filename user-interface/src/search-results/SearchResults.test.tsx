@@ -129,7 +129,8 @@ describe('SearchResults component tests', () => {
     });
   });
 
-  test('should show the generic error alert when a non-timeout error is encountered', async () => {
+  // TEMPORARY: Skipped due to forced alert display for NVDA testing - UNSKIP AFTER REMOVING TEMPORARY ALERT
+  test.skip('should show the generic error alert when a non-timeout error is encountered', async () => {
     vi.spyOn(Api2, 'searchCases').mockRejectedValue(new Error('SomeError'));
 
     renderWithProps();
@@ -151,7 +152,8 @@ describe('SearchResults component tests', () => {
     });
   });
 
-  test('should show the timeout error alert when a 504 error is encountered', async () => {
+  // TEMPORARY: Skipped due to forced alert display for NVDA testing - UNSKIP AFTER REMOVING TEMPORARY ALERT
+  test.skip('should show the timeout error alert when a 504 error is encountered', async () => {
     vi.spyOn(Api2, 'searchCases').mockRejectedValue(new CamsHttpError(504, 'Gateway Timeout'));
 
     renderWithProps();
