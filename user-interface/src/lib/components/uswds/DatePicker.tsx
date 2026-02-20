@@ -250,8 +250,13 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   };
 
   const handleCalendarButtonClick = () => {
-    if (inputRef.current && typeof inputRef.current.showPicker === 'function') {
-      inputRef.current.showPicker();
+    if (!inputRef.current) return;
+    const { current } = inputRef;
+
+    if (typeof current.showPicker === 'function') {
+      current.showPicker();
+    } else {
+      current.focus();
     }
   };
 
@@ -287,6 +292,7 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
           disabled={isDisabled}
           title="Show calendar to select date"
           aria-label="Show calendar to select date"
+          aria-controls={id}
         >
           <Icon name="calendar_today"></Icon>
         </button>

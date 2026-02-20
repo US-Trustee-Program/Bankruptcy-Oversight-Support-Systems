@@ -845,7 +845,7 @@ describe('DatePicker calendar button', () => {
     });
   });
 
-  test('should handle click gracefully when showPicker is not available', () => {
+  test('should focus input when showPicker is not available', () => {
     renderWithProps();
 
     const inputEl = screen.getByTestId(DEFAULT_ID) as HTMLInputElement;
@@ -857,9 +857,13 @@ describe('DatePicker calendar button', () => {
 
     const calendarButton = document.querySelector('.calendar-picker-button') as HTMLButtonElement;
 
-    // Should not throw error
-    expect(() => {
-      fireEvent.click(calendarButton);
-    }).not.toThrow();
+    // Input should not be focused initially
+    expect(inputEl).not.toHaveFocus();
+
+    // Click the calendar button
+    fireEvent.click(calendarButton);
+
+    // Input should be focused as fallback
+    expect(inputEl).toHaveFocus();
   });
 });
