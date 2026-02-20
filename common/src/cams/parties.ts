@@ -25,7 +25,7 @@ export type Party = LegacyAddress & {
 export type Debtor = Party &
   TaxIds & {
     phoneticTokens?: string[];
-    aliases?: {
+    additionalIdentifiers?: {
       names?: string[];
       ssns?: string[];
       taxIds?: string[];
