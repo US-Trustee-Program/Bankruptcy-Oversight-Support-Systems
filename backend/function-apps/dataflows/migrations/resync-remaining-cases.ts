@@ -10,7 +10,7 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
-import { completeDataflowTrace } from '../dataflow-telemetry.types';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const MODULE_NAME = 'RESYNC-REMAINING-CASES';
 const PAGE_SIZE = 100;

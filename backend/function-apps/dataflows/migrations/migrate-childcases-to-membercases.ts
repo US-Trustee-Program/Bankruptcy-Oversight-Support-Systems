@@ -8,7 +8,7 @@ import { ConsolidationOrder } from '@common/cams/orders';
 import QueryBuilder from '../../../lib/query/query-builder';
 import { Document as MongoDocument } from 'mongodb';
 import { CaseHistory } from '@common/cams/history';
-import { completeDataflowTrace } from '../dataflow-telemetry.types';
+import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 
 const { and, using } = QueryBuilder;
 
