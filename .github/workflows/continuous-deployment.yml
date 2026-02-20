@@ -102,7 +102,6 @@ jobs:
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       deployVnet: ${{ needs.setup.outputs.deployVnet }}
       slotName: ${{ needs.setup.outputs.slotName }}
-      deployBranch: ${{ github.ref != 'refs/heads/main' }}
     secrets: inherit # pragma: allowlist secret
 
   deploy-code-slot:
