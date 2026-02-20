@@ -12,8 +12,24 @@
       grid-template-columns: 1fr;
     }
 
+    dl > div {
+      gap: 0;
+    }
+
+    .info-group dl > div dt {
+      display: inline;
+      margin: 0;
+      margin-right: 0.25rem;
+    }
+
+    .info-group dl > div dd {
+      display: inline;
+      margin: 0;
+    }
+
     .case-detail-item-name {
       font-weight: 700;
+      padding-right: 0;
     }
   }
 }
