@@ -16,7 +16,13 @@
       gap: 0;
     }
 
-    dt, dd {
+    .info-group dl > div dt {
+      display: inline;
+      margin: 0;
+      margin-right: 0.25rem;
+    }
+
+    .info-group dl > div dd {
       display: inline;
       margin: 0;
     }
