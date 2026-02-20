@@ -60,7 +60,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
     href = `msteams://teams.microsoft.com/l/call/0/0?users=${email}`;
     labelToUse = label ?? 'Talk';
     ariaLabel = `Start Teams call with ${name ?? email}`;
-    iconToUse = icon ?? 'forum';
+    iconToUse = icon ?? 'phone';
   } else if (isValidEmail && mode === 'email') {
     href = `mailto:${email}`;
     if (emailSubject) {
