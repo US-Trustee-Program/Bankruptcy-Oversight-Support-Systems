@@ -35,9 +35,20 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
 
               <div className="info-group">
                 <div data-testid={`${testIdPrefix}-name`}>{debtor.name}</div>
+                {debtor.additionalIdentifiers?.names?.map((aliasName, index) => (
+                  <div
+                    key={`${aliasName}-${index}`}
+                    data-testid={`${testIdPrefix}-alias-name-${index}`}
+                  >
+                    <strong>Alias:</strong> {aliasName}
+                  </div>
+                ))}
               </div>
 
-              {(debtor.ssn || debtor.taxId) && (
+              {(debtor.ssn ||
+                debtor.taxId ||
+                debtor.additionalIdentifiers?.ssns ||
+                debtor.additionalIdentifiers?.taxIds) && (
                 <div className="info-group">
                   <dl>
                     {debtor.ssn && (
@@ -46,12 +57,30 @@ export default function DebtorCard(props: Readonly<DebtorCardProps>) {
                         <dd className="case-detail-item-value">{debtor.ssn}</dd>
                       </div>
                     )}
+                    {debtor.additionalIdentifiers?.ssns?.map((ssn, index) => (
+                      <div
+                        key={`${ssn}-${index}`}
+                        data-testid={`${testIdPrefix}-alias-ssn-${index}`}
+                      >
+                        <dt className="case-detail-item-name">Additional SSN:</dt>
+                        <dd className="case-detail-item-value">{ssn}</dd>
+                      </div>
+                    ))}
                     {debtor.taxId && (
                       <div data-testid={`${testIdPrefix}-taxId`}>
                         <dt className="case-detail-item-name">EIN:</dt>
                         <dd className="case-detail-item-value">{debtor.taxId}</dd>
                       </div>
                     )}
+                    {debtor.additionalIdentifiers?.taxIds?.map((taxId, index) => (
+                      <div
+                        key={`${taxId}-${index}`}
+                        data-testid={`${testIdPrefix}-alias-taxId-${index}`}
+                      >
+                        <dt className="case-detail-item-name">Additional EIN:</dt>
+                        <dd className="case-detail-item-value">{taxId}</dd>
+                      </div>
+                    ))}
                   </dl>
                 </div>
               )}
