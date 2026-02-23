@@ -20,7 +20,7 @@ export type CaseClosedEvent = {
  * Processed by dataflows to update case data in MongoDB.
  */
 export type CaseSyncEvent = {
-  type: 'CASE_CHANGED' | 'MIGRATION';
+  type: 'CASE_CHANGED' | 'MIGRATION' | 'TRUSTEE_APPOINTMENT';
   caseId: string;
   bCase?: DxtrCase;
   error?: unknown;
