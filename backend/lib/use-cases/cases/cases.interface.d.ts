@@ -4,6 +4,7 @@ import { CasesSearchPredicate } from '@common/api/search';
 
 export type UpdatedCaseIds = {
   caseIds: string[];
+  appointmentCaseIds: string[];
   latestCasesSyncDate: string;
   latestTransactionsSyncDate: string;
 };

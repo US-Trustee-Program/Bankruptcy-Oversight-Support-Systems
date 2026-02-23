@@ -132,6 +132,7 @@ export class CasesLocalGateway implements CasesInterface {
   ): Promise<UpdatedCaseIds> {
     return {
       caseIds: [],
+      appointmentCaseIds: [],
       latestCasesSyncDate: casesStart,
       latestTransactionsSyncDate: transactionsStart,
     };
