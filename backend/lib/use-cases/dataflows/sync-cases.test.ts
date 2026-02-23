@@ -26,9 +26,12 @@ describe('getCaseIds tests', () => {
     const latestTransactionsSyncDate = '2025-02-11T12:45:00.789Z';
     const caseIds = MockData.buildArray(MockData.randomCaseId, 3);
 
-    const getIdSpy = vi
-      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue({ caseIds, latestCasesSyncDate, latestTransactionsSyncDate });
+    const getIdSpy = vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      appointmentCaseIds: [],
+      latestCasesSyncDate,
+      latestTransactionsSyncDate,
+    });
 
     const syncState: CasesSyncState = {
       documentType: 'CASES_SYNC_STATE',
@@ -63,7 +66,12 @@ describe('getCaseIds tests', () => {
 
     const getUpdatedSpy = vi
       .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue({ caseIds: mockCaseIds, latestCasesSyncDate, latestTransactionsSyncDate });
+      .mockResolvedValue({
+        caseIds: mockCaseIds,
+        appointmentCaseIds: [],
+        latestCasesSyncDate,
+        latestTransactionsSyncDate,
+      });
 
     const actual = await SyncCases.getCaseIds(context, lastSyncDate);
     expect(getUpdatedSpy).toHaveBeenCalled();
@@ -80,9 +88,12 @@ describe('getCaseIds tests', () => {
     const latestTransactionsSyncDate = '2025-02-11T12:45:00.789Z';
     const caseIds = MockData.buildArray(MockData.randomCaseId, 2);
 
-    const getIdSpy = vi
-      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue({ caseIds, latestCasesSyncDate, latestTransactionsSyncDate });
+    const getIdSpy = vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      appointmentCaseIds: [],
+      latestCasesSyncDate,
+      latestTransactionsSyncDate,
+    });
 
     // Mock legacy sync state with only lastSyncDate
     const legacySyncState = {
@@ -109,5 +120,81 @@ describe('getCaseIds tests', () => {
     };
 
     expect(actual).toEqual(expected);
+  });
+
+  test('should tag appointment case IDs with TRUSTEE_APPOINTMENT type', async () => {
+    const lastSyncDate = '2025-01-01';
+    const latestCasesSyncDate = '2025-02-11T10:30:00.124Z';
+    const latestTransactionsSyncDate = '2025-02-11T12:45:00.789Z';
+    const caseIds = ['081-20-10001', '081-20-10002', '081-20-10003'];
+    const appointmentCaseIds = ['081-20-10002'];
+
+    vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      appointmentCaseIds,
+      latestCasesSyncDate,
+      latestTransactionsSyncDate,
+    });
+
+    const syncState: CasesSyncState = {
+      documentType: 'CASES_SYNC_STATE',
+      lastCasesSyncDate: lastSyncDate,
+      lastTransactionsSyncDate: lastSyncDate,
+    };
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(syncState);
+
+    const actual = await SyncCases.getCaseIds(context);
+
+    expect(actual.events).toEqual([
+      { caseId: '081-20-10001', type: 'CASE_CHANGED' },
+      { caseId: '081-20-10002', type: 'TRUSTEE_APPOINTMENT' },
+      { caseId: '081-20-10003', type: 'CASE_CHANGED' },
+    ]);
+  });
+
+  test('should tag case as TRUSTEE_APPOINTMENT when it appears in both terminal and appointment results', async () => {
+    const caseIds = ['081-20-10001'];
+    const appointmentCaseIds = ['081-20-10001'];
+
+    vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      appointmentCaseIds,
+      latestCasesSyncDate: '2025-02-11T10:30:00.124Z',
+      latestTransactionsSyncDate: '2025-02-11T12:45:00.789Z',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
+      documentType: 'CASES_SYNC_STATE',
+      lastCasesSyncDate: '2025-01-01',
+      lastTransactionsSyncDate: '2025-01-01',
+    } as CasesSyncState);
+
+    const actual = await SyncCases.getCaseIds(context);
+
+    expect(actual.events).toEqual([{ caseId: '081-20-10001', type: 'TRUSTEE_APPOINTMENT' }]);
+  });
+
+  test('should produce all CASE_CHANGED events when appointmentCaseIds is empty', async () => {
+    const caseIds = ['081-20-10001', '081-20-10002'];
+
+    vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      appointmentCaseIds: [],
+      latestCasesSyncDate: '2025-02-11T10:30:00.124Z',
+      latestTransactionsSyncDate: '2025-02-11T12:45:00.789Z',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
+      documentType: 'CASES_SYNC_STATE',
+      lastCasesSyncDate: '2025-01-01',
+      lastTransactionsSyncDate: '2025-01-01',
+    } as CasesSyncState);
+
+    const actual = await SyncCases.getCaseIds(context);
+
+    expect(actual.events).toEqual([
+      { caseId: '081-20-10001', type: 'CASE_CHANGED' },
+      { caseId: '081-20-10002', type: 'CASE_CHANGED' },
+    ]);
   });
 });

@@ -619,19 +619,62 @@ class CasesDxtrGateway implements CasesInterface {
       this.getUpdatedCaseIdsCallback,
     );
 
+    // Query 3: Get cases with trustee appointment transactions in AO_TX
+    const appointmentsQuery = `
+      SELECT
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId,
+        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
+      FROM AO_TX TX
+      JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      WHERE TX.TX_TYPE = 'A' AND TX.TX_CODE = 'TR'
+        AND TX.TX_DATE AT TIME ZONE 'UTC' > @transactionsStart
+      ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
+    `;
+
+    const appointmentsQueryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      appointmentsQuery,
+      transactionsParams,
+    );
+
+    const appointmentsResults = handleQueryResult<CaseIdRecord[]>(
+      context,
+      appointmentsQueryResult,
+      MODULE_NAME,
+      this.getUpdatedCaseIdsCallback,
+    );
+
     // Consolidate case IDs using Set
     const caseIdSet = new Set<string>();
     casesResults.forEach((record) => caseIdSet.add(record.caseId));
     transactionsResults.forEach((record) => caseIdSet.add(record.caseId));
+    appointmentsResults.forEach((record) => caseIdSet.add(record.caseId));
+
+    // Build appointmentCaseIds from appointment results
+    const appointmentCaseIds = appointmentsResults.map((record) => record.caseId);
 
     // Determine latest sync dates
     const latestCasesSyncDate =
       casesResults.length > 0 ? casesResults[0].latestSyncDate : casesStart;
-    const latestTransactionsSyncDate =
-      transactionsResults.length > 0 ? transactionsResults[0].latestSyncDate : transactionsStart;
+
+    const terminalLatest =
+      transactionsResults.length > 0 ? transactionsResults[0].latestSyncDate : null;
+    const appointmentLatest =
+      appointmentsResults.length > 0 ? appointmentsResults[0].latestSyncDate : null;
+
+    let latestTransactionsSyncDate: string;
+    if (terminalLatest && appointmentLatest) {
+      latestTransactionsSyncDate =
+        terminalLatest > appointmentLatest ? terminalLatest : appointmentLatest;
+    } else {
+      latestTransactionsSyncDate = terminalLatest ?? appointmentLatest ?? transactionsStart;
+    }
 
     return {
       caseIds: Array.from(caseIdSet),
+      appointmentCaseIds,
       latestCasesSyncDate,
       latestTransactionsSyncDate,
     };

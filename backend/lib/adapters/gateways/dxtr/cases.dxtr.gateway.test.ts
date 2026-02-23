@@ -1432,9 +1432,10 @@ describe('Test DXTR Gateway', () => {
         ...transactionsRecordset.map((r) => r.caseId),
       ]);
 
-      // Mock both query calls - cases first, then transactions
+      // Mock all three query calls - cases, terminal transactions, appointment transactions
       querySpy.mockResolvedValueOnce(casesResults);
       querySpy.mockResolvedValueOnce(transactionsResults);
+      querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
       const casesStart = new Date().toISOString();
       const transactionsStart = new Date().toISOString();
@@ -1445,6 +1446,7 @@ describe('Test DXTR Gateway', () => {
       );
 
       expect(actual.caseIds).toHaveLength(allCaseIds.size);
+      expect(actual.appointmentCaseIds).toEqual([]);
       expect(actual.latestCasesSyncDate).toEqual(latestCasesSyncDate);
       expect(actual.latestTransactionsSyncDate).toEqual(latestTransactionsSyncDate);
     });
@@ -1461,7 +1463,8 @@ describe('Test DXTR Gateway', () => {
       const casesStart = '2025-02-11T08:00:00.000Z';
       const transactionsStart = '2025-02-11T09:00:00.000Z';
 
-      // Both queries return empty
+      // All three queries return empty
+      querySpy.mockResolvedValueOnce(emptyResults);
       querySpy.mockResolvedValueOnce(emptyResults);
       querySpy.mockResolvedValueOnce(emptyResults);
 
@@ -1473,6 +1476,7 @@ describe('Test DXTR Gateway', () => {
 
       expect(actual).toEqual({
         caseIds: [],
+        appointmentCaseIds: [],
         latestCasesSyncDate: casesStart,
         latestTransactionsSyncDate: transactionsStart,
       });
@@ -1485,8 +1489,9 @@ describe('Test DXTR Gateway', () => {
       ]);
       const emptyResults = makeQueryResults([]);
 
-      // Cases query returns data, transactions query is empty
+      // Cases query returns data, transactions and appointments queries are empty
       querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(emptyResults);
       querySpy.mockResolvedValueOnce(emptyResults);
 
       const result = await testCasesDxtrGateway.getUpdatedCaseIds(
@@ -1496,6 +1501,7 @@ describe('Test DXTR Gateway', () => {
       );
 
       expect(result.caseIds).toEqual(['081-20-10508', '081-21-12345']);
+      expect(result.appointmentCaseIds).toEqual([]);
       expect(result.latestCasesSyncDate).toEqual('2025-02-11T10:00:00.000Z');
     });
 
@@ -1505,9 +1511,10 @@ describe('Test DXTR Gateway', () => {
         { caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' },
       ]);
 
-      // Cases query is empty, transactions query returns data
+      // Cases query is empty, transactions query returns data, appointments empty
       querySpy.mockResolvedValueOnce(emptyResults);
       querySpy.mockResolvedValueOnce(transactionsResults);
+      querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
       const result = await testCasesDxtrGateway.getUpdatedCaseIds(
         applicationContext,
@@ -1516,6 +1523,7 @@ describe('Test DXTR Gateway', () => {
       );
 
       expect(result.caseIds).toContain('081-20-10508');
+      expect(result.appointmentCaseIds).toEqual([]);
       expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T14:00:00.000Z');
     });
 
@@ -1530,6 +1538,7 @@ describe('Test DXTR Gateway', () => {
 
       querySpy.mockResolvedValueOnce(casesResults);
       querySpy.mockResolvedValueOnce(transactionsResults);
+      querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
       const result = await testCasesDxtrGateway.getUpdatedCaseIds(
         applicationContext,
@@ -1538,8 +1547,125 @@ describe('Test DXTR Gateway', () => {
       );
 
       expect(result.caseIds).toEqual(['081-20-10508']); // Only once, Set handles deduplication
+      expect(result.appointmentCaseIds).toEqual([]);
       expect(result.latestCasesSyncDate).toEqual('2025-02-11T10:00:00.000Z');
       expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T14:00:00.000Z');
+    });
+
+    test('should include appointment case IDs in both caseIds and appointmentCaseIds', async () => {
+      const casesResults = makeQueryResults([]);
+      const terminalResults = makeQueryResults([]);
+      const appointmentResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T16:00:00.000Z' },
+        { caseId: '081-21-12345', latestSyncDate: '2025-02-11T15:00:00.000Z' },
+      ]);
+
+      querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(terminalResults);
+      querySpy.mockResolvedValueOnce(appointmentResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+      );
+
+      expect(result.caseIds).toEqual(['081-20-10508', '081-21-12345']);
+      expect(result.appointmentCaseIds).toEqual(['081-20-10508', '081-21-12345']);
+      expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T16:00:00.000Z');
+    });
+
+    test('should compute latestTransactionsSyncDate as max when appointment is later', async () => {
+      const casesResults = makeQueryResults([]);
+      const terminalResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' },
+      ]);
+      const appointmentResults = makeQueryResults([
+        { caseId: '081-21-12345', latestSyncDate: '2025-02-11T16:00:00.000Z' },
+      ]);
+
+      querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(terminalResults);
+      querySpy.mockResolvedValueOnce(appointmentResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+      );
+
+      expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T16:00:00.000Z');
+    });
+
+    test('should compute latestTransactionsSyncDate as max when terminal is later', async () => {
+      const casesResults = makeQueryResults([]);
+      const terminalResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T18:00:00.000Z' },
+      ]);
+      const appointmentResults = makeQueryResults([
+        { caseId: '081-21-12345', latestSyncDate: '2025-02-11T16:00:00.000Z' },
+      ]);
+
+      querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(terminalResults);
+      querySpy.mockResolvedValueOnce(appointmentResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+      );
+
+      expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T18:00:00.000Z');
+    });
+
+    test('should deduplicate cases across all three queries', async () => {
+      const casesResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
+      ]);
+      const terminalResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' },
+      ]);
+      const appointmentResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T16:00:00.000Z' },
+      ]);
+
+      querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(terminalResults);
+      querySpy.mockResolvedValueOnce(appointmentResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+      );
+
+      expect(result.caseIds).toEqual(['081-20-10508']);
+      expect(result.appointmentCaseIds).toEqual(['081-20-10508']);
+    });
+
+    test('should return empty appointmentCaseIds when appointment query returns no results', async () => {
+      const casesResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
+      ]);
+      const terminalResults = makeQueryResults([
+        { caseId: '081-21-12345', latestSyncDate: '2025-02-11T14:00:00.000Z' },
+      ]);
+      const appointmentResults = makeQueryResults([]);
+
+      querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(terminalResults);
+      querySpy.mockResolvedValueOnce(appointmentResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+      );
+
+      expect(result.caseIds).toContain('081-20-10508');
+      expect(result.caseIds).toContain('081-21-12345');
+      expect(result.appointmentCaseIds).toEqual([]);
     });
   });
 
