@@ -46,13 +46,38 @@ function CaseDetailTrusteeAndAssignedStaff(
   const [trusteeLoading, setTrusteeLoading] = useState(false);
 
   useEffect(() => {
-    if (caseDetail.trusteeId) {
-      setTrusteeLoading(true);
-      Api2.getTrustee(caseDetail.trusteeId)
-        .then((response) => setTrustee(response.data))
-        .catch(() => {})
-        .finally(() => setTrusteeLoading(false));
+    let isCurrent = true;
+    const { trusteeId } = caseDetail;
+
+    // Reset state when trusteeId changes or is removed
+    if (!trusteeId) {
+      setTrustee(null);
+      setTrusteeLoading(false);
+      return () => {
+        isCurrent = false;
+      };
     }
+
+    setTrustee(null);
+    setTrusteeLoading(true);
+
+    Api2.getTrustee(trusteeId)
+      .then((response) => {
+        if (!isCurrent) return;
+        setTrustee(response.data);
+      })
+      .catch(() => {
+        if (!isCurrent) return;
+        setTrustee(null);
+      })
+      .finally(() => {
+        if (!isCurrent) return;
+        setTrusteeLoading(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
   }, [caseDetail.trusteeId]);
 
   function handleCaseAssignment(props: AssignAttorneyModalCallbackProps) {
