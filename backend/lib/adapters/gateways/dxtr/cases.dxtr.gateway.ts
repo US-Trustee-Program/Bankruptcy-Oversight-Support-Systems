@@ -535,6 +535,20 @@ class CasesDxtrGateway implements CasesInterface {
     return bCase;
   }
 
+  private async fetchCaseIdRecords(
+    context: ApplicationContext,
+    sql: string,
+    params: DbTableFieldSpec[],
+  ): Promise<CaseIdRecord[]> {
+    const result = await executeQuery(context, context.config.dxtrDbConfig, sql, params);
+    return handleQueryResult<CaseIdRecord[]>(
+      context,
+      result,
+      MODULE_NAME,
+      this.getUpdatedCaseIdsCallback,
+    );
+  }
+
   /**
    * getUpdatedCaseIds
    *
@@ -569,20 +583,6 @@ class CasesDxtrGateway implements CasesInterface {
       ORDER BY C.LAST_UPDATE_DATE DESC, C.CASE_ID DESC
     `;
 
-    const casesQueryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      casesQuery,
-      casesParams,
-    );
-
-    const casesResults = handleQueryResult<CaseIdRecord[]>(
-      context,
-      casesQueryResult,
-      MODULE_NAME,
-      this.getUpdatedCaseIdsCallback,
-    );
-
     // Query 2: Get cases with terminal transactions in AO_TX
     const transactionsParams: DbTableFieldSpec[] = [
       {
@@ -605,20 +605,6 @@ class CasesDxtrGateway implements CasesInterface {
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
 
-    const transactionsQueryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      transactionsQuery,
-      transactionsParams,
-    );
-
-    const transactionsResults = handleQueryResult<CaseIdRecord[]>(
-      context,
-      transactionsQueryResult,
-      MODULE_NAME,
-      this.getUpdatedCaseIdsCallback,
-    );
-
     // Query 3: Get cases with trustee appointment transactions in AO_TX
     const appointmentsQuery = `
       SELECT
@@ -632,18 +618,16 @@ class CasesDxtrGateway implements CasesInterface {
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
 
-    const appointmentsQueryResult: QueryResults = await executeQuery(
+    const casesResults = await this.fetchCaseIdRecords(context, casesQuery, casesParams);
+    const transactionsResults = await this.fetchCaseIdRecords(
       context,
-      context.config.dxtrDbConfig,
-      appointmentsQuery,
+      transactionsQuery,
       transactionsParams,
     );
-
-    const appointmentsResults = handleQueryResult<CaseIdRecord[]>(
+    const appointmentsResults = await this.fetchCaseIdRecords(
       context,
-      appointmentsQueryResult,
-      MODULE_NAME,
-      this.getUpdatedCaseIdsCallback,
+      appointmentsQuery,
+      transactionsParams,
     );
 
     // Consolidate case IDs using Set
@@ -652,29 +636,25 @@ class CasesDxtrGateway implements CasesInterface {
     transactionsResults.forEach((record) => caseIdSet.add(record.caseId));
     appointmentsResults.forEach((record) => caseIdSet.add(record.caseId));
 
-    // Build appointmentCaseIds from appointment results
-    const appointmentCaseIds = appointmentsResults.map((record) => record.caseId);
+    // Build appointmentCaseIds from appointment results (deduplicated)
+    const appointmentCaseIdSet = new Set<string>();
+    appointmentsResults.forEach((record) => appointmentCaseIdSet.add(record.caseId));
 
     // Determine latest sync dates
     const latestCasesSyncDate =
       casesResults.length > 0 ? casesResults[0].latestSyncDate : casesStart;
 
-    const terminalLatest =
-      transactionsResults.length > 0 ? transactionsResults[0].latestSyncDate : null;
-    const appointmentLatest =
-      appointmentsResults.length > 0 ? appointmentsResults[0].latestSyncDate : null;
+    const terminalLatest = transactionsResults[0]?.latestSyncDate ?? null;
+    const appointmentLatest = appointmentsResults[0]?.latestSyncDate ?? null;
 
-    let latestTransactionsSyncDate: string;
-    if (terminalLatest && appointmentLatest) {
-      latestTransactionsSyncDate =
-        terminalLatest > appointmentLatest ? terminalLatest : appointmentLatest;
-    } else {
-      latestTransactionsSyncDate = terminalLatest ?? appointmentLatest ?? transactionsStart;
-    }
+    const candidates = [terminalLatest, appointmentLatest].filter((d): d is string => d != null);
+
+    const latestTransactionsSyncDate =
+      candidates.length > 0 ? candidates.reduce((a, b) => (a > b ? a : b)) : transactionsStart;
 
     return {
       caseIds: Array.from(caseIdSet),
-      appointmentCaseIds,
+      appointmentCaseIds: Array.from(appointmentCaseIdSet),
       latestCasesSyncDate,
       latestTransactionsSyncDate,
     };
