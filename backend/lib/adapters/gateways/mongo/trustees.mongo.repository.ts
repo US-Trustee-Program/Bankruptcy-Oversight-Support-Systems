@@ -13,6 +13,7 @@ import {
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
+import { normalizeName, escapeRegex } from '../../../use-cases/dataflows/trustee-match.helpers';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
@@ -112,8 +113,8 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
 
   async findTrusteesByName(name: string): Promise<Trustee[]> {
     try {
-      const normalized = name.trim().replace(/\s+/g, ' ');
-      const escaped = normalized.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const normalized = normalizeName(name);
+      const escaped = escapeRegex(normalized);
       const doc = using<TrusteeDocument>();
       const query = and(
         doc('documentType').equals('TRUSTEE'),
