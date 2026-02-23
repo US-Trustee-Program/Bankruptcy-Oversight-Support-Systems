@@ -349,6 +349,117 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(cityStateElement?.textContent).toEqual(TEST_TRUSTEE.legacy?.cityStateZipCountry);
     });
 
+    test('should render trustee name as link when trusteeId is present', async () => {
+      const trustee = MockData.getTrustee();
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trustee });
+
+      const caseDetailWithTrusteeId = {
+        ...BASE_TEST_CASE_DETAIL,
+        trusteeId: trustee.trusteeId,
+      };
+      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
+
+      const trusteeLink = screen.getByTestId('case-detail-trustee-link');
+      expect(trusteeLink).toBeInTheDocument();
+      expect(trusteeLink).toHaveAttribute('href', `/trustees/${trustee.trusteeId}`);
+      expect(trusteeLink).toHaveTextContent(TEST_TRUSTEE.name);
+
+      // Wait for async effects to settle
+      await waitFor(() => {
+        expect(screen.queryByTestId('case-detail-zoom-loading')).not.toBeInTheDocument();
+      });
+    });
+
+    test('should render trustee name as plain text when trusteeId is absent', () => {
+      renderWithProps();
+
+      const trusteeLink = screen.queryByTestId('case-detail-trustee-link');
+      expect(trusteeLink).not.toBeInTheDocument();
+
+      const trusteeName = document.querySelector('.trustee-name');
+      expect(trusteeName).toBeInTheDocument();
+      expect(trusteeName?.textContent).toEqual(TEST_TRUSTEE.name);
+    });
+
+    test('should display Zoom info when trustee has zoomInfo', async () => {
+      const trustee = MockData.getTrustee({
+        zoomInfo: {
+          link: 'https://zoom.us/j/123456',
+          phone: '2125551234',
+          meetingId: '123456',
+          passcode: 'abc123',
+        },
+      });
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trustee });
+
+      const caseDetailWithTrusteeId = {
+        ...BASE_TEST_CASE_DETAIL,
+        trusteeId: trustee.trusteeId,
+      };
+      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('case-detail-zoom-info')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('case-detail-zoom-link')).toBeInTheDocument();
+      expect(screen.getByTestId('case-detail-zoom-phone')).toBeInTheDocument();
+      expect(screen.getByTestId('case-detail-zoom-meeting-id')).toBeInTheDocument();
+      expect(screen.getByTestId('case-detail-zoom-passcode')).toBeInTheDocument();
+    });
+
+    test('should show "No 341 meeting information" when trustee has no zoomInfo', async () => {
+      const trustee = MockData.getTrustee({ zoomInfo: undefined });
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trustee });
+
+      const caseDetailWithTrusteeId = {
+        ...BASE_TEST_CASE_DETAIL,
+        trusteeId: trustee.trusteeId,
+      };
+      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('case-detail-zoom-empty')).toBeInTheDocument();
+      });
+      expect(screen.getByTestId('case-detail-zoom-empty')).toHaveTextContent(
+        'No 341 meeting information',
+      );
+    });
+
+    test('should show legacy trustee info when trustee API call fails', async () => {
+      vi.spyOn(Api2, 'getTrustee').mockRejectedValue(new Error('API error'));
+
+      const caseDetailWithTrusteeId = {
+        ...BASE_TEST_CASE_DETAIL,
+        trusteeId: 'some-trustee-id',
+      };
+      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('case-detail-zoom-loading')).not.toBeInTheDocument();
+      });
+
+      // Legacy trustee info should still display
+      const trusteeName = document.querySelector('.trustee-name');
+      expect(trusteeName).toBeInTheDocument();
+      expect(trusteeName?.textContent).toEqual(TEST_TRUSTEE.name);
+
+      // Zoom info should not be present
+      expect(screen.queryByTestId('case-detail-zoom-info')).not.toBeInTheDocument();
+    });
+
+    test('should show loading state while fetching trustee details', () => {
+      vi.spyOn(Api2, 'getTrustee').mockReturnValue(new Promise(() => {})); // never resolves
+
+      const caseDetailWithTrusteeId = {
+        ...BASE_TEST_CASE_DETAIL,
+        trusteeId: 'some-trustee-id',
+      };
+      renderWithProps({ caseDetail: caseDetailWithTrusteeId });
+
+      expect(screen.getByTestId('case-detail-zoom-loading')).toBeInTheDocument();
+    });
+
     test('should handle partial trustee address data gracefully', () => {
       const partialTrustee = {
         ...TEST_TRUSTEE,
