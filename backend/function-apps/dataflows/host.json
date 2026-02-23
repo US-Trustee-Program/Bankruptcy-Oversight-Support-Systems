@@ -15,6 +15,7 @@
       "default": "Debug",
       "Host.Results": "Information",
       "Host.Aggregator": "Warning",
+      "Host.Monitors": "Warning",
       "Host.Triggers.Queue": "Warning",
       "Microsoft.Azure.WebJobs.Host.Queues": "Warning",
       "Azure.Core": "Warning",
