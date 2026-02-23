@@ -42,7 +42,7 @@
     "@azure/keyvault-secrets": "4.10.0",
     "@launchdarkly/node-server-sdk": "9.10.6",
     "@okta/jwt-verifier": "4.0.2",
-    "@okta/okta-sdk-nodejs": "7.3.0",
+    "@okta/okta-sdk-nodejs": "8.0.0",
     "applicationinsights": "3.13.0",
     "dotenv": "17.2.3",
     "express": "5.2.1",
