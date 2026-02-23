@@ -5,6 +5,7 @@ import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-u
 import factory from '../../factory';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
+import { matchTrusteeByName } from './trustee-match.helpers';
 
 const MODULE_NAME = 'EXPORT-AND-LOAD';
 
@@ -42,9 +43,13 @@ async function exportAndLoad(
     try {
       event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
       const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
-      await repo.syncDxtrCase(
-        createAuditRecord<SyncedCase>({ ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' }),
-      );
+      const syncedCase: SyncedCase = { ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' };
+
+      if (event.type === 'TRUSTEE_APPOINTMENT' && event.bCase.trustee?.name) {
+        syncedCase.trusteeId = await matchTrusteeByName(context, event.bCase.trustee.name);
+      }
+
+      await repo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
     } catch (originalError) {
       event.error = getCamsError(
         originalError,

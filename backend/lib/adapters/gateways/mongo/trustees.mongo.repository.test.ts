@@ -189,6 +189,83 @@ describe('TrusteesMongoRepository', () => {
     });
   });
 
+  describe('findTrusteesByName', () => {
+    test('should return matching trustees by case-insensitive name', async () => {
+      const mockTrustee = {
+        id: 'trustee-123',
+        trusteeId: 'trustee-123',
+        name: 'John Doe',
+        public: sampleTrusteeInput.public,
+        documentType: 'TRUSTEE',
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUser,
+      };
+
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([mockTrustee] as TrusteeDocument[]);
+
+      const result = await repository.findTrusteesByName('John Doe');
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'REGEX',
+            leftOperand: { name: 'name' },
+            rightOperand: /^John Doe$/i,
+          },
+        ],
+      });
+      expect(result).toEqual([mockTrustee]);
+    });
+
+    test('should return empty array when no trustees match', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.findTrusteesByName('Nonexistent Name');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should normalize whitespace in the name before querying', async () => {
+      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.findTrusteesByName('  John   Doe  ');
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'REGEX',
+            leftOperand: { name: 'name' },
+            rightOperand: /^John Doe$/i,
+          },
+        ],
+      });
+    });
+
+    test('should handle database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.findTrusteesByName('John Doe')).rejects.toThrow();
+    });
+  });
+
   describe('findTrusteeByLegacyTruId', () => {
     test('should return trustee when found by legacy TRU_ID', async () => {
       const mockTrustee = {

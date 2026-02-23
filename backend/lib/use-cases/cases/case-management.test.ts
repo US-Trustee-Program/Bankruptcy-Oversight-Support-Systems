@@ -282,6 +282,58 @@ describe('Case management tests', () => {
         'Unable to retrieve case list. Please try again later. If the problem persists, please contact USTP support.',
       );
     });
+
+    test('should include trusteeId from SyncedCase when present', async () => {
+      const bCase = MockData.getCaseDetail();
+      const trusteeId = 'trustee-abc-123';
+      const syncedCase = MockData.getSyncedCase({
+        override: { caseId: bCase.caseId, trusteeId },
+      });
+
+      vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockResolvedValue(
+        new Map(),
+      );
+      vi.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+
+      const actual = await useCase.getCaseDetail(applicationContext, bCase.caseId);
+
+      expect(actual.trusteeId).toBe(trusteeId);
+    });
+
+    test('should not include trusteeId when SyncedCase has no trusteeId', async () => {
+      const bCase = MockData.getCaseDetail();
+      const syncedCase = MockData.getSyncedCase({
+        override: { caseId: bCase.caseId },
+      });
+
+      vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockResolvedValue(
+        new Map(),
+      );
+      vi.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+
+      const actual = await useCase.getCaseDetail(applicationContext, bCase.caseId);
+
+      expect(actual.trusteeId).toBeUndefined();
+    });
+
+    test('should still return case detail when getSyncedCase throws', async () => {
+      const bCase = MockData.getCaseDetail();
+
+      vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockResolvedValue(
+        new Map(),
+      );
+      vi.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockRejectedValue(
+        new Error('Not found'),
+      );
+
+      const actual = await useCase.getCaseDetail(applicationContext, bCase.caseId);
+
+      expect(actual.caseId).toBe(bCase.caseId);
+      expect(actual.trusteeId).toBeUndefined();
+    });
   });
 
   describe('Case summary tests', () => {
