@@ -346,4 +346,20 @@ export class MockMongoRepository
   ): Promise<any> {
     throw new Error('Method not implemented.');
   }
+
+  getActiveCaseAppointment(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  getCaseAppointmentsForCases(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  createCaseAppointment(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateCaseAppointment(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
 }

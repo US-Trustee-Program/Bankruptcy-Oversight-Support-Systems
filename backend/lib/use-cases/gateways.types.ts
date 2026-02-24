@@ -34,7 +34,11 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Auditable } from '@common/cams/auditable';
 import {
@@ -288,6 +292,10 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     appointmentInput: TrusteeAppointmentInput,
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;
+  getActiveCaseAppointment(caseId: string): Promise<CaseAppointment | null>;
+  getCaseAppointmentsForCases(caseIds: string[]): Promise<Map<string, CaseAppointment>>;
+  createCaseAppointment(data: CaseAppointment): Promise<CaseAppointment>;
+  updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
 }
 
 export interface TrusteeAssistantsRepository extends Releasable {

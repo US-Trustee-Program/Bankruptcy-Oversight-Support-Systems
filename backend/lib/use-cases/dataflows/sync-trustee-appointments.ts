@@ -5,6 +5,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { TrusteeAppointmentsSyncState } from '../gateways.types';
 import { matchTrusteeByName } from './trustee-match.helpers';
 import { randomUUID } from 'node:crypto';
+import { CaseAppointment } from '@common/cams/trustee-appointments';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
 
@@ -53,11 +54,13 @@ async function processAppointments(
   events: TrusteeAppointmentSyncEvent[],
 ): Promise<TrusteeAppointmentSyncEvent[]> {
   const casesRepo = factory.getCasesRepository(context);
+  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
 
   for (const event of events) {
     try {
       // Match DXTR trustee name to CAMS trustee
       const trusteeId = await matchTrusteeByName(context, event.dxtrTrustee.fullName);
+      const now = new Date().toISOString();
 
       // Update the SyncedCase with the matched trusteeId
       const syncedCase = await casesRepo.getSyncedCase(event.caseId);
@@ -69,6 +72,39 @@ async function processAppointments(
           `Linked case ${event.caseId} to trustee ${trusteeId} (matched name: "${event.dxtrTrustee.fullName}")`,
         );
       }
+
+      // Manage CASE_APPOINTMENT history
+      const existingAppointment = await appointmentsRepo.getActiveCaseAppointment(event.caseId);
+
+      if (existingAppointment && existingAppointment.trusteeId === trusteeId) {
+        // Same trustee already active — skip
+        continue;
+      }
+
+      if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
+        // Different trustee — soft-close old appointment
+        await appointmentsRepo.updateCaseAppointment({
+          ...existingAppointment,
+          unassignedOn: now,
+        });
+        context.logger.info(
+          MODULE_NAME,
+          `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
+        );
+      }
+
+      // Create new CASE_APPOINTMENT
+      const newAppointment: CaseAppointment = {
+        documentType: 'CASE_APPOINTMENT',
+        caseId: event.caseId,
+        trusteeId,
+        assignedOn: now,
+      };
+      await appointmentsRepo.createCaseAppointment(newAppointment);
+      context.logger.info(
+        MODULE_NAME,
+        `Created case appointment for case ${event.caseId}, trustee ${trusteeId}`,
+      );
     } catch (originalError) {
       event.error = getCamsError(
         originalError,
