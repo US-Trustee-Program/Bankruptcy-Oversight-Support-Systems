@@ -503,93 +503,16 @@ describe('TrusteeAppointmentsMongoRepository', () => {
     });
   });
 
-  describe('getCaseAppointmentsForCases', () => {
-    const caseIds = ['case-001', 'case-002'];
-
-    const expectedQuery = {
-      conjunction: 'AND',
-      values: [
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'documentType' },
-          rightOperand: 'CASE_APPOINTMENT',
-        },
-        {
-          condition: 'CONTAINS',
-          leftOperand: { name: 'caseId' },
-          rightOperand: caseIds,
-        },
-        {
-          condition: 'EXISTS',
-          leftOperand: { name: 'unassignedOn' },
-          rightOperand: false,
-        },
-      ],
-    };
-
-    test('should return map of active case appointments', async () => {
-      const appointments: CaseAppointmentDocument[] = [
-        {
-          id: 'ca-1',
-          documentType: 'CASE_APPOINTMENT',
-          caseId: 'case-001',
-          trusteeId: 'trustee-1',
-          assignedOn: '2024-01-15T00:00:00Z',
-          createdOn: '2024-01-15T00:00:00Z',
-          createdBy: mockUser,
-          updatedOn: '2024-01-15T00:00:00Z',
-          updatedBy: mockUser,
-        },
-        {
-          id: 'ca-2',
-          documentType: 'CASE_APPOINTMENT',
-          caseId: 'case-002',
-          trusteeId: 'trustee-2',
-          assignedOn: '2024-02-01T00:00:00Z',
-          createdOn: '2024-02-01T00:00:00Z',
-          createdBy: mockUser,
-          updatedOn: '2024-02-01T00:00:00Z',
-          updatedBy: mockUser,
-        },
-      ];
-
-      const mockFind = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockResolvedValue(appointments);
-
-      const result = await repository.getCaseAppointmentsForCases(caseIds);
-
-      expect(mockFind).toHaveBeenCalledWith(expectedQuery);
-      expect(result.size).toBe(2);
-      expect(result.get('case-001')?.trusteeId).toBe('trustee-1');
-      expect(result.get('case-002')?.trusteeId).toBe('trustee-2');
-    });
-
-    test('should return empty map when no appointments found', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
-
-      const result = await repository.getCaseAppointmentsForCases(caseIds);
-
-      expect(result.size).toBe(0);
-    });
-
-    test('should throw on database errors', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
-        new Error('Database connection failed'),
-      );
-
-      await expect(repository.getCaseAppointmentsForCases(caseIds)).rejects.toThrow(
-        'Failed to retrieve case appointments for cases.',
-      );
-    });
-  });
-
   describe('createCaseAppointment', () => {
     const newCaseAppointment: CaseAppointment = {
-      documentType: 'CASE_APPOINTMENT',
+      id: 'ca-new',
       caseId: 'case-001',
       trusteeId: 'trustee-1',
       assignedOn: '2024-01-15T00:00:00Z',
+      updatedOn: '2024-01-15T00:00:00Z',
+      updatedBy: SYSTEM_USER_REFERENCE,
+      createdOn: '2024-01-15T00:00:00Z',
+      createdBy: SYSTEM_USER_REFERENCE,
     };
 
     test('should create a new case appointment', async () => {
@@ -629,7 +552,6 @@ describe('TrusteeAppointmentsMongoRepository', () => {
   describe('updateCaseAppointment', () => {
     const existingAppointment: CaseAppointment = {
       id: 'ca-1',
-      documentType: 'CASE_APPOINTMENT',
       caseId: 'case-001',
       trusteeId: 'trustee-1',
       assignedOn: '2024-01-15T00:00:00Z',
