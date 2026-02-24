@@ -150,3 +150,12 @@ export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<Trustee
   {
     $: [validateAppointmentTypeForChapter, validateStatusForChapterAndAppointmentType],
   };
+
+export type CaseAppointment = Auditable & {
+  id?: string;
+  documentType: 'CASE_APPOINTMENT';
+  caseId: string;
+  trusteeId: string;
+  assignedOn: string;
+  unassignedOn?: string;
+};
