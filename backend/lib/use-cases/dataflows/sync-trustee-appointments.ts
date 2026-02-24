@@ -5,13 +5,13 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { TrusteeAppointmentsSyncState } from '../gateways.types';
 import { matchTrusteeByName } from './trustee-match.helpers';
 import { randomUUID } from 'node:crypto';
-import { CaseAppointment } from '@common/cams/trustee-appointments';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
 
 /**
  * Get trustee appointment events from DXTR.
  * Queries for trustee appointment transactions and returns events with party data.
+ * Throws error on failure to allow caller to route to DLQ.
  */
 async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: string) {
   try {
@@ -40,7 +40,7 @@ async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: 
   } catch (originalError) {
     const error = getCamsError(originalError, MODULE_NAME);
     context.logger.camsError(error);
-    return { events: [], latestSyncDate: undefined };
+    throw error;
   }
 }
 
@@ -94,13 +94,11 @@ async function processAppointments(
       }
 
       // Create new CASE_APPOINTMENT
-      const newAppointment: CaseAppointment = {
-        documentType: 'CASE_APPOINTMENT',
+      await appointmentsRepo.createCaseAppointment({
         caseId: event.caseId,
         trusteeId,
         assignedOn: now,
-      };
-      await appointmentsRepo.createCaseAppointment(newAppointment);
+      });
       context.logger.info(
         MODULE_NAME,
         `Created case appointment for case ${event.caseId}, trustee ${trusteeId}`,

@@ -5,7 +5,7 @@ import { TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { CamsUserReference } from '@common/cams/users';
 import QueryBuilder from '../../../query/query-builder';
-import { Creatable } from '../../types/persistence.gateway';
+import { Creatable } from '@common/cams/creatable';
 import {
   Trustee,
   TrusteeHistory,

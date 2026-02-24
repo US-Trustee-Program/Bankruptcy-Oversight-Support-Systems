@@ -9,8 +9,7 @@
     "clean": "rm -rf ./dist *.zip",
     "pack": "../../pack.sh dataflows",
     "prestart": "npm run build && cp ../../.env . && (cp ../../dev-users.json . 2>/dev/null || true)",
-    "start": "func start --javascript",
-    "sync-case": "npx tsx e2e/cli-sync-case.ts"
+    "start": "func start --javascript"
   },
   "dependencies": {
     "@azure/functions": "4.11.1",
