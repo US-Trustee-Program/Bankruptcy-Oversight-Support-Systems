@@ -351,7 +351,7 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getCaseAppointmentsForCases(..._ignore: any[]): Promise<any> {
+  getCaseAppointmentsForCases(..._ignore: any[]): Promise<Map<string, any>> {
     throw new Error('Method not implemented.');
   }
 

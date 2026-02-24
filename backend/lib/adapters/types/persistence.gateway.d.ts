@@ -2,7 +2,6 @@ import { RecordObj, ObjectKeyVal } from './basic';
 import { DbResult } from './database';
 import { ApplicationContext } from './basic';
 import { AttorneyUser } from '@common/cams/users';
-import { Identifiable } from '@common/cams/document';
 
 export interface PersistenceGateway {
   createRecord(
@@ -46,5 +45,3 @@ export interface AttorneyPersistenceGateway {
 export interface ChaptersPersistenceGateway {
   getChaptersList(): Promise<DbResult>;
 }
-
-export type Creatable<T extends Identifiable> = Omit<T, keyof Identifiable>;

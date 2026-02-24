@@ -6,12 +6,13 @@ import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
 import {
   CaseAppointment,
+  CaseAppointmentInput,
   TrusteeAppointment,
   TrusteeAppointmentInput,
 } from '@common/cams/trustee-appointments';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
-import { Creatable } from '../../types/persistence.gateway';
+import { Creatable } from '@common/cams/creatable';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-appointments';
@@ -187,6 +188,10 @@ export class TrusteeAppointmentsMongoRepository
   }
 
   async getCaseAppointmentsForCases(caseIds: string[]): Promise<Map<string, CaseAppointment>> {
+    if (caseIds.length === 0) {
+      return new Map();
+    }
+
     try {
       const doc = using<CaseAppointmentDocument>();
       const query = and(
@@ -207,10 +212,10 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
-  async createCaseAppointment(data: CaseAppointment): Promise<CaseAppointment> {
+  async createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
     const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
       {
-        ...data,
+        ...appointment,
         documentType: 'CASE_APPOINTMENT',
       },
       SYSTEM_USER_REFERENCE,
@@ -221,7 +226,7 @@ export class TrusteeAppointmentsMongoRepository
       return { ...document, id };
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to create case appointment for case ${data.caseId}.`,
+        message: `Failed to create case appointment for case ${appointment.caseId}.`,
       });
     }
   }

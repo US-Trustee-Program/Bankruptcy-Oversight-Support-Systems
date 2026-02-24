@@ -259,8 +259,9 @@ export default class CaseManagement {
         if (syncedCase?.trusteeId) {
           caseDetails.trusteeId = syncedCase.trusteeId;
         }
-      } catch {
+      } catch (error) {
         // SyncedCase may not exist; trusteeId will simply not be present
+        context.logger.debug(MODULE_NAME, `Could not retrieve SyncedCase for ${caseId}`, error);
       }
 
       const _actions = getAction<CaseDetail>(context, caseDetails);
