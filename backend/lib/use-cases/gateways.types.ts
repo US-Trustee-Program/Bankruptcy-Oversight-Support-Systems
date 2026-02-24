@@ -294,7 +294,6 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;
   getActiveCaseAppointment(caseId: string): Promise<CaseAppointment | null>;
-  getCaseAppointmentsForCases(caseIds: string[]): Promise<Map<string, CaseAppointment>>;
   createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
 }

@@ -187,31 +187,6 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
-  async getCaseAppointmentsForCases(caseIds: string[]): Promise<Map<string, CaseAppointment>> {
-    if (caseIds.length === 0) {
-      return new Map();
-    }
-
-    try {
-      const doc = using<CaseAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('CASE_APPOINTMENT'),
-        doc('caseId').contains(caseIds),
-        doc('unassignedOn').notExists(),
-      );
-      const results = await this.getAdapter<CaseAppointmentDocument>().find(query);
-      const map = new Map<string, CaseAppointment>();
-      for (const result of results) {
-        map.set(result.caseId, result);
-      }
-      return map;
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to retrieve case appointments for cases.`,
-      });
-    }
-  }
-
   async createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
     const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
       {
