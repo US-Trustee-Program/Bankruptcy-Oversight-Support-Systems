@@ -56,7 +56,6 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(mockAppointmentsRepo.getActiveCaseAppointment).toHaveBeenCalledWith('case-001');
     expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
       expect.objectContaining({
-        documentType: 'CASE_APPOINTMENT',
         caseId: 'case-001',
         trusteeId: 'trustee-123',
         assignedOn: expect.any(String),
@@ -69,10 +68,13 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
   test('should skip when existing appointment has the same trusteeId', async () => {
     const existingAppointment: CaseAppointment = {
       id: 'ca-1',
-      documentType: 'CASE_APPOINTMENT',
       caseId: 'case-001',
       trusteeId: 'trustee-123',
       assignedOn: '2024-01-01T00:00:00Z',
+      createdOn: '2024-01-01T00:00:00Z',
+      createdBy: { id: 'system', name: 'System' },
+      updatedOn: '2024-01-01T00:00:00Z',
+      updatedBy: { id: 'system', name: 'System' },
     };
     (mockAppointmentsRepo.getActiveCaseAppointment as ReturnType<typeof vi.fn>).mockResolvedValue(
       existingAppointment,
@@ -89,10 +91,13 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
   test('should soft-close old and create new when trustee changes', async () => {
     const existingAppointment: CaseAppointment = {
       id: 'ca-old',
-      documentType: 'CASE_APPOINTMENT',
       caseId: 'case-001',
       trusteeId: 'old-trustee',
       assignedOn: '2024-01-01T00:00:00Z',
+      createdOn: '2024-01-01T00:00:00Z',
+      createdBy: { id: 'system', name: 'System' },
+      updatedOn: '2024-01-01T00:00:00Z',
+      updatedBy: { id: 'system', name: 'System' },
     };
     (mockAppointmentsRepo.getActiveCaseAppointment as ReturnType<typeof vi.fn>).mockResolvedValue(
       existingAppointment,
@@ -114,7 +119,6 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     // Should create new appointment
     expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
       expect.objectContaining({
-        documentType: 'CASE_APPOINTMENT',
         caseId: 'case-001',
         trusteeId: 'trustee-123',
         assignedOn: expect.any(String),
