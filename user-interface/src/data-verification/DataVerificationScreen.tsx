@@ -293,8 +293,8 @@ export default function DataVerificationScreen() {
                     message="There are no case events pending review"
                     show={true}
                     inline={true}
-                    slim={true}
                     className="measure-6"
+                    slim={true}
                   ></Alert>
                 )}
                 {visibleItemCount === 0 && orderList.length > 0 && (
@@ -305,7 +305,6 @@ export default function DataVerificationScreen() {
                     message="Please enable one or more filters to show hidden cases"
                     show={true}
                     inline={true}
-                    slim={true}
                     className="measure-6"
                   ></Alert>
                 )}

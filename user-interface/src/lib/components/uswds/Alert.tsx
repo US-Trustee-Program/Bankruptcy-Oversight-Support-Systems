@@ -19,13 +19,13 @@ export type AlertProps = PropsWithChildren & {
   message?: string;
   type: UswdsAlertStyle;
   role?: 'status' | 'alert';
-  slim?: boolean;
   timeout?: number;
-  title?: string;
   className?: string;
   inline?: boolean;
   show?: boolean;
   noIcon?: true;
+  slim?: boolean;
+  title?: string;
 };
 
 export enum UswdsAlertStyle {
@@ -54,7 +54,13 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
   const isInlineClass = props.inline ? `inline-alert` : '';
   const [containerClasses, setContainerClasses] = useState<string>(`${isInlineClass}`);
 
-  if (props.slim) classes += ' usa-alert--slim';
+  if (props.slim && props.title) {
+    // Slim alert with title uses compact styling for NVDA compatibility
+    classes += ' usa-alert--compact-with-title';
+  } else if (props.slim) {
+    // Slim alert without title uses standard slim styling
+    classes += ' usa-alert--slim';
+  }
   if (props.noIcon) classes += ' usa-alert--no-icon';
 
   function show() {
