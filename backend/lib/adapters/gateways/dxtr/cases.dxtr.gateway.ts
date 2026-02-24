@@ -1014,7 +1014,7 @@ class CasesDxtrGateway implements CasesInterface {
         CS_CASEID = @dxtrId AND
         COURT_ID = @courtId AND
         PY_ROLE = @partyCode AND
-        PY_SSN_SEQ > '0'
+        PY_SSN_SEQ > 0
 
       UNION
 
@@ -1024,7 +1024,7 @@ class CasesDxtrGateway implements CasesInterface {
         CS_CASEID = @dxtrId AND
         COURT_ID = @courtId AND
         PY_ROLE = @partyCode AND
-        PY_TAXID_SEQ > '0'
+        PY_TAXID_SEQ > 0
     `;
 
     try {
