@@ -1703,6 +1703,8 @@ describe('Test DXTR Gateway', () => {
       expect(query).toContain('FROM [dbo].[AO_SSN]');
       expect(query).toContain('FROM [dbo].[AO_TAXID]');
       expect(query).toContain('UNION');
+      expect(query).toContain("PY_SSN_SEQ > '0'");
+      expect(query).toContain("PY_TAXID_SEQ > '0'");
     });
   });
 
