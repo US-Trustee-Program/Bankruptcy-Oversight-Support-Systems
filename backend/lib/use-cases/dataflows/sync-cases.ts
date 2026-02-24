@@ -41,17 +41,15 @@ async function getCaseIds(context: ApplicationContext, lastSyncDate?: string) {
     }
 
     const casesGateway = factory.getCasesGateway(context);
-    const { caseIds, appointmentCaseIds, latestCasesSyncDate, latestTransactionsSyncDate } =
+    const { caseIds, latestCasesSyncDate, latestTransactionsSyncDate } =
       await casesGateway.getUpdatedCaseIds(
         context,
         syncState.lastCasesSyncDate,
         syncState.lastTransactionsSyncDate,
       );
 
-    const appointmentCaseIdSet = new Set(appointmentCaseIds);
     const events: CaseSyncEvent[] = caseIds.map((caseId) => {
-      const type = appointmentCaseIdSet.has(caseId) ? 'TRUSTEE_APPOINTMENT' : 'CASE_CHANGED';
-      return { type, caseId };
+      return { type: 'CASE_CHANGED', caseId };
     });
 
     return {
