@@ -312,7 +312,8 @@ export type RuntimeStateDocumentType =
   | 'OFFICE_STAFF_SYNC_STATE'
   | 'CASES_SYNC_STATE'
   | 'PHONETIC_BACKFILL_STATE'
-  | 'TRUSTEE_MIGRATION_STATE';
+  | 'TRUSTEE_MIGRATION_STATE'
+  | 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -351,6 +352,11 @@ export type PhoneticBackfillState = RuntimeState & {
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type TrusteeAppointmentsSyncState = RuntimeState & {
+  documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
+  lastSyncDate: string;
 };
 
 export interface DocumentCollectionAdapter<T> {

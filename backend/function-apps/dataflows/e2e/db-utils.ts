@@ -54,23 +54,6 @@ export async function syncCases(context: ApplicationContext, caseIds: string[]) 
   return await ExportAndLoadCase.exportAndLoad(context, events);
 }
 
-/**
- * Sync cases with TRUSTEE_APPOINTMENT event type.
- * This triggers trustee matching during the sync process.
- *
- * @param context Application context
- * @param caseIds Array of case IDs to sync with trustee appointment
- */
-export async function syncCasesWithTrusteeAppointment(
-  context: ApplicationContext,
-  caseIds: string[],
-) {
-  const events: CaseSyncEvent[] = caseIds.map((caseId) => {
-    return { type: 'TRUSTEE_APPOINTMENT', caseId };
-  });
-  return await ExportAndLoadCase.exportAndLoad(context, events);
-}
-
 export async function insertTrustees(appContext: ApplicationContext, trustees: Trustee[]) {
   const trusteeRepo = factory.getTrusteesRepository(appContext);
   const testUser = {
