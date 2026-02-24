@@ -441,7 +441,7 @@ export default function SearchScreen() {
                 show={true}
                 inline={true}
                 role="alert"
-                compact={true}
+                slim={true}
               ></Alert>
             </div>
           )}

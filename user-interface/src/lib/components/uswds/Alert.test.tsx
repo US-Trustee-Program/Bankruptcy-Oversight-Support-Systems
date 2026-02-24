@@ -255,6 +255,53 @@ describe('Test Alert component', () => {
     });
   });
 
+  test('should have compact-with-title class when slim and title are provided', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            title="Test Title"
+            type={UswdsAlertStyle.Info}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert--compact-with-title');
+      expect(alert).not.toHaveClass('usa-alert--slim');
+    });
+  });
+
+  test('should have slim class when slim is provided without title', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            message="Test alert message"
+            type={UswdsAlertStyle.Info}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert');
+    await waitFor(() => {
+      expect(alert).toHaveClass('usa-alert--slim');
+      expect(alert).not.toHaveClass('usa-alert--compact-with-title');
+    });
+  });
+
   test('should contain the message', async () => {
     const alertRef = React.createRef<AlertRefType>();
     render(

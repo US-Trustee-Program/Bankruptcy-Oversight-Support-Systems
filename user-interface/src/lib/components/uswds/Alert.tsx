@@ -14,7 +14,7 @@ export type AlertDetails = {
   timeOut: number;
 };
 
-type AlertBaseProps = PropsWithChildren & {
+export type AlertProps = PropsWithChildren & {
   id?: string;
   message?: string;
   type: UswdsAlertStyle;
@@ -24,11 +24,9 @@ type AlertBaseProps = PropsWithChildren & {
   inline?: boolean;
   show?: boolean;
   noIcon?: true;
-  compact?: boolean;
+  slim?: boolean;
+  title?: string;
 };
-
-export type AlertProps = AlertBaseProps &
-  ({ slim?: boolean; title?: never } | { slim?: false; title?: string });
 
 export enum UswdsAlertStyle {
   Info = 'usa-alert--info',
@@ -56,9 +54,14 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
   const isInlineClass = props.inline ? `inline-alert` : '';
   const [containerClasses, setContainerClasses] = useState<string>(`${isInlineClass}`);
 
-  if (props.slim) classes += ' usa-alert--slim';
+  if (props.slim && props.title) {
+    // Slim alert with title uses compact styling for NVDA compatibility
+    classes += ' usa-alert--compact-with-title';
+  } else if (props.slim) {
+    // Slim alert without title uses standard slim styling
+    classes += ' usa-alert--slim';
+  }
   if (props.noIcon) classes += ' usa-alert--no-icon';
-  if (props.compact && props.title) classes += ' usa-alert--compact-with-title';
 
   function show() {
     setIsVisible(IsVisible.True);
