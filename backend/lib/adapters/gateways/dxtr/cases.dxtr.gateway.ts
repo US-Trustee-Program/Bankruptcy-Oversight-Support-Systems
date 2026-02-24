@@ -2,8 +2,10 @@ import * as mssql from 'mssql';
 import {
   CasesInterface,
   TransactionIdRangeForDate,
+  TrusteeAppointmentsResult,
   UpdatedCaseIds,
 } from '../../../use-cases/cases/cases.interface';
+import { TrusteeAppointmentSyncEvent, DxtrTrusteeParty } from '@common/cams/dataflow-events';
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
 import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
@@ -605,28 +607,10 @@ class CasesDxtrGateway implements CasesInterface {
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
 
-    // Query 3: Get cases with trustee appointment transactions in AO_TX
-    const appointmentsQuery = `
-      SELECT
-        CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId,
-        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
-      FROM AO_TX TX
-      JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
-      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
-      WHERE TX.TX_TYPE = 'A' AND TX.TX_CODE = 'TR'
-        AND TX.TX_DATE AT TIME ZONE 'UTC' > @transactionsStart
-      ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
-    `;
-
     const casesResults = await this.fetchCaseIdRecords(context, casesQuery, casesParams);
     const transactionsResults = await this.fetchCaseIdRecords(
       context,
       transactionsQuery,
-      transactionsParams,
-    );
-    const appointmentsResults = await this.fetchCaseIdRecords(
-      context,
-      appointmentsQuery,
       transactionsParams,
     );
 
@@ -634,27 +618,16 @@ class CasesDxtrGateway implements CasesInterface {
     const caseIdSet = new Set<string>();
     casesResults.forEach((record) => caseIdSet.add(record.caseId));
     transactionsResults.forEach((record) => caseIdSet.add(record.caseId));
-    appointmentsResults.forEach((record) => caseIdSet.add(record.caseId));
-
-    // Build appointmentCaseIds from appointment results (deduplicated)
-    const appointmentCaseIdSet = new Set<string>();
-    appointmentsResults.forEach((record) => appointmentCaseIdSet.add(record.caseId));
 
     // Determine latest sync dates
     const latestCasesSyncDate =
       casesResults.length > 0 ? casesResults[0].latestSyncDate : casesStart;
 
-    const terminalLatest = transactionsResults[0]?.latestSyncDate ?? null;
-    const appointmentLatest = appointmentsResults[0]?.latestSyncDate ?? null;
-
-    const candidates = [terminalLatest, appointmentLatest].filter((d): d is string => d != null);
-
     const latestTransactionsSyncDate =
-      candidates.length > 0 ? candidates.reduce((a, b) => (a > b ? a : b)) : transactionsStart;
+      transactionsResults.length > 0 ? transactionsResults[0].latestSyncDate : transactionsStart;
 
     return {
       caseIds: Array.from(caseIdSet),
-      appointmentCaseIds: Array.from(appointmentCaseIdSet),
       latestCasesSyncDate,
       latestTransactionsSyncDate,
     };
@@ -1248,6 +1221,148 @@ class CasesDxtrGateway implements CasesInterface {
     applicationContext.logger.debug(MODULE_NAME, `Results received from DXTR`);
 
     return (queryResult.results as mssql.IResult<CaseIdRecord[]>).recordset;
+  }
+
+  /**
+   * Get trustee appointments with party data from DXTR.
+   * Queries for trustee appointment transactions (TX_TYPE='A', TX_CODE='TR')
+   * and joins with party table to get trustee contact information.
+   *
+   * @param context Application context
+   * @param transactionsStart Start date for transaction query
+   * @returns TrusteeAppointmentSyncEvent[] and latest sync date
+   */
+  async getTrusteeAppointments(
+    context: ApplicationContext,
+    transactionsStart: string,
+  ): Promise<TrusteeAppointmentsResult> {
+    const params: DbTableFieldSpec[] = [
+      {
+        name: 'transactionsStart',
+        type: mssql.DateTime,
+        value: transactionsStart,
+      },
+    ];
+
+    const query = `
+      SELECT
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', TX.CS_CASEID) AS caseId,
+        TX.CS_CASEID,
+        TX.COURT_ID AS courtId,
+        P.PY_FIRST_NAME AS firstName,
+        P.PY_MIDDLE_NAME AS middleName,
+        P.PY_LAST_NAME AS lastName,
+        P.PY_GENERATION AS generation,
+        P.PY_ADDRESS1 AS address1,
+        P.PY_ADDRESS2 AS address2,
+        P.PY_ADDRESS3 AS address3,
+        P.PY_CITY AS city,
+        P.PY_STATE AS state,
+        P.PY_ZIP AS zip,
+        P.PY_COUNTRY AS country,
+        P.PY_E_MAIL AS email,
+        P.PY_PHONENO AS phone,
+        P.PY_FAX_PHONE AS fax,
+        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
+      FROM AO_TX TX
+      JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      JOIN AO_PY P ON P.CS_CASEID = TX.CS_CASEID AND P.COURT_ID = TX.COURT_ID AND P.PY_ROLE = 'tr'
+      WHERE TX.TX_TYPE = 'A'
+        AND TX.TX_CODE IN ('TR')
+        AND TX.TX_DATE AT TIME ZONE 'UTC' > @transactionsStart
+      ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      params,
+    );
+
+    type TrusteeAppointmentRecord = {
+      caseId: string;
+      courtId: string;
+      firstName?: string;
+      middleName?: string;
+      lastName?: string;
+      generation?: string;
+      address1?: string;
+      address2?: string;
+      address3?: string;
+      city?: string;
+      state?: string;
+      zip?: string;
+      country?: string;
+      email?: string;
+      phone?: string;
+      fax?: string;
+      latestSyncDate: string;
+    };
+
+    const records = handleQueryResult<TrusteeAppointmentRecord[]>(
+      context,
+      queryResult,
+      MODULE_NAME,
+      this.trusteeAppointmentsQueryCallback,
+    );
+
+    if (!records || records.length === 0) {
+      return {
+        events: [],
+        latestSyncDate: transactionsStart,
+      };
+    }
+
+    const events: TrusteeAppointmentSyncEvent[] = records.map((record) => {
+      const fullName = removeExtraSpaces(
+        [record.firstName, record.middleName, record.lastName, record.generation]
+          .filter(Boolean)
+          .join(' '),
+      );
+
+      const cityStateZipCountry = removeExtraSpaces(
+        [record.city, record.state, record.zip, record.country].filter(Boolean).join(', '),
+      );
+
+      const dxtrTrustee: DxtrTrusteeParty = {
+        firstName: record.firstName?.trim(),
+        middleName: record.middleName?.trim(),
+        lastName: record.lastName?.trim(),
+        generation: record.generation?.trim(),
+        fullName,
+        legacy: {
+          address1: record.address1?.trim(),
+          address2: record.address2?.trim(),
+          address3: record.address3?.trim(),
+          cityStateZipCountry,
+          phone: record.phone?.trim(),
+          fax: record.fax?.trim(),
+          email: record.email?.trim(),
+        },
+      };
+
+      return {
+        caseId: record.caseId,
+        courtId: record.courtId,
+        dxtrTrustee,
+      };
+    });
+
+    return {
+      events,
+      latestSyncDate: records[0].latestSyncDate,
+    };
+  }
+
+  trusteeAppointmentsQueryCallback<T>(
+    applicationContext: ApplicationContext,
+    queryResult: QueryResults,
+  ): T[] {
+    applicationContext.logger.debug(MODULE_NAME, `Trustee appointments received from DXTR`);
+
+    return queryResult.results ? (queryResult.results as mssql.IResult<T[]>).recordset : [];
   }
 }
 
