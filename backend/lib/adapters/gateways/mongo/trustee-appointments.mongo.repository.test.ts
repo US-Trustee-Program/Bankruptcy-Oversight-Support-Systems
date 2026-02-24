@@ -3,12 +3,19 @@ import { ApplicationContext } from '../../types/basic';
 import {
   TrusteeAppointmentsMongoRepository,
   TrusteeAppointmentDocument,
+  CaseAppointmentDocument,
 } from './trustee-appointments.mongo.repository';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '@common/cams/trustee-appointments';
 import { CamsUserReference } from '@common/cams/users';
+import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 
 describe('TrusteeAppointmentsMongoRepository', () => {
   let context: ApplicationContext;
@@ -427,6 +434,261 @@ describe('TrusteeAppointmentsMongoRepository', () => {
       expect(result.createdOn).toBe(originalCreatedOn);
       expect(result.updatedBy).toEqual(mockUser);
       expect(result.updatedOn).not.toBe(originalCreatedOn);
+    });
+  });
+
+  describe('getActiveCaseAppointment', () => {
+    const expectedQuery = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'CASE_APPOINTMENT',
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'caseId' },
+          rightOperand: 'case-001',
+        },
+        {
+          condition: 'EXISTS',
+          leftOperand: { name: 'unassignedOn' },
+          rightOperand: false,
+        },
+      ],
+    };
+
+    const sampleCaseAppointment: CaseAppointmentDocument = {
+      id: 'ca-1',
+      documentType: 'CASE_APPOINTMENT',
+      caseId: 'case-001',
+      trusteeId: 'trustee-1',
+      assignedOn: '2024-01-15T00:00:00Z',
+      createdOn: '2024-01-15T00:00:00Z',
+      createdBy: mockUser,
+      updatedOn: '2024-01-15T00:00:00Z',
+      updatedBy: mockUser,
+    };
+
+    test('should return active case appointment when found', async () => {
+      const mockFindOne = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(sampleCaseAppointment);
+
+      const result = await repository.getActiveCaseAppointment('case-001');
+
+      expect(mockFindOne).toHaveBeenCalledWith(expectedQuery);
+      expect(result).toEqual(sampleCaseAppointment);
+    });
+
+    test('should return null when no active appointment exists (NotFoundError)', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new NotFoundError('TEST'),
+      );
+
+      const result = await repository.getActiveCaseAppointment('case-001');
+
+      expect(result).toBeNull();
+    });
+
+    test('should throw on database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.getActiveCaseAppointment('case-001')).rejects.toThrow(
+        'Failed to retrieve active case appointment for case case-001.',
+      );
+    });
+  });
+
+  describe('getCaseAppointmentsForCases', () => {
+    const caseIds = ['case-001', 'case-002'];
+
+    const expectedQuery = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'CASE_APPOINTMENT',
+        },
+        {
+          condition: 'CONTAINS',
+          leftOperand: { name: 'caseId' },
+          rightOperand: caseIds,
+        },
+        {
+          condition: 'EXISTS',
+          leftOperand: { name: 'unassignedOn' },
+          rightOperand: false,
+        },
+      ],
+    };
+
+    test('should return map of active case appointments', async () => {
+      const appointments: CaseAppointmentDocument[] = [
+        {
+          id: 'ca-1',
+          documentType: 'CASE_APPOINTMENT',
+          caseId: 'case-001',
+          trusteeId: 'trustee-1',
+          assignedOn: '2024-01-15T00:00:00Z',
+          createdOn: '2024-01-15T00:00:00Z',
+          createdBy: mockUser,
+          updatedOn: '2024-01-15T00:00:00Z',
+          updatedBy: mockUser,
+        },
+        {
+          id: 'ca-2',
+          documentType: 'CASE_APPOINTMENT',
+          caseId: 'case-002',
+          trusteeId: 'trustee-2',
+          assignedOn: '2024-02-01T00:00:00Z',
+          createdOn: '2024-02-01T00:00:00Z',
+          createdBy: mockUser,
+          updatedOn: '2024-02-01T00:00:00Z',
+          updatedBy: mockUser,
+        },
+      ];
+
+      const mockFind = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(appointments);
+
+      const result = await repository.getCaseAppointmentsForCases(caseIds);
+
+      expect(mockFind).toHaveBeenCalledWith(expectedQuery);
+      expect(result.size).toBe(2);
+      expect(result.get('case-001')?.trusteeId).toBe('trustee-1');
+      expect(result.get('case-002')?.trusteeId).toBe('trustee-2');
+    });
+
+    test('should return empty map when no appointments found', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.getCaseAppointmentsForCases(caseIds);
+
+      expect(result.size).toBe(0);
+    });
+
+    test('should throw on database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.getCaseAppointmentsForCases(caseIds)).rejects.toThrow(
+        'Failed to retrieve case appointments for cases.',
+      );
+    });
+  });
+
+  describe('createCaseAppointment', () => {
+    const newCaseAppointment: CaseAppointment = {
+      documentType: 'CASE_APPOINTMENT',
+      caseId: 'case-001',
+      trusteeId: 'trustee-1',
+      assignedOn: '2024-01-15T00:00:00Z',
+    };
+
+    test('should create a new case appointment', async () => {
+      const mockId = 'new-case-appointment-id';
+      const mockInsertOne = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue(mockId);
+
+      const result = await repository.createCaseAppointment(newCaseAppointment);
+
+      expect(mockInsertOne).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'CASE_APPOINTMENT',
+          caseId: 'case-001',
+          trusteeId: 'trustee-1',
+          assignedOn: '2024-01-15T00:00:00Z',
+          createdBy: SYSTEM_USER_REFERENCE,
+          updatedBy: SYSTEM_USER_REFERENCE,
+        }),
+      );
+      expect(result.id).toBe(mockId);
+      expect(result.caseId).toBe('case-001');
+      expect(result.trusteeId).toBe('trustee-1');
+    });
+
+    test('should throw on database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.createCaseAppointment(newCaseAppointment)).rejects.toThrow(
+        'Failed to create case appointment for case case-001.',
+      );
+    });
+  });
+
+  describe('updateCaseAppointment', () => {
+    const existingAppointment: CaseAppointment = {
+      id: 'ca-1',
+      documentType: 'CASE_APPOINTMENT',
+      caseId: 'case-001',
+      trusteeId: 'trustee-1',
+      assignedOn: '2024-01-15T00:00:00Z',
+      createdOn: '2024-01-15T00:00:00Z',
+      createdBy: mockUser,
+      updatedOn: '2024-01-15T00:00:00Z',
+      updatedBy: mockUser,
+    };
+
+    const expectedUpdateQuery = {
+      conjunction: 'AND',
+      values: [
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'documentType' },
+          rightOperand: 'CASE_APPOINTMENT',
+        },
+        {
+          condition: 'EQUALS',
+          leftOperand: { name: 'id' },
+          rightOperand: 'ca-1',
+        },
+      ],
+    };
+
+    test('should update a case appointment with unassignedOn', async () => {
+      const mockReplaceOne = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue(undefined);
+
+      const appointmentToClose = {
+        ...existingAppointment,
+        unassignedOn: '2024-06-01T00:00:00Z',
+      };
+
+      const result = await repository.updateCaseAppointment(appointmentToClose);
+
+      expect(mockReplaceOne).toHaveBeenCalledWith(
+        expectedUpdateQuery,
+        expect.objectContaining({
+          documentType: 'CASE_APPOINTMENT',
+          id: 'ca-1',
+          unassignedOn: '2024-06-01T00:00:00Z',
+          updatedBy: SYSTEM_USER_REFERENCE,
+          updatedOn: expect.any(String),
+        }),
+      );
+      expect(result.unassignedOn).toBe('2024-06-01T00:00:00Z');
+      expect(result.updatedBy).toEqual(SYSTEM_USER_REFERENCE);
+    });
+
+    test('should throw on database errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.updateCaseAppointment(existingAppointment)).rejects.toThrow(
+        'Failed to update case appointment ca-1.',
+      );
     });
   });
 });

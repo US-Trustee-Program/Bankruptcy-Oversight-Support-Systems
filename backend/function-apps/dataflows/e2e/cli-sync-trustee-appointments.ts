@@ -7,7 +7,7 @@
  *   2. Checks for matching CAMS trustee documents in Cosmos DB
  *   3. Optionally seeds matching CAMS trustees for discovered DXTR names
  *   4. Runs processAppointments to match and link trusteeIds to SyncedCases
- *   5. Verifies results by reading back the updated SyncedCases
+ *   5. Verifies results by reading back the updated SyncedCases and CASE_APPOINTMENT documents
  *
  * Prerequisites:
  *   - backend/.env configured with real database connections (DATABASE_MOCK=false)
@@ -119,9 +119,11 @@ STEPS:
                  a) Matches each DXTR trustee name to a CAMS trustee
                  b) Reads the SyncedCase from Cosmos
                  c) Sets trusteeId on the SyncedCase and saves it
+                 d) Creates/updates CASE_APPOINTMENT documents for history tracking
 
   4. VERIFY    - Reads each SyncedCase back from Cosmos and confirms the
-                 trusteeId field was set correctly.
+                 trusteeId field was set correctly. Also verifies that an active
+                 CASE_APPOINTMENT document exists in the trustee-appointments collection.
 
 ENVIRONMENT:
   Reads from backend/.env. Required vars:
@@ -507,13 +509,16 @@ async function verify(
   events: TrusteeAppointmentSyncEvent[],
 ): Promise<void> {
   console.log('\n=== STEP 4: VERIFY ===');
-  console.log('  Reading SyncedCases from Cosmos DB...');
+  console.log('  Reading SyncedCases and CASE_APPOINTMENT documents from Cosmos DB...');
   console.log('');
 
   const casesRepo = factory.getCasesRepository(context);
+  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
   let linkedCount = 0;
   let missingCount = 0;
   let noTrusteeIdCount = 0;
+  let caseAppointmentCount = 0;
+  let noCaseAppointmentCount = 0;
 
   for (const event of events) {
     try {
@@ -525,6 +530,18 @@ async function verify(
         noTrusteeIdCount++;
         console.log(`  [NO ID]   ${event.caseId}: SyncedCase exists but no trusteeId`);
       }
+
+      // Verify CASE_APPOINTMENT document
+      const caseAppointment = await appointmentsRepo.getActiveCaseAppointment(event.caseId);
+      if (caseAppointment) {
+        caseAppointmentCount++;
+        console.log(
+          `  [APPT]    ${event.caseId} -> CASE_APPOINTMENT: trusteeId=${caseAppointment.trusteeId}, assignedOn=${caseAppointment.assignedOn}`,
+        );
+      } else {
+        noCaseAppointmentCount++;
+        console.log(`  [NO APPT] ${event.caseId}: No active CASE_APPOINTMENT document found`);
+      }
     } catch {
       missingCount++;
       console.log(`  [MISSING] ${event.caseId}: SyncedCase not found in Cosmos`);
@@ -532,9 +549,13 @@ async function verify(
   }
 
   casesRepo.release();
+  appointmentsRepo.release();
   console.log('');
   console.log(
     `  Summary: ${linkedCount} linked, ${noTrusteeIdCount} without trusteeId, ${missingCount} missing`,
+  );
+  console.log(
+    `  CASE_APPOINTMENT: ${caseAppointmentCount} found, ${noCaseAppointmentCount} missing`,
   );
 }
 
