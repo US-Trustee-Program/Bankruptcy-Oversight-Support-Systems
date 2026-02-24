@@ -61,7 +61,8 @@
   background-size: 1.5rem;
 }
 
-// Custom compact alert styling for alerts with titles
+// Custom compact alert styling for slim alerts with titles
+// Applied automatically when slim={true} and title prop is provided
 // This provides slim-like appearance while maintaining NVDA compatibility
 .usa-alert.usa-alert--compact-with-title {
   .usa-alert__body {

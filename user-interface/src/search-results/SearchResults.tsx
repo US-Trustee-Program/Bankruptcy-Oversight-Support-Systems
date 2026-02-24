@@ -175,7 +175,7 @@ function SearchResults(props: SearchResultsProps) {
             show={true}
             inline={true}
             role="alert"
-            compact={true}
+            slim={true}
           ></Alert>
         </div>
       )}
@@ -190,7 +190,7 @@ function SearchResults(props: SearchResultsProps) {
             show={true}
             inline={true}
             role="alert"
-            compact={true}
+            slim={true}
           ></Alert>
         </div>
       )}
