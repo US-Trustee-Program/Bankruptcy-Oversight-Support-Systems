@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { normalizeName, matchTrusteeByName } from './trustee-match.helpers';
+import { escapeRegex, normalizeName, matchTrusteeByName } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -24,6 +24,18 @@ describe('normalizeName', () => {
 
   test('should return name unchanged if already normalized', () => {
     expect(normalizeName('John Doe')).toBe('John Doe');
+  });
+});
+
+describe('escapeRegex', () => {
+  test('should escape all special regex characters', () => {
+    expect(escapeRegex('a.b*c+d?e^f$g{h}i(j)k[l]m\\n|o')).toBe(
+      'a\\.b\\*c\\+d\\?e\\^f\\$g\\{h\\}i\\(j\\)k\\[l\\]m\\\\n\\|o',
+    );
+  });
+
+  test('should return unchanged string when no special characters', () => {
+    expect(escapeRegex('John Doe')).toBe('John Doe');
   });
 });
 
