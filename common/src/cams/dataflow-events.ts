@@ -56,3 +56,23 @@ export type TrusteeAppointmentSyncEvent = {
   error?: unknown;
   retryCount?: number;
 };
+
+export type TrusteeAppointmentSyncErrorCode =
+  | 'NO_TRUSTEE_MATCH'
+  | 'MULTIPLE_TRUSTEES_MATCH'
+  | 'CASE_NOT_FOUND';
+
+export const TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES = {
+  NO_TRUSTEE_MATCH: 'NO_TRUSTEE_MATCH',
+  MULTIPLE_TRUSTEES_MATCH: 'MULTIPLE_TRUSTEES_MATCH',
+  CASE_NOT_FOUND: 'CASE_NOT_FOUND',
+} as const satisfies Record<string, TrusteeAppointmentSyncErrorCode>;
+
+/**
+ * Sent to the DLQ when a trustee appointment cannot be processed due to a known, permanent error.
+ * Extends the original event to preserve full context for future recovery processing.
+ */
+export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
+  mismatchReason: TrusteeAppointmentSyncErrorCode;
+  candidateTrusteeIds?: string[];
+};
