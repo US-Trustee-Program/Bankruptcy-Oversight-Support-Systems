@@ -193,7 +193,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(successCount).toBe(0);
   });
 
-  test('should send TrusteeAppointmentSyncError with MULTIPLE_TRUSTEES_MATCH and candidateTrusteeIds to DLQ', async () => {
+  test('should attempt fuzzy matching when MULTIPLE_TRUSTEES_MATCH error occurs', async () => {
     const multiMatchError = new CamsError('TRUSTEE-MATCH', {
       message: 'Multiple match',
       data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', candidateTrusteeIds: ['t-1', 't-2'] },
@@ -202,14 +202,81 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       multiMatchError,
     );
 
-    const { dlqMessages } = await SyncTrusteeAppointments.processAppointments(context, [
+    // Mock fuzzy matching to succeed
+    vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce('t-1');
+
+    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      [makeEvent('case-001', 'Common Name')],
+    );
+
+    expect(trusteeMatchHelpers.resolveTrusteeWithFuzzyMatching).toHaveBeenCalledWith(
+      context,
       makeEvent('case-001', 'Common Name'),
-    ]);
+      ['t-1', 't-2'],
+    );
+    expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        caseId: 'case-001',
+        trusteeId: 't-1',
+      }),
+    );
+    expect(successCount).toBe(1);
+    expect(dlqMessages).toHaveLength(0);
+  });
+
+  test('should send TrusteeAppointmentSyncError with candidateScores when fuzzy matching fails', async () => {
+    const multiMatchError = new CamsError('TRUSTEE-MATCH', {
+      message: 'Multiple match',
+      data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', candidateTrusteeIds: ['t-1', 't-2'] },
+    });
+    (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      multiMatchError,
+    );
+
+    // Mock fuzzy matching to fail with scores
+    const fuzzyMatchError = new CamsError('TRUSTEE-MATCH', {
+      message: 'Fuzzy matching failed',
+      data: {
+        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+        candidateTrusteeIds: ['t-1', 't-2'],
+        candidateScores: [
+          {
+            trusteeId: 't-1',
+            trusteeName: 'John Doe 1',
+            totalScore: 60,
+            addressScore: 100,
+            districtDivisionScore: 50,
+            chapterScore: 0,
+          },
+          {
+            trusteeId: 't-2',
+            trusteeName: 'John Doe 2',
+            totalScore: 58,
+            addressScore: 100,
+            districtDivisionScore: 45,
+            chapterScore: 0,
+          },
+        ],
+      },
+    });
+    vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockRejectedValueOnce(
+      fuzzyMatchError,
+    );
+
+    const { dlqMessages, successCount } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      [makeEvent('case-001', 'Common Name')],
+    );
 
     const err = dlqMessages[0] as TrusteeAppointmentSyncError;
     expect(err.mismatchReason).toBe('MULTIPLE_TRUSTEES_MATCH');
     expect(err.candidateTrusteeIds).toEqual(['t-1', 't-2']);
+    expect(err.candidateScores).toHaveLength(2);
+    expect(err.candidateScores?.[0].trusteeId).toBe('t-1');
+    expect(err.candidateScores?.[0].totalScore).toBe(60);
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+    expect(successCount).toBe(0);
   });
 
   test('should send TrusteeAppointmentSyncError with CASE_NOT_FOUND to DLQ when case is missing from Cosmos', async () => {

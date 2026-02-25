@@ -4,13 +4,14 @@ import {
   TrusteeAppointmentSyncError,
   TrusteeAppointmentSyncErrorCode,
   TrusteeAppointmentSyncEvent,
+  CandidateScore,
 } from '@common/cams/dataflow-events';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import { TrusteeAppointmentsSyncState } from '../gateways.types';
-import { matchTrusteeByName } from './trustee-match.helpers';
+import { matchTrusteeByName, resolveTrusteeWithFuzzyMatching } from './trustee-match.helpers';
 import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
@@ -19,6 +20,22 @@ type ProcessAppointmentsResult = {
   successCount: number;
   dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[];
 };
+
+/**
+ * Type predicate to check if error data is a MULTIPLE_TRUSTEES_MATCH error.
+ */
+function isMultipleTrusteesMatchError(
+  data: unknown,
+): data is { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH'; candidateTrusteeIds: string[] } {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'mismatchReason' in data &&
+    (data as { mismatchReason: unknown }).mismatchReason ===
+      TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH &&
+    'candidateTrusteeIds' in data
+  );
+}
 
 /**
  * Classify a caught error into a DLQ message.
@@ -39,9 +56,10 @@ function buildDlqMessage(
     return DEFAULT_MESSAGE;
   }
 
-  const { mismatchReason, candidateTrusteeIds } = data as {
+  const { mismatchReason, candidateTrusteeIds, candidateScores } = data as {
     mismatchReason?: TrusteeAppointmentSyncErrorCode;
     candidateTrusteeIds?: string[];
+    candidateScores?: CandidateScore[];
   };
 
   if (mismatchReason === TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH) {
@@ -52,7 +70,8 @@ function buildDlqMessage(
     return {
       ...event,
       mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH,
-      candidateTrusteeIds: candidateTrusteeIds,
+      candidateTrusteeIds,
+      candidateScores,
     };
   }
 
@@ -164,6 +183,75 @@ async function processAppointments(
         MODULE_NAME,
         `Failed to process trustee appointment for case ${event.caseId}.`,
       );
+
+      // Check if it's a MULTIPLE_TRUSTEES_MATCH error
+      if (isMultipleTrusteesMatchError(camsError.data)) {
+        try {
+          // Attempt fuzzy matching resolution
+          const trusteeId = await resolveTrusteeWithFuzzyMatching(
+            context,
+            event,
+            camsError.data.candidateTrusteeIds,
+          );
+
+          // If fuzzy matching succeeds, continue with normal success flow
+          const now = new Date().toISOString();
+
+          // Update SyncedCase
+          const syncedCase = await casesRepo.getSyncedCase(event.caseId);
+          if (syncedCase && syncedCase.trusteeId !== trusteeId) {
+            syncedCase.trusteeId = trusteeId;
+            await casesRepo.syncDxtrCase(syncedCase);
+            context.logger.info(
+              MODULE_NAME,
+              `Linked case ${event.caseId} to trustee ${trusteeId} via fuzzy matching`,
+            );
+          }
+
+          // Manage CASE_APPOINTMENT history
+          const existingAppointment = await appointmentsRepo.getActiveCaseAppointment(event.caseId);
+
+          if (existingAppointment && existingAppointment.trusteeId === trusteeId) {
+            successCount++;
+            continue;
+          }
+
+          if (existingAppointment && existingAppointment.trusteeId !== trusteeId) {
+            await appointmentsRepo.updateCaseAppointment({
+              ...existingAppointment,
+              unassignedOn: now,
+            });
+            context.logger.info(
+              MODULE_NAME,
+              `Soft-closed case appointment for case ${event.caseId}, old trustee ${existingAppointment.trusteeId}`,
+            );
+          }
+
+          await appointmentsRepo.createCaseAppointment({
+            caseId: event.caseId,
+            trusteeId,
+            assignedOn: now,
+          });
+          context.logger.info(
+            MODULE_NAME,
+            `Created case appointment for case ${event.caseId}, trustee ${trusteeId} (fuzzy match)`,
+          );
+          successCount++;
+          continue;
+        } catch (fuzzyError) {
+          // Fuzzy matching failed, proceed to DLQ with enhanced error
+          const enhancedError = getCamsError(
+            fuzzyError,
+            MODULE_NAME,
+            `Fuzzy matching failed for case ${event.caseId}.`,
+          );
+          context.logger.warn(MODULE_NAME, `${enhancedError.message}`, enhancedError.data);
+          dlqMessages.push(buildDlqMessage(event, enhancedError));
+          continue;
+        }
+      }
+
+      // Existing error handling for other error types
       context.logger.warn(MODULE_NAME, `${camsError}`);
       dlqMessages.push(buildDlqMessage(event, camsError));
     }
