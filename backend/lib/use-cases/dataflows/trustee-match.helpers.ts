@@ -30,13 +30,16 @@ export async function matchTrusteeByName(
   if (matches.length === 0) {
     throw new CamsError(MODULE_NAME, {
       message: `No CAMS trustee found matching name "${normalized}".`,
+      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
     });
   }
 
   if (matches.length > 1) {
+    const candidateTrusteeIds = matches.map((t) => t.trusteeId);
     const candidates = matches.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
     throw new CamsError(MODULE_NAME, {
       message: `Multiple CAMS trustees found matching name "${normalized}": ${candidates}.`,
+      data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', candidateTrusteeIds },
     });
   }
 

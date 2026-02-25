@@ -3,11 +3,16 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import SyncTrusteeAppointments from './sync-trustee-appointments';
 import factory from '../../factory';
-import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import {
+  TrusteeAppointmentSyncError,
+  TrusteeAppointmentSyncEvent,
+} from '@common/cams/dataflow-events';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { CasesRepository, TrusteeAppointmentsRepository } from '../gateways.types';
 import * as trusteeMatchHelpers from './trustee-match.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
+import { CamsError } from '../../common-errors/cams-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 describe('SyncTrusteeAppointments.processAppointments', () => {
   let context: ApplicationContext;
@@ -51,7 +56,10 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
   test('should create a new CASE_APPOINTMENT when no existing appointment', async () => {
     const events = [makeEvent('case-001', 'John Doe')];
 
-    const result = await SyncTrusteeAppointments.processAppointments(context, events);
+    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      events,
+    );
 
     expect(mockAppointmentsRepo.getActiveCaseAppointment).toHaveBeenCalledWith('case-001');
     expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
@@ -62,7 +70,8 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       }),
     );
     expect(mockAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
-    expect(result[0].error).toBeUndefined();
+    expect(successCount).toBe(1);
+    expect(dlqMessages).toHaveLength(0);
   });
 
   test('should skip when existing appointment has the same trusteeId', async () => {
@@ -126,7 +135,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     );
   });
 
-  test('should set error on event and continue processing when an error occurs', async () => {
+  test('should add unclassified error to dlqMessages and continue processing', async () => {
     (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>)
       .mockRejectedValueOnce(new Error('Match failed'))
       .mockResolvedValueOnce('trustee-456');
@@ -138,18 +147,77 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
 
     const events = [makeEvent('case-001', 'Bad Name'), makeEvent('case-002', 'Jane Smith')];
 
-    const result = await SyncTrusteeAppointments.processAppointments(context, events);
+    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      events,
+    );
 
-    // First event should have error
-    expect(result[0].error).toBeDefined();
+    // First event — unclassified error goes to DLQ with raw error shape
+    expect(dlqMessages).toHaveLength(1);
+    expect((dlqMessages[0] as TrusteeAppointmentSyncEvent).error).toBeDefined();
 
     // Second event should succeed
-    expect(result[1].error).toBeUndefined();
+    expect(successCount).toBe(1);
     expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
       expect.objectContaining({
         caseId: 'case-002',
         trusteeId: 'trustee-456',
       }),
     );
+  });
+
+  test('should send TrusteeAppointmentSyncError with NO_TRUSTEE_MATCH to DLQ when no trustee found', async () => {
+    const noMatchError = new CamsError('TRUSTEE-MATCH', {
+      message: 'No match',
+      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+    });
+    (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      noMatchError,
+    );
+
+    const { dlqMessages, successCount } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      [makeEvent('case-001', 'Ghost Trustee')],
+    );
+
+    expect(dlqMessages).toHaveLength(1);
+    expect((dlqMessages[0] as TrusteeAppointmentSyncError).mismatchReason).toBe('NO_TRUSTEE_MATCH');
+    expect((dlqMessages[0] as TrusteeAppointmentSyncError).caseId).toBe('case-001');
+    expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+    expect(successCount).toBe(0);
+  });
+
+  test('should send TrusteeAppointmentSyncError with MULTIPLE_TRUSTEES_MATCH and candidateTrusteeIds to DLQ', async () => {
+    const multiMatchError = new CamsError('TRUSTEE-MATCH', {
+      message: 'Multiple match',
+      data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', candidateTrusteeIds: ['t-1', 't-2'] },
+    });
+    (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      multiMatchError,
+    );
+
+    const { dlqMessages } = await SyncTrusteeAppointments.processAppointments(context, [
+      makeEvent('case-001', 'Common Name'),
+    ]);
+
+    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
+    expect(err.mismatchReason).toBe('MULTIPLE_TRUSTEES_MATCH');
+    expect(err.candidateTrusteeIds).toEqual(['t-1', 't-2']);
+    expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+  });
+
+  test('should send TrusteeAppointmentSyncError with CASE_NOT_FOUND to DLQ when case is missing from Cosmos', async () => {
+    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new NotFoundError('CASES-REPO', { message: 'Case not found' }),
+    );
+
+    const { dlqMessages } = await SyncTrusteeAppointments.processAppointments(context, [
+      makeEvent('missing-case', 'John Doe'),
+    ]);
+
+    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
+    expect(err.mismatchReason).toBe('CASE_NOT_FOUND');
+    expect(err.caseId).toBe('missing-case');
+    expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
   });
 });

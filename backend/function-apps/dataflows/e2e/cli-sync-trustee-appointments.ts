@@ -55,7 +55,10 @@ import { AppInsightsObservability } from '../../../lib/adapters/services/observa
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import factory from '../../../lib/factory';
 import SyncTrusteeAppointments from '../../../lib/use-cases/dataflows/sync-trustee-appointments';
-import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import {
+  TrusteeAppointmentSyncError,
+  TrusteeAppointmentSyncEvent,
+} from '@common/cams/dataflow-events';
 import { CamsUserReference } from '@common/cams/users';
 import { executeQuery } from '../../../lib/adapters/utils/database';
 
@@ -467,29 +470,33 @@ async function processAppointments(
   console.log(`  Processing ${events.length} appointment event(s)...`);
   console.log('');
 
-  const results = await SyncTrusteeAppointments.processAppointments(context, events);
+  const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
+    context,
+    events,
+  );
 
-  let successCount = 0;
-  let errorCount = 0;
-
-  for (const event of results) {
-    if (event.error) {
-      errorCount++;
-      const errMsg =
-        typeof event.error === 'object' && 'message' in event.error
-          ? (event.error as { message: string }).message
-          : String(event.error);
-      console.log(`  [FAIL]    ${event.caseId}: ${errMsg}`);
+  for (const msg of dlqMessages) {
+    if ('mismatchReason' in msg) {
+      const reason = (msg as TrusteeAppointmentSyncError).mismatchReason;
+      const extra =
+        reason === 'MULTIPLE_TRUSTEES_MATCH' &&
+        (msg as TrusteeAppointmentSyncError).candidateTrusteeIds
+          ? ` (candidates: ${(msg as TrusteeAppointmentSyncError).candidateTrusteeIds!.join(', ')})`
+          : '';
+      console.log(`  [FAIL]    ${msg.caseId}: ${reason}${extra}`);
     } else {
-      successCount++;
-      console.log(`  [OK]      ${event.caseId}: matched "${event.dxtrTrustee.fullName}"`);
+      const errMsg =
+        typeof msg.error === 'object' && msg.error !== null && 'message' in msg.error
+          ? (msg.error as { message: string }).message
+          : String(msg.error);
+      console.log(`  [FAIL]    ${msg.caseId}: ${errMsg}`);
     }
   }
 
   console.log('');
-  console.log(`  Summary: ${successCount} succeeded, ${errorCount} failed`);
+  console.log(`  Summary: ${successCount} succeeded, ${dlqMessages.length} failed`);
 
-  if (errorCount > 0) {
+  if (dlqMessages.length > 0) {
     console.log('');
     console.log('  Common failure reasons:');
     console.log('  - No CAMS trustee found matching the DXTR trustee name');
@@ -499,7 +506,7 @@ async function processAppointments(
     console.log('  Fix: Run --seed to create matching trustees, or sync cases first.');
   }
 
-  return results;
+  return events;
 }
 
 // --- Step 4: Verify ----------------------------------------------------------
