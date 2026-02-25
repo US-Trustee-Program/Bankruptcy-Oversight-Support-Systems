@@ -10,7 +10,10 @@ import {
 } from '../dataflows-common';
 import SyncTrusteeAppointments from '../../../lib/use-cases/dataflows/sync-trustee-appointments';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
-import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import {
+  TrusteeAppointmentSyncError,
+  TrusteeAppointmentSyncEvent,
+} from '@common/cams/dataflow-events';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
@@ -115,16 +118,17 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
  * @param {InvocationContext} invocationContext
  */
 async function handlePage(
-  events: TrusteeAppointmentSyncEvent[],
+  events: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[],
   invocationContext: InvocationContext,
 ) {
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
-  const processedEvents = await SyncTrusteeAppointments.processAppointments(appContext, events);
+  const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
+    appContext,
+    events,
+  );
 
-  const failedEvents = processedEvents.filter((event) => !!event.error);
-  invocationContext.extraOutputs.set(DLQ, failedEvents);
-  const successCount = processedEvents.length - failedEvents.length;
+  invocationContext.extraOutputs.set(DLQ, dlqMessages);
   completeDataflowTrace(
     appContext.observability,
     trace,
@@ -133,7 +137,7 @@ async function handlePage(
     appContext.logger,
     {
       documentsWritten: successCount,
-      documentsFailed: failedEvents.length,
+      documentsFailed: dlqMessages.length,
       success: true,
       details: { totalEvents: String(events.length) },
     },
