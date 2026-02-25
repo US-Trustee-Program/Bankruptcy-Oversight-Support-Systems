@@ -30,9 +30,16 @@ function buildDlqMessage(
   error: CamsError,
 ): TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent {
   const DEFAULT_MESSAGE = { ...event, error };
-  if (!error.data) return DEFAULT_MESSAGE;
+  const { data } = error;
+  if (!data) {
+    if (isNotFoundError(error)) {
+      return { ...event, mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.CASE_NOT_FOUND };
+    }
 
-  const { mismatchReason, candidateTrusteeIds } = error.data as {
+    return DEFAULT_MESSAGE;
+  }
+
+  const { mismatchReason, candidateTrusteeIds } = data as {
     mismatchReason?: TrusteeAppointmentSyncErrorCode;
     candidateTrusteeIds?: string[];
   };
@@ -48,10 +55,7 @@ function buildDlqMessage(
       candidateTrusteeIds: candidateTrusteeIds,
     };
   }
-  if (isNotFoundError(error)) {
-    return { ...event, mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.CASE_NOT_FOUND };
-  }
-  // Unclassified/transient — preserve raw event shape with error set
+
   return DEFAULT_MESSAGE;
 }
 
