@@ -1,5 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
+import { TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES } from '@common/cams/dataflow-events';
 import factory from '../../factory';
 
 const MODULE_NAME = 'TRUSTEE-MATCH';
@@ -30,7 +31,7 @@ export async function matchTrusteeByName(
   if (matches.length === 0) {
     throw new CamsError(MODULE_NAME, {
       message: `No CAMS trustee found matching name "${normalized}".`,
-      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+      data: { mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH },
     });
   }
 
@@ -39,7 +40,10 @@ export async function matchTrusteeByName(
     const candidates = matches.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
     throw new CamsError(MODULE_NAME, {
       message: `Multiple CAMS trustees found matching name "${normalized}": ${candidates}.`,
-      data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', candidateTrusteeIds },
+      data: {
+        mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH,
+        candidateTrusteeIds,
+      },
     });
   }
 
