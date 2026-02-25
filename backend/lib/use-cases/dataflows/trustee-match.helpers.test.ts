@@ -47,15 +47,16 @@ describe('matchTrusteeByName', () => {
     expect(result).toBe(trustee.trusteeId);
   });
 
-  test('should throw when no trustees match', async () => {
+  test('should throw with mismatchReason NO_TRUSTEE_MATCH when no trustees match', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
 
-    await expect(matchTrusteeByName(context, 'Nonexistent Trustee')).rejects.toThrow(
-      'No CAMS trustee found matching name "Nonexistent Trustee".',
-    );
+    await expect(matchTrusteeByName(context, 'Nonexistent Trustee')).rejects.toMatchObject({
+      message: expect.stringContaining('No CAMS trustee found matching name "Nonexistent Trustee"'),
+      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+    });
   });
 
-  test('should throw when multiple trustees match', async () => {
+  test('should throw with mismatchReason MULTIPLE_TRUSTEES_MATCH and candidateTrusteeIds when multiple trustees match', async () => {
     const trustee1 = MockData.getTrustee();
     const trustee2 = MockData.getTrustee();
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
@@ -63,9 +64,13 @@ describe('matchTrusteeByName', () => {
       trustee2,
     ]);
 
-    await expect(matchTrusteeByName(context, trustee1.name)).rejects.toThrow(
-      /Multiple CAMS trustees found matching name/,
-    );
+    await expect(matchTrusteeByName(context, trustee1.name)).rejects.toMatchObject({
+      message: expect.stringContaining('Multiple CAMS trustees found matching name'),
+      data: {
+        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+        candidateTrusteeIds: expect.arrayContaining([trustee1.trusteeId, trustee2.trusteeId]),
+      },
+    });
   });
 
   test('should normalize the name before querying', async () => {
