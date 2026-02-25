@@ -19,7 +19,7 @@ import {
   AppointmentType,
   AppointmentStatus,
 } from '@common/cams/trustees';
-import { Creatable } from '../../adapters/types/persistence.gateway';
+import { Creatable } from '@common/cams/creatable';
 import DateHelper from '@common/date-helper';
 import { validateObject } from '@common/cams/validation';
 import { CamsError } from '../../common-errors/cams-error';

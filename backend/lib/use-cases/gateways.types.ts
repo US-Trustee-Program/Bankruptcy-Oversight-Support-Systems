@@ -34,7 +34,12 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  CaseAppointmentInput,
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Auditable } from '@common/cams/auditable';
 import {
@@ -258,6 +263,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   listTrusteeHistory(trusteeId: string): Promise<TrusteeHistory[]>;
   listTrustees(): Promise<Trustee[]>;
   findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null>;
+  findTrusteesByName(name: string): Promise<Trustee[]>;
   updateTrustee(
     id: string,
     input: Partial<TrusteeInput>,
@@ -287,6 +293,9 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     appointmentInput: TrusteeAppointmentInput,
     userRef: CamsUserReference,
   ): Promise<TrusteeAppointment>;
+  getActiveCaseAppointment(caseId: string): Promise<CaseAppointment | null>;
+  createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
+  updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
 }
 
 export interface TrusteeAssistantsRepository extends Releasable {
@@ -311,7 +320,8 @@ export type RuntimeStateDocumentType =
   | 'OFFICE_STAFF_SYNC_STATE'
   | 'CASES_SYNC_STATE'
   | 'PHONETIC_BACKFILL_STATE'
-  | 'TRUSTEE_MIGRATION_STATE';
+  | 'TRUSTEE_MIGRATION_STATE'
+  | 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -350,6 +360,11 @@ export type PhoneticBackfillState = RuntimeState & {
   startedAt: string;
   lastUpdatedAt: string;
   status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type TrusteeAppointmentsSyncState = RuntimeState & {
+  documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
+  lastSyncDate: string;
 };
 
 export interface DocumentCollectionAdapter<T> {

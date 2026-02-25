@@ -7,7 +7,7 @@ import QueryBuilder from '../../../query/query-builder';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { createAuditRecord } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
-import { Creatable } from '../../types/persistence.gateway';
+import { Creatable } from '@common/cams/creatable';
 
 const MODULE_NAME = 'TRUSTEE-ASSISTANTS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';

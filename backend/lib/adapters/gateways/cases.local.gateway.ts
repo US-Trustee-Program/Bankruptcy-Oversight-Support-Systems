@@ -1,6 +1,7 @@
 import {
   CasesInterface,
   TransactionIdRangeForDate,
+  TrusteeAppointmentsResult,
   UpdatedCaseIds,
 } from '../../use-cases/cases/cases.interface';
 import { ApplicationContext } from '../types/basic';
@@ -153,5 +154,15 @@ export class CasesLocalGateway implements CasesInterface {
 
   public async findMaxTransactionId(_context: ApplicationContext): Promise<string> {
     throw new Error('Not implemented');
+  }
+
+  public async getTrusteeAppointments(
+    _context: ApplicationContext,
+    transactionsStart: string,
+  ): Promise<TrusteeAppointmentsResult> {
+    return {
+      events: [],
+      latestSyncDate: transactionsStart,
+    };
   }
 }

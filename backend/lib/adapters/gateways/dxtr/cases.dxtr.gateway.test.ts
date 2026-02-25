@@ -1432,7 +1432,7 @@ describe('Test DXTR Gateway', () => {
         ...transactionsRecordset.map((r) => r.caseId),
       ]);
 
-      // Mock both query calls - cases first, then transactions
+      // Mock both query calls - cases and terminal transactions
       querySpy.mockResolvedValueOnce(casesResults);
       querySpy.mockResolvedValueOnce(transactionsResults);
 
@@ -1540,6 +1540,27 @@ describe('Test DXTR Gateway', () => {
       expect(result.caseIds).toEqual(['081-20-10508']); // Only once, Set handles deduplication
       expect(result.latestCasesSyncDate).toEqual('2025-02-11T10:00:00.000Z');
       expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T14:00:00.000Z');
+    });
+
+    test('should return cases from both AO_CS and AO_TX queries', async () => {
+      const casesResults = makeQueryResults([
+        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
+      ]);
+      const terminalResults = makeQueryResults([
+        { caseId: '081-21-12345', latestSyncDate: '2025-02-11T14:00:00.000Z' },
+      ]);
+
+      querySpy.mockResolvedValueOnce(casesResults);
+      querySpy.mockResolvedValueOnce(terminalResults);
+
+      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+        applicationContext,
+        '2024-01-01',
+        '2024-01-01',
+      );
+
+      expect(result.caseIds).toContain('081-20-10508');
+      expect(result.caseIds).toContain('081-21-12345');
     });
   });
 

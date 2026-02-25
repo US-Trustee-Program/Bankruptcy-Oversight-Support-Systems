@@ -4,10 +4,15 @@ import { NotFoundError } from '../../../common-errors/not-found-error';
 import { TrusteeAppointmentsRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { createAuditRecord } from '@common/cams/auditable';
+import {
+  CaseAppointment,
+  CaseAppointmentInput,
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '@common/cams/trustee-appointments';
+import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
-import { Creatable } from '../../types/persistence.gateway';
+import { Creatable } from '@common/cams/creatable';
 
 const MODULE_NAME = 'TRUSTEE-APPOINTMENTS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-appointments';
@@ -16,6 +21,10 @@ const { using, and } = QueryBuilder;
 
 export type TrusteeAppointmentDocument = TrusteeAppointment & {
   documentType: 'TRUSTEE_APPOINTMENT';
+};
+
+export type CaseAppointmentDocument = CaseAppointment & {
+  documentType: 'CASE_APPOINTMENT';
 };
 
 export class TrusteeAppointmentsMongoRepository
@@ -155,6 +164,68 @@ export class TrusteeAppointmentsMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to update trustee appointment with ID ${appointmentId}.`,
+      });
+    }
+  }
+
+  async getActiveCaseAppointment(caseId: string): Promise<CaseAppointment | null> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('caseId').equals(caseId),
+        doc('unassignedOn').notExists(),
+      );
+      return await this.getAdapter<CaseAppointmentDocument>().findOne(query);
+    } catch (originalError) {
+      if (originalError instanceof NotFoundError) {
+        return null;
+      }
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to retrieve active case appointment for case ${caseId}.`,
+      });
+    }
+  }
+
+  async createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment> {
+    const document = createAuditRecord<Creatable<CaseAppointmentDocument>>(
+      {
+        ...appointment,
+        documentType: 'CASE_APPOINTMENT',
+      },
+      SYSTEM_USER_REFERENCE,
+    );
+
+    try {
+      const id = await this.getAdapter<Creatable<CaseAppointmentDocument>>().insertOne(document);
+      return { ...document, id };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to create case appointment for case ${appointment.caseId}.`,
+      });
+    }
+  }
+
+  async updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('id').equals(appointment.id),
+      );
+
+      const updatedDocument: CaseAppointmentDocument = {
+        ...appointment,
+        documentType: 'CASE_APPOINTMENT',
+        updatedBy: SYSTEM_USER_REFERENCE,
+        updatedOn: new Date().toISOString(),
+      };
+
+      await this.getAdapter<CaseAppointmentDocument>().replaceOne(query, updatedDocument);
+      return updatedDocument;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to update case appointment ${appointment.id}.`,
       });
     }
   }

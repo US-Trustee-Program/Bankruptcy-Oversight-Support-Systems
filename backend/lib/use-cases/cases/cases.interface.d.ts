@@ -1,11 +1,17 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseBasics, CaseDetail, CaseSummary } from '@common/cams/cases';
 import { CasesSearchPredicate } from '@common/api/search';
+import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 
 export type UpdatedCaseIds = {
   caseIds: string[];
   latestCasesSyncDate: string;
   latestTransactionsSyncDate: string;
+};
+
+export type TrusteeAppointmentsResult = {
+  events: TrusteeAppointmentSyncEvent[];
+  latestSyncDate: string;
 };
 
 type TransactionIdRangeForDate = {
@@ -44,4 +50,9 @@ export interface CasesInterface {
   ): Promise<TransactionIdRangeForDate>;
 
   findMaxTransactionId(context: ApplicationContext): Promise<string>;
+
+  getTrusteeAppointments(
+    context: ApplicationContext,
+    transactionsStart: string,
+  ): Promise<TrusteeAppointmentsResult>;
 }

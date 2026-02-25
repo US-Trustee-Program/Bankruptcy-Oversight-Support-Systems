@@ -253,6 +253,17 @@ export default class CaseManagement {
       caseDetails.assignments = await this.getCaseAssignments(context, caseDetails);
       caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
       caseDetails.officeCode = buildOfficeCode(caseDetails.regionId, caseDetails.courtDivisionCode);
+
+      try {
+        const syncedCase = await casesRepo.getSyncedCase(caseId);
+        if (syncedCase?.trusteeId) {
+          caseDetails.trusteeId = syncedCase.trusteeId;
+        }
+      } catch (error) {
+        // SyncedCase may not exist; trusteeId will simply not be present
+        context.logger.debug(MODULE_NAME, `Could not retrieve SyncedCase for ${caseId}`, error);
+      }
+
       const _actions = getAction<CaseDetail>(context, caseDetails);
 
       return { ...caseDetails, _actions };

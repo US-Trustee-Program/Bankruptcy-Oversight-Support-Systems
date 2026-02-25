@@ -5,7 +5,7 @@ import { TrusteesRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { CamsUserReference } from '@common/cams/users';
 import QueryBuilder from '../../../query/query-builder';
-import { Creatable } from '../../types/persistence.gateway';
+import { Creatable } from '@common/cams/creatable';
 import {
   Trustee,
   TrusteeHistory,
@@ -13,6 +13,7 @@ import {
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
+import { normalizeName, escapeRegex } from '../../../use-cases/dataflows/trustee-match.helpers';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
@@ -106,6 +107,23 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to retrieve trustees list.',
+      });
+    }
+  }
+
+  async findTrusteesByName(name: string): Promise<Trustee[]> {
+    try {
+      const normalized = normalizeName(name);
+      const escaped = escapeRegex(normalized);
+      const doc = using<TrusteeDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE'),
+        doc('name').regex(new RegExp(`^${escaped}$`, 'i')),
+      );
+      return await this.getAdapter<TrusteeDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustees by name.`,
       });
     }
   }
