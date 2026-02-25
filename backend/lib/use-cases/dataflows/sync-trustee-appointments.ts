@@ -1,12 +1,63 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
+import {
+  TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES,
+  TrusteeAppointmentSyncError,
+  TrusteeAppointmentSyncErrorCode,
+  TrusteeAppointmentSyncEvent,
+} from '@common/cams/dataflow-events';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
+import { CamsError } from '../../common-errors/cams-error';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 import { TrusteeAppointmentsSyncState } from '../gateways.types';
 import { matchTrusteeByName } from './trustee-match.helpers';
 import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
+
+type ProcessAppointmentsResult = {
+  successCount: number;
+  dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[];
+};
+
+/**
+ * Classify a caught error into a DLQ message.
+ * Known permanent errors become typed TrusteeAppointmentSyncError with a mismatchReason.
+ * Unclassified/transient errors fall back to the raw event shape with error set.
+ */
+function buildDlqMessage(
+  event: TrusteeAppointmentSyncEvent,
+  error: CamsError,
+): TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent {
+  const DEFAULT_MESSAGE = { ...event, error };
+  const { data } = error;
+  if (!data) {
+    if (isNotFoundError(error)) {
+      return { ...event, mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.CASE_NOT_FOUND };
+    }
+
+    return DEFAULT_MESSAGE;
+  }
+
+  const { mismatchReason, candidateTrusteeIds } = data as {
+    mismatchReason?: TrusteeAppointmentSyncErrorCode;
+    candidateTrusteeIds?: string[];
+  };
+
+  if (mismatchReason === TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH) {
+    return { ...event, mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH };
+  }
+
+  if (mismatchReason === TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH) {
+    return {
+      ...event,
+      mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH,
+      candidateTrusteeIds: candidateTrusteeIds,
+    };
+  }
+
+  return DEFAULT_MESSAGE;
+}
 
 /**
  * Get trustee appointment events from DXTR.
@@ -52,9 +103,11 @@ async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: 
 async function processAppointments(
   context: ApplicationContext,
   events: TrusteeAppointmentSyncEvent[],
-): Promise<TrusteeAppointmentSyncEvent[]> {
+): Promise<ProcessAppointmentsResult> {
   const casesRepo = factory.getCasesRepository(context);
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+  const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
+  let successCount = 0;
 
   for (const event of events) {
     try {
@@ -78,6 +131,7 @@ async function processAppointments(
 
       if (existingAppointment && existingAppointment.trusteeId === trusteeId) {
         // Same trustee already active — skip
+        successCount++;
         continue;
       }
 
@@ -103,17 +157,19 @@ async function processAppointments(
         MODULE_NAME,
         `Created case appointment for case ${event.caseId}, trustee ${trusteeId}`,
       );
+      successCount++;
     } catch (originalError) {
-      event.error = getCamsError(
+      const camsError = getCamsError(
         originalError,
         MODULE_NAME,
         `Failed to process trustee appointment for case ${event.caseId}.`,
       );
-      context.logger.warn(MODULE_NAME, `${event.error}`);
+      context.logger.warn(MODULE_NAME, `${camsError}`);
+      dlqMessages.push(buildDlqMessage(event, camsError));
     }
   }
 
-  return events;
+  return { successCount, dlqMessages };
 }
 
 /**

@@ -120,11 +120,12 @@ async function handlePage(
 ) {
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
-  const processedEvents = await SyncTrusteeAppointments.processAppointments(appContext, events);
+  const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
+    appContext,
+    events,
+  );
 
-  const failedEvents = processedEvents.filter((event) => !!event.error);
-  invocationContext.extraOutputs.set(DLQ, failedEvents);
-  const successCount = processedEvents.length - failedEvents.length;
+  invocationContext.extraOutputs.set(DLQ, dlqMessages);
   completeDataflowTrace(
     appContext.observability,
     trace,
@@ -133,7 +134,7 @@ async function handlePage(
     appContext.logger,
     {
       documentsWritten: successCount,
-      documentsFailed: failedEvents.length,
+      documentsFailed: dlqMessages.length,
       success: true,
       details: { totalEvents: String(events.length) },
     },
