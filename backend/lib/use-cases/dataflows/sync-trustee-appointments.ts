@@ -2,6 +2,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import {
   TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES,
   TrusteeAppointmentSyncError,
+  TrusteeAppointmentSyncErrorCode,
   TrusteeAppointmentSyncEvent,
 } from '@common/cams/dataflow-events';
 import factory from '../../factory';
@@ -32,7 +33,7 @@ function buildDlqMessage(
   if (!error.data) return DEFAULT_MESSAGE;
 
   const { mismatchReason, candidateTrusteeIds } = error.data as {
-    mismatchReason?: string;
+    mismatchReason?: TrusteeAppointmentSyncErrorCode;
     candidateTrusteeIds?: string[];
   };
 
