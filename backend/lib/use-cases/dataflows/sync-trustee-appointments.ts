@@ -28,25 +28,30 @@ function buildDlqMessage(
   event: TrusteeAppointmentSyncEvent,
   error: CamsError,
 ): TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent {
-  const data = error.data as
-    | { mismatchReason?: string; candidateTrusteeIds?: string[] }
-    | undefined;
+  const DEFAULT_MESSAGE = { ...event, error };
+  if (!error.data) return DEFAULT_MESSAGE;
 
-  if (data?.mismatchReason === TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH) {
+  const { mismatchReason, candidateTrusteeIds } = error.data as {
+    mismatchReason?: string;
+    candidateTrusteeIds?: string[];
+  };
+
+  if (mismatchReason === TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH) {
     return { ...event, mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH };
   }
-  if (data?.mismatchReason === TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH) {
+
+  if (mismatchReason === TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH) {
     return {
       ...event,
       mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH,
-      candidateTrusteeIds: data.candidateTrusteeIds,
+      candidateTrusteeIds: candidateTrusteeIds,
     };
   }
   if (isNotFoundError(error)) {
     return { ...event, mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.CASE_NOT_FOUND };
   }
   // Unclassified/transient — preserve raw event shape with error set
-  return { ...event, error };
+  return DEFAULT_MESSAGE;
 }
 
 /**
