@@ -8,11 +8,17 @@ import {
   TrusteeAppointmentSyncEvent,
 } from '@common/cams/dataflow-events';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
-import { CasesRepository, TrusteeAppointmentsRepository } from '../gateways.types';
+import {
+  CasesRepository,
+  RuntimeStateRepository,
+  TrusteeAppointmentsRepository,
+  TrusteeAppointmentsSyncState,
+} from '../gateways.types';
 import * as trusteeMatchHelpers from './trustee-match.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
 import { CamsError } from '../../common-errors/cams-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
+import { CasesInterface } from '../cases/cases.interface';
 
 describe('SyncTrusteeAppointments.processAppointments', () => {
   let context: ApplicationContext;
@@ -219,5 +225,160 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(err.mismatchReason).toBe('CASE_NOT_FOUND');
     expect(err.caseId).toBe('missing-case');
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+  });
+
+  test('should create a new appointment without syncing case when getSyncedCase returns null', async () => {
+    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    const events = [makeEvent('case-001', 'John Doe')];
+
+    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      events,
+    );
+
+    expect(mockCasesRepo.syncDxtrCase).not.toHaveBeenCalled();
+    expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
+      expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+    );
+    expect(successCount).toBe(1);
+    expect(dlqMessages).toHaveLength(0);
+  });
+
+  test('should fall back to raw error shape when error has data but unknown mismatchReason', async () => {
+    const unknownError = new CamsError('SOME-MODULE', {
+      message: 'Unknown data error',
+      data: { mismatchReason: 'SOME_UNKNOWN_CODE', extra: 'value' },
+    });
+    (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      unknownError,
+    );
+
+    const { dlqMessages } = await SyncTrusteeAppointments.processAppointments(context, [
+      makeEvent('case-001', 'John Doe'),
+    ]);
+
+    expect(dlqMessages).toHaveLength(1);
+    expect((dlqMessages[0] as TrusteeAppointmentSyncEvent).error).toBeDefined();
+    expect('mismatchReason' in dlqMessages[0]).toBe(false);
+  });
+});
+
+describe('SyncTrusteeAppointments.getAppointmentEvents', () => {
+  let context: ApplicationContext;
+  let mockRuntimeStateRepo: Partial<RuntimeStateRepository<TrusteeAppointmentsSyncState>>;
+  let mockCasesGateway: Partial<CasesInterface>;
+
+  const mockEvents: TrusteeAppointmentSyncEvent[] = [
+    { caseId: 'case-001', courtId: '081', dxtrTrustee: { fullName: 'Jane Doe' } },
+  ];
+  const mockLatestSyncDate = '2025-01-15T00:00:00Z';
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
+
+    mockRuntimeStateRepo = {
+      read: vi.fn().mockResolvedValue({
+        id: 'state-1',
+        documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+        lastSyncDate: '2025-01-01T00:00:00Z',
+      }),
+    };
+
+    mockCasesGateway = {
+      getTrusteeAppointments: vi
+        .fn()
+        .mockResolvedValue({ events: mockEvents, latestSyncDate: mockLatestSyncDate }),
+    };
+
+    vi.spyOn(factory, 'getTrusteeAppointmentsSyncStateRepo').mockReturnValue(
+      mockRuntimeStateRepo as RuntimeStateRepository<TrusteeAppointmentsSyncState>,
+    );
+    vi.spyOn(factory, 'getCasesGateway').mockReturnValue(mockCasesGateway as CasesInterface);
+  });
+
+  afterEach(async () => {
+    await closeDeferred(context);
+    vi.restoreAllMocks();
+  });
+
+  test('should use provided lastSyncDate without reading from repo', async () => {
+    const { events, latestSyncDate } = await SyncTrusteeAppointments.getAppointmentEvents(
+      context,
+      '2025-01-10T00:00:00Z',
+    );
+
+    expect(mockRuntimeStateRepo.read).not.toHaveBeenCalled();
+    expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
+      context,
+      '2025-01-10T00:00:00Z',
+    );
+    expect(events).toEqual(mockEvents);
+    expect(latestSyncDate).toBe(mockLatestSyncDate);
+  });
+
+  test('should read lastSyncDate from runtime state repo when not provided', async () => {
+    const { events, latestSyncDate } = await SyncTrusteeAppointments.getAppointmentEvents(context);
+
+    expect(mockRuntimeStateRepo.read).toHaveBeenCalledWith('TRUSTEE_APPOINTMENTS_SYNC_STATE');
+    expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(
+      context,
+      '2025-01-01T00:00:00Z',
+    );
+    expect(events).toEqual(mockEvents);
+    expect(latestSyncDate).toBe(mockLatestSyncDate);
+  });
+
+  test('should throw and log when cases gateway fails', async () => {
+    vi.spyOn(factory, 'getCasesGateway').mockReturnValue({
+      getTrusteeAppointments: vi.fn().mockRejectedValue(new Error('DXTR unavailable')),
+    } as unknown as CasesInterface);
+
+    await expect(
+      SyncTrusteeAppointments.getAppointmentEvents(context, '2025-01-01T00:00:00Z'),
+    ).rejects.toThrow();
+  });
+});
+
+describe('SyncTrusteeAppointments.storeRuntimeState', () => {
+  let context: ApplicationContext;
+  let mockRuntimeStateRepo: Partial<RuntimeStateRepository<TrusteeAppointmentsSyncState>>;
+
+  beforeEach(async () => {
+    context = await createMockApplicationContext();
+
+    mockRuntimeStateRepo = {
+      upsert: vi.fn().mockResolvedValue(undefined),
+    };
+
+    vi.spyOn(factory, 'getTrusteeAppointmentsSyncStateRepo').mockReturnValue(
+      mockRuntimeStateRepo as RuntimeStateRepository<TrusteeAppointmentsSyncState>,
+    );
+  });
+
+  afterEach(async () => {
+    await closeDeferred(context);
+    vi.restoreAllMocks();
+  });
+
+  test('should upsert the runtime state with the given lastSyncDate', async () => {
+    await SyncTrusteeAppointments.storeRuntimeState(context, '2025-02-01T00:00:00Z');
+
+    expect(mockRuntimeStateRepo.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+        lastSyncDate: '2025-02-01T00:00:00Z',
+      }),
+    );
+  });
+
+  test('should log error and not throw when upsert fails', async () => {
+    (mockRuntimeStateRepo.upsert as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error('Cosmos write failed'),
+    );
+
+    await expect(
+      SyncTrusteeAppointments.storeRuntimeState(context, '2025-02-01T00:00:00Z'),
+    ).resolves.toBeUndefined();
   });
 });
