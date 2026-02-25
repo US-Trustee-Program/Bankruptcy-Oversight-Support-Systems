@@ -1,5 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
+  TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES,
   TrusteeAppointmentSyncError,
   TrusteeAppointmentSyncEvent,
 } from '@common/cams/dataflow-events';
@@ -31,18 +32,18 @@ function buildDlqMessage(
     | { mismatchReason?: string; candidateTrusteeIds?: string[] }
     | undefined;
 
-  if (data?.mismatchReason === 'NO_TRUSTEE_MATCH') {
-    return { ...event, mismatchReason: 'NO_TRUSTEE_MATCH' };
+  if (data?.mismatchReason === TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH) {
+    return { ...event, mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH };
   }
-  if (data?.mismatchReason === 'MULTIPLE_TRUSTEES_MATCH') {
+  if (data?.mismatchReason === TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH) {
     return {
       ...event,
-      mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+      mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH,
       candidateTrusteeIds: data.candidateTrusteeIds,
     };
   }
   if (isNotFoundError(error)) {
-    return { ...event, mismatchReason: 'CASE_NOT_FOUND' };
+    return { ...event, mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.CASE_NOT_FOUND };
   }
   // Unclassified/transient — preserve raw event shape with error set
   return { ...event, error };
