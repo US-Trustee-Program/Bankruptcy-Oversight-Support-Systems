@@ -15,6 +15,7 @@ import ResyncTerminalTransactionCases from './migrations/resync-terminal-transac
 import SyncCases from './import/sync-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
+import SyncTrusteeAppointments from './import/sync-trustee-appointments';
 /*
 
 dataflows.ts
@@ -111,6 +112,7 @@ dataflows.register(
   SyncCases,
   SyncOfficeStaff,
   SyncOrders,
+  SyncTrusteeAppointments,
 );
 
 // Log the list of registered data flows.

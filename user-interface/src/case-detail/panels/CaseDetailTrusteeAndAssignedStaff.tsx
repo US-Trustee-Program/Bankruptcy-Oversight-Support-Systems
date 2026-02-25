@@ -15,6 +15,9 @@ import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import LegacyFormattedContact from '@/lib/components/cams/LegacyFormattedContact';
+import { useTrustee } from './useTrustee';
+import { TrusteeZoomInfo } from './TrusteeZoomInfo';
+import { TrusteeName } from './TrusteeName';
 
 export interface CaseDetailTrusteeAndAssignedStaffProps {
   caseDetail: CaseDetail;
@@ -36,6 +39,8 @@ function CaseDetailTrusteeAndAssignedStaff(
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const openModalButtonRef = useRef<OpenModalButtonRef>(null);
+
+  const { trustee, loading: trusteeLoading } = useTrustee(caseDetail.trusteeId);
 
   function handleCaseAssignment(props: AssignAttorneyModalCallbackProps) {
     onCaseAssignment(props);
@@ -102,11 +107,21 @@ function CaseDetailTrusteeAndAssignedStaff(
           {caseDetail.trustee && (
             <div className="assigned-staff-information record-detail-card">
               <h3>Trustee</h3>
-              <div className="trustee-name">{caseDetail.trustee.name}</div>
+              <div className="trustee-name">
+                <TrusteeName
+                  trusteeName={caseDetail.trustee.name}
+                  trusteeId={caseDetail.trusteeId}
+                />
+              </div>
               <LegacyFormattedContact
                 legacy={caseDetail.trustee.legacy}
                 testIdPrefix="case-detail-trustee"
                 emailSubject={`${getCaseNumber(caseDetail.caseId)} - ${caseDetail.caseTitle}`}
+              />
+              <TrusteeZoomInfo
+                trusteeId={caseDetail.trusteeId}
+                trustee={trustee}
+                loading={trusteeLoading}
               />
             </div>
           )}

@@ -56,6 +56,7 @@ export type CaseDetail = CaseSummary & {
   jointDebtorAttorney?: DebtorAttorney;
   judgeName?: string;
   trustee?: LegacyTrustee;
+  trusteeId?: string;
 };
 
 export type CaseDocketEntryDocument = {
@@ -122,6 +123,7 @@ export type SyncedCase = DxtrCase &
   Auditable & {
     documentType: 'SYNCED_CASE';
     id?: string;
+    trusteeId?: string;
   };
 
 export function isCaseClosed<T extends ClosedDismissedReopened>(bCase: T) {

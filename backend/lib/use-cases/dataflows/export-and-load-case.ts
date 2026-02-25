@@ -42,9 +42,9 @@ async function exportAndLoad(
     try {
       event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
       const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
-      await repo.syncDxtrCase(
-        createAuditRecord<SyncedCase>({ ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' }),
-      );
+      const syncedCase: SyncedCase = { ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' };
+
+      await repo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
     } catch (originalError) {
       event.error = getCamsError(
         originalError,

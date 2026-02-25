@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 import SyncCases from './sync-cases';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { CasesSyncState } from '../gateways.types';
+import { CasesSyncState, LegacyCasesSyncState } from '../gateways.types';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -26,9 +26,11 @@ describe('getCaseIds tests', () => {
     const latestTransactionsSyncDate = '2025-02-11T12:45:00.789Z';
     const caseIds = MockData.buildArray(MockData.randomCaseId, 3);
 
-    const getIdSpy = vi
-      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue({ caseIds, latestCasesSyncDate, latestTransactionsSyncDate });
+    const getIdSpy = vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      latestCasesSyncDate,
+      latestTransactionsSyncDate,
+    });
 
     const syncState: CasesSyncState = {
       documentType: 'CASES_SYNC_STATE',
@@ -63,7 +65,11 @@ describe('getCaseIds tests', () => {
 
     const getUpdatedSpy = vi
       .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue({ caseIds: mockCaseIds, latestCasesSyncDate, latestTransactionsSyncDate });
+      .mockResolvedValue({
+        caseIds: mockCaseIds,
+        latestCasesSyncDate,
+        latestTransactionsSyncDate,
+      });
 
     const actual = await SyncCases.getCaseIds(context, lastSyncDate);
     expect(getUpdatedSpy).toHaveBeenCalled();
@@ -80,15 +86,17 @@ describe('getCaseIds tests', () => {
     const latestTransactionsSyncDate = '2025-02-11T12:45:00.789Z';
     const caseIds = MockData.buildArray(MockData.randomCaseId, 2);
 
-    const getIdSpy = vi
-      .spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds')
-      .mockResolvedValue({ caseIds, latestCasesSyncDate, latestTransactionsSyncDate });
+    const getIdSpy = vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      latestCasesSyncDate,
+      latestTransactionsSyncDate,
+    });
 
     // Mock legacy sync state with only lastSyncDate
-    const legacySyncState = {
+    const legacySyncState: LegacyCasesSyncState = {
       documentType: 'CASES_SYNC_STATE',
       lastSyncDate: legacyLastSyncDate,
-    } as CasesSyncState;
+    };
     vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(legacySyncState);
 
     const actual = await SyncCases.getCaseIds(context);
@@ -109,5 +117,28 @@ describe('getCaseIds tests', () => {
     };
 
     expect(actual).toEqual(expected);
+  });
+
+  test('should produce all CASE_CHANGED events', async () => {
+    const caseIds = ['081-20-10001', '081-20-10002'];
+
+    vi.spyOn(CasesLocalGateway.prototype, 'getUpdatedCaseIds').mockResolvedValue({
+      caseIds,
+      latestCasesSyncDate: '2025-02-11T10:30:00.124Z',
+      latestTransactionsSyncDate: '2025-02-11T12:45:00.789Z',
+    });
+
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue({
+      documentType: 'CASES_SYNC_STATE',
+      lastCasesSyncDate: '2025-01-01',
+      lastTransactionsSyncDate: '2025-01-01',
+    } as CasesSyncState);
+
+    const actual = await SyncCases.getCaseIds(context);
+
+    expect(actual.events).toEqual([
+      { caseId: '081-20-10001', type: 'CASE_CHANGED' },
+      { caseId: '081-20-10002', type: 'CASE_CHANGED' },
+    ]);
   });
 });
