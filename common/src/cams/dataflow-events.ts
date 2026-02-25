@@ -69,10 +69,24 @@ export const TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES = {
 } as const satisfies Record<string, TrusteeAppointmentSyncErrorCode>;
 
 /**
+ * Scoring details for a candidate trustee during fuzzy matching.
+ * Used to aid manual resolution when fuzzy matching cannot determine a clear winner.
+ */
+export type CandidateScore = {
+  trusteeId: string;
+  trusteeName: string;
+  totalScore: number;
+  addressScore: number;
+  districtDivisionScore: number;
+  chapterScore: number;
+};
+
+/**
  * Sent to the DLQ when a trustee appointment cannot be processed due to a known, permanent error.
  * Extends the original event to preserve full context for future recovery processing.
  */
 export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
   mismatchReason: TrusteeAppointmentSyncErrorCode;
   candidateTrusteeIds?: string[];
+  candidateScores?: CandidateScore[];
 };
