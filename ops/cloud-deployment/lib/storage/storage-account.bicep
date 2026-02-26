@@ -22,10 +22,9 @@ param sku string = 'Standard_LRS'
   'BlobStorage'
   'BlockBlobStorage'
   'FileStorage'
-  'Storage'
   'StorageV2'
 ])
-param kind string = 'Storage'
+param kind string = 'StorageV2'
 
 param tags object = {}
 
@@ -45,3 +44,4 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
 
 output accountName string = storageAccount.name
 output accountId string = storageAccount.id
+output connectionString string = 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${storageAccount.listKeys().keys[0].value}'
