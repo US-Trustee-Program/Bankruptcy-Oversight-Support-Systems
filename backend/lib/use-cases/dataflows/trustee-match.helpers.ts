@@ -1,10 +1,10 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import {
-  TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES,
   DxtrTrusteeParty,
   CandidateScore,
   TrusteeAppointmentSyncEvent,
+  UNSCORED,
 } from '@common/cams/dataflow-events';
 import factory from '../../factory';
 import { LegacyAddress } from '@common/cams/parties';
@@ -58,9 +58,10 @@ function parseCityStateZip(cityStateZipCountry?: string): {
 /**
  * Calculates address match score between DXTR and CAMS addresses.
  * Scoring:
- * - All three match (city, state, zipCode): 100 points
- * - State + city match: 60 points
- * - State only: 30 points
+ * - City + State + Zip match: 100 points (perfect match)
+ * - Zip match (state implied): 60 points (high confidence - zip is specific)
+ * - City match (state implied): 40 points (medium confidence)
+ * - State match only: 30 points (low confidence)
  * - No match: 0 points
  * Case-insensitive comparison, missing fields treated as no match.
  */
@@ -82,17 +83,24 @@ export function calculateAddressScore(
   const camsState = normalizeField(camsAddress.state);
   const camsZip = normalizeField(camsAddress.zipCode);
 
-  // State must match for any points
-  if (!dxtrState || !camsState || dxtrState !== camsState) {
-    return 0;
-  }
-
+  const stateMatch = dxtrState && camsState && dxtrState === camsState;
   const cityMatch = dxtrCity && camsCity && dxtrCity === camsCity;
   const zipMatch = dxtrZip && camsZip && dxtrZip === camsZip;
 
+  // Perfect match: city, state, and zip all match
   if (cityMatch && zipMatch) return 100;
-  if (cityMatch) return 60;
-  return 30; // State-only match
+
+  // High confidence: zip match (zip is more specific than city)
+  if (zipMatch) return 60;
+
+  // Medium confidence: city match (zip differs or missing)
+  if (cityMatch) return 40;
+
+  // State only (both city and zip missing): low confidence
+  if (stateMatch) return 30;
+
+  // No match
+  return 0;
 }
 
 /**
@@ -222,28 +230,58 @@ export async function resolveTrusteeWithFuzzyMatching(
   if (!syncedCase) {
     throw new CamsError(MODULE_NAME, {
       message: `Case ${event.caseId} not found during fuzzy matching.`,
+      data: {
+        mismatchReason: 'CASE_NOT_FOUND',
+        matchCandidates: [],
+      },
     });
   }
 
-  // Score all candidates
+  // Score all candidates - fetch data in parallel to avoid N+1 queries
   const trusteesRepo = factory.getTrusteesRepository(context);
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
-  const candidateScores: CandidateScore[] = [];
 
-  for (const trusteeId of candidateTrusteeIds) {
-    // TODO: is getTrustee a function that is going to get implemented in the next step? Or....???
-    const trustee = await trusteesRepo.getTrustee(trusteeId);
-    const appointments = await appointmentsRepo.getTrusteeAppointments(trusteeId);
+  const candidateDataPromises = candidateTrusteeIds.map(async (trusteeId) => {
+    try {
+      const [trustee, appointments] = await Promise.all([
+        trusteesRepo.read(trusteeId),
+        appointmentsRepo.getTrusteeAppointments(trusteeId),
+      ]);
+      return { trusteeId, trustee, appointments, error: null };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      return { trusteeId, trustee: null, appointments: null, error: errorMessage };
+    }
+  });
+
+  const candidateData = await Promise.all(candidateDataPromises);
+
+  const candidateScores: CandidateScore[] = [];
+  for (const { trusteeId, trustee, appointments, error } of candidateData) {
+    if (error) {
+      context.logger.warn(MODULE_NAME, `Skipping candidate ${trusteeId}: ${error}`);
+      continue;
+    }
 
     const score = calculateCandidateScore(
       context,
       event.dxtrTrustee,
       syncedCase,
-      trustee,
-      appointments,
+      trustee!,
+      appointments!,
     );
 
     candidateScores.push(score);
+  }
+
+  // Guard against empty results (all candidates failed to load)
+  if (candidateScores.length === 0) {
+    throw new CamsError(MODULE_NAME, {
+      message: `Fuzzy matching failed: no valid candidates could be scored for case ${event.caseId}`,
+      data: {
+        mismatchReason: 'NO_TRUSTEE_MATCH',
+      },
+    });
   }
 
   // Sort by totalScore descending
@@ -272,9 +310,8 @@ export async function resolveTrusteeWithFuzzyMatching(
   throw new CamsError(MODULE_NAME, {
     message: `Fuzzy matching failed: no clear winner among ${candidateScores.length} candidates [${candidateList}]`,
     data: {
-      mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH,
-      candidateTrusteeIds,
-      candidateScores,
+      mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+      matchCandidates: candidateScores,
     },
   });
 }
@@ -290,18 +327,25 @@ export async function matchTrusteeByName(
   if (matches.length === 0) {
     throw new CamsError(MODULE_NAME, {
       message: `No CAMS trustee found matching name "${normalized}".`,
-      data: { mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.NO_TRUSTEE_MATCH },
+      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
     });
   }
 
   if (matches.length > 1) {
-    const candidateTrusteeIds = matches.map((t) => t.trusteeId);
     const candidates = matches.map((t) => `${t.trusteeId} ("${t.name}")`).join(', ');
+    const matchCandidates: CandidateScore[] = matches.map((t) => ({
+      trusteeId: t.trusteeId,
+      trusteeName: t.name,
+      totalScore: UNSCORED,
+      addressScore: UNSCORED,
+      districtDivisionScore: UNSCORED,
+      chapterScore: UNSCORED,
+    }));
     throw new CamsError(MODULE_NAME, {
       message: `Multiple CAMS trustees found matching name "${normalized}": ${candidates}.`,
       data: {
-        mismatchReason: TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES.MULTIPLE_TRUSTEES_MATCH,
-        candidateTrusteeIds,
+        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+        matchCandidates,
       },
     });
   }

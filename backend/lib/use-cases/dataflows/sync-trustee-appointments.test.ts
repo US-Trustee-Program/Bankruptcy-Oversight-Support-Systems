@@ -194,9 +194,27 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
   });
 
   test('should attempt fuzzy matching when MULTIPLE_TRUSTEES_MATCH error occurs', async () => {
+    const matchCandidates = [
+      {
+        trusteeId: 't-1',
+        trusteeName: 'Trustee 1',
+        totalScore: -1,
+        addressScore: -1,
+        districtDivisionScore: -1,
+        chapterScore: -1,
+      },
+      {
+        trusteeId: 't-2',
+        trusteeName: 'Trustee 2',
+        totalScore: -1,
+        addressScore: -1,
+        districtDivisionScore: -1,
+        chapterScore: -1,
+      },
+    ];
     const multiMatchError = new CamsError('TRUSTEE-MATCH', {
       message: 'Multiple match',
-      data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', candidateTrusteeIds: ['t-1', 't-2'] },
+      data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates },
     });
     (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       multiMatchError,
@@ -225,39 +243,57 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(dlqMessages).toHaveLength(0);
   });
 
-  test('should send TrusteeAppointmentSyncError with candidateScores when fuzzy matching fails', async () => {
+  test('should send TrusteeAppointmentSyncError with matchCandidates when fuzzy matching fails', async () => {
+    const matchCandidates = [
+      {
+        trusteeId: 't-1',
+        trusteeName: 'Trustee 1',
+        totalScore: -1,
+        addressScore: -1,
+        districtDivisionScore: -1,
+        chapterScore: -1,
+      },
+      {
+        trusteeId: 't-2',
+        trusteeName: 'Trustee 2',
+        totalScore: -1,
+        addressScore: -1,
+        districtDivisionScore: -1,
+        chapterScore: -1,
+      },
+    ];
     const multiMatchError = new CamsError('TRUSTEE-MATCH', {
       message: 'Multiple match',
-      data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', candidateTrusteeIds: ['t-1', 't-2'] },
+      data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates },
     });
     (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       multiMatchError,
     );
 
     // Mock fuzzy matching to fail with scores
+    const scoredCandidates = [
+      {
+        trusteeId: 't-1',
+        trusteeName: 'John Doe 1',
+        totalScore: 60,
+        addressScore: 100,
+        districtDivisionScore: 50,
+        chapterScore: 0,
+      },
+      {
+        trusteeId: 't-2',
+        trusteeName: 'John Doe 2',
+        totalScore: 58,
+        addressScore: 100,
+        districtDivisionScore: 45,
+        chapterScore: 0,
+      },
+    ];
     const fuzzyMatchError = new CamsError('TRUSTEE-MATCH', {
       message: 'Fuzzy matching failed',
       data: {
         mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-        candidateTrusteeIds: ['t-1', 't-2'],
-        candidateScores: [
-          {
-            trusteeId: 't-1',
-            trusteeName: 'John Doe 1',
-            totalScore: 60,
-            addressScore: 100,
-            districtDivisionScore: 50,
-            chapterScore: 0,
-          },
-          {
-            trusteeId: 't-2',
-            trusteeName: 'John Doe 2',
-            totalScore: 58,
-            addressScore: 100,
-            districtDivisionScore: 45,
-            chapterScore: 0,
-          },
-        ],
+        matchCandidates: scoredCandidates,
       },
     });
     vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockRejectedValueOnce(
@@ -271,10 +307,9 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
 
     const err = dlqMessages[0] as TrusteeAppointmentSyncError;
     expect(err.mismatchReason).toBe('MULTIPLE_TRUSTEES_MATCH');
-    expect(err.candidateTrusteeIds).toEqual(['t-1', 't-2']);
-    expect(err.candidateScores).toHaveLength(2);
-    expect(err.candidateScores?.[0].trusteeId).toBe('t-1');
-    expect(err.candidateScores?.[0].totalScore).toBe(60);
+    expect(err.matchCandidates).toHaveLength(2);
+    expect(err.matchCandidates[0].trusteeId).toBe('t-1');
+    expect(err.matchCandidates[0].totalScore).toBe(60);
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
   });

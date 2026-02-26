@@ -27,6 +27,64 @@ import {
   TrusteeAppointmentsRepository,
 } from '../gateways.types';
 
+// Centralized test fixture builders
+const makeAppointment = (overrides: Partial<TrusteeAppointment> = {}): TrusteeAppointment => ({
+  id: 'appointment-1',
+  trusteeId: 'trustee-1',
+  chapter: '7',
+  courtId: '081',
+  divisionCode: '1',
+  appointmentType: 'panel',
+  status: 'active',
+  createdBy: { id: 'system', name: 'System' },
+  createdOn: '2024-01-01T00:00:00Z',
+  updatedBy: { id: 'system', name: 'System' },
+  updatedOn: '2024-01-01T00:00:00Z',
+  ...overrides,
+});
+
+const makeCase = (overrides: Partial<SyncedCase> = {}): SyncedCase => ({
+  caseId: '24-12345',
+  chapter: '7',
+  courtId: '081',
+  courtDivisionCode: '1',
+  dxtrId: 'dxtr-1',
+  caseTitle: 'Test Case',
+  petitionLabel: 'Debtor',
+  dateFiled: '2024-01-01',
+  regionId: 'region-1',
+  regionName: 'Region 1',
+  officeCode: '081',
+  closedDate: undefined,
+  dismissedDate: undefined,
+  reopenedDate: undefined,
+  officeName: 'Test Office',
+  courtName: 'Test Court',
+  courtDivisionName: 'Test Division',
+  groupDesignator: 'NY',
+  ...overrides,
+});
+
+const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
+  trusteeId: 'trustee-1',
+  name: 'John Doe',
+  status: 'active',
+  public: {
+    address: {
+      address1: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      zipCode: '10001',
+      countryCode: 'US',
+    },
+  },
+  createdBy: { id: 'system', name: 'System' },
+  createdOn: '2024-01-01T00:00:00Z',
+  updatedBy: { id: 'system', name: 'System' },
+  updatedOn: '2024-01-01T00:00:00Z',
+  ...overrides,
+});
+
 describe('normalizeName', () => {
   test('should trim leading and trailing whitespace', () => {
     expect(normalizeName('  John Doe  ')).toBe('John Doe');
@@ -90,7 +148,7 @@ describe('matchTrusteeByName', () => {
     });
   });
 
-  test('should throw with mismatchReason MULTIPLE_TRUSTEES_MATCH and candidateTrusteeIds when multiple trustees match', async () => {
+  test('should throw with mismatchReason MULTIPLE_TRUSTEES_MATCH and matchCandidates when multiple trustees match', async () => {
     const trustee1 = MockData.getTrustee();
     const trustee2 = MockData.getTrustee();
     vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
@@ -102,7 +160,10 @@ describe('matchTrusteeByName', () => {
       message: expect.stringContaining('Multiple CAMS trustees found matching name'),
       data: {
         mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-        candidateTrusteeIds: expect.arrayContaining([trustee1.trusteeId, trustee2.trusteeId]),
+        matchCandidates: expect.arrayContaining([
+          expect.objectContaining({ trusteeId: trustee1.trusteeId }),
+          expect.objectContaining({ trusteeId: trustee2.trusteeId }),
+        ]),
       },
     });
   });
@@ -153,7 +214,7 @@ describe('calculateAddressScore', () => {
     };
 
     const score = calculateAddressScore(dxtrAddress, camsAddress);
-    expect(score).toBe(60);
+    expect(score).toBe(40); // City + state match (different zip)
   });
 
   test('should return 30 when only state matches', () => {
@@ -288,44 +349,28 @@ describe('normalizeChapter', () => {
 });
 
 describe('calculateDistrictDivisionScore', () => {
-  const createAppointment = (
-    courtId: string,
-    divisionCode: string,
-    status: 'active' | 'inactive' | 'voluntarily-suspended' = 'active',
-  ): TrusteeAppointment => ({
-    id: 'appointment-1',
-    trusteeId: 'trustee-1',
-    chapter: '7',
-    courtId,
-    divisionCode,
-    appointmentType: 'panel',
-    status,
-    createdBy: { id: 'system', name: 'System' },
-    createdOn: '2024-01-01T00:00:00Z',
-    updatedBy: { id: 'system', name: 'System' },
-    updatedOn: '2024-01-01T00:00:00Z',
-  });
-
   test('should return 100 when exact court and division match with active appointment', () => {
-    const appointments = [createAppointment('081', '1', 'active')];
+    const appointments = [makeAppointment({ courtId: '081', divisionCode: '1', status: 'active' })];
     const score = calculateDistrictDivisionScore('081', '1', appointments);
     expect(score).toBe(100);
   });
 
   test('should return 50 when same court but different division', () => {
-    const appointments = [createAppointment('081', '2', 'active')];
+    const appointments = [makeAppointment({ courtId: '081', divisionCode: '2', status: 'active' })];
     const score = calculateDistrictDivisionScore('081', '1', appointments);
     expect(score).toBe(50);
   });
 
   test('should return 0 when no matching court', () => {
-    const appointments = [createAppointment('082', '1', 'active')];
+    const appointments = [makeAppointment({ courtId: '082', divisionCode: '1', status: 'active' })];
     const score = calculateDistrictDivisionScore('081', '1', appointments);
     expect(score).toBe(0);
   });
 
   test('should return 0 when matching appointment is not active', () => {
-    const appointments = [createAppointment('081', '1', 'inactive')];
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', status: 'inactive' }),
+    ];
     const score = calculateDistrictDivisionScore('081', '1', appointments);
     expect(score).toBe(0);
   });
@@ -337,9 +382,9 @@ describe('calculateDistrictDivisionScore', () => {
 
   test('should return highest score when multiple appointments exist', () => {
     const appointments = [
-      createAppointment('082', '1', 'active'),
-      createAppointment('081', '2', 'active'),
-      createAppointment('081', '1', 'active'),
+      makeAppointment({ courtId: '082', divisionCode: '1', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '2', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', status: 'active' }),
     ];
     const score = calculateDistrictDivisionScore('081', '1', appointments);
     expect(score).toBe(100);
@@ -347,49 +392,32 @@ describe('calculateDistrictDivisionScore', () => {
 });
 
 describe('calculateChapterScore', () => {
-  const createAppointment = (
-    chapter: '7' | '11' | '11-subchapter-v' | '12' | '13',
-    status: 'active' | 'inactive' | 'voluntarily-suspended' = 'active',
-  ): TrusteeAppointment => ({
-    id: 'appointment-1',
-    trusteeId: 'trustee-1',
-    chapter,
-    courtId: '081',
-    divisionCode: '1',
-    appointmentType: 'panel',
-    status,
-    createdBy: { id: 'system', name: 'System' },
-    createdOn: '2024-01-01T00:00:00Z',
-    updatedBy: { id: 'system', name: 'System' },
-    updatedOn: '2024-01-01T00:00:00Z',
-  });
-
   test('should return 100 when exact chapter match with active appointment', () => {
-    const appointments = [createAppointment('7', 'active')];
+    const appointments = [makeAppointment({ chapter: '7', status: 'active' })];
     const score = calculateChapterScore('7', appointments);
     expect(score).toBe(100);
   });
 
   test('should return 100 when chapter matches after normalization', () => {
-    const appointments = [createAppointment('7', 'active')];
+    const appointments = [makeAppointment({ chapter: '7', status: 'active' })];
     const score = calculateChapterScore('07', appointments);
     expect(score).toBe(100);
   });
 
   test('should return 100 when chapter with subchapter matches', () => {
-    const appointments = [createAppointment('11', 'active')];
+    const appointments = [makeAppointment({ chapter: '11', status: 'active' })];
     const score = calculateChapterScore('11-subchapter-v', appointments);
     expect(score).toBe(100);
   });
 
   test('should return 0 when no matching chapter', () => {
-    const appointments = [createAppointment('11', 'active')];
+    const appointments = [makeAppointment({ chapter: '11', status: 'active' })];
     const score = calculateChapterScore('7', appointments);
     expect(score).toBe(0);
   });
 
   test('should return 0 when matching appointment is not active', () => {
-    const appointments = [createAppointment('7', 'inactive')];
+    const appointments = [makeAppointment({ chapter: '7', status: 'inactive' })];
     const score = calculateChapterScore('7', appointments);
     expect(score).toBe(0);
   });
@@ -401,9 +429,9 @@ describe('calculateChapterScore', () => {
 
   test('should return 100 when multiple appointments and one matches', () => {
     const appointments = [
-      createAppointment('11', 'active'),
-      createAppointment('7', 'active'),
-      createAppointment('13', 'active'),
+      makeAppointment({ chapter: '11', status: 'active' }),
+      makeAppointment({ chapter: '7', status: 'active' }),
+      makeAppointment({ chapter: '13', status: 'active' }),
     ];
     const score = calculateChapterScore('7', appointments);
     expect(score).toBe(100);
@@ -454,30 +482,13 @@ describe('calculateCandidateScore', () => {
     },
   });
 
-  const createAppointment = (
-    chapter: '7' | '11' | '11-subchapter-v' | '12' | '13',
-    courtId: string,
-    divisionCode: string,
-    status: 'active' | 'inactive' | 'voluntarily-suspended' = 'active',
-  ): TrusteeAppointment => ({
-    id: 'appointment-1',
-    trusteeId: 'trustee-1',
-    chapter,
-    courtId,
-    divisionCode,
-    appointmentType: 'panel',
-    status,
-    createdBy: { id: 'system', name: 'System' },
-    createdOn: '2024-01-01T00:00:00Z',
-    updatedBy: { id: 'system', name: 'System' },
-    updatedOn: '2024-01-01T00:00:00Z',
-  });
-
   test('should return totalScore 100 when all scores are 100', () => {
     const dxtrTrustee = createDxtrTrustee('New York, NY 10001');
     const camsCase = createCamsCase('7', '081', '1');
     const camsTrustee = createCamsTrustee('New York', 'NY', '10001');
-    const appointments = [createAppointment('7', '081', '1', 'active')];
+    const appointments = [
+      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' }),
+    ];
 
     const score = calculateCandidateScore(
       context,
@@ -499,7 +510,9 @@ describe('calculateCandidateScore', () => {
     const dxtrTrustee = createDxtrTrustee('New York, NY 10001');
     const camsCase = createCamsCase('7', '081', '1');
     const camsTrustee = createCamsTrustee('New York', 'NY', '10002'); // Different zip
-    const appointments = [createAppointment('7', '081', '2', 'active')]; // Different division
+    const appointments = [
+      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '2', status: 'active' }),
+    ]; // Different division
 
     const score = calculateCandidateScore(
       context,
@@ -509,18 +522,20 @@ describe('calculateCandidateScore', () => {
       appointments,
     );
 
-    expect(score.addressScore).toBe(60); // City + state match
+    expect(score.addressScore).toBe(40); // City + state match (different zip)
     expect(score.districtDivisionScore).toBe(50); // Same court, different division
     expect(score.chapterScore).toBe(100); // Chapter matches
-    // (60 * 0.2) + (50 * 0.4) + (100 * 0.4) = 12 + 20 + 40 = 72
-    expect(score.totalScore).toBe(72);
+    // (40 * 0.2) + (50 * 0.4) + (100 * 0.4) = 8 + 20 + 40 = 68
+    expect(score.totalScore).toBe(68);
   });
 
   test('should return totalScore 20 when only address matches', () => {
     const dxtrTrustee = createDxtrTrustee('New York, NY 10001');
     const camsCase = createCamsCase('11', '082', '1');
     const camsTrustee = createCamsTrustee('New York', 'NY', '10001');
-    const appointments = [createAppointment('7', '081', '1', 'active')];
+    const appointments = [
+      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' }),
+    ];
 
     const score = calculateCandidateScore(
       context,
@@ -540,7 +555,9 @@ describe('calculateCandidateScore', () => {
     const dxtrTrustee = createDxtrTrustee(); // No address
     const camsCase = createCamsCase('11', '081', '1');
     const camsTrustee = createCamsTrustee('New York', 'NY', '10001');
-    const appointments = [createAppointment('7', '081', '1', 'active')];
+    const appointments = [
+      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' }),
+    ];
 
     const score = calculateCandidateScore(
       context,
@@ -560,7 +577,9 @@ describe('calculateCandidateScore', () => {
     const dxtrTrustee = createDxtrTrustee(); // No address
     const camsCase = createCamsCase('7', '082', '1');
     const camsTrustee = createCamsTrustee('New York', 'NY', '10001');
-    const appointments = [createAppointment('7', '081', '1', 'active')];
+    const appointments = [
+      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' }),
+    ];
 
     const score = calculateCandidateScore(
       context,
@@ -611,7 +630,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     };
 
     mockTrusteesRepo = {
-      getTrustee: vi.fn(),
+      read: vi.fn(),
       release: vi.fn(),
     };
 
@@ -644,80 +663,63 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     },
   });
 
-  const createCase = (): SyncedCase => ({
-    caseId: '24-12345',
-    chapter: '7',
-    courtId: '081',
-    courtDivisionCode: '1',
-    dxtrId: 'dxtr-1',
-    caseTitle: 'Test Case',
-    petitionLabel: 'Debtor',
-    dateFiled: '2024-01-01',
-    regionId: 'region-1',
-    regionName: 'Region 1',
-    officeCode: '081',
-    closedDate: undefined,
-    dismissedDate: undefined,
-    reopenedDate: undefined,
-    officeName: 'Test Office',
-    courtName: 'Test Court',
-    courtDivisionName: 'Test Division',
-    groupDesignator: 'NY',
-  });
-
-  const createTrustee = (trusteeId: string, name: string, city: string): Trustee => ({
-    trusteeId,
-    name,
-    status: 'active',
-    public: {
-      address: {
-        address1: '123 Main St',
-        city,
-        state: 'NY',
-        zipCode: '10001',
-        countryCode: 'US',
-      },
-    },
-    createdBy: { id: 'system', name: 'System' },
-    createdOn: '2024-01-01T00:00:00Z',
-    updatedBy: { id: 'system', name: 'System' },
-    updatedOn: '2024-01-01T00:00:00Z',
-  });
-
-  const createAppointment = (
-    trusteeId: string,
-    chapter: '7' | '11' | '12',
-    courtId: string,
-    divisionCode: string,
-  ): TrusteeAppointment => ({
-    id: `appointment-${trusteeId}`,
-    trusteeId,
-    chapter,
-    courtId,
-    divisionCode,
-    appointmentType: 'panel',
-    status: 'active',
-    createdBy: { id: 'system', name: 'System' },
-    createdOn: '2024-01-01T00:00:00Z',
-    updatedBy: { id: 'system', name: 'System' },
-    updatedOn: '2024-01-01T00:00:00Z',
-    appointedDate: '2024-01-01',
-    effectiveDate: '2024-01-01',
-  });
-
   test('should return trusteeId when clear winner found (>75% and 5+ gap)', async () => {
     const event = createEvent();
-    const syncedCase = createCase();
-    const winner = createTrustee('trustee-1', 'John Doe Winner', 'New York');
-    const loser = createTrustee('trustee-2', 'John Doe Loser', 'Brooklyn');
+    const syncedCase = makeCase();
+    const winner = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe Winner',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
+    const loser = makeTrustee({
+      trusteeId: 'trustee-2',
+      name: 'John Doe Loser',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'Brooklyn',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
 
     // Winner: perfect match (100 points)
-    const winnerAppointments = [createAppointment('trustee-1', '7', '081', '1')];
+    const winnerAppointments = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-01',
+        effectiveDate: '2024-01-01',
+      }),
+    ];
     // Loser: only state match (30 points address, 0 district, 0 chapter = 6 total)
-    const loserAppointments = [createAppointment('trustee-2', '11', '082', '2')];
+    const loserAppointments = [
+      makeAppointment({
+        id: 'appointment-trustee-2',
+        trusteeId: 'trustee-2',
+        chapter: '11',
+        courtId: '082',
+        divisionCode: '2',
+        appointedDate: '2024-01-01',
+        effectiveDate: '2024-01-01',
+      }),
+    ];
 
     (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
-    (mockTrusteesRepo.getTrustee as ReturnType<typeof vi.fn>)
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(winner)
       .mockResolvedValueOnce(loser);
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
@@ -734,16 +736,56 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should throw error when no candidate scores >75%', async () => {
     const event = createEvent();
-    const syncedCase = createCase();
-    const candidate1 = createTrustee('trustee-1', 'John Doe 1', 'Brooklyn');
-    const candidate2 = createTrustee('trustee-2', 'John Doe 2', 'Queens');
+    const syncedCase = makeCase();
+    const candidate1 = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe 1',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'Brooklyn',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
+    const candidate2 = makeTrustee({
+      trusteeId: 'trustee-2',
+      name: 'John Doe 2',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'Queens',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
 
     // Both candidates score low (only state match = 30 address * 0.2 = 6 points)
-    const appointments1 = [createAppointment('trustee-1', '11', '082', '2')];
-    const appointments2 = [createAppointment('trustee-2', '12', '082', '3')];
+    const appointments1 = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '11',
+        courtId: '082',
+        divisionCode: '2',
+      }),
+    ];
+    const appointments2 = [
+      makeAppointment({
+        id: 'appointment-trustee-2',
+        trusteeId: 'trustee-2',
+        chapter: '12',
+        courtId: '082',
+        divisionCode: '3',
+      }),
+    ];
 
     (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
-    (mockTrusteesRepo.getTrustee as ReturnType<typeof vi.fn>)
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(candidate1)
       .mockResolvedValueOnce(candidate2);
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
@@ -756,8 +798,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       message: expect.stringContaining('Fuzzy matching failed'),
       data: {
         mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-        candidateTrusteeIds: ['trustee-1', 'trustee-2'],
-        candidateScores: expect.arrayContaining([
+        matchCandidates: expect.arrayContaining([
           expect.objectContaining({ trusteeId: 'trustee-1' }),
           expect.objectContaining({ trusteeId: 'trustee-2' }),
         ]),
@@ -767,16 +808,56 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should throw error when top scores within 5 points', async () => {
     const event = createEvent();
-    const syncedCase = createCase();
-    const candidate1 = createTrustee('trustee-1', 'John Doe 1', 'New York');
-    const candidate2 = createTrustee('trustee-2', 'John Doe 2', 'New York');
+    const syncedCase = makeCase();
+    const candidate1 = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe 1',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
+    const candidate2 = makeTrustee({
+      trusteeId: 'trustee-2',
+      name: 'John Doe 2',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
 
     // Both score 80 (perfect address + court match = 20 + 40 = 60, then chapter 50% match = 20, total 80)
-    const appointments1 = [createAppointment('trustee-1', '7', '081', '2')];
-    const appointments2 = [createAppointment('trustee-2', '7', '081', '3')];
+    const appointments1 = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '2',
+      }),
+    ];
+    const appointments2 = [
+      makeAppointment({
+        id: 'appointment-trustee-2',
+        trusteeId: 'trustee-2',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '3',
+      }),
+    ];
 
     (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
-    (mockTrusteesRepo.getTrustee as ReturnType<typeof vi.fn>)
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
       .mockResolvedValueOnce(candidate1)
       .mockResolvedValueOnce(candidate2);
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
@@ -789,19 +870,39 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       message: expect.stringContaining('Fuzzy matching failed'),
       data: {
         mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-        candidateScores: expect.any(Array),
+        matchCandidates: expect.any(Array),
       },
     });
   });
 
   test('should return winner when single candidate meets 75% threshold', async () => {
     const event = createEvent();
-    const syncedCase = createCase();
-    const candidate = createTrustee('trustee-1', 'John Doe', 'New York');
-    const appointments = [createAppointment('trustee-1', '7', '081', '2')]; // 80 points
+    const syncedCase = makeCase();
+    const candidate = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
+    const appointments = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '2',
+      }),
+    ]; // 80 points
 
     (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
-    (mockTrusteesRepo.getTrustee as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(candidate);
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
       appointments,
     );
@@ -813,12 +914,34 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
   test('should lazy-load case, trustee, and appointment data', async () => {
     const event = createEvent();
-    const syncedCase = createCase();
-    const trustee = createTrustee('trustee-1', 'John Doe', 'New York');
-    const appointments = [createAppointment('trustee-1', '7', '081', '1')];
+    const syncedCase = makeCase();
+    const trustee = makeTrustee({
+      trusteeId: 'trustee-1',
+      name: 'John Doe',
+      public: {
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+      },
+    });
+    const appointments = [
+      makeAppointment({
+        id: 'appointment-trustee-1',
+        trusteeId: 'trustee-1',
+        chapter: '7',
+        courtId: '081',
+        divisionCode: '1',
+        appointedDate: '2024-01-01',
+        effectiveDate: '2024-01-01',
+      }),
+    ];
 
     (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
-    (mockTrusteesRepo.getTrustee as ReturnType<typeof vi.fn>).mockResolvedValue(trustee);
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(trustee);
     (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
       appointments,
     );
@@ -826,7 +949,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     await resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']);
 
     expect(mockCasesRepo.getSyncedCase).toHaveBeenCalledWith('24-12345');
-    expect(mockTrusteesRepo.getTrustee).toHaveBeenCalledWith('trustee-1');
+    expect(mockTrusteesRepo.read).toHaveBeenCalledWith('trustee-1');
     expect(mockAppointmentsRepo.getTrusteeAppointments).toHaveBeenCalledWith('trustee-1');
   });
 });

@@ -62,11 +62,11 @@ export type TrusteeAppointmentSyncErrorCode =
   | 'MULTIPLE_TRUSTEES_MATCH'
   | 'CASE_NOT_FOUND';
 
-export const TRUSTEE_APPOINTMENT_SYNC_ERROR_CODES = {
-  NO_TRUSTEE_MATCH: 'NO_TRUSTEE_MATCH',
-  MULTIPLE_TRUSTEES_MATCH: 'MULTIPLE_TRUSTEES_MATCH',
-  CASE_NOT_FOUND: 'CASE_NOT_FOUND',
-} as const satisfies Record<string, TrusteeAppointmentSyncErrorCode>;
+/**
+ * Sentinel value indicating a candidate trustee has not been scored yet.
+ * Used when candidates are identified but fuzzy matching has not been performed.
+ */
+export const UNSCORED = -1;
 
 /**
  * Scoring details for a candidate trustee during fuzzy matching.
@@ -87,6 +87,34 @@ export type CandidateScore = {
  */
 export type TrusteeAppointmentSyncError = TrusteeAppointmentSyncEvent & {
   mismatchReason: TrusteeAppointmentSyncErrorCode;
-  candidateTrusteeIds?: string[];
-  candidateScores?: CandidateScore[];
+  matchCandidates: CandidateScore[];
 };
+
+/**
+ * Data shape for a MULTIPLE_TRUSTEES_MATCH error.
+ */
+export type MultipleTrusteesMatchErrorData = {
+  mismatchReason: 'MULTIPLE_TRUSTEES_MATCH';
+  matchCandidates: CandidateScore[];
+};
+
+/**
+ * Type predicate to check if error data is a MULTIPLE_TRUSTEES_MATCH error.
+ */
+export function isMultipleTrusteesMatchError(
+  data: unknown,
+): data is MultipleTrusteesMatchErrorData {
+  if (typeof data !== 'object' || data === null) {
+    return false;
+  }
+
+  const candidate = data as {
+    mismatchReason?: unknown;
+    matchCandidates?: unknown;
+  };
+
+  return (
+    candidate.mismatchReason === 'MULTIPLE_TRUSTEES_MATCH' &&
+    Array.isArray(candidate.matchCandidates)
+  );
+}
