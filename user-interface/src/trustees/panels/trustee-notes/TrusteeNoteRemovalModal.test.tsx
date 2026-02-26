@@ -33,7 +33,7 @@ describe('TrusteeNoteRemovalModal', () => {
       trusteeId: randomUUID(),
       buttonId: 'test-button',
       callback: vi.fn(),
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
     };
 
     modalRef.current?.show(showProps);
@@ -56,7 +56,7 @@ describe('TrusteeNoteRemovalModal', () => {
       trusteeId: randomUUID(),
       buttonId: 'test-button',
       callback,
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
     };
 
     modalRef.current?.show(showProps);
