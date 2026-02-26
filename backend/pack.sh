@@ -74,25 +74,18 @@ if [[ "$OSTYPE" == linux* ]]; then
   # Return to function app directory (trap will clean up BUILD_TEMP on exit)
   cd "$FUNCTION_APP_PATH" || exit
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-  # Running on macOS - use Podman/Docker to build for Linux
-  # Detect which container runtime is available
-  if command -v podman &> /dev/null; then
-    CONTAINER_CMD="podman"
-    echo "Building dependencies for Linux using Podman..."
-  elif command -v docker &> /dev/null; then
-    CONTAINER_CMD="docker"
-    echo "Building dependencies for Linux using Docker..."
-  else
-    echo "Error: Neither podman nor docker found. Please install one."
+  # Running on macOS - use Podman to build for Linux
+  if ! command -v podman &> /dev/null; then
+    echo "Error: Podman is required but not found. Please install it."
     exit 1
   fi
 
   # Go to workspace root to access package-lock.json
   cd "$WORKSPACE_ROOT" || exit
-  $CONTAINER_CMD build -t "cams-$1-builder:latest" -f backend/Dockerfile.build --build-arg "FUNCTION_APP=$1" .
-  CONTAINER_ID=$($CONTAINER_CMD create "cams-$1-builder:latest")
-  $CONTAINER_CMD cp "$CONTAINER_ID:/build/node_modules" "$FUNCTION_APP_PATH/"
-  $CONTAINER_CMD rm "$CONTAINER_ID"
+  podman build -t "cams-$1-builder:latest" -f backend/Dockerfile.build --build-arg "FUNCTION_APP=$1" .
+  CONTAINER_ID=$(podman create "cams-$1-builder:latest")
+  podman cp "$CONTAINER_ID:/build/node_modules" "$FUNCTION_APP_PATH/"
+  podman rm "$CONTAINER_ID"
   # Return to function app directory
   cd "$FUNCTION_APP_PATH" || exit
 else

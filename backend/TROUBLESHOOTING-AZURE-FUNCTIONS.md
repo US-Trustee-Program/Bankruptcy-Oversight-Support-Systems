@@ -102,7 +102,7 @@ fi
 ```bash
 # Check Node.js version matches .nvmrc
 cat "${PROJECT_ROOT}/.nvmrc"
-# Expected: v22.17.1
+# Expected: v22.22.0
 
 node --version
 # Expected: v22.x.x (should match or be compatible with .nvmrc)
@@ -450,7 +450,7 @@ unzip -l "${LATEST_ZIP}" | grep -c "node_modules/"
 
 ```
 ${PROJECT_ROOT}/
-├── .nvmrc                                    # Node version: v22.17.1
+├── .nvmrc                                    # Node version: v22.22.0
 ├── backend/
 │   ├── esbuild-shared.mjs                    # Shared esbuild config
 │   ├── pack.sh                               # OS-aware packaging script
@@ -534,23 +534,19 @@ if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   cd "$FUNCTION_APP_PATH"
 
 elif [[ "$OSTYPE" == "darwin"* ]]; then
-  # Local development: Detect container runtime (podman or docker)
-  if command -v podman &> /dev/null; then
-    CONTAINER_CMD="podman"
-  elif command -v docker &> /dev/null; then
-    CONTAINER_CMD="docker"
-  else
-    echo "Error: Neither podman nor docker found"
+  # Local development: Use Podman to build Linux-compatible node_modules
+  if ! command -v podman &> /dev/null; then
+    echo "Error: Podman is required but not found. Please install it."
     exit 1
   fi
 
-  # Build using container
+  # Build using Podman
   cd "$WORKSPACE_ROOT"
-  $CONTAINER_CMD build -t cams-<app>-builder:latest -f backend/Dockerfile.build \
+  podman build -t cams-<app>-builder:latest -f backend/Dockerfile.build \
     --build-arg FUNCTION_APP=<app> .
-  CONTAINER_ID=$($CONTAINER_CMD create "cams-<app>-builder:latest")
-  $CONTAINER_CMD cp "$CONTAINER_ID:/build/node_modules" "$FUNCTION_APP_PATH/"
-  $CONTAINER_CMD rm "$CONTAINER_ID"
+  CONTAINER_ID=$(podman create "cams-<app>-builder:latest")
+  podman cp "$CONTAINER_ID:/build/node_modules" "$FUNCTION_APP_PATH/"
+  podman rm "$CONTAINER_ID"
 
   cd "$FUNCTION_APP_PATH"
 fi
@@ -560,12 +556,12 @@ zip -q -r <app>.zip ./dist ./node_modules ./package.json ./host.json
 ```
 
 **Key points:**
-- Uses root `package-lock.json` for all environments (Linux CI, macOS, Docker)
+- Uses root `package-lock.json` for all environments (Linux CI, macOS via Podman)
 - Path variables (WORKSPACE_ROOT, FUNCTION_APP_PATH) avoid hardcoded paths
 - `mktemp -d` creates unique temp directories to prevent race conditions
-- Auto-detects podman or docker on macOS
+- Requires Podman on macOS (Docker Desktop is not authorized for use)
 - `npm ci --workspaces=false` creates local node_modules without workspace symlinks
-- Linux and Docker paths produce identical dependency trees
+- Linux and Podman paths produce identical dependency trees
 
 ### Deployment Zip Contents
 
