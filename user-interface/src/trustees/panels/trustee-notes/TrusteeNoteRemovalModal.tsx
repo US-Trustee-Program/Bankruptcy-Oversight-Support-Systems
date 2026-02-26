@@ -27,7 +27,7 @@ export interface TrusteeNoteRemovalModalRef extends ModalRefType {
   buttons?: RefObject<SubmitCancelButtonGroupRef | null>;
 }
 
-export interface TrusteeNoteRemovalProps {
+interface TrusteeNoteRemovalProps {
   modalId: string;
 }
 
