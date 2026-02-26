@@ -111,26 +111,28 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
         }`}
         role={resolvedRole}
         aria-live={resolvedRole === 'alert' ? 'assertive' : 'polite'}
-        aria-labelledby={headingId}
+        aria-labelledby={isVisible === IsVisible.True ? headingId : undefined}
         aria-atomic="true"
         data-testid={`alert${props.id ? '-' + props.id : ''}`}
       >
-        <div className="usa-alert__body">
-          {props.title && (
-            <h4 className="usa-alert__heading" id={headingId}>
-              {props.title}
-            </h4>
-          )}
-          {!!props.message && (
-            <p
-              className="usa-alert__text"
-              data-testid={`alert-message${props.id ? '-' + props.id : ''}`}
-            >
-              {props.message}
-            </p>
-          )}
-          {!props.message && props.children}
-        </div>
+        {isVisible === IsVisible.True && (
+          <div className="usa-alert__body">
+            {props.title && (
+              <h4 className="usa-alert__heading" id={headingId}>
+                {props.title}
+              </h4>
+            )}
+            {!!props.message && (
+              <p
+                className="usa-alert__text"
+                data-testid={`alert-message${props.id ? '-' + props.id : ''}`}
+              >
+                {props.message}
+              </p>
+            )}
+            {!props.message && props.children}
+          </div>
+        )}
       </div>
     </div>
   );
