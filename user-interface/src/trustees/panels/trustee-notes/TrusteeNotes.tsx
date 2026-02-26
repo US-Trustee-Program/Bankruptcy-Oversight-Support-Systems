@@ -107,7 +107,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
 
     return (
       <li className="trustee-note grid-container" key={idx} data-testid={`trustee-note-${idx}`}>
-        <div className="grid-row trustee-note-title-and-date">
+        <div className="grid-row trustee-note-title">
           <div className="grid-col-12">
             <div className="grid-row">
               <div className="grid-col-10">
@@ -178,6 +178,8 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
               </div>
             </div>
           </div>
+        </div>
+        <div className="grid-row trustee-note-metadata">
           <div
             className="trustee-note-date grid-col-12 text-italic"
             data-testid={`trustee-note-creation-date-${idx}`}

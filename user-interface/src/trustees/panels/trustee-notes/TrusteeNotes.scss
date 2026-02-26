@@ -25,13 +25,18 @@
     margin-top: 0;
     padding-left: unset;
 
-    .trustee-note-title-and-date {
+    .trustee-note-title {
       flex-direction: column;
       gap: 1.25rem;
     }
 
+    .trustee-note-metadata {
+      margin-top: 1.25rem;
+      margin-bottom: .25rem;
+    }
+
     .trustee-note {
-      padding-top: 24px;
+      padding-top: 1.5rem;
     }
 
     .trustee-note-toolbar {
@@ -42,7 +47,7 @@
 
     .trustee-note:not(:last-child) {
       border-bottom: 1px solid black;
-      padding-bottom: 24px;
+      padding-bottom: .5rem;
     }
   }
 }
