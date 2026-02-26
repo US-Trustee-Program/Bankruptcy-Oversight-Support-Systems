@@ -9,7 +9,7 @@ export class ForbiddenTrusteeNotesError extends CamsError {
     super(module, { status: HttpStatusCodes.FORBIDDEN, ...options });
   }
 }
-
+// TODO: does this need to be implemented still? Or removed?
 export class InvalidTrusteeNotesError extends CamsError {
   constructor(module: string, options: TrusteeNotesErrorOptions = {}) {
     super(module, { status: HttpStatusCodes.BAD_REQUEST, ...options });

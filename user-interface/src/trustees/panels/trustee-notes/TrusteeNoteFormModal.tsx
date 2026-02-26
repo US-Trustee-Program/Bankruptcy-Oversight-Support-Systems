@@ -81,7 +81,7 @@ export interface TrusteeNoteFormModalRef extends ModalRefType {
   hide: () => void;
 }
 
-export type TrusteeNoteFormModalProps = {
+type TrusteeNoteFormModalProps = {
   modalId: string;
   onModalClosed?: (trusteeId: string, mode: TrusteeNoteFormMode) => void;
   RichTextEditorRef?: React.RefObject<RichTextEditorRef | null>;

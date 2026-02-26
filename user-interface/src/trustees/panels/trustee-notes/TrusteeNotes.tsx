@@ -1,3 +1,4 @@
+import './TrusteeNotes.scss';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -26,11 +27,11 @@ import { Cacheable } from '@/lib/utils/local-cache';
 import PrerenderedHtml from '@/lib/components/cams/PrerenderedHtml/PrerenderedHtml';
 import Api2 from '@/lib/models/api2';
 
-export type TrusteeNotesRef = {
+type TrusteeNotesRef = {
   focusEditButton: (noteId: string) => void;
 };
 
-export interface TrusteeNotesProps {
+interface TrusteeNotesProps {
   trusteeId: string;
 }
 
@@ -105,11 +106,11 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
     const draft = LocalFormCache.getForm<TrusteeNoteInput>(formKey);
 
     return (
-      <li className="case-note grid-container" key={idx} data-testid={`trustee-note-${idx}`}>
-        <div className="grid-row case-note-title-and-date">
+      <li className="trustee-note grid-container" key={idx} data-testid={`trustee-note-${idx}`}>
+        <div className="grid-row trustee-note-title-and-date">
           <div className="grid-col-8">
             <h4
-              className="case-note-header usa-tooltip"
+              className="trustee-note-header usa-tooltip"
               data-testid={`trustee-note-${idx}-header`}
               title={note.title}
               aria-label={`Note Title: ${note.title}`}
@@ -118,7 +119,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
             </h4>
           </div>
           <div
-            className="case-note-date grid-col-4"
+            className="trustee-note-date grid-col-4"
             data-testid={`trustee-note-creation-date-${idx}`}
           >
             {note.previousVersionId ? 'Edited on: ' : 'Created on: '}
@@ -126,7 +127,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
           </div>
         </div>
         <div className="grid-row">
-          <div className="grid-col-12 case-note-content">
+          <div className="grid-col-12 trustee-note-content">
             <div
               data-testid={`trustee-note-${idx}-text`}
               aria-label="full text of trustee note"
@@ -136,10 +137,10 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
             </div>
           </div>
         </div>
-        <div className="case-note-author" data-testid={`trustee-note-author-${idx}`}>
+        <div className="trustee-note-author" data-testid={`trustee-note-author-${idx}`}>
           {note.updatedBy.name}
         </div>
-        <div className="case-note-toolbar" data-testid={`trustee-note-toolbar-${idx}`}>
+        <div className="trustee-note-toolbar" data-testid={`trustee-note-toolbar-${idx}`}>
           {Actions.contains(note, Actions.EditTrusteeNote) && (
             <OpenModalButton
               className="edit-button"
@@ -261,8 +262,8 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   const hasTrusteeNotes = trusteeNotes && !!trusteeNotes.length;
 
   return (
-    <div className="case-notes-panel">
-      <div className="case-notes-title">
+    <div className="trustee-notes-panel">
+      <div className="trustee-notes-title">
         <h3>Trustee Notes</h3>
         {draftNote && (
           <div
@@ -282,31 +283,62 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
             />
           </div>
         )}
-        <OpenModalButton
-          className="add-button"
-          id={'trustee-note-add-button'}
-          uswdsStyle={UswdsButtonStyle.Default}
-          modalId={trusteeNoteModalId}
-          modalRef={trusteeNoteModalRef}
-          ref={openAddModalButtonRef}
-          openProps={{
-            trusteeId,
-            title: draftNote?.value.title ?? '',
-            content: draftNote?.value.content ?? '',
-            buttonId: `trustee-note-add-button`,
-            callback: fetchTrusteeNotes,
-            initialTitle: '',
-            initialContent: '',
-            mode: 'create',
-          }}
-          onClick={() => {
-            setFocusId('');
-          }}
-          ariaLabel={`Add new note`}
-        >
-          <Icon name="add_circle_outline" className="add-circle-outline-icon" />
-          {draftNote ? 'Continue Editing' : 'Add Note'}
-        </OpenModalButton>
+        <div className="trustee-notes-controls">
+          <div className="trustee-notes-search-and-sort">
+            <div className="trustee-notes-search-wrapper">
+              <label htmlFor="trustee-notes-search" className="usa-label">
+                Find note by title or content
+              </label>
+              <input
+                type="text"
+                className="usa-input"
+                id="trustee-notes-search"
+                name="trustee-notes-search"
+                aria-label="Find note by title or content"
+              />
+            </div>
+            <div className="trustee-notes-sort-wrapper">
+              <label htmlFor="trustee-notes-sort" className="usa-label">
+                Sort by
+              </label>
+              <select
+                className="usa-select"
+                id="trustee-notes-sort"
+                name="trustee-notes-sort"
+                aria-label="Sort by"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="title">Title A-Z</option>
+              </select>
+            </div>
+          </div>
+          <OpenModalButton
+            className="add-button"
+            id={'trustee-note-add-button'}
+            uswdsStyle={UswdsButtonStyle.Default}
+            modalId={trusteeNoteModalId}
+            modalRef={trusteeNoteModalRef}
+            ref={openAddModalButtonRef}
+            openProps={{
+              trusteeId,
+              title: draftNote?.value.title ?? '',
+              content: draftNote?.value.content ?? '',
+              buttonId: `trustee-note-add-button`,
+              callback: fetchTrusteeNotes,
+              initialTitle: '',
+              initialContent: '',
+              mode: 'create',
+            }}
+            onClick={() => {
+              setFocusId('');
+            }}
+            ariaLabel={`Add new note`}
+          >
+            <Icon name="add_circle_outline" className="add-circle-outline-icon" />
+            {draftNote ? 'Continue Editing' : 'Add Note'}
+          </OpenModalButton>
+        </div>
         {areTrusteeNotesLoading && (
           <LoadingSpinner id="trustee-notes-loading-indicator" caption="Loading trustee notes..." />
         )}
@@ -327,7 +359,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
             )}
             {trusteeNotes && trusteeNotes.length > 0 && (
               <ol
-                className="search-case-notes"
+                className="search-trustee-notes"
                 id="searchable-trustee-notes"
                 data-testid="searchable-trustee-notes"
               >

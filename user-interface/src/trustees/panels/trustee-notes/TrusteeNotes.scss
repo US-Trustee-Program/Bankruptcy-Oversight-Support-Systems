@@ -1,0 +1,28 @@
+.trustee-notes-panel {
+  .trustee-notes-controls {
+    display: flex;
+    justify-content: space-between;
+    .trustee-notes-search-and-sort {
+      display: flex;
+      margin-bottom: .5rem;
+      .trustee-notes-search-wrapper {
+        margin-right: 1rem;
+      }
+      div {
+        width: 17.875rem;
+      }
+    }
+    .add-button {
+      align-self: flex-end;
+      height: 2.75rem;
+    }
+  }
+
+  .search-trustee-notes {
+    padding-left: unset;
+    .trustee-note-title-and-date {
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+  }
+}
