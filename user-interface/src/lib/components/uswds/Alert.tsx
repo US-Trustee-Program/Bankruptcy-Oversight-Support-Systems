@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useState,
+  useId,
 } from 'react';
 
 export type AlertDetails = {
@@ -47,6 +48,8 @@ export type AlertRefType = {
 };
 
 function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
+  const autoId = useId();
+  const alertId = props.id || autoId;
   const [isVisible, setIsVisible] = useState<IsVisible>(
     props.show ? IsVisible.True : IsVisible.Unset,
   );
@@ -90,6 +93,8 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
 
   const resolvedRole = props.role || (props.type === UswdsAlertStyle.Error ? 'alert' : 'status');
 
+  const headingId = props.title ? `${alertId}-heading` : undefined;
+
   return (
     <div
       className={`usa-alert-container ${containerClasses}`}
@@ -106,10 +111,16 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
         }`}
         role={resolvedRole}
         aria-live={resolvedRole === 'alert' ? 'assertive' : 'polite'}
+        aria-labelledby={headingId}
+        aria-atomic="true"
         data-testid={`alert${props.id ? '-' + props.id : ''}`}
       >
         <div className="usa-alert__body">
-          {props.title && <h4 className="usa-alert__heading">{props.title}</h4>}
+          {props.title && (
+            <h4 className="usa-alert__heading" id={headingId}>
+              {props.title}
+            </h4>
+          )}
           {!!props.message && (
             <p
               className="usa-alert__text"
