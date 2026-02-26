@@ -5,7 +5,6 @@
 
     .trustee-notes-search-and-sort {
       display: flex;
-      margin-bottom: .5rem;
 
       .trustee-notes-search-wrapper {
         margin-right: 1rem;
@@ -33,6 +32,12 @@
 
     .trustee-note {
       padding-top: 24px;
+    }
+
+    .trustee-note-toolbar {
+      display: flex;
+      justify-content: flex-end;
+      gap: 2rem;
     }
 
     .trustee-note:not(:last-child) {
