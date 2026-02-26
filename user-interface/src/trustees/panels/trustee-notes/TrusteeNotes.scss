@@ -40,9 +40,9 @@
     }
 
     .trustee-note-toolbar {
-      display: flex;
-      justify-content: flex-end;
-      gap: 2rem;
+      button {
+        margin-left: 1.5rem;
+      }
     }
 
     .trustee-note:not(:last-child) {

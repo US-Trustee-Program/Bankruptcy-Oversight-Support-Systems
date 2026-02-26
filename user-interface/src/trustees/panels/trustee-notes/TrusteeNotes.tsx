@@ -26,6 +26,7 @@ import LocalFormCache from '@/lib/utils/local-form-cache';
 import { Cacheable } from '@/lib/utils/local-cache';
 import PrerenderedHtml from '@/lib/components/cams/PrerenderedHtml/PrerenderedHtml';
 import Api2 from '@/lib/models/api2';
+import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
 type TrusteeNotesRef = {
   focusEditButton: (noteId: string) => void;
@@ -114,7 +115,6 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
                 <h4
                   className="trustee-note-header usa-tooltip"
                   data-testid={`trustee-note-${idx}-header`}
-                  title={note.title}
                   aria-label={`Note Title: ${note.title}`}
                 >
                   {note.title}
@@ -148,8 +148,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
                     }}
                     ariaLabel={`Edit note titled ${note.title}`}
                   >
-                    <Icon name="edit" className="edit-icon" />
-                    Edit
+                    <IconLabel icon="edit" label="Edit"></IconLabel>
                   </OpenModalButton>
                 )}
                 {Actions.contains(note, Actions.RemoveTrusteeNote) && (
@@ -171,8 +170,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
                     }}
                     ariaLabel={`Remove note titled ${note.title}`}
                   >
-                    <Icon name="remove_circle" className="remove-icon" />
-                    Delete
+                    <IconLabel icon="delete" label="Delete"></IconLabel>
                   </OpenModalButton>
                 )}
               </div>
@@ -274,24 +272,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
     <div className="trustee-notes-panel">
       <div className="trustee-notes-title">
         <h3>Trustee Notes</h3>
-        {draftNote && (
-          <div
-            data-testid="draft-trustee-note-alert-test-id"
-            className="draft-notes-alert-container"
-          >
-            <Alert
-              id="draft-add-trustee-note"
-              message={getDraftAlertMessage(draftNote)}
-              type={UswdsAlertStyle.Info}
-              role={'status'}
-              timeout={0}
-              title="Draft Note Available"
-              show={true}
-              inline={true}
-              className="grid-col-8"
-            />
-          </div>
-        )}
+
         <div className="trustee-notes-controls">
           <div className="trustee-notes-search-and-sort">
             <div className="trustee-notes-search-wrapper">
@@ -348,6 +329,25 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
             {draftNote ? 'Continue Editing' : 'Add Note'}
           </OpenModalButton>
         </div>
+
+        {draftNote && (
+          <div
+            data-testid="draft-trustee-note-alert-test-id"
+            className="draft-notes-alert-container margin-top-3 margin-bottom-0"
+          >
+            <Alert
+              id="draft-add-trustee-note"
+              message={getDraftAlertMessage(draftNote)}
+              type={UswdsAlertStyle.Info}
+              role={'status'}
+              timeout={0}
+              title="Draft Note Available"
+              show={true}
+              inline={true}
+              className="grid-col-8 margin-bottom-0"
+            />
+          </div>
+        )}
         {areTrusteeNotesLoading && (
           <LoadingSpinner id="trustee-notes-loading-indicator" caption="Loading trustee notes..." />
         )}
