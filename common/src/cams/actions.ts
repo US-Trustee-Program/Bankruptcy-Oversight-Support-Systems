@@ -48,10 +48,24 @@ const RemoveNote: Action = {
   path: '/cases/${caseId}/notes/${id}',
 };
 
+const EditTrusteeNote: Action = {
+  actionName: 'edit trustee note',
+  method: 'PUT',
+  path: '/trustees/${trusteeId}/notes/${id}',
+};
+
+const RemoveTrusteeNote: Action = {
+  actionName: 'remove trustee note',
+  method: 'DELETE',
+  path: '/trustees/${trusteeId}/notes/${id}',
+};
+
 const Actions = {
   ManageAssignments,
   EditNote,
   RemoveNote,
+  EditTrusteeNote,
+  RemoveTrusteeNote,
   contains,
   merge,
 } as const;
