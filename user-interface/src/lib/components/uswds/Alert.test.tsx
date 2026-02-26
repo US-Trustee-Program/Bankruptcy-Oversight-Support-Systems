@@ -317,6 +317,8 @@ describe('Test Alert component', () => {
       </React.StrictMode>,
     );
 
+    act(() => alertRef.current?.show());
+
     const alertMessage = screen.getByTestId('alert-message');
     await waitFor(() => {
       expect(alertMessage).toContainHTML('Test alert message');
@@ -382,6 +384,8 @@ describe('Test Alert component', () => {
         </BrowserRouter>
       </React.StrictMode>,
     );
+
+    act(() => alertRef.current?.show());
 
     const alert = screen.getByTestId('alert-test-alert');
     const heading = screen.getByRole('heading', { name: 'Alert Title' });
