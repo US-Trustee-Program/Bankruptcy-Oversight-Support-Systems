@@ -49,6 +49,7 @@ describe('TrusteeNoteFormModal', () => {
       getValue: () => 'My Title',
       setValue: vi.fn(),
       clearValue: vi.fn(),
+      resetValue: vi.fn(),
       disable: vi.fn(),
       focus: vi.fn(),
     };
