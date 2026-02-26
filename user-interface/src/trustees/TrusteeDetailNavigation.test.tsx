@@ -145,7 +145,7 @@ describe('TrusteeDetailNavigation', () => {
     expect(screen.getByRole('list')).toHaveClass('usa-sidenav');
 
     const listItems = screen.getAllByRole('listitem');
-    expect(listItems).toHaveLength(4);
+    expect(listItems).toHaveLength(5);
     listItems.forEach((item) => {
       expect(item).toHaveClass('usa-sidenav__item');
     });
@@ -172,13 +172,14 @@ describe('mapTrusteeDetailNavState', () => {
 });
 
 describe('TrusteeNavState enum', () => {
-  test('should have exactly four enum values for navigation states', () => {
+  test('should have exactly five enum values for navigation states', () => {
     expect(TrusteeNavState.TRUSTEE_PROFILE).toBeDefined();
     expect(TrusteeNavState.APPOINTMENTS).toBeDefined();
     expect(TrusteeNavState.ASSIGNED_STAFF).toBeDefined();
+    expect(TrusteeNavState.NOTES).toBeDefined();
     expect(TrusteeNavState.AUDIT_HISTORY).toBeDefined();
 
     const enumValues = Object.values(TrusteeNavState).filter((value) => typeof value === 'number');
-    expect(enumValues).toHaveLength(4);
+    expect(enumValues).toHaveLength(5);
   });
 });
