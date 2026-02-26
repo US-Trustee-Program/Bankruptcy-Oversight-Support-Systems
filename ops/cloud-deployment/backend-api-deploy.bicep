@@ -37,7 +37,7 @@ param functionsRuntime string
 // Provides mapping for runtime stack
 // Use the following query to check supported versions
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
-// NOTE: Should match major version in .nvmrc (currently v22.17.1)
+// NOTE: Should match major version in .nvmrc (currently v22.x.x)
 var linuxFxVersionMap = {
   node: 'NODE|22'
 }
@@ -138,35 +138,25 @@ resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 }
 
 
-resource apiFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: apiFunctionStorageName
-  location: location
-  tags: {
-    'Stack Name': apiFunctionName
-  }
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'Storage'
-  properties: {
-    supportsHttpsTrafficOnly: true
-    defaultToOAuthAuthentication: true
+module apiFunctionStorageAccount './lib/storage/storage-account.bicep' = {
+  name: '${apiFunctionStorageName}-module'
+  params: {
+    storageAccountName: apiFunctionStorageName
+    location: location
+    tags: {
+      'Stack Name': apiFunctionName
+    }
   }
 }
 
-resource apiFunctionSlotStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: apiFunctionSlotStorageName
-  location: location
-  tags: {
-    'Stack Name': apiFunctionName
-  }
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'Storage'
-  properties: {
-    supportsHttpsTrafficOnly: true
-    defaultToOAuthAuthentication: true
+module apiFunctionSlotStorageAccount './lib/storage/storage-account.bicep' = {
+  name: '${apiFunctionSlotStorageName}-module'
+  params: {
+    storageAccountName: apiFunctionSlotStorageName
+    location: location
+    tags: {
+      'Stack Name': apiFunctionName
+    }
   }
 }
 
@@ -277,7 +267,7 @@ var baseApiFunctionAppConfigProperties = {
       }
       {
         name: 'AzureWebJobsStorage'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
+        value: apiFunctionStorageAccount.outputs.connectionString
       }
       {
         name: 'AzureWebJobsDataflowsStorage'
@@ -307,7 +297,7 @@ var baseApiFunctionAppConfigProperties = {
       }
       {
         name: 'AzureWebJobsStorage'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionSlotStorageAccount.listKeys().keys[0].value}'
+        value: apiFunctionSlotStorageAccount.outputs.connectionString
       }
       {
         name: 'AzureWebJobsDataflowsStorage'
