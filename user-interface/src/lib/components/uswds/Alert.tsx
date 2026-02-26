@@ -115,7 +115,7 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
         aria-atomic="true"
         data-testid={`alert${props.id ? '-' + props.id : ''}`}
       >
-        {isVisible === IsVisible.True && (
+        {(isVisible === IsVisible.True || props.show === undefined) && (
           <div className="usa-alert__body">
             {props.title && (
               <h4 className="usa-alert__heading" id={headingId}>
