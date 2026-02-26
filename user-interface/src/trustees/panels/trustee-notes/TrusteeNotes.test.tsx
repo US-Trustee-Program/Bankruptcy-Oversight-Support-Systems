@@ -79,8 +79,8 @@ describe('trustee notes tests', () => {
       expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
     });
 
-    const editButtons = screen.queryAllByText('Edit');
-    const deleteButtons = screen.queryAllByText('Delete');
+    const editButtons = document.querySelectorAll('.edit-button');
+    const deleteButtons = document.querySelectorAll('.remove-button');
 
     // The two notes with actions should have edit/delete buttons
     expect(editButtons).toHaveLength(2);
@@ -97,7 +97,7 @@ describe('trustee notes tests', () => {
     });
   });
 
-  test('should show "Edited on" label for notes with previousVersionId', async () => {
+  test('should show "Edited by" label for notes with previousVersionId', async () => {
     vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: trusteeNotes });
 
     render(<TrusteeNotes trusteeId={trusteeId} />);
@@ -106,7 +106,7 @@ describe('trustee notes tests', () => {
       expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
     });
 
-    const editedLabels = screen.queryAllByText(/Edited on:/);
+    const editedLabels = screen.queryAllByText(/Edited by:/);
     expect(editedLabels.length).toBeGreaterThan(0);
   });
 });
