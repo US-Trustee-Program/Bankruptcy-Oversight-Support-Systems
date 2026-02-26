@@ -344,7 +344,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
               title="Draft Note Available"
               show={true}
               inline={true}
-              className="grid-col-8 margin-bottom-0"
+              className="grid-col-12 margin-bottom-0"
             />
           </div>
         )}
