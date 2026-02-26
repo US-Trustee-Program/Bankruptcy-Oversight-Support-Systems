@@ -20,6 +20,7 @@
  * Options:
  *   --since, -s      ISO date to search from (default: 30 days ago)
  *   --limit, -n      Max number of appointments to process (default: all)
+ *   --scenario       Edge case scenario (default: happy). See SCENARIOS below.
  *   --seed-dxtr      Insert test trustee appointment data into DXTR (AO_TX + AO_PY)
  *   --discover, -d   Discovery mode: show DXTR appointments without processing
  *   --seed           Seed matching CAMS trustees for any unmatched DXTR names
@@ -29,12 +30,25 @@
  *   --verbose, -v    Show detailed output
  *   --help, -h       Show help
  *
+ * Scenarios:
+ *   happy          (default) Exact 1:1 trustee name match
+ *   no-match       DXTR name has zero CAMS matches (NO_TRUSTEE_MATCH)
+ *   multi-match    Two CAMS trustees with same name; fuzzy matching resolves winner
+ *   ambiguous      Two nearly identical CAMS trustees; fuzzy matching fails
+ *   case-missing   DXTR appointment for a case not in Cosmos (CASE_NOT_FOUND)
+ *
  * Examples:
  *   # Seed DXTR with a test appointment, then discover it
  *   cd backend && npx tsx function-apps/dataflows/e2e/cli-sync-trustee-appointments.ts --seed-dxtr --discover
  *
  *   # Full pipeline: seed DXTR, discover, seed Cosmos, process, verify
  *   cd backend && npx tsx function-apps/dataflows/e2e/cli-sync-trustee-appointments.ts --all -n 1
+ *
+ *   # Test NO_TRUSTEE_MATCH edge case
+ *   cd backend && npx tsx function-apps/dataflows/e2e/cli-sync-trustee-appointments.ts --scenario no-match --all -n 1
+ *
+ *   # Test fuzzy matching (multi-match resolution)
+ *   cd backend && npx tsx function-apps/dataflows/e2e/cli-sync-trustee-appointments.ts --scenario multi-match --all -n 1
  *
  *   # Discover with a specific start date
  *   cd backend && npx tsx function-apps/dataflows/e2e/cli-sync-trustee-appointments.ts -d -s 2025-01-01
@@ -56,9 +70,12 @@ import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import factory from '../../../lib/factory';
 import SyncTrusteeAppointments from '../../../lib/use-cases/dataflows/sync-trustee-appointments';
 import {
+  CandidateScore,
   TrusteeAppointmentSyncError,
   TrusteeAppointmentSyncEvent,
+  UNSCORED,
 } from '@common/cams/dataflow-events';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { CamsUserReference } from '@common/cams/users';
 import { executeQuery } from '../../../lib/adapters/utils/database';
 
@@ -67,10 +84,14 @@ dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 // --- CLI Arguments -----------------------------------------------------------
 
+const VALID_SCENARIOS = ['happy', 'no-match', 'multi-match', 'ambiguous', 'case-missing'] as const;
+type Scenario = (typeof VALID_SCENARIOS)[number];
+
 const { values } = parseArgs({
   options: {
     since: { type: 'string', short: 's' },
     limit: { type: 'string', short: 'n' },
+    scenario: { type: 'string', default: 'happy' },
     'seed-dxtr': { type: 'boolean', default: false },
     discover: { type: 'boolean', short: 'd', default: false },
     seed: { type: 'boolean', default: false },
@@ -101,8 +122,29 @@ MODES:
 OPTIONS:
   -s, --since <date>     ISO date to search from (default: 30 days ago)
   -n, --limit <count>    Max number of appointments to process (default: all)
+  --scenario <name>      Edge case scenario to test (default: happy)
   -v, --verbose          Detailed output
   -h, --help             Show this help
+
+SCENARIOS:
+  happy          (default) Exact 1:1 trustee name match. Seeds a DXTR appointment
+                 using a real CAMS trustee name so matching succeeds immediately.
+
+  no-match       Seeds DXTR appointment with a fabricated name ("ZZTEST Nonexistent")
+                 that won't match any CAMS trustee. Triggers NO_TRUSTEE_MATCH DLQ.
+
+  multi-match    Creates two CAMS trustees with the same name but different addresses
+                 and appointment data. The first gets matching court/chapter (high
+                 fuzzy score), the second gets mismatched data (low score). Fuzzy
+                 matching resolves the winner.
+
+  ambiguous      Like multi-match, but both trustees get similar addresses and
+                 appointments in the same court/chapter. Fuzzy matching fails because
+                 scores are too close. Triggers MULTIPLE_TRUSTEES_MATCH DLQ.
+
+  case-missing   Seeds DXTR appointment for a case that exists in DXTR but NOT in
+                 Cosmos. Trustee matching succeeds, but case lookup fails. Triggers
+                 CASE_NOT_FOUND DLQ.
 
 STEPS:
   0. SEED-DXTR - Finds an existing case in DXTR and inserts a test trustee
@@ -143,6 +185,7 @@ const runSeed = values.all || values.seed;
 const runProcess = values.all || values.process;
 const runVerify = values.all || values.verify;
 const limit = values.limit ? parseInt(values.limit, 10) : undefined;
+const scenario = (values.scenario ?? 'happy') as Scenario;
 
 if (!runSeedDxtr && !runDiscover && !runSeed && !runProcess && !runVerify) {
   console.error(
@@ -153,6 +196,13 @@ if (!runSeedDxtr && !runDiscover && !runSeed && !runProcess && !runVerify) {
 
 if (limit !== undefined && (isNaN(limit) || limit < 1)) {
   console.error('\n--limit must be a positive integer.\n');
+  process.exit(1);
+}
+
+if (!VALID_SCENARIOS.includes(scenario)) {
+  console.error(
+    `\n--scenario must be one of: ${VALID_SCENARIOS.join(', ')}. Got: "${scenario}".\n`,
+  );
   process.exit(1);
 }
 
@@ -187,40 +237,97 @@ async function createContext(): Promise<ApplicationContext> {
   };
 }
 
+// --- Helpers -----------------------------------------------------------------
+
+/**
+ * Returns a valid appointmentType for the given chapter.
+ * Ensures the seeded appointment passes chapter/type validation.
+ */
+function getAppointmentTypeForChapter(chapter: string): TrusteeAppointmentInput['appointmentType'] {
+  const mapping: Record<string, TrusteeAppointmentInput['appointmentType']> = {
+    '7': 'panel',
+    '11': 'case-by-case',
+    '11-subchapter-v': 'pool',
+    '12': 'standing',
+    '13': 'standing',
+  };
+  return mapping[chapter] ?? 'panel';
+}
+
+/**
+ * Formats a CandidateScore table for console output.
+ */
+function formatScoreTable(candidates: CandidateScore[]): string {
+  const idWidth = 38;
+  const scoreWidth = 9;
+  const lines: string[] = [];
+  lines.push(
+    `  ${'TRUSTEE ID'.padEnd(idWidth)} ${'ADDRESS'.padStart(scoreWidth)} ${'DISTRICT'.padStart(scoreWidth)} ${'CHAPTER'.padStart(scoreWidth)} ${'TOTAL'.padStart(scoreWidth)}`,
+  );
+  lines.push(
+    `  ${'─'.repeat(idWidth)} ${'─'.repeat(scoreWidth)} ${'─'.repeat(scoreWidth)} ${'─'.repeat(scoreWidth)} ${'─'.repeat(scoreWidth)}`,
+  );
+  for (const c of candidates) {
+    const scored = c.totalScore !== UNSCORED;
+    lines.push(
+      `  ${c.trusteeId.padEnd(idWidth)} ${scored ? String(c.addressScore).padStart(scoreWidth) : 'n/a'.padStart(scoreWidth)} ${scored ? String(c.districtDivisionScore).padStart(scoreWidth) : 'n/a'.padStart(scoreWidth)} ${scored ? String(c.chapterScore).padStart(scoreWidth) : 'n/a'.padStart(scoreWidth)} ${scored ? c.totalScore.toFixed(1).padStart(scoreWidth) : 'n/a'.padStart(scoreWidth)}`,
+    );
+  }
+  return lines.join('\n');
+}
+
 // --- Step 0: Seed DXTR -------------------------------------------------------
 
-async function seedDxtr(context: ApplicationContext): Promise<void> {
+async function seedDxtr(context: ApplicationContext, scenario: Scenario): Promise<void> {
   console.log('\n=== STEP 0: SEED DXTR ===');
 
   const dxtrConfig = context.config.dxtrDbConfig;
 
-  // 1. Find an existing CAMS trustee in Cosmos to use as the name source
-  console.log('  Querying Cosmos for an existing CAMS trustee...');
-  const trusteesRepo = factory.getTrusteesRepository(context);
-  const allTrustees = await trusteesRepo.listTrustees();
-  trusteesRepo.release();
+  // 1. Determine trustee name parts based on scenario
+  let firstName: string;
+  let middleName: string;
+  let lastName: string;
+  let camsTrusteeName: string | undefined;
+  let camsTrusteeId: string | undefined;
 
-  if (allTrustees.length === 0) {
-    console.error('  [ERROR] No CAMS trustees found in Cosmos. Cannot seed DXTR.');
-    console.error('  Seed a trustee in Cosmos first, then re-run with --seed-dxtr.');
-    return;
+  if (scenario === 'no-match') {
+    // Fabricated name that won't match any CAMS trustee
+    firstName = 'ZZTEST';
+    middleName = '';
+    lastName = 'Nonexistent';
+    console.log('  Scenario: no-match - using fabricated trustee name');
+    console.log(`  Name parts: first="${firstName}" middle="${middleName}" last="${lastName}"`);
+  } else {
+    // For all other scenarios, look up a real CAMS trustee name
+    console.log('  Querying Cosmos for an existing CAMS trustee...');
+    const trusteesRepo = factory.getTrusteesRepository(context);
+    const allTrustees = await trusteesRepo.listTrustees();
+    trusteesRepo.release();
+
+    if (allTrustees.length === 0) {
+      console.error('  [ERROR] No CAMS trustees found in Cosmos. Cannot seed DXTR.');
+      console.error('  Seed a trustee in Cosmos first, then re-run with --seed-dxtr.');
+      return;
+    }
+
+    const camsTrustee = allTrustees[0];
+    camsTrusteeName = camsTrustee.name;
+    camsTrusteeId = camsTrustee.trusteeId;
+    console.log(`  Using CAMS trustee: "${camsTrusteeName}" (trusteeId: ${camsTrusteeId})`);
+
+    // Parse the CAMS trustee name into parts for AO_PY columns.
+    // DXTR stores: PY_FIRST_NAME, PY_MIDDLE_NAME, PY_LAST_NAME, PY_GENERATION
+    // The fullName is reconstructed as: TRIM(CONCAT(first, ' ', middle, ' ', last, ' ', gen))
+    const nameParts = camsTrusteeName.trim().split(/\s+/);
+    firstName = nameParts[0] ?? '';
+    lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
+    middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '';
+
+    console.log(`  Name parts: first="${firstName}" middle="${middleName}" last="${lastName}"`);
   }
-
-  const camsTrustee = allTrustees[0];
-  console.log(`  Using CAMS trustee: "${camsTrustee.name}" (trusteeId: ${camsTrustee.trusteeId})`);
-
-  // Parse the CAMS trustee name into parts for AO_PY columns.
-  // DXTR stores: PY_FIRST_NAME, PY_MIDDLE_NAME, PY_LAST_NAME, PY_GENERATION
-  // The fullName is reconstructed as: TRIM(CONCAT(first, ' ', middle, ' ', last, ' ', gen))
-  const nameParts = camsTrustee.name.trim().split(/\s+/);
-  const firstName = nameParts[0] ?? '';
-  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : '';
-  const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(' ') : '';
-
-  console.log(`  Name parts: first="${firstName}" middle="${middleName}" last="${lastName}"`);
   console.log('');
 
-  // 2. Find a case in DXTR, then verify it exists as a SyncedCase in Cosmos.
+  // 2. Find a case in DXTR, then verify it against Cosmos.
   console.log('  Querying DXTR for recent cases...');
   const findCasesQuery = `
     SELECT TOP 20
@@ -248,17 +355,46 @@ async function seedDxtr(context: ApplicationContext): Promise<void> {
   let courtId: string | undefined;
   let caseId: string | undefined;
 
-  for (const row of dxtrCases) {
-    try {
-      await casesRepo.getSyncedCase(row.caseId);
-      csCaseId = row.CS_CASEID;
-      dxtrCaseId = row.CASE_ID;
-      courtId = row.COURT_ID;
-      caseId = row.caseId;
-      console.log(`  Matched: ${caseId} exists in both DXTR (CS_CASEID=${csCaseId}) and Cosmos`);
-      break;
-    } catch {
-      // SyncedCase not found in Cosmos, try next
+  if (scenario === 'case-missing') {
+    // Reverse logic: find a DXTR case that does NOT exist in Cosmos
+    for (const row of dxtrCases) {
+      try {
+        await casesRepo.getSyncedCase(row.caseId);
+        // SyncedCase exists in Cosmos - skip this one
+      } catch {
+        csCaseId = row.CS_CASEID;
+        dxtrCaseId = row.CASE_ID;
+        courtId = row.COURT_ID;
+        caseId = row.caseId;
+        console.log(
+          `  Matched: ${caseId} exists in DXTR but NOT in Cosmos (CS_CASEID=${csCaseId})`,
+        );
+        break;
+      }
+    }
+
+    if (!csCaseId) {
+      console.error(
+        '  [ERROR] All recent DXTR cases exist in Cosmos. Cannot create case-missing scenario.',
+      );
+      console.error('  Try using a wider date range or manually removing a case from Cosmos.');
+      casesRepo.release();
+      return;
+    }
+  } else {
+    // Normal logic: find a case that exists in BOTH DXTR and Cosmos
+    for (const row of dxtrCases) {
+      try {
+        await casesRepo.getSyncedCase(row.caseId);
+        csCaseId = row.CS_CASEID;
+        dxtrCaseId = row.CASE_ID;
+        courtId = row.COURT_ID;
+        caseId = row.caseId;
+        console.log(`  Matched: ${caseId} exists in both DXTR (CS_CASEID=${csCaseId}) and Cosmos`);
+        break;
+      } catch {
+        // SyncedCase not found in Cosmos, try next
+      }
     }
   }
   casesRepo.release();
@@ -302,7 +438,8 @@ async function seedDxtr(context: ApplicationContext): Promise<void> {
     console.error(`  [ERROR] Failed to insert AO_PY: ${pyResult.message}`);
     return;
   }
-  console.log(`  [OK] Set trustee party for case: "${camsTrustee.name}"`);
+  const displayName = camsTrusteeName ?? `${firstName} ${lastName}`.trim();
+  console.log(`  [OK] Set trustee party for case: "${displayName}"`);
 
   // 4. Insert the appointment transaction in AO_TX
   const checkTxQuery = `
@@ -333,7 +470,14 @@ async function seedDxtr(context: ApplicationContext): Promise<void> {
 
   console.log('');
   console.log(`  Test case ready: ${caseId}`);
-  console.log(`  CAMS trustee:    "${camsTrustee.name}" (${camsTrustee.trusteeId})`);
+  if (camsTrusteeName) {
+    console.log(`  CAMS trustee:    "${camsTrusteeName}" (${camsTrusteeId})`);
+  } else {
+    console.log(`  Trustee name:    "${displayName}" (no CAMS match expected)`);
+  }
+  if (scenario === 'case-missing') {
+    console.log('  Note: This case does NOT exist in Cosmos (case-missing scenario).');
+  }
   console.log('  Run --discover to confirm the data is visible.');
 }
 
@@ -390,8 +534,16 @@ async function discover(context: ApplicationContext): Promise<TrusteeAppointment
 async function seed(
   context: ApplicationContext,
   events: TrusteeAppointmentSyncEvent[],
+  scenario: Scenario,
 ): Promise<void> {
   console.log('\n=== STEP 2: SEED ===');
+
+  if (scenario === 'no-match') {
+    console.log('  Scenario: no-match - skipping CAMS trustee seeding.');
+    console.log('  (The DXTR name is fabricated and intentionally has no CAMS match.)');
+    return;
+  }
+
   console.log('  Checking Cosmos DB for matching CAMS trustees...');
   console.log('');
 
@@ -455,9 +607,150 @@ async function seed(
     }
   }
 
-  trusteesRepo.release();
   console.log('');
   console.log(`  Summary: ${existingCount} existing, ${seededCount} seeded`);
+
+  // --- multi-match / ambiguous: create duplicate trustee + appointments ---
+  if ((scenario === 'multi-match' || scenario === 'ambiguous') && events.length > 0) {
+    console.log('');
+    console.log(`  --- ${scenario} scenario: setting up duplicate trustees ---`);
+
+    const event = events[0];
+    const name = event.dxtrTrustee.fullName;
+
+    const existingMatches = await trusteesRepo.findTrusteesByName(name);
+    if (existingMatches.length === 0) {
+      console.error(
+        `  [ERROR] No existing CAMS trustee for "${name}". Run --seed without --scenario first.`,
+      );
+      trusteesRepo.release();
+      return;
+    }
+
+    const existingTrustee = existingMatches[0];
+
+    // Read the SyncedCase to get court/chapter info for scoring
+    const casesRepo = factory.getCasesRepository(context);
+    let caseChapter: string;
+    let caseDivisionCode: string;
+    try {
+      const syncedCase = await casesRepo.getSyncedCase(event.caseId);
+      caseChapter = syncedCase.chapter || '7';
+      caseDivisionCode = syncedCase.courtDivisionCode || event.caseId.split('-')[0];
+    } finally {
+      casesRepo.release();
+    }
+
+    const caseCourtId = event.courtId;
+
+    // Create a duplicate trustee with the SAME name
+    const dupTrusteeId = randomUUID();
+    if (scenario === 'multi-match') {
+      // Different address so address score differs
+      await trusteesRepo.createTrustee(
+        {
+          name,
+          public: {
+            address: {
+              address1: '999 Duplicate Ave',
+              city: 'Faraway Town',
+              state: 'AK',
+              zipCode: '99501',
+              countryCode: 'US' as const,
+            },
+          },
+          zoomInfo: null,
+        },
+        testUser,
+      );
+    } else {
+      // ambiguous: similar address to existing trustee
+      await trusteesRepo.createTrustee(
+        {
+          name,
+          public: {
+            address: { ...existingTrustee.public.address },
+          },
+          zoomInfo: null,
+        },
+        testUser,
+      );
+    }
+
+    // The createTrustee call auto-generates trusteeId; find the new one
+    const afterMatches = await trusteesRepo.findTrusteesByName(name);
+    const newTrustee = afterMatches.find((t) => t.trusteeId !== existingTrustee.trusteeId);
+    const actualDupId = newTrustee?.trusteeId ?? dupTrusteeId;
+    console.log(`  [SEEDED]  Duplicate trustee "${name}" -> trusteeId: ${actualDupId}`);
+
+    // Create TrusteeAppointment records for fuzzy scoring
+    const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+    const today = new Date().toISOString().split('T')[0];
+
+    if (scenario === 'multi-match') {
+      // First trustee: matching court/division/chapter -> high score
+      const highScoreAppt: TrusteeAppointmentInput = {
+        chapter: caseChapter as TrusteeAppointmentInput['chapter'],
+        appointmentType: getAppointmentTypeForChapter(caseChapter),
+        courtId: caseCourtId,
+        divisionCode: caseDivisionCode,
+        appointedDate: today,
+        status: 'active',
+        effectiveDate: today,
+      };
+      await appointmentsRepo.createAppointment(existingTrustee.trusteeId, highScoreAppt, testUser);
+      console.log(
+        `  [APPT]    ${existingTrustee.trusteeId}: ch=${caseChapter}, court=${caseCourtId}, div=${caseDivisionCode} (high score)`,
+      );
+
+      // Second trustee: different court/chapter -> low score
+      const otherChapter = caseChapter === '7' ? '13' : '7';
+      const lowScoreAppt: TrusteeAppointmentInput = {
+        chapter: otherChapter as TrusteeAppointmentInput['chapter'],
+        appointmentType: getAppointmentTypeForChapter(otherChapter),
+        courtId: '999',
+        divisionCode: '999',
+        appointedDate: today,
+        status: 'active',
+        effectiveDate: today,
+      };
+      await appointmentsRepo.createAppointment(actualDupId, lowScoreAppt, testUser);
+      console.log(`  [APPT]    ${actualDupId}: ch=${otherChapter}, court=999, div=999 (low score)`);
+    } else {
+      // ambiguous: both trustees with same court/chapter -> similar scores
+      const matchingAppt: TrusteeAppointmentInput = {
+        chapter: caseChapter as TrusteeAppointmentInput['chapter'],
+        appointmentType: getAppointmentTypeForChapter(caseChapter),
+        courtId: caseCourtId,
+        divisionCode: caseDivisionCode,
+        appointedDate: today,
+        status: 'active',
+        effectiveDate: today,
+      };
+      await appointmentsRepo.createAppointment(existingTrustee.trusteeId, matchingAppt, testUser);
+      console.log(
+        `  [APPT]    ${existingTrustee.trusteeId}: ch=${caseChapter}, court=${caseCourtId}, div=${caseDivisionCode}`,
+      );
+
+      await appointmentsRepo.createAppointment(actualDupId, { ...matchingAppt }, testUser);
+      console.log(
+        `  [APPT]    ${actualDupId}: ch=${caseChapter}, court=${caseCourtId}, div=${caseDivisionCode}`,
+      );
+    }
+
+    appointmentsRepo.release();
+
+    console.log('');
+    if (scenario === 'multi-match') {
+      console.log(
+        `  Fuzzy matching should resolve to: ${existingTrustee.trusteeId} (higher score)`,
+      );
+    } else {
+      console.log('  Fuzzy matching should FAIL (similar scores, ambiguous)');
+    }
+  }
+
+  trusteesRepo.release();
 }
 
 // --- Step 3: Process ---------------------------------------------------------
@@ -465,6 +758,7 @@ async function seed(
 async function processAppointments(
   context: ApplicationContext,
   events: TrusteeAppointmentSyncEvent[],
+  scenario: Scenario,
 ): Promise<TrusteeAppointmentSyncEvent[]> {
   console.log('\n=== STEP 3: PROCESS ===');
   console.log(`  Processing ${events.length} appointment event(s)...`);
@@ -477,13 +771,32 @@ async function processAppointments(
 
   for (const msg of dlqMessages) {
     if ('mismatchReason' in msg) {
-      const reason = (msg as TrusteeAppointmentSyncError).mismatchReason;
-      const extra =
-        reason === 'MULTIPLE_TRUSTEES_MATCH' &&
-        (msg as TrusteeAppointmentSyncError).candidateTrusteeIds
-          ? ` (candidates: ${(msg as TrusteeAppointmentSyncError).candidateTrusteeIds!.join(', ')})`
-          : '';
-      console.log(`  [FAIL]    ${msg.caseId}: ${reason}${extra}`);
+      const syncError = msg as TrusteeAppointmentSyncError;
+      const reason = syncError.mismatchReason;
+
+      if (reason === 'NO_TRUSTEE_MATCH') {
+        console.log(`  [FAIL]    ${msg.caseId}: ${reason} - no CAMS trustee found for this name`);
+      } else if (reason === 'MULTIPLE_TRUSTEES_MATCH') {
+        const candidates: CandidateScore[] = syncError.matchCandidates ?? [];
+        const hasScores = candidates.some((c) => c.totalScore !== UNSCORED);
+
+        if (hasScores) {
+          console.log(
+            `  [FAIL]    ${msg.caseId}: ${reason} - fuzzy matching attempted but could not determine winner`,
+          );
+          console.log('');
+          console.log(formatScoreTable(candidates));
+          console.log('');
+        } else {
+          console.log(
+            `  [FAIL]    ${msg.caseId}: ${reason} (${candidates.length} candidates, unscored)`,
+          );
+        }
+      } else if (reason === 'CASE_NOT_FOUND') {
+        console.log(`  [FAIL]    ${msg.caseId}: ${reason} - SyncedCase does not exist in Cosmos`);
+      } else {
+        console.log(`  [FAIL]    ${msg.caseId}: ${reason}`);
+      }
     } else {
       const errMsg =
         typeof msg.error === 'object' && msg.error !== null && 'message' in msg.error
@@ -496,7 +809,7 @@ async function processAppointments(
   console.log('');
   console.log(`  Summary: ${successCount} succeeded, ${dlqMessages.length} failed`);
 
-  if (dlqMessages.length > 0) {
+  if (dlqMessages.length > 0 && scenario === 'happy') {
     console.log('');
     console.log('  Common failure reasons:');
     console.log('  - No CAMS trustee found matching the DXTR trustee name');
@@ -504,6 +817,11 @@ async function processAppointments(
     console.log('  - SyncedCase does not exist in Cosmos (case not yet synced)');
     console.log('');
     console.log('  Fix: Run --seed to create matching trustees, or sync cases first.');
+  }
+
+  if (dlqMessages.length > 0 && scenario !== 'happy') {
+    console.log('');
+    console.log(`  (Failures above are expected for --scenario ${scenario})`);
   }
 
   return events;
@@ -514,9 +832,14 @@ async function processAppointments(
 async function verify(
   context: ApplicationContext,
   events: TrusteeAppointmentSyncEvent[],
+  scenario: Scenario,
 ): Promise<void> {
   console.log('\n=== STEP 4: VERIFY ===');
   console.log('  Reading SyncedCases and CASE_APPOINTMENT documents from Cosmos DB...');
+
+  if (scenario !== 'happy') {
+    console.log(`  Scenario: ${scenario}`);
+  }
   console.log('');
 
   const casesRepo = factory.getCasesRepository(context);
@@ -564,6 +887,48 @@ async function verify(
   console.log(
     `  CASE_APPOINTMENT: ${caseAppointmentCount} found, ${noCaseAppointmentCount} missing`,
   );
+
+  // --- Scenario-aware expected outcome ---
+  if (scenario !== 'happy') {
+    console.log('');
+    console.log(`  --- Expected outcome for --scenario ${scenario} ---`);
+  }
+
+  if (scenario === 'no-match') {
+    if (noTrusteeIdCount > 0 && linkedCount === 0) {
+      console.log('  [PASS] No trusteeId was set (expected: NO_TRUSTEE_MATCH prevents linking)');
+    } else if (linkedCount > 0) {
+      console.log(
+        '  [UNEXPECTED] A trusteeId was set. This should not happen for no-match scenario.',
+      );
+    }
+  } else if (scenario === 'multi-match') {
+    if (linkedCount > 0) {
+      console.log('  [PASS] Fuzzy matching resolved a winner and linked the correct trustee.');
+    } else {
+      console.log(
+        '  [UNEXPECTED] No trusteeId was set. Fuzzy matching may not have resolved a winner.',
+      );
+    }
+  } else if (scenario === 'ambiguous') {
+    if (noTrusteeIdCount > 0 && linkedCount === 0) {
+      console.log(
+        '  [PASS] No trusteeId was set (expected: fuzzy matching failed due to ambiguity)',
+      );
+    } else if (linkedCount > 0) {
+      console.log(
+        '  [UNEXPECTED] A trusteeId was set. Fuzzy matching should have failed for ambiguous scenario.',
+      );
+    }
+  } else if (scenario === 'case-missing') {
+    if (missingCount > 0) {
+      console.log('  [PASS] SyncedCase not found in Cosmos (expected: CASE_NOT_FOUND)');
+    } else {
+      console.log(
+        '  [UNEXPECTED] SyncedCase was found. The case may have been synced after seeding.',
+      );
+    }
+  }
 }
 
 // --- Main --------------------------------------------------------------------
@@ -573,6 +938,7 @@ async function main() {
   console.log('  Configuration:');
   console.log(`    Since date:  ${sinceDate}`);
   console.log(`    Limit:       ${limit ?? 'all'}`);
+  console.log(`    Scenario:    ${scenario}`);
   console.log(
     `    Steps:       ${[runSeedDxtr && 'seed-dxtr', runDiscover && 'discover', runSeed && 'seed', runProcess && 'process', runVerify && 'verify'].filter(Boolean).join(' -> ')}`,
   );
@@ -586,7 +952,7 @@ async function main() {
   try {
     // Step 0: Seed DXTR
     if (runSeedDxtr) {
-      await seedDxtr(context);
+      await seedDxtr(context, scenario);
     }
 
     // Step 1: Discover
@@ -600,17 +966,17 @@ async function main() {
 
     // Step 2: Seed
     if (runSeed && events.length > 0) {
-      await seed(context, events);
+      await seed(context, events, scenario);
     }
 
     // Step 3: Process
     if (runProcess && events.length > 0) {
-      events = await processAppointments(context, events);
+      events = await processAppointments(context, events, scenario);
     }
 
     // Step 4: Verify
     if (runVerify && events.length > 0) {
-      await verify(context, events);
+      await verify(context, events, scenario);
     }
 
     console.log('\nDone.\n');
