@@ -36,6 +36,7 @@ import {
 } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
@@ -2273,6 +2274,22 @@ async function deleteCaseNote(_note: Partial<CaseNote>) {
   return;
 }
 
+async function getTrusteeNotes(trusteeId: string): Promise<ResponseBody<TrusteeNote[]>> {
+  return get<TrusteeNote[]>(`/trustees/${trusteeId}/notes`);
+}
+
+async function postTrusteeNote(_note: TrusteeNoteInput): Promise<void> {
+  return;
+}
+
+async function putTrusteeNote(_note: TrusteeNoteInput): Promise<string | undefined> {
+  return undefined;
+}
+
+async function deleteTrusteeNote(_note: Partial<TrusteeNote>) {
+  return;
+}
+
 async function postCaseNote(note: CaseNoteInput): Promise<void> {
   await post(`/cases/${note.caseId}/notes`, { note }, {});
 }
@@ -2670,6 +2687,10 @@ const MockApi2 = {
   putCaseNote,
   getCaseNotes,
   deleteCaseNote,
+  getTrusteeNotes,
+  postTrusteeNote,
+  putTrusteeNote,
+  deleteTrusteeNote,
   getCourts,
   getMe,
   getOfficeAttorneys,
