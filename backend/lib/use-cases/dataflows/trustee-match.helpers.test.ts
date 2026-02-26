@@ -85,6 +85,25 @@ const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
   ...overrides,
 });
 
+const makeDxtrTrustee = (cityStateZip?: string): DxtrTrusteeParty => ({
+  fullName: 'John Doe',
+  legacy: cityStateZip ? { cityStateZipCountry: cityStateZip } : undefined,
+});
+
+const makeEvent = (
+  overrides: Partial<TrusteeAppointmentSyncEvent> = {},
+): TrusteeAppointmentSyncEvent => ({
+  caseId: '24-12345',
+  courtId: '081',
+  dxtrTrustee: {
+    fullName: 'John Doe',
+    legacy: {
+      cityStateZipCountry: 'New York, NY 10001',
+    },
+  },
+  ...overrides,
+});
+
 describe('normalizeName', () => {
   test('should trim leading and trailing whitespace', () => {
     expect(normalizeName('  John Doe  ')).toBe('John Doe');
@@ -445,57 +464,13 @@ describe('calculateCandidateScore', () => {
     context = await createMockApplicationContext();
   });
 
-  const createDxtrTrustee = (cityStateZip?: string): DxtrTrusteeParty => ({
-    fullName: 'John Doe',
-    legacy: cityStateZip ? { cityStateZipCountry: cityStateZip } : undefined,
-  });
-
-  const createCamsCase = (chapter: string, courtId: string, divisionCode: string): SyncedCase => ({
-    caseId: '24-12345',
-    chapter,
-    courtId,
-    courtDivisionCode: divisionCode,
-    dxtrId: 'dxtr-1',
-    caseTitle: 'Test Case',
-    petitionLabel: 'Debtor',
-    dateFiled: '2024-01-01',
-    regionId: 'region-1',
-    regionName: 'Region 1',
-    officeCode: '081',
-    closedDate: undefined,
-    dismissedDate: undefined,
-    reopenedDate: undefined,
-  });
-
-  const createCamsTrustee = (city: string, state: string, zipCode: string): Trustee => ({
-    trusteeId: 'trustee-1',
-    name: 'John Doe',
-    status: 'active',
-    public: {
-      address: {
-        address1: '123 Main St',
-        city,
-        state,
-        zipCode,
-        countryCode: 'US',
-      },
-    },
-  });
-
   test('should return totalScore 100 when all scores are 100', () => {
-    const dxtrTrustee = createDxtrTrustee('New York, NY 10001');
-    const camsCase = createCamsCase('7', '081', '1');
-    const camsTrustee = createCamsTrustee('New York', 'NY', '10001');
-    const appointments = [
-      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' }),
-    ];
-
     const score = calculateCandidateScore(
       context,
-      dxtrTrustee,
-      camsCase,
-      camsTrustee,
-      appointments,
+      makeDxtrTrustee('New York, NY 10001'),
+      makeCase(),
+      makeTrustee(),
+      [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
     );
 
     expect(score.trusteeId).toBe('trustee-1');
@@ -507,19 +482,22 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should apply weighted scoring correctly (20/40/40)', () => {
-    const dxtrTrustee = createDxtrTrustee('New York, NY 10001');
-    const camsCase = createCamsCase('7', '081', '1');
-    const camsTrustee = createCamsTrustee('New York', 'NY', '10002'); // Different zip
-    const appointments = [
-      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '2', status: 'active' }),
-    ]; // Different division
-
     const score = calculateCandidateScore(
       context,
-      dxtrTrustee,
-      camsCase,
-      camsTrustee,
-      appointments,
+      makeDxtrTrustee('New York, NY 10001'),
+      makeCase(),
+      makeTrustee({
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10002',
+            countryCode: 'US',
+          },
+        },
+      }),
+      [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '2', status: 'active' })],
     );
 
     expect(score.addressScore).toBe(40); // City + state match (different zip)
@@ -530,19 +508,12 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should return totalScore 20 when only address matches', () => {
-    const dxtrTrustee = createDxtrTrustee('New York, NY 10001');
-    const camsCase = createCamsCase('11', '082', '1');
-    const camsTrustee = createCamsTrustee('New York', 'NY', '10001');
-    const appointments = [
-      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' }),
-    ];
-
     const score = calculateCandidateScore(
       context,
-      dxtrTrustee,
-      camsCase,
-      camsTrustee,
-      appointments,
+      makeDxtrTrustee('New York, NY 10001'),
+      makeCase({ chapter: '11', courtId: '082' }),
+      makeTrustee(),
+      [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
     );
 
     expect(score.addressScore).toBe(100);
@@ -552,19 +523,12 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should return totalScore 40 when only district matches', () => {
-    const dxtrTrustee = createDxtrTrustee(); // No address
-    const camsCase = createCamsCase('11', '081', '1');
-    const camsTrustee = createCamsTrustee('New York', 'NY', '10001');
-    const appointments = [
-      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' }),
-    ];
-
     const score = calculateCandidateScore(
       context,
-      dxtrTrustee,
-      camsCase,
-      camsTrustee,
-      appointments,
+      makeDxtrTrustee(), // No address
+      makeCase({ chapter: '11' }),
+      makeTrustee(),
+      [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
     );
 
     expect(score.addressScore).toBe(0);
@@ -574,19 +538,12 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should return totalScore 40 when only chapter matches', () => {
-    const dxtrTrustee = createDxtrTrustee(); // No address
-    const camsCase = createCamsCase('7', '082', '1');
-    const camsTrustee = createCamsTrustee('New York', 'NY', '10001');
-    const appointments = [
-      makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' }),
-    ];
-
     const score = calculateCandidateScore(
       context,
-      dxtrTrustee,
-      camsCase,
-      camsTrustee,
-      appointments,
+      makeDxtrTrustee(), // No address
+      makeCase({ courtId: '082' }),
+      makeTrustee(),
+      [makeAppointment({ chapter: '7', courtId: '081', divisionCode: '1', status: 'active' })],
     );
 
     expect(score.addressScore).toBe(0);
@@ -596,17 +553,12 @@ describe('calculateCandidateScore', () => {
   });
 
   test('should include trusteeId and trusteeName in result', () => {
-    const dxtrTrustee = createDxtrTrustee();
-    const camsCase = createCamsCase('7', '081', '1');
-    const camsTrustee = createCamsTrustee('New York', 'NY', '10001');
-    const appointments: TrusteeAppointment[] = [];
-
     const score = calculateCandidateScore(
       context,
-      dxtrTrustee,
-      camsCase,
-      camsTrustee,
-      appointments,
+      makeDxtrTrustee(),
+      makeCase(),
+      makeTrustee(),
+      [],
     );
 
     expect(score.trusteeId).toBe('trustee-1');
@@ -614,7 +566,6 @@ describe('calculateCandidateScore', () => {
   });
 });
 
-// TODO: remove redundant/extra tests, and mocks like createCase etc...
 describe('resolveTrusteeWithFuzzyMatching', () => {
   let context: ApplicationContext;
   let mockCasesRepo: Partial<CasesRepository>;
@@ -652,19 +603,8 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     vi.restoreAllMocks();
   });
 
-  const createEvent = (): TrusteeAppointmentSyncEvent => ({
-    caseId: '24-12345',
-    courtId: '081',
-    dxtrTrustee: {
-      fullName: 'John Doe',
-      legacy: {
-        cityStateZipCountry: 'New York, NY 10001',
-      },
-    },
-  });
-
   test('should return trusteeId when clear winner found (>75% and 5+ gap)', async () => {
-    const event = createEvent();
+    const event = makeEvent();
     const syncedCase = makeCase();
     const winner = makeTrustee({
       trusteeId: 'trustee-1',
@@ -735,7 +675,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should throw error when no candidate scores >75%', async () => {
-    const event = createEvent();
+    const event = makeEvent();
     const syncedCase = makeCase();
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
@@ -807,7 +747,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should throw error when top scores within 5 points', async () => {
-    const event = createEvent();
+    const event = makeEvent();
     const syncedCase = makeCase();
     const candidate1 = makeTrustee({
       trusteeId: 'trustee-1',
@@ -876,7 +816,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should return winner when single candidate meets 75% threshold', async () => {
-    const event = createEvent();
+    const event = makeEvent();
     const syncedCase = makeCase();
     const candidate = makeTrustee({
       trusteeId: 'trustee-1',
@@ -913,7 +853,7 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
   });
 
   test('should lazy-load case, trustee, and appointment data', async () => {
-    const event = createEvent();
+    const event = makeEvent();
     const syncedCase = makeCase();
     const trustee = makeTrustee({
       trusteeId: 'trustee-1',
@@ -951,5 +891,52 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     expect(mockCasesRepo.getSyncedCase).toHaveBeenCalledWith('24-12345');
     expect(mockTrusteesRepo.read).toHaveBeenCalledWith('trustee-1');
     expect(mockAppointmentsRepo.getTrusteeAppointments).toHaveBeenCalledWith('trustee-1');
+  });
+
+  test('should skip candidates when repository returns undefined instead of throwing', async () => {
+    const event = makeEvent();
+    const syncedCase = makeCase();
+
+    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(makeTrustee({ trusteeId: 'trustee-2', name: 'John Doe 2' }));
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        makeAppointment({
+          trusteeId: 'trustee-2',
+          chapter: '7',
+          courtId: '081',
+          divisionCode: '1',
+        }),
+      ]);
+
+    const result = await resolveTrusteeWithFuzzyMatching(context, event, [
+      'trustee-1',
+      'trustee-2',
+    ]);
+
+    expect(result).toBe('trustee-2');
+  });
+
+  test('should throw when all candidates return undefined from repository', async () => {
+    const event = makeEvent();
+    const syncedCase = makeCase();
+
+    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue(
+      undefined,
+    );
+
+    await expect(
+      resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('no valid candidates could be scored'),
+      data: {
+        mismatchReason: 'NO_TRUSTEE_MATCH',
+      },
+    });
   });
 });
