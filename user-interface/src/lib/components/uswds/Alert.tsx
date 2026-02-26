@@ -102,13 +102,7 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
       id={props.id}
     >
       <div
-        className={`${classes} ${
-          isVisible === IsVisible.True
-            ? 'usa-alert__visible'
-            : isVisible === IsVisible.False
-              ? 'usa-alert__hidden'
-              : 'usa-alert__unset'
-        }`}
+        className={classes}
         role={resolvedRole}
         aria-live={resolvedRole === 'alert' ? 'assertive' : 'polite'}
         aria-labelledby={isVisible === IsVisible.True ? headingId : undefined}
