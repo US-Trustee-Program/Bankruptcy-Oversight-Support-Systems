@@ -21,6 +21,7 @@ import TrusteesScreen from './trustees/TrusteesScreen';
 import TrusteeDetailScreen from './trustees/TrusteeDetailScreen';
 import TrusteePublicContactForm from './trustees/forms/TrusteePublicContactForm';
 import SessionTimeoutManager from './lib/components/cams/SessionTimeoutManager/SessionTimeoutManager';
+import { AlertAccessibilityTest } from './test-pages/AlertAccessibilityTest';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef | null> | null>(
@@ -58,6 +59,7 @@ function App() {
                   element={<TrusteePublicContactForm action="create" cancelTo="/trustees" />}
                 />
               </Route>
+              <Route path="/test/alert-accessibility" element={<AlertAccessibilityTest />}></Route>
               <Route index element={<GoHome />}></Route>
               <Route path="*" element={<GoHome />}></Route>
             </Routes>

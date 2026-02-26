@@ -364,4 +364,57 @@ describe('Test Alert component', () => {
       expect(alert).toHaveAttribute('role', 'alert');
     });
   });
+
+  test('should have aria-labelledby and aria-atomic when title is provided', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            id="test-alert"
+            message="Test alert message"
+            title="Alert Title"
+            type={UswdsAlertStyle.Info}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert-test-alert');
+    const heading = screen.getByRole('heading', { name: 'Alert Title' });
+
+    await waitFor(() => {
+      expect(alert).toHaveAttribute('aria-atomic', 'true');
+      expect(alert).toHaveAttribute('aria-labelledby', 'test-alert-heading');
+      expect(heading).toHaveAttribute('id', 'test-alert-heading');
+    });
+  });
+
+  test('should have aria-atomic but not aria-labelledby when title is not provided', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            id="test-alert"
+            message="Test alert message"
+            type={UswdsAlertStyle.Info}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert-test-alert');
+
+    await waitFor(() => {
+      expect(alert).toHaveAttribute('aria-atomic', 'true');
+      expect(alert).not.toHaveAttribute('aria-labelledby');
+    });
+  });
 });
