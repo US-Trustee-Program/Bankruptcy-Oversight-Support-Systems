@@ -126,7 +126,11 @@ const TrusteeOversightAssignmentModal = forwardRef<
       data-testid="oversight-assignment-modal-content"
     >
       {isLoading && <LoadingSpinner caption={`Loading ${roleLabel}s...`} />}
-      {error && <Alert type={UswdsAlertStyle.Error}>{error}</Alert>}
+      {error && (
+        <Alert type={UswdsAlertStyle.Error} show={true}>
+          {error}
+        </Alert>
+      )}
       {!isLoading && !error && (
         <div className="staff-selection-section">
           <ComboBox
