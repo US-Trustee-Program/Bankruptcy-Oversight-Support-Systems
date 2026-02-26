@@ -138,35 +138,25 @@ resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 }
 
 
-resource apiFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: apiFunctionStorageName
-  location: location
-  tags: {
-    'Stack Name': apiFunctionName
-  }
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'Storage'
-  properties: {
-    supportsHttpsTrafficOnly: true
-    defaultToOAuthAuthentication: true
+module apiFunctionStorageAccount './lib/storage/storage-account.bicep' = {
+  name: '${apiFunctionStorageName}-module'
+  params: {
+    storageAccountName: apiFunctionStorageName
+    location: location
+    tags: {
+      'Stack Name': apiFunctionName
+    }
   }
 }
 
-resource apiFunctionSlotStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: apiFunctionSlotStorageName
-  location: location
-  tags: {
-    'Stack Name': apiFunctionName
-  }
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'Storage'
-  properties: {
-    supportsHttpsTrafficOnly: true
-    defaultToOAuthAuthentication: true
+module apiFunctionSlotStorageAccount './lib/storage/storage-account.bicep' = {
+  name: '${apiFunctionSlotStorageName}-module'
+  params: {
+    storageAccountName: apiFunctionSlotStorageName
+    location: location
+    tags: {
+      'Stack Name': apiFunctionName
+    }
   }
 }
 
@@ -277,7 +267,7 @@ var baseApiFunctionAppConfigProperties = {
       }
       {
         name: 'AzureWebJobsStorage'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionStorageAccount.listKeys().keys[0].value}'
+        value: apiFunctionStorageAccount.outputs.connectionString
       }
       {
         name: 'AzureWebJobsDataflowsStorage'
@@ -307,7 +297,7 @@ var baseApiFunctionAppConfigProperties = {
       }
       {
         name: 'AzureWebJobsStorage'
-        value: 'DefaultEndpointsProtocol=https;AccountName=${apiFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${apiFunctionSlotStorageAccount.listKeys().keys[0].value}'
+        value: apiFunctionSlotStorageAccount.outputs.connectionString
       }
       {
         name: 'AzureWebJobsDataflowsStorage'
