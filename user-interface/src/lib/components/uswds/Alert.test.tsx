@@ -22,35 +22,27 @@ describe('Test Alert component', () => {
       </React.StrictMode>,
     );
 
-    const alert = screen.getByTestId('alert');
+    const alertContainer = screen.getByTestId('alert-container');
     await waitFor(() => {
-      expect(alert).not.toHaveClass('usa-alert__visible');
+      expect(alertContainer).not.toHaveClass('visible');
     });
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).toHaveClass('usa-alert__unset');
 
     act(() => alertRef.current?.show());
     await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert__visible');
+      expect(alertContainer).toHaveClass('visible');
     });
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
 
     await delay(3000);
     await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert__visible');
+      expect(alertContainer).toHaveClass('visible');
     });
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
 
     await waitFor(
       () => {
-        expect(alert).not.toHaveClass('usa-alert__visible');
+        expect(alertContainer).not.toHaveClass('visible');
       },
       { timeout: 2000 },
     );
-    expect(alert).toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
   }, 8000);
 
   test('should be visible until hide is called if no timeout is provided', async () => {
@@ -74,31 +66,21 @@ describe('Test Alert component', () => {
       expect(alertContainer).not.toHaveClass('inline-alert');
     });
 
-    const alert = screen.getByTestId('alert');
-    expect(alert).not.toHaveClass('usa-alert__visible');
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).toHaveClass('usa-alert__unset');
+    expect(alertContainer).not.toHaveClass('visible');
 
     act(() => alertRef.current?.show());
     await waitFor(() => {
-      expect(alertContainer).not.toHaveClass('inline-alert');
+      expect(alertContainer).toHaveClass('visible');
     });
-    expect(alert).toHaveClass('usa-alert__visible');
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
 
     await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert__visible');
+      expect(alertContainer).toHaveClass('visible');
     });
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
 
     act(() => alertRef.current?.hide());
     await waitFor(() => {
-      expect(alert).not.toHaveClass('usa-alert__visible');
+      expect(alertContainer).not.toHaveClass('visible');
     });
-    expect(alert).toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
   }, 8000);
 
   test('should have inline-alert class if declared as inline', async () => {

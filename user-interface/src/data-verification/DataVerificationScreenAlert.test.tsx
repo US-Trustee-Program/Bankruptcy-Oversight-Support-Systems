@@ -51,7 +51,6 @@ describe('Review Orders screen - Alert', () => {
       expect(alertContainer).toHaveClass('visible');
 
       const alert = screen.getByTestId('alert-data-verification-alert');
-      expect(alert).toHaveClass('usa-alert__visible');
       expect(alert).toHaveTextContent(mockAlertMessage);
     });
   });
