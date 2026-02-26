@@ -45,6 +45,7 @@ import {
 } from '@common/cams/trustees';
 import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { OversightRoleType } from '@common/cams/roles';
 import {
   BankList,
@@ -363,6 +364,41 @@ async function deleteCaseNote(note: Partial<CaseNote>) {
   await api().delete<Partial<CaseNote>>(`/cases/${note.caseId}/notes/${note.id}`);
 }
 
+async function getTrusteeNotes(trusteeId: string) {
+  return api().get<TrusteeNote[]>(`/trustees/${trusteeId}/notes`);
+}
+
+async function postTrusteeNote(note: TrusteeNoteInput): Promise<void> {
+  if (note.content.length > 0 && note.title.length > 0 && isValidUserInput(note.content)) {
+    await api().post<TrusteeNoteInput>(`/trustees/${note.trusteeId}/notes`, {
+      title: note.title,
+      content: note.content,
+    });
+  }
+}
+
+async function putTrusteeNote(note: TrusteeNoteInput): Promise<string | undefined> {
+  if (!note.id) {
+    throw new Error('Id must be provided');
+  }
+
+  if (note.content.length > 0 && note.title.length > 0 && isValidUserInput(note.content)) {
+    const response = await api().put<TrusteeNoteInput[]>(
+      `/trustees/${note.trusteeId}/notes/${note.id}`,
+      {
+        title: note.title,
+        content: note.content,
+        updatedBy: note.updatedBy,
+      },
+    );
+    return response.data[0].id;
+  }
+}
+
+async function deleteTrusteeNote(note: Partial<TrusteeNote>) {
+  await api().delete<Partial<TrusteeNote>>(`/trustees/${note.trusteeId}/notes/${note.id}`);
+}
+
 async function getCourts() {
   const path = `/courts`;
   return withCache({ key: path, ttl: DateTimeUtils.DAY }).get<CourtDivisionDetails[]>(path);
@@ -531,6 +567,10 @@ export const _Api2 = {
   putCaseNote,
   getCaseNotes,
   deleteCaseNote,
+  getTrusteeNotes,
+  postTrusteeNote,
+  putTrusteeNote,
+  deleteTrusteeNote,
   getCourts,
   getMe,
   getOfficeAttorneys,

@@ -186,6 +186,14 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getNotesByTrusteeId(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  archiveTrusteeNote(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
   async getTransfers(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

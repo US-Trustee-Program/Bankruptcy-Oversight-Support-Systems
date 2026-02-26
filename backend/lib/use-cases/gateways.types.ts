@@ -34,6 +34,7 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
+import { TrusteeNote } from '@common/cams/trustee-notes';
 import {
   CaseAppointment,
   CaseAppointmentInput,
@@ -136,6 +137,12 @@ export interface CaseNotesRepository<T = CaseNote>
   extends Creates<T, T>, Updates<Partial<T>>, Reads<T> {
   getNotesByCaseId(caseId: string): Promise<CaseNote[]>;
   archiveCaseNote(archiveNote: Partial<CaseNote>): Promise<UpdateResult>;
+}
+
+export interface TrusteeNotesRepository<T = TrusteeNote>
+  extends Creates<T, T>, Updates<Partial<T>>, Reads<T> {
+  getNotesByTrusteeId(trusteeId: string): Promise<TrusteeNote[]>;
+  archiveTrusteeNote(archiveNote: Partial<TrusteeNote>): Promise<UpdateResult>;
 }
 
 export interface OrdersRepository<T = Order>

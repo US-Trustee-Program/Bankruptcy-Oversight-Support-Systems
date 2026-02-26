@@ -28,6 +28,7 @@ import {
   TrusteeAppointmentsRepository,
   TrusteeAppointmentsSyncState,
   TrusteeAssistantsRepository,
+  TrusteeNotesRepository,
   TrusteesRepository,
   UserGroupsRepository,
   UserSessionCacheRepository,
@@ -64,6 +65,7 @@ import { AtsGatewayImpl } from './adapters/gateways/ats/ats.gateway';
 import { MockAtsGateway } from './adapters/gateways/ats/ats.mock.gateway';
 import { deferRelease } from './deferrable/defer-release';
 import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
+import { TrusteeNotesMongoRepository } from './adapters/gateways/mongo/trustee-notes.mongo.repository';
 import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
 import MockUserGroupGateway from './testing/mock-gateways/mock-user-group-gateway';
 import { getCamsErrorWithStack } from './common-errors/error-utilities';
@@ -133,6 +135,15 @@ const getCaseNotesRepository = (context: ApplicationContext): CaseNotesRepositor
     return new MockMongoRepository();
   }
   const repo = CaseNotesMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+const getTrusteeNotesRepository = (context: ApplicationContext): TrusteeNotesRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = TrusteeNotesMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -454,6 +465,7 @@ const factory = {
   getTrusteesRepository,
   getTrusteeAppointmentsRepository,
   getTrusteeAssistantsRepository,
+  getTrusteeNotesRepository,
   getListsGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,
