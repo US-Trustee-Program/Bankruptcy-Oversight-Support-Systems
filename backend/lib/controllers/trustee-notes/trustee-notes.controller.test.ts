@@ -223,4 +223,68 @@ describe('Trustee note controller tests', () => {
 
     expect(editSpy).toHaveBeenCalled();
   });
+
+  test('should throw error when no title is provided on PUT', async () => {
+    applicationContext.request = mockCamsHttpRequest<TrusteeNoteInput>({
+      method: 'PUT',
+      params: { trusteeId: randomUUID(), noteId: randomUUID() },
+      body: {
+        trusteeId: undefined,
+        title: undefined,
+        content: 'some content',
+      },
+    });
+    const controller = new TrusteeNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      'Required parameter trustee note title is absent.',
+    );
+  });
+
+  test('should throw error when no content is provided on PUT', async () => {
+    applicationContext.request = mockCamsHttpRequest<TrusteeNoteInput>({
+      method: 'PUT',
+      params: { trusteeId: randomUUID(), noteId: randomUUID() },
+      body: {
+        trusteeId: undefined,
+        title: 'a title',
+        content: undefined,
+      },
+    });
+    const controller = new TrusteeNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(
+      'Required parameter trustee note content is absent.',
+    );
+  });
+
+  test('should handle errors thrown from useCase on PUT', async () => {
+    const error = new Error('Trustee notes PUT error');
+    vi.spyOn(TrusteeNotesUseCase.prototype, 'editTrusteeNote').mockRejectedValue(error);
+    const trusteeId = randomUUID();
+    applicationContext.request = mockCamsHttpRequest<TrusteeNoteInput>({
+      method: 'PUT',
+      params: { trusteeId, noteId: randomUUID() },
+      body: {
+        trusteeId,
+        title: 'a title',
+        content: 'some content',
+      },
+    });
+    const expectedCamsError = getCamsError(error, 'TRUSTEE-NOTES-CONTROLLER');
+    const controller = new TrusteeNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedCamsError);
+  });
+
+  test('should handle errors thrown from useCase on POST', async () => {
+    const error = new Error('Trustee notes POST error');
+    vi.spyOn(TrusteeNotesUseCase.prototype, 'createTrusteeNote').mockRejectedValue(error);
+    const trusteeId = randomUUID();
+    applicationContext.request = mockCamsHttpRequest<TrusteeNoteInput>({
+      method: 'POST',
+      params: { trusteeId },
+      body: { trusteeId, title: 'a title', content: 'some content' },
+    });
+    const expectedCamsError = getCamsError(error, 'TRUSTEE-NOTES-CONTROLLER');
+    const controller = new TrusteeNotesController(applicationContext);
+    await expect(controller.handleRequest(applicationContext)).rejects.toThrow(expectedCamsError);
+  });
 });
