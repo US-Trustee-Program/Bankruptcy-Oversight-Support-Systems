@@ -13,48 +13,39 @@
     width: 100%;
   }
 
+  .text-wrapper {
+    max-width: 560px;
+  }
+
   #searchable-case-notes {
     list-style-type: none;
-    padding-left: 0;
-    padding-top: 1rem;
+    margin-top: 0;
+    padding-left: unset;
+
+    .case-note-metadata {
+      margin-top: 1.25rem;
+      margin-bottom: .25rem;
+    }
 
     .case-note {
-      padding-left: 0;
-      margin-left: 0;
-      padding-bottom: 2.5rem;
+      max-width: unset;
+      padding-top: 1.5rem;
+    }
 
-      .case-note-title-and-date {
-        padding-bottom: 1rem;
-
-        .case-note-header {
-          padding-right: 1.5rem;
-        }
-
-        .case-note-date {
-          font-style: italic;
-          text-align: right;
-          white-space: nowrap
-        }
+    .case-note-toolbar {
+      button {
+        margin-left: 1.5rem;
       }
+    }
 
-      .case-note-author {
-        padding-top: 0.5rem;
-        font-style: italic;
-      }
+    .case-note:not(:last-child) {
+      border-bottom: 1px solid black;
+      padding-bottom: .5rem;
+    }
 
-      .case-note-toolbar {
-        & button {
-          padding-top: 0.75rem;
-        }
-        .edit-button {
-          margin-right: 2rem;
-        }
-      }
-
-      ::highlight(search-results) {
-        background-color: colors.$yellow-20;
-        color: black;
-      }
+    ::highlight(search-results) {
+      background-color: colors.$yellow-20;
+      color: black;
     }
   }
 }
