@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
 import TrusteeNotes from './TrusteeNotes';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -108,5 +108,57 @@ describe('trustee notes tests', () => {
 
     const editedLabels = screen.queryAllByText(/Edited by:/);
     expect(editedLabels.length).toBeGreaterThan(0);
+  });
+
+  describe('sorting', () => {
+    const sortableNotes = [
+      MockData.getTrusteeNote({ trusteeId, title: 'Banana', updatedOn: '2024-01-01T00:00:00Z' }),
+      MockData.getTrusteeNote({ trusteeId, title: 'Apple', updatedOn: '2024-03-01T00:00:00Z' }),
+      MockData.getTrusteeNote({ trusteeId, title: 'Cherry', updatedOn: '2024-02-01T00:00:00Z' }),
+    ];
+
+    function getNoteHeaders() {
+      return screen.getAllByRole('listitem').map((li) => li.querySelector('h4')?.textContent ?? '');
+    }
+
+    test('should default to newest first', async () => {
+      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: sortableNotes });
+
+      render(<TrusteeNotes trusteeId={trusteeId} />);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
+      });
+
+      expect(getNoteHeaders()).toEqual(['Apple', 'Cherry', 'Banana']);
+    });
+
+    test('should sort oldest first when selected', async () => {
+      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: sortableNotes });
+
+      render(<TrusteeNotes trusteeId={trusteeId} />);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'oldest' } });
+
+      expect(getNoteHeaders()).toEqual(['Banana', 'Cherry', 'Apple']);
+    });
+
+    test('should sort by title A-Z when selected', async () => {
+      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: sortableNotes });
+
+      render(<TrusteeNotes trusteeId={trusteeId} />);
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'title' } });
+
+      expect(getNoteHeaders()).toEqual(['Apple', 'Banana', 'Cherry']);
+    });
   });
 });
