@@ -113,4 +113,61 @@ describe('TrusteeNoteFormModal', () => {
       expect(screen.queryByText('Edit Trustee Note')).toBeInTheDocument();
     });
   });
+
+  test('should call onModalClosed with trusteeId and mode when hide is called after show', async () => {
+    const onModalClosed = vi.fn();
+    render(<TrusteeNoteFormModal ref={modalRef} modalId={modalId} onModalClosed={onModalClosed} />);
+
+    const showProps: TrusteeNoteFormModalOpenProps = {
+      trusteeId,
+      title: 'My Title',
+      content: '<p>Some content</p>',
+      callback: vi.fn(),
+      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      initialTitle: '',
+      initialContent: '',
+      mode: 'create',
+    };
+
+    modalRef.current?.show(showProps);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Create Trustee Note')).toBeInTheDocument();
+    });
+
+    modalRef.current?.hide();
+
+    expect(onModalClosed).toHaveBeenCalledWith(trusteeId, 'create');
+  });
+
+  test('should not call onModalClosed when hide is called without a prior show', () => {
+    const onModalClosed = vi.fn();
+    render(<TrusteeNoteFormModal ref={modalRef} modalId={modalId} onModalClosed={onModalClosed} />);
+
+    modalRef.current?.hide();
+
+    expect(onModalClosed).not.toHaveBeenCalled();
+  });
+
+  test('should set modal title to "Edit Trustee Note" in edit mode', async () => {
+    renderModal();
+
+    const showProps: TrusteeNoteFormModalOpenProps = {
+      id: randomUUID(),
+      trusteeId,
+      title: 'Existing Title',
+      content: '<p>Existing content</p>',
+      callback: vi.fn(),
+      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      initialTitle: 'Existing Title',
+      initialContent: '<p>Existing content</p>',
+      mode: 'edit',
+    };
+
+    modalRef.current?.show(showProps);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Edit Trustee Note')).toBeInTheDocument();
+    });
+  });
 });
