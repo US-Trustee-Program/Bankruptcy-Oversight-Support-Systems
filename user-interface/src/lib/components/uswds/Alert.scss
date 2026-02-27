@@ -1,14 +1,17 @@
 .usa-alert-container {
   position: fixed;
-  display: none;
-  z-index: 10;
+  z-index: -1;
   width: fit-content;
   left: 50%;
   transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out, z-index 0s 0.2s;
 }
 
 .usa-alert-container.visible {
-  display: block;
+  z-index: 10;
+  opacity: 1;
+  transition: opacity 0.2s ease-in-out, z-index 0s 0s;
 }
 
 .header-scrolled-out .usa-alert-container:not(.inline-alert) {
@@ -91,17 +94,6 @@
   }
 }
 
-.usa-alert__unset {
-  visibility: hidden;
-}
-
-.usa-alert__hidden {
-  visibility: hidden;
-}
-
-.usa-alert__visible {
-  visibility: visible;
-}
 
 .usa-alert-container.inline-alert {
   position: relative;
