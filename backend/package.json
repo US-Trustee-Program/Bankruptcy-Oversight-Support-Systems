@@ -61,7 +61,7 @@
     "azure-function-context-mock": "0.0.7",
     "dependency-cruiser": "17.3.7",
     "esbuild": "0.27.2",
-    "eslint": "9.39.2",
+    "eslint": "10.0.0",
     "eslint-config-prettier": "10.1.8",
     "eslint-plugin-import": "2.32.0",
     "eslint-plugin-n": "17.23.2",
