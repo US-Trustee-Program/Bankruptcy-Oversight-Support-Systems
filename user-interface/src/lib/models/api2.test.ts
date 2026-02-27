@@ -483,6 +483,97 @@ describe('_Api2 functions', async () => {
     api2.default.deleteBank(bankId);
     expect(deleteSpy).toHaveBeenCalledWith(`/lists/banks/${bankId}`, {});
   });
+
+  test('should call api.get when calling getTrusteeNotes', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    const trusteeId = 'trustee-id';
+    api2.default.getTrusteeNotes(trusteeId);
+    expect(getSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}/notes`, {});
+  });
+
+  test('should call api.post when calling postTrusteeNote with valid input', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
+    const note = MockData.getTrusteeNote({
+      trusteeId: 'trustee-id',
+      title: inputPassedThroughApi,
+      content: inputPassedThroughApi,
+    });
+    api2.default.postTrusteeNote(note);
+    expect(postSpy).toHaveBeenCalledWith(
+      `/trustees/${note.trusteeId}/notes`,
+      { title: note.title, content: note.content },
+      {},
+    );
+  });
+
+  test('should not call api.post when calling postTrusteeNote with malicious input', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
+    const note = MockData.getTrusteeNote({
+      trusteeId: 'trustee-id',
+      title: inputBlockedFromApi,
+      content: inputBlockedFromApi,
+    });
+    api2.default.postTrusteeNote(note);
+    expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  test('should not call api.post when calling postTrusteeNote with script-only input that sanitizes to empty', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: '' });
+    const note = MockData.getTrusteeNote({
+      trusteeId: 'trustee-id',
+      title: '<script>foo</script>',
+      content: '<script>foo</script>',
+    });
+    api2.default.postTrusteeNote(note);
+    expect(postSpy).not.toHaveBeenCalled();
+  });
+
+  test('should call api.put when calling putTrusteeNote with valid input', () => {
+    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: [{ id: 'note-id' }] });
+    const note = MockData.getTrusteeNote({
+      id: 'note-id',
+      trusteeId: 'trustee-id',
+      title: inputPassedThroughApi,
+      content: inputPassedThroughApi,
+    });
+    api2.default.putTrusteeNote(note);
+    expect(putSpy).toHaveBeenCalledWith(
+      `/trustees/${note.trusteeId}/notes/${note.id}`,
+      { title: note.title, content: note.content, updatedBy: note.updatedBy },
+      {},
+    );
+  });
+
+  test('should throw when calling putTrusteeNote without an id', async () => {
+    const putSpy = vi.spyOn(api.default, 'put');
+    const note = MockData.getTrusteeNote({
+      id: undefined as unknown as string,
+      trusteeId: 'trustee-id',
+      title: inputPassedThroughApi,
+      content: inputPassedThroughApi,
+    });
+    await expect(api2.default.putTrusteeNote(note)).rejects.toThrow('Id must be provided');
+    expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  test('should not call api.put when calling putTrusteeNote with malicious input', () => {
+    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: [{ id: 'note-id' }] });
+    const note = MockData.getTrusteeNote({
+      id: 'note-id',
+      trusteeId: 'trustee-id',
+      title: inputBlockedFromApi,
+      content: inputBlockedFromApi,
+    });
+    api2.default.putTrusteeNote(note);
+    expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  test('should call api.delete when calling deleteTrusteeNote', () => {
+    const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue();
+    const note = MockData.getTrusteeNote({ id: 'note-id', trusteeId: 'trustee-id' });
+    api2.default.deleteTrusteeNote(note);
+    expect(deleteSpy).toHaveBeenCalledWith(`/trustees/${note.trusteeId}/notes/${note.id}`, {});
+  });
 });
 
 describe('addAuthHeaderToApi', () => {
