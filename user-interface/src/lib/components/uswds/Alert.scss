@@ -1,17 +1,17 @@
 .usa-alert-container {
   position: fixed;
-  z-index: 10;
+  z-index: -1;
   width: fit-content;
   left: 50%;
   transform: translateX(-50%);
-  visibility: hidden;
   opacity: 0;
-  transition: opacity 0.2s ease-in-out;
+  transition: opacity 0.2s ease-in-out, z-index 0s 0.2s;
 }
 
 .usa-alert-container.visible {
-  visibility: visible;
+  z-index: 10;
   opacity: 1;
+  transition: opacity 0.2s ease-in-out, z-index 0s 0s;
 }
 
 .header-scrolled-out .usa-alert-container:not(.inline-alert) {
