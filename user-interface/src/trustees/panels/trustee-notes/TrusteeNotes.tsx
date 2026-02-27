@@ -28,6 +28,8 @@ import PrerenderedHtml from '@/lib/components/cams/PrerenderedHtml/PrerenderedHt
 import Api2 from '@/lib/models/api2';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
+type SortOrder = 'newest' | 'oldest' | 'title';
+
 type TrusteeNotesRef = {
   focusEditButton: (noteId: string) => void;
 };
@@ -48,6 +50,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
 
   const [trusteeNotes, setTrusteeNotes] = useState<TrusteeNote[]>([]);
   const [areTrusteeNotesLoading, setAreTrusteeNotesLoading] = useState<boolean>(false);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState<Cacheable<TrusteeNoteInput> | null>(null);
   const [editDrafts, setEditDrafts] = useState<Cacheable<TrusteeNoteInput>[] | null>(null);
@@ -57,6 +60,19 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
 
   useMemo(mapArchiveButtonRefs, [trusteeNotes]);
   useMemo(mapEditButtonRefs, [trusteeNotes]);
+
+  const sortedNotes = useMemo(() => {
+    return [...trusteeNotes].sort((a, b) => {
+      if (sortOrder === 'oldest') {
+        return new Date(a.updatedOn).getTime() - new Date(b.updatedOn).getTime();
+      }
+      if (sortOrder === 'title') {
+        return a.title.localeCompare(b.title);
+      }
+      // newest (default)
+      return new Date(b.updatedOn).getTime() - new Date(a.updatedOn).getTime();
+    });
+  }, [trusteeNotes, sortOrder]);
 
   function mapArchiveButtonRefs() {
     openArchiveModalButtonRefs.current =
@@ -88,10 +104,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
     setAreTrusteeNotesLoading(true);
     Api2.getTrusteeNotes(trusteeId)
       .then((response) => {
-        const sorted = (response.data ?? []).sort(
-          (a, b) => new Date(b.updatedOn).getTime() - new Date(a.updatedOn).getTime(),
-        );
-        setTrusteeNotes(sorted);
+        setTrusteeNotes(response.data ?? []);
         if (noteId) {
           setFocusId(noteId);
         }
@@ -218,7 +231,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   }
 
   function renderTrusteeNotes() {
-    return trusteeNotes?.map((note, idx: number) => {
+    return sortedNotes.map((note, idx: number) => {
       return showTrusteeNote(note, idx);
     });
   }
@@ -297,6 +310,8 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
                 id="trustee-notes-sort"
                 name="trustee-notes-sort"
                 aria-label="Sort by"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
