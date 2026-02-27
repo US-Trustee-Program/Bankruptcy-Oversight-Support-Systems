@@ -4,7 +4,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
-import { SortOrder, sortTrusteeNotes } from './trustee-notes-sorting';
+import { filterTrusteeNotes, SortOrder, sortTrusteeNotes } from './trustee-notes-search-criteria';
 import React, {
   forwardRef,
   useEffect,
@@ -52,6 +52,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   const [focusId, setFocusId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState<Cacheable<TrusteeNoteInput> | null>(null);
   const [editDrafts, setEditDrafts] = useState<Cacheable<TrusteeNoteInput>[] | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const removeConfirmationModalId = 'trustee-remove-note-modal';
   const trusteeNoteModalId = 'trustee-note-modal';
@@ -59,10 +60,10 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   useMemo(mapArchiveButtonRefs, [trusteeNotes]);
   useMemo(mapEditButtonRefs, [trusteeNotes]);
 
-  const sortedNotes = useMemo(
-    () => sortTrusteeNotes(trusteeNotes, sortOrder),
-    [trusteeNotes, sortOrder],
-  );
+  const trusteeNotesRecords = useMemo(() => {
+    const sortedNotes = sortTrusteeNotes(trusteeNotes, sortOrder);
+    return filterTrusteeNotes(sortedNotes, searchQuery);
+  }, [trusteeNotes, sortOrder, searchQuery]);
 
   function mapArchiveButtonRefs() {
     openArchiveModalButtonRefs.current =
@@ -106,7 +107,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   }
 
   function renderTrusteeNotes() {
-    return sortedNotes.map((note, idx: number) => {
+    return trusteeNotesRecords.map((note, idx: number) => {
       const formKey = buildTrusteeNoteFormKey(note.trusteeId, 'edit', note.id ?? '');
       const draft = LocalFormCache.getForm<TrusteeNoteInput>(formKey);
 
@@ -213,6 +214,10 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
                 id="trustee-notes-search"
                 name="trustee-notes-search"
                 aria-label="Find note by title or content"
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearchQuery(value);
+                }}
               />
             </div>
             <div className="trustee-notes-sort-wrapper">
