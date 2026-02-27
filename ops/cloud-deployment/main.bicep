@@ -1,5 +1,7 @@
 param stackName string
 
+param deployedAt string = utcNow()
+
 param location string = resourceGroup().location
 
 param appResourceGroup string = resourceGroup().name
@@ -121,6 +123,24 @@ param enabledDataflows string = ''
 
 param gitSha string
 
+var webappTags = {
+  app: 'cams'
+  component: 'webapp'
+  'deployed-at': deployedAt
+}
+
+var apiTags = {
+  app: 'cams'
+  component: 'api'
+  'deployed-at': deployedAt
+}
+
+var dataflowsTags = {
+  app: 'cams'
+  component: 'dataflows'
+  'deployed-at': deployedAt
+}
+
 module actionGroup './lib/monitoring-alerts/alert-action-group.bicep' =
   if (createAlerts) {
     name: '${actionGroupName}-action-group-module'
@@ -184,6 +204,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       oktaUrl: oktaUrl
       slotName: slotName
       isUstpDeployment: isUstpDeployment
+      tags: webappTags
     }
 }
 
@@ -227,6 +248,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       gitSha: gitSha
       dataflowsStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsStorageConnectionString
       dataflowsSlotStorageConnectionString: ustpDataflowsFunction.outputs.dataflowsSlotStorageConnectionString
+      tags: apiTags
     }
 }
 
@@ -267,5 +289,6 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     mssqlRequestTimeout: mssqlRequestTimeout
     enabledDataflows: enabledDataflows
     gitSha: gitSha
+    tags: dataflowsTags
   }
 }

@@ -101,6 +101,8 @@ param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
 param gitSha string
 
+param tags object = {}
+
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
@@ -111,6 +113,7 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
 resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: dataflowsPlanName
+  tags: tags
   sku: {
     name: 'EP1'
     tier: 'ElasticPremium'
@@ -137,9 +140,7 @@ module dataflowsFunctionStorageAccount './lib/storage/storage-account.bicep' = {
   params: {
     storageAccountName: dataflowsFunctionStorageName
     location: location
-    tags: {
-      'Stack Name': dataflowsFunctionName
-    }
+    tags: union(tags, { slot: 'production' })
   }
 }
 
@@ -148,9 +149,7 @@ module dataflowsFunctionSlotStorageAccount './lib/storage/storage-account.bicep'
   params: {
     storageAccountName: dataflowsFunctionSlotStorageName
     location: location
-    tags: {
-      'Stack Name': dataflowsFunctionName
-    }
+    tags: union(tags, { slot: 'deployment' })
   }
 }
 
@@ -185,6 +184,7 @@ var userAssignedIdentities = union(
 resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: dataflowsFunctionName
   location: location
+  tags: tags
   kind: 'functionapp,linux'
   identity: {
     type: 'UserAssigned'
@@ -244,6 +244,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   resource slot 'slots' = {
     location: location
     name: slotName
+    tags: union(tags, { slot: 'deployment' })
     identity: {
       type: 'UserAssigned'
       userAssignedIdentities: userAssignedIdentities
@@ -328,6 +329,7 @@ module dataflowsFunctionAppInsights 'lib/app-insights/function-app-insights.bice
     createAlerts: createAlerts
     createApplicationInsights: createApplicationInsights
     functionAppName: dataflowsFunctionName
+    tags: tags
   }
   dependsOn: [
     dataflowsFunctionApp
@@ -522,6 +524,7 @@ module dataflowsFunctionPrivateEndpoint './lib/network/subnet-private-endpoint.b
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    tags: tags
   }
 }
 
@@ -538,6 +541,7 @@ module dataflowsSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    tags: tags
   }
   dependsOn: [
     dataflowsFunctionApp::slot
@@ -568,6 +572,7 @@ module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSq
   params: {
     managedIdentityName: sqlIdentityName
     location: location
+    tags: tags
   }
 }
 
@@ -584,6 +589,7 @@ module dataflowWorkbooks 'lib/workbooks/dataflow-workbooks.bicep' = if (createAp
   params: {
     location: location
     appInsightsResourceId: dataflowsFunctionAppInsights.outputs.id
+    tags: tags
   }
 }
 

@@ -50,6 +50,8 @@ var roleIdMapping = {
   'Key Vault Secrets User': '4633458b-17de-408a-b874-0445c86b69e6'
 }
 
+param tags object = {}
+
 param networkAcls object = {
   defaultAction: 'Allow'
   bypass: 'AzureServices'
@@ -58,6 +60,7 @@ param networkAcls object = {
 resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: keyVaultName
   location: location
+  tags: tags
   properties: {
     enabledForDeployment: enabledForDeployment
     enabledForDiskEncryption: enabledForDiskEncryption

@@ -107,6 +107,8 @@ param dataflowsStorageConnectionString string
 @secure()
 param dataflowsSlotStorageConnectionString string
 
+param tags object = {}
+
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
 resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
@@ -117,6 +119,7 @@ resource appConfigIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@202
 resource apiServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: apiPlanName
+  tags: tags
   sku: {
     name: 'EP1'
     tier: 'ElasticPremium'
@@ -143,9 +146,7 @@ module apiFunctionStorageAccount './lib/storage/storage-account.bicep' = {
   params: {
     storageAccountName: apiFunctionStorageName
     location: location
-    tags: {
-      'Stack Name': apiFunctionName
-    }
+    tags: union(tags, { slot: 'production' })
   }
 }
 
@@ -154,9 +155,7 @@ module apiFunctionSlotStorageAccount './lib/storage/storage-account.bicep' = {
   params: {
     storageAccountName: apiFunctionSlotStorageName
     location: location
-    tags: {
-      'Stack Name': apiFunctionName
-    }
+    tags: union(tags, { slot: 'deployment' })
   }
 }
 
@@ -170,6 +169,7 @@ var userAssignedIdentities = union(
 resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   name: apiFunctionName
   location: location
+  tags: tags
   kind: 'functionapp,linux'
   identity: {
     type: 'UserAssigned'
@@ -207,6 +207,7 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   resource slot 'slots' = {
     location: location
     name: slotName
+    tags: union(tags, { slot: 'deployment' })
     identity: {
       type: 'UserAssigned'
       userAssignedIdentities: userAssignedIdentities
@@ -319,6 +320,7 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
     createAlerts: createAlerts
     createApplicationInsights: createApplicationInsights
     functionAppName: apiFunctionName
+    tags: tags
   }
   dependsOn: [
     apiFunctionApp
@@ -493,6 +495,7 @@ module apiPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    tags: tags
   }
 }
 
@@ -509,6 +512,7 @@ module apiSlotPrivateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    tags: tags
   }
   dependsOn: [
     apiFunctionApp::slot
@@ -539,6 +543,7 @@ module sqlManagedIdentity './lib/identity/managed-identity.bicep' = if (createSq
   params: {
     managedIdentityName: sqlIdentityName
     location: location
+    tags: tags
   }
 }
 
