@@ -40,7 +40,7 @@ param functionsRuntime string
 // Provides mapping for runtime stack
 // Use the following query to check supported versions
 //  az functionapp list-runtimes --os linux --query "[].{stack:join(' ', [runtime, version]), LinuxFxVersion:linux_fx_version, SupportedFunctionsVersions:to_string(supported_functions_versions[])}" --output table
-// NOTE: Should match major version in .nvmrc (currently v22.17.1)
+// NOTE: Should match major version in .nvmrc (currently v22.x.x)
 var linuxFxVersionMap = {
   node: 'NODE|22'
 }
@@ -132,35 +132,25 @@ resource dataflowsServicePlan 'Microsoft.Web/serverfarms@2022-09-01' = {
 }
 
 //Storage Account Resources
-resource dataflowsFunctionStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: dataflowsFunctionStorageName
-  location: location
-  tags: {
-    'Stack Name': dataflowsFunctionName
-  }
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'Storage'
-  properties: {
-    supportsHttpsTrafficOnly: true
-    defaultToOAuthAuthentication: true
+module dataflowsFunctionStorageAccount './lib/storage/storage-account.bicep' = {
+  name: '${dataflowsFunctionStorageName}-module'
+  params: {
+    storageAccountName: dataflowsFunctionStorageName
+    location: location
+    tags: {
+      'Stack Name': dataflowsFunctionName
+    }
   }
 }
 
-resource dataflowsFunctionSlotStorageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
-  name: dataflowsFunctionSlotStorageName
-  location: location
-  tags: {
-    'Stack Name': dataflowsFunctionName
-  }
-  sku: {
-    name: 'Standard_LRS'
-  }
-  kind: 'Storage'
-  properties: {
-    supportsHttpsTrafficOnly: true
-    defaultToOAuthAuthentication: true
+module dataflowsFunctionSlotStorageAccount './lib/storage/storage-account.bicep' = {
+  name: '${dataflowsFunctionSlotStorageName}-module'
+  params: {
+    storageAccountName: dataflowsFunctionSlotStorageName
+    location: location
+    tags: {
+      'Stack Name': dataflowsFunctionName
+    }
   }
 }
 
@@ -180,7 +170,7 @@ module dataflowsSlotQueues './lib/storage/storage-queues.bicep' = {
     storageAccountName: dataflowsFunctionSlotStorageName
   }
   dependsOn: [
-    dataflowsFunctionStorageAccount
+    dataflowsFunctionSlotStorageAccount
   ]
 }
 
@@ -225,11 +215,11 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
         {
           name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
+          value: dataflowsFunctionStorageAccount.outputs.connectionString
         }
         {
           name: 'AzureWebJobsDataflowsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
+          value: dataflowsFunctionStorageAccount.outputs.connectionString
         }
       ])
     })
@@ -283,11 +273,11 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           }
           {
             name: 'AzureWebJobsStorage'
-            value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
+            value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
           }
           {
             name: 'AzureWebJobsDataflowsStorage'
-            value: 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
+            value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
           }
         ])
       })
@@ -597,5 +587,5 @@ module dataflowWorkbooks 'lib/workbooks/dataflow-workbooks.bicep' = if (createAp
   }
 }
 
-output dataflowsStorageConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionStorageAccount.listKeys().keys[0].value}'
-output dataflowsSlotStorageConnectionString string = 'DefaultEndpointsProtocol=https;AccountName=${dataflowsFunctionSlotStorageAccount.name};EndpointSuffix=${environment().suffixes.storage};AccountKey=${dataflowsFunctionSlotStorageAccount.listKeys().keys[0].value}'
+output dataflowsStorageConnectionString string = dataflowsFunctionStorageAccount.outputs.connectionString
+output dataflowsSlotStorageConnectionString string = dataflowsFunctionSlotStorageAccount.outputs.connectionString
