@@ -249,4 +249,41 @@ describe('Test trustee-notes use case', () => {
     );
     expect(readSpy).toHaveBeenCalledWith(existingNote.id);
   });
+
+  test('should propagate error when read throws during archiveTrusteeNote', async () => {
+    const userRef = MockData.getCamsUserReference();
+    const readError = new Error('Database read failed');
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(readError);
+
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
+    const useCase = new TrusteeNotesUseCase(context);
+
+    const archiveRequest = MockData.getTrusteeNoteDeletionRequest({
+      id: randomUUID(),
+      sessionUser: userRef,
+    });
+
+    await expect(useCase.archiveTrusteeNote(archiveRequest)).rejects.toThrow(
+      'Database read failed',
+    );
+  });
+
+  test('should propagate error when read throws during editTrusteeNote', async () => {
+    const userRef = MockData.getCamsUserReference();
+    const readError = new Error('Database read failed');
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(readError);
+
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
+    const useCase = new TrusteeNotesUseCase(context);
+
+    const existingNote = MockData.getTrusteeNote({ createdBy: userRef });
+    const editRequest = MockData.getTrusteeNoteEditRequest({
+      note: existingNote,
+      sessionUser: userRef,
+    });
+
+    await expect(useCase.editTrusteeNote(editRequest)).rejects.toThrow('Database read failed');
+  });
 });

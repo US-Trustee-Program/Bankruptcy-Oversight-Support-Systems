@@ -97,6 +97,16 @@ describe('trustee notes tests', () => {
     });
   });
 
+  test('should show empty state when API call fails', async () => {
+    vi.spyOn(Api2, 'getTrusteeNotes').mockRejectedValue(new Error('API error'));
+
+    render(<TrusteeNotes trusteeId={trusteeId} />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('empty-trustee-notes-test-id')).toBeInTheDocument();
+    });
+  });
+
   test('should show "Edited by" label for notes with previousVersionId', async () => {
     vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: trusteeNotes });
 
