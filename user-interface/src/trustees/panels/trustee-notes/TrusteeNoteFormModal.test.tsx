@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import TrusteeNoteFormModal, {
   TrusteeNoteFormModalRef,
   TrusteeNoteFormModalOpenProps,
@@ -11,22 +11,62 @@ import { InputRef } from '@/lib/type-declarations/input-fields';
 import MockData from '@common/cams/test-utilities/mock-data';
 import LocalStorage from '@/lib/utils/local-storage';
 import Api2 from '@/lib/models/api2';
+import { RichTextEditorRef } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+
+vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
+  const { forwardRef, useRef, useImperativeHandle } = await import('react');
+  return {
+    default: forwardRef(function MockRichTextEditor(_props: unknown, ref: React.Ref<unknown>) {
+      const content = useRef('<p></p>');
+      useImperativeHandle(ref, () => ({
+        getHtml: () => content.current,
+        setValue: (v: string) => {
+          content.current = v;
+        },
+        clearValue: () => {
+          content.current = '';
+        },
+        disable: () => {},
+      }));
+      return null;
+    }),
+  };
+});
 
 const trusteeId = randomUUID();
 const modalRef = React.createRef<TrusteeNoteFormModalRef>();
 const modalId = 'trustee-note-form-modal-test';
 
-function renderModal() {
-  return render(<TrusteeNoteFormModal ref={modalRef} modalId={modalId} />);
+function getSubmitButton() {
+  return screen.getByTestId(`button-${modalId}-submit-button`);
 }
 
+function getCancelButton() {
+  return screen.getByTestId(`button-${modalId}-cancel-button`);
+}
+
+const defaultShowProps: TrusteeNoteFormModalOpenProps = {
+  trusteeId,
+  title: 'My Title',
+  content: '<p>Some content</p>',
+  callback: vi.fn(),
+  openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+  initialTitle: '',
+  initialContent: '',
+  mode: 'create',
+};
+
 describe('TrusteeNoteFormModal', () => {
+  beforeEach(() => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession());
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   test('should render modal without throwing', () => {
-    expect(() => renderModal()).not.toThrow();
+    expect(() => render(<TrusteeNoteFormModal ref={modalRef} modalId={modalId} />)).not.toThrow();
   });
 
   test('buildTrusteeNoteFormKey returns correct key for create mode', () => {
@@ -53,61 +93,33 @@ describe('TrusteeNoteFormModal', () => {
       disable: vi.fn(),
       focus: vi.fn(),
     };
-    const result = getTrusteeNotesTitleValue(mockRef);
-    expect(result).toBe('My Title');
+    expect(getTrusteeNotesTitleValue(mockRef)).toBe('My Title');
   });
 
-  test('should call postTrusteeNote on create submit', async () => {
-    const session = MockData.getCamsSession();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    const postSpy = vi.spyOn(Api2, 'postTrusteeNote').mockResolvedValue();
+  test('should show "Create Trustee Note" heading in create mode', async () => {
+    render(<TrusteeNoteFormModal ref={modalRef} modalId={modalId} />);
 
-    renderModal();
+    act(() => {
+      modalRef.current?.show(defaultShowProps);
+    });
 
-    const showProps: TrusteeNoteFormModalOpenProps = {
-      trusteeId,
-      title: 'My Title',
-      content: '<p>Some content</p>',
-      callback: vi.fn(),
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-      mode: 'create',
-    };
-
-    // Show the modal programmatically
-    modalRef.current?.show(showProps);
-
-    // Modal is shown and postTrusteeNote will be called on submit
-    // (submit button is disabled by default; just verify modal shows)
     await waitFor(() => {
       expect(screen.queryByText('Create Trustee Note')).toBeInTheDocument();
     });
-
-    // Spy was set up successfully
-    expect(postSpy).not.toHaveBeenCalled(); // Not called until form is submitted
   });
 
-  test('should call putTrusteeNote on edit submit', async () => {
-    const session = MockData.getCamsSession();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    vi.spyOn(Api2, 'putTrusteeNote').mockResolvedValue('new-note-id');
+  test('should show "Edit Trustee Note" heading in edit mode', async () => {
+    render(<TrusteeNoteFormModal ref={modalRef} modalId={modalId} />);
 
-    renderModal();
-
-    const showProps: TrusteeNoteFormModalOpenProps = {
-      id: randomUUID(),
-      trusteeId,
-      title: 'My Title',
-      content: '<p>Some content</p>',
-      callback: vi.fn(),
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: 'My Title',
-      initialContent: '<p>Some content</p>',
-      mode: 'edit',
-    };
-
-    modalRef.current?.show(showProps);
+    act(() => {
+      modalRef.current?.show({
+        ...defaultShowProps,
+        id: randomUUID(),
+        mode: 'edit',
+        initialTitle: 'My Title',
+        initialContent: '<p>Some content</p>',
+      });
+    });
 
     await waitFor(() => {
       expect(screen.queryByText('Edit Trustee Note')).toBeInTheDocument();
@@ -118,18 +130,9 @@ describe('TrusteeNoteFormModal', () => {
     const onModalClosed = vi.fn();
     render(<TrusteeNoteFormModal ref={modalRef} modalId={modalId} onModalClosed={onModalClosed} />);
 
-    const showProps: TrusteeNoteFormModalOpenProps = {
-      trusteeId,
-      title: 'My Title',
-      content: '<p>Some content</p>',
-      callback: vi.fn(),
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: '',
-      initialContent: '',
-      mode: 'create',
-    };
-
-    modalRef.current?.show(showProps);
+    act(() => {
+      modalRef.current?.show(defaultShowProps);
+    });
 
     await waitFor(() => {
       expect(screen.queryByText('Create Trustee Note')).toBeInTheDocument();
@@ -149,25 +152,158 @@ describe('TrusteeNoteFormModal', () => {
     expect(onModalClosed).not.toHaveBeenCalled();
   });
 
-  test('should set modal title to "Edit Trustee Note" in edit mode', async () => {
-    renderModal();
+  test('should call onModalClosed when cancel button is clicked', async () => {
+    const onModalClosed = vi.fn();
+    render(<TrusteeNoteFormModal ref={modalRef} modalId={modalId} onModalClosed={onModalClosed} />);
 
-    const showProps: TrusteeNoteFormModalOpenProps = {
-      id: randomUUID(),
-      trusteeId,
-      title: 'Existing Title',
-      content: '<p>Existing content</p>',
-      callback: vi.fn(),
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
-      initialTitle: 'Existing Title',
-      initialContent: '<p>Existing content</p>',
-      mode: 'edit',
-    };
-
-    modalRef.current?.show(showProps);
+    act(() => {
+      modalRef.current?.show(defaultShowProps);
+    });
 
     await waitFor(() => {
-      expect(screen.queryByText('Edit Trustee Note')).toBeInTheDocument();
+      expect(screen.queryByText('Create Trustee Note')).toBeInTheDocument();
+    });
+
+    fireEvent.click(getCancelButton());
+
+    expect(onModalClosed).toHaveBeenCalledWith(trusteeId, 'create');
+  });
+
+  test('should call postTrusteeNote when create form submitted with valid data', async () => {
+    const callback = vi.fn();
+    const postSpy = vi.spyOn(Api2, 'postTrusteeNote').mockResolvedValue();
+    const richTextRef = React.createRef<RichTextEditorRef | null>();
+
+    render(
+      <TrusteeNoteFormModal ref={modalRef} modalId={modalId} RichTextEditorRef={richTextRef} />,
+    );
+
+    act(() => {
+      modalRef.current?.show({ ...defaultShowProps, callback });
+    });
+
+    await waitFor(() => expect(getSubmitButton()).not.toBeDisabled());
+
+    fireEvent.click(getSubmitButton());
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ trusteeId, title: 'My Title' }),
+      );
+      expect(callback).toHaveBeenCalled();
+    });
+  });
+
+  test('should show validation error when submitted with empty content', async () => {
+    vi.spyOn(Api2, 'postTrusteeNote').mockResolvedValue();
+    const richTextRef = React.createRef<RichTextEditorRef | null>();
+
+    render(
+      <TrusteeNoteFormModal ref={modalRef} modalId={modalId} RichTextEditorRef={richTextRef} />,
+    );
+
+    act(() => {
+      modalRef.current?.show(defaultShowProps);
+    });
+
+    // Wait for button to enable with valid title+content
+    await waitFor(() => expect(getSubmitButton()).not.toBeDisabled());
+
+    // Clear content via the ref so validFields gets empty content
+    act(() => {
+      richTextRef.current?.clearValue();
+    });
+
+    fireEvent.click(getSubmitButton());
+
+    await waitFor(() => {
+      expect(screen.queryByText('Title and content are both required inputs.')).toBeInTheDocument();
+    });
+  });
+
+  test('should show error message when postTrusteeNote fails', async () => {
+    vi.spyOn(Api2, 'postTrusteeNote').mockRejectedValue({ data: undefined });
+    const richTextRef = React.createRef<RichTextEditorRef | null>();
+
+    render(
+      <TrusteeNoteFormModal ref={modalRef} modalId={modalId} RichTextEditorRef={richTextRef} />,
+    );
+
+    act(() => {
+      modalRef.current?.show(defaultShowProps);
+    });
+
+    await waitFor(() => expect(getSubmitButton()).not.toBeDisabled());
+
+    fireEvent.click(getSubmitButton());
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('There was a problem submitting the trustee note.'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  test('should call putTrusteeNote when edit form submitted with valid data', async () => {
+    const callback = vi.fn();
+    const noteId = randomUUID();
+    const putSpy = vi.spyOn(Api2, 'putTrusteeNote').mockResolvedValue(noteId);
+    const richTextRef = React.createRef<RichTextEditorRef | null>();
+
+    render(
+      <TrusteeNoteFormModal ref={modalRef} modalId={modalId} RichTextEditorRef={richTextRef} />,
+    );
+
+    act(() => {
+      modalRef.current?.show({
+        ...defaultShowProps,
+        id: noteId,
+        mode: 'edit',
+        callback,
+        initialTitle: 'Old Title',
+        initialContent: '<p>old</p>',
+      });
+    });
+
+    await waitFor(() => expect(getSubmitButton()).not.toBeDisabled());
+
+    fireEvent.click(getSubmitButton());
+
+    await waitFor(() => {
+      expect(putSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ id: noteId, trusteeId, title: 'My Title' }),
+      );
+      expect(callback).toHaveBeenCalledWith(noteId);
+    });
+  });
+
+  test('should show error message when putTrusteeNote fails', async () => {
+    const noteId = randomUUID();
+    vi.spyOn(Api2, 'putTrusteeNote').mockRejectedValue({ data: undefined });
+    const richTextRef = React.createRef<RichTextEditorRef | null>();
+
+    render(
+      <TrusteeNoteFormModal ref={modalRef} modalId={modalId} RichTextEditorRef={richTextRef} />,
+    );
+
+    act(() => {
+      modalRef.current?.show({
+        ...defaultShowProps,
+        id: noteId,
+        mode: 'edit',
+        initialTitle: 'Old Title',
+        initialContent: '<p>old</p>',
+      });
+    });
+
+    await waitFor(() => expect(getSubmitButton()).not.toBeDisabled());
+
+    fireEvent.click(getSubmitButton());
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('There was a problem submitting the trustee note.'),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -5,6 +5,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import Actions from '@common/cams/actions';
 import { randomUUID } from 'crypto';
 import LocalStorage from '@/lib/utils/local-storage';
+import LocalFormCache from '@/lib/utils/local-form-cache';
 
 const trusteeId = randomUUID();
 const userId = '001';
@@ -105,6 +106,35 @@ describe('trustee notes tests', () => {
     await waitFor(() => {
       expect(screen.queryByTestId('empty-trustee-notes-test-id')).toBeInTheDocument();
     });
+  });
+
+  test('should display draft alert when a draft note exists in cache', async () => {
+    const expiresAfter = Date.now() + 1000 * 60 * 60;
+    vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
+    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
+      value: { trusteeId, title: 'Draft Title', content: 'Draft content' },
+      expiresAfter,
+    });
+    vi.spyOn(LocalFormCache, 'getFormsByPattern').mockReturnValue([]);
+
+    render(<TrusteeNotes trusteeId={trusteeId} />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('draft-trustee-note-alert-test-id')).toBeInTheDocument();
+    });
+    expect(screen.getByText(/You have a draft trustee note/)).toBeInTheDocument();
+  });
+
+  test('should fire setFocusId when Add Note button is clicked', async () => {
+    vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
+
+    render(<TrusteeNotes trusteeId={trusteeId} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Add Note')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('open-modal-button_trustee-note-add-button'));
   });
 
   test('should show "Edited by" label for notes with previousVersionId', async () => {
