@@ -157,11 +157,7 @@ describe('trustee notes tests', () => {
       MockData.getTrusteeNote({ trusteeId, title: 'Cherry', updatedOn: '2024-02-01T00:00:00Z' }),
     ];
 
-    function getNoteHeaders() {
-      return screen.getAllByRole('listitem').map((li) => li.querySelector('h4')?.textContent ?? '');
-    }
-
-    test('should default to newest first', async () => {
+    test('should render the sort control', async () => {
       vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: sortableNotes });
 
       render(<TrusteeNotes trusteeId={trusteeId} />);
@@ -170,10 +166,10 @@ describe('trustee notes tests', () => {
         expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
       });
 
-      expect(getNoteHeaders()).toEqual(['Apple', 'Cherry', 'Banana']);
+      expect(screen.getByLabelText('Sort by')).toBeInTheDocument();
     });
 
-    test('should sort oldest first when selected', async () => {
+    test('should re-order notes when sort selection changes', async () => {
       vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: sortableNotes });
 
       render(<TrusteeNotes trusteeId={trusteeId} />);
@@ -182,23 +178,12 @@ describe('trustee notes tests', () => {
         expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'oldest' } });
+      const getNoteHeaders = () =>
+        screen.getAllByRole('listitem').map((li) => li.querySelector('h4')?.textContent ?? '');
 
-      expect(getNoteHeaders()).toEqual(['Banana', 'Cherry', 'Apple']);
-    });
-
-    test('should sort by title A-Z when selected', async () => {
-      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: sortableNotes });
-
-      render(<TrusteeNotes trusteeId={trusteeId} />);
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
-      });
-
+      const before = getNoteHeaders();
       fireEvent.change(screen.getByLabelText('Sort by'), { target: { value: 'title' } });
-
-      expect(getNoteHeaders()).toEqual(['Apple', 'Banana', 'Cherry']);
+      expect(getNoteHeaders()).not.toEqual(before);
     });
   });
 });

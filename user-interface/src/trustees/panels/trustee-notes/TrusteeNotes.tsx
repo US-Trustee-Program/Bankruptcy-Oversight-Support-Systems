@@ -4,6 +4,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { formatDateTime } from '@/lib/utils/datetime';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
+import { SortOrder, sortTrusteeNotes } from './trustee-notes-sorting';
 import React, {
   forwardRef,
   useEffect,
@@ -27,8 +28,6 @@ import { Cacheable } from '@/lib/utils/local-cache';
 import PrerenderedHtml from '@/lib/components/cams/PrerenderedHtml/PrerenderedHtml';
 import Api2 from '@/lib/models/api2';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-
-type SortOrder = 'newest' | 'oldest' | 'title';
 
 type TrusteeNotesRef = {
   focusEditButton: (noteId: string) => void;
@@ -61,18 +60,10 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   useMemo(mapArchiveButtonRefs, [trusteeNotes]);
   useMemo(mapEditButtonRefs, [trusteeNotes]);
 
-  const sortedNotes = useMemo(() => {
-    return [...trusteeNotes].sort((a, b) => {
-      if (sortOrder === 'oldest') {
-        return new Date(a.updatedOn).getTime() - new Date(b.updatedOn).getTime();
-      }
-      if (sortOrder === 'title') {
-        return a.title.localeCompare(b.title);
-      }
-      // newest (default)
-      return new Date(b.updatedOn).getTime() - new Date(a.updatedOn).getTime();
-    });
-  }, [trusteeNotes, sortOrder]);
+  const sortedNotes = useMemo(
+    () => sortTrusteeNotes(trusteeNotes, sortOrder),
+    [trusteeNotes, sortOrder],
+  );
 
   function mapArchiveButtonRefs() {
     openArchiveModalButtonRefs.current =
@@ -118,7 +109,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   function showTrusteeNote(note: TrusteeNote, idx: number) {
     const formKey = buildTrusteeNoteFormKey(note.trusteeId, 'edit', note.id ?? '');
     const draft = LocalFormCache.getForm<TrusteeNoteInput>(formKey);
-
+    console.log('note', note);
     return (
       <li className="trustee-note grid-container" key={idx} data-testid={`trustee-note-${idx}`}>
         <div className="grid-row">
