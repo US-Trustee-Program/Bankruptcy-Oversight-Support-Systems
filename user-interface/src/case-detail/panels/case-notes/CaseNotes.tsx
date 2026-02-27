@@ -27,7 +27,7 @@ import CaseNoteRemovalModal, { CaseNoteRemovalModalRef } from './CaseNoteRemoval
 import Actions from '@common/cams/actions';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { Cacheable } from '@/lib/utils/local-cache';
-import PrerenderedHtml from '@/lib/components/cams/PrerenderedHtml/PrerenderedHtml';
+import { NoteItem } from '@/lib/components/cams/NoteItem/NoteItem';
 
 export function getCaseNotesInputValue(ref: TextAreaRef | null) {
   return ref?.getValue() ?? '';
@@ -92,114 +92,48 @@ function CaseNotes_(props: CaseNotesProps, ref: React.Ref<CaseNotesRef>) {
     openEditModalButtonRefs.current = newRefs;
   }
 
-  function showCaseNote(note: CaseNote, idx: number) {
-    const formKey = buildCaseNoteFormKey(note.caseId, 'edit', note.id ?? '');
-    const draft = LocalFormCache.getForm<CaseNoteInput>(formKey);
-
-    return (
-      <li className="case-note grid-container" key={idx} data-testid={`case-note-${idx}`}>
-        <div className="grid-row case-note-title-and-date">
-          <div className="grid-col-8">
-            <h4
-              className="case-note-header usa-tooltip"
-              data-testid={`case-note-${idx}-header`}
-              title={note.title}
-              aria-label={`Note Title: ${note.title}`}
-            >
-              {note.title}
-            </h4>
-          </div>
-          <div className="case-note-date grid-col-4" data-testid={`case-note-creation-date-${idx}`}>
-            {note.previousVersionId ? 'Edited on: ' : 'Created on: '}
-            {formatDateTime(note.updatedOn)}
-          </div>
-        </div>
-        <div className="grid-row">
-          <div className="grid-col-12 case-note-content">
-            <div
-              data-testid={`case-note-${idx}-text`}
-              aria-label="full text of case note"
-              role="note"
-            >
-              <PrerenderedHtml htmlString={note.content} />
-            </div>
-          </div>
-        </div>
-        <div className="case-note-author" data-testid={`case-note-author-${idx}`}>
-          {note.updatedBy.name}
-        </div>
-        {draft && (
-          <Alert
-            id={`draft-edit-note-${note.id}`}
-            message={getDraftAlertMessage(draft)}
-            type={UswdsAlertStyle.Info}
-            role={'status'}
-            timeout={0}
-            show={true}
-            inline={true}
-            slim={true}
-            className="grid-col-8"
-          />
-        )}
-        <div className="case-note-toolbar" data-testid={`case-note-toolbar-${idx}`}>
-          {Actions.contains(note, Actions.EditNote) && (
-            <OpenModalButton
-              className="edit-button"
-              id={`case-note-edit-button`}
-              buttonIndex={`${idx}`}
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              modalId={caseNoteModalId}
-              modalRef={caseNoteModalRef}
-              ref={openEditModalButtonRefs.current.get(note.id!)}
-              data-noteid={note.id}
-              openProps={{
-                id: note.id,
-                caseId: note.caseId,
-                buttonId: `case-note-edit-button-${idx}`,
-                title: draft?.value.title ?? note.title,
-                content: draft?.value.content ?? note.content,
-                callback: onUpdateNoteRequest,
-                initialTitle: note.title,
-                initialContent: note.content,
-                mode: 'edit',
-              }}
-              ariaLabel={`Edit note titled ${note.title}`}
-            >
-              <Icon name="edit" className="edit-icon" />
-              Edit
-            </OpenModalButton>
-          )}
-          {Actions.contains(note, Actions.RemoveNote) && (
-            <OpenModalButton
-              className="remove-button text-secondary-dark"
-              id={`case-note-remove-button`}
-              buttonIndex={`${idx}`}
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              modalId={removeConfirmationModalId}
-              modalRef={removeConfirmationModalRef}
-              ref={openArchiveModalButtonRefs.current[idx]}
-              openProps={{
-                id: note.id,
-                caseId: note.caseId,
-                buttonId: `case-note-remove-button-${idx}`,
-                callback: onUpdateNoteRequest,
-                initialTitle: note.title,
-                initialContent: note.content,
-              }}
-              ariaLabel={`Remove note titled ${note.title}`}
-            >
-              <Icon name="remove_circle" className="remove-icon" />
-              Delete
-            </OpenModalButton>
-          )}
-        </div>
-      </li>
-    );
-  }
-
   function renderCaseNotes() {
     return caseNotes?.map((note, idx: number) => {
-      return showCaseNote(note, idx);
+      const formKey = buildCaseNoteFormKey(note.caseId, 'edit', note.id ?? '');
+      const draft = LocalFormCache.getForm<CaseNoteInput>(formKey);
+
+      return (
+        <NoteItem
+          key={idx}
+          note={note}
+          idx={idx}
+          layout="case-note"
+          draft={draft}
+          editAction={Actions.EditNote}
+          removeAction={Actions.RemoveNote}
+          modalId={caseNoteModalId}
+          removeModalId={removeConfirmationModalId}
+          modalRef={caseNoteModalRef}
+          removeModalRef={removeConfirmationModalRef}
+          editButtonRef={openEditModalButtonRefs.current.get(note.id!)}
+          removeButtonRef={openArchiveModalButtonRefs.current[idx]}
+          editButtonProps={{
+            id: note.id,
+            caseId: note.caseId,
+            buttonId: `case-note-edit-button-${idx}`,
+            title: draft?.value.title ?? note.title,
+            content: draft?.value.content ?? note.content,
+            callback: onUpdateNoteRequest,
+            initialTitle: note.title,
+            initialContent: note.content,
+            mode: 'edit',
+          }}
+          removeButtonProps={{
+            id: note.id,
+            caseId: note.caseId,
+            buttonId: `case-note-remove-button-${idx}`,
+            callback: onUpdateNoteRequest,
+            initialTitle: note.title,
+            initialContent: note.content,
+          }}
+          getDraftAlertMessage={getDraftAlertMessage}
+        />
+      );
     });
   }
 
