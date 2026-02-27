@@ -34,7 +34,7 @@ First Note
 - [ ] Usability validated - Team ensures the working code is easy to use
 - [ ] Accessibility tests passed - System passes automated and manual accessibility tests and supports applicable devices
 - [ ] Threat model updated - The threat model incorporates new threats and remediations
-- [ ] Build process updated - Automated build process include code supporting the user story
-- [ ] Documents are updated - All required documentation is up to date and version controlled
-- [ ] Code is deployed - Code is deployed to the highest production like environment
+- [ ] Build process updated - Automated build process includes code supporting the user story
+- [ ] Documents are updated - All required documentation is up-to-date and version controlled
+- [ ] Code is deployed - Code is deployed to the highest production-like environment
 - [ ] Deployment changes documented - updated in pipelines, env vars, etc.
