@@ -1,4 +1,8 @@
 .trustee-notes-panel {
+  .text-wrapper {
+    max-width: 560px;
+  }
+
   .trustee-notes-controls {
     display: flex;
     justify-content: space-between;
