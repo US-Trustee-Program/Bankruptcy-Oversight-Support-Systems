@@ -52,8 +52,15 @@ var roleIdMapping = {
 
 param tags object = {}
 
+@description('Controls whether the key vault is accessible from the public internet. Defaults to Disabled for security.')
+@allowed([
+  'Enabled'
+  'Disabled'
+])
+param publicNetworkAccess string = 'Disabled'
+
 param networkAcls object = {
-  defaultAction: 'Allow'
+  defaultAction: 'Deny'
   bypass: 'AzureServices'
 }
 
@@ -72,6 +79,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
       name: skuName
       family: 'A'
     }
+    publicNetworkAccess: publicNetworkAccess
     networkAcls: networkAcls
   }
 }
