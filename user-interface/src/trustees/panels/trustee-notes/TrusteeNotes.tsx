@@ -200,17 +200,20 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
           </div>
         </div>
         {draft && (
-          <Alert
-            id={`draft-edit-trustee-note-${note.id}`}
-            message={getDraftAlertMessage(draft)}
-            type={UswdsAlertStyle.Info}
-            role={'status'}
-            timeout={0}
-            show={true}
-            inline={true}
-            slim={true}
-            className="grid-col-8"
-          />
+          <div className="grid-row">
+            <Alert
+              id={`draft-edit-trustee-note-${note.id}`}
+              message={getDraftAlertMessage(draft)}
+              type={UswdsAlertStyle.Info}
+              role={'status'}
+              timeout={0}
+              show={true}
+              inline={true}
+              slim={true}
+              className="grid-col-8"
+            />
+            <div className="grid-col-4"></div>
+          </div>
         )}
       </li>
     );
@@ -335,17 +338,20 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
             data-testid="draft-trustee-note-alert-test-id"
             className="draft-notes-alert-container margin-top-3 margin-bottom-0"
           >
-            <Alert
-              id="draft-add-trustee-note"
-              message={getDraftAlertMessage(draftNote)}
-              type={UswdsAlertStyle.Info}
-              role={'status'}
-              timeout={0}
-              title="Draft Note Available"
-              show={true}
-              inline={true}
-              className="grid-col-12 margin-bottom-0"
-            />
+            <div className="grid-row">
+              <Alert
+                id="draft-add-trustee-note"
+                message={getDraftAlertMessage(draftNote)}
+                type={UswdsAlertStyle.Info}
+                role={'status'}
+                timeout={0}
+                title="Draft Note Available"
+                show={true}
+                inline={true}
+                className="grid-col-8 margin-bottom-0"
+              />
+              <div className="grid-col-4"></div>
+            </div>
           </div>
         )}
         {areTrusteeNotesLoading && (
