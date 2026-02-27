@@ -56,6 +56,13 @@ describe('TrusteeDetailNavigation', () => {
       state: TrusteeNavState.ASSIGNED_STAFF,
     },
     {
+      testId: 'trustee-notes-nav-link',
+      text: 'Trustee Notes',
+      href: '/trustees/12345/notes',
+      title: 'View notes for the trustee',
+      state: TrusteeNavState.NOTES,
+    },
+    {
       testId: 'trustee-audit-history-nav-link',
       text: 'Change History',
       href: '/trustees/12345/audit-history',
@@ -162,6 +169,7 @@ describe('mapTrusteeDetailNavState', () => {
     ['appointments', TrusteeNavState.APPOINTMENTS],
     ['audit-history', TrusteeNavState.AUDIT_HISTORY],
     ['/trustees/12345/assigned-staff', TrusteeNavState.ASSIGNED_STAFF],
+    ['notes', TrusteeNavState.NOTES],
     ['unknown-value', TrusteeNavState.TRUSTEE_PROFILE],
     ['', TrusteeNavState.TRUSTEE_PROFILE],
     [undefined as unknown as string, TrusteeNavState.TRUSTEE_PROFILE],
