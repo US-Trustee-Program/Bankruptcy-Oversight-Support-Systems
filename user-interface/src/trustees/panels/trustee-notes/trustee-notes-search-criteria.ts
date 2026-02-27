@@ -14,3 +14,12 @@ export function sortTrusteeNotes(notes: TrusteeNote[], sortOrder: SortOrder): Tr
     return new Date(b.updatedOn).getTime() - new Date(a.updatedOn).getTime();
   });
 }
+
+export function filterTrusteeNotes(notes: TrusteeNote[], query: string): TrusteeNote[] {
+  if (!query) return notes;
+  const q = query.toLowerCase();
+  return notes.filter((note) => {
+    const plainContent = note.content.replace(/<[^>]*>/g, '');
+    return note.title.toLowerCase().includes(q) || plainContent.toLowerCase().includes(q);
+  });
+}
