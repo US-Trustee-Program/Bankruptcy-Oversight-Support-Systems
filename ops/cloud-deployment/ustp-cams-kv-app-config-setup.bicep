@@ -20,6 +20,8 @@
 @description('Application name will be use to name keyvault prepended by kv-')
 param stackName string
 
+param deployedAt string = utcNow()
+
 param deployDns bool = true
 
 param location string = resourceGroup().location
@@ -58,12 +60,19 @@ param kvNetworkAcls object = {
 @description('Managed identity with Secrets User role to Keyvault')
 param managedIdentityName string = 'id-kv-app-config-${uniqueString(stackName)}'
 
+var tags = {
+  app: 'cams'
+  component: 'security'
+  'deployed-at': deployedAt
+}
+
 module appConfigIdentity './lib/identity/managed-identity.bicep' = {
   name: '${stackName}-id-app-config-module'
   scope: resourceGroup(kvResourceGroup)
   params: {
     location: location
     managedIdentityName: managedIdentityName
+    tags: tags
   }
 }
 
@@ -76,6 +85,7 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
     objectId: appConfigIdentity.outputs.principalId
     roleName: 'Key Vault Secrets User'
     networkAcls: kvNetworkAcls
+    tags: tags
   }
 }
 
@@ -107,5 +117,6 @@ module appConfigKeyvaultPrivateEndpoint './lib/network/subnet-private-endpoint.b
     privateDnsZoneName: keyvaultPrivateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    tags: tags
   }
 }

@@ -5,7 +5,13 @@ param storageAccountName string
 
 param location string = resourceGroup().location
 
-param tags object = {}
+param deployedAt string = utcNow()
+
+var tags = {
+  app: 'cams'
+  component: 'security-scan'
+  'deployed-at': deployedAt
+}
 
 @description('Name of the blob container for security scan results.')
 param containerName string = 'security-scan-results'

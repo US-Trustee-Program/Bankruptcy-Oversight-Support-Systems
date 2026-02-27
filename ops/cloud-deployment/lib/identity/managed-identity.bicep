@@ -3,9 +3,12 @@ param location string = resourceGroup().location
 
 param managedIdentityName string
 
+param tags object = {}
+
 resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: managedIdentityName
   location: location
+  tags: tags
 }
 
 output name string = managedIdentity.name

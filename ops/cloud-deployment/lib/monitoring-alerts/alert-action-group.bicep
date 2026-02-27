@@ -1,8 +1,11 @@
 param actionGroupName string
 
+param tags object = {}
+
 resource actionGroup 'microsoft.insights/actionGroups@2023-01-01' = {
   name: actionGroupName
   location: 'Global'
+  tags: tags
   properties: {
     groupShortName: 'Email Team'
     enabled: true
