@@ -110,13 +110,15 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
       <li className="trustee-note grid-container" key={idx} data-testid={`trustee-note-${idx}`}>
         <div className="grid-row">
           <div className="grid-col-10">
-            <h4
-              className="trustee-note-header usa-tooltip"
-              data-testid={`trustee-note-${idx}-header`}
-              aria-label={`Note Title: ${note.title}`}
-            >
-              {note.title}
-            </h4>
+            <div className="text-wrapper">
+              <h4
+                className="trustee-note-header usa-tooltip"
+                data-testid={`trustee-note-${idx}-header`}
+                aria-label={`Note Title: ${note.title}`}
+              >
+                {note.title}
+              </h4>
+            </div>
           </div>
 
           <div
@@ -175,7 +177,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
         </div>
         <div className="grid-row trustee-note-metadata">
           <div
-            className="trustee-note-date grid-col-12 text-italic"
+            className="trustee-note-date grid-col-12 text-italic text-wrapper"
             data-testid={`trustee-note-creation-date-${idx}`}
           >
             {note.previousVersionId ? 'Edited by: ' : 'Created by: '}
@@ -185,7 +187,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
           </div>
         </div>
         <div className="grid-row">
-          <div className="grid-col-12 trustee-note-content">
+          <div className="grid-col-12 trustee-note-content text-wrapper">
             <div
               data-testid={`trustee-note-${idx}-text`}
               aria-label="full text of trustee note"
