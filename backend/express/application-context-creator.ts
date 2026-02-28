@@ -68,7 +68,7 @@ async function getApplicationContext<B = unknown>(
     config,
     featureFlags,
     logger,
-    observability: new AppInsightsObservability(),
+    observability: new AppInsightsObservability(logger),
     invocationId: requestId,
     request: expressToCamsHttpRequest<B>(request),
     session: undefined,
