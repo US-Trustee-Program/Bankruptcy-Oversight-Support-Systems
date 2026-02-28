@@ -10,8 +10,12 @@ import factory from '../../lib/factory';
 import { sanitizeDeep } from '../../lib/use-cases/validations';
 import { ObservabilityGateway } from '../../lib/use-cases/gateways.types';
 import { AppInsightsObservability } from '../../lib/adapters/services/observability';
+import { configureAppInsights } from './app-insights';
 
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
+
+// Configure App Insights once on first function invocation
+configureAppInsights();
 
 function getLogger(invocationContext: InvocationContext) {
   /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
