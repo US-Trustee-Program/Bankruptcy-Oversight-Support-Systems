@@ -197,7 +197,7 @@ function routeErrorForInitialAttempt(
 
 async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability();
+  const observability = new AppInsightsObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   const abandoned = isNotFoundError(event.error);
   routeErrorForInitialAttempt(event, invocationContext, logger);

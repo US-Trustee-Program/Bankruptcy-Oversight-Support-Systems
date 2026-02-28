@@ -171,7 +171,7 @@ async function createContext(): Promise<ApplicationContext> {
 
   const featureFlags = await getFeatureFlags(config);
   const logger = new LoggerImpl('cli-sync-trustee-appointments');
-  const observability = new AppInsightsObservability();
+  const observability = new AppInsightsObservability(logger);
 
   return {
     config,

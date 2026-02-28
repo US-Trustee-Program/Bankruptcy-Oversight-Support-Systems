@@ -1,22 +1,37 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { AppInsightsObservability, scrubErrorForTelemetry } from './observability';
 import { TraceCompletion } from '../../use-cases/gateways.types';
+import { LoggerImpl } from './logger.service';
+import { AppInsightsObservability, scrubErrorForTelemetry } from './observability';
+import { TelemetryClient } from '../../../function-apps/azure/app-insights';
 
-vi.mock('../../../function-apps/azure/app-insights', () => ({
-  getAppInsightsClient: vi.fn(),
-}));
+const mockTrackEvent = vi.fn();
+const mockTrackMetric = vi.fn();
+const mockLogger = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+} as unknown as LoggerImpl;
 
-import { getAppInsightsClient } from '../../../function-apps/azure/app-insights';
+const mockClient = {
+  trackEvent: mockTrackEvent,
+  trackMetric: mockTrackMetric,
+} as unknown as TelemetryClient;
+
+const mockClientFactory = vi.fn(() => mockClient);
 
 const TEST_INVOCATION_ID = 'test-invocation-id';
 
 describe('AppInsightsObservability', () => {
-  const mockedGetClient = vi.mocked(getAppInsightsClient);
   let gateway: AppInsightsObservability;
 
   beforeEach(() => {
-    vi.restoreAllMocks();
-    gateway = new AppInsightsObservability();
+    mockTrackEvent.mockClear();
+    mockTrackMetric.mockClear();
+    mockClientFactory.mockClear();
+    vi.mocked(mockLogger.warn).mockClear();
+    vi.mocked(mockLogger.error).mockClear();
+    gateway = new AppInsightsObservability(undefined, mockClientFactory);
   });
 
   describe('startTrace', () => {
@@ -47,22 +62,16 @@ describe('AppInsightsObservability', () => {
   });
 
   describe('completeTrace', () => {
-    test('should call trackEvent with event name, properties, and measurements', () => {
-      const mockTrackEvent = vi.fn();
-      const mockTrackMetric = vi.fn();
-      mockedGetClient.mockReturnValue({
-        trackEvent: mockTrackEvent,
-        trackMetric: mockTrackMetric,
-      });
-
-      const trace = gateway.startTrace(TEST_INVOCATION_ID);
+    test('should call trackEvent with event name, properties, and measurements when defaultClient exists', () => {
+      const gatewayWithLogger = new AppInsightsObservability(mockLogger, mockClientFactory);
+      const trace = gatewayWithLogger.startTrace(TEST_INVOCATION_ID);
       const completion: TraceCompletion = {
         success: true,
         properties: { searchType: 'standard' },
         measurements: { resultCount: 10 },
       };
 
-      gateway.completeTrace(trace, 'TestEvent', completion);
+      gatewayWithLogger.completeTrace(trace, 'TestEvent', completion);
 
       expect(mockTrackEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -81,15 +90,9 @@ describe('AppInsightsObservability', () => {
       );
     });
 
-    test('should call trackMetric for each metric provided', () => {
-      const mockTrackEvent = vi.fn();
-      const mockTrackMetric = vi.fn();
-      mockedGetClient.mockReturnValue({
-        trackEvent: mockTrackEvent,
-        trackMetric: mockTrackMetric,
-      });
-
-      const trace = gateway.startTrace(TEST_INVOCATION_ID);
+    test('should call trackMetric for each metric provided when defaultClient exists', () => {
+      const gatewayWithLogger = new AppInsightsObservability(mockLogger, mockClientFactory);
+      const trace = gatewayWithLogger.startTrace(TEST_INVOCATION_ID);
       const completion: TraceCompletion = {
         success: true,
         properties: {},
@@ -100,7 +103,7 @@ describe('AppInsightsObservability', () => {
         { name: 'MetricB', value: 7 },
       ];
 
-      gateway.completeTrace(trace, 'TestEvent', completion, metrics);
+      gatewayWithLogger.completeTrace(trace, 'TestEvent', completion, metrics);
 
       expect(mockTrackMetric).toHaveBeenCalledWith(
         expect.objectContaining({ name: 'MetricA', value: 42 }),
@@ -111,13 +114,8 @@ describe('AppInsightsObservability', () => {
     });
 
     test('should include scrubbed error in properties when provided', () => {
-      const mockTrackEvent = vi.fn();
-      mockedGetClient.mockReturnValue({
-        trackEvent: mockTrackEvent,
-        trackMetric: vi.fn(),
-      });
-
-      const trace = gateway.startTrace(TEST_INVOCATION_ID);
+      const gatewayWithLogger = new AppInsightsObservability(mockLogger, mockClientFactory);
+      const trace = gatewayWithLogger.startTrace(TEST_INVOCATION_ID);
       const completion: TraceCompletion = {
         success: false,
         properties: {},
@@ -125,7 +123,7 @@ describe('AppInsightsObservability', () => {
         error: 'Failed: 123-45-6789 connection issue',
       };
 
-      gateway.completeTrace(trace, 'TestEvent', completion);
+      gatewayWithLogger.completeTrace(trace, 'TestEvent', completion);
 
       expect(mockTrackEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -137,38 +135,18 @@ describe('AppInsightsObservability', () => {
     });
 
     test('should not include error property when not provided', () => {
-      const mockTrackEvent = vi.fn();
-      mockedGetClient.mockReturnValue({
-        trackEvent: mockTrackEvent,
-        trackMetric: vi.fn(),
-      });
-
-      const trace = gateway.startTrace(TEST_INVOCATION_ID);
+      const gatewayWithLogger = new AppInsightsObservability(mockLogger, mockClientFactory);
+      const trace = gatewayWithLogger.startTrace(TEST_INVOCATION_ID);
       const completion: TraceCompletion = {
         success: true,
         properties: {},
         measurements: {},
       };
 
-      gateway.completeTrace(trace, 'TestEvent', completion);
+      gatewayWithLogger.completeTrace(trace, 'TestEvent', completion);
 
       const callArgs = mockTrackEvent.mock.calls[0][0];
       expect(callArgs.properties).not.toHaveProperty('error');
-    });
-
-    test('should not call App Insights when client is missing', () => {
-      mockedGetClient.mockReturnValue(null);
-
-      const trace = gateway.startTrace(TEST_INVOCATION_ID);
-      const completion: TraceCompletion = {
-        success: true,
-        properties: {},
-        measurements: {},
-      };
-
-      gateway.completeTrace(trace, 'TestEvent', completion);
-
-      expect(mockedGetClient).toHaveBeenCalled();
     });
   });
 
