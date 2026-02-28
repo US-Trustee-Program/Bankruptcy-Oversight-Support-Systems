@@ -1,5 +1,6 @@
 import * as dotenv from 'dotenv';
 import { LoggerImpl } from '../../lib/adapters/services/logger.service';
+import { configureAppInsights } from '../azure/app-insights';
 
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
@@ -95,6 +96,10 @@ class DataflowSetupMap {
 const dataflows = new DataflowSetupMap();
 
 dotenv.config();
+
+// Configure Application Insights to prevent duplicate logs
+// Must be called early, after dotenv but before any functions execute
+configureAppInsights();
 
 // Register data flows.
 dataflows.register(
