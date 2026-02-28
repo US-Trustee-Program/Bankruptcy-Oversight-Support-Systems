@@ -1,14 +1,23 @@
 param location string = resourceGroup().location
 
+param deployedAt string = utcNow()
+
 param analyticsWorkspaceName string
 
 param enableLinkedStorageAccount bool = true
+
+var tags = {
+  app: 'cams'
+  component: 'analytics'
+  'deployed-at': deployedAt
+}
 
 module workspace './lib/app-insights/analytics-workspace.bicep' = {
   name: '${analyticsWorkspaceName}-workspace-module'
   params: {
     location: location
     analyticsWorkspaceName: analyticsWorkspaceName
+    tags: tags
   }
 }
 
@@ -21,6 +30,7 @@ module storage './lib/storage/storage-account.bicep' = if (enableLinkedStorageAc
   params: {
     location: location
     storageAccountName: toLower('stLogWS${uniqueString(subscription().subscriptionId, resourceGroup().id, analyticsWorkspace.name)}')
+    tags: tags
   }
 }
 

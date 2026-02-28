@@ -83,6 +83,8 @@ param allowAllNetworks bool = false
 @description('List of allowed IP ranges on the USTP side')
 param allowedIps array = []
 
+param tags object = {}
+
 var azureIpArray = [for item in allowedIps:{
   ipAddressOrRange: item
 }]
@@ -110,6 +112,7 @@ var allowedNetworkList = [for item in allowedNetworks: {
 resource account 'Microsoft.DocumentDB/databaseAccounts@2023-11-15' = {
   name: accountName
   location: location
+  tags: tags
   kind: 'MongoDB'
   properties: {
     consistencyPolicy: consistencyPolicy[defaultConsistencyLevel]
