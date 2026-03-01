@@ -12,10 +12,10 @@
     "start": "func start --javascript"
   },
   "dependencies": {
-    "@azure/functions": "4.11.1",
+    "@azure/functions": "4.11.2",
     "mongodb": "7.1.0",
     "mssql": "12.2.0",
-    "dotenv": "17.2.3",
+    "dotenv": "17.3.1",
     "express": "5.2.1",
     "applicationinsights": "3.13.0",
     "natural": "8.1.0"
