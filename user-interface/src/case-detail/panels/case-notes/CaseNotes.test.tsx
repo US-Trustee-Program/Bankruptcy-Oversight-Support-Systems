@@ -137,17 +137,14 @@ describe('case note tests', () => {
       expect(noteContents).toBeInTheDocument();
       expect(noteContents).toHaveTextContent(caseNotes[i].content);
 
-      const modifiedByContents = screen.getByTestId(`case-note-author-${i}`);
-      expect(modifiedByContents).toBeInTheDocument();
-      expect(modifiedByContents).toHaveTextContent(caseNotes[i].updatedBy.name);
-
-      const dateContents = screen.getByTestId(`case-note-creation-date-${i}`);
-      expect(dateContents).toBeInTheDocument();
+      const metadataContents = screen.getByTestId(`case-note-creation-date-${i}`);
+      expect(metadataContents).toBeInTheDocument();
+      expect(metadataContents).toHaveTextContent(caseNotes[i].updatedBy.name);
       const expectedDateText = caseNotes[i].previousVersionId
-        ? `Edited on: ${formatDateTime(caseNotes[i].updatedOn)}`
-        : `Created on: ${formatDateTime(caseNotes[i].updatedOn)}`;
+        ? `Edited by: ${caseNotes[i].updatedBy.name} on ${formatDateTime(caseNotes[i].updatedOn)}`
+        : `Created by: ${caseNotes[i].updatedBy.name} on ${formatDateTime(caseNotes[i].updatedOn)}`;
 
-      expect(dateContents).toHaveTextContent(expectedDateText);
+      expect(metadataContents).toHaveTextContent(expectedDateText);
     }
   });
 
@@ -280,7 +277,7 @@ describe('case note tests', () => {
       expect(caseNote).toBeInTheDocument();
     });
 
-    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-note-${noteId}`);
+    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-case-note-${noteId}`);
     expect(editDraftAlert).toBeInTheDocument();
     expect(editDraftAlert).toHaveTextContent(
       `You have a draft case note. It will expire on ${formatDateTime(expiryDate)}.`,
@@ -364,7 +361,7 @@ describe('case note tests', () => {
       expect(caseNote).toBeInTheDocument();
     });
 
-    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-note-${noteId}`);
+    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-case-note-${noteId}`);
     expect(editDraftAlert).toBeInTheDocument();
 
     shouldReturnCachedEditNote = false;
@@ -384,7 +381,7 @@ describe('case note tests', () => {
     });
 
     await waitFor(() => {
-      const editDraftAlert = screen.queryByTestId(`alert-message-draft-edit-note-${noteId}`);
+      const editDraftAlert = screen.queryByTestId(`alert-message-draft-edit-case-note-${noteId}`);
       expect(editDraftAlert).not.toBeInTheDocument();
     });
   });

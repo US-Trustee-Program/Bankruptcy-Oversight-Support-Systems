@@ -23,6 +23,7 @@ import {
 import { Debtor, DebtorAttorney, Party, LegacyAddress, LegacyTrustee } from '../parties';
 import { PhoneNumber, Address, ContactInformation } from '../contact';
 import { Trustee, TrusteeHistory, TrusteeInput } from '../trustees';
+import { TrusteeNote, TrusteeNoteDeleteRequest, TrusteeNoteEditRequest } from '../trustee-notes';
 import { TrusteeAppointment } from '../trustee-appointments';
 import { TrusteeAssistant } from '../trustee-assistants';
 import { COURT_DIVISIONS } from './courts.mock';
@@ -853,6 +854,60 @@ function getCaseNoteDeletion(override: Partial<CaseNote> = {}): Partial<CaseNote
   };
 }
 
+function getTrusteeNote(override: Partial<TrusteeNote> = {}): TrusteeNote {
+  const firstDate = someDateAfterThisDate(`2023-01-01`, 28);
+  const user = {
+    id: SUPERUSER.user.id,
+    name: SUPERUSER.user.name,
+  } as CamsUserReference;
+  return {
+    id: randomId(),
+    title: 'Trustee Note Title',
+    documentType: 'TRUSTEE_NOTE',
+    trusteeId: crypto.randomUUID(),
+    content: 'Test Trustee Note',
+    updatedOn: firstDate,
+    updatedBy: user,
+    createdOn: firstDate,
+    createdBy: user,
+    ...override,
+  };
+}
+
+function getTrusteeNoteDeletionRequest(
+  override: Partial<TrusteeNoteDeleteRequest> = {},
+): TrusteeNoteDeleteRequest {
+  const userId = randomId();
+  return {
+    id: crypto.randomUUID(),
+    trusteeId: crypto.randomUUID(),
+    sessionUser: getCamsUserReference({ id: userId }),
+    ...override,
+  };
+}
+
+function getTrusteeNoteEditRequest(
+  override: Partial<TrusteeNoteEditRequest> = {},
+): TrusteeNoteEditRequest {
+  const userId = randomId();
+  return {
+    note: MockData.getTrusteeNote(),
+    sessionUser: getCamsUserReference({ id: userId }),
+    ...override,
+  };
+}
+
+function getTrusteeNoteDeletion(override: Partial<TrusteeNote> = {}): Partial<TrusteeNote> {
+  const archivedOn = new Date().toISOString();
+  return {
+    id: randomId(),
+    trusteeId: crypto.randomUUID(),
+    updatedBy: getCamsUserReference(),
+    archivedOn,
+    ...override,
+  };
+}
+
 function buildArray<T = unknown>(fn: () => T, size: number): Array<T> {
   const arr = [];
   for (let i = 0; i < size; i++) {
@@ -1071,6 +1126,10 @@ const MockData = {
   getCaseNoteDeletion,
   getCaseNoteDeletionRequest,
   getCaseNoteEditRequest,
+  getTrusteeNote,
+  getTrusteeNoteDeletion,
+  getTrusteeNoteDeletionRequest,
+  getTrusteeNoteEditRequest,
   getCaseBasics,
   getCaseSummary,
   getCaseDetail,

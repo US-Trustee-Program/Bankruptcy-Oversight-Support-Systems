@@ -1,0 +1,54 @@
+.trustee-notes-panel {
+  .text-wrapper {
+    max-width: 560px;
+  }
+
+  .trustee-notes-controls {
+    display: flex;
+    justify-content: space-between;
+
+    .trustee-notes-search-and-sort {
+      display: flex;
+
+      .trustee-notes-search-wrapper {
+        margin-right: 1rem;
+      }
+
+      div {
+        width: 17.875rem;
+      }
+    }
+
+    .add-button {
+      align-self: flex-end;
+      height: 2.75rem;
+    }
+  }
+
+  .search-trustee-notes {
+    list-style-type: none;
+    margin-top: 0;
+    padding-left: unset;
+
+    .trustee-note-metadata {
+      margin-top: 1.25rem;
+      margin-bottom: .25rem;
+    }
+
+    .trustee-note {
+      max-width: unset;
+      padding-top: 1.5rem;
+    }
+
+    .trustee-note-toolbar {
+      button {
+        margin-left: 1.5rem;
+      }
+    }
+
+    .trustee-note:not(:last-child) {
+      border-bottom: 1px solid black;
+      padding-bottom: .5rem;
+    }
+  }
+}
