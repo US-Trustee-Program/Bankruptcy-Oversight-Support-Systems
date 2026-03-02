@@ -12,7 +12,7 @@
   .notes-controls {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
 
     .notes-search-and-sort {
       display: flex;
@@ -38,20 +38,13 @@
     margin-top: 0;
     padding-left: unset;
 
-    .case-note,
-    .trustee-note {
+    .note-item {
       max-width: unset;
       padding-top: 1.5rem;
+      border-top: 1px solid black;
     }
 
-    .case-note:not(:last-child),
-    .trustee-note:not(:last-child) {
-      border-bottom: 1px solid black;
-      padding-bottom: 0.5rem;
-    }
-
-    .case-note-toolbar,
-    .trustee-note-toolbar {
+    .note-item-toolbar {
       button {
         margin-left: 1.5rem;
       }
@@ -61,5 +54,17 @@
       background-color: color($theme-color-warning-lighter);
       color: black;
     }
+  }
+
+  .note-item-content {
+    margin-bottom: .5rem;
+  }
+
+  .note-item-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .note-item-date {
+    margin-bottom: .25rem;
   }
 }
