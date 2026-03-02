@@ -24,7 +24,12 @@ import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
-import TrusteeNotes from './panels/trustee-notes/TrusteeNotes';
+import Notes from '@/lib/components/cams/Notes/Notes';
+import { NoteInput } from '@/lib/components/cams/Notes/types';
+import { TrusteeNote } from '@common/cams/trustee-notes';
+import { getCamsUserReference } from '@common/cams/session';
+import LocalStorage from '@/lib/utils/local-storage';
+import Actions from '@common/cams/actions';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -55,6 +60,8 @@ export default function TrusteeDetailScreen() {
   const [navState, setNavState] = useState<number>(mapTrusteeDetailNavState(location.pathname));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
+  const [trusteeNotes, setTrusteeNotes] = useState<TrusteeNote[]>([]);
+  const [areNotesLoading, setAreNotesLoading] = useState<boolean>(false);
 
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
@@ -81,6 +88,90 @@ export default function TrusteeDetailScreen() {
 
   function openEditZoomInfo() {
     navigate(`/trustees/${trusteeId}/zoom/edit`);
+  }
+
+  async function fetchTrusteeNotes() {
+    if (!trusteeId) return;
+
+    setAreNotesLoading(true);
+    try {
+      const response = await Api2.getTrusteeNotes(trusteeId);
+      setTrusteeNotes(response.data ?? []);
+    } catch (_error) {
+      globalAlert?.error('Could not load trustee notes');
+      setTrusteeNotes([]);
+    } finally {
+      setAreNotesLoading(false);
+    }
+  }
+
+  async function handleCreateNote(noteData: NoteInput) {
+    if (!trusteeId) return;
+
+    const session = LocalStorage.getSession();
+    if (!session?.user) {
+      globalAlert?.error('User session not found');
+      return;
+    }
+
+    try {
+      await Api2.postTrusteeNote({
+        trusteeId,
+        title: noteData.title,
+        content: noteData.content,
+        updatedBy: getCamsUserReference(session.user),
+      });
+      await fetchTrusteeNotes();
+    } catch (error) {
+      globalAlert?.error('Failed to create note');
+      throw error;
+    }
+  }
+
+  async function handleUpdateNote(noteId: string, noteData: NoteInput) {
+    if (!trusteeId) return;
+
+    const session = LocalStorage.getSession();
+    if (!session?.user) {
+      globalAlert?.error('User session not found');
+      return;
+    }
+
+    try {
+      await Api2.putTrusteeNote({
+        id: noteId,
+        trusteeId,
+        title: noteData.title,
+        content: noteData.content,
+        updatedBy: getCamsUserReference(session.user),
+      });
+      await fetchTrusteeNotes();
+    } catch (error) {
+      globalAlert?.error('Failed to update note');
+      throw error;
+    }
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    if (!trusteeId) return;
+
+    const session = LocalStorage.getSession();
+    if (!session?.user) {
+      globalAlert?.error('User session not found');
+      return;
+    }
+
+    try {
+      await Api2.deleteTrusteeNote({
+        id: noteId,
+        trusteeId,
+        updatedBy: getCamsUserReference(session.user),
+      });
+      await fetchTrusteeNotes();
+    } catch (error) {
+      globalAlert?.error('Failed to delete note');
+      throw error;
+    }
   }
 
   useEffect(() => {
@@ -116,6 +207,12 @@ export default function TrusteeDetailScreen() {
         setIsLoading(false);
       });
   }, [location.pathname, trusteeId, globalAlert]);
+
+  useEffect(() => {
+    if (trusteeId) {
+      fetchTrusteeNotes();
+    }
+  }, [trusteeId]);
 
   if (!trusteeId || (!isLoading && !trustee)) {
     return (
@@ -271,7 +368,20 @@ export default function TrusteeDetailScreen() {
             <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
           </div>
           <div className="main-content-area">
-            <TrusteeNotes trusteeId={trusteeId} />
+            <Notes
+              entityId={trusteeId}
+              title="Trustee Notes"
+              notes={trusteeNotes.map((note) => ({ ...note, entityId: note.trusteeId }))}
+              isLoading={areNotesLoading}
+              onCreateNote={handleCreateNote}
+              onUpdateNote={handleUpdateNote}
+              onDeleteNote={handleDeleteNote}
+              createDraftKey={`trustee-notes-${trusteeId}`}
+              editDraftKeyPrefix={`trustee-notes-${trusteeId}`}
+              editAction={Actions.EditTrusteeNote}
+              removeAction={Actions.RemoveTrusteeNote}
+              emptyMessage="No notes exist for this trustee."
+            />
           </div>
         </div>
       ),

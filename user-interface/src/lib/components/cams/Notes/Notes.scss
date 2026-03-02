@@ -1,0 +1,65 @@
+@use 'uswds-core' as *;
+
+.notes-panel {
+  .text-wrapper {
+    max-width: 560px;
+  }
+
+  .notes-draft-alert-container {
+    margin-top: 1.5rem;
+  }
+
+  .notes-controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+
+    .notes-search-and-sort {
+      display: flex;
+      gap: 1rem;
+
+      .notes-search-wrapper {
+        width: 17.875rem;
+      }
+
+      .notes-sort-wrapper {
+        width: 17.875rem;
+      }
+    }
+
+    .notes-add-button {
+      align-self: flex-end;
+      height: 2.75rem;
+    }
+  }
+
+  #searchable-notes {
+    list-style-type: none;
+    margin-top: 0;
+    padding-left: unset;
+
+    .case-note,
+    .trustee-note {
+      max-width: unset;
+      padding-top: 1.5rem;
+    }
+
+    .case-note:not(:last-child),
+    .trustee-note:not(:last-child) {
+      border-bottom: 1px solid black;
+      padding-bottom: 0.5rem;
+    }
+
+    .case-note-toolbar,
+    .trustee-note-toolbar {
+      button {
+        margin-left: 1.5rem;
+      }
+    }
+
+    ::highlight(search-results) {
+      background-color: color($theme-color-warning-lighter);
+      color: black;
+    }
+  }
+}
