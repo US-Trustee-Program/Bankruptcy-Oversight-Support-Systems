@@ -7,8 +7,6 @@ import { ContactInformation } from '@common/cams/contact';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
-import LocalStorage from '@/lib/utils/local-storage';
-import Actions from '@common/cams/actions';
 
 const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
@@ -488,93 +486,8 @@ describe('TrusteeDetailScreen', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/assistant/create');
   });
 
-  describe('Trustee Notes', () => {
-    const mockTrusteeNotes = [
-      {
-        id: 'note-1',
-        trusteeId: '123',
-        documentType: 'TRUSTEE_NOTE' as const,
-        title: 'Test Note 1',
-        content: '<p>Note content 1</p>',
-        updatedBy: { id: 'user-1', name: 'John Smith' },
-        updatedOn: '2024-01-15T10:00:00.000Z',
-        createdBy: { id: 'user-1', name: 'John Smith' },
-        createdOn: '2024-01-15T10:00:00.000Z',
-        actions: [Actions.EditTrusteeNote, Actions.RemoveTrusteeNote],
-      },
-      {
-        id: 'note-2',
-        trusteeId: '123',
-        documentType: 'TRUSTEE_NOTE' as const,
-        title: 'Test Note 2',
-        content: '<p>Note content 2</p>',
-        updatedBy: { id: 'user-2', name: 'Jane Doe' },
-        updatedOn: '2024-01-16T10:00:00.000Z',
-        createdBy: { id: 'user-2', name: 'Jane Doe' },
-        createdOn: '2024-01-16T10:00:00.000Z',
-        actions: [Actions.EditTrusteeNote, Actions.RemoveTrusteeNote],
-      },
-    ];
-
-    const mockSession = {
-      user: {
-        id: 'user-1',
-        name: 'Test User',
-      },
-      accessToken: 'mock-token',
-      provider: 'mock' as const,
-      issuer: 'mock-issuer',
-      expires: Date.now() + 3600000,
-    };
-
-    test('should fetch trustee notes when navigating to notes route', async () => {
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-      const getTrusteeNotesSpy = vi
-        .spyOn(Api2, 'getTrusteeNotes')
-        .mockResolvedValue({ data: mockTrusteeNotes });
-
-      renderWithRouter(['/trustees/123/notes']);
-
-      await waitFor(() => {
-        expect(getTrusteeNotesSpy).toHaveBeenCalledWith('123');
-      });
-
-      expect(screen.getByTestId('searchable-notes')).toBeInTheDocument();
-    });
-
-    test('should handle notes API error gracefully', async () => {
-      const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-      const getTrusteeNotesSpy = vi
-        .spyOn(Api2, 'getTrusteeNotes')
-        .mockRejectedValue(new Error('Notes API error'));
-
-      renderWithRouter(['/trustees/123/notes']);
-
-      await waitFor(() => {
-        expect(getTrusteeNotesSpy).toHaveBeenCalledWith('123');
-        expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not load trustee notes');
-      });
-    });
-
-    test('should render Notes component on notes route with correct props', async () => {
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: mockTrusteeNotes });
-
-      renderWithRouter(['/trustees/123/notes']);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('searchable-notes')).toBeInTheDocument();
-      });
-
-      expect(screen.getByText('Test Note 1')).toBeInTheDocument();
-      expect(screen.getByText('Test Note 2')).toBeInTheDocument();
-    });
-
-    test('should display empty message when no notes exist', async () => {
+  describe('Trustee Notes Integration', () => {
+    test('should render TrusteeNotes component on notes route', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
       vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
@@ -582,67 +495,25 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter(['/trustees/123/notes']);
 
       await waitFor(() => {
-        expect(screen.getByTestId('empty-notes')).toBeInTheDocument();
+        expect(
+          screen.getByRole('heading', { level: 3, name: 'Trustee Notes' }),
+        ).toBeInTheDocument();
       });
-
-      expect(screen.getByText('No notes exist for this trustee.')).toBeInTheDocument();
     });
 
-    test('should verify notes handlers are wired correctly', async () => {
+    test('should pass correct trusteeId to TrusteeNotes component', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-      const getTrusteeNotesSpy = vi
-        .spyOn(Api2, 'getTrusteeNotes')
-        .mockResolvedValue({ data: mockTrusteeNotes });
-      vi.spyOn(Api2, 'postTrusteeNote').mockResolvedValue(undefined);
-      vi.spyOn(Api2, 'putTrusteeNote').mockResolvedValue('note-1');
-      vi.spyOn(Api2, 'deleteTrusteeNote').mockResolvedValue(undefined);
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(mockSession);
+      const getTrusteeNotesSpy = vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
 
       renderWithRouter(['/trustees/123/notes']);
 
       await waitFor(() => {
         expect(getTrusteeNotesSpy).toHaveBeenCalledWith('123');
-        expect(screen.getByTestId('searchable-notes')).toBeInTheDocument();
       });
-
-      expect(screen.getByText('Test Note 1')).toBeInTheDocument();
     });
 
-    test('should render notes with trustee-specific content', async () => {
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: mockTrusteeNotes });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(mockSession);
-
-      renderWithRouter(['/trustees/123/notes']);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('searchable-notes')).toBeInTheDocument();
-      });
-
-      expect(screen.getByText('Test Note 1')).toBeInTheDocument();
-      expect(screen.getByText('Test Note 2')).toBeInTheDocument();
-      expect(screen.getByTestId('case-note-0')).toBeInTheDocument();
-      expect(screen.getByTestId('case-note-1')).toBeInTheDocument();
-    });
-
-    test('should render notes even when session is unavailable', async () => {
-      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: mockTrusteeNotes });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-
-      renderWithRouter(['/trustees/123/notes']);
-
-      await waitFor(() => {
-        expect(screen.getByTestId('searchable-notes')).toBeInTheDocument();
-      });
-
-      expect(screen.getByText('Test Note 1')).toBeInTheDocument();
-    });
-
-    test('should handle notes subheader in route config', async () => {
+    test('should handle notes route subheader configuration', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
       vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
