@@ -7,6 +7,7 @@
 
   .notes-draft-alert-container {
     margin-top: 1.5rem;
+    margin-bottom: 1rem;
   }
 
   .notes-controls {
@@ -41,6 +42,8 @@
     .note-item {
       max-width: unset;
       padding-top: 1.5rem;
+      padding-left: 0;
+      padding-right: 0;
       border-top: 1px solid black;
     }
 
