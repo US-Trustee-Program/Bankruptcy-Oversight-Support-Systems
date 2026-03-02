@@ -126,7 +126,7 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
         </div>
       </div>
       {draft && (
-        <div className="grid-row">
+        <div className="grid-row margin-bottom-2">
           <Alert
             id={`draft-edit-note-item-${note.id}`}
             message={getDraftAlertMessage(draft)}
