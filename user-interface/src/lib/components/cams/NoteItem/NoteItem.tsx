@@ -118,12 +118,13 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
           {formatDateTime(note.updatedOn)}
         </div>
       </div>
-      <div className="grid-row">
-        <div className={`grid-col-12 note-item-content text-wrapper`}>
-          <div data-testid={`note-item-${idx}-text`} aria-label={`full text of note`} role="note">
-            <PrerenderedHtml htmlString={note.content} />
-          </div>
-        </div>
+      <div
+        className={`note-item-content text-wrapper`}
+        data-testid={`note-item-${idx}-text`}
+        aria-label={`full text of note`}
+        role="note"
+      >
+        <PrerenderedHtml htmlString={note.content} />
       </div>
       {draft && (
         <div className="grid-row margin-bottom-2">
