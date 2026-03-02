@@ -43,7 +43,7 @@ describe('trustee notes tests', () => {
 
     render(<TrusteeNotes trusteeId={trusteeId} />);
 
-    const loadingIndicator = await screen.findByTestId('trustee-notes-loading-indicator');
+    const loadingIndicator = await screen.findByTestId('notes-loading-indicator');
     expect(loadingIndicator).toBeInTheDocument();
   });
 
@@ -53,7 +53,7 @@ describe('trustee notes tests', () => {
     render(<TrusteeNotes trusteeId={trusteeId} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('empty-trustee-notes-test-id')).toBeInTheDocument();
+      expect(screen.queryByTestId('empty-notes')).toBeInTheDocument();
     });
   });
 
@@ -63,7 +63,7 @@ describe('trustee notes tests', () => {
     render(<TrusteeNotes trusteeId={trusteeId} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
+      expect(screen.queryByTestId('searchable-notes')).toBeInTheDocument();
     });
   });
 
@@ -77,7 +77,7 @@ describe('trustee notes tests', () => {
     render(<TrusteeNotes trusteeId={trusteeId} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
+      expect(screen.queryByTestId('searchable-notes')).toBeInTheDocument();
     });
 
     const editButtons = document.querySelectorAll('.edit-button');
@@ -104,7 +104,7 @@ describe('trustee notes tests', () => {
     render(<TrusteeNotes trusteeId={trusteeId} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('empty-trustee-notes-test-id')).toBeInTheDocument();
+      expect(screen.queryByTestId('empty-notes')).toBeInTheDocument();
     });
   });
 
@@ -120,9 +120,9 @@ describe('trustee notes tests', () => {
     render(<TrusteeNotes trusteeId={trusteeId} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('draft-trustee-note-alert-test-id')).toBeInTheDocument();
+      expect(screen.queryByTestId('draft-note-alert')).toBeInTheDocument();
     });
-    expect(screen.getByText(/You have a draft trustee note/)).toBeInTheDocument();
+    expect(screen.getByText(/You have a draft note/)).toBeInTheDocument();
   });
 
   test('should fire setFocusId when Add Note button is clicked', async () => {
@@ -134,7 +134,7 @@ describe('trustee notes tests', () => {
       expect(screen.getByText('Add Note')).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByTestId('open-modal-button_trustee-note-add-button'));
+    fireEvent.click(screen.getByTestId('open-modal-button_note-add-button'));
   });
 
   test('should show "Edited by" label for notes with previousVersionId', async () => {
@@ -143,7 +143,7 @@ describe('trustee notes tests', () => {
     render(<TrusteeNotes trusteeId={trusteeId} />);
 
     await waitFor(() => {
-      expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
+      expect(screen.queryByTestId('searchable-notes')).toBeInTheDocument();
     });
 
     const editedLabels = screen.queryAllByText(/Edited by:/);
@@ -163,7 +163,7 @@ describe('trustee notes tests', () => {
       render(<TrusteeNotes trusteeId={trusteeId} />);
 
       await waitFor(() => {
-        expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
+        expect(screen.queryByTestId('searchable-notes')).toBeInTheDocument();
       });
 
       expect(screen.getByLabelText('Sort by')).toBeInTheDocument();
@@ -175,7 +175,7 @@ describe('trustee notes tests', () => {
       render(<TrusteeNotes trusteeId={trusteeId} />);
 
       await waitFor(() => {
-        expect(screen.queryByTestId('searchable-trustee-notes')).toBeInTheDocument();
+        expect(screen.queryByTestId('searchable-notes')).toBeInTheDocument();
       });
 
       const getNoteHeaders = () =>
