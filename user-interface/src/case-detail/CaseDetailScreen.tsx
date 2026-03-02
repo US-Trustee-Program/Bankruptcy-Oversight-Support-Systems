@@ -194,7 +194,7 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
   });
 }
 
-export interface CaseDetailProps {
+interface CaseDetailProps {
   caseDetail?: CaseDetail;
   caseDocketEntries?: CaseDocketEntry[];
   associatedCases?: EventCaseReference[];
