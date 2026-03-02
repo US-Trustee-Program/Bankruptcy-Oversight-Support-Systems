@@ -2,15 +2,12 @@ import { formatDateTime } from '@/lib/utils/datetime';
 import React from 'react';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
-import Icon from '@/lib/components/uswds/Icon';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Actions, { Action } from '@common/cams/actions';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { Cacheable } from '@/lib/utils/local-cache';
 import PrerenderedHtml from '@/lib/components/cams/PrerenderedHtml/PrerenderedHtml';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
-
-type NoteLayout = 'case-note' | 'trustee-note';
 
 export interface BaseNote {
   id?: string;
@@ -24,7 +21,6 @@ export interface BaseNote {
 export interface NoteItemConfig<TNote extends BaseNote, TInput> {
   note: TNote;
   idx: number;
-  layout: NoteLayout;
   draft: Cacheable<TInput> | null;
   editAction: Action;
   removeAction: Action;
@@ -45,7 +41,6 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
   const {
     note,
     idx,
-    layout,
     draft,
     editAction,
     removeAction,
@@ -60,17 +55,14 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
     getDraftAlertMessage,
   } = config;
 
-  const prefix = layout === 'case-note' ? 'case-note' : 'trustee-note';
-  const useIconLabel = layout === 'trustee-note';
-
   return (
-    <li className={`${prefix} grid-container`} data-testid={`${prefix}-${idx}`}>
+    <li className={`note-item grid-container`} data-testid={`note-item-${idx}`}>
       <div className="grid-row">
         <div className="grid-col-10">
           <div className="text-wrapper">
             <h4
-              className={`${prefix}-header usa-tooltip`}
-              data-testid={`${prefix}-${idx}-header`}
+              className={`note-item-header usa-tooltip`}
+              data-testid={`note-item-${idx}-header`}
               aria-label={`Note Title: ${note.title}`}
             >
               {note.title}
@@ -79,13 +71,13 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
         </div>
 
         <div
-          className={`grid-col-2 ${prefix}-toolbar text-right`}
-          data-testid={`${prefix}-toolbar-${idx}`}
+          className={`grid-col-2 note-item-toolbar text-right`}
+          data-testid={`note-item-toolbar-${idx}`}
         >
           {Actions.contains(note, editAction) && (
             <OpenModalButton
               className="edit-button"
-              id={`${prefix}-edit-button`}
+              id={`note-item-edit-button`}
               buttonIndex={`${idx}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
               modalId={modalId}
@@ -95,20 +87,13 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
               openProps={editButtonProps}
               ariaLabel={`Edit note titled ${note.title}`}
             >
-              {useIconLabel ? (
-                <IconLabel icon="edit" label="Edit"></IconLabel>
-              ) : (
-                <>
-                  <Icon name="edit" className="edit-icon" />
-                  Edit
-                </>
-              )}
+              <IconLabel icon="edit" label="Edit"></IconLabel>
             </OpenModalButton>
           )}
           {Actions.contains(note, removeAction) && (
             <OpenModalButton
               className="remove-button text-secondary-dark"
-              id={`${prefix}-remove-button`}
+              id={`note-item-remove-button`}
               buttonIndex={`${idx}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
               modalId={removeModalId}
@@ -117,22 +102,15 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
               openProps={removeButtonProps}
               ariaLabel={`Remove note titled ${note.title}`}
             >
-              {useIconLabel ? (
-                <IconLabel icon="delete" label="Delete"></IconLabel>
-              ) : (
-                <>
-                  <Icon name="remove_circle" className="remove-icon" />
-                  Delete
-                </>
-              )}
+              <IconLabel icon="delete" label="Delete"></IconLabel>
             </OpenModalButton>
           )}
         </div>
       </div>
       <div className="grid-row trustee-note-metadata">
         <div
-          className={`${prefix}-date grid-col-12 text-italic text-wrapper`}
-          data-testid={`${prefix}-creation-date-${idx}`}
+          className={`note-item-date grid-col-12 text-italic text-wrapper`}
+          data-testid={`note-item-creation-date-${idx}`}
         >
           {note.previousVersionId ? 'Edited by: ' : 'Created by: '}
           {note.updatedBy.name}
@@ -141,12 +119,8 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
         </div>
       </div>
       <div className="grid-row">
-        <div className={`grid-col-12 ${prefix}-content text-wrapper`}>
-          <div
-            data-testid={`${prefix}-${idx}-text`}
-            aria-label={`full text of ${layout}`}
-            role="note"
-          >
+        <div className={`grid-col-12 note-item-content text-wrapper`}>
+          <div data-testid={`note-item-${idx}-text`} aria-label={`full text of note`} role="note">
             <PrerenderedHtml htmlString={note.content} />
           </div>
         </div>
@@ -154,7 +128,7 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
       {draft && (
         <div className="grid-row">
           <Alert
-            id={`draft-edit-${prefix}-${note.id}`}
+            id={`draft-edit-note-item-${note.id}`}
             message={getDraftAlertMessage(draft)}
             type={UswdsAlertStyle.Info}
             role={'status'}

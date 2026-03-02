@@ -50,7 +50,7 @@ function getNotesRichTextContentValue(ref: RichTextEditorRef | null) {
   return DOMPurify.sanitize(unsafeHtml, DOMPURIFY_CONFIG);
 }
 
-export type NoteFormMode = 'create' | 'edit';
+type NoteFormMode = 'create' | 'edit';
 
 export type NoteFormModalOpenProps = {
   id?: string;
@@ -69,7 +69,7 @@ export interface NoteFormModalRef extends ModalRefType {
   hide: () => void;
 }
 
-export type NoteFormModalProps = {
+type NoteFormModalProps = {
   modalId: string;
   onSave: (noteData: NoteInput) => Promise<void>;
   onModalClosed?: () => void;

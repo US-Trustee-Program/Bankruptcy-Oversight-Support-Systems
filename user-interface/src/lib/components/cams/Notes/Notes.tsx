@@ -28,7 +28,7 @@ export type NotesRef = {
   focusEditButton: (noteId: string) => void;
 };
 
-export interface NotesProps {
+interface NotesProps {
   entityId: string;
   title: string;
   notes: Note[];
@@ -135,7 +135,6 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
           key={idx}
           note={note}
           idx={idx}
-          layout="case-note"
           draft={draft}
           editAction={editAction}
           removeAction={removeAction}
