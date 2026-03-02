@@ -18,7 +18,7 @@ export interface NoteRemovalModalRef extends ModalRefType {
   buttons?: RefObject<SubmitCancelButtonGroupRef | null>;
 }
 
-export interface NoteRemovalModalProps {
+interface NoteRemovalModalProps {
   modalId: string;
   onDelete: (noteId: string) => Promise<void>;
 }
