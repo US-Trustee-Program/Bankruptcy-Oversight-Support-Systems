@@ -37,6 +37,35 @@ interface TrusteeNotesProps {
   trusteeId: string;
 }
 
+function useTrusteeNoteDrafts(trusteeId: string) {
+  const [draftNote, setDraftNote] = useState<Cacheable<TrusteeNoteInput> | null>(null);
+  const [editDrafts, setEditDrafts] = useState<Cacheable<TrusteeNoteInput>[] | null>(null);
+
+  function getEditDrafts() {
+    const pattern = /^trustee-notes-[a-zA-Z0-9-]+-[a-zA-Z0-9-]+-/;
+    return LocalFormCache.getFormsByPattern<TrusteeNoteInput>(pattern);
+  }
+
+  function loadDrafts() {
+    const addDraft = LocalFormCache.getForm<TrusteeNoteInput>(`trustee-notes-${trusteeId}`);
+    setDraftNote(addDraft);
+    setEditDrafts(getEditDrafts().map((form) => form.item));
+  }
+
+  function handleModalClosed(eventTrusteeId: string, mode: TrusteeNoteFormMode) {
+    if (eventTrusteeId === trusteeId && mode === 'create') {
+      const addDraft = LocalFormCache.getForm<TrusteeNoteInput>(`trustee-notes-${trusteeId}`);
+      setDraftNote(addDraft);
+    }
+    const updatedEditDrafts = getEditDrafts();
+    if (updatedEditDrafts.length !== editDrafts?.length) {
+      setEditDrafts(updatedEditDrafts.map((form) => form.item));
+    }
+  }
+
+  return { draftNote, loadDrafts, handleModalClosed };
+}
+
 function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>) {
   const { trusteeId } = props;
   const removeConfirmationModalRef = useRef<TrusteeNoteRemovalModalRef>(null);
@@ -49,9 +78,9 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   const [areTrusteeNotesLoading, setAreTrusteeNotesLoading] = useState<boolean>(false);
   const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
   const [focusId, setFocusId] = useState<string | null>(null);
-  const [draftNote, setDraftNote] = useState<Cacheable<TrusteeNoteInput> | null>(null);
-  const [editDrafts, setEditDrafts] = useState<Cacheable<TrusteeNoteInput>[] | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const { draftNote, loadDrafts, handleModalClosed } = useTrusteeNoteDrafts(trusteeId);
 
   const removeConfirmationModalId = 'trustee-remove-note-modal';
   const trusteeNoteModalId = 'trustee-note-modal';
@@ -204,11 +233,6 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
     setFocusId(noteId);
   }
 
-  function getEditDrafts() {
-    const pattern = /^trustee-notes-[a-zA-Z0-9-]+-[a-zA-Z0-9-]+-/;
-    return LocalFormCache.getFormsByPattern<TrusteeNoteInput>(pattern);
-  }
-
   useImperativeHandle(ref, () => {
     return {
       focusEditButton,
@@ -222,22 +246,9 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   }, [focusId]);
 
   useEffect(() => {
-    const draftNote = LocalFormCache.getForm<TrusteeNoteInput>(`trustee-notes-${trusteeId}`);
-    setDraftNote(draftNote);
-    setEditDrafts(getEditDrafts().map((form) => form.item));
+    loadDrafts();
     fetchTrusteeNotes();
   }, [trusteeId]);
-
-  const handleModalClosed = (eventTrusteeId: string, mode: TrusteeNoteFormMode) => {
-    if (eventTrusteeId === trusteeId && mode === 'create') {
-      const draftNote = LocalFormCache.getForm<TrusteeNoteInput>(`trustee-notes-${trusteeId}`);
-      setDraftNote(draftNote);
-    }
-    const updatedEditDrafts = getEditDrafts();
-    if (updatedEditDrafts.length !== editDrafts?.length) {
-      setEditDrafts(updatedEditDrafts.map((form) => form.item));
-    }
-  };
 
   function getDraftAlertMessage(draftNote: Cacheable<TrusteeNoteInput>) {
     return `You have a draft trustee note. It will expire on ${formatDateTime(new Date(draftNote.expiresAfter))}.`;
