@@ -53,7 +53,7 @@ export class TrusteeNotesController implements CamsController {
         this.validateArchiveRequestParameters({ id: noteId, trusteeId });
         await trusteeNotesUseCase.archiveTrusteeNote(archiveNote);
         return httpSuccess({
-          statusCode: HttpStatusCodes.CREATED,
+          statusCode: HttpStatusCodes.NO_CONTENT,
         });
       } else if (context.request.method === 'PUT') {
         const note = context.request.body;
@@ -71,7 +71,7 @@ export class TrusteeNotesController implements CamsController {
 
         const newNote = await trusteeNotesUseCase.editTrusteeNote(request);
         return httpSuccess({
-          statusCode: HttpStatusCodes.CREATED,
+          statusCode: HttpStatusCodes.OK,
           body: {
             data: [newNote],
           },
@@ -82,7 +82,7 @@ export class TrusteeNotesController implements CamsController {
         );
         return httpSuccess({
           body: { data: trusteeNotes },
-          statusCode: HttpStatusCodes.CREATED,
+          statusCode: HttpStatusCodes.OK,
         });
       }
     } catch (originalError) {
