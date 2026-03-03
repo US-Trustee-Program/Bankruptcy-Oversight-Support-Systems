@@ -192,19 +192,16 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
             {formatDateTime(note.updatedOn)}
           </div>
         </div>
-        <div className="grid-row">
-          <div className="grid-col-12 trustee-note-content text-wrapper">
-            <div
-              data-testid={`trustee-note-${idx}-text`}
-              aria-label="full text of trustee note"
-              role="note"
-            >
-              <PrerenderedHtml htmlString={note.content} />
-            </div>
-          </div>
+        <div
+          className="grid-col-12 trustee-note-content text-wrapper"
+          data-testid={`trustee-note-${idx}-text`}
+          aria-label="full text of trustee note"
+          role="note"
+        >
+          <PrerenderedHtml htmlString={note.content} />
         </div>
         {draft && (
-          <div className="grid-row">
+          <div className="grid-row margin-bottom-2">
             <Alert
               id={`draft-edit-trustee-note-${note.id}`}
               message={getDraftAlertMessage(draft)}
@@ -329,7 +326,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
             data-testid="draft-trustee-note-alert-test-id"
             className="draft-notes-alert-container margin-top-3 margin-bottom-0"
           >
-            <div className="grid-row">
+            <div className="grid-row margin-bottom-2">
               <Alert
                 id="draft-add-trustee-note"
                 message={getDraftAlertMessage(draftNote)}
