@@ -63,7 +63,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
 
   async function fetchTrusteeNotes(noteId?: string) {
     setAreTrusteeNotesLoading(true);
-    Api2.getTrusteeNotes(trusteeId)
+    await Api2.getTrusteeNotes(trusteeId)
       .then((response) => {
         setTrusteeNotes(response.data ?? []);
         if (noteId) {
@@ -79,7 +79,6 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   function showTrusteeNote(note: TrusteeNote, idx: number) {
     const formKey = buildTrusteeNoteFormKey(note.trusteeId, 'edit', note.id ?? '');
     const draft = LocalFormCache.getForm<TrusteeNoteInput>(formKey);
-    console.log('note', note);
     return (
       <li className="trustee-note grid-container" key={idx} data-testid={`trustee-note-${idx}`}>
         <div className="grid-row">
