@@ -73,6 +73,9 @@ chmod +x ${GITHOOKS_DIR}/post-merge
 cp ./post-commit ${GITHOOKS_DIR}/post-commit
 chmod +x ${GITHOOKS_DIR}/post-commit
 
+cp ./post-rewrite ${GITHOOKS_DIR}/post-rewrite
+chmod +x ${GITHOOKS_DIR}/post-rewrite
+
 popd || exit
 
 # Set up commit template
