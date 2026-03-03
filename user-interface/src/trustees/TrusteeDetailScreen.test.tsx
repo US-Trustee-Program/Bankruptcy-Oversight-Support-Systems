@@ -80,6 +80,8 @@ describe('TrusteeDetailScreen', () => {
 
     mockOnEditPublicProfile.mockClear();
     mockOnEditInternalProfile.mockClear();
+
+    vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
   });
 
   afterEach(() => {
@@ -482,5 +484,45 @@ describe('TrusteeDetailScreen', () => {
     const addAnotherButton = screen.getByTestId('button-add-another-assistant-button');
     addAnotherButton.click();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/123/assistant/create');
+  });
+
+  describe('Trustee Notes Integration', () => {
+    test('should render TrusteeNotes component on notes route', async () => {
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
+
+      renderWithRouter(['/trustees/123/notes']);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('heading', { level: 3, name: 'Trustee Notes' }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('should pass correct trusteeId to TrusteeNotes component', async () => {
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+      const getTrusteeNotesSpy = vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
+
+      renderWithRouter(['/trustees/123/notes']);
+
+      await waitFor(() => {
+        expect(getTrusteeNotesSpy).toHaveBeenCalledWith('123');
+      });
+    });
+
+    test('should handle notes route subheader configuration', async () => {
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+      vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
+
+      renderWithRouter(['/trustees/123/notes']);
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { level: 2, name: 'Trustee' })).toBeInTheDocument();
+      });
+    });
   });
 });
