@@ -31,12 +31,17 @@
 
     .trustee-note-metadata {
       margin-top: 1.25rem;
-      margin-bottom: .25rem;
     }
 
     .trustee-note {
       max-width: unset;
       padding-top: 1.5rem;
+      border-top: 1px solid black;
+
+      .grid-container {
+        margin-top: 1.25rem;
+        margin-bottom: 1.25rem;
+      }
     }
 
     .trustee-note-toolbar {
@@ -44,10 +49,10 @@
         margin-left: 1.5rem;
       }
     }
+  }
 
-    .trustee-note:not(:last-child) {
-      border-bottom: 1px solid black;
-      padding-bottom: .5rem;
-    }
+  .trustee-note-content {
+    margin-top: 1.25rem;
+    margin-bottom: 1.5rem;
   }
 }
