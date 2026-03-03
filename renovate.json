@@ -78,7 +78,14 @@
     {
       "description": "Group TypeScript ESLint packages",
       "matchPackageNames": ["typescript-eslint", "@typescript-eslint/eslint-plugin", "@typescript-eslint/parser"],
-      "groupName": "typescript-eslint"
+      "groupName": "typescript-eslint",
+      "allowedVersions": "8.54.x"
+    },
+    {
+      "description": "Pin ESLint package until full support of V10",
+      "matchPackageNames": ["@eslint/js"],
+      "groupName": "typescript-eslint",
+      "enabled": false
     },
     {
       "description": "Group Okta packages",
