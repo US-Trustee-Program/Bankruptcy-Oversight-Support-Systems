@@ -63,6 +63,19 @@ chmod +x ${GITHOOKS_DIR}/pre-commit
 cp ./prepare-commit-msg ${GITHOOKS_DIR}/prepare-commit-msg
 chmod +x ${GITHOOKS_DIR}/prepare-commit-msg
 
+# Set up QMD index update hooks (optional - only runs if qmd is installed)
+cp ./post-checkout ${GITHOOKS_DIR}/post-checkout
+chmod +x ${GITHOOKS_DIR}/post-checkout
+
+cp ./post-merge ${GITHOOKS_DIR}/post-merge
+chmod +x ${GITHOOKS_DIR}/post-merge
+
+cp ./post-commit ${GITHOOKS_DIR}/post-commit
+chmod +x ${GITHOOKS_DIR}/post-commit
+
+cp ./post-rewrite ${GITHOOKS_DIR}/post-rewrite
+chmod +x ${GITHOOKS_DIR}/post-rewrite
+
 popd || exit
 
 # Set up commit template
