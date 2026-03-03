@@ -24,7 +24,7 @@ import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
-import TrusteeNotes from './panels/trustee-notes/TrusteeNotes';
+import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -55,7 +55,6 @@ export default function TrusteeDetailScreen() {
   const [navState, setNavState] = useState<number>(mapTrusteeDetailNavState(location.pathname));
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
-
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
 
