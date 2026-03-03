@@ -1,0 +1,13 @@
+#!/bin/bash
+# Post-merge hook - updates QMD index after merging/pulling changes
+# Installed by ops/git-setup/set-up-git-hooks.sh
+
+# Check if qmd is installed
+if ! command -v qmd &> /dev/null; then
+    exit 0
+fi
+
+# Run update in background with all output suppressed
+qmd update cams &>/dev/null &
+
+exit 0
