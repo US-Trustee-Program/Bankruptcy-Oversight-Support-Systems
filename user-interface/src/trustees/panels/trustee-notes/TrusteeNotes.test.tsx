@@ -190,7 +190,7 @@ describe('TrusteeNotes Adapter Tests', () => {
         ),
       ];
       vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: trusteeNotes });
-      vi.spyOn(Api2, 'putTrusteeNote').mockResolvedValue();
+      vi.spyOn(Api2, 'putTrusteeNote').mockResolvedValue(undefined);
 
       renderWithProps({ trusteeId });
 
