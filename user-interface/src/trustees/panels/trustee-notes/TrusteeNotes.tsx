@@ -110,80 +110,18 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
     const draft = LocalFormCache.getForm<TrusteeNoteInput>(formKey);
     return (
       <li className="trustee-note grid-container" key={idx} data-testid={`trustee-note-${idx}`}>
-        <div className="grid-row">
-          <div className="grid-col-10">
-            <div className="text-wrapper">
-              <h4
-                className="trustee-note-header usa-tooltip"
-                data-testid={`trustee-note-${idx}-header`}
-                aria-label={`Note Title: ${note.title}`}
-              >
-                {note.title}
-              </h4>
-            </div>
-          </div>
-
-          <div
-            className="grid-col-2 trustee-note-toolbar text-right"
-            data-testid={`trustee-note-toolbar-${idx}`}
+        <div className="text-wrapper">
+          <h4
+            className="trustee-note-header usa-tooltip"
+            data-testid={`trustee-note-${idx}-header`}
+            aria-label={`Note Title: ${note.title}`}
           >
-            {Actions.contains(note, Actions.EditTrusteeNote) && (
-              <OpenModalButton
-                className="edit-button"
-                id={`trustee-note-edit-button`}
-                buttonIndex={`${idx}`}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                modalId={trusteeNoteModalId}
-                modalRef={trusteeNoteModalRef}
-                ref={(el) => {
-                  if (note.id) editButtonRefs.current[note.id] = el;
-                }}
-                data-noteid={note.id}
-                openProps={{
-                  id: note.id,
-                  trusteeId: note.trusteeId,
-                  buttonId: `trustee-note-edit-button-${idx}`,
-                  title: draft?.value.title ?? note.title,
-                  content: draft?.value.content ?? note.content,
-                  callback: fetchTrusteeNotes,
-                  initialTitle: note.title,
-                  initialContent: note.content,
-                  mode: 'edit',
-                }}
-                ariaLabel={`Edit note titled ${note.title}`}
-              >
-                <IconLabel icon="edit" label="Edit"></IconLabel>
-              </OpenModalButton>
-            )}
-            {Actions.contains(note, Actions.RemoveTrusteeNote) && (
-              <OpenModalButton
-                className="remove-button text-secondary-dark"
-                id={`trustee-note-remove-button`}
-                buttonIndex={`${idx}`}
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                modalId={removeConfirmationModalId}
-                modalRef={removeConfirmationModalRef}
-                ref={(el) => {
-                  archiveButtonRefs.current[idx] = el;
-                }}
-                openProps={{
-                  id: note.id,
-                  trusteeId: note.trusteeId,
-                  buttonId: `trustee-note-remove-button-${idx}`,
-                  callback: fetchTrusteeNotes,
-                  initialTitle: note.title,
-                  initialContent: note.content,
-                }}
-                ariaLabel={`Remove note titled ${note.title}`}
-              >
-                <IconLabel icon="delete" label="Delete"></IconLabel>
-              </OpenModalButton>
-            )}
-          </div>
+            {note.title}
+          </h4>
         </div>
-        <div className="grid-row trustee-note-metadata">
+        <div className="trustee-note-metadata">
           <div
-            className="trustee-note-date grid-col-12 text-italic text-wrapper"
+            className="trustee-note-date text-italic text-wrapper"
             data-testid={`trustee-note-creation-date-${idx}`}
           >
             {note.previousVersionId ? 'Edited by: ' : 'Created by: '}
@@ -193,7 +131,7 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
           </div>
         </div>
         <div
-          className="grid-col-12 trustee-note-content text-wrapper"
+          className="trustee-note-content text-wrapper"
           data-testid={`trustee-note-${idx}-text`}
           aria-label="full text of trustee note"
           role="note"
@@ -216,6 +154,63 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
             <div className="grid-col-4"></div>
           </div>
         )}
+        <div
+          className="trustee-note-toolbar text-right"
+          data-testid={`trustee-note-toolbar-${idx}`}
+        >
+          {Actions.contains(note, Actions.EditTrusteeNote) && (
+            <OpenModalButton
+              className="edit-button"
+              id={`trustee-note-edit-button`}
+              buttonIndex={`${idx}`}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              modalId={trusteeNoteModalId}
+              modalRef={trusteeNoteModalRef}
+              ref={(el) => {
+                if (note.id) editButtonRefs.current[note.id] = el;
+              }}
+              data-noteid={note.id}
+              openProps={{
+                id: note.id,
+                trusteeId: note.trusteeId,
+                buttonId: `trustee-note-edit-button-${idx}`,
+                title: draft?.value.title ?? note.title,
+                content: draft?.value.content ?? note.content,
+                callback: fetchTrusteeNotes,
+                initialTitle: note.title,
+                initialContent: note.content,
+                mode: 'edit',
+              }}
+              ariaLabel={`Edit note titled ${note.title}`}
+            >
+              <IconLabel icon="edit" label="Edit"></IconLabel>
+            </OpenModalButton>
+          )}
+          {Actions.contains(note, Actions.RemoveTrusteeNote) && (
+            <OpenModalButton
+              className="remove-button text-secondary-dark"
+              id={`trustee-note-remove-button`}
+              buttonIndex={`${idx}`}
+              uswdsStyle={UswdsButtonStyle.Unstyled}
+              modalId={removeConfirmationModalId}
+              modalRef={removeConfirmationModalRef}
+              ref={(el) => {
+                archiveButtonRefs.current[idx] = el;
+              }}
+              openProps={{
+                id: note.id,
+                trusteeId: note.trusteeId,
+                buttonId: `trustee-note-remove-button-${idx}`,
+                callback: fetchTrusteeNotes,
+                initialTitle: note.title,
+                initialContent: note.content,
+              }}
+              ariaLabel={`Remove note titled ${note.title}`}
+            >
+              <IconLabel icon="delete" label="Delete"></IconLabel>
+            </OpenModalButton>
+          )}
+        </div>
       </li>
     );
   }
