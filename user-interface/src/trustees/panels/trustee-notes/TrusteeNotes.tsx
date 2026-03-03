@@ -41,11 +41,9 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   const { trusteeId } = props;
   const removeConfirmationModalRef = useRef<TrusteeNoteRemovalModalRef>(null);
   const trusteeNoteModalRef = useRef<TrusteeNoteFormModalRef>(null);
-  const openArchiveModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef | null>[]>([]);
+  const archiveButtonRefs = useRef<Record<number, OpenModalButtonRef | null>>({});
   const openAddModalButtonRef = useRef<OpenModalButtonRef>(null);
-  const openEditModalButtonRefs = useRef(
-    new Map<string, React.RefObject<OpenModalButtonRef | null>>(),
-  );
+  const editButtonRefs = useRef<Record<string, OpenModalButtonRef | null>>({});
 
   const [trusteeNotes, setTrusteeNotes] = useState<TrusteeNote[]>([]);
   const [areTrusteeNotesLoading, setAreTrusteeNotesLoading] = useState<boolean>(false);
@@ -58,39 +56,10 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   const removeConfirmationModalId = 'trustee-remove-note-modal';
   const trusteeNoteModalId = 'trustee-note-modal';
 
-  useMemo(mapArchiveButtonRefs, [trusteeNotes]);
-  useMemo(mapEditButtonRefs, [trusteeNotes]);
-
   const trusteeNotesRecords = useMemo(() => {
     const sortedNotes = sortTrusteeNotes(trusteeNotes, sortOrder);
     return filterTrusteeNotes(sortedNotes, searchQuery);
   }, [trusteeNotes, sortOrder, searchQuery]);
-
-  function mapArchiveButtonRefs() {
-    openArchiveModalButtonRefs.current =
-      trusteeNotes?.map(
-        (_, index) => openArchiveModalButtonRefs.current[index] ?? { current: null },
-      ) || [];
-  }
-
-  function mapEditButtonRefs() {
-    if (!trusteeNotes) {
-      return;
-    }
-
-    const newRefs = new Map<string, React.RefObject<OpenModalButtonRef | null>>();
-
-    trusteeNotes.forEach((note) => {
-      if (note.id) {
-        if (!openEditModalButtonRefs.current.has(note.id)) {
-          openEditModalButtonRefs.current.set(note.id, { current: null });
-        }
-        newRefs.set(note.id, openEditModalButtonRefs.current.get(note.id)!);
-      }
-    });
-
-    openEditModalButtonRefs.current = newRefs;
-  }
 
   async function fetchTrusteeNotes(noteId?: string) {
     setAreTrusteeNotesLoading(true);
@@ -138,7 +107,9 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 modalId={trusteeNoteModalId}
                 modalRef={trusteeNoteModalRef}
-                ref={openEditModalButtonRefs.current.get(note.id!)}
+                ref={(el) => {
+                  if (note.id) editButtonRefs.current[note.id] = el;
+                }}
                 data-noteid={note.id}
                 openProps={{
                   id: note.id,
@@ -164,7 +135,9 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
                 uswdsStyle={UswdsButtonStyle.Unstyled}
                 modalId={removeConfirmationModalId}
                 modalRef={removeConfirmationModalRef}
-                ref={openArchiveModalButtonRefs.current[idx]}
+                ref={(el) => {
+                  archiveButtonRefs.current[idx] = el;
+                }}
                 openProps={{
                   id: note.id,
                   trusteeId: note.trusteeId,
@@ -244,11 +217,10 @@ function TrusteeNotes_(props: TrusteeNotesProps, ref: React.Ref<TrusteeNotesRef>
   });
 
   useEffect(() => {
-    if (focusId && openEditModalButtonRefs.current) {
-      const editRef = openEditModalButtonRefs.current.get(focusId);
-      editRef?.current?.focus();
+    if (focusId) {
+      editButtonRefs.current[focusId]?.focus();
     }
-  }, [focusId, openEditModalButtonRefs.current]);
+  }, [focusId]);
 
   useEffect(() => {
     const draftNote = LocalFormCache.getForm<TrusteeNoteInput>(`trustee-notes-${trusteeId}`);
