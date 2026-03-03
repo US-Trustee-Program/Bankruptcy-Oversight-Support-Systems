@@ -1,5 +1,8 @@
 import { LoggerImpl, scrubMessage } from './logger.service';
-import { TelemetryClient } from '../../../function-apps/azure/app-insights';
+import {
+  TelemetryClient,
+  getOrInitializeAppInsightsClient as getOrInitializeAppInsightsClientFromAzure,
+} from '../../../function-apps/azure/app-insights';
 import {
   ObservabilityGateway,
   ObservabilityTrace,
@@ -21,56 +24,16 @@ export function scrubErrorForTelemetry(error: string): string {
 }
 
 /**
- * Initializes and returns the Application Insights client.
- * If the client doesn't exist, explicitly initializes the SDK.
+ * Returns the Application Insights client, initializing it if needed.
+ * Thin wrapper around the centralized initialization logic in app-insights.ts.
  *
- * @param logger - Optional logger for diagnostics
+ * @param _logger - Optional logger for diagnostics (currently unused, kept for AppInsightsClientFactory interface compatibility)
  * @returns TelemetryClient instance or null if initialization fails
  */
-export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
-  const MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
-
-  try {
-    /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-    const appInsights = require('applicationinsights');
-
-    if (!appInsights) {
-      logger?.error(MODULE_NAME, 'applicationinsights module loaded but is falsy');
-      return null;
-    }
-
-    // If defaultClient already exists, return it
-    if (appInsights.defaultClient) {
-      return appInsights.defaultClient as TelemetryClient;
-    }
-
-    // Client doesn't exist - try to initialize it ourselves
-    const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
-    if (!connectionString) {
-      logger?.error(
-        MODULE_NAME,
-        'CRITICAL: APPLICATIONINSIGHTS_CONNECTION_STRING not set - telemetry unavailable',
-      );
-      return null;
-    }
-
-    logger?.info(MODULE_NAME, 'Initializing Application Insights SDK explicitly');
-    appInsights.setup(connectionString).start();
-
-    if (!appInsights.defaultClient) {
-      logger?.error(
-        MODULE_NAME,
-        'CRITICAL: App Insights SDK initialized but defaultClient still null',
-      );
-      return null;
-    }
-
-    logger?.info(MODULE_NAME, 'Application Insights SDK initialized successfully');
-    return appInsights.defaultClient as TelemetryClient;
-  } catch (error) {
-    logger?.error(MODULE_NAME, 'CRITICAL: Failed to initialize Application Insights', error);
-    return null;
-  }
+export function getOrInitializeAppInsightsClient(_logger?: LoggerImpl): TelemetryClient | null {
+  // Delegate to the centralized initialization function
+  // All initialization logic lives in app-insights.ts
+  return getOrInitializeAppInsightsClientFromAzure();
 }
 
 export class AppInsightsObservability implements ObservabilityGateway {
