@@ -88,7 +88,7 @@ function TrusteeNoteRemovalModal_(
 
   useImperativeHandle(ref, () => ({
     show,
-    hide: () => {},
+    hide: () => modalRef.current?.hide?.(),
   }));
 
   return (
