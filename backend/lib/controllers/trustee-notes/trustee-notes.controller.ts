@@ -11,7 +11,7 @@ import {
   TrusteeNoteEditRequest,
   TrusteeNoteInput,
 } from '@common/cams/trustee-notes';
-import { ForbiddenTrusteeNotesError } from './trustee-notes.exception';
+import { BadRequestError } from '../../common-errors/bad-request';
 import { ResourceActions } from '@common/cams/actions';
 
 const MODULE_NAME = 'TRUSTEE-NOTES-CONTROLLER';
@@ -114,7 +114,7 @@ export class TrusteeNotesController implements CamsController {
       messages.push(message);
     }
     if (messages.length) {
-      throw new ForbiddenTrusteeNotesError(MODULE_NAME, { message: messages.join(' ') });
+      throw new BadRequestError(MODULE_NAME, { message: messages.join(' ') });
     }
   }
 
@@ -138,7 +138,7 @@ export class TrusteeNotesController implements CamsController {
       messages.push(message);
     }
     if (messages.length) {
-      throw new ForbiddenTrusteeNotesError(MODULE_NAME, { message: messages.join(' ') });
+      throw new BadRequestError(MODULE_NAME, { message: messages.join(' ') });
     }
   }
 }
