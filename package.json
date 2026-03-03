@@ -68,7 +68,6 @@
   },
   "overrides": {
     "semver": "7.7.4",
-    "@babel/runtime": "7.28.6",
-    "qs": "6.15.0"
+    "@babel/runtime": "7.28.6"
   }
 }
