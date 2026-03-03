@@ -1,12 +1,5 @@
 import Alert, { AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import React, {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-} from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
@@ -24,26 +17,7 @@ import RichTextEditor, {
   RichTextEditorRef,
 } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
 import DOMPurify from 'dompurify';
-
-const useThrottleCallback = (callback: () => void, delay: number) => {
-  const isThrottled = useRef(false);
-  const savedCallback = useRef(callback);
-
-  savedCallback.current = callback;
-
-  return useCallback(() => {
-    if (isThrottled.current) {
-      return;
-    }
-
-    isThrottled.current = true;
-    savedCallback.current();
-
-    setTimeout(() => {
-      isThrottled.current = false;
-    }, delay);
-  }, [delay]);
-};
+import useThrottle from '@/lib/hooks/UseThrottle';
 
 export function getTrusteeNotesTitleValue(ref: InputRef | null) {
   return sanitizeText(ref?.getValue() ?? '');
@@ -221,7 +195,7 @@ function TrusteeNoteFormModal_(
     return isValid;
   }
 
-  const sendTrusteeNoteToApi = useThrottleCallback(async () => {
+  const sendTrusteeNoteToApi = useThrottle(async () => {
     const title = getTrusteeNotesTitleValue(titleInputRef.current);
     const content = getTrusteeNotesRichTextContentValue(richTextRef.current);
 

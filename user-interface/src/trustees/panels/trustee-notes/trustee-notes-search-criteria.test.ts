@@ -22,34 +22,34 @@ describe('Search Criteria', () => {
     });
     const unsorted = [noteB, noteC, noteA];
 
-    it('sorts by newest (default) — most recent updatedOn first', () => {
+    test('sorts by newest (default) — most recent updatedOn first', () => {
       const result = sortTrusteeNotes(unsorted, 'newest');
       expect(result).toEqual([noteC, noteB, noteA]);
     });
 
-    it('sorts by oldest — earliest updatedOn first', () => {
+    test('sorts by oldest — earliest updatedOn first', () => {
       const result = sortTrusteeNotes(unsorted, 'oldest');
       expect(result).toEqual([noteA, noteB, noteC]);
     });
 
-    it('sorts by title — alphabetical order', () => {
+    test('sorts by title — alphabetical order', () => {
       const result = sortTrusteeNotes(unsorted, 'title');
       expect(result).toEqual([noteA, noteB, noteC]);
     });
 
-    it('does not mutate the original array', () => {
+    test('does not mutate the original array', () => {
       const original = [noteB, noteC, noteA];
       sortTrusteeNotes(original, 'newest');
       expect(original).toEqual([noteB, noteC, noteA]);
     });
 
-    it('returns an empty array when given an empty array', () => {
+    test('returns an empty array when given an empty array', () => {
       expect(sortTrusteeNotes([], 'newest')).toEqual([]);
       expect(sortTrusteeNotes([], 'oldest')).toEqual([]);
       expect(sortTrusteeNotes([], 'title')).toEqual([]);
     });
 
-    it('returns a single-element array unchanged', () => {
+    test('returns a single-element array unchanged', () => {
       expect(sortTrusteeNotes([noteA], 'newest')).toEqual([noteA]);
     });
 
@@ -90,44 +90,44 @@ describe('Search Criteria', () => {
     });
     const notes = [noteA, noteB, noteC];
 
-    it('returns all notes when query is empty', () => {
+    test('returns all notes when query is empty', () => {
       expect(filterTrusteeNotes(notes, '')).toEqual(notes);
     });
 
-    it('matches notes by title substring (case-insensitive)', () => {
+    test('matches notes by title substring (case-insensitive)', () => {
       const result = filterTrusteeNotes(notes, 'review');
       expect(result).toEqual([noteA]);
     });
 
-    it('matches notes by plain-text content substring (case-insensitive)', () => {
+    test('matches notes by plain-text content substring (case-insensitive)', () => {
       const result = filterTrusteeNotes(notes, 'q1 financials');
       expect(result).toEqual([noteA]);
     });
 
-    it('matches notes whose content contains the query inside an HTML tag body', () => {
+    test('matches notes whose content contains the query inside an HTML tag body', () => {
       const result = filterTrusteeNotes(notes, 'allocation');
       expect(result).toEqual([noteB]);
     });
 
-    it('does not match HTML tag names as content', () => {
+    test('does not match HTML tag names as content', () => {
       const result = filterTrusteeNotes(notes, 'strong');
       expect(result).toEqual([]);
     });
 
-    it('matches across both title and content — returns union', () => {
+    test('matches across both title and content — returns union', () => {
       const result = filterTrusteeNotes(notes, 'budget');
       expect(result).toEqual([noteA, noteB]);
     });
 
-    it('returns an empty array when no notes match', () => {
+    test('returns an empty array when no notes match', () => {
       expect(filterTrusteeNotes(notes, 'zzznomatch')).toEqual([]);
     });
 
-    it('returns an empty array when given an empty array', () => {
+    test('returns an empty array when given an empty array', () => {
       expect(filterTrusteeNotes([], 'budget')).toEqual([]);
     });
 
-    it('does not mutate the original array', () => {
+    test('does not mutate the original array', () => {
       const original = [...notes];
       filterTrusteeNotes(original, 'budget');
       expect(original).toEqual(notes);
