@@ -183,89 +183,65 @@ function TrusteeNoteFormModal_(
     disableSubmitButton(disabled);
   }
 
-  async function postTrusteeNote(trusteeNoteInput: TrusteeNoteInput) {
+  async function saveTrusteeNote(trusteeNoteInput: TrusteeNoteInput) {
     disableSubmitButton(true);
-    api
-      .postTrusteeNote(trusteeNoteInput)
-      .then(() => {
-        modalOpenOptions.callback();
-        setTrusteeNoteFormError('');
-        alertRef.current?.hide();
-        clearTrusteeNoteForm();
-        hide();
-      })
-      .catch((e: ResponseBody) => {
-        if (e.data !== HttpStatusCodes.FORBIDDEN) {
-          setTrusteeNoteFormError(notesSubmissionErrorMessage);
-          alertRef.current?.show();
-        }
-      })
-      .finally(() => {
-        disableFormFields(false);
-        disableSubmitButton(false);
-      });
-  }
-
-  async function putTrusteeNoteEdit(trusteeNoteInput: TrusteeNoteInput) {
-    disableSubmitButton(true);
-    api
-      .putTrusteeNote(trusteeNoteInput)
-      .then((noteId: string | undefined) => {
-        modalOpenOptions.callback(noteId);
-        clearTrusteeNoteForm();
-        setTrusteeNoteFormError('');
-        alertRef.current?.hide();
-        hide();
-      })
-      .catch((e: ResponseBody) => {
-        if (e.data !== HttpStatusCodes.FORBIDDEN) {
-          setTrusteeNoteFormError(notesSubmissionErrorMessage);
-          alertRef.current?.show();
-        }
-      })
-      .finally(() => {
-        disableFormFields(false);
-        disableSubmitButton(false);
-      });
-  }
-
-  function validFields(title: string, content: string) {
-    if (title.length > 0 && content.length > 0) {
+    try {
+      let noteId: string | undefined;
+      if (mode === 'create') {
+        await api.postTrusteeNote(trusteeNoteInput);
+      } else {
+        noteId = await api.putTrusteeNote(trusteeNoteInput);
+      }
+      modalOpenOptions.callback(noteId);
+      clearTrusteeNoteForm();
       setTrusteeNoteFormError('');
       alertRef.current?.hide();
-      return true;
-    } else {
-      setTrusteeNoteFormError(notesRequiredFieldsMessage);
-      return false;
+      hide();
+    } catch (e: unknown) {
+      const error = e as ResponseBody;
+      if (error.data !== HttpStatusCodes.FORBIDDEN) {
+        setTrusteeNoteFormError(notesSubmissionErrorMessage);
+        alertRef.current?.show();
+      }
+    } finally {
+      disableFormFields(false);
+      disableSubmitButton(false);
     }
+  }
+
+  function validateFields(title: string, content: string): boolean {
+    const isValid = title.length > 0 && content.length > 0;
+    if (!isValid) {
+      setTrusteeNoteFormError(notesRequiredFieldsMessage);
+      alertRef.current?.show();
+    } else {
+      setTrusteeNoteFormError('');
+      alertRef.current?.hide();
+    }
+    return isValid;
   }
 
   const sendTrusteeNoteToApi = useThrottleCallback(async () => {
     const title = getTrusteeNotesTitleValue(titleInputRef.current);
     const content = getTrusteeNotesRichTextContentValue(richTextRef.current);
 
-    if (mode === 'create' && session?.user) {
-      const trusteeNoteInput: TrusteeNoteInput = {
-        trusteeId: modalOpenOptions.trusteeId,
-        title,
-        content,
-        updatedBy: getCamsUserReference(session?.user),
-      };
-      return validFields(title, content)
-        ? await postTrusteeNote(trusteeNoteInput)
-        : alertRef.current?.show();
-    } else if (mode === 'edit' && modalOpenOptions.id && session?.user) {
-      const trusteeNoteInput: TrusteeNoteInput = {
-        id: modalOpenOptions.id,
-        trusteeId: modalOpenOptions.trusteeId,
-        title,
-        content,
-        updatedBy: getCamsUserReference(session?.user),
-      };
-      return validFields(title, content)
-        ? await putTrusteeNoteEdit(trusteeNoteInput)
-        : alertRef.current?.show();
+    if (!validateFields(title, content) || !session?.user) {
+      return;
     }
+
+    const baseInput: TrusteeNoteInput = {
+      trusteeId: modalOpenOptions.trusteeId,
+      title,
+      content,
+      updatedBy: getCamsUserReference(session.user),
+    };
+
+    const trusteeNoteInput: TrusteeNoteInput =
+      mode === 'edit' && modalOpenOptions.id
+        ? { ...baseInput, id: modalOpenOptions.id }
+        : baseInput;
+
+    await saveTrusteeNote(trusteeNoteInput);
   }, 300);
 
   const trusteeNoteFormButtonGroup: SubmitCancelBtnProps = {
