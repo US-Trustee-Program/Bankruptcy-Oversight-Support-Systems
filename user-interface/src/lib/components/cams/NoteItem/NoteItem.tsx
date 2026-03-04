@@ -107,9 +107,9 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
           )}
         </div>
       </div>
-      <div className="grid-row trustee-note-metadata">
+      <div className="trustee-note-metadata">
         <div
-          className={`note-item-date grid-col-12 text-italic text-wrapper`}
+          className={`note-item-date text-italic text-wrapper`}
           data-testid={`note-item-creation-date-${idx}`}
         >
           {note.previousVersionId ? 'Edited by: ' : 'Created by: '}
@@ -127,20 +127,17 @@ export function NoteItem<TNote extends BaseNote, TInput>(config: NoteItemConfig<
         <PrerenderedHtml htmlString={note.content} />
       </div>
       {draft && (
-        <div className="grid-row margin-bottom-2">
-          <Alert
-            id={`draft-edit-note-item-${note.id}`}
-            message={getDraftAlertMessage(draft)}
-            type={UswdsAlertStyle.Info}
-            role={'status'}
-            timeout={0}
-            show={true}
-            inline={true}
-            slim={true}
-            className="grid-col-8"
-          />
-          <div className="grid-col-4"></div>
-        </div>
+        <Alert
+          id={`draft-edit-note-item-${note.id}`}
+          message={getDraftAlertMessage(draft)}
+          type={UswdsAlertStyle.Info}
+          role={'status'}
+          timeout={0}
+          show={true}
+          inline={true}
+          slim={true}
+          className="note-item-draft-alert"
+        />
       )}
     </li>
   );
