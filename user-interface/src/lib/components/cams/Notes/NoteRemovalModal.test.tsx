@@ -5,11 +5,11 @@ import React from 'react';
 
 describe('NoteRemovalModal', () => {
   let modalRef: React.RefObject<NoteRemovalModalRef>;
-  let mockOnDelete: ReturnType<typeof vi.fn>;
+  let mockOnDelete: (noteId: string) => Promise<void>;
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    modalRef = React.createRef<NoteRemovalModalRef>();
+    modalRef = React.createRef<NoteRemovalModalRef>() as React.RefObject<NoteRemovalModalRef>;
     mockOnDelete = vi.fn().mockResolvedValue(undefined);
   });
 
@@ -21,7 +21,7 @@ describe('NoteRemovalModal', () => {
     modalRef.current?.show({
       id: 'note-123',
       buttonId: 'remove-button-0',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
     });
 
     await waitFor(() => {
@@ -41,7 +41,7 @@ describe('NoteRemovalModal', () => {
     modalRef.current?.show({
       id: 'note-456',
       buttonId: 'remove-button-1',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
     });
 
     await waitFor(() => {
@@ -71,7 +71,7 @@ describe('NoteRemovalModal', () => {
     modalRef.current?.show({
       id: 'note-789',
       buttonId: 'remove-button-2',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
     });
 
     await waitFor(() => {
@@ -94,7 +94,7 @@ describe('NoteRemovalModal', () => {
     modalRef.current?.show({
       id: 'note-111',
       buttonId: 'remove-button-4',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
     });
 
     await waitFor(() => {
@@ -112,7 +112,7 @@ describe('NoteRemovalModal', () => {
     modalRef.current?.show({
       id: 'note-error',
       buttonId: 'remove-button-5',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
     });
 
     await waitFor(() => {
@@ -135,7 +135,7 @@ describe('NoteRemovalModal', () => {
     modalRef.current?.show({
       id: '',
       buttonId: 'remove-button-6',
-      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
     });
 
     await waitFor(() => {

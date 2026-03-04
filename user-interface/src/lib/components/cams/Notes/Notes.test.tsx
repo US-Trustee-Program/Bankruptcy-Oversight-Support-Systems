@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import Notes, { NotesRef } from './Notes';
-import { Note } from './types';
+import { Note, NoteInput } from './types';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import React from 'react';
 
@@ -18,9 +18,9 @@ const createTestNote = (overrides: Partial<Note> = {}): Note => ({
 });
 
 describe('Notes Component', () => {
-  let mockOnCreateNote: ReturnType<typeof vi.fn>;
-  let mockOnUpdateNote: ReturnType<typeof vi.fn>;
-  let mockOnDeleteNote: ReturnType<typeof vi.fn>;
+  let mockOnCreateNote: (noteData: NoteInput) => Promise<void>;
+  let mockOnUpdateNote: (noteId: string, noteData: NoteInput) => Promise<void>;
+  let mockOnDeleteNote: (noteId: string) => Promise<void>;
   let notesRef: React.RefObject<NotesRef>;
 
   beforeEach(() => {
@@ -28,7 +28,7 @@ describe('Notes Component', () => {
     mockOnCreateNote = vi.fn().mockResolvedValue(undefined);
     mockOnUpdateNote = vi.fn().mockResolvedValue(undefined);
     mockOnDeleteNote = vi.fn().mockResolvedValue(undefined);
-    notesRef = React.createRef<NotesRef>();
+    notesRef = React.createRef<NotesRef>() as React.RefObject<NotesRef>;
 
     vi.spyOn(LocalFormCache, 'getForm').mockReturnValue(null);
     vi.spyOn(LocalFormCache, 'getFormsByPattern').mockReturnValue([]);

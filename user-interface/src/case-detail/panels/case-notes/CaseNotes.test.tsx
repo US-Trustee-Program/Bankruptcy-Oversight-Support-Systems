@@ -187,7 +187,7 @@ describe('CaseNotes Adapter Tests', () => {
         ),
       ];
       vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: caseNotes });
-      vi.spyOn(Api2, 'putCaseNote').mockResolvedValue();
+      vi.spyOn(Api2, 'putCaseNote').mockResolvedValue(undefined);
 
       renderWithProps({ caseId });
 
