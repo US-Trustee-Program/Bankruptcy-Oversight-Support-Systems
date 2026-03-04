@@ -259,7 +259,7 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
             </div>
           </div>
           <OpenModalButton
-            className="notes-add-button margin-right-0"
+            className="notes-add-button margin-right-0 margin-left-2"
             id={'note-add-button'}
             uswdsStyle={UswdsButtonStyle.Default}
             modalId={noteModalId}

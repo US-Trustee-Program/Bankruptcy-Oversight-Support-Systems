@@ -9,7 +9,7 @@ import { Cacheable } from '@/lib/utils/local-cache';
 import PrerenderedHtml from '@/lib/components/cams/PrerenderedHtml/PrerenderedHtml';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
-export interface BaseNote {
+interface BaseNote {
   id?: string;
   title: string;
   content: string;
@@ -18,7 +18,7 @@ export interface BaseNote {
   previousVersionId?: string;
 }
 // TODO: fix spacing in case notes between title and date
-export interface NoteItemConfig<TNote extends BaseNote, TInput> {
+interface NoteItemConfig<TNote extends BaseNote, TInput> {
   note: TNote;
   idx: number;
   draft: Cacheable<TInput> | null;
