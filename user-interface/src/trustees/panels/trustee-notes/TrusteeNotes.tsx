@@ -30,6 +30,7 @@ export default function TrusteeNotes({ trusteeId }: TrusteeNotesProps) {
     }
   }
 
+  //LOST PR FEEDBACK: There was a refactor that merged the create and the update.
   async function handleCreateNote(noteData: NoteInput) {
     const session = LocalStorage.getSession();
     if (!session?.user) {
@@ -72,6 +73,7 @@ export default function TrusteeNotes({ trusteeId }: TrusteeNotesProps) {
       throw error;
     }
   }
+  //----------
 
   async function handleDeleteNote(noteId: string) {
     const session = LocalStorage.getSession();

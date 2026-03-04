@@ -9,6 +9,7 @@ import {
 } from '@common/cams/trustee-notes';
 import { CamsUser } from '@common/cams/users';
 import { ForbiddenError } from '../../common-errors/forbidden-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { getCamsUserReference } from '@common/cams/session';
 import { randomUUID } from 'node:crypto';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
@@ -61,6 +62,9 @@ export class TrusteeNotesUseCase {
   public async archiveTrusteeNote(archiveRequest: TrusteeNoteDeleteRequest): Promise<UpdateResult> {
     const { trusteeId, id, sessionUser } = archiveRequest;
     const existingNote = await this.trusteeNotesRepository.read(archiveRequest.id);
+    if (!existingNote) {
+      throw new NotFoundError(MODULE_NAME, { message: 'Trustee note not found.' });
+    }
     if (existingNote.createdBy.id !== archiveRequest.sessionUser.id) {
       throw new ForbiddenError(MODULE_NAME, { message: 'User is not the creator of the note.' });
     }
@@ -76,6 +80,9 @@ export class TrusteeNotesUseCase {
   public async editTrusteeNote(noteEditRequest: TrusteeNoteEditRequest): Promise<TrusteeNote> {
     const { note, sessionUser } = noteEditRequest;
     const existingNote = await this.trusteeNotesRepository.read(note.id);
+    if (!existingNote) {
+      throw new NotFoundError(MODULE_NAME, { message: 'Trustee note not found.' });
+    }
     if (existingNote.createdBy.id !== sessionUser.id) {
       throw new ForbiddenError(MODULE_NAME, { message: 'User is not the creator of the note.' });
     }

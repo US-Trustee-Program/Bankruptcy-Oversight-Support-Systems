@@ -106,7 +106,7 @@ describe('trustee notes repo tests', () => {
       const note = MockData.getTrusteeNote();
       const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(note);
 
-      const query = doc('id').equals(note.id);
+      const query = and(doc('documentType').equals('TRUSTEE_NOTE'), doc('id').equals(note.id));
 
       const actual = await repo.read(note.id);
       expect(actual).toEqual(note);
