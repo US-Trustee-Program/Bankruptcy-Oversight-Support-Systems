@@ -1,5 +1,5 @@
-import { scrubMessage } from './logger.service';
-import { getAppInsightsClient } from '../../../function-apps/azure/app-insights';
+import { LoggerImpl, scrubMessage } from './logger.service';
+import { TelemetryClient } from '../../../function-apps/azure/app-insights';
 import {
   ObservabilityGateway,
   ObservabilityTrace,
@@ -10,6 +10,8 @@ const mongoConnectionStringPattern = /(?:mongodb(?:\+srv)?:\/\/)\S+/gi;
 const mssqlConnectionStringPattern =
   /(?:Server|Data Source)=[^'")\]]*?(?:Password|Pwd)=[^\s;'")\]]+[;]?/gi;
 
+export type AppInsightsClientFactory = (logger?: LoggerImpl) => TelemetryClient | null;
+
 export function scrubErrorForTelemetry(error: string): string {
   let scrubbed = scrubMessage(error);
   scrubbed = scrubbed.replace(mongoConnectionStringPattern, '[CONNECTION_STRING_REDACTED]');
@@ -18,7 +20,44 @@ export function scrubErrorForTelemetry(error: string): string {
   return scrubbed;
 }
 
+export function getAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
+  const MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
+
+  try {
+    /* eslint-disable-next-line @typescript-eslint/no-require-imports */
+    const appInsights = require('applicationinsights');
+
+    if (!appInsights) {
+      logger?.warn(MODULE_NAME, 'applicationinsights module loaded but is falsy');
+      return null;
+    }
+
+    if (!appInsights.defaultClient) {
+      logger?.warn(
+        MODULE_NAME,
+        'applicationinsights.defaultClient is null/undefined - SDK not initialized',
+      );
+      return null;
+    }
+
+    return appInsights.defaultClient as TelemetryClient;
+  } catch (error) {
+    logger?.error(MODULE_NAME, 'Failed to load applicationinsights module', error);
+    return null;
+  }
+}
+
 export class AppInsightsObservability implements ObservabilityGateway {
+  private readonly MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
+  private readonly clientFactory: AppInsightsClientFactory;
+
+  constructor(
+    private readonly logger?: LoggerImpl,
+    clientFactory?: AppInsightsClientFactory,
+  ) {
+    this.clientFactory = clientFactory ?? getAppInsightsClient;
+  }
+
   startTrace(invocationId: string): ObservabilityTrace {
     return {
       invocationId,
@@ -51,7 +90,7 @@ export class AppInsightsObservability implements ObservabilityGateway {
       ...completion.measurements,
     };
 
-    const client = getAppInsightsClient();
+    const client = this.clientFactory(this.logger);
 
     if (!client) return;
 

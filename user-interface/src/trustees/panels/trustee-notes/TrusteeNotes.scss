@@ -1,0 +1,64 @@
+.trustee-notes-panel {
+  .text-wrapper {
+    max-width: 560px;
+  }
+
+  .trustee-notes-controls {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+
+    .trustee-notes-search-and-sort {
+      display: flex;
+
+      .trustee-notes-search-wrapper {
+        margin-right: 1rem;
+      }
+
+      div {
+        width: 17.875rem;
+      }
+    }
+
+    .add-button {
+      align-self: flex-end;
+      height: 2.75rem;
+    }
+  }
+
+  .search-trustee-notes {
+    margin-top: 0;
+    padding-left: unset;
+
+    .trustee-note-metadata {
+      margin-top: 1.25rem;
+    }
+
+    .trustee-note {
+      position: relative;
+      max-width: unset;
+      padding-top: 1.5rem;
+      border-top: 1px solid black;
+
+      .grid-container {
+        margin-top: 1.25rem;
+        margin-bottom: 1.25rem;
+      }
+    }
+
+    .trustee-note-toolbar {
+      position: absolute;
+      top: 1.5rem;
+      right: 0;
+
+      button {
+        margin-left: 1.5rem;
+      }
+    }
+  }
+
+  .trustee-note-content {
+    margin-top: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+}

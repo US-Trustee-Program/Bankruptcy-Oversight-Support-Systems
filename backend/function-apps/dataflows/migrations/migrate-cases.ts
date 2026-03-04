@@ -70,7 +70,7 @@ const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTabl
  */
 async function handleStart(_ignore: StartMessage, context: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(context);
-  const observability = new AppInsightsObservability();
+  const observability = new AppInsightsObservability(logger);
   const trace = observability.startTrace(context.invocationId);
   const migrationStartTimestamp = new Date().toISOString();
   logger.info(
@@ -131,7 +131,7 @@ async function handleStart(_ignore: StartMessage, context: InvocationContext) {
  */
 async function handlePage(range: RangeMessage, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability();
+  const observability = new AppInsightsObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, invocationContext);
 
@@ -154,7 +154,7 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
 
 async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability();
+  const observability = new AppInsightsObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   if (isNotFoundError(event.error)) {
     logger.info(MODULE_NAME, `Abandoning attempt to sync ${event.caseId}: ${event.error.message}.`);

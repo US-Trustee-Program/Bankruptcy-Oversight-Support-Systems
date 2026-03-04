@@ -10,6 +10,8 @@ param actionGroupName string
 
 param actionGroupResourceGroupName string
 
+param tags object = {}
+
 resource functionApp 'Microsoft.Web/sites@2023-12-01' existing = {
   name: functionAppName
 }
@@ -22,6 +24,7 @@ module appInsights '../app-insights/app-insights.bicep' = if (createApplicationI
     appInsightsName: 'appi-${functionAppName}'
     applicationType: 'web'
     workspaceResourceId: analyticsWorkspaceId
+    tags: tags
   }
 }
 

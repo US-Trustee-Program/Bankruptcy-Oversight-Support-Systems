@@ -107,11 +107,14 @@ param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+param tags object = {}
+
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
 
 resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
   location: location
   name: planName
+  tags: tags
   sku: planTypeToSkuMap[planType]
   kind: 'app,linux'
   properties: {
@@ -134,6 +137,7 @@ resource serverFarm 'Microsoft.Web/serverfarms@2022-09-01' = {
 resource webapp 'Microsoft.Web/sites@2023-12-01' = {
   name: webappName
   location: location
+  tags: tags
   kind: 'app'
   properties: {
     serverFarmId: serverFarm.id
@@ -150,6 +154,7 @@ resource webapp 'Microsoft.Web/sites@2023-12-01' = {
   resource slot 'slots' = {
       location: location
       name: slotName
+      tags: union(tags, { slot: 'deployment' })
       properties: {
         serverFarmId: webapp.properties.serverFarmId
         enabled: webapp.properties.enabled
@@ -172,6 +177,7 @@ module webappInsights 'lib/app-insights/webapp-insights.bicep' = {
     createAlerts: createAlerts
     createApplicationInsights: createApplicationInsights
     webappName: webappName
+    tags: tags
   }
   dependsOn: [
     webapp
@@ -183,6 +189,7 @@ module searchWorkbooks 'lib/workbooks/search-workbooks.bicep' = if (createApplic
   params: {
     location: location
     appInsightsResourceId: webappInsights.outputs.id
+    tags: tags
   }
 }
 
@@ -307,5 +314,6 @@ module privateEndpoint './lib/network/subnet-private-endpoint.bicep' = {
     privateDnsZoneName: privateDnsZoneName
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    tags: tags
   }
 }

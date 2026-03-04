@@ -52,7 +52,7 @@ const TIMER_TRIGGER = buildFunctionName(MODULE_NAME, 'timerTrigger');
  */
 async function handleStart(startMessage: StartMessage, invocationContext: InvocationContext) {
   const logger = ContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability();
+  const observability = new AppInsightsObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   try {
     const context = await ContextCreator.getApplicationContext({

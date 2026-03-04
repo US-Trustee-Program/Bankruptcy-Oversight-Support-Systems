@@ -1,4 +1,7 @@
 param location string = resourceGroup().location
+
+param deployedAt string = utcNow()
+
 @description('Existing resource group name for new CosmosDb instance')
 param resourceGroupName string
 @description('CosmosDb account name')
@@ -39,6 +42,12 @@ param createAlerts bool = true
 @description('List of allowed IP ranges on the USTP side')
 param allowedIps array = []
 
+var tags = {
+  app: 'cams'
+  component: 'cosmos'
+  'deployed-at': deployedAt
+}
+
 // CosmosDb for MongoDB
 module account './lib/cosmos/mongo/cosmos-account.bicep' = {
   name: '${accountName}-cosmos-account-module'
@@ -51,6 +60,7 @@ module account './lib/cosmos/mongo/cosmos-account.bicep' = {
     keyVaultName: keyVaultName
     kvResourceGroup: kvResourceGroup
     allowedIps: allowedIps
+    tags: tags
   }
 }
 

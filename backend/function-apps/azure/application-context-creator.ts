@@ -51,12 +51,13 @@ async function getApplicationContext<B = unknown>(
   const { invocationContext, logger, observability, request } = args;
   const config = new ApplicationConfiguration();
   const featureFlags = await getFeatureFlags(config);
+  const contextLogger = logger ?? ContextCreator.getLogger(invocationContext);
 
   return {
     config,
     featureFlags,
-    logger: logger ?? ContextCreator.getLogger(invocationContext),
-    observability: observability ?? new AppInsightsObservability(),
+    logger: contextLogger,
+    observability: observability ?? new AppInsightsObservability(contextLogger),
     invocationId: invocationContext.invocationId,
     request: request ? await azureToCamsHttpRequest<B>(request) : undefined,
     session: undefined,
