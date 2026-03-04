@@ -28,6 +28,12 @@ describe('String sanitization functions', () => {
       ["eval('/api/data');"],
       ["document.querySelector('#id');"],
       ["<script>alert('XSS');</script>"],
+      ['<iframe>content</iframe>'],
+      ['<iframe src="evil.com">'],
+      ['<noscript>content</noscript>'],
+      ['<xmp>content</xmp>'],
+      ['<noembed>content</noembed>'],
+      ['<noframes>content</noframes>'],
     ];
     test.each(testXSSNotes)('should detect invalid strings', (input: string) => {
       const actual = isValidUserInput(input);
