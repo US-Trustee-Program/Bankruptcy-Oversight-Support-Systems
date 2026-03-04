@@ -1,4 +1,6 @@
 .case-detail, .record-detail {
+  container-type: inline-size;
+
   // Override USWDS grid with flexbox for better responsive behavior
   // Allow content to shrink fluidly on tablets, only stack on mobile phones
   .grid-row {
@@ -23,8 +25,7 @@
       width: auto;
     }
 
-    // Mobile phones: stack the columns
-    @media screen and (max-width: 640px) {
+    @container (max-width: 640px) {
       flex-direction: column;
 
       .grid-col-2,

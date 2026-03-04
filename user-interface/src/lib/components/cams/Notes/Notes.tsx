@@ -222,44 +222,42 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
       <div className="notes-title">
         <h3>{title}</h3>
 
-        <div className="notes-controls">
-          <div className="notes-search-and-sort">
-            <div className="notes-search-wrapper">
-              <label htmlFor="notes-search" className="usa-label">
-                {searchPlaceholder}
-              </label>
-              <input
-                type="text"
-                className="usa-input"
-                id="notes-search"
-                name="notes-search"
-                aria-label={searchPlaceholder}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  setSearchQuery(value);
-                }}
-              />
-            </div>
-            <div className="notes-sort-wrapper">
-              <label htmlFor="notes-sort" className="usa-label">
-                Sort by
-              </label>
-              <select
-                className="usa-select"
-                id="notes-sort"
-                name="notes-sort"
-                aria-label="Sort by"
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="title">Title A-Z</option>
-              </select>
-            </div>
+        <div className="notes-toolbar">
+          <div className="notes-search-wrapper">
+            <label htmlFor="notes-search" className="usa-label">
+              {searchPlaceholder}
+            </label>
+            <input
+              type="text"
+              className="usa-input"
+              id="notes-search"
+              name="notes-search"
+              aria-label={searchPlaceholder}
+              onChange={(e) => {
+                const value = e.target.value;
+                setSearchQuery(value);
+              }}
+            />
+          </div>
+          <div className="notes-sort-wrapper">
+            <label htmlFor="notes-sort" className="usa-label">
+              Sort by
+            </label>
+            <select
+              className="usa-select"
+              id="notes-sort"
+              name="notes-sort"
+              aria-label="Sort by"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="title">Title A-Z</option>
+            </select>
           </div>
           <OpenModalButton
-            className="notes-add-button margin-right-0 margin-left-2"
+            className="notes-add-button"
             id={'note-add-button'}
             uswdsStyle={UswdsButtonStyle.Default}
             modalId={noteModalId}
@@ -289,20 +287,16 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
             data-testid="draft-note-alert"
             className="notes-draft-alert-container margin-top-3 margin-bottom-0"
           >
-            <div className="grid-row">
-              <Alert
-                id="draft-add-note"
-                message={getDraftAlertMessage(draftNote)}
-                type={UswdsAlertStyle.Info}
-                role={'status'}
-                timeout={0}
-                title="Draft Note Available"
-                show={true}
-                inline={true}
-                className="grid-col-8 margin-bottom-0"
-              />
-              <div className="grid-col-4"></div>
-            </div>
+            <Alert
+              id="draft-add-note"
+              message={getDraftAlertMessage(draftNote)}
+              type={UswdsAlertStyle.Info}
+              role={'status'}
+              timeout={0}
+              title="Draft Note Available"
+              show={true}
+              inline={true}
+            />
           </div>
         )}
         {isLoading && <LoadingSpinner id="notes-loading-indicator" caption="Loading notes..." />}
