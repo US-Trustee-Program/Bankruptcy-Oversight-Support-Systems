@@ -172,8 +172,8 @@ function TrusteeNoteFormModal_(
       alertRef.current?.hide();
       hide();
     } catch (e: unknown) {
-      const error = e as ResponseBody;
-      if (error.data !== HttpStatusCodes.FORBIDDEN) {
+      const statusCode = (e as ResponseBody).data;
+      if (statusCode !== HttpStatusCodes.FORBIDDEN && statusCode !== HttpStatusCodes.BAD_REQUEST) {
         setTrusteeNoteFormError(notesSubmissionErrorMessage);
         alertRef.current?.show();
       }
