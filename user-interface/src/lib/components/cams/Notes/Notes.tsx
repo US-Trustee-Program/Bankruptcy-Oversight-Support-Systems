@@ -277,7 +277,10 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
             }}
             ariaLabel={`Add new note`}
           >
-            <Icon name="add_circle_outline" className="add-circle-outline-icon" />
+            <Icon
+              name={draftNote ? 'edit' : 'add_circle_outline'}
+              className="add-circle-outline-icon"
+            />
             {draftNote ? 'Continue Editing' : 'Add Note'}
           </OpenModalButton>
         </div>
