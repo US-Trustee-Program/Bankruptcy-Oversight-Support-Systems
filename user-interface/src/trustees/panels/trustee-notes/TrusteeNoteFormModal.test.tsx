@@ -12,6 +12,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import LocalStorage from '@/lib/utils/local-storage';
 import Api2 from '@/lib/models/api2';
 import { RichTextEditorRef } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 vi.mock('@/lib/components/cams/RichTextEditor/RichTextEditor', async () => {
   const { forwardRef, useRef, useImperativeHandle } = await import('react');
@@ -274,6 +275,52 @@ describe('TrusteeNoteFormModal', () => {
         expect.objectContaining({ id: noteId, trusteeId, title: 'My Title' }),
       );
       expect(callback).toHaveBeenCalledWith(noteId);
+    });
+  });
+
+  test('should not show error when postTrusteeNote fails with FORBIDDEN', async () => {
+    vi.spyOn(Api2, 'postTrusteeNote').mockRejectedValue({ data: HttpStatusCodes.FORBIDDEN });
+    const richTextRef = React.createRef<RichTextEditorRef | null>();
+
+    render(
+      <TrusteeNoteFormModal ref={modalRef} modalId={modalId} RichTextEditorRef={richTextRef} />,
+    );
+
+    act(() => {
+      modalRef.current?.show(defaultShowProps);
+    });
+
+    await waitFor(() => expect(getSubmitButton()).not.toBeDisabled());
+
+    fireEvent.click(getSubmitButton());
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('There was a problem submitting the trustee note.'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  test('should not show error when postTrusteeNote fails with BAD_REQUEST', async () => {
+    vi.spyOn(Api2, 'postTrusteeNote').mockRejectedValue({ data: HttpStatusCodes.BAD_REQUEST });
+    const richTextRef = React.createRef<RichTextEditorRef | null>();
+
+    render(
+      <TrusteeNoteFormModal ref={modalRef} modalId={modalId} RichTextEditorRef={richTextRef} />,
+    );
+
+    act(() => {
+      modalRef.current?.show(defaultShowProps);
+    });
+
+    await waitFor(() => expect(getSubmitButton()).not.toBeDisabled());
+
+    fireEvent.click(getSubmitButton());
+
+    await waitFor(() => {
+      expect(
+        screen.queryByText('There was a problem submitting the trustee note.'),
+      ).not.toBeInTheDocument();
     });
   });
 
