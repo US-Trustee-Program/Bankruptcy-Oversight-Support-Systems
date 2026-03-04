@@ -99,10 +99,9 @@ export class TrusteeNotesMongoRepository
         doc('id').equals(note.id),
       );
 
-      delete note.trusteeId;
-      delete note.id;
+      const { trusteeId, id, ...updateFields } = note;
 
-      await this.getAdapter<TrusteeNote>().updateOne(query, note);
+      await this.getAdapter<TrusteeNote>().updateOne(query, updateFields);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: {
@@ -115,7 +114,7 @@ export class TrusteeNotesMongoRepository
 
   async read(id: string): Promise<TrusteeNote> {
     try {
-      const query = doc('id').equals(id);
+      const query = and(doc('documentType').equals('TRUSTEE_NOTE'), doc('id').equals(id));
       return await this.getAdapter<TrusteeNote>().findOne(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {

@@ -174,6 +174,67 @@ const caseDocketEntries = [
   },
 ];
 
+const resourceActionTrusteeNotes = [
+  {
+    id: '11111111-1111-1111-1111-111111111111',
+    title: 'First Trustee Note',
+    documentType: 'TRUSTEE_NOTE',
+    trusteeId: 'trustee-001',
+    content: '<p>This is a test trustee note with <strong>rich text</strong>.</p>',
+    updatedOn: '2024-01-15T10:30:00.000Z',
+    updatedBy: {
+      id: '==MOCKUSER=user@fake.com==',
+      name: "Martha's Son",
+    },
+    createdOn: '2024-01-15T10:30:00.000Z',
+    createdBy: {
+      id: '==MOCKUSER=user@fake.com==',
+      name: "Martha's Son",
+    },
+    _actions: [
+      {
+        actionName: 'edit trustee note',
+        method: 'PUT',
+        path: '/trustees/${trusteeId}/notes/${id}',
+      },
+      {
+        actionName: 'remove trustee note',
+        method: 'DELETE',
+        path: '/trustees/${trusteeId}/notes/${id}',
+      },
+    ],
+  },
+  {
+    id: '22222222-2222-2222-2222-222222222222',
+    title: 'Second Trustee Note',
+    documentType: 'TRUSTEE_NOTE',
+    trusteeId: 'trustee-001',
+    content: '<p>Another note about trustee activities.</p>',
+    updatedOn: '2024-02-20T14:45:00.000Z',
+    updatedBy: {
+      id: '==MOCKUSER=user@fake.com==',
+      name: "Martha's Son",
+    },
+    createdOn: '2024-02-20T14:45:00.000Z',
+    createdBy: {
+      id: '==MOCKUSER=user@fake.com==',
+      name: "Martha's Son",
+    },
+    _actions: [
+      {
+        actionName: 'edit trustee note',
+        method: 'PUT',
+        path: '/trustees/${trusteeId}/notes/${id}',
+      },
+      {
+        actionName: 'remove trustee note',
+        method: 'DELETE',
+        path: '/trustees/${trusteeId}/notes/${id}',
+      },
+    ],
+  },
+];
+
 const resourceActionCaseNotes = [
   {
     id: '86531537-2350-463B-A28F-F218E122B458',
@@ -1765,6 +1826,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
   } else if (path.match(/\/courts/)) {
     response = {
       data: courts,
+    };
+  } else if (path.match(/\/trustees\/[A-Z\d-]+\/notes/i)) {
+    response = {
+      data: resourceActionTrusteeNotes,
     };
   } else if (path.match(/\/trustees\/[A-Z\d-]+/i)) {
     response = {

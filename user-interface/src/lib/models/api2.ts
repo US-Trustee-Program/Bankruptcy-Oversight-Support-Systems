@@ -383,7 +383,7 @@ async function putTrusteeNote(note: TrusteeNoteInput): Promise<string | undefine
   }
 
   if (note.content.length > 0 && note.title.length > 0 && isValidUserInput(note.content)) {
-    const response = await api().put<TrusteeNoteInput[]>(
+    const response = await api().put<TrusteeNote[]>(
       `/trustees/${note.trusteeId}/notes/${note.id}`,
       {
         title: note.title,
