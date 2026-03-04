@@ -12,7 +12,7 @@ import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/m
 import Input from '@/lib/components/uswds/Input';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
-import { InputRef, TextAreaRef } from '@/lib/type-declarations/input-fields';
+import { InputRef } from '@/lib/type-declarations/input-fields';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { DOMPURIFY_CONFIG, sanitizeText } from '@/lib/utils/sanitize-text';
 import RichTextEditor, {
@@ -48,6 +48,12 @@ function getNotesTitleValue(ref: InputRef | null) {
 function getNotesRichTextContentValue(ref: RichTextEditorRef | null) {
   const unsafeHtml = ref?.getHtml() ?? '';
   return DOMPurify.sanitize(unsafeHtml, DOMPURIFY_CONFIG);
+}
+
+function hasContent(html: string): boolean {
+  // Strip HTML tags and check for non-whitespace content
+  const textOnly = DOMPurify.sanitize(html, { ALLOWED_TAGS: [] }).trim();
+  return textOnly.length > 0;
 }
 
 type NoteFormMode = 'create' | 'edit';
@@ -96,21 +102,25 @@ function NoteFormModal_(props: NoteFormModalProps, ref: React.Ref<NoteFormModalR
   const formKeyRef = useRef<string>('');
   const [modalOpenOptions, setModalOpenOptions] =
     useState<NoteFormModalOpenProps>(defaultModalOpenOptions);
-  const [noteModalTitle, setNoteModalTitle] = useState<string>('');
-  const [cancelButtonLabel, setCancelButtonLabel] = useState<string>('');
   const [noteFormError, setNoteFormError] = useState<string>('');
-  const [initialTitle, setInitialTitle] = useState<string>('');
-  const [initialContent, setInitialContent] = useState<string>('');
-  const [mode, setMode] = useState<NoteFormMode>('create');
   const alertRef = useRef<AlertRefType>(null);
 
+  // Track current form values in state for dirty detection
+  const [currentTitle, setCurrentTitle] = useState<string>('');
+  const [currentContent, setCurrentContent] = useState<string>('');
+
   const modalRef = useRef<ModalRefType>(null);
-  const titleInputRef = useRef<TextAreaRef>(null);
+  const titleInputRef = useRef<InputRef>(null);
   const notesRequiredFieldsMessage = 'Title and content are both required inputs.';
   const notesSubmissionErrorMessage = 'There was a problem submitting the note.';
 
   const richTextContentInputRef = useRef<RichTextEditorRef>(null);
   const richTextRef = props.RichTextEditorRef || richTextContentInputRef;
+
+  // Derive labels from modalOpenOptions.mode
+  const isEditMode = modalOpenOptions.mode === 'edit';
+  const noteModalTitle = `${isEditMode ? 'Edit' : 'Create'} Note`;
+  const cancelButtonLabel = isEditMode ? 'Cancel' : 'Discard';
 
   function disableSubmitButton(disable: boolean) {
     const buttons = modalRef.current?.buttons;
@@ -119,20 +129,22 @@ function NoteFormModal_(props: NoteFormModalProps, ref: React.Ref<NoteFormModalR
     }
   }
 
-  function toggleButtonOnDirtyForm(initialTitle: string, initialContent: string) {
-    setTimeout(() => {
-      const currentTitle = titleInputRef.current?.getValue();
-      const hasTitle = !!currentTitle;
-      const hasTitleChanged = initialTitle !== currentTitle;
+  // useEffect to compute dirty state and enable/disable save button
+  useEffect(() => {
+    const hasTitle = !!currentTitle;
+    const hasTitleChanged = modalOpenOptions.initialTitle !== currentTitle;
 
-      const currentContent = richTextRef.current?.getHtml();
-      const hasContent = !(currentContent === '' || currentContent === '<p></p>');
-      const hasContentChanged = initialContent !== currentContent;
+    const contentHasValue = hasContent(currentContent);
+    const hasContentChanged = modalOpenOptions.initialContent !== currentContent;
 
-      const isSavable = hasTitle && hasContent && (hasTitleChanged || hasContentChanged);
-      disableSubmitButton(!isSavable);
-    }, 10);
-  }
+    const isSavable = hasTitle && contentHasValue && (hasTitleChanged || hasContentChanged);
+    disableSubmitButton(!isSavable);
+  }, [
+    currentTitle,
+    currentContent,
+    modalOpenOptions.initialTitle,
+    modalOpenOptions.initialContent,
+  ]);
 
   function saveFormData(data: NoteInput) {
     if (formKeyRef.current && (data.title?.length > 0 || data.content?.length > 0)) {
@@ -140,14 +152,19 @@ function NoteFormModal_(props: NoteFormModalProps, ref: React.Ref<NoteFormModalR
     } else if (formKeyRef.current) {
       LocalFormCache.clearForm(formKeyRef.current);
     }
-    toggleButtonOnDirtyForm(initialTitle, initialContent);
   }
 
   function updateFormCache() {
+    const title = titleInputRef.current?.getValue() ?? '';
+    const content = richTextRef.current?.getHtml() ?? '';
+
+    setCurrentTitle(title);
+    setCurrentContent(content);
+
     saveFormData({
       entityId: modalOpenOptions.entityId,
-      title: titleInputRef.current?.getValue() ?? '',
-      content: richTextRef.current?.getHtml() ?? '',
+      title,
+      content,
     });
   }
 
@@ -156,9 +173,10 @@ function NoteFormModal_(props: NoteFormModalProps, ref: React.Ref<NoteFormModalR
     richTextRef.current?.clearValue();
     LocalFormCache.clearForm(formKeyRef.current);
 
+    setCurrentTitle('');
+    setCurrentContent('');
     setNoteFormError('');
     alertRef.current?.hide();
-    toggleButtonOnDirtyForm(initialTitle, initialContent);
   }
 
   function disableFormFields(disabled: boolean) {
@@ -210,7 +228,7 @@ function NoteFormModal_(props: NoteFormModalProps, ref: React.Ref<NoteFormModalR
       content,
     };
 
-    if (mode === 'edit' && modalOpenOptions.id) {
+    if (modalOpenOptions.mode === 'edit' && modalOpenOptions.id) {
       noteInput.id = modalOpenOptions.id;
     }
 
@@ -236,23 +254,21 @@ function NoteFormModal_(props: NoteFormModalProps, ref: React.Ref<NoteFormModalR
   };
 
   function show(showProps: NoteFormModalOpenProps) {
-    setNoteModalTitle(`${showProps.mode === 'edit' ? 'Edit' : 'Create'} Note`);
-    setMode(showProps.mode);
-    setCancelButtonLabel(`${showProps.mode === 'edit' ? 'Cancel' : 'Discard'}`);
-
     formKeyRef.current = showProps.cacheKey;
     setModalOpenOptions(showProps);
-    setInitialTitle(showProps.initialTitle);
-    setInitialContent(showProps.initialContent);
+
     titleInputRef.current?.setValue(showProps.title ?? '');
     richTextRef.current?.setValue(showProps.content ?? '');
+
+    // Set current values to match what's being loaded
+    setCurrentTitle(showProps.title ?? '');
+    setCurrentContent(showProps.content ?? '');
 
     if (modalRef.current?.show) {
       const showOptions = {
         openModalButtonRef: showProps.openModalButtonRef,
       };
       modalRef.current?.show(showOptions);
-      toggleButtonOnDirtyForm(showProps.initialTitle, showProps.initialContent);
     }
   }
 

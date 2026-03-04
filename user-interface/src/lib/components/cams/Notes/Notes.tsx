@@ -44,6 +44,29 @@ interface NotesProps {
   searchPlaceholder?: string;
 }
 
+// Custom hook for search, sort, and highlight logic
+function useNotesSearchSortHighlight(notes: Note[]) {
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredAndSortedNotes = useMemo(() => {
+    const sorted = sortNotes(notes, sortOrder);
+    return filterNotes(sorted, searchQuery);
+  }, [notes, sortOrder, searchQuery]);
+
+  useEffect(() => {
+    handleHighlight(
+      window,
+      document,
+      'searchable-notes',
+      searchQuery.toLowerCase(),
+      MINIMUM_SEARCH_CHARACTERS,
+    );
+  }, [searchQuery]);
+
+  return { sortOrder, setSortOrder, setSearchQuery, filteredAndSortedNotes };
+}
+
 function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
   const {
     entityId,
@@ -63,53 +86,59 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
 
   const removeConfirmationModalRef = useRef<NoteRemovalModalRef>(null);
   const noteModalRef = useRef<NoteFormModalRef>(null);
-  const openArchiveModalButtonRefs = useRef<React.RefObject<OpenModalButtonRef | null>[]>([]);
+  // Key remove button refs by note ID (like edit refs) to avoid misalignment when filtering/sorting
+  const openRemoveModalButtonRefs = useRef(
+    new Map<string, React.RefObject<OpenModalButtonRef | null>>(),
+  );
   const openAddModalButtonRef = useRef<OpenModalButtonRef>(null);
   const openEditModalButtonRefs = useRef(
     new Map<string, React.RefObject<OpenModalButtonRef | null>>(),
   );
 
-  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
   const [focusId, setFocusId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState<Cacheable<NoteInput> | null>(null);
-  const [editDrafts, setEditDrafts] = useState<Cacheable<NoteInput>[] | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const removeConfirmationModalId = 'note-remove-modal';
   const noteModalId = 'note-modal';
 
-  useMemo(mapArchiveButtonRefs, [notes]);
-  useMemo(mapEditButtonRefs, [notes]);
+  // Use custom hook for search/sort/highlight
+  const { sortOrder, setSortOrder, setSearchQuery, filteredAndSortedNotes } =
+    useNotesSearchSortHighlight(notes);
 
-  const filteredAndSortedNotes = useMemo(() => {
-    const sorted = sortNotes(notes, sortOrder);
-    return filterNotes(sorted, searchQuery);
-  }, [notes, sortOrder, searchQuery]);
+  // Convert ref mapping from useMemo to useEffect (proper pattern for side effects)
+  useEffect(() => {
+    if (!notes) return;
 
-  function mapArchiveButtonRefs() {
-    openArchiveModalButtonRefs.current =
-      notes?.map((_, index) => openArchiveModalButtonRefs.current[index] ?? { current: null }) ||
-      [];
-  }
-
-  function mapEditButtonRefs() {
-    if (!notes) {
-      return;
-    }
-
-    const newRefs = new Map<string, React.RefObject<OpenModalButtonRef | null>>();
+    const newRemoveRefs = new Map<string, React.RefObject<OpenModalButtonRef | null>>();
 
     notes.forEach((note) => {
-      if (note.id) {
-        if (!openEditModalButtonRefs.current.has(note.id)) {
-          openEditModalButtonRefs.current.set(note.id, { current: null });
-        }
-        newRefs.set(note.id, openEditModalButtonRefs.current.get(note.id)!);
+      if (!note.id) return;
+
+      if (!openRemoveModalButtonRefs.current.has(note.id)) {
+        openRemoveModalButtonRefs.current.set(note.id, { current: null });
       }
+      newRemoveRefs.set(note.id, openRemoveModalButtonRefs.current.get(note.id)!);
     });
 
-    openEditModalButtonRefs.current = newRefs;
-  }
+    openRemoveModalButtonRefs.current = newRemoveRefs;
+  }, [notes]);
+
+  useEffect(() => {
+    if (!notes) return;
+
+    const newEditRefs = new Map<string, React.RefObject<OpenModalButtonRef | null>>();
+
+    notes.forEach((note) => {
+      if (!note.id) return;
+
+      if (!openEditModalButtonRefs.current.has(note.id)) {
+        openEditModalButtonRefs.current.set(note.id, { current: null });
+      }
+      newEditRefs.set(note.id, openEditModalButtonRefs.current.get(note.id)!);
+    });
+
+    openEditModalButtonRefs.current = newEditRefs;
+  }, [notes]);
 
   async function handleCreateNote(noteData: NoteInput) {
     await onCreateNote(noteData);
@@ -132,18 +161,18 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
 
       return (
         <NoteItem
-          key={idx}
+          key={note.id}
           note={note}
-          idx={idx}
+          index={idx}
           draft={draft}
-          editAction={editAction}
-          removeAction={removeAction}
+          canEdit={Actions.contains(note, editAction)}
+          canRemove={Actions.contains(note, removeAction)}
           modalId={noteModalId}
           removeModalId={removeConfirmationModalId}
           modalRef={noteModalRef}
           removeModalRef={removeConfirmationModalRef}
           editButtonRef={openEditModalButtonRefs.current.get(note.id!)}
-          removeButtonRef={openArchiveModalButtonRefs.current[idx]}
+          removeButtonRef={openRemoveModalButtonRefs.current.get(note.id!)}
           editButtonProps={{
             id: note.id,
             entityId: note.entityId,
@@ -168,11 +197,6 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
     setFocusId(noteId);
   }
 
-  function getEditDrafts() {
-    const pattern = new RegExp(`^${editDraftKeyPrefix}-`);
-    return LocalFormCache.getFormsByPattern<NoteInput>(pattern);
-  }
-
   useImperativeHandle(ref, () => {
     return {
       focusEditButton,
@@ -184,31 +208,18 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
       const editRef = openEditModalButtonRefs.current.get(focusId);
       editRef?.current?.focus();
     }
-  }, [focusId, openEditModalButtonRefs.current]);
+  }, [focusId]);
 
+  // Simplified: only track the create draft, each NoteItem reads its own edit draft
   useEffect(() => {
     const draftNote = LocalFormCache.getForm<NoteInput>(createDraftKey);
     setDraftNote(draftNote);
-    setEditDrafts(getEditDrafts().map((form) => form.item));
-  }, [entityId, createDraftKey, editDraftKeyPrefix]);
+  }, [entityId, createDraftKey]);
 
-  useEffect(() => {
-    handleHighlight(
-      window,
-      document,
-      'searchable-notes',
-      searchQuery.toLowerCase(),
-      MINIMUM_SEARCH_CHARACTERS,
-    );
-  }, [searchQuery]);
-
+  // Simplified: only refresh the add-draft on modal close
   const handleModalClosed = () => {
     const draftNote = LocalFormCache.getForm<NoteInput>(createDraftKey);
     setDraftNote(draftNote);
-    const updatedEditDrafts = getEditDrafts();
-    if (updatedEditDrafts.length !== editDrafts?.length) {
-      setEditDrafts(updatedEditDrafts.map((form) => form.item));
-    }
   };
 
   function getDraftAlertMessage(draftNote: Cacheable<NoteInput>) {
