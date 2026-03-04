@@ -71,7 +71,7 @@ function NoteRemovalModal_(props: NoteRemovalModalProps, ref: React.Ref<NoteRemo
 
   useImperativeHandle(ref, () => ({
     show,
-    hide: () => {},
+    hide: () => modalRef.current?.hide(),
   }));
 
   return (
