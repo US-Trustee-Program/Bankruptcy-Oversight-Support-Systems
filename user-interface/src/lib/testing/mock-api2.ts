@@ -36,6 +36,7 @@ import {
 } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
+import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
@@ -168,6 +169,67 @@ const caseDocketEntries = [
         fileUri: '001-24-00001-1-1.pdf',
         fileSize: 967201,
         fileLabel: '1',
+      },
+    ],
+  },
+];
+
+const resourceActionTrusteeNotes = [
+  {
+    id: '11111111-1111-1111-1111-111111111111',
+    title: 'First Trustee Note',
+    documentType: 'TRUSTEE_NOTE',
+    trusteeId: 'trustee-001',
+    content: '<p>This is a test trustee note with <strong>rich text</strong>.</p>',
+    updatedOn: '2024-01-15T10:30:00.000Z',
+    updatedBy: {
+      id: '==MOCKUSER=user@fake.com==',
+      name: "Martha's Son",
+    },
+    createdOn: '2024-01-15T10:30:00.000Z',
+    createdBy: {
+      id: '==MOCKUSER=user@fake.com==',
+      name: "Martha's Son",
+    },
+    _actions: [
+      {
+        actionName: 'edit trustee note',
+        method: 'PUT',
+        path: '/trustees/${trusteeId}/notes/${id}',
+      },
+      {
+        actionName: 'remove trustee note',
+        method: 'DELETE',
+        path: '/trustees/${trusteeId}/notes/${id}',
+      },
+    ],
+  },
+  {
+    id: '22222222-2222-2222-2222-222222222222',
+    title: 'Second Trustee Note',
+    documentType: 'TRUSTEE_NOTE',
+    trusteeId: 'trustee-001',
+    content: '<p>Another note about trustee activities.</p>',
+    updatedOn: '2024-02-20T14:45:00.000Z',
+    updatedBy: {
+      id: '==MOCKUSER=user@fake.com==',
+      name: "Martha's Son",
+    },
+    createdOn: '2024-02-20T14:45:00.000Z',
+    createdBy: {
+      id: '==MOCKUSER=user@fake.com==',
+      name: "Martha's Son",
+    },
+    _actions: [
+      {
+        actionName: 'edit trustee note',
+        method: 'PUT',
+        path: '/trustees/${trusteeId}/notes/${id}',
+      },
+      {
+        actionName: 'remove trustee note',
+        method: 'DELETE',
+        path: '/trustees/${trusteeId}/notes/${id}',
       },
     ],
   },
@@ -1765,6 +1827,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: courts,
     };
+  } else if (path.match(/\/trustees\/[A-Z\d-]+\/notes/i)) {
+    response = {
+      data: resourceActionTrusteeNotes,
+    };
   } else if (path.match(/\/trustees\/[A-Z\d-]+/i)) {
     response = {
       data: {
@@ -2273,6 +2339,22 @@ async function deleteCaseNote(_note: Partial<CaseNote>) {
   return;
 }
 
+async function getTrusteeNotes(trusteeId: string): Promise<ResponseBody<TrusteeNote[]>> {
+  return get<TrusteeNote[]>(`/trustees/${trusteeId}/notes`);
+}
+
+async function postTrusteeNote(_note: TrusteeNoteInput): Promise<void> {
+  return;
+}
+
+async function putTrusteeNote(_note: TrusteeNoteInput): Promise<string | undefined> {
+  return undefined;
+}
+
+async function deleteTrusteeNote(_note: Partial<TrusteeNote>) {
+  return;
+}
+
 async function postCaseNote(note: CaseNoteInput): Promise<void> {
   await post(`/cases/${note.caseId}/notes`, { note }, {});
 }
@@ -2670,6 +2752,10 @@ const MockApi2 = {
   putCaseNote,
   getCaseNotes,
   deleteCaseNote,
+  getTrusteeNotes,
+  postTrusteeNote,
+  putTrusteeNote,
+  deleteTrusteeNote,
   getCourts,
   getMe,
   getOfficeAttorneys,
