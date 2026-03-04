@@ -8,6 +8,10 @@
   .notes-draft-alert-container {
     margin-top: 1.5rem;
     margin-bottom: 1rem;
+
+    .usa-alert {
+      margin-top: 0;
+    }
   }
 
   .notes-controls {
@@ -45,6 +49,10 @@
       padding-left: 0;
       padding-right: 0;
       border-top: 1px solid black;
+
+      .usa-alert {
+        margin-top: 0;
+      }
     }
 
     .note-item-toolbar {
@@ -61,7 +69,7 @@
 
   .note-item-content {
     margin-top: 1.25rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.5rem; //dynamic
   }
 
   .note-item-header {
