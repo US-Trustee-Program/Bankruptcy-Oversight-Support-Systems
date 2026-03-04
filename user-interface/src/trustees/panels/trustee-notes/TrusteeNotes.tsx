@@ -30,8 +30,7 @@ export default function TrusteeNotes({ trusteeId }: TrusteeNotesProps) {
     }
   }
 
-  //LOST PR FEEDBACK: There was a refactor that merged the create and the update.
-  async function handleCreateNote(noteData: NoteInput) {
+  async function handleSaveNote(noteData: NoteInput, noteId?: string) {
     const session = LocalStorage.getSession();
     if (!session?.user) {
       globalAlert?.error('User session not found');
@@ -39,41 +38,28 @@ export default function TrusteeNotes({ trusteeId }: TrusteeNotesProps) {
     }
 
     try {
-      await Api2.postTrusteeNote({
-        trusteeId,
-        title: noteData.title,
-        content: noteData.content,
-        updatedBy: getCamsUserReference(session.user),
-      });
+      if (noteId) {
+        await Api2.putTrusteeNote({
+          id: noteId,
+          trusteeId,
+          title: noteData.title,
+          content: noteData.content,
+          updatedBy: getCamsUserReference(session.user),
+        });
+      } else {
+        await Api2.postTrusteeNote({
+          trusteeId,
+          title: noteData.title,
+          content: noteData.content,
+          updatedBy: getCamsUserReference(session.user),
+        });
+      }
       await fetchTrusteeNotes();
     } catch (error) {
-      globalAlert?.error('Failed to create note');
+      globalAlert?.error(`Failed to ${noteId ? 'update' : 'create'} note`);
       throw error;
     }
   }
-
-  async function handleUpdateNote(noteId: string, noteData: NoteInput) {
-    const session = LocalStorage.getSession();
-    if (!session?.user) {
-      globalAlert?.error('User session not found');
-      return;
-    }
-
-    try {
-      await Api2.putTrusteeNote({
-        id: noteId,
-        trusteeId,
-        title: noteData.title,
-        content: noteData.content,
-        updatedBy: getCamsUserReference(session.user),
-      });
-      await fetchTrusteeNotes();
-    } catch (error) {
-      globalAlert?.error('Failed to update note');
-      throw error;
-    }
-  }
-  //----------
 
   async function handleDeleteNote(noteId: string) {
     const session = LocalStorage.getSession();
@@ -105,8 +91,8 @@ export default function TrusteeNotes({ trusteeId }: TrusteeNotesProps) {
       title="Trustee Notes"
       notes={trusteeNotes.map((note) => ({ ...note, entityId: note.trusteeId }))}
       isLoading={areNotesLoading}
-      onCreateNote={handleCreateNote}
-      onUpdateNote={handleUpdateNote}
+      onCreateNote={handleSaveNote}
+      onUpdateNote={(noteId, noteData) => handleSaveNote(noteData, noteId)}
       onDeleteNote={handleDeleteNote}
       createDraftKey={`trustee-notes-${trusteeId}`}
       editDraftKeyPrefix={`trustee-notes-${trusteeId}`}
