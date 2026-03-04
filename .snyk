@@ -20,3 +20,7 @@ ignore:
     - '*':
         reason: 'False positive - xml2js not in package-lock.json or dependency tree'
         expires: 2026-05-06T00:00:00.000Z
+  SNYK-JS-DOMPURIFY-15371376:
+    - '*':
+        reason: 'Mitigated by design - we block the elements that DOMPurify handles poorly'
+        expires: 2026-06-06T00:00:00.000Z
