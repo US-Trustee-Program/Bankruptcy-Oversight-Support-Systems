@@ -56,6 +56,13 @@ describe('TrusteeDetailNavigation', () => {
       state: TrusteeNavState.ASSIGNED_STAFF,
     },
     {
+      testId: 'trustee-notes-nav-link',
+      text: 'Trustee Notes',
+      href: '/trustees/12345/notes',
+      title: 'View notes for the trustee',
+      state: TrusteeNavState.NOTES,
+    },
+    {
       testId: 'trustee-audit-history-nav-link',
       text: 'Change History',
       href: '/trustees/12345/audit-history',
@@ -145,7 +152,7 @@ describe('TrusteeDetailNavigation', () => {
     expect(screen.getByRole('list')).toHaveClass('usa-sidenav');
 
     const listItems = screen.getAllByRole('listitem');
-    expect(listItems).toHaveLength(4);
+    expect(listItems).toHaveLength(5);
     listItems.forEach((item) => {
       expect(item).toHaveClass('usa-sidenav__item');
     });
@@ -162,6 +169,7 @@ describe('mapTrusteeDetailNavState', () => {
     ['appointments', TrusteeNavState.APPOINTMENTS],
     ['audit-history', TrusteeNavState.AUDIT_HISTORY],
     ['/trustees/12345/assigned-staff', TrusteeNavState.ASSIGNED_STAFF],
+    ['notes', TrusteeNavState.NOTES],
     ['unknown-value', TrusteeNavState.TRUSTEE_PROFILE],
     ['', TrusteeNavState.TRUSTEE_PROFILE],
     [undefined as unknown as string, TrusteeNavState.TRUSTEE_PROFILE],
@@ -172,13 +180,14 @@ describe('mapTrusteeDetailNavState', () => {
 });
 
 describe('TrusteeNavState enum', () => {
-  test('should have exactly four enum values for navigation states', () => {
+  test('should have exactly five enum values for navigation states', () => {
     expect(TrusteeNavState.TRUSTEE_PROFILE).toBeDefined();
     expect(TrusteeNavState.APPOINTMENTS).toBeDefined();
     expect(TrusteeNavState.ASSIGNED_STAFF).toBeDefined();
+    expect(TrusteeNavState.NOTES).toBeDefined();
     expect(TrusteeNavState.AUDIT_HISTORY).toBeDefined();
 
     const enumValues = Object.values(TrusteeNavState).filter((value) => typeof value === 'number');
-    expect(enumValues).toHaveLength(4);
+    expect(enumValues).toHaveLength(5);
   });
 });
