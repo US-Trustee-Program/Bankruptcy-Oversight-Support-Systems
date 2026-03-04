@@ -44,7 +44,7 @@ const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
  */
 async function handleStart(bounds: AcmsBounds, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability();
+  const observability = new AppInsightsObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   let totalQueued = 0;
   for (const chapter of bounds.chapters) {
@@ -80,7 +80,7 @@ async function handleStart(bounds: AcmsBounds, invocationContext: InvocationCont
  */
 async function handlePage(page: AcmsEtlQueueItem[], invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability();
+  const observability = new AppInsightsObservability(logger);
   const trace = observability.startTrace(invocationContext.invocationId);
   logger.debug(MODULE_NAME, `Processing page of ${page.length} migrations.`);
   for (const event of page) {
