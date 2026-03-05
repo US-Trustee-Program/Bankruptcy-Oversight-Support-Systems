@@ -20,9 +20,32 @@ import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { ObservabilityTrace } from '../../../lib/use-cases/gateways.types';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
+
+async function withAppContextAndTrace<T>(
+  invocationContext: InvocationContext,
+  handlerName: string,
+  fn: (appContext: ApplicationContext, trace: ObservabilityTrace) => Promise<T>,
+): Promise<T> {
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
+
+  try {
+    const appContext = await ContextCreator.getApplicationContext({
+      invocationContext,
+      logger,
+    });
+
+    const trace = appContext.observability.startTrace(appContext.invocationId);
+
+    return await fn(appContext, trace);
+  } catch (error) {
+    logger.error(MODULE_NAME, `Failed in ${handlerName}`, error);
+    throw error;
+  }
+}
 
 // Queues
 const START = output.storageQueue({
@@ -60,24 +83,8 @@ const GET_CASEIDS_TO_MIGRATE = buildFunctionName(MODULE_NAME, 'getCaseIdsToMigra
 const LOAD_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'loadMigrationTable');
 const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTable');
 
-/**
- * handleStart
- *
- * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
- *
- * @param {object} message
- * @param {InvocationContext} invocationContext
- */
 async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-
-  try {
-    const appContext = await ContextCreator.getApplicationContext({
-      invocationContext,
-      logger,
-    });
-
-    const trace = appContext.observability.startTrace(appContext.invocationId);
+  return withAppContextAndTrace(invocationContext, 'handleStart', async (appContext, trace) => {
     const migrationStartTimestamp = new Date().toISOString();
     appContext.logger.info(
       MODULE_NAME,
@@ -146,30 +153,11 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
         details: { pagesQueued: String(pages.length), totalCases: String(count) },
       },
     );
-  } catch (error) {
-    logger.error(MODULE_NAME, 'Failed in handleStart', error);
-    throw error;
-  }
+  });
 }
 
-/**
- * handlePage
- *
- * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
- *
- * @param range
- * @param invocationContext
- */
 async function handlePage(range: RangeMessage, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-
-  try {
-    const appContext = await ContextCreator.getApplicationContext({
-      invocationContext,
-      logger,
-    });
-
-    const trace = appContext.observability.startTrace(appContext.invocationId);
+  return withAppContextAndTrace(invocationContext, 'handlePage', async (appContext, trace) => {
     const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, appContext);
 
     const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
@@ -190,22 +178,11 @@ async function handlePage(range: RangeMessage, invocationContext: InvocationCont
         details: { totalEvents: String(events.length) },
       },
     );
-  } catch (error) {
-    logger.error(MODULE_NAME, 'Failed in handlePage', error);
-    throw error;
-  }
+  });
 }
 
 async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-
-  try {
-    const appContext = await ContextCreator.getApplicationContext({
-      invocationContext,
-      logger,
-    });
-
-    const trace = appContext.observability.startTrace(appContext.invocationId);
+  return withAppContextAndTrace(invocationContext, 'handleError', async (appContext, trace) => {
     if (isNotFoundError(event.error)) {
       appContext.logger.info(
         MODULE_NAME,
@@ -245,22 +222,11 @@ async function handleError(event: CaseSyncEvent, invocationContext: InvocationCo
         details: { disposition: 'queued-for-retry' },
       },
     );
-  } catch (error) {
-    logger.error(MODULE_NAME, 'Failed in handleError', error);
-    throw error;
-  }
+  });
 }
 
 async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-
-  try {
-    const appContext = await ContextCreator.getApplicationContext({
-      invocationContext,
-      logger,
-    });
-    const trace = appContext.observability.startTrace(appContext.invocationId);
-
+  return withAppContextAndTrace(invocationContext, 'handleRetry', async (appContext, trace) => {
     const RETRY_LIMIT = 3;
     if (!event.retryCount) {
       event.retryCount = 1;
@@ -353,10 +319,7 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
         );
       }
     }
-  } catch (error) {
-    logger.error(MODULE_NAME, 'Failed in handleRetry', error);
-    throw error;
-  }
+  });
 }
 
 /**
