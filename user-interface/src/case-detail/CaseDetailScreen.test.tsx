@@ -4,7 +4,7 @@ import { render, waitFor, screen } from '@testing-library/react';
 import CaseDetailScreen from './CaseDetailScreen';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import { formatDate } from '@/lib/utils/datetime';
-import { CaseDetail, CaseNote } from '@common/cams/cases';
+import { CaseDetail } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
 import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import * as detailHeader from './panels/CaseDetailHeader';
@@ -51,23 +51,19 @@ describe('Case Detail screen tests', () => {
     };
   });
 
-  async function renderWithProps(props?: Partial<CaseDetail>, notes: CaseNote[] = []) {
+  async function renderWithProps(props?: Partial<CaseDetail>) {
     const renderProps = { ...defaultTestCaseDetail, ...props };
 
     render(
       <BrowserRouter>
-        <CaseDetailScreen caseDetail={renderProps} caseNotes={notes} />
+        <CaseDetailScreen caseDetail={renderProps} />
       </BrowserRouter>,
     );
 
     await TestingUtilities.waitForDocumentBody();
   }
 
-  async function renderWithRoutes(
-    caseDetail?: Partial<CaseDetail> | null,
-    notes: CaseNote[] = [],
-    infoPath?: string,
-  ) {
+  async function renderWithRoutes(caseDetail?: Partial<CaseDetail> | null, infoPath?: string) {
     const passCaseDetail = !!caseDetail;
     const renderProps = { ...defaultTestCaseDetail, ...(caseDetail ?? {}) };
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
@@ -78,9 +74,9 @@ describe('Case Detail screen tests', () => {
             path="case-detail/:caseId/*"
             element={
               passCaseDetail ? (
-                <CaseDetailScreen caseDetail={renderProps as CaseDetail} caseNotes={notes} />
+                <CaseDetailScreen caseDetail={renderProps as CaseDetail} />
               ) : (
-                <CaseDetailScreen caseNotes={notes} />
+                <CaseDetailScreen />
               )
             }
           />
@@ -104,7 +100,7 @@ describe('Case Detail screen tests', () => {
   test('should getCaseDetails if no prop provided for caseDetail', async () => {
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
 
-    await renderWithRoutes(undefined, [], basicInfoPath);
+    await renderWithRoutes(undefined, basicInfoPath);
 
     const title = await screen.findByTestId('case-detail-heading-title');
     expect(title.textContent).toContain('Trevor Shields');
@@ -118,7 +114,7 @@ describe('Case Detail screen tests', () => {
     vi.spyOn(MockApi2, 'getCaseDetail').mockRejectedValue('error');
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
-    await renderWithRoutes(undefined, [], basicInfoPath);
+    await renderWithRoutes(undefined, basicInfoPath);
 
     await waitFor(() =>
       expect(globalAlertSpy.error).toHaveBeenCalledWith('Could not get case information.'),
@@ -129,7 +125,7 @@ describe('Case Detail screen tests', () => {
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
     vi.spyOn(MockApi2, 'getCaseAssociations').mockRejectedValue('error');
 
-    await renderWithRoutes(undefined, [], basicInfoPath);
+    await renderWithRoutes(undefined, basicInfoPath);
 
     await waitFor(() =>
       expect(screen.queryByTestId('associated-cases-link')).not.toBeInTheDocument(),
@@ -224,7 +220,7 @@ describe('Case Detail screen tests', () => {
       };
 
       const infoPath = `/case-detail/${testCaseDetail.caseId}/trustee-and-assigned-staff`;
-      await renderWithRoutes({ ...testCaseDetail }, [], infoPath);
+      await renderWithRoutes({ ...testCaseDetail }, infoPath);
 
       await screen.findByTestId('case-detail-heading-title');
       const region = screen.getByTestId('case-detail-region-id');
@@ -430,7 +426,7 @@ describe('Case Detail screen tests', () => {
     };
 
     const infoPath = `/case-detail/${testCaseDetail.caseId}/trustee-and-assigned-staff`;
-    await renderWithRoutes({ ...testCaseDetail }, [], infoPath);
+    await renderWithRoutes({ ...testCaseDetail }, infoPath);
 
     const title = screen.getByTestId('case-detail-heading-title');
     expect(title.textContent).toContain(testCaseDetail.debtor.name);
@@ -546,7 +542,7 @@ describe('Case Detail screen tests', () => {
       let finalRoute = routePath.startsWith('/') ? routePath : `/${routePath}`;
       finalRoute = finalRoute.replace('1234', testCaseDetail.caseId);
 
-      await renderWithRoutes(testCaseDetail, [], finalRoute);
+      await renderWithRoutes(testCaseDetail, finalRoute);
 
       const caseDocketLink = screen.getByTestId(expectedLink);
 

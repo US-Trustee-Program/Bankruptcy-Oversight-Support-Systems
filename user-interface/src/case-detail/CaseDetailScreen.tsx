@@ -13,7 +13,7 @@ import {
   InputRef,
 } from '@/lib/type-declarations/input-fields';
 import CaseDetailAuditHistory from './panels/CaseDetailAuditHistory';
-import { CaseDetail, CaseDocket, CaseDocketEntry, CaseNote } from '@common/cams/cases';
+import { CaseDetail, CaseDocket, CaseDocketEntry } from '@common/cams/cases';
 import CaseDetailAssociatedCases from './panels/CaseDetailAssociatedCases';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { EventCaseReference } from '@common/cams/events';
@@ -27,7 +27,7 @@ import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import Api2 from '@/lib/models/api2';
 import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
-import CaseNotes, { CaseNotesRef } from './panels/case-notes/CaseNotes';
+import CaseNotes from './panels/case-notes/CaseNotes';
 import CaseDetailTrusteeAndAssignedStaff from './panels/CaseDetailTrusteeAndAssignedStaff';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
@@ -52,11 +52,6 @@ interface DocketSortAndFilterOptions {
   sortDirection: SortDirection;
   documentNumber: number | null;
   selectedDateRange: DateRange;
-}
-
-interface CaseNoteSortAndFilterOptions {
-  caseNoteSearchText: string;
-  sortDirection: SortDirection;
 }
 
 export function findDocketLimits(docket: CaseDocket): DocketLimits {
@@ -94,13 +89,6 @@ function docketSorterClosure(sortDirection: SortDirection) {
   };
 }
 
-function notesSorterClosure(sortDirection: SortDirection) {
-  return (left: CaseNote, right: CaseNote) => {
-    const direction = sortDirection === 'Newest' ? 1 : -1;
-    return left.updatedOn < right.updatedOn ? direction : direction * -1;
-  };
-}
-
 function dateRangeFilter(docketEntry: CaseDocketEntry, dateRange: DateRange) {
   if (dateRange.start && docketEntry.dateFiled < dateRange.start) {
     return false;
@@ -121,43 +109,11 @@ function documentNumberFilter(docketEntry: CaseDocketEntry, documentNumber: numb
   }
 }
 
-function notesSearchFilter(note: CaseNote, searchString: string) {
-  return (
-    note.title.toLowerCase().includes(searchString) ||
-    note.content.toLowerCase().includes(searchString)
-  );
-}
-
 function facetFilter(docketEntry: CaseDocketEntry, selectedFacets: string[]) {
   if (selectedFacets.length === 0) {
     return docketEntry;
   }
   return selectedFacets.includes(docketEntry.summaryText);
-}
-
-export function applyCaseNoteSortAndFilters(
-  caseNotes: CaseNote[],
-  options: CaseNoteSortAndFilterOptions,
-) {
-  if (!caseNotes?.length) {
-    return { filteredCaseNotes: caseNotes, notesAlertOptions: undefined };
-  } else {
-    const searchFilteredCaseNotes = caseNotes.filter((caseNote) =>
-      notesSearchFilter(caseNote, options.caseNoteSearchText),
-    );
-    const notesAlertOptions =
-      searchFilteredCaseNotes?.length === 0
-        ? {
-            message: "The search criteria didn't match any notes in this case",
-            title: 'Case Note Not Found',
-            type: UswdsAlertStyle.Warning,
-          }
-        : undefined;
-    const filteredCaseNotes = searchFilteredCaseNotes.sort(
-      notesSorterClosure(options.sortDirection),
-    );
-    return { filteredCaseNotes, notesAlertOptions };
-  }
 }
 
 export function applyDocketEntrySortAndFilters(
@@ -238,11 +194,10 @@ export function getSummaryFacetList(facets: CaseDocketSummaryFacets) {
   });
 }
 
-export interface CaseDetailProps {
+interface CaseDetailProps {
   caseDetail?: CaseDetail;
   caseDocketEntries?: CaseDocketEntry[];
   associatedCases?: EventCaseReference[];
-  caseNotes?: CaseNote[];
 }
 
 export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
@@ -250,21 +205,17 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isDocketLoading, setIsDocketLoading] = useState<boolean>(false);
-  const [areCaseNotesLoading, setAreCaseNotesLoading] = useState<boolean>(false);
   const [isAssociatedCasesLoading, setIsAssociatedCasesLoading] = useState<boolean>(false);
   const [caseBasicInfo, setCaseBasicInfo] = useState<CaseDetail>();
   const [caseDocketEntries, setCaseDocketEntries] = useState<CaseDocketEntry[]>();
-  const [caseNotes, setCaseNotes] = useState<CaseNote[]>([]);
   const [caseDocketSummaryFacets, setCaseDocketSummaryFacets] = useState<CaseDocketSummaryFacets>(
     new Map(),
   );
   const [associatedCases, setAssociatedCases] = useState<EventCaseReference[]>([]);
   const [selectedFacets, setSelectedFacets] = useState<string[]>([]);
   const [searchInDocketText, setSearchInDocketText] = useState('');
-  const [caseNoteSearchText, setCaseNoteSearchText] = useState('');
   const [documentNumber, setDocumentNumber] = useState<number | null>(null);
   const [docketSortDirection, setDocketSortDirection] = useState<SortDirection>('Newest');
-  const [notesSortDirection, setNotesSortDirection] = useState<SortDirection>('Newest');
   const location = useLocation();
   const [navState, setNavState] = useState<number>(mapNavState(location.pathname));
   const [selectedDateRange, setSelectedDateRange] = useState<DateRange>({});
@@ -272,14 +223,11 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   const [documentNumberError, setDocumentNumberError] = useState<boolean>(false);
 
   const findInDocketRef = useRef<InputRef>(null);
-  const caseNoteTitleSearchRef = useRef<InputRef>(null);
   const findByDocketNumberRef = useRef<InputRef>(null);
   const dateRangeRef = useRef<DateRangePickerRef>(null);
   const facetPickerRef = useRef<ComboBoxRef>(null);
-  const caseNotesRef = useRef<CaseNotesRef>(null);
 
   let hasDocketEntries = caseDocketEntries && !!caseDocketEntries.length;
-  const hasCaseNotes = caseNotes && !!caseNotes.length;
 
   const globalAlert = useGlobalAlert();
 
@@ -316,22 +264,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
       .finally(() => setIsDocketLoading(false));
   }
 
-  async function fetchCaseNotes(noteId?: string) {
-    setAreCaseNotesLoading(true);
-    Api2.getCaseNotes(caseId!)
-      .then((response) => {
-        setCaseNotes(response.data);
-        if (noteId) {
-          caseNotesRef.current?.focusEditButton(noteId);
-        }
-      })
-      .catch(() => {
-        globalAlert?.error('Could not retrieve case notes.');
-        setCaseNotes([]);
-      })
-      .finally(() => setAreCaseNotesLoading(false));
-  }
-
   async function fetchAssociatedCases() {
     setIsAssociatedCasesLoading(true);
     Api2.getCaseAssociations(caseId!)
@@ -350,18 +282,9 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
     setDocketSortDirection(docketSortDirection === 'Newest' ? 'Oldest' : 'Newest');
   }
 
-  function toggleNotesSort() {
-    setNotesSortDirection(notesSortDirection === 'Newest' ? 'Oldest' : 'Newest');
-  }
-
   function searchDocketText(ev: React.ChangeEvent<HTMLInputElement>) {
     const searchString = ev.target.value.toLowerCase();
     setSearchInDocketText(searchString);
-  }
-
-  function searchCaseNotesByTitle(ev: React.ChangeEvent<HTMLInputElement>) {
-    const searchString = ev.target.value.toLowerCase();
-    setCaseNoteSearchText(searchString);
   }
 
   function searchDocumentNumber(ev: React.ChangeEvent<HTMLInputElement>) {
@@ -384,11 +307,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
     dateRangeRef.current?.clearValue();
     setSelectedFacets([]);
     facetPickerRef.current?.clearSelections();
-  }
-
-  function clearNotesFilters() {
-    setCaseNoteSearchText('');
-    caseNoteTitleSearchRef.current?.clearValue();
   }
 
   function handleFacetClear(values: ComboOption[]) {
@@ -436,10 +354,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
     setCaseBasicInfo(updatedCaseBasicInfo);
   }
 
-  async function handleNotesCallback(noteId?: string) {
-    fetchCaseNotes(noteId);
-  }
-
   useEffect(() => {
     if (props.caseDetail) {
       setCaseBasicInfo(props.caseDetail);
@@ -469,14 +383,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
   }, []);
 
   useEffect(() => {
-    if (props.caseNotes) {
-      setCaseNotes(props.caseNotes);
-    } else {
-      fetchCaseNotes();
-    }
-  }, []);
-
-  useEffect(() => {
     setNavState(mapNavState(location.pathname));
     if (navState !== CaseNavState.COURT_DOCKET) {
       setSelectedFacets([]);
@@ -493,11 +399,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
       selectedDateRange,
     },
   );
-
-  const { filteredCaseNotes, notesAlertOptions } = applyCaseNoteSortAndFilters(caseNotes, {
-    caseNoteSearchText,
-    sortDirection: notesSortDirection,
-  });
 
   return (
     <MainContent className="record-detail" data-testid="case-detail">
@@ -657,71 +558,6 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                     </div>
                   </div>
                 )}
-                {hasCaseNotes && navState === CaseNavState.CASE_NOTES && (
-                  <div
-                    className={`filter-and-search padding-y-4`}
-                    data-testid="case-notes-filter-and-search-panel"
-                    aria-live="polite"
-                  >
-                    <h3 className="filter-header" aria-label="Case Note Filters">
-                      Filters
-                    </h3>
-                    <div className="filter-info-text">
-                      As filters are applied, notes will be sorted or filtered automatically.
-                    </div>
-                    <div className="sort form-field">
-                      <div className="usa-sort usa-sort--small">
-                        <button
-                          className="usa-button usa-button--outline sort-button"
-                          id="basic-sort-button"
-                          name="basic-sort"
-                          onClick={toggleNotesSort}
-                          data-testid="case-notes-sort"
-                          aria-label={'Sort ' + notesSortDirection + ' First'}
-                        >
-                          <div aria-hidden="true">
-                            <span aria-hidden="true">Sort ({notesSortDirection})</span>
-                            <Icon
-                              className="sort-button-icon"
-                              name={
-                                notesSortDirection === 'Newest' ? 'arrow_upward' : 'arrow_downward'
-                              }
-                            />
-                          </div>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="case-note-search form-field" data-testid="case-note-search">
-                      <div className="usa-search usa-search--small">
-                        <Input
-                          className="search-icon"
-                          id="case-note-search-input"
-                          name="case-note-search-input"
-                          label="Find case note by title or content"
-                          aria-label="Find case notes by title or content. Results will be updated while you type."
-                          aria-live="polite"
-                          icon="search"
-                          position="right"
-                          autoComplete="off"
-                          onChange={searchCaseNotesByTitle}
-                          ref={caseNoteTitleSearchRef}
-                        />
-                      </div>
-                    </div>
-                    <div className="form-field">
-                      <button
-                        className="usa-button usa-button--outline clear-filters-button"
-                        id="clear-filters-button"
-                        name="clear-filters"
-                        onClick={clearNotesFilters}
-                        data-testid="clear-filters"
-                        aria-label="Clear All Filters"
-                      >
-                        <span aria-hidden="true">Clear All Filters</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
             <div className="grid-col-10 record-detail-content" aria-live="polite">
@@ -775,21 +611,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                       />
                     }
                   />
-                  <Route
-                    path="notes"
-                    element={
-                      <CaseNotes
-                        caseId={caseId ?? ''}
-                        hasCaseNotes={hasCaseNotes}
-                        caseNotes={filteredCaseNotes}
-                        searchString={caseNoteSearchText}
-                        areCaseNotesLoading={areCaseNotesLoading}
-                        alertOptions={notesAlertOptions}
-                        onUpdateNoteRequest={handleNotesCallback}
-                        ref={caseNotesRef}
-                      />
-                    }
-                  />
+                  <Route path="notes" element={<CaseNotes caseId={caseId ?? ''} />} />
                 </Routes>
               </Suspense>
               <Outlet />

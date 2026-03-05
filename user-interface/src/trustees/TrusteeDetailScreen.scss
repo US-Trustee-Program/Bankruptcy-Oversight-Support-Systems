@@ -3,15 +3,19 @@
     margin-bottom: 1rem;
   }
 }
-.trustee-detail-screen, .trustee-form-screen {
+.trustee-detail-screen,
+.trustee-form-screen {
   .field-group {
     .usa-form-group {
       margin-top: 0;
     }
   }
   .trustee-detail-screen-content-container {
+    container-type: inline-size;
+
     .trustee-detail-screen-info-container {
       display: flex;
+      flex-wrap: wrap;
       column-gap: 1.5rem;
       flex: 1;
 
@@ -21,6 +25,17 @@
 
       .main-content-area {
         flex: 1;
+        min-width: 0;
+      }
+
+      @container (max-width: 640px) {
+        .left-navigation-pane-container {
+          width: 100%;
+        }
+
+        .main-content-area {
+          flex: 0 0 100%;
+        }
       }
     }
   }
@@ -52,7 +67,7 @@
     }
   }
   .trustee-status {
-    text-transform: capitalize
+    text-transform: capitalize;
   }
 }
 
