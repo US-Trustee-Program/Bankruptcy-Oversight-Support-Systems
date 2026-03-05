@@ -23,6 +23,8 @@ import { sortNotes, filterNotes, SortOrder, MINIMUM_SEARCH_CHARACTERS } from './
 import NoteFormModal, { NoteFormModalRef } from './NoteFormModal';
 import NoteRemovalModal, { NoteRemovalModalRef } from './NoteRemovalModal';
 import { handleHighlight } from '@/lib/utils/highlight-api';
+import Input from '../../uswds/Input';
+import { InputRef } from '@/lib/type-declarations/input-fields';
 
 export type NotesRef = {
   focusEditButton: (noteId: string) => void;
@@ -64,7 +66,7 @@ function useNotesSearchSortHighlight(notes: Note[]) {
     );
   }, [searchQuery]);
 
-  return { sortOrder, setSortOrder, setSearchQuery, filteredAndSortedNotes };
+  return { sortOrder, setSortOrder, searchQuery, setSearchQuery, filteredAndSortedNotes };
 }
 
 function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
@@ -94,6 +96,7 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
   const openEditModalButtonRefs = useRef(
     new Map<string, React.RefObject<OpenModalButtonRef | null>>(),
   );
+  const inputRef = useRef<InputRef>(null);
 
   const [focusId, setFocusId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState<Cacheable<NoteInput> | null>(null);
@@ -102,7 +105,7 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
   const noteModalId = 'note-modal';
 
   // Use custom hook for search/sort/highlight
-  const { sortOrder, setSortOrder, setSearchQuery, filteredAndSortedNotes } =
+  const { sortOrder, setSortOrder, searchQuery, setSearchQuery, filteredAndSortedNotes } =
     useNotesSearchSortHighlight(notes);
 
   // Convert ref mapping from useMemo to useEffect (proper pattern for side effects)
@@ -152,6 +155,13 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
 
   async function handleDeleteNote(noteId: string) {
     await onDeleteNote(noteId);
+  }
+
+  function validateInputLength(): string | undefined {
+    if (searchQuery && searchQuery.length < MINIMUM_SEARCH_CHARACTERS) {
+      return `Must be at least ${MINIMUM_SEARCH_CHARACTERS} characters`;
+    }
+    return undefined;
   }
 
   function renderNotes() {
@@ -234,23 +244,23 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
         <h3>{title}</h3>
 
         <div className="notes-toolbar">
-          <div className="notes-search-wrapper">
-            <label htmlFor="notes-search" className="usa-label">
-              {searchPlaceholder}
-            </label>
-            <input
+          <div
+            className={`notes-search-wrapper${!validateInputLength() ? ' notes-search-no-error' : ''}`}
+          >
+            <Input
               type="text"
-              className="usa-input"
               id="notes-search"
               name="notes-search"
-              aria-label={searchPlaceholder}
+              label={searchPlaceholder}
+              ref={inputRef}
               onChange={(e) => {
                 const value = e.target.value;
                 setSearchQuery(value);
               }}
+              errorMessage={validateInputLength()}
             />
           </div>
-          <div className="notes-sort-wrapper">
+          <div className="usa-form-group notes-sort-wrapper">
             <label htmlFor="notes-sort" className="usa-label">
               Sort by
             </label>

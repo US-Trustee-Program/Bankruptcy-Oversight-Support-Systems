@@ -1,6 +1,9 @@
 @use 'uswds-core' as *;
 
 .notes-panel {
+  // Height of the search input's error message: inherited line-height (1.15) + padding (0.25rem × 2)
+  $error-message-height: 1.65rem;
+
   .text-wrapper {
     max-width: 560px;
   }
@@ -24,12 +27,18 @@
     container-type: inline-size;
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
+    gap: 1.25rem;
+    margin-bottom: 0.5rem;
 
     .notes-search-wrapper {
       flex: 1 1 17.875rem;
       max-width: 17.875rem;
+
+      // Reserve space equal to the error message height (line-height 1.15 + padding 0.25rem × 2)
+      // so the toolbar height and button alignment stay stable whether or not the error is shown.
+      &.notes-search-no-error {
+        padding-bottom: $error-message-height;
+      }
     }
 
     .notes-sort-wrapper {
@@ -41,9 +50,10 @@
     .notes-add-button {
       align-self: flex-end;
       height: 2.75rem;
+      margin-bottom: $error-message-height;
     }
 
-    @container (max-width: 600px) {
+    @container (max-width: 50rem) {
       .notes-search-wrapper,
       .notes-sort-wrapper {
         flex: 0 0 100%;
@@ -51,11 +61,20 @@
       }
 
       .notes-sort-wrapper {
+        margin-top: 0;
         margin-right: 0;
 
         .usa-label {
           margin-top: 0;
         }
+      }
+
+      .notes-search-wrapper.notes-search-no-error {
+        padding-bottom: 0;
+      }
+
+      .notes-add-button {
+        margin-bottom: 1.5rem;
       }
     }
   }
