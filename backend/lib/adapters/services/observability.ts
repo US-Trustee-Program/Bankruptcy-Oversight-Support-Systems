@@ -23,16 +23,7 @@ export function scrubErrorForTelemetry(error: string): string {
   return scrubbed;
 }
 
-/**
- * Returns the Application Insights client, initializing it if needed.
- * Thin wrapper around the centralized initialization logic in app-insights.ts.
- *
- * @param _logger - Optional logger for diagnostics (currently unused, kept for AppInsightsClientFactory interface compatibility)
- * @returns TelemetryClient instance or null if initialization fails
- */
 export function getOrInitializeAppInsightsClient(_logger?: LoggerImpl): TelemetryClient | null {
-  // Delegate to the centralized initialization function
-  // All initialization logic lives in app-insights.ts
   return getOrInitializeAppInsightsClientFromAzure();
 }
 
