@@ -8,7 +8,7 @@ import CaseDetailScreen, {
 import * as ReactRouter from 'react-router';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { CaseDocket, CaseNote } from '@common/cams/cases';
+import { CaseDocket } from '@common/cams/cases';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 
 const testCaseDocketEntries: CaseDocket = [
@@ -47,8 +47,6 @@ const testCaseDocketEntries: CaseDocket = [
     fullText: 'Docket entry number 4.',
   },
 ];
-const testCaseNotes: CaseNote[] = [];
-
 describe('Case Detail sort, search, and filter tests', () => {
   const testCaseId = '111-11-12345';
   const testCaseDetail = MockData.getCaseDetail({ override: { caseId: testCaseId } });
@@ -72,7 +70,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />
@@ -127,7 +124,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />
@@ -169,7 +165,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />
@@ -214,7 +209,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />
@@ -437,7 +431,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />
@@ -477,7 +470,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />
@@ -518,7 +510,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />
@@ -562,7 +553,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />
@@ -608,7 +598,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />
@@ -662,7 +651,6 @@ describe('Case Detail sort, search, and filter tests', () => {
                 <CaseDetailScreen
                   caseDetail={testCaseDetail}
                   caseDocketEntries={testCaseDocketEntries}
-                  caseNotes={testCaseNotes}
                 />
               }
             />

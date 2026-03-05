@@ -1,0 +1,130 @@
+@use 'uswds-core' as *;
+
+.notes-panel {
+  // Height of the search input's error message: inherited line-height (1.15) + padding (0.25rem × 2)
+  $error-message-height: 1.65rem;
+
+  .text-wrapper {
+    max-width: 560px;
+  }
+
+  .notes-draft-alert-container {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+
+    .usa-alert-container {
+      margin: 0;
+      width: 100%;
+      max-width: 37rem;
+
+      .usa-alert {
+        margin-top: 0;
+      }
+    }
+  }
+
+  .notes-toolbar {
+    container-type: inline-size;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    margin-bottom: 0.5rem;
+
+    .notes-search-wrapper {
+      flex: 1 1 17.875rem;
+      max-width: 17.875rem;
+
+      // Reserve space equal to the error message height (line-height 1.15 + padding 0.25rem × 2)
+      // so the toolbar height and button alignment stay stable whether or not the error is shown.
+      &.notes-search-no-error {
+        padding-bottom: $error-message-height;
+      }
+    }
+
+    .notes-sort-wrapper {
+      flex: 1 1 17.875rem;
+      max-width: 17.875rem;
+      margin-right: auto;
+    }
+
+    .notes-add-button {
+      align-self: flex-end;
+      height: 2.75rem;
+      margin-bottom: $error-message-height;
+    }
+
+    @container (max-width: 50rem) {
+      .notes-search-wrapper,
+      .notes-sort-wrapper {
+        flex: 0 0 100%;
+        max-width: unset;
+      }
+
+      .notes-sort-wrapper {
+        margin-top: 0;
+        margin-right: 0;
+
+        .usa-label {
+          margin-top: 0;
+        }
+      }
+
+      .notes-search-wrapper.notes-search-no-error {
+        padding-bottom: 0;
+      }
+
+      .notes-add-button {
+        margin-bottom: 1.5rem;
+      }
+    }
+  }
+
+  #searchable-notes {
+    list-style-type: none;
+    margin-top: 0;
+    padding-left: unset;
+
+    .note-item {
+      max-width: unset;
+      padding-top: 1.5rem;
+      padding-left: 0;
+      padding-right: 0;
+      border-top: 1px solid black;
+
+      .note-item-content {
+        margin-top: 1.25rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .note-item-content:has(+ .usa-alert-container) {
+        margin-bottom: 1.25rem;
+      }
+
+      .usa-alert-container {
+        margin-left: 0;
+        margin-bottom: 1.5rem;
+        width: 100%;
+        max-width: 37rem;
+
+        .usa-alert {
+          margin-top: 0;
+        }
+      }
+    }
+
+    .note-item-toolbar {
+      button {
+        margin-left: 1.5rem;
+      }
+    }
+
+    ::highlight(search-results) {
+      background-color: color($theme-color-warning-lighter);
+      color: black;
+    }
+  }
+
+  .note-item-header {
+    margin-bottom: 1.25rem;
+  }
+}

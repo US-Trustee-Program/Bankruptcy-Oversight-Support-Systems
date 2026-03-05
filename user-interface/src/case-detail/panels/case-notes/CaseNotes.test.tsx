@@ -1,391 +1,326 @@
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
+import { vi, describe, test, expect, beforeEach } from 'vitest';
+import CaseNotes from './CaseNotes';
 import Api2 from '@/lib/models/api2';
-import CaseNotes, { CaseNotesProps, CaseNotesRef, getCaseNotesInputValue } from './CaseNotes';
+import Notes from '@/lib/components/cams/Notes/Notes';
+import * as UseGlobalAlertModule from '@/lib/hooks/UseGlobalAlert';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { formatDateTime } from '@/lib/utils/datetime';
-import { InputRef } from '@/lib/type-declarations/input-fields';
-import React from 'react';
-import Input from '@/lib/components/uswds/Input';
-import LocalStorage from '@/lib/utils/local-storage';
-import LocalFormCache from '@/lib/utils/local-form-cache';
 import Actions from '@common/cams/actions';
-import { randomUUID } from 'crypto';
-import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import LocalStorage from '@/lib/utils/local-storage';
+import { getCamsUserReference } from '@common/cams/session';
+import { NoteInput } from '@/lib/components/cams/Notes/types';
+import { CaseNote } from '@common/cams/cases';
+
+vi.mock('@/lib/components/cams/Notes/Notes', () => ({
+  default: vi.fn(() => null),
+}));
 
 const caseId = '000-11-22222';
-const userId = '001';
-const userFullName = 'Joe Bob';
-const caseNotes = [
-  MockData.addAction(
-    MockData.getCaseNote({ caseId, updatedBy: { id: userId, name: userFullName } }),
-    [Actions.EditNote, Actions.RemoveNote],
-  ),
-  MockData.getCaseNote({ caseId }),
-  MockData.addAction(
-    MockData.getCaseNote({
-      caseId,
-      updatedBy: { id: userId, name: userFullName },
-      previousVersionId: randomUUID(),
-    }),
-    [Actions.EditNote, Actions.RemoveNote],
-  ),
-];
-const caseNotesRef = React.createRef<CaseNotesRef>();
 
-function renderWithProps(props?: Partial<CaseNotesProps>) {
-  const defaultProps: CaseNotesProps = {
-    caseId: '000-11-22222',
-    hasCaseNotes: false,
-    caseNotes: [],
-    searchString: '',
-    onUpdateNoteRequest: vi.fn(),
-    areCaseNotesLoading: false,
-  };
-  const renderProps = { ...defaultProps, ...props };
-  return render(<CaseNotes {...renderProps} ref={caseNotesRef} />);
-}
+const mockGlobalAlert = {
+  show: vi.fn(),
+  info: vi.fn(),
+  error: vi.fn(),
+  warning: vi.fn(),
+  success: vi.fn(),
+};
 
-describe('case note tests', () => {
-  let userEvent: CamsUserEvent;
+describe('CaseNotes Adapter', () => {
+  const MockNotes = vi.mocked(Notes);
+
+  function getNotesProps() {
+    return MockNotes.mock.lastCall?.[0] as React.ComponentProps<typeof Notes>;
+  }
 
   beforeEach(() => {
-    vi.resetModules();
-    userEvent = TestingUtilities.setupUserEvent();
-  });
-
-  afterEach(() => {
     vi.restoreAllMocks();
+    MockNotes.mockClear();
+    vi.spyOn(UseGlobalAlertModule, 'useGlobalAlert').mockReturnValue(mockGlobalAlert);
+    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
   });
 
-  test('should display loading indicator if loading', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
-      data: [],
+  describe('Notes props configuration', () => {
+    test('passes caseId as entityId', async () => {
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+      expect(getNotesProps().entityId).toBe(caseId);
     });
 
-    renderWithProps({ areCaseNotesLoading: true });
+    test('passes title "Case Notes"', async () => {
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+      expect(getNotesProps().title).toBe('Case Notes');
+    });
 
-    const loadingIndicator = screen.queryByTestId('notes-loading-indicator');
-    expect(loadingIndicator).toBeInTheDocument();
+    test('passes correct createDraftKey', async () => {
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+      expect(getNotesProps().createDraftKey).toBe(`case-notes-${caseId}`);
+    });
+
+    test('passes correct editDraftKeyPrefix', async () => {
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+      expect(getNotesProps().editDraftKeyPrefix).toBe(`case-notes-${caseId}`);
+    });
+
+    test('passes EditNote as editAction', async () => {
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+      expect(getNotesProps().editAction).toBe(Actions.EditNote);
+    });
+
+    test('passes RemoveNote as removeAction', async () => {
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+      expect(getNotesProps().removeAction).toBe(Actions.RemoveNote);
+    });
+
+    test('passes correct emptyMessage', async () => {
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+      expect(getNotesProps().emptyMessage).toBe('No notes exist for this case.');
+    });
   });
 
-  test('should call focusEditButton on ref', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
-      data: caseNotes,
-    });
-    const session = MockData.getCamsSession();
-    session.user.id = userId;
-    session.user.name = userFullName;
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
-
-    await waitFor(() => {
-      expect(caseNotesRef.current).not.toBeNull();
+  describe('Data fetching', () => {
+    test('fetches case notes on mount', async () => {
+      const getCaseNotesSpy = vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(getCaseNotesSpy).toHaveBeenCalledWith(caseId));
     });
 
-    // NOTE: This spy MUST be defined AFTER the rendering is complete.
-    // So we wait for current to not be null above, and only then define the spy
-    const caseNotesFocusSpy = vi.spyOn(caseNotesRef.current!, 'focusEditButton');
-    const testNote = caseNotes[0];
-    const testNoteId = testNote.id;
-    act(() => caseNotesRef.current!.focusEditButton(testNoteId!));
-    expect(caseNotesFocusSpy).toHaveBeenCalledWith(testNoteId);
+    test('maps caseId to entityId on each note', async () => {
+      const mockCaseNote = MockData.getCaseNote({ caseId });
+      vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [mockCaseNote] });
 
-    await waitFor(() => {
-      const testButton = screen.getByTestId('open-modal-button_case-note-edit-button_0');
-      expect(testButton).toHaveFocus();
+      render(<CaseNotes caseId={caseId} />);
+
+      await waitFor(() => {
+        const notes = getNotesProps()?.notes;
+        expect(notes).toHaveLength(1);
+        expect(notes[0]).toEqual({
+          ...mockCaseNote,
+          entityId: caseId,
+        });
+      });
+    });
+
+    test('sets isLoading=true while fetching and false after fetch completes', async () => {
+      let resolve: (value: { data: CaseNote[] }) => void;
+      const promise = new Promise<{ data: CaseNote[] }>((res) => {
+        resolve = res;
+      });
+      vi.spyOn(Api2, 'getCaseNotes').mockReturnValue(promise);
+
+      render(<CaseNotes caseId={caseId} />);
+
+      await waitFor(() => expect(getNotesProps()?.isLoading).toBe(true));
+
+      resolve!({ data: [] });
+
+      await waitFor(() => expect(getNotesProps()?.isLoading).toBe(false));
+    });
+
+    test('passes empty notes and clears loading on fetch error', async () => {
+      let reject: (reason: Error) => void;
+      const promise = new Promise<{ data: CaseNote[] }>((_, rej) => {
+        reject = rej;
+      });
+      vi.spyOn(Api2, 'getCaseNotes').mockReturnValue(promise);
+
+      render(<CaseNotes caseId={caseId} />);
+
+      await waitFor(() => expect(getNotesProps()?.isLoading).toBe(true));
+
+      reject!(new Error('API error'));
+
+      await waitFor(() => {
+        expect(getNotesProps()?.isLoading).toBe(false);
+        expect(getNotesProps()?.notes).toEqual([]);
+      });
     });
   });
 
-  test('should display no case notes message if no case notes exists', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
-      data: [],
-    });
+  describe('onCreateNote handler', () => {
+    const noteData: NoteInput = { entityId: caseId, title: 'New Note', content: 'Content' };
 
-    renderWithProps();
+    test('calls postCaseNote with correct args', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      const postSpy = vi.spyOn(Api2, 'postCaseNote').mockResolvedValue();
 
-    const emptyCaseNotes = await screen.findByTestId('empty-notes-test-id');
-    expect(emptyCaseNotes).toHaveTextContent('No notes exist for this case.');
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-    const caseNotesTable = screen.queryByTestId('searchable-case-notes');
-    expect(caseNotesTable).not.toBeInTheDocument();
-    const button0 = screen.queryByTestId('open-modal-button_case-note-edit-button_0');
-    expect(button0).not.toBeInTheDocument();
-  });
+      await getNotesProps().onCreateNote(noteData);
 
-  test('should display table of case notes when notes exist', async () => {
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
-      data: caseNotes,
-    });
-
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
-
-    const emptyCaseNotes = screen.queryByTestId('empty-notes-test-id');
-    expect(emptyCaseNotes).not.toBeInTheDocument();
-
-    await waitFor(() => {
-      const caseNotesTable = screen.getByTestId('searchable-case-notes');
-      expect(caseNotesTable).toBeInTheDocument();
-    });
-
-    for (let i = 0; i < caseNotes.length; i++) {
-      const noteTitle = screen.getByTestId(`case-note-${i}-header`);
-      expect(noteTitle).toBeInTheDocument();
-      expect(noteTitle).toHaveTextContent(caseNotes[i].title);
-
-      const noteContents = screen.getByTestId(`case-note-${i}-text`);
-      expect(noteContents).toBeInTheDocument();
-      expect(noteContents).toHaveTextContent(caseNotes[i].content);
-
-      const modifiedByContents = screen.getByTestId(`case-note-author-${i}`);
-      expect(modifiedByContents).toBeInTheDocument();
-      expect(modifiedByContents).toHaveTextContent(caseNotes[i].updatedBy.name);
-
-      const dateContents = screen.getByTestId(`case-note-creation-date-${i}`);
-      expect(dateContents).toBeInTheDocument();
-      const expectedDateText = caseNotes[i].previousVersionId
-        ? `Edited on: ${formatDateTime(caseNotes[i].updatedOn)}`
-        : `Created on: ${formatDateTime(caseNotes[i].updatedOn)}`;
-
-      expect(dateContents).toHaveTextContent(expectedDateText);
-    }
-  });
-
-  test('should remove case note when remove button is clicked and modal approval is met.', async () => {
-    const session = MockData.getCamsSession();
-    session.user.id = userId;
-    session.user.name = userFullName;
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-    vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({
-      data: caseNotes,
-    });
-    const deleteSpy = vi
-      .spyOn(Api2, 'deleteCaseNote')
-      .mockResolvedValueOnce()
-      .mockRejectedValueOnce(new Error());
-    const expectedUser = {
-      id: userId,
-      name: userFullName,
-    };
-    const expectedFirstRemoveArgument = {
-      id: caseNotes[0].id,
-      caseId: caseNotes[0].caseId,
-      updatedBy: expectedUser,
-    };
-    const expectedSecondRemoveArgument = {
-      id: caseNotes[2].id,
-      caseId: caseNotes[2].caseId,
-      updatedBy: expectedUser,
-    };
-    const onNoteRemoveSpy = vi.fn();
-
-    renderWithProps({
-      caseId,
-      hasCaseNotes: true,
-      caseNotes,
-      onUpdateNoteRequest: onNoteRemoveSpy,
-    });
-
-    const button0 = screen.queryByTestId('open-modal-button_case-note-remove-button_0');
-    const button1 = screen.queryByTestId('open-modal-button_case-note-remove-button_1');
-    const button2 = screen.queryByTestId('open-modal-button_case-note-remove-button_2');
-
-    await waitFor(() => {
-      expect(button0).toBeInTheDocument();
-    });
-    expect(button1).not.toBeInTheDocument();
-    expect(button2).toBeInTheDocument();
-
-    await userEvent.click(button0!);
-    const modalSubmitButton0 = screen.queryByTestId('button-remove-note-modal-submit-button');
-    await waitFor(() => {
-      expect(modalSubmitButton0).toBeVisible();
-    });
-    await userEvent.click(modalSubmitButton0!);
-    expect(deleteSpy).toHaveBeenCalledWith(expectedFirstRemoveArgument);
-    expect(onNoteRemoveSpy).toHaveBeenCalled();
-
-    await userEvent.click(button2!);
-    const modalSubmitButton2 = screen.queryByTestId('button-remove-note-modal-submit-button');
-    await waitFor(() => {
-      expect(modalSubmitButton2).toBeVisible();
-    });
-    await userEvent.click(modalSubmitButton2!);
-    expect(deleteSpy).toHaveBeenCalledWith(expectedSecondRemoveArgument);
-    expect(onNoteRemoveSpy).toHaveBeenCalledTimes(1);
-  });
-
-  test('getCaseNotesInputValue should always return an empty string when a null is provided', async () => {
-    const ref = React.createRef<InputRef>();
-    render(<Input ref={ref}></Input>);
-
-    const result1 = getCaseNotesInputValue(ref.current);
-    expect(result1).toEqual('');
-    expect(typeof result1).toEqual('string');
-
-    const result2 = getCaseNotesInputValue(null);
-    expect(result2).toEqual('');
-    expect(typeof result2).toEqual('string');
-  });
-
-  test('should display info alert if cache holds a case note for the case', async () => {
-    const mockCachedNote = {
-      value: {
+      expect(postSpy).toHaveBeenCalledWith({
         caseId,
-        title: 'Draft Note Title',
-        content: 'Draft Note Content',
-      },
-      expiresAfter: 1,
-    };
-    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
-      if (key === `case-notes-${caseId}`) {
-        return mockCachedNote;
-      }
-      return null;
+        title: noteData.title,
+        content: noteData.content,
+        updatedBy: getCamsUserReference(session.user),
+      });
     });
 
-    renderWithProps({ caseId });
+    test('re-fetches notes after creating', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      vi.spyOn(Api2, 'postCaseNote').mockResolvedValue();
+      const getCaseNotesSpy = vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
 
-    const draftNoteAlert = await screen.findByTestId('draft-note-alert-test-id');
-    expect(draftNoteAlert).toBeInTheDocument();
-    expect(draftNoteAlert).toHaveTextContent(/you have a draft case note/i);
-  });
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(getCaseNotesSpy).toHaveBeenCalledTimes(1));
 
-  test('should display edit note draft alert if cache holds an edit draft', async () => {
-    const noteId = caseNotes[0].id!;
-    const editFormKey = `case-notes-${caseId}-${noteId}`;
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 1);
+      await getNotesProps().onCreateNote(noteData);
 
-    const mockCachedEditNote = {
-      value: {
-        caseId,
-        title: 'Draft Edit Title',
-        content: 'Draft Edit Content',
-      },
-      expiresAfter: expiryDate.valueOf(),
-    };
-
-    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
-      if (key === editFormKey) {
-        return mockCachedEditNote;
-      }
-      return null;
+      expect(getCaseNotesSpy).toHaveBeenCalledTimes(2);
     });
 
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
+    test('does not call API when session is missing', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      const postSpy = vi.spyOn(Api2, 'postCaseNote').mockResolvedValue();
 
-    await waitFor(() => {
-      const caseNote = screen.getByTestId('case-note-0');
-      expect(caseNote).toBeInTheDocument();
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+
+      await getNotesProps().onCreateNote(noteData);
+
+      expect(postSpy).not.toHaveBeenCalled();
     });
 
-    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-note-${noteId}`);
-    expect(editDraftAlert).toBeInTheDocument();
-    expect(editDraftAlert).toHaveTextContent(
-      `You have a draft case note. It will expire on ${formatDateTime(expiryDate)}.`,
-    );
-  });
+    test('throws when postCaseNote fails', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      vi.spyOn(Api2, 'postCaseNote').mockRejectedValue(new Error('API error'));
 
-  test('should remove draft alert when modal is closed', async () => {
-    const mockCachedNote = {
-      value: {
-        caseId,
-        title: 'Draft Note Title',
-        content: 'Draft Note Content',
-      },
-      expiresAfter: 1,
-    };
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-    let shouldReturnCachedNote = true;
-    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
-      if (key === `case-notes-${caseId}` && shouldReturnCachedNote) {
-        return mockCachedNote;
-      }
-      return null;
-    });
-
-    renderWithProps({ caseId });
-
-    const initialDraftNoteAlert = await screen.findByTestId('draft-note-alert-test-id');
-    expect(initialDraftNoteAlert).toBeInTheDocument();
-
-    shouldReturnCachedNote = false;
-
-    const addButton = screen.getByTestId('open-modal-button_case-note-add-button');
-    await userEvent.click(addButton);
-
-    await waitFor(() => {
-      const modal = screen.getByTestId('modal-content-case-note-modal');
-      expect(modal).toBeInTheDocument();
-    });
-
-    const cancelButton = screen.getByText(/discard/i);
-    await userEvent.click(cancelButton);
-
-    await waitFor(() => {
-      const draftNoteAlert = screen.queryByTestId('draft-note-alert-test-id');
-      expect(draftNoteAlert).not.toBeInTheDocument();
+      await expect(getNotesProps().onCreateNote(noteData)).rejects.toThrow('API error');
     });
   });
 
-  test('should remove edit note draft alert when edit modal is closed', async () => {
-    const noteId = caseNotes[0].id!;
-    const editFormKey = `case-notes-${caseId}-${noteId}`;
-
-    const mockCachedEditNote = {
-      value: {
-        caseId,
-        title: 'Draft Edit Title',
-        content: 'Draft Edit Content',
-      },
-      expiresAfter: 1,
+  describe('onUpdateNote handler', () => {
+    const noteId = 'note-abc';
+    const noteData: NoteInput = {
+      entityId: caseId,
+      title: 'Updated Note',
+      content: 'Updated content',
     };
 
-    let shouldReturnCachedEditNote = true;
+    test('calls putCaseNote with correct args', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue(undefined);
 
-    vi.spyOn(LocalFormCache, 'getForm').mockImplementation((key: string) => {
-      if (key === `case-notes-${caseId}-${noteId}` && shouldReturnCachedEditNote) {
-        return mockCachedEditNote;
-      }
-      return null;
-    });
-    vi.spyOn(LocalFormCache, 'getFormsByPattern').mockImplementation((_pattern: RegExp) => {
-      if (shouldReturnCachedEditNote) {
-        return [{ key: editFormKey, item: mockCachedEditNote }];
-      }
-      return [];
-    });
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
 
-    renderWithProps({ caseId, hasCaseNotes: true, caseNotes });
+      await getNotesProps().onUpdateNote(noteId, noteData);
 
-    await waitFor(() => {
-      const caseNote = screen.getByTestId('case-note-0');
-      expect(caseNote).toBeInTheDocument();
+      expect(putSpy).toHaveBeenCalledWith({
+        id: noteId,
+        caseId,
+        title: noteData.title,
+        content: noteData.content,
+        updatedBy: getCamsUserReference(session.user),
+      });
     });
 
-    const editDraftAlert = screen.getByTestId(`alert-message-draft-edit-note-${noteId}`);
-    expect(editDraftAlert).toBeInTheDocument();
+    test('re-fetches notes after updating', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      vi.spyOn(Api2, 'putCaseNote').mockResolvedValue(undefined);
+      const getCaseNotesSpy = vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
 
-    shouldReturnCachedEditNote = false;
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(getCaseNotesSpy).toHaveBeenCalledTimes(1));
 
-    const editButton = screen.getByTestId('open-modal-button_case-note-edit-button_0');
-    await userEvent.click(editButton);
-    const modal = screen.getByTestId('modal-case-note-modal');
+      await getNotesProps().onUpdateNote(noteId, noteData);
 
-    await waitFor(() => {
-      expect(modal).toHaveClass('is-visible');
+      expect(getCaseNotesSpy).toHaveBeenCalledTimes(2);
     });
 
-    const cancelButton = screen.getByTestId('button-case-note-modal-cancel-button');
-    await userEvent.click(cancelButton);
-    await waitFor(() => {
-      expect(modal).toHaveClass('is-hidden');
+    test('does not call API when session is missing', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue(undefined);
+
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+
+      await getNotesProps().onUpdateNote(noteId, noteData);
+
+      expect(putSpy).not.toHaveBeenCalled();
     });
 
-    await waitFor(() => {
-      const editDraftAlert = screen.queryByTestId(`alert-message-draft-edit-note-${noteId}`);
-      expect(editDraftAlert).not.toBeInTheDocument();
+    test('throws when putCaseNote fails', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      vi.spyOn(Api2, 'putCaseNote').mockRejectedValue(new Error('API error'));
+
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+
+      await expect(getNotesProps().onUpdateNote(noteId, noteData)).rejects.toThrow('API error');
+    });
+  });
+
+  describe('onDeleteNote handler', () => {
+    const noteId = 'note-to-delete';
+
+    test('calls deleteCaseNote with correct args', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      const deleteSpy = vi.spyOn(Api2, 'deleteCaseNote').mockResolvedValue();
+
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+
+      await getNotesProps().onDeleteNote(noteId);
+
+      expect(deleteSpy).toHaveBeenCalledWith({
+        id: noteId,
+        caseId,
+        updatedBy: getCamsUserReference(session.user),
+      });
+    });
+
+    test('re-fetches notes after deleting', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      vi.spyOn(Api2, 'deleteCaseNote').mockResolvedValue();
+      const getCaseNotesSpy = vi.spyOn(Api2, 'getCaseNotes').mockResolvedValue({ data: [] });
+
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(getCaseNotesSpy).toHaveBeenCalledTimes(1));
+
+      await getNotesProps().onDeleteNote(noteId);
+
+      expect(getCaseNotesSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('does not call API when session is missing', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      const deleteSpy = vi.spyOn(Api2, 'deleteCaseNote').mockResolvedValue();
+
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+
+      await getNotesProps().onDeleteNote(noteId);
+
+      expect(deleteSpy).not.toHaveBeenCalled();
+    });
+
+    test('throws when deleteCaseNote fails', async () => {
+      const session = MockData.getCamsSession();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      vi.spyOn(Api2, 'deleteCaseNote').mockRejectedValue(new Error('Delete failed'));
+
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+
+      await expect(getNotesProps().onDeleteNote(noteId)).rejects.toThrow('Delete failed');
     });
   });
 });

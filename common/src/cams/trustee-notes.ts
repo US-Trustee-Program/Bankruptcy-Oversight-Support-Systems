@@ -4,7 +4,6 @@ import { CamsUserReference } from './users';
 export type TrusteeNote = TrusteeNoteInput &
   Auditable & {
     documentType: 'TRUSTEE_NOTE';
-    // updatedBy and updatedOn already required by Auditable
     createdBy: CamsUserReference; // Override Auditable to make required
     createdOn: string; // Override Auditable to make required
     archivedOn?: string;
