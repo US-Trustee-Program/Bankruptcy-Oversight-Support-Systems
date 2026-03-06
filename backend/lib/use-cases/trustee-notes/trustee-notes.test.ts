@@ -191,6 +191,43 @@ describe('Test trustee-notes use case', () => {
     );
   });
 
+  test('should default roles to empty string in telemetry when user has no roles', async () => {
+    const trusteeId = randomUUID();
+    const user: CamsUser = MockData.getCamsUserReference();
+    delete user.roles;
+    const noteInput: TrusteeNoteInput = {
+      trusteeId,
+      title: 'Some Title',
+      content: 'Some content.',
+    };
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+    const useCase = new TrusteeNotesUseCase(context);
+    const error = new Error('Database error');
+    vi.spyOn(MockMongoRepository.prototype, 'create').mockRejectedValue(error);
+
+    await expect(useCase.createTrusteeNote(user, noteInput)).rejects.toThrow('Database error');
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'trustee-note-created',
+      expect.objectContaining({
+        success: false,
+        properties: expect.objectContaining({ roles: '' }),
+      }),
+    );
+  });
+
   test('should archive a trustee note when archiveTrusteeNote is called', async () => {
     const userRef = MockData.getCamsUserReference();
     const user = {
