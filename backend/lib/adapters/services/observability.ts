@@ -20,7 +20,14 @@ export function scrubErrorForTelemetry(error: string): string {
   return scrubbed;
 }
 
-export function getAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
+/**
+ * Initializes and returns the Application Insights client.
+ * If the client doesn't exist, explicitly initializes the SDK.
+ *
+ * @param logger - Optional logger for diagnostics
+ * @returns TelemetryClient instance or null if initialization fails
+ */
+export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
   const MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
 
   try {
@@ -28,21 +35,21 @@ export function getAppInsightsClient(logger?: LoggerImpl): TelemetryClient | nul
     const appInsights = require('applicationinsights');
 
     if (!appInsights) {
-      logger?.warn(MODULE_NAME, 'applicationinsights module loaded but is falsy');
+      logger?.error(MODULE_NAME, 'applicationinsights module loaded but is falsy');
       return null;
     }
 
-    if (!appInsights.defaultClient) {
-      logger?.warn(
-        MODULE_NAME,
-        'applicationinsights.defaultClient is null/undefined - SDK not initialized',
-      );
-      return null;
+    if (appInsights.defaultClient) {
+      return appInsights.defaultClient as TelemetryClient;
     }
 
-    return appInsights.defaultClient as TelemetryClient;
+    logger?.warn(
+      MODULE_NAME,
+      'SDK not auto-initialized by Azure Functions - check APPLICATIONINSIGHTS_CONNECTION_STRING',
+    );
+    return null;
   } catch (error) {
-    logger?.error(MODULE_NAME, 'Failed to load applicationinsights module', error);
+    logger?.error(MODULE_NAME, 'CRITICAL: Failed to initialize Application Insights', error);
     return null;
   }
 }
@@ -55,7 +62,7 @@ export class AppInsightsObservability implements ObservabilityGateway {
     private readonly logger?: LoggerImpl,
     clientFactory?: AppInsightsClientFactory,
   ) {
-    this.clientFactory = clientFactory ?? getAppInsightsClient;
+    this.clientFactory = clientFactory ?? getOrInitializeAppInsightsClient;
   }
 
   startTrace(invocationId: string): ObservabilityTrace {
@@ -92,7 +99,13 @@ export class AppInsightsObservability implements ObservabilityGateway {
 
     const client = this.clientFactory(this.logger);
 
-    if (!client) return;
+    if (!client) {
+      this.logger?.error(
+        this.MODULE_NAME,
+        `CRITICAL: Telemetry not sent for ${eventName} - App Insights client unavailable (business reporting impacted)`,
+      );
+      return;
+    }
 
     client.trackEvent({
       name: eventName,

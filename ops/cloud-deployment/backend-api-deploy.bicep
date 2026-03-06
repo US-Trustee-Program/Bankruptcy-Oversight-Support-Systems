@@ -431,6 +431,10 @@ var baseApplicationSettings = concat(
       name: 'MAX_OBJECT_KEY_COUNT'
       value: maxObjectKeyCount
     }
+    {
+      name: 'APPLICATIONINSIGHTS_ENABLE_CONSOLE_AUTO_COLLECTION'
+      value: 'false'
+    }
   ],
   isUstpDeployment
     ? [

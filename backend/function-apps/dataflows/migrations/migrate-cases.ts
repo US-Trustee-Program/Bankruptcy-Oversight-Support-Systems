@@ -18,11 +18,34 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
-import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { ObservabilityTrace } from '../../../lib/use-cases/gateways.types';
 
 const MODULE_NAME = 'MIGRATE-CASES';
 const PAGE_SIZE = 100;
+
+async function withAppContextAndTrace<T>(
+  invocationContext: InvocationContext,
+  handlerName: string,
+  fn: (appContext: ApplicationContext, trace: ObservabilityTrace) => Promise<T>,
+): Promise<T> {
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
+
+  try {
+    const appContext = await ContextCreator.getApplicationContext({
+      invocationContext,
+      logger,
+    });
+
+    const trace = appContext.observability.startTrace(appContext.invocationId);
+
+    return await fn(appContext, trace);
+  } catch (error) {
+    logger.error(MODULE_NAME, `Failed in ${handlerName}`, error);
+    throw error;
+  }
+}
 
 // Queues
 const START = output.storageQueue({
@@ -60,205 +83,255 @@ const GET_CASEIDS_TO_MIGRATE = buildFunctionName(MODULE_NAME, 'getCaseIdsToMigra
 const LOAD_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'loadMigrationTable');
 const EMPTY_MIGRATION_TABLE = buildFunctionName(MODULE_NAME, 'emptyMigrationTable');
 
-/**
- * handleStart
- *
- * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
- *
- * @param {object} message
- * @param {InvocationContext} context
- */
-async function handleStart(_ignore: StartMessage, context: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(context);
-  const observability = new AppInsightsObservability(logger);
-  const trace = observability.startTrace(context.invocationId);
-  const migrationStartTimestamp = new Date().toISOString();
-  logger.info(
-    MODULE_NAME,
-    `MIGRATION_CUTOFF_TIMESTAMP=${migrationStartTimestamp} — Use this as cutoffDate for resync-remaining-cases.`,
-  );
+async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
+  return withAppContextAndTrace(invocationContext, 'handleStart', async (appContext, trace) => {
+    const migrationStartTimestamp = new Date().toISOString();
+    appContext.logger.info(
+      MODULE_NAME,
+      `MIGRATION_CUTOFF_TIMESTAMP=${migrationStartTimestamp} — Use this as cutoffDate for resync-remaining-cases.`,
+    );
 
-  const isEmpty = await emptyMigrationTable(context);
-  if (!isEmpty) {
-    completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
-      documentsWritten: 0,
-      documentsFailed: 0,
-      success: true,
-      details: { reason: 'migration table not empty' },
-    });
-    return;
-  }
+    const isEmpty = await emptyMigrationTable(appContext);
+    if (!isEmpty) {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleStart',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: true,
+          details: { reason: 'migration table not empty' },
+        },
+      );
+      return;
+    }
 
-  const count = await loadMigrationTable(context);
+    const count = await loadMigrationTable(appContext);
 
-  if (count === 0) {
-    completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
-      documentsWritten: 0,
-      documentsFailed: 0,
-      success: true,
-      details: { reason: 'no cases to migrate' },
-    });
-    return;
-  }
+    if (count === 0) {
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleStart',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: true,
+          details: { reason: 'no cases to migrate' },
+        },
+      );
+      return;
+    }
 
-  let start = 0;
-  let end = 0;
+    let start = 0;
+    let end = 0;
 
-  const pages = [];
-  while (end < count) {
-    start = end + 1;
-    end += PAGE_SIZE;
-    pages.push({ start, end });
-  }
-  context.extraOutputs.set(PAGE, pages);
+    const pages = [];
+    while (end < count) {
+      start = end + 1;
+      end += PAGE_SIZE;
+      pages.push({ start, end });
+    }
+    appContext.extraOutputs.set(PAGE, pages);
 
-  await storeRuntimeState(context, migrationStartTimestamp);
-  completeDataflowTrace(observability, trace, MODULE_NAME, 'handleStart', logger, {
-    documentsWritten: 0,
-    documentsFailed: 0,
-    success: true,
-    details: { pagesQueued: String(pages.length), totalCases: String(count) },
+    await storeRuntimeState(appContext, migrationStartTimestamp);
+    completeDataflowTrace(
+      appContext.observability,
+      trace,
+      MODULE_NAME,
+      'handleStart',
+      appContext.logger,
+      {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { pagesQueued: String(pages.length), totalCases: String(count) },
+      },
+    );
   });
 }
 
-/**
- * handlePage
- *
- * Get case Ids from ACMS identifying cases to migrate then export and load the cases from DXTR into CAMS.
- *
- * @param range
- * @param invocationContext
- */
 async function handlePage(range: RangeMessage, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability(logger);
-  const trace = observability.startTrace(invocationContext.invocationId);
-  const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, invocationContext);
+  return withAppContextAndTrace(invocationContext, 'handlePage', async (appContext, trace) => {
+    const events: CaseSyncEvent[] = await getCaseIdsToMigrate(range, appContext);
 
-  const appContext = await ContextCreator.getApplicationContext({
-    invocationContext,
-    observability,
-  });
-  const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
+    const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
 
-  const failedEvents = processedEvents.filter((event) => !!event.error);
-  invocationContext.extraOutputs.set(DLQ, failedEvents);
-  const successCount = processedEvents.length - failedEvents.length;
-  completeDataflowTrace(observability, trace, MODULE_NAME, 'handlePage', logger, {
-    documentsWritten: successCount,
-    documentsFailed: failedEvents.length,
-    success: true,
-    details: { totalEvents: String(events.length) },
+    const failedEvents = processedEvents.filter((event) => !!event.error);
+    appContext.extraOutputs.set(DLQ, failedEvents);
+    const successCount = processedEvents.length - failedEvents.length;
+    completeDataflowTrace(
+      appContext.observability,
+      trace,
+      MODULE_NAME,
+      'handlePage',
+      appContext.logger,
+      {
+        documentsWritten: successCount,
+        documentsFailed: failedEvents.length,
+        success: true,
+        details: { totalEvents: String(events.length) },
+      },
+    );
   });
 }
 
 async function handleError(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const logger = ApplicationContextCreator.getLogger(invocationContext);
-  const observability = new AppInsightsObservability(logger);
-  const trace = observability.startTrace(invocationContext.invocationId);
-  if (isNotFoundError(event.error)) {
-    logger.info(MODULE_NAME, `Abandoning attempt to sync ${event.caseId}: ${event.error.message}.`);
-    completeDataflowTrace(observability, trace, MODULE_NAME, 'handleError', logger, {
-      documentsWritten: 0,
-      documentsFailed: 1,
-      success: true,
-      details: { disposition: 'abandoned' },
-    });
-    return;
-  }
-  logger.info(
-    MODULE_NAME,
-    `Error encountered attempting to sync ${event.caseId}: ${event.error['message']}.`,
-  );
-  delete event.error;
-  invocationContext.extraOutputs.set(RETRY, [event]);
-  completeDataflowTrace(observability, trace, MODULE_NAME, 'handleError', logger, {
-    documentsWritten: 0,
-    documentsFailed: 1,
-    success: true,
-    details: { disposition: 'queued-for-retry' },
+  return withAppContextAndTrace(invocationContext, 'handleError', async (appContext, trace) => {
+    if (isNotFoundError(event.error)) {
+      appContext.logger.info(
+        MODULE_NAME,
+        `Abandoning attempt to sync ${event.caseId}: ${event.error.message}.`,
+      );
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleError',
+        appContext.logger,
+        {
+          documentsWritten: 0,
+          documentsFailed: 1,
+          success: true,
+          details: { disposition: 'abandoned' },
+        },
+      );
+      return;
+    }
+    appContext.logger.info(
+      MODULE_NAME,
+      `Error encountered attempting to sync ${event.caseId}: ${event.error['message']}.`,
+    );
+    delete event.error;
+    appContext.extraOutputs.set(RETRY, [event]);
+    completeDataflowTrace(
+      appContext.observability,
+      trace,
+      MODULE_NAME,
+      'handleError',
+      appContext.logger,
+      {
+        documentsWritten: 0,
+        documentsFailed: 1,
+        success: true,
+        details: { disposition: 'queued-for-retry' },
+      },
+    );
   });
 }
 
 async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationContext) {
-  const context = await ContextCreator.getApplicationContext({ invocationContext });
-  const { logger } = context;
-  const trace = context.observability.startTrace(invocationContext.invocationId);
+  return withAppContextAndTrace(invocationContext, 'handleRetry', async (appContext, trace) => {
+    const RETRY_LIMIT = 3;
+    if (!event.retryCount) {
+      event.retryCount = 1;
+    } else {
+      event.retryCount += 1;
+    }
 
-  const RETRY_LIMIT = 3;
-  if (!event.retryCount) {
-    event.retryCount = 1;
-  } else {
-    event.retryCount += 1;
-  }
-
-  if (event.retryCount > RETRY_LIMIT) {
-    invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    logger.info(MODULE_NAME, `Too many attempts to sync ${filterToExtendedAscii(event.caseId)}.`);
-    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
-      documentsWritten: 0,
-      documentsFailed: 1,
-      success: true,
-      details: { disposition: 'hard-stop', retryCount: String(event.retryCount) },
-    });
-  } else {
-    if (!event.bCase) {
-      const exportResult = await ExportAndLoadCase.exportCase(context, event);
-
-      if (exportResult.bCase) {
-        event.bCase = exportResult.bCase;
-      } else {
-        event.error =
-          exportResult.error ??
-          new UnknownError(MODULE_NAME, { message: 'Expected case detail was not returned.' });
-        invocationContext.extraOutputs.set(DLQ, [event]);
-        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
+    if (event.retryCount > RETRY_LIMIT) {
+      appContext.extraOutputs.set(HARD_STOP, [event]);
+      appContext.logger.info(
+        MODULE_NAME,
+        `Too many attempts to sync ${filterToExtendedAscii(event.caseId)}.`,
+      );
+      completeDataflowTrace(
+        appContext.observability,
+        trace,
+        MODULE_NAME,
+        'handleRetry',
+        appContext.logger,
+        {
           documentsWritten: 0,
           documentsFailed: 1,
           success: true,
-          details: { disposition: 'export-failed', retryCount: String(event.retryCount) },
-        });
-        return;
+          details: { disposition: 'hard-stop', retryCount: String(event.retryCount) },
+        },
+      );
+    } else {
+      if (!event.bCase) {
+        const exportResult = await ExportAndLoadCase.exportCase(appContext, event);
+
+        if (exportResult.bCase) {
+          event.bCase = exportResult.bCase;
+        } else {
+          event.error =
+            exportResult.error ??
+            new UnknownError(MODULE_NAME, { message: 'Expected case detail was not returned.' });
+          appContext.extraOutputs.set(DLQ, [event]);
+          completeDataflowTrace(
+            appContext.observability,
+            trace,
+            MODULE_NAME,
+            'handleRetry',
+            appContext.logger,
+            {
+              documentsWritten: 0,
+              documentsFailed: 1,
+              success: true,
+              details: { disposition: 'export-failed', retryCount: String(event.retryCount) },
+            },
+          );
+          return;
+        }
+      }
+
+      const loadResult = await ExportAndLoadCase.loadCase(appContext, event);
+
+      if (loadResult.error) {
+        event.error = loadResult.error;
+        appContext.extraOutputs.set(DLQ, [event]);
+        completeDataflowTrace(
+          appContext.observability,
+          trace,
+          MODULE_NAME,
+          'handleRetry',
+          appContext.logger,
+          {
+            documentsWritten: 0,
+            documentsFailed: 1,
+            success: true,
+            details: { disposition: 'load-failed', retryCount: String(event.retryCount) },
+          },
+        );
+      } else {
+        appContext.logger.info(
+          MODULE_NAME,
+          `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}.`,
+        );
+        completeDataflowTrace(
+          appContext.observability,
+          trace,
+          MODULE_NAME,
+          'handleRetry',
+          appContext.logger,
+          {
+            documentsWritten: 1,
+            documentsFailed: 0,
+            success: true,
+            details: { disposition: 'retry-succeeded', retryCount: String(event.retryCount) },
+          },
+        );
       }
     }
-
-    const loadResult = await ExportAndLoadCase.loadCase(context, event);
-
-    if (loadResult.error) {
-      event.error = loadResult.error;
-      invocationContext.extraOutputs.set(DLQ, [event]);
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
-        documentsWritten: 0,
-        documentsFailed: 1,
-        success: true,
-        details: { disposition: 'load-failed', retryCount: String(event.retryCount) },
-      });
-    } else {
-      logger.info(
-        MODULE_NAME,
-        `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}.`,
-      );
-      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
-        documentsWritten: 1,
-        documentsFailed: 0,
-        success: true,
-        details: { disposition: 'retry-succeeded', retryCount: String(event.retryCount) },
-      });
-    }
-  }
+  });
 }
 
 /**
  * loadMigrationTable
  *
- * @param invocationContext
+ * @param appContext
  * @returns
  */
-async function loadMigrationTable(invocationContext: InvocationContext) {
-  const context = await ContextCreator.getApplicationContext({ invocationContext });
-  const result = await MigrateCases.loadMigrationTable(context);
+async function loadMigrationTable(appContext: ApplicationContext) {
+  const result = await MigrateCases.loadMigrationTable(appContext);
   if (result.error) {
-    invocationContext.extraOutputs.set(
+    appContext.extraOutputs.set(
       DLQ,
       buildQueueError(result.error, MODULE_NAME, LOAD_MIGRATION_TABLE),
     );
@@ -269,13 +342,12 @@ async function loadMigrationTable(invocationContext: InvocationContext) {
 /**
  * emptyMigrationTable
  *
- * @param invocationContext
+ * @param appContext
  */
-async function emptyMigrationTable(invocationContext: InvocationContext) {
-  const context = await ContextCreator.getApplicationContext({ invocationContext });
-  const result = await MigrateCases.emptyMigrationTable(context);
+async function emptyMigrationTable(appContext: ApplicationContext) {
+  const result = await MigrateCases.emptyMigrationTable(appContext);
   if (result.error) {
-    invocationContext.extraOutputs.set(
+    appContext.extraOutputs.set(
       DLQ,
       buildQueueError(result.error, MODULE_NAME, EMPTY_MIGRATION_TABLE),
     );
@@ -288,7 +360,7 @@ async function emptyMigrationTable(invocationContext: InvocationContext) {
  * getCaseIdsToMigrate
  *
  * @param params
- * @param invocationContext
+ * @param appContext
  * @returns
  */
 async function getCaseIdsToMigrate(
@@ -296,15 +368,13 @@ async function getCaseIdsToMigrate(
     start: number;
     end: number;
   },
-  invocationContext: InvocationContext,
+  appContext: ApplicationContext,
 ): Promise<CaseSyncEvent[]> {
-  const context = await ContextCreator.getApplicationContext({ invocationContext });
-
   const { start, end } = params;
-  const result = await MigrateCases.getPageOfCaseEvents(context, start, end);
+  const result = await MigrateCases.getPageOfCaseEvents(appContext, start, end);
 
   if (result.error) {
-    invocationContext.extraOutputs.set(
+    appContext.extraOutputs.set(
       DLQ,
       buildQueueError(result.error, MODULE_NAME, GET_CASEIDS_TO_MIGRATE),
     );
@@ -319,12 +389,11 @@ async function getCaseIdsToMigrate(
  *
  * Wrapper for CasesRuntimeState.storeRuntimeState
  *
- * @param invocationContext
+ * @param appContext
  * @param syncDate
  * @returns
  */
-async function storeRuntimeState(invocationContext: InvocationContext, syncDate: string) {
-  const appContext = await ContextCreator.getApplicationContext({ invocationContext });
+async function storeRuntimeState(appContext: ApplicationContext, syncDate: string) {
   return CasesRuntimeState.storeRuntimeState(appContext, syncDate, syncDate);
 }
 
