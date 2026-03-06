@@ -14,11 +14,7 @@ import { AppInsightsObservability } from '../../lib/adapters/services/observabil
 const MODULE_NAME = 'APPLICATION-CONTEXT-CREATOR';
 
 function getLogger(invocationContext: InvocationContext) {
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  const logWrapper: Console['log'] = (...args: any[]) => {
-    invocationContext.log(args);
-  };
-  return new LoggerImpl(invocationContext.invocationId, logWrapper);
+  return new LoggerImpl(invocationContext.invocationId, console.log);
 }
 
 type ContextCreatorArgs = {

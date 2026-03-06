@@ -20,13 +20,6 @@ export function scrubErrorForTelemetry(error: string): string {
   return scrubbed;
 }
 
-/**
- * Initializes and returns the Application Insights client.
- * If the client doesn't exist, explicitly initializes the SDK.
- *
- * @param logger - Optional logger for diagnostics
- * @returns TelemetryClient instance or null if initialization fails
- */
 export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
   const MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
 
@@ -39,12 +32,17 @@ export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): Telemetry
       return null;
     }
 
-    // If defaultClient already exists, return it
     if (appInsights.defaultClient) {
+      const enableConsoleCollection =
+        process.env.APPLICATIONINSIGHTS_ENABLE_CONSOLE_AUTO_COLLECTION !== 'false';
+
+      if (!enableConsoleCollection && appInsights.defaultClient.config) {
+        appInsights.defaultClient.config.enableAutoCollectConsole = false;
+      }
+
       return appInsights.defaultClient as TelemetryClient;
     }
 
-    // Client doesn't exist - try to initialize it ourselves
     const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
     if (!connectionString) {
       logger?.error(
@@ -55,7 +53,14 @@ export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): Telemetry
     }
 
     logger?.info(MODULE_NAME, 'Initializing Application Insights SDK explicitly');
-    appInsights.setup(connectionString).start();
+
+    const enableConsoleCollection =
+      process.env.APPLICATIONINSIGHTS_ENABLE_CONSOLE_AUTO_COLLECTION !== 'false';
+
+    appInsights
+      .setup(connectionString)
+      .setAutoCollectConsole(true, enableConsoleCollection)
+      .start();
 
     if (!appInsights.defaultClient) {
       logger?.error(
@@ -76,12 +81,26 @@ export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): Telemetry
 export class AppInsightsObservability implements ObservabilityGateway {
   private readonly MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
   private readonly clientFactory: AppInsightsClientFactory;
+  private cachedClient: TelemetryClient | null | undefined;
+  private readonly instanceId: string;
 
   constructor(
     private readonly logger?: LoggerImpl,
     clientFactory?: AppInsightsClientFactory,
   ) {
     this.clientFactory = clientFactory ?? getOrInitializeAppInsightsClient;
+    this.instanceId = Math.random().toString(36).substring(2, 15);
+    this.logger?.debug(
+      this.MODULE_NAME,
+      `AppInsightsObservability instance created: ${this.instanceId}`,
+    );
+  }
+
+  private getClient(): TelemetryClient | null {
+    if (this.cachedClient === undefined) {
+      this.cachedClient = this.clientFactory(this.logger);
+    }
+    return this.cachedClient;
   }
 
   startTrace(invocationId: string): ObservabilityTrace {
@@ -104,6 +123,8 @@ export class AppInsightsObservability implements ObservabilityGateway {
       instanceId: trace.instanceId,
       invocationId: trace.invocationId,
       success: String(completion.success),
+      telemetrySource: 'CAMS-EXPLICIT',
+      observabilityInstanceId: this.instanceId,
       ...completion.properties,
     };
 
@@ -116,7 +137,7 @@ export class AppInsightsObservability implements ObservabilityGateway {
       ...completion.measurements,
     };
 
-    const client = this.clientFactory(this.logger);
+    const client = this.getClient();
 
     if (!client) {
       this.logger?.error(
