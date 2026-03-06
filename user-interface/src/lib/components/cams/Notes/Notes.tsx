@@ -21,7 +21,7 @@ import { NoteItem } from '@/lib/components/cams/NoteItem/NoteItem';
 import { Note, NoteInput } from './types';
 import { sortNotes, filterNotes, SortOrder, MINIMUM_SEARCH_CHARACTERS } from './notes-utils';
 import NoteFormModal, { NoteFormModalRef } from './NoteFormModal';
-import NoteRemovalModal, { NoteRemovalModalRef } from './NoteRemovalModal';
+import RemovalModal, { RemovalModalRef } from '@/lib/components/uswds/modal/RemovalModal';
 import { handleHighlight } from '@/lib/utils/highlight-api';
 import Input from '../../uswds/Input';
 import { InputRef } from '@/lib/type-declarations/input-fields';
@@ -44,6 +44,7 @@ interface NotesProps {
   removeAction?: Action;
   emptyMessage?: string;
   searchPlaceholder?: string;
+  removalObjectName?: string;
 }
 
 // Custom hook for search, sort, and highlight logic
@@ -84,9 +85,10 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
     removeAction = Actions.RemoveNote,
     emptyMessage = 'No notes available.',
     searchPlaceholder = 'Find note by title or content',
+    removalObjectName = 'note',
   } = props;
 
-  const removeConfirmationModalRef = useRef<NoteRemovalModalRef>(null);
+  const removeConfirmationModalRef = useRef<RemovalModalRef>(null);
   const noteModalRef = useRef<NoteFormModalRef>(null);
   // Key remove button refs by note ID (like edit refs) to avoid misalignment when filtering/sorting
   const openRemoveModalButtonRefs = useRef(
@@ -196,6 +198,7 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
           removeButtonProps={{
             id: note.id,
             buttonId: `note-remove-button-${idx}`,
+            onDelete: () => handleDeleteNote(note.id!),
           }}
           getDraftAlertMessage={getDraftAlertMessage}
         />
@@ -327,8 +330,9 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
         {!isLoading && (
           <>
             {!hasNotes && (
-              <div data-testid="empty-notes">
+              <div data-testid="empty-notes" className="empty-notes">
                 <Alert
+                  className=""
                   message={emptyMessage}
                   type={UswdsAlertStyle.Info}
                   role={'status'}
@@ -359,11 +363,11 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
         }}
         onModalClosed={handleModalClosed}
       ></NoteFormModal>
-      <NoteRemovalModal
+      <RemovalModal
         ref={removeConfirmationModalRef}
         modalId={removeConfirmationModalId}
-        onDelete={handleDeleteNote}
-      ></NoteRemovalModal>
+        objectName={removalObjectName}
+      />
     </div>
   );
 }

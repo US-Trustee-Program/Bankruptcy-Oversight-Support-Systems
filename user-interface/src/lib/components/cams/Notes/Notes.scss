@@ -8,6 +8,18 @@
     max-width: 560px;
   }
 
+  .empty-notes {
+    .usa-alert-container {
+      margin-left: 0;
+      width: 100%;
+      max-width: 37rem;
+
+      .usa-alert {
+        margin-top: 0;
+      }
+    }
+  }
+
   .notes-draft-alert-container {
     margin-top: 1.5rem;
     margin-bottom: 1rem;
@@ -115,6 +127,10 @@
     .note-item-toolbar {
       button {
         margin-left: 1.5rem;
+      }
+
+      .remove-button:hover {
+        color: color($theme-color-secondary-dark);
       }
     }
 
