@@ -6,46 +6,67 @@ const OVERSIGHT_USER_ROLES: CamsRoleType[] = [...OversightRoles, CamsRole.Truste
 import { DiagnosticsSnapshot } from '../gateways.types';
 
 async function captureDiagnosticsSnapshot(context: ApplicationContext): Promise<void> {
-  const userGroupGateway = await factory.getUserGroupGateway(context);
-  const storage = factory.getStorageGateway(context);
-  const groupToRoleMap = storage.getRoleMapping();
+  const trace = context.observability.startTrace(context.invocationId);
 
-  const allGroups = await userGroupGateway.getUserGroups(context);
-  const roleGroups = allGroups.filter((group) => groupToRoleMap.has(group.name));
+  try {
+    const userGroupGateway = await factory.getUserGroupGateway(context);
+    const storage = factory.getStorageGateway(context);
+    const groupToRoleMap = storage.getRoleMapping();
 
-  const userIdsByRole = new Map<CamsRoleType, Set<string>>();
-  for (const group of roleGroups) {
-    const role = groupToRoleMap.get(group.name);
-    const users = await userGroupGateway.getUserGroupUsers(context, group);
-    if (!userIdsByRole.has(role)) {
-      userIdsByRole.set(role, new Set<string>());
+    const allGroups = await userGroupGateway.getUserGroups(context);
+    const roleGroups = allGroups.filter((group) => groupToRoleMap.has(group.name));
+
+    const userIdsByRole = new Map<CamsRoleType, Set<string>>();
+    for (const group of roleGroups) {
+      const role = groupToRoleMap.get(group.name);
+      const users = await userGroupGateway.getUserGroupUsers(context, group);
+      if (!userIdsByRole.has(role)) {
+        userIdsByRole.set(role, new Set<string>());
+      }
+      for (const user of users) {
+        userIdsByRole.get(role).add(user.id);
+      }
     }
-    for (const user of users) {
-      userIdsByRole.get(role).add(user.id);
+
+    const userCountByRole: Record<string, number> = {};
+    for (const [role, userIds] of userIdsByRole) {
+      userCountByRole[role] = userIds.size;
     }
-  }
 
-  const userCountByRole: Record<string, number> = {};
-  for (const [role, userIds] of userIdsByRole) {
-    userCountByRole[role] = userIds.size;
-  }
-
-  const oversightUserIds = new Set<string>();
-  for (const role of OVERSIGHT_USER_ROLES) {
-    for (const id of userIdsByRole.get(role) ?? []) {
-      oversightUserIds.add(id);
+    const oversightUserIds = new Set<string>();
+    for (const role of OVERSIGHT_USER_ROLES) {
+      for (const id of userIdsByRole.get(role) ?? []) {
+        oversightUserIds.add(id);
+      }
     }
+
+    const snapshot: DiagnosticsSnapshot = {
+      documentType: 'DIAGNOSTICS_SNAPSHOT',
+      snapshotDate: new Date().toISOString().split('T')[0],
+      userCountByRole,
+      oversightUserCount: oversightUserIds.size,
+    };
+
+    const repository = factory.getDiagnosticsSnapshotRepository(context);
+    await repository.create(snapshot);
+
+    context.observability.completeTrace(trace, 'diagnostics-snapshot', {
+      success: true,
+      properties: {
+        oversightUserCount: String(snapshot.oversightUserCount),
+        snapshotDate: snapshot.snapshotDate,
+      },
+      measurements: {},
+    });
+  } catch (originalError) {
+    context.observability.completeTrace(trace, 'diagnostics-snapshot', {
+      success: false,
+      properties: {},
+      measurements: {},
+      error: String(originalError),
+    });
+    throw originalError;
   }
-
-  const snapshot: DiagnosticsSnapshot = {
-    documentType: 'DIAGNOSTICS_SNAPSHOT',
-    snapshotDate: new Date().toISOString().split('T')[0],
-    userCountByRole,
-    oversightUserCount: oversightUserIds.size,
-  };
-
-  const repository = factory.getDiagnosticsSnapshotRepository(context);
-  await repository.create(snapshot);
 }
 
 const DiagnosticsSnapshotUseCase = {

@@ -3,7 +3,12 @@ import { createMockApplicationContext } from '../../testing/testing-utilities';
 import factory from '../../factory';
 import { CamsRole } from '@common/cams/roles';
 import { CamsUserReference } from '@common/cams/users';
-import { DiagnosticsSnapshot, DiagnosticsSnapshotRepository } from '../gateways.types';
+import {
+  DiagnosticsSnapshot,
+  DiagnosticsSnapshotRepository,
+  ObservabilityGateway,
+  ObservabilityTrace,
+} from '../gateways.types';
 import { UserGroupGateway } from '../../adapters/types/authorization';
 import { StorageGateway } from '../../adapters/types/storage';
 import DiagnosticsSnapshotUseCase from './diagnostics-snapshot';
@@ -166,5 +171,80 @@ describe('DiagnosticsSnapshotUseCase', () => {
     await DiagnosticsSnapshotUseCase.captureDiagnosticsSnapshot(context);
 
     expect(capturedSnapshot!.oversightUserCount).toBe(1);
+  });
+
+  test('should emit a diagnostics-snapshot telemetry event with oversightUserCount on success', async () => {
+    const user1 = makeUser('u1');
+    const user2 = makeUser('u2');
+
+    const groupUsers = {
+      'USTP CAMS Trial Attorney': [user1, user2],
+    };
+
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+
+    vi.spyOn(factory, 'getUserGroupGateway').mockResolvedValue(
+      makeMockUserGroupGateway(groupUsers),
+    );
+    vi.spyOn(factory, 'getStorageGateway').mockReturnValue(
+      makeMockStorageGateway([['USTP CAMS Trial Attorney', CamsRole.OversightAttorney]]),
+    );
+    vi.spyOn(factory, 'getDiagnosticsSnapshotRepository').mockReturnValue({
+      create: vi.fn(),
+    });
+
+    await DiagnosticsSnapshotUseCase.captureDiagnosticsSnapshot(context);
+
+    expect(mockObservability.startTrace).toHaveBeenCalledWith(context.invocationId);
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'diagnostics-snapshot',
+      expect.objectContaining({
+        success: true,
+        properties: expect.objectContaining({
+          oversightUserCount: '2',
+        }),
+      }),
+    );
+  });
+
+  test('should emit a diagnostics-snapshot telemetry event with success=false when an error occurs', async () => {
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+
+    vi.spyOn(factory, 'getUserGroupGateway').mockRejectedValue(new Error('IdP unavailable'));
+
+    await expect(DiagnosticsSnapshotUseCase.captureDiagnosticsSnapshot(context)).rejects.toThrow(
+      'IdP unavailable',
+    );
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'diagnostics-snapshot',
+      expect.objectContaining({
+        success: false,
+      }),
+    );
   });
 });
