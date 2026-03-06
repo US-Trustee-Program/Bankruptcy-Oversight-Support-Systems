@@ -516,6 +516,51 @@ export class AppInsightsObservability implements ObservabilityGateway {
 
 ---
 
+---
+
+### 8. Chained SDK Configuration Before start() ❌ Did Not Fix
+**Action**: Configure SDK with `.setAutoCollectConsole(false, false)` BEFORE calling `.start()`
+
+**File Modified**: `backend/function-apps/azure/app-insights.ts`
+
+**Code Added**:
+```typescript
+appInsights
+  .setup(connectionString)
+  .setAutoCollectConsole(false, false)
+  .setAutoCollectRequests(false)
+  .start();
+```
+
+**Rationale**: Microsoft docs state configuration must happen between `.setup()` and `.start()` to prevent console hooks from attaching. Different from attempt #3 which modified already-running client.
+
+**Result**: Did not eliminate duplicates. Azure Functions runtime had already initialized SDK before our code ran.
+
+---
+
+### 9. Complete Removal of Manual SDK Initialization ❌ Did Not Fix
+**Action**: Removed all `.setup().start()` calls, rely only on Azure Functions runtime auto-initialization
+
+**Files Modified**:
+- `backend/lib/adapters/services/observability.ts`
+- `backend/function-apps/azure/app-insights.ts`
+
+**Code Changed**:
+```typescript
+// Before: appInsights.setup(connectionString).start();
+
+// After:
+if (appInsights.defaultClient) {
+  return appInsights.defaultClient;
+}
+return null;
+```
+
+**Rationale**: Microsoft docs: "The host process automatically emits telemetry. If worker is also instrumented, same request reported twice." Remove manual init to prevent second SDK instance.
+
+**Result**: Did not eliminate duplicates.
+
+
 ## Key Observations (Distinguishing Facts from Inferences)
 
 ### Direct Observations (Confirmed by Primary Evidence)
@@ -525,6 +570,16 @@ export class AppInsightsObservability implements ObservabilityGateway {
 3. ✅ **CONFIRMED**: Both events show identical timestamps when viewed in App Insights UI
 4. ✅ **CONFIRMED**: Duplication observed for both traces and customEvents telemetry types
 5. ✅ **CONFIRMED**: Diagnostic settings bicep config forwards Function App logs to Log Analytics
+
+### Microsoft Documentation Confirmation
+
+**Source**: [Azure Functions OpenTelemetry Docs](https://learn.microsoft.com/en-us/azure/azure-functions/opentelemetry-howto#duplicate-request-telemetry)
+
+Microsoft explicitly documents duplicate telemetry issue and provides language-specific fixes:
+- Java: `JAVA_APPLICATIONINSIGHTS_ENABLE_TELEMETRY=true`
+- Python: `PYTHON_APPLICATIONINSIGHTS_ENABLE_TELEMETRY=true`
+- **Node.js**: No equivalent documented (as of 2026-03-06)
+
 
 ### Observations Requiring Interpretation (Inferences, Not Facts)
 
@@ -611,6 +666,23 @@ Despite same `observabilityInstanceId`, there may be code paths we haven't exami
 - ❌ Call stack at time of each invocation
 
 **Test**: Add call counters and stack trace logging inside `completeTrace()`
+
+### Hypothesis 4: Missing Node.js-Specific Configuration Flag
+**Plausibility**: Medium - Other languages have documented flags
+**Evidence**: Microsoft docs show Java/Python have environment variables to disable host-level telemetry when worker handles it
+
+Java and Python have `*_APPLICATIONINSIGHTS_ENABLE_TELEMETRY` flags that tell Functions host to let worker process handle telemetry exclusively. Node.js may lack this feature or have undocumented equivalent.
+
+**What we know**:
+- ✅ Python/Java have documented flags that prevent duplicates
+- ❌ No Node.js equivalent in Microsoft docs or Azure Portal
+
+**What we don't know**:
+- ❌ Whether `NODE_APPLICATIONINSIGHTS_ENABLE_TELEMETRY` exists (undocumented)
+- ❌ Whether Node.js runtime uses different telemetry pipeline than other languages
+
+**Test**: Contact Microsoft support to ask if Node.js has equivalent flag
+
 
 ## Investigation Path for Tomorrow
 
