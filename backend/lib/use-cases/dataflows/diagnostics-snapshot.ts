@@ -9,21 +9,20 @@ async function captureDiagnosticsSnapshot(context: ApplicationContext): Promise<
   const trace = context.observability.startTrace(context.invocationId);
 
   try {
-    const userGroupGateway = await factory.getUserGroupGateway(context);
+    const userGroupsRepository = factory.getUserGroupsRepository(context);
     const storage = factory.getStorageGateway(context);
     const groupToRoleMap = storage.getRoleMapping();
 
-    const allGroups = await userGroupGateway.getUserGroups(context);
-    const roleGroups = allGroups.filter((group) => groupToRoleMap.has(group.name));
+    const groupNames = Array.from(groupToRoleMap.keys());
+    const roleGroups = await userGroupsRepository.getUserGroupsByNames(context, groupNames);
 
     const userIdsByRole = new Map<CamsRoleType, Set<string>>();
     for (const group of roleGroups) {
-      const role = groupToRoleMap.get(group.name);
-      const users = await userGroupGateway.getUserGroupUsers(context, group);
+      const role = groupToRoleMap.get(group.groupName);
       if (!userIdsByRole.has(role)) {
         userIdsByRole.set(role, new Set<string>());
       }
-      for (const user of users) {
+      for (const user of group.users) {
         userIdsByRole.get(role).add(user.id);
       }
     }
