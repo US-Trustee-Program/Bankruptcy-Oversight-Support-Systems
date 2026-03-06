@@ -148,6 +148,30 @@ describe('StaffUseCase', () => {
       expect(loggerSpy).toHaveBeenCalledWith('STAFF-USE-CASE', 'Retrieved 2 oversight role groups');
     });
 
+    test('should return empty result when role mapping has no oversight roles', async () => {
+      mockStorageGateway.getRoleMapping.mockReturnValue(
+        new Map([['USTP CAMS Super User', CamsRole.SuperUser]]),
+      );
+
+      // Need to re-create the use case since buildOversightGroupMapping is called during getOversightStaff
+      staffUseCase = new StaffUseCase(mockApplicationContext);
+
+      const loggerSpy = vi.spyOn(mockApplicationContext.logger, 'info');
+
+      const result = await staffUseCase.getOversightStaff(mockApplicationContext);
+
+      expect(result).toEqual({
+        TrialAttorney: [],
+        Auditor: [],
+        Paralegal: [],
+      });
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'STAFF-USE-CASE',
+        'No oversight role groups configured in storage, returning empty result',
+      );
+      expect(mockUserGroupsRepository.getUserGroupsByNames).not.toHaveBeenCalled();
+    });
+
     test('should handle repository errors gracefully', async () => {
       const expectedError = new Error('Database connection failed');
       mockUserGroupsRepository.getUserGroupsByNames.mockRejectedValue(expectedError);

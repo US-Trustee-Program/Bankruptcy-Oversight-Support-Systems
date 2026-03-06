@@ -1,7 +1,11 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { TraceCompletion } from '../../use-cases/gateways.types';
 import { LoggerImpl } from './logger.service';
-import { AppInsightsObservability, scrubErrorForTelemetry } from './observability';
+import {
+  AppInsightsObservability,
+  scrubErrorForTelemetry,
+  getAppInsightsClient,
+} from './observability';
 import { TelemetryClient } from '../../../function-apps/azure/app-insights';
 
 const mockTrackEvent = vi.fn();
@@ -147,6 +151,46 @@ describe('AppInsightsObservability', () => {
 
       const callArgs = mockTrackEvent.mock.calls[0][0];
       expect(callArgs.properties).not.toHaveProperty('error');
+    });
+  });
+
+  describe('getAppInsightsClient (via clientFactory)', () => {
+    test('should return null when clientFactory returns null (no client available)', () => {
+      const nullFactory = vi.fn(() => null);
+      const gatewayNoClient = new AppInsightsObservability(mockLogger, nullFactory);
+      const trace = gatewayNoClient.startTrace(TEST_INVOCATION_ID);
+      const completion: TraceCompletion = {
+        success: true,
+        properties: {},
+        measurements: {},
+      };
+
+      gatewayNoClient.completeTrace(trace, 'TestEvent', completion);
+
+      expect(nullFactory).toHaveBeenCalledWith(mockLogger);
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+    });
+
+    test('should handle clientFactory that throws by propagating the error', () => {
+      const throwingFactory = vi.fn(() => {
+        throw new Error('Client initialization failed');
+      });
+      const gatewayThrow = new AppInsightsObservability(mockLogger, throwingFactory);
+      const trace = gatewayThrow.startTrace(TEST_INVOCATION_ID);
+      const completion: TraceCompletion = {
+        success: true,
+        properties: {},
+        measurements: {},
+      };
+
+      expect(() => gatewayThrow.completeTrace(trace, 'TestEvent', completion)).toThrow(
+        'Client initialization failed',
+      );
+    });
+
+    test('should call getAppInsightsClient directly and return null in test environment', () => {
+      const result = getAppInsightsClient(mockLogger);
+      expect(result).toBeNull();
     });
   });
 

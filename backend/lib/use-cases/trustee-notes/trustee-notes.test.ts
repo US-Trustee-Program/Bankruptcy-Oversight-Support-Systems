@@ -12,6 +12,8 @@ import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { CamsRole } from '@common/cams/roles';
 import { ResourceActions } from '@common/cams/actions';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { CamsUser } from '@common/cams/users';
+import { ObservabilityGateway, ObservabilityTrace } from '../gateways.types';
 
 describe('Test trustee-notes use case', () => {
   afterEach(() => {
@@ -107,6 +109,128 @@ describe('Test trustee-notes use case', () => {
     expect(createSpy).toHaveBeenCalledWith(expectedNote);
   });
 
+  test('should emit a PII-free telemetry event when createTrusteeNote succeeds', async () => {
+    const trusteeId = randomUUID();
+    const user: CamsUser = {
+      ...MockData.getCamsUserReference(),
+      roles: [CamsRole.TrusteeAdmin, CamsRole.CaseAssignmentManager],
+    };
+    const noteInput: TrusteeNoteInput = {
+      trusteeId,
+      title: 'Some Title',
+      content: 'Some content.',
+    };
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+    const useCase = new TrusteeNotesUseCase(context);
+    vi.spyOn(MockMongoRepository.prototype, 'create').mockImplementation(async () => {});
+
+    await useCase.createTrusteeNote(user, noteInput);
+
+    expect(mockObservability.startTrace).toHaveBeenCalledWith(context.invocationId);
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'trustee-note-created',
+      expect.objectContaining({
+        success: true,
+        properties: {
+          userId: user.id,
+          roles: 'TrusteeAdmin,CaseAssignmentManager',
+          trusteeId,
+        },
+      }),
+    );
+  });
+
+  test('should emit a telemetry event with success=false when createTrusteeNote fails', async () => {
+    const trusteeId = randomUUID();
+    const user: CamsUser = {
+      ...MockData.getCamsUserReference(),
+      roles: [CamsRole.TrusteeAdmin, CamsRole.CaseAssignmentManager],
+    };
+    const noteInput: TrusteeNoteInput = {
+      trusteeId,
+      title: 'Some Title',
+      content: 'Some content.',
+    };
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+    const useCase = new TrusteeNotesUseCase(context);
+    const error = new Error('Database error');
+    vi.spyOn(MockMongoRepository.prototype, 'create').mockRejectedValue(error);
+
+    await expect(useCase.createTrusteeNote(user, noteInput)).rejects.toThrow('Database error');
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'trustee-note-created',
+      expect.objectContaining({
+        success: false,
+        properties: expect.objectContaining({
+          roles: 'TrusteeAdmin,CaseAssignmentManager',
+        }),
+        error: String(error),
+      }),
+    );
+  });
+
+  test('should default roles to empty string in telemetry when user has no roles', async () => {
+    const trusteeId = randomUUID();
+    const user: CamsUser = MockData.getCamsUserReference();
+    delete user.roles;
+    const noteInput: TrusteeNoteInput = {
+      trusteeId,
+      title: 'Some Title',
+      content: 'Some content.',
+    };
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+    const useCase = new TrusteeNotesUseCase(context);
+    const error = new Error('Database error');
+    vi.spyOn(MockMongoRepository.prototype, 'create').mockRejectedValue(error);
+
+    await expect(useCase.createTrusteeNote(user, noteInput)).rejects.toThrow('Database error');
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'trustee-note-created',
+      expect.objectContaining({
+        success: false,
+        properties: expect.objectContaining({ roles: '' }),
+      }),
+    );
+  });
+
   test('should archive a trustee note when archiveTrusteeNote is called', async () => {
     const userRef = MockData.getCamsUserReference();
     const user = {
@@ -197,6 +321,41 @@ describe('Test trustee-notes use case', () => {
         archivedOn: expect.anything(),
       }),
     );
+  });
+
+  test('should throw NotFoundError when note does not exist during archive', async () => {
+    const userRef = MockData.getCamsUserReference();
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
+    const useCase = new TrusteeNotesUseCase(context);
+
+    const archiveRequest = MockData.getTrusteeNoteDeletionRequest({
+      id: randomUUID(),
+      sessionUser: userRef,
+    });
+
+    await expect(useCase.archiveTrusteeNote(archiveRequest)).rejects.toThrow(
+      'Trustee note not found.',
+    );
+  });
+
+  test('should throw NotFoundError when note does not exist during edit', async () => {
+    const userRef = MockData.getCamsUserReference();
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
+    const useCase = new TrusteeNotesUseCase(context);
+
+    const existingNote = MockData.getTrusteeNote({ createdBy: userRef });
+    const editRequest = MockData.getTrusteeNoteEditRequest({
+      note: existingNote,
+      sessionUser: userRef,
+    });
+
+    await expect(useCase.editTrusteeNote(editRequest)).rejects.toThrow('Trustee note not found.');
   });
 
   test('should throw error when user is not the creator when attempting to archive', async () => {

@@ -374,6 +374,18 @@ export type TrusteeAppointmentsSyncState = RuntimeState & {
   lastSyncDate: string;
 };
 
+export type DiagnosticsSnapshot = {
+  id?: string;
+  documentType: 'DIAGNOSTICS_SNAPSHOT';
+  snapshotDate: string;
+  userCountByRole: Record<string, number>;
+  oversightUserCount: number;
+};
+
+export interface DiagnosticsSnapshotRepository {
+  create(snapshot: DiagnosticsSnapshot): Promise<void>;
+}
+
 export interface DocumentCollectionAdapter<T> {
   find: (query: ConditionOrConjunction<T>, sort?: SortSpec) => Promise<T[]>;
   paginate: (pipelineOrQuery: Pipeline | Query) => Promise<CamsPaginationResponse<T>>;

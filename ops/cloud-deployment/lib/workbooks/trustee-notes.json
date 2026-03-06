@@ -1,0 +1,231 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Trustee Notes Analytics\nMeasure adoption and engagement of the trustee notes feature: adoption rate, active usage, and user engagement by oversight role.\n\n> **Note on oversight roles:** The oversight role values (OversightAttorney, OversightAuditor, OversightParalegal) are currently aliased to the same strings as their non-oversight counterparts (TrialAttorney, Auditor, Paralegal) pending USTP group creation. Until distinct group values are provisioned, the User Engagement panels will also include non-oversight users with the same role strings."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 2592000000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 2592000000
+                },
+                {
+                  "durationMs": 7776000000
+                },
+                {
+                  "durationMs": 15552000000
+                },
+                {
+                  "durationMs": 31536000000
+                }
+              ]
+            },
+            "name": "TimeRange",
+            "label": "Time Range"
+          },
+          {
+            "id": "DataflowsAppInsights",
+            "type": 1,
+            "isRequired": true,
+            "isHiddenWhenLocked": true,
+            "value": "__PLACEHOLDER_DATAFLOWS_APP_INSIGHTS_RESOURCE_ID__",
+            "name": "DataflowsAppInsights",
+            "label": "Dataflows App Insights Resource ID"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Active Usage — Notes Created Over Time"
+      },
+      "name": "active-usage-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"trustee-note-created\"\n| where tostring(customDimensions.success) == \"true\"\n| where timestamp {TimeRange}\n| summarize NotesCreated = count() by bin(timestamp, 7d)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Notes Created Per Week",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      },
+      "name": "notes-per-week"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"trustee-note-created\"\n| where tostring(customDimensions.success) == \"true\"\n| where timestamp {TimeRange}\n| summarize NotesCreated = count() by bin(timestamp, 30d)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Notes Created Per Month",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      },
+      "name": "notes-per-month"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Adoption Rate — Trustees With At Least One Note"
+      },
+      "name": "adoption-rate-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"trustee-note-created\"\n| where tostring(customDimensions.success) == \"true\"\n| summarize NoteCount = count() by TrusteeId = tostring(customDimensions.trusteeId)\n| where NoteCount >= 1\n| summarize TrusteesWithNotes = dcount(TrusteeId)",
+        "size": 3,
+        "title": "Trustees With At Least One Note (All Time)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "TrusteesWithNotes",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            }
+          },
+          "showBorder": true,
+          "size": "auto"
+        }
+      },
+      "name": "trustees-with-notes"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"trustee-note-created\"\n| where tostring(customDimensions.success) == \"true\"\n| where timestamp {TimeRange}\n| summarize NoteCount = count() by TrusteeId = tostring(customDimensions.trusteeId)\n| where NoteCount >= 1\n| summarize TrusteesWithNotes = dcount(TrusteeId)",
+        "size": 3,
+        "title": "Trustees With At Least One Note (Selected Time Range)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "TrusteesWithNotes",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            }
+          },
+          "showBorder": true,
+          "size": "auto"
+        }
+      },
+      "name": "trustees-with-notes-time-range"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## User Engagement — Oversight Users Creating Notes"
+      },
+      "name": "user-engagement-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"trustee-note-created\"\n| where tostring(customDimensions.success) == \"true\"\n| where tostring(customDimensions.roles) contains \"TrialAttorney\"\n    or tostring(customDimensions.roles) contains \"Auditor\"\n    or tostring(customDimensions.roles) contains \"Paralegal\"\n    or tostring(customDimensions.roles) contains \"TrusteeAdmin\"\n| summarize UsersWithNotes = dcount(tostring(customDimensions.userId))",
+        "size": 3,
+        "title": "Distinct Oversight-Role Users Who Have Created At Least One Note (All Time)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "UsersWithNotes",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "green"
+            }
+          },
+          "showBorder": true,
+          "size": "auto"
+        }
+      },
+      "name": "oversight-users-with-notes"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"diagnostics-snapshot\"\n| summarize arg_max(timestamp, *)\n| project OversightUserCount = toint(customDimensions.oversightUserCount)",
+        "size": 3,
+        "title": "Total Users With Oversight Responsibilities (Latest Daily Snapshot)",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "crossComponentResources": ["{DataflowsAppInsights}"],
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "OversightUserCount",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            }
+          },
+          "showBorder": true,
+          "size": "auto"
+        }
+      },
+      "name": "total-oversight-users"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == \"trustee-note-created\"\n| where tostring(customDimensions.success) == \"true\"\n| where timestamp {TimeRange}\n| where tostring(customDimensions.roles) contains \"TrialAttorney\"\n    or tostring(customDimensions.roles) contains \"Auditor\"\n    or tostring(customDimensions.roles) contains \"Paralegal\"\n    or tostring(customDimensions.roles) contains \"TrusteeAdmin\"\n| summarize NotesCreated = count() by bin(timestamp, 7d)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Notes Created Per Week by Oversight-Role Users",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      },
+      "name": "oversight-notes-per-week"
+    }
+  ],
+  "fallbackResourceIds": [
+    "__PLACEHOLDER_API_APP_INSIGHTS_RESOURCE_ID__"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

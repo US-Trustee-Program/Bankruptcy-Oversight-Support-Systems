@@ -595,3 +595,4 @@ module dataflowWorkbooks 'lib/workbooks/dataflow-workbooks.bicep' = if (createAp
 
 output dataflowsStorageConnectionString string = dataflowsFunctionStorageAccount.outputs.connectionString
 output dataflowsSlotStorageConnectionString string = dataflowsFunctionSlotStorageAccount.outputs.connectionString
+output dataflowsAppInsightsId string = createApplicationInsights ? dataflowsFunctionAppInsights.outputs.id : ''
