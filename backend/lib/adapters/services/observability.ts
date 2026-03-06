@@ -39,34 +39,15 @@ export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): Telemetry
       return null;
     }
 
-    // If defaultClient already exists, return it
     if (appInsights.defaultClient) {
       return appInsights.defaultClient as TelemetryClient;
     }
 
-    // Client doesn't exist - try to initialize it ourselves
-    const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
-    if (!connectionString) {
-      logger?.error(
-        MODULE_NAME,
-        'CRITICAL: APPLICATIONINSIGHTS_CONNECTION_STRING not set - telemetry unavailable',
-      );
-      return null;
-    }
-
-    logger?.info(MODULE_NAME, 'Initializing Application Insights SDK explicitly');
-    appInsights.setup(connectionString).start();
-
-    if (!appInsights.defaultClient) {
-      logger?.error(
-        MODULE_NAME,
-        'CRITICAL: App Insights SDK initialized but defaultClient still null',
-      );
-      return null;
-    }
-
-    logger?.info(MODULE_NAME, 'Application Insights SDK initialized successfully');
-    return appInsights.defaultClient as TelemetryClient;
+    logger?.warn(
+      MODULE_NAME,
+      'SDK not auto-initialized by Azure Functions - check APPLICATIONINSIGHTS_CONNECTION_STRING',
+    );
+    return null;
   } catch (error) {
     logger?.error(MODULE_NAME, 'CRITICAL: Failed to initialize Application Insights', error);
     return null;
