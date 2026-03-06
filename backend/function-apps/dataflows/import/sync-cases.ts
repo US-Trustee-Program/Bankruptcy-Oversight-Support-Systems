@@ -10,6 +10,7 @@ import {
 } from '../dataflows-common';
 import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
+import DiagnosticsSnapshotUseCase from '../../../lib/use-cases/dataflows/diagnostics-snapshot';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
@@ -59,6 +60,8 @@ async function handleStart(startMessage: StartMessage, invocationContext: Invoca
       invocationContext,
       observability,
     });
+    await DiagnosticsSnapshotUseCase.captureDiagnosticsSnapshot(context);
+
     const { events, lastCasesSyncDate, lastTransactionsSyncDate } = await SyncCases.getCaseIds(
       context,
       startMessage['lastSyncDate'],

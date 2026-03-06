@@ -12,6 +12,8 @@ import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { CamsRole } from '@common/cams/roles';
 import { ResourceActions } from '@common/cams/actions';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { CamsUser } from '@common/cams/users';
+import { ObservabilityGateway, ObservabilityTrace } from '../gateways.types';
 
 describe('Test trustee-notes use case', () => {
   afterEach(() => {
@@ -105,6 +107,88 @@ describe('Test trustee-notes use case', () => {
     await useCase.createTrusteeNote(user, noteInput);
 
     expect(createSpy).toHaveBeenCalledWith(expectedNote);
+  });
+
+  test('should emit a PII-free telemetry event when createTrusteeNote succeeds', async () => {
+    const trusteeId = randomUUID();
+    const user: CamsUser = {
+      ...MockData.getCamsUserReference(),
+      roles: [CamsRole.TrusteeAdmin],
+    };
+    const noteInput: TrusteeNoteInput = {
+      trusteeId,
+      title: 'Some Title',
+      content: 'Some content.',
+    };
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+    const useCase = new TrusteeNotesUseCase(context);
+    vi.spyOn(MockMongoRepository.prototype, 'create').mockImplementation(async () => {});
+
+    await useCase.createTrusteeNote(user, noteInput);
+
+    expect(mockObservability.startTrace).toHaveBeenCalledWith(context.invocationId);
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'trustee-note-created',
+      expect.objectContaining({
+        success: true,
+        properties: {
+          userId: user.id,
+          roles: CamsRole.TrusteeAdmin,
+          trusteeId,
+        },
+      }),
+    );
+  });
+
+  test('should emit a telemetry event with success=false when createTrusteeNote fails', async () => {
+    const trusteeId = randomUUID();
+    const user: CamsUser = {
+      ...MockData.getCamsUserReference(),
+      roles: [CamsRole.TrusteeAdmin],
+    };
+    const noteInput: TrusteeNoteInput = {
+      trusteeId,
+      title: 'Some Title',
+      content: 'Some content.',
+    };
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+    const useCase = new TrusteeNotesUseCase(context);
+    const error = new Error('Database error');
+    vi.spyOn(MockMongoRepository.prototype, 'create').mockRejectedValue(error);
+
+    await expect(useCase.createTrusteeNote(user, noteInput)).rejects.toThrow('Database error');
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'trustee-note-created',
+      expect.objectContaining({
+        success: false,
+        error: String(error),
+      }),
+    );
   });
 
   test('should archive a trustee note when archiveTrusteeNote is called', async () => {
