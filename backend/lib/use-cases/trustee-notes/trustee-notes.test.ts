@@ -113,7 +113,7 @@ describe('Test trustee-notes use case', () => {
     const trusteeId = randomUUID();
     const user: CamsUser = {
       ...MockData.getCamsUserReference(),
-      roles: [CamsRole.TrusteeAdmin],
+      roles: [CamsRole.TrusteeAdmin, CamsRole.CaseAssignmentManager],
     };
     const noteInput: TrusteeNoteInput = {
       trusteeId,
@@ -145,7 +145,7 @@ describe('Test trustee-notes use case', () => {
         success: true,
         properties: {
           userId: user.id,
-          roles: CamsRole.TrusteeAdmin,
+          roles: 'TrusteeAdmin,CaseAssignmentManager',
           trusteeId,
         },
       }),
@@ -156,7 +156,7 @@ describe('Test trustee-notes use case', () => {
     const trusteeId = randomUUID();
     const user: CamsUser = {
       ...MockData.getCamsUserReference(),
-      roles: [CamsRole.TrusteeAdmin],
+      roles: [CamsRole.TrusteeAdmin, CamsRole.CaseAssignmentManager],
     };
     const noteInput: TrusteeNoteInput = {
       trusteeId,
@@ -186,6 +186,9 @@ describe('Test trustee-notes use case', () => {
       'trustee-note-created',
       expect.objectContaining({
         success: false,
+        properties: expect.objectContaining({
+          roles: 'TrusteeAdmin,CaseAssignmentManager',
+        }),
         error: String(error),
       }),
     );
