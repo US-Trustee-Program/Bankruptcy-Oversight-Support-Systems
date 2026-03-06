@@ -436,6 +436,10 @@ var baseApplicationSettings = concat(
       name: 'CAMS_ENABLED_DATAFLOWS'
       value: enabledDataflows
     }
+    {
+      name: 'APPLICATIONINSIGHTS_ENABLE_CONSOLE_AUTO_COLLECTION'
+      value: 'false'
+    }
   ],
   isUstpDeployment
     ? [
