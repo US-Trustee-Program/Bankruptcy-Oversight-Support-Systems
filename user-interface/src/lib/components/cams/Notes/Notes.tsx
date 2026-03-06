@@ -332,7 +332,6 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
             {!hasNotes && (
               <div data-testid="empty-notes" className="empty-notes">
                 <Alert
-                  className=""
                   message={emptyMessage}
                   type={UswdsAlertStyle.Info}
                   role={'status'}
