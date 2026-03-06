@@ -79,8 +79,9 @@ import {
   ServerConfigError,
   UNSUPPORTED_AUTHENTICATION_PROVIDER,
 } from './common-errors/server-config-error';
-import { ApiToDataflowsGateway } from './use-cases/gateways.types';
+import { ApiToDataflowsGateway, DiagnosticsSnapshotRepository } from './use-cases/gateways.types';
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
+import { DiagnosticsSnapshotMongoRepository } from './adapters/gateways/mongo/diagnostics-snapshot.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -144,6 +145,17 @@ const getTrusteeNotesRepository = (context: ApplicationContext): TrusteeNotesRep
     return new MockMongoRepository();
   }
   const repo = TrusteeNotesMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+const getDiagnosticsSnapshotRepository = (
+  context: ApplicationContext,
+): DiagnosticsSnapshotRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = DiagnosticsSnapshotMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -466,6 +478,7 @@ const factory = {
   getTrusteeAppointmentsRepository,
   getTrusteeAssistantsRepository,
   getTrusteeNotesRepository,
+  getDiagnosticsSnapshotRepository,
   getListsGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,

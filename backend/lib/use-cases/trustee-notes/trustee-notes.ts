@@ -27,6 +27,7 @@ export class TrusteeNotesUseCase {
   }
 
   public async createTrusteeNote(user: CamsUser, noteInput: TrusteeNoteInput): Promise<void> {
+    const trace = this.context.observability.startTrace(this.context.invocationId);
     const userRef = getCamsUserReference(user);
     const today = new Date().toISOString();
     const data: TrusteeNote = {
@@ -38,7 +39,30 @@ export class TrusteeNotesUseCase {
       createdOn: today,
     };
 
-    await this.trusteeNotesRepository.create(data);
+    try {
+      await this.trusteeNotesRepository.create(data);
+      this.context.observability.completeTrace(trace, 'trustee-note-created', {
+        success: true,
+        properties: {
+          userId: user.id,
+          roles: user.roles?.join(',') ?? '',
+          trusteeId: noteInput.trusteeId,
+        },
+        measurements: {},
+      });
+    } catch (originalError) {
+      this.context.observability.completeTrace(trace, 'trustee-note-created', {
+        success: false,
+        properties: {
+          userId: user.id,
+          roles: user.roles?.join(',') ?? '',
+          trusteeId: noteInput.trusteeId,
+        },
+        measurements: {},
+        error: String(originalError),
+      });
+      throw originalError;
+    }
   }
 
   public async getTrusteeNotes(trusteeId: string): Promise<ResourceActions<TrusteeNote>[]> {
