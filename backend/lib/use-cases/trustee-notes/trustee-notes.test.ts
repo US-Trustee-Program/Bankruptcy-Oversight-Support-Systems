@@ -283,6 +283,41 @@ describe('Test trustee-notes use case', () => {
     );
   });
 
+  test('should throw NotFoundError when note does not exist during archive', async () => {
+    const userRef = MockData.getCamsUserReference();
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
+    const useCase = new TrusteeNotesUseCase(context);
+
+    const archiveRequest = MockData.getTrusteeNoteDeletionRequest({
+      id: randomUUID(),
+      sessionUser: userRef,
+    });
+
+    await expect(useCase.archiveTrusteeNote(archiveRequest)).rejects.toThrow(
+      'Trustee note not found.',
+    );
+  });
+
+  test('should throw NotFoundError when note does not exist during edit', async () => {
+    const userRef = MockData.getCamsUserReference();
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
+    const useCase = new TrusteeNotesUseCase(context);
+
+    const existingNote = MockData.getTrusteeNote({ createdBy: userRef });
+    const editRequest = MockData.getTrusteeNoteEditRequest({
+      note: existingNote,
+      sessionUser: userRef,
+    });
+
+    await expect(useCase.editTrusteeNote(editRequest)).rejects.toThrow('Trustee note not found.');
+  });
+
   test('should throw error when user is not the creator when attempting to archive', async () => {
     const userRef = MockData.getCamsUserReference();
     const wrongUserRef = MockData.getCamsUserReference();
