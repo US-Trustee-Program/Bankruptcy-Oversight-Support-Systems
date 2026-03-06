@@ -24,9 +24,7 @@ import { normalizeFormData } from './trusteeForms.utils';
 import { scrollToFirstError } from '@/lib/utils/form-helpers';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
-import TrusteeAssistantRemovalModal, {
-  TrusteeAssistantRemovalModalRef,
-} from '../modals/TrusteeAssistantRemovalModal';
+import RemovalModal, { RemovalModalRef } from '@/lib/components/uswds/modal/RemovalModal';
 import { Address, PhoneNumber } from '@common/cams/contact';
 import { Trustee } from '@common/cams/trustees';
 
@@ -122,7 +120,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   const partialAddressAlertRef = useRef<AlertRefType>(null);
 
   const deleteModalId = 'delete-assistant-modal';
-  const deleteModalRef = useRef<TrusteeAssistantRemovalModalRef>(null);
+  const deleteModalRef = useRef<RemovalModalRef>(null);
   const openDeleteModalButtonRef = useRef<OpenModalButtonRef>(null);
 
   const handleCancel = useCallback(() => {
@@ -474,10 +472,15 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
               modalRef={deleteModalRef}
               ref={openDeleteModalButtonRef}
               openProps={{
-                trusteeId,
-                assistantId,
-                buttonId: 'delete-assistant-button',
-                callback: handleDeleteSuccess,
+                onDelete: async () => {
+                  try {
+                    await Api2.deleteTrusteeAssistant(trusteeId, assistantId);
+                    handleDeleteSuccess();
+                  } catch {
+                    globalAlert?.error('There was a problem removing the trustee assistant.');
+                    throw new Error('Delete failed');
+                  }
+                },
               }}
               ariaLabel="Delete this assistant"
             >
@@ -495,7 +498,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
         </div>
       </form>
       {!isCreateMode && assistantId && (
-        <TrusteeAssistantRemovalModal ref={deleteModalRef} modalId={deleteModalId} />
+        <RemovalModal ref={deleteModalRef} modalId={deleteModalId} objectName="assistant" />
       )}
     </div>
   );
