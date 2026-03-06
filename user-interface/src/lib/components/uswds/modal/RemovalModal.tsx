@@ -1,21 +1,16 @@
 import Modal from '@/lib/components/uswds/modal/Modal';
-import {
-  ModalRefType,
-  OpenModalButtonRef,
-  SubmitCancelButtonGroupRef,
-} from '@/lib/components/uswds/modal/modal-refs';
+import { ModalRefType, OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelButtonGroup';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import React, { forwardRef, RefObject, useImperativeHandle, useRef, useState } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
 export type RemovalModalShowOptions = {
-  openModalButtonRef: React.Ref<OpenModalButtonRef>;
+  openModalButtonRef: React.RefObject<OpenModalButtonRef | null>;
   onDelete: () => Promise<void>;
 };
 
 export interface RemovalModalRef extends ModalRefType {
   show: (showProps: RemovalModalShowOptions) => void;
-  buttons?: RefObject<SubmitCancelButtonGroupRef | null>;
 }
 
 interface RemovalModalProps {
