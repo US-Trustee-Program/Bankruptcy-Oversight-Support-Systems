@@ -37,11 +37,8 @@ export class TrusteeNotesMetricsUseCase {
 
     const uniqueNoteAuthors = new Set(notes.map((n) => n.createdBy.id)).size;
 
-    repo.release();
-
     const trusteesRepo = factory.getTrusteesRepository(context);
     const trustees = await trusteesRepo.listTrustees();
-    trusteesRepo.release();
     const totalTrustees = trustees.length;
 
     const storage = factory.getStorageGateway(context);
@@ -56,7 +53,6 @@ export class TrusteeNotesMetricsUseCase {
 
     const userGroupsRepo = factory.getUserGroupsRepository(context);
     const groups = await userGroupsRepo.getUserGroupsByNames(context, permissionGroupNames);
-    userGroupsRepo.release();
 
     if (groups.length < permissionGroupNames.length) {
       context.logger.warn(MODULE_NAME, 'Some expected permission groups not found', {

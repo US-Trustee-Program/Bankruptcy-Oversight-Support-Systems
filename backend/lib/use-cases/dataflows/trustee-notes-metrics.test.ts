@@ -49,11 +49,10 @@ describe('TrusteeNotesMetricsUseCase', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
 
-    mockNotesRepo = { getNotesSince: vi.fn().mockResolvedValue([]), release: vi.fn() };
-    mockTrusteesRepo = { listTrustees: vi.fn().mockResolvedValue([]), release: vi.fn() };
+    mockNotesRepo = { getNotesSince: vi.fn().mockResolvedValue([]) };
+    mockTrusteesRepo = { listTrustees: vi.fn().mockResolvedValue([]) };
     mockUserGroupsRepo = {
       getUserGroupsByNames: vi.fn().mockResolvedValue(ALL_PERMISSION_GROUPS),
-      release: vi.fn(),
     };
     mockStorage = { getRoleMapping: vi.fn().mockReturnValue(makeRoleMapping()) };
 
@@ -105,7 +104,6 @@ describe('TrusteeNotesMetricsUseCase', () => {
         { trusteeId: trusteeId2, noteCount: 1 },
       ]);
       expect(mockNotesRepo.getNotesSince).toHaveBeenCalledTimes(1);
-      expect(mockNotesRepo.release).toHaveBeenCalled();
     });
 
     test('should return zero note metrics when no notes exist in last 24 hours', async () => {
