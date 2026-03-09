@@ -39,15 +39,15 @@
       }
     }
   }
-  ul {
-    padding: 0;
-  }
-  li {
-    list-style-type: none;
-    margin: 0;
-    padding: 0;
-  }
   .record-detail-container {
+    ul {
+      padding: 0;
+    }
+    li {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+    }
     .record-detail-card-list:first-child {
       margin-right: 5rem;
     }
