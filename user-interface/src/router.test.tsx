@@ -33,7 +33,7 @@ describe('App Router Tests', () => {
       hash: '',
       state,
       key: 'default',
-    });
+    } as ReturnType<typeof ReactRouterDOM.useLocation>);
   };
 
   beforeAll(async () => {
