@@ -141,6 +141,7 @@ export interface CaseNotesRepository<T = CaseNote>
 
 export interface TrusteeNotesRepository<T = TrusteeNote>
   extends Creates<T, T>, Updates<Partial<T>>, Reads<T> {
+  getNotesSince(isoDate: string): Promise<TrusteeNote[]>;
   getNotesByTrusteeId(trusteeId: string): Promise<TrusteeNote[]>;
   archiveTrusteeNote(archiveNote: Partial<TrusteeNote>): Promise<UpdateResult>;
 }
