@@ -2,9 +2,14 @@ import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import factory from '../../factory';
 import { CamsRole } from '@common/cams/roles';
-import { CamsUserReference } from '@common/cams/users';
-import { DiagnosticsSnapshot, DiagnosticsSnapshotRepository } from '../gateways.types';
-import { UserGroupGateway } from '../../adapters/types/authorization';
+import { CamsUserReference, UserGroup } from '@common/cams/users';
+import {
+  DiagnosticsSnapshot,
+  DiagnosticsSnapshotRepository,
+  ObservabilityGateway,
+  ObservabilityTrace,
+  UserGroupsRepository,
+} from '../gateways.types';
 import { StorageGateway } from '../../adapters/types/storage';
 import DiagnosticsSnapshotUseCase from './diagnostics-snapshot';
 
@@ -17,18 +22,22 @@ describe('DiagnosticsSnapshotUseCase', () => {
     return { id, name: `User ${id}` };
   }
 
-  function makeMockUserGroupGateway(
+  function makeMockUserGroupsRepository(
     groupUsers: Record<string, CamsUserReference[]>,
-  ): UserGroupGateway {
+  ): UserGroupsRepository {
+    const groups: UserGroup[] = Object.entries(groupUsers).map(([name, users]) => ({
+      id: name,
+      groupName: name,
+      users,
+    }));
     return {
-      getUserGroups: vi
+      getUserGroupsByNames: vi
         .fn()
-        .mockResolvedValue(Object.keys(groupUsers).map((name) => ({ id: name, name }))),
-      getUserGroupUsers: vi
-        .fn()
-        .mockImplementation((_ctx, group) => Promise.resolve(groupUsers[group.name] ?? [])),
-      getUserGroupWithUsers: vi.fn(),
-      getUserById: vi.fn(),
+        .mockImplementation((_ctx, names: string[]) =>
+          Promise.resolve(groups.filter((g) => names.includes(g.groupName))),
+        ),
+      upsertUserGroupsBatch: vi.fn(),
+      release: vi.fn(),
     };
   }
 
@@ -51,8 +60,8 @@ describe('DiagnosticsSnapshotUseCase', () => {
     };
 
     const context = await createMockApplicationContext();
-    vi.spyOn(factory, 'getUserGroupGateway').mockResolvedValue(
-      makeMockUserGroupGateway(groupUsers),
+    vi.spyOn(factory, 'getUserGroupsRepository').mockReturnValue(
+      makeMockUserGroupsRepository(groupUsers),
     );
     vi.spyOn(factory, 'getStorageGateway').mockReturnValue(
       makeMockStorageGateway([
@@ -93,8 +102,8 @@ describe('DiagnosticsSnapshotUseCase', () => {
     };
 
     const context = await createMockApplicationContext();
-    vi.spyOn(factory, 'getUserGroupGateway').mockResolvedValue(
-      makeMockUserGroupGateway(groupUsers),
+    vi.spyOn(factory, 'getUserGroupsRepository').mockReturnValue(
+      makeMockUserGroupsRepository(groupUsers),
     );
     vi.spyOn(factory, 'getStorageGateway').mockReturnValue(
       makeMockStorageGateway([
@@ -120,7 +129,7 @@ describe('DiagnosticsSnapshotUseCase', () => {
 
   test('should include snapshotDate as a date-only string (YYYY-MM-DD)', async () => {
     const context = await createMockApplicationContext();
-    vi.spyOn(factory, 'getUserGroupGateway').mockResolvedValue(makeMockUserGroupGateway({}));
+    vi.spyOn(factory, 'getUserGroupsRepository').mockReturnValue(makeMockUserGroupsRepository({}));
     vi.spyOn(factory, 'getStorageGateway').mockReturnValue(makeMockStorageGateway([]));
 
     let capturedSnapshot: DiagnosticsSnapshot | undefined;
@@ -145,8 +154,8 @@ describe('DiagnosticsSnapshotUseCase', () => {
     };
 
     const context = await createMockApplicationContext();
-    vi.spyOn(factory, 'getUserGroupGateway').mockResolvedValue(
-      makeMockUserGroupGateway(groupUsers),
+    vi.spyOn(factory, 'getUserGroupsRepository').mockReturnValue(
+      makeMockUserGroupsRepository(groupUsers),
     );
     vi.spyOn(factory, 'getStorageGateway').mockReturnValue(
       makeMockStorageGateway([
@@ -166,5 +175,87 @@ describe('DiagnosticsSnapshotUseCase', () => {
     await DiagnosticsSnapshotUseCase.captureDiagnosticsSnapshot(context);
 
     expect(capturedSnapshot!.oversightUserCount).toBe(1);
+  });
+
+  test('should emit a diagnostics-snapshot telemetry event with oversightUserCount on success', async () => {
+    const user1 = makeUser('u1');
+    const user2 = makeUser('u2');
+
+    const groupUsers = {
+      'USTP CAMS Trial Attorney': [user1, user2],
+    };
+
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+
+    vi.spyOn(factory, 'getUserGroupsRepository').mockReturnValue(
+      makeMockUserGroupsRepository(groupUsers),
+    );
+    vi.spyOn(factory, 'getStorageGateway').mockReturnValue(
+      makeMockStorageGateway([['USTP CAMS Trial Attorney', CamsRole.OversightAttorney]]),
+    );
+    vi.spyOn(factory, 'getDiagnosticsSnapshotRepository').mockReturnValue({
+      create: vi.fn(),
+    });
+
+    await DiagnosticsSnapshotUseCase.captureDiagnosticsSnapshot(context);
+
+    expect(mockObservability.startTrace).toHaveBeenCalledWith(context.invocationId);
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'diagnostics-snapshot',
+      expect.objectContaining({
+        success: true,
+        properties: expect.objectContaining({
+          oversightUserCount: '2',
+        }),
+      }),
+    );
+  });
+
+  test('should emit a diagnostics-snapshot telemetry event with success=false when an error occurs', async () => {
+    const mockTrace: ObservabilityTrace = {
+      invocationId: 'mock-invocation',
+      instanceId: 'local',
+      startTime: Date.now(),
+    };
+    const mockObservability: ObservabilityGateway = {
+      startTrace: vi.fn().mockReturnValue(mockTrace),
+      completeTrace: vi.fn(),
+    };
+
+    const context = await createMockApplicationContext();
+    context.observability = mockObservability;
+
+    vi.spyOn(factory, 'getUserGroupsRepository').mockReturnValue({
+      getUserGroupsByNames: vi.fn().mockRejectedValue(new Error('DB unavailable')),
+      upsertUserGroupsBatch: vi.fn(),
+      release: vi.fn(),
+    });
+    vi.spyOn(factory, 'getStorageGateway').mockReturnValue(
+      makeMockStorageGateway([['USTP CAMS Trial Attorney', CamsRole.OversightAttorney]]),
+    );
+
+    await expect(DiagnosticsSnapshotUseCase.captureDiagnosticsSnapshot(context)).rejects.toThrow(
+      'DB unavailable',
+    );
+
+    expect(mockObservability.completeTrace).toHaveBeenCalledWith(
+      mockTrace,
+      'diagnostics-snapshot',
+      expect.objectContaining({
+        success: false,
+      }),
+    );
   });
 });

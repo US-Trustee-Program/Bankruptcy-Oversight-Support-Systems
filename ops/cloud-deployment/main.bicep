@@ -292,3 +292,14 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     tags: dataflowsTags
   }
 }
+
+module notesWorkbooks 'lib/workbooks/notes-workbooks.bicep' = if (deployAppInsights && !empty(analyticsWorkspaceId)) {
+  name: '${stackName}-notes-workbooks-module'
+  scope: resourceGroup(appResourceGroup)
+  params: {
+    location: location
+    apiAppInsightsResourceId: ustpApiFunction.outputs.apiFunctionAppInsightsId
+    dataflowsAppInsightsResourceId: ustpDataflowsFunction.outputs.dataflowsAppInsightsId
+    tags: dataflowsTags
+  }
+}
