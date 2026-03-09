@@ -26,6 +26,7 @@ async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext
         details: {
           notesLast24Hrs: String(metrics.notesLast24Hrs),
           trusteesWithNotes: String(metrics.trusteesWithNotes),
+          notesPerTrustee: JSON.stringify(metrics.notesPerTrustee),
           uniqueNoteAuthors: String(metrics.uniqueNoteAuthors),
           totalTrustees: String(metrics.totalTrustees),
           trusteesWithNotesPercent: String(metrics.trusteesWithNotesPercent),
