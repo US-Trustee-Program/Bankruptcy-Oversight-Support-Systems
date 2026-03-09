@@ -27,6 +27,11 @@ async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext
           notesLast24Hrs: String(metrics.notesLast24Hrs),
           trusteesWithNotes: String(metrics.trusteesWithNotes),
           uniqueNoteAuthors: String(metrics.uniqueNoteAuthors),
+          totalTrustees: String(metrics.totalTrustees),
+          trusteesWithNotesPercent: String(metrics.trusteesWithNotesPercent),
+          usersWithNotePermission: String(metrics.usersWithNotePermission),
+          usersWhoCreatedNotes: String(metrics.usersWhoCreatedNotes),
+          userEngagementPercent: String(metrics.userEngagementPercent),
         },
       },
     );
