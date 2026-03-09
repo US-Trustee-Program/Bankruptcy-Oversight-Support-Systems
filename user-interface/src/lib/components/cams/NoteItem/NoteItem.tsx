@@ -91,7 +91,7 @@ export function NoteItem({
           )}
           {canRemove && (
             <OpenModalButton
-              className="remove-button text-secondary-dark"
+              className="remove-button text-secondary"
               id={`note-item-remove-button`}
               buttonIndex={`${index}`}
               uswdsStyle={UswdsButtonStyle.Unstyled}
