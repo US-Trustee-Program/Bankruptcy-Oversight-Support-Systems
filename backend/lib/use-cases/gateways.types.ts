@@ -437,15 +437,6 @@ export interface ObservabilityGateway {
   ): void;
 }
 
-export type LogicalQueueNames = 'CASE_ASSIGNMENT_EVENT' | 'CASE_CLOSED_EVENT';
-
-export interface QueueGateway {
-  using<T = unknown>(
-    context: ApplicationContext,
-    queueName: LogicalQueueNames,
-  ): { enqueue: (...messages: T[]) => void };
-}
-
 export interface UserGroupsRepository extends Releasable {
   upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void>;
   getUserGroupsByNames(context: ApplicationContext, groupNames: string[]): Promise<UserGroup[]>;
