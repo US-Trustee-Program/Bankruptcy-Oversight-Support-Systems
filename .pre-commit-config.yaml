@@ -57,7 +57,8 @@ repos:
         additional_dependencies: ['PyYAML']
       - id: knip
         name: Knip unused code check
-        entry: npm run knip
-        language: system
+        entry: knip
+        language: node
+        additional_dependencies: ['knip@5.85.0']
         pass_filenames: false
         files: '\.(ts|tsx|js|jsx|json)$'
