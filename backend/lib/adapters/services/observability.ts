@@ -20,7 +20,7 @@ export function scrubErrorForTelemetry(error: string): string {
   return scrubbed;
 }
 
-export function getAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
+function getAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
   const MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
 
   try {
