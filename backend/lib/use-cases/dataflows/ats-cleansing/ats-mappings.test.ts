@@ -11,7 +11,7 @@ import {
   isValidAppointmentForChapter,
   getAppointmentKey,
 } from './ats-mappings';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../types/ats.types';
+import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../adapters/types/ats.types';
 import { AppointmentStatus } from '@common/cams/trustees';
 
 describe('ATS Mappings', () => {
