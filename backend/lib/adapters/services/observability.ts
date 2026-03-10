@@ -10,7 +10,7 @@ const mongoConnectionStringPattern = /(?:mongodb(?:\+srv)?:\/\/)\S+/gi;
 const mssqlConnectionStringPattern =
   /(?:Server|Data Source)=[^'")\]]*?(?:Password|Pwd)=[^\s;'")\]]+[;]?/gi;
 
-export type AppInsightsClientFactory = (logger?: LoggerImpl) => TelemetryClient | null;
+type AppInsightsClientFactory = (logger?: LoggerImpl) => TelemetryClient | null;
 
 export function scrubErrorForTelemetry(error: string): string {
   let scrubbed = scrubMessage(error);

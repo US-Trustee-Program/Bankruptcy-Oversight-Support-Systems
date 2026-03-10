@@ -1,4 +1,4 @@
-import { ComboOption } from '../components/Combobox';
+import { ComboOption } from '../components/combobox/ComboBox';
 
 export interface InputRef {
   setValue: (value: string) => void;
