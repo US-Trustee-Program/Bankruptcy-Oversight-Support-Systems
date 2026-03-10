@@ -20,10 +20,20 @@ export type TrusteeNoteMetrics = {
 
 export class TrusteeNotesMetricsUseCase {
   public async gatherMetrics(context: ApplicationContext): Promise<TrusteeNoteMetrics> {
-    const repo = factory.getTrusteeNotesRepository(context);
     const cutoffIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    const notes = await repo.getNotesSince(cutoffIso);
+    const storage = factory.getStorageGateway(context);
+    const roleMapping = storage.getRoleMapping();
+    const targetRoles = new Set<CamsRoleType>([...OversightRoles, CamsRole.TrusteeAdmin]);
+    const permissionGroupNames = [...roleMapping.entries()]
+      .filter(([, role]) => targetRoles.has(role))
+      .map(([groupName]) => groupName);
+
+    const [notes, trustees, groups] = await Promise.all([
+      factory.getTrusteeNotesRepository(context).getNotesSince(cutoffIso),
+      factory.getTrusteesRepository(context).listTrustees(),
+      factory.getUserGroupsRepository(context).getUserGroupsByNames(context, permissionGroupNames),
+    ]);
 
     const trusteesWithNotes = new Set(notes.map((n) => n.trusteeId)).size;
 
@@ -37,22 +47,7 @@ export class TrusteeNotesMetricsUseCase {
 
     const uniqueNoteAuthors = new Set(notes.map((n) => n.createdBy.id)).size;
 
-    const trusteesRepo = factory.getTrusteesRepository(context);
-    const trustees = await trusteesRepo.listTrustees();
     const totalTrustees = trustees.length;
-
-    const storage = factory.getStorageGateway(context);
-    const roleMapping = storage.getRoleMapping();
-    const targetRoles = new Set<CamsRoleType>([...OversightRoles, CamsRole.TrusteeAdmin]);
-    const permissionGroupNames: string[] = [];
-    for (const [groupName, role] of roleMapping.entries()) {
-      if (targetRoles.has(role)) {
-        permissionGroupNames.push(groupName);
-      }
-    }
-
-    const userGroupsRepo = factory.getUserGroupsRepository(context);
-    const groups = await userGroupsRepo.getUserGroupsByNames(context, permissionGroupNames);
 
     if (groups.length < permissionGroupNames.length) {
       context.logger.warn(MODULE_NAME, 'Some expected permission groups not found', {
