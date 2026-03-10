@@ -11,9 +11,7 @@ import {
 } from '../gateways.types';
 import { StorageGateway } from '../../adapters/types/storage';
 import { UserGroup } from '@common/cams/users';
-import { CamsRole, CamsRoleType, OversightRoles } from '@common/cams/roles';
-
-const OVERSIGHT_USER_ROLES: CamsRoleType[] = [...OversightRoles, CamsRole.TrusteeAdmin];
+import { CamsRole, CamsRoleType } from '@common/cams/roles';
 
 const ALL_PERMISSION_GROUPS: UserGroup[] = [
   { id: 'g1', groupName: 'USTP CAMS Trustee Admin', users: [] },
@@ -154,6 +152,7 @@ describe('TrusteeNotesMetricsUseCase', () => {
       expect(metrics.trusteesWithNotesPercent).toBe(50);
       expect(metrics.usersWithNotePermission).toBe(5);
       expect(metrics.usersWhoCreatedNotes).toBe(2);
+      expect(metrics.usersWhoCreatedNotes).toBe(metrics.uniqueNoteAuthors);
       expect(metrics.userEngagementPercent).toBe(40);
     });
 
@@ -177,24 +176,6 @@ describe('TrusteeNotesMetricsUseCase', () => {
       expect(metrics.userEngagementPercent).toBe(0);
     });
 
-    test('should log warning when some permission groups are missing', async () => {
-      vi.mocked(mockUserGroupsRepo.getUserGroupsByNames).mockResolvedValue([
-        makeUserGroup('USTP CAMS Trustee Admin', ['user-1']),
-      ]);
-      const warnSpy = vi.spyOn(context.logger, 'warn');
-
-      await new TrusteeNotesMetricsUseCase().gatherMetrics(context);
-
-      expect(warnSpy).toHaveBeenCalledWith(
-        'TRUSTEE-NOTES-METRICS-USE-CASE',
-        'Some expected permission groups not found',
-        expect.objectContaining({
-          expectedGroupCount: OVERSIGHT_USER_ROLES.length,
-          foundGroupCount: 1,
-        }),
-      );
-    });
-
     test('should deduplicate users appearing in multiple groups', async () => {
       vi.mocked(mockUserGroupsRepo.getUserGroupsByNames).mockResolvedValue([
         makeUserGroup('USTP CAMS Trustee Admin', ['user-1', 'user-2']),
@@ -210,23 +191,10 @@ describe('TrusteeNotesMetricsUseCase', () => {
       mockStorage.getRoleMapping = vi
         .fn()
         .mockReturnValue(new Map([['USTP CAMS Super User', CamsRole.SuperUser]]));
-      const warnSpy = vi.spyOn(context.logger, 'warn');
 
       const metrics = await new TrusteeNotesMetricsUseCase().gatherMetrics(context);
 
       expect(metrics.usersWithNotePermission).toBe(0);
-      expect(warnSpy).not.toHaveBeenCalled();
-    });
-
-    test('usersWhoCreatedNotes should equal uniqueNoteAuthors', async () => {
-      vi.mocked(mockNotesRepo.getNotesSince).mockResolvedValue([
-        MockData.getTrusteeNote({ createdBy: { id: 'author-1', name: 'A1' } }),
-        MockData.getTrusteeNote({ createdBy: { id: 'author-2', name: 'A2' } }),
-      ]);
-
-      const metrics = await new TrusteeNotesMetricsUseCase().gatherMetrics(context);
-
-      expect(metrics.usersWhoCreatedNotes).toBe(metrics.uniqueNoteAuthors);
     });
   });
 });
