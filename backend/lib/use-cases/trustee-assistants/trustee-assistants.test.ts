@@ -89,6 +89,21 @@ describe('TrusteeAssistantsUseCase', () => {
     });
   });
 
+  describe('checkValidation', () => {
+    test('should not throw error when validation is valid', () => {
+      expect(() => trusteeAssistantsUseCase['checkValidation']({ valid: true })).not.toThrow();
+    });
+
+    test('should throw error when validation fails with undefined reasonMap', () => {
+      expect(() =>
+        trusteeAssistantsUseCase['checkValidation']({
+          valid: false,
+          reasonMap: undefined,
+        }),
+      ).toThrow();
+    });
+  });
+
   describe('createAssistant', () => {
     const trusteeId = 'trustee-123';
     const mockTrustee = {
@@ -410,6 +425,23 @@ describe('TrusteeAssistantsUseCase', () => {
         .mockResolvedValueOnce(existingAssistant);
       vi.spyOn(MockMongoRepository.prototype, 'deleteAssistant').mockRejectedValue(
         new Error('Database error'),
+      );
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAssistantsUseCase.deleteAssistant(context, trusteeId, assistantId),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+    });
+
+    test('should throw error when history creation fails during delete', async () => {
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+      vi.spyOn(MockMongoRepository.prototype, 'read')
+        .mockResolvedValueOnce(mockTrustee)
+        .mockResolvedValueOnce(existingAssistant);
+      vi.spyOn(MockMongoRepository.prototype, 'deleteAssistant').mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockRejectedValue(
+        new Error('History creation failed'),
       );
 
       const actualError = await getTheThrownError(() =>

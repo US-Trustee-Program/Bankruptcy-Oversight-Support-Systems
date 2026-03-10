@@ -219,5 +219,150 @@ describe('ATS Gateway', () => {
       expect(result).toBe(false);
       expect(loggerErrorSpy).toHaveBeenCalled();
     });
+
+    test('should handle getTrusteeAppointments query error', async () => {
+      mockExecuteQuery.mockRejectedValue(new Error('Query timeout'));
+
+      const loggerErrorSpy = vi.spyOn(context.logger, 'error');
+
+      await expect(gateway.getTrusteeAppointments(context, 123)).rejects.toThrow();
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'ATS-GATEWAY',
+        'Error retrieving appointments',
+        expect.objectContaining({
+          trusteeId: 123,
+        }),
+      );
+    });
+
+    test('should handle getTrusteeCount query error', async () => {
+      mockExecuteQuery.mockRejectedValue(new Error('Database unavailable'));
+
+      const loggerErrorSpy = vi.spyOn(context.logger, 'error');
+
+      await expect(gateway.getTrusteeCount(context)).rejects.toThrow();
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'ATS-GATEWAY',
+        'Error getting trustee count',
+        expect.objectContaining({
+          error: expect.any(String),
+        }),
+      );
+    });
+
+    test('should skip appointments with SKIP classification', async () => {
+      // Return an appointment that will be classified as SKIP (test data)
+      mockExecuteQuery.mockResolvedValue({
+        results: [
+          {
+            TRU_ID: 17120,
+            DISTRICT: 'test',
+            STATE: 'testt',
+            CHAPTER: '7',
+            STATUS: 'NP',
+            DATE_APPOINTED: new Date('2023-01-15'),
+            EFFECTIVE_DATE: new Date('2023-01-15'),
+          },
+        ],
+      });
+
+      const appointments = await gateway.getTrusteeAppointments(context, 17120);
+
+      // Should return empty array (skipped)
+      expect(appointments).toHaveLength(0);
+    });
+
+    test('should filter out UNCLEANSABLE appointments', async () => {
+      // Return an appointment with unmappable data
+      mockExecuteQuery.mockResolvedValue({
+        results: [
+          {
+            TRU_ID: 999,
+            DISTRICT: 'Invalid District',
+            STATE: 'Invalid State',
+            CHAPTER: '7',
+            STATUS: 'PA',
+            DATE_APPOINTED: new Date('2023-01-15'),
+            EFFECTIVE_DATE: new Date('2023-01-15'),
+          },
+        ],
+      });
+
+      const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
+
+      const appointments = await gateway.getTrusteeAppointments(context, 999);
+
+      // Should return empty array (filtered out)
+      expect(appointments).toHaveLength(0);
+      expect(loggerWarnSpy).toHaveBeenCalled();
+    });
+
+    test('should handle multi-expansion for multi-state appointments', async () => {
+      // Return an appointment that needs multi-expansion
+      // Note: Multi-expansion happens when one ATS record maps to multiple court IDs
+      // This is handled in the cleansing pipeline based on regional patterns
+      mockExecuteQuery.mockResolvedValue({
+        results: [
+          {
+            TRU_ID: 456,
+            DISTRICT: 'Middle',
+            STATE: 'Louisiana',
+            CHAPTER: '12', // Chapter 12 expands to both chapter 12 and 12CBC
+            STATUS: 'PA',
+            DATE_APPOINTED: new Date('2023-01-15'),
+            EFFECTIVE_DATE: new Date('2023-01-15'),
+          },
+        ],
+      });
+
+      const loggerDebugSpy = vi.spyOn(context.logger, 'debug');
+
+      const appointments = await gateway.getTrusteeAppointments(context, 456);
+
+      // Should create appointments (may be single or expanded based on cleansing logic)
+      expect(appointments.length).toBeGreaterThanOrEqual(1);
+      expect(appointments.every((apt) => apt.status === 'active')).toBe(true);
+
+      // Verify debug logging occurred during cleansing
+      expect(loggerDebugSpy).toHaveBeenCalled();
+    });
+
+    test('should handle overrides loading error gracefully', async () => {
+      // Mock loadTrusteeOverrides to fail
+      const loadOverridesMock = await import('./cleansing/ats-cleansing-overrides');
+      vi.spyOn(loadOverridesMock, 'loadTrusteeOverrides').mockResolvedValueOnce({
+        error: new Error('Failed to read override file'),
+      });
+
+      const loggerErrorSpy = vi.spyOn(context.logger, 'error');
+
+      // Create a fresh gateway to trigger override loading
+      const freshGateway = new AtsGatewayImpl(context);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.spyOn(freshGateway as any, 'executeQuery').mockResolvedValue({
+        results: [
+          {
+            TRU_ID: 123,
+            DISTRICT: 'Middle',
+            STATE: 'Louisiana',
+            CHAPTER: '7',
+            STATUS: 'PA',
+            DATE_APPOINTED: new Date('2023-01-15'),
+            EFFECTIVE_DATE: new Date('2023-01-15'),
+          },
+        ],
+      });
+
+      await freshGateway.getTrusteeAppointments(context, 123);
+
+      // Should log error but continue processing
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        'ATS-GATEWAY',
+        'Failed to load overrides, proceeding without overrides',
+        expect.objectContaining({
+          error: expect.any(String),
+        }),
+      );
+    });
   });
 });

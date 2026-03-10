@@ -9,6 +9,7 @@ import {
   transformTrusteeRecord,
   transformAppointmentRecord,
   getAppointmentKey,
+  applyAppointmentOverrides,
 } from './ats-mappings';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { AppointmentStatus } from '@common/cams/trustees';
@@ -40,6 +41,14 @@ describe('ATS Mappings', () => {
 
     test('should handle case insensitive input', () => {
       expect(parseChapterAndType('12cbc')).toEqual({
+        chapter: '12',
+        appointmentType: 'case-by-case',
+      });
+    });
+
+    test('should handle whitespace in chapter codes', () => {
+      expect(parseChapterAndType(' 7 ')).toEqual({ chapter: '7' });
+      expect(parseChapterAndType(' 12CBC ')).toEqual({
         chapter: '12',
         appointmentType: 'case-by-case',
       });
@@ -160,6 +169,10 @@ describe('ATS Mappings', () => {
       expect(getDivisionOfficeName('751')).toBe('Honolulu');
     });
 
+    test('should handle whitespace in division codes', () => {
+      expect(getDivisionOfficeName(' 081 ')).toBe('Manhattan');
+    });
+
     test('should return Unknown for invalid codes', () => {
       expect(getDivisionOfficeName('999999')).toBe('Unknown');
       expect(getDivisionOfficeName('')).toBe('Unknown');
@@ -171,6 +184,11 @@ describe('ATS Mappings', () => {
       expect(getCourtId('01')).toBe('0101');
       expect(getCourtId('02')).toBe('0208');
       expect(getCourtId('76')).toBe('0090');
+    });
+
+    test('should handle whitespace in district codes', () => {
+      expect(getCourtId(' 01 ')).toBe('0101');
+      expect(getCourtId(' 02 ', ' 081 ')).toBe('0208');
     });
 
     test('should resolve multi-district states using division code', () => {
@@ -193,6 +211,18 @@ describe('ATS Mappings', () => {
       // Mississippi: Northern (37x), Southern (38x)
       expect(getCourtId('25', '371')).toBe('0537');
       expect(getCourtId('25', '381')).toBe('0538');
+    });
+
+    test('should fallback to district mapping when division not found in DIVISION_TO_COURT_MAP', () => {
+      // Provide a division code that is not in DIVISION_TO_COURT_MAP
+      // but district code is valid
+      expect(getCourtId('01', '999')).toBe('0101');
+    });
+
+    test('should use multi-district logic when division prefix matches but division not in map', () => {
+      // Georgia (19) with division starting with '32' but not exact match in division map
+      // Should use prefix '32' to resolve to Northern district
+      expect(getCourtId('19', '329')).toBe('113E');
     });
 
     test('should throw error for invalid district codes', () => {
@@ -232,6 +262,16 @@ describe('ATS Mappings', () => {
     test('should format 9-digit ZIP+4 codes', () => {
       expect(formatZipCode('123456789')).toBe('12345-6789');
       expect(formatZipCode('12345-6789')).toBe('12345-6789');
+    });
+
+    test('should format ZIP+4 with separate plus extension', () => {
+      expect(formatZipCode('12345', '6789')).toBe('12345-6789');
+    });
+
+    test('should handle ZIP+4 with invalid plus extension length', () => {
+      expect(formatZipCode('12345', '67')).toBe('12345');
+      expect(formatZipCode('12345', '678')).toBe('12345');
+      expect(formatZipCode('12345', '67890')).toBe('12345');
     });
 
     test('should return original for invalid formats', () => {
@@ -372,6 +412,96 @@ describe('ATS Mappings', () => {
       const result = transformTrusteeRecord(atsTrustee, undefined);
 
       expect(result.status).toBe('active');
+    });
+
+    test('should build name as "Unknown" when all name fields are empty', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 999,
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.name).toBe('Unknown');
+    });
+
+    test('should add internal contact when A2 address fields are present', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 123,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET: '123 Main St',
+        CITY: 'New York',
+        STATE: 'NY',
+        ZIP: '10001',
+        STREET_A2: '456 Internal St',
+        CITY_A2: 'Albany',
+        STATE_A2: 'NY',
+        ZIP_A2: '12207',
+        TELEPHONE: '5551234567',
+        EMAIL_ADDRESS: 'john.doe@example.com',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.internal).toBeDefined();
+      expect(result.internal?.address.address1).toBe('456 Internal St');
+      expect(result.internal?.address.city).toBe('Albany');
+      expect(result.internal?.address.state).toBe('NY');
+      expect(result.internal?.address.zipCode).toBe('12207');
+      expect(result.internal?.phone?.number).toBe('555-123-4567');
+      expect(result.internal?.email).toBe('john.doe@example.com');
+    });
+
+    test('should add internal contact with address2 field', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 123,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET_A2: '456 Internal St',
+        STREET1_A2: 'Suite 200',
+        CITY_A2: 'Albany',
+        STATE_A2: 'NY',
+        ZIP_A2: '12207',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.internal).toBeDefined();
+      expect(result.internal?.address.address2).toBe('Suite 200');
+    });
+
+    test('should add internal contact with ZIP+4', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 123,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET_A2: '456 Internal St',
+        CITY_A2: 'Albany',
+        STATE_A2: 'NY',
+        ZIP_A2: '12207',
+        ZIP_PLUS_A2: '1234',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.internal).toBeDefined();
+      expect(result.internal?.address.zipCode).toBe('12207-1234');
+    });
+
+    test('should not add internal contact when no A2 fields are present', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 123,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STREET: '123 Main St',
+        CITY: 'New York',
+        STATE: 'NY',
+        ZIP: '10001',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.internal).toBeUndefined();
     });
   });
 
@@ -555,10 +685,227 @@ describe('ATS Mappings', () => {
       expect(result.appointmentType).toBe('case-by-case');
       expect(result.status).toBe('active');
     });
+
+    test('should use appointedDate as effectiveDate when effectiveDate is missing', () => {
+      const atsAppointment: AtsAppointmentRecord = {
+        TRU_ID: 123,
+        DISTRICT: '02',
+        DIVISION: '081',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2023-01-15'),
+        STATUS: 'PA',
+      };
+
+      const result = transformAppointmentRecord(atsAppointment);
+
+      expect(result.appointedDate).toBe('2023-01-15');
+      expect(result.effectiveDate).toBe('2023-01-15');
+    });
+
+    test('should handle whitespace in chapter and status codes', () => {
+      const atsAppointment: AtsAppointmentRecord = {
+        TRU_ID: 123,
+        DISTRICT: '02',
+        DIVISION: '081',
+        CHAPTER: ' 7 ',
+        DATE_APPOINTED: new Date('2023-01-15'),
+        STATUS: ' PA ',
+        EFFECTIVE_DATE: new Date('2023-01-15'),
+      };
+
+      const result = transformAppointmentRecord(atsAppointment);
+
+      expect(result.chapter).toBe('7');
+      expect(result.appointmentType).toBe('panel');
+      expect(result.status).toBe('active');
+    });
+
+    test('should throw error for invalid chapter codes', () => {
+      const atsAppointment: AtsAppointmentRecord = {
+        TRU_ID: 123,
+        DISTRICT: '02',
+        DIVISION: '081',
+        CHAPTER: '9',
+        DATE_APPOINTED: new Date('2023-01-15'),
+        STATUS: 'PA',
+      };
+
+      // Chapter 9 is not a valid chapter code
+      expect(() => transformAppointmentRecord(atsAppointment)).toThrow('Unknown chapter code: 9');
+    });
+
+    test('should handle empty status code (defaults to panel/active)', () => {
+      const atsAppointment: AtsAppointmentRecord = {
+        TRU_ID: 123,
+        DISTRICT: '02',
+        DIVISION: '081',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2023-01-15'),
+        STATUS: '',
+        EFFECTIVE_DATE: new Date('2023-01-15'),
+      };
+
+      const result = transformAppointmentRecord(atsAppointment);
+
+      expect(result.appointmentType).toBe('panel');
+      expect(result.status).toBe('active');
+    });
+
+    test('should handle missing status code (defaults to panel/active)', () => {
+      const atsAppointment: AtsAppointmentRecord = {
+        TRU_ID: 123,
+        DISTRICT: '02',
+        DIVISION: '081',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2023-01-15'),
+        EFFECTIVE_DATE: new Date('2023-01-15'),
+      };
+
+      const result = transformAppointmentRecord(atsAppointment);
+
+      expect(result.appointmentType).toBe('panel');
+      expect(result.status).toBe('active');
+    });
   });
 
   // Note: isValidAppointmentForChapter tests removed - function is now imported from common
   // and is already tested in common/src/cams/trustee-appointments.test.ts
+
+  describe('applyAppointmentOverrides', () => {
+    test('should apply CBC chapter override for 12CBC status 1', () => {
+      const chapterMapping = { chapter: '12' };
+      const result = applyAppointmentOverrides(chapterMapping, '12CBC', '1', {
+        appointmentType: 'standing',
+        status: 'active',
+      });
+
+      expect(result.chapter).toBe('12');
+      expect(result.appointmentType).toBe('case-by-case');
+      expect(result.status).toBe('active');
+    });
+
+    test('should apply CBC chapter override for 13CBC status 3', () => {
+      const chapterMapping = { chapter: '13' };
+      const result = applyAppointmentOverrides(chapterMapping, '13CBC', '3', {
+        appointmentType: 'standing',
+        status: 'active',
+      });
+
+      expect(result.chapter).toBe('13');
+      expect(result.appointmentType).toBe('case-by-case');
+      expect(result.status).toBe('inactive');
+    });
+
+    test('should convert Chapter 11 + V to 11-subchapter-v', () => {
+      const chapterMapping = { chapter: '11' };
+      const result = applyAppointmentOverrides(chapterMapping, '11', 'V', {
+        appointmentType: 'pool',
+        status: 'active',
+      });
+
+      expect(result.chapter).toBe('11-subchapter-v');
+      expect(result.appointmentType).toBe('pool');
+      expect(result.status).toBe('active');
+    });
+
+    test('should convert Chapter 11 + VR to 11-subchapter-v', () => {
+      const chapterMapping = { chapter: '11' };
+      const result = applyAppointmentOverrides(chapterMapping, '11', 'VR', {
+        appointmentType: 'out-of-pool',
+        status: 'resigned',
+      });
+
+      expect(result.chapter).toBe('11-subchapter-v');
+      expect(result.appointmentType).toBe('out-of-pool');
+      expect(result.status).toBe('resigned');
+    });
+
+    test('should apply code 1 standing override for Chapter 12', () => {
+      const chapterMapping = { chapter: '12' };
+      const result = applyAppointmentOverrides(chapterMapping, '12', '1', {
+        appointmentType: 'case-by-case',
+        status: 'active',
+      });
+
+      expect(result.chapter).toBe('12');
+      expect(result.appointmentType).toBe('standing');
+      expect(result.status).toBe('active');
+    });
+
+    test('should apply code 1 standing override for Chapter 13', () => {
+      const chapterMapping = { chapter: '13' };
+      const result = applyAppointmentOverrides(chapterMapping, '13', '1', {
+        appointmentType: 'case-by-case',
+        status: 'active',
+      });
+
+      expect(result.chapter).toBe('13');
+      expect(result.appointmentType).toBe('standing');
+      expect(result.status).toBe('active');
+    });
+
+    test('should not apply code 1 override for Chapter 7', () => {
+      const chapterMapping = { chapter: '7' };
+      const result = applyAppointmentOverrides(chapterMapping, '7', '1', {
+        appointmentType: 'case-by-case',
+        status: 'active',
+      });
+
+      expect(result.chapter).toBe('7');
+      expect(result.appointmentType).toBe('case-by-case');
+      expect(result.status).toBe('active');
+    });
+
+    test('should use appointmentType from chapter mapping (legacy CBC)', () => {
+      const chapterMapping = { chapter: '12', appointmentType: 'case-by-case' as const };
+      const result = applyAppointmentOverrides(chapterMapping, '12', 'C', {
+        appointmentType: 'panel',
+        status: 'active',
+      });
+
+      expect(result.chapter).toBe('12');
+      expect(result.appointmentType).toBe('case-by-case');
+      expect(result.status).toBe('active');
+    });
+
+    test('should use status mapping when no overrides apply', () => {
+      const chapterMapping = { chapter: '7' };
+      const result = applyAppointmentOverrides(chapterMapping, '7', 'PA', {
+        appointmentType: 'panel',
+        status: 'active',
+      });
+
+      expect(result.chapter).toBe('7');
+      expect(result.appointmentType).toBe('panel');
+      expect(result.status).toBe('active');
+    });
+
+    test('should prioritize CBC override over code 1 standing', () => {
+      const chapterMapping = { chapter: '12' };
+      const result = applyAppointmentOverrides(chapterMapping, '12CBC', '1', {
+        appointmentType: 'standing',
+        status: 'active',
+      });
+
+      // CBC override should win
+      expect(result.chapter).toBe('12');
+      expect(result.appointmentType).toBe('case-by-case');
+      expect(result.status).toBe('active');
+    });
+
+    test('should prioritize CBC override over chapter mapping appointmentType', () => {
+      const chapterMapping = { chapter: '12', appointmentType: 'standing' as const };
+      const result = applyAppointmentOverrides(chapterMapping, '12CBC', '3', {
+        appointmentType: 'panel',
+        status: 'active',
+      });
+
+      // CBC override should win
+      expect(result.chapter).toBe('12');
+      expect(result.appointmentType).toBe('case-by-case');
+      expect(result.status).toBe('inactive');
+    });
+  });
 
   describe('getAppointmentKey', () => {
     test('should create unique key for appointment', () => {
