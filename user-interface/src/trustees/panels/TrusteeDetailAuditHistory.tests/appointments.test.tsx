@@ -56,7 +56,7 @@ describe('TrusteeDetailAuditHistory - Appointment History Tests', () => {
     expect(screen.getByTestId('new-appointment-0')).toHaveTextContent('(none)');
   });
 
-  test('should display division code when court information is missing', async () => {
+  test('should display court ID fallback when court information is missing', async () => {
     const mockAppointmentHistory = createMockAppointmentHistory({
       before: {
         chapter: '7',
@@ -71,6 +71,6 @@ describe('TrusteeDetailAuditHistory - Appointment History Tests', () => {
     await renderHistoryAndWaitForTable([mockAppointmentHistory]);
 
     const previousCell = screen.getByTestId('previous-appointment-0');
-    expect(previousCell).toHaveTextContent('District: MAB');
+    expect(previousCell).toHaveTextContent('District: Court 081');
   });
 });
