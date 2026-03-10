@@ -55,3 +55,9 @@ repos:
         files: '^\.github/workflows/.*\.(yml|yaml)$'
         verbose: true
         additional_dependencies: ['PyYAML']
+      - id: knip
+        name: Knip unused code check
+        entry: npm run knip
+        language: system
+        pass_filenames: false
+        files: '\.(ts|tsx|js|jsx|json)$'
