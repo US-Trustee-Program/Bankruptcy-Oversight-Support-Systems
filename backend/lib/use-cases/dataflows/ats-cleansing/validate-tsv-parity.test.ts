@@ -5,6 +5,11 @@ import { cleanseAndMapAppointment } from './ats-cleansing-pipeline';
 import { AtsAppointmentRecord } from '../../../adapters/types/ats.types';
 import { CleansingClassification, TrusteeOverride } from './ats-cleansing-types';
 
+// Test-only type that includes DIVISION from TSV export (not used in production)
+type TsvAtsAppointmentRecord = AtsAppointmentRecord & {
+  DIVISION?: string;
+};
+
 const TSV_PATH = path.join(
   __dirname,
   '../../../../../.ustp-cams-fdp/ai/specs/CAMS-596-migrate-trustee-appointments/brainstorming/trustee_cross_reference_enriched_v4_ts.tsv',
@@ -127,8 +132,8 @@ describe('TSV Parity Validation', () => {
       const row = parseTsvRow(line, headers);
       const rowNum = idx + 2; // +2 because: +1 for 0-index, +1 for header row
 
-      // Build ATS appointment record from TSV
-      const atsAppointment: AtsAppointmentRecord = {
+      // Build ATS appointment record from TSV (includes DIVISION from export, but not used)
+      const atsAppointment: TsvAtsAppointmentRecord = {
         STATUS: row.status,
         DISTRICT: row.district,
         STATE: row.serving_state,
