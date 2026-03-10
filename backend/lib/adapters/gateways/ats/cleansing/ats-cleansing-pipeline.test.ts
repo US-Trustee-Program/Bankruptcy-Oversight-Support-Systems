@@ -1,10 +1,11 @@
 /**
  * Data-driven tests for ATS cleansing pipeline using TSV validation data
  *
- * This test suite validates 100% parity with the Python prototype by testing
- * all 8,244 appointments from the enriched TSV artifact.
+ * This test suite validates cleansing behavior by testing all 8,244 appointments
+ * from the enriched TSV artifact (colocated in test-data/).
  *
- * Tests are organized by classification type for better reporting.
+ * Tests are organized by classification type (CLEAN, AUTO_RECOVERABLE, PROBLEMATIC,
+ * UNCLEANSABLE) for better reporting.
  */
 
 import { describe, test, expect } from 'vitest';
@@ -14,15 +15,9 @@ import { cleanseAndMapAppointment } from './ats-cleansing-pipeline';
 import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { CleansingClassification, TrusteeOverride } from './ats-cleansing-types';
 
-const TSV_PATH = path.join(
-  __dirname,
-  '../../../../../../.ustp-cams-fdp/ai/specs/CAMS-596-migrate-trustee-appointments/brainstorming/trustee_cross_reference_enriched_v4_ts.tsv',
-);
+const TSV_PATH = path.join(__dirname, 'test-data/trustee_cross_reference_enriched_v4_ts.tsv');
 
-const OVERRIDE_TSV_PATH = path.join(
-  __dirname,
-  '../../../../../../.ustp-cams-fdp/ai/specs/CAMS-596-migrate-trustee-appointments/brainstorming/trustee_appointment_overrides.tsv',
-);
+const OVERRIDE_TSV_PATH = path.join(__dirname, 'test-data/trustee_appointment_overrides.tsv');
 
 type TsvRow = {
   trusteeid: string;
