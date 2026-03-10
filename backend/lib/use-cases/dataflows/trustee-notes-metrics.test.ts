@@ -49,11 +49,10 @@ describe('TrusteeNotesMetricsUseCase', () => {
   beforeEach(async () => {
     context = await createMockApplicationContext();
 
-    mockNotesRepo = { getNotesSince: vi.fn().mockResolvedValue([]), release: vi.fn() };
-    mockTrusteesRepo = { listTrustees: vi.fn().mockResolvedValue([]), release: vi.fn() };
+    mockNotesRepo = { getNotesSince: vi.fn().mockResolvedValue([]) };
+    mockTrusteesRepo = { listTrustees: vi.fn().mockResolvedValue([]) };
     mockUserGroupsRepo = {
       getUserGroupsByNames: vi.fn().mockResolvedValue(ALL_PERMISSION_GROUPS),
-      release: vi.fn(),
     };
     mockStorage = { getRoleMapping: vi.fn().mockReturnValue(makeRoleMapping()) };
 
