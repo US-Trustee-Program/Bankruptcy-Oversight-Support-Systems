@@ -216,7 +216,7 @@ describe('AppointmentCard', () => {
       courtName: undefined,
       courtDivisionName: undefined,
       courtId: undefined,
-    } as TrusteeAppointment;
+    } as unknown as TrusteeAppointment;
 
     renderWithProps({ appointment: appointmentWithoutCourt });
 
