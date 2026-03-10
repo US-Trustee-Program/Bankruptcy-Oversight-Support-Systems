@@ -545,8 +545,8 @@ describe('TrusteeAppointments', () => {
 
       const cards = getAppointmentCards();
 
-      // The appointment with missing court info should appear first (empty string sorts first)
-      expect(cards[0].textContent).toContain('Court not found');
+      // The appointment with missing court info should show court ID fallback
+      expect(cards[0].textContent).toContain('Court 999');
 
       // The appointment with valid court info should appear second
       expect(cards[1].textContent).toContain('Southern District of New York');

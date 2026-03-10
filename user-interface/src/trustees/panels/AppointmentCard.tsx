@@ -20,12 +20,20 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
-  let districtDisplay;
+
+  // Build district display with guards for missing data
+  let districtDisplay: string;
   if (props.appointment.courtName && props.appointment.courtDivisionName) {
     districtDisplay = `${props.appointment.courtName} (${props.appointment.courtDivisionName})`;
+  } else if (props.appointment.courtName) {
+    districtDisplay = props.appointment.courtName;
+  } else if (props.appointment.courtId) {
+    // Fallback to court ID if court name is not available
+    districtDisplay = `Court ${props.appointment.courtId}`;
   } else {
-    districtDisplay = 'Court not found';
+    districtDisplay = 'Court information not available';
   }
+
   const formattedEffectiveDate = formatDate(props.appointment.effectiveDate);
   const formattedAppointedDate = formatDate(props.appointment.appointedDate);
   const formattedStatus = formatAppointmentStatus(props.appointment.status);

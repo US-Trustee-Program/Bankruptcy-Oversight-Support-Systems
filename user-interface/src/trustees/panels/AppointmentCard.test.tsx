@@ -183,19 +183,20 @@ describe('AppointmentCard', () => {
     expect(screen.getByText('12/01/2025')).toBeInTheDocument();
   });
 
-  test('should display "Court not found" when courtName is missing', () => {
+  test('should display court ID when courtName is missing', () => {
     const appointmentWithoutCourtName: TrusteeAppointment = {
       ...mockAppointment,
       courtName: undefined,
+      courtId: '0208',
     };
 
     renderWithProps({ appointment: appointmentWithoutCourtName });
 
-    expect(screen.getByText(/Court not found: Chapter 7 - Panel/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Court 0208: Chapter 7 - Panel/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Court 0208/i).length).toBeGreaterThan(0);
   });
 
-  test('should display "Court not found" when courtDivisionName is missing', () => {
+  test('should display courtName without division when courtDivisionName is missing', () => {
     const appointmentWithoutDivisionName: TrusteeAppointment = {
       ...mockAppointment,
       courtDivisionName: undefined,
@@ -203,21 +204,26 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointmentWithoutDivisionName });
 
-    expect(screen.getByText(/Court not found: Chapter 7 - Panel/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Southern District of New York: Chapter 7 - Panel/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Southern District of New York/i).length).toBeGreaterThan(0);
   });
 
-  test('should display "Court not found" when both courtName and courtDivisionName are missing', () => {
-    const appointmentWithoutCourt: TrusteeAppointment = {
+  test('should display "Court information not available" when courtName, courtDivisionName, and courtId are missing', () => {
+    const appointmentWithoutCourt = {
       ...mockAppointment,
       courtName: undefined,
       courtDivisionName: undefined,
-    };
+      courtId: undefined,
+    } as TrusteeAppointment;
 
     renderWithProps({ appointment: appointmentWithoutCourt });
 
-    expect(screen.getByText(/Court not found: Chapter 7 - Panel/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Court not found/i).length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/Court information not available: Chapter 7 - Panel/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Court information not available/i).length).toBeGreaterThan(0);
   });
 
   test('should render Edit button when user has TrusteeAdmin role', () => {
