@@ -2,9 +2,9 @@ import { CamsRole, CamsRoleType, OversightRoles } from '@common/cams/roles';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 
-const MODULE_NAME = 'TRUSTEE-NOTES-METRICS-USE-CASE';
-
-const round = (n: number, d: number) => Math.round(n * 10 ** d) / 10 ** d;
+function toPercent(n: number): number {
+  return Math.round(n * 100);
+}
 
 export type TrusteeNoteMetrics = {
   notesLast24Hrs: number;
@@ -20,7 +20,7 @@ export type TrusteeNoteMetrics = {
 
 export class TrusteeNotesMetricsUseCase {
   public async gatherMetrics(context: ApplicationContext): Promise<TrusteeNoteMetrics> {
-    const cutoffIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
     const storage = factory.getStorageGateway(context);
     const roleMapping = storage.getRoleMapping();
@@ -30,7 +30,7 @@ export class TrusteeNotesMetricsUseCase {
       .map(([groupName]) => groupName);
 
     const [notes, trustees, groups] = await Promise.all([
-      factory.getTrusteeNotesRepository(context).getNotesSince(cutoffIso),
+      factory.getTrusteeNotesRepository(context).getNotesSince(twentyFourHoursAgo),
       factory.getTrusteesRepository(context).listTrustees(),
       factory.getUserGroupsRepository(context).getUserGroupsByNames(context, permissionGroupNames),
     ]);
@@ -49,13 +49,6 @@ export class TrusteeNotesMetricsUseCase {
 
     const totalTrustees = trustees.length;
 
-    if (groups.length < permissionGroupNames.length) {
-      context.logger.warn(MODULE_NAME, 'Some expected permission groups not found', {
-        expectedGroupCount: permissionGroupNames.length,
-        foundGroupCount: groups.length,
-      });
-    }
-
     const permissionedUserIds = new Set<string>();
     for (const group of groups) {
       for (const user of group.users ?? []) {
@@ -65,14 +58,12 @@ export class TrusteeNotesMetricsUseCase {
     const usersWithNotePermission = permissionedUserIds.size;
 
     const trusteesWithNotesPercent =
-      totalTrustees === 0 ? 0 : round((trusteesWithNotes / totalTrustees) * 100, 2);
+      totalTrustees === 0 ? 0 : toPercent(trusteesWithNotes / totalTrustees);
 
     const usersWhoCreatedNotes = uniqueNoteAuthors;
 
     const userEngagementPercent =
-      usersWithNotePermission === 0
-        ? 0
-        : round((usersWhoCreatedNotes / usersWithNotePermission) * 100, 2);
+      usersWithNotePermission === 0 ? 0 : toPercent(usersWhoCreatedNotes / usersWithNotePermission);
 
     return {
       notesLast24Hrs: notes.length,
