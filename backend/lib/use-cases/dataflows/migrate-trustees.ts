@@ -1,11 +1,13 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../adapters/types/ats.types';
-import { transformTrusteeRecord } from '../../adapters/gateways/ats/ats-mappings';
+import { transformTrusteeRecord } from './ats-cleansing/ats-mappings';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { Trustee } from '@common/cams/trustees';
 import { processSingleAppointment, SYSTEM_USER } from './appointments-sync.helpers';
+import { TrusteeOverride, FailedAppointment } from './ats-cleansing/ats-cleansing-types';
+import { getAppointmentKey } from './ats-cleansing/ats-cleansing-utils';
 
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
@@ -141,19 +143,30 @@ export async function upsertTrustee(
 }
 
 /**
- * Create appointments for a trustee.
- * Uses a unique key (trusteeId-courtId-divisionCode-chapter-appointmentType) to prevent duplicates
- * within the same migration batch.
+ * Create appointments for a trustee (idempotent).
+ * Fetches existing appointments and only creates new ones that don't already exist.
+ * Uses a unique key (trusteeId-courtId-divisionCode-chapter-appointmentType) to prevent duplicates.
+ * Returns failed appointments for DLQ handling.
  */
 export async function createAppointments(
   context: ApplicationContext,
   trustee: Trustee,
   atsAppointments: AtsAppointmentRecord[],
-): Promise<MaybeData<number>> {
+  overridesCache: Map<string, TrusteeOverride[]>,
+): Promise<MaybeData<{ successCount: number; failedAppointments: FailedAppointment[] }>> {
   try {
     const repo = factory.getTrusteeAppointmentsRepository(context);
+
+    // Fetch existing appointments for idempotency check
+    const existingAppointments = await repo.getTrusteeAppointments(trustee.trusteeId);
+    const existingKeys = new Set<string>(
+      existingAppointments.map((apt) => getAppointmentKey(trustee.trusteeId, apt)),
+    );
+
     const processedKeys = new Set<string>();
     let successCount = 0;
+    let skippedCount = 0;
+    const failedAppointments: FailedAppointment[] = [];
 
     for (const atsAppointment of atsAppointments) {
       const result = await processSingleAppointment(
@@ -162,16 +175,31 @@ export async function createAppointments(
         trustee,
         atsAppointment,
         processedKeys,
+        existingKeys,
+        overridesCache,
       );
-      if (result.success) successCount++;
+
+      if (result.success) {
+        successCount++; // Includes: appointments created, skipped per override, and already existing
+        if (result.skipped) {
+          skippedCount++;
+        }
+      } else if (result.failedAppointment) {
+        failedAppointments.push(result.failedAppointment);
+      }
     }
 
     context.logger.info(
       MODULE_NAME,
-      `Processed ${successCount}/${atsAppointments.length} appointments for trustee ${trustee.trusteeId}`,
+      `Processed ${successCount}/${atsAppointments.length} appointments for trustee ${trustee.trusteeId} (${skippedCount} already existed)`,
     );
 
-    return { data: successCount };
+    return {
+      data: {
+        successCount,
+        failedAppointments,
+      },
+    };
   } catch (originalError) {
     return {
       error: getCamsError(
@@ -186,12 +214,15 @@ export async function createAppointments(
 /**
  * Process a single trustee with all their appointments.
  * This is the main unit of work for the migration.
+ * Returns failed appointments for DLQ handling.
  */
 export async function processTrusteeWithAppointments(
   context: ApplicationContext,
   atsTrustee: AtsTrusteeRecord,
-): Promise<TrusteeProcessingResult> {
+  overridesCache: Map<string, TrusteeOverride[]>,
+): Promise<TrusteeProcessingResult & { failedAppointments: FailedAppointment[] }> {
   const truId = atsTrustee.ID.toString();
+  const failedAppointments: FailedAppointment[] = [];
 
   try {
     // Upsert the trustee
@@ -214,6 +245,7 @@ export async function processTrusteeWithAppointments(
         truId,
         success: true,
         appointmentsProcessed: 0,
+        failedAppointments: [],
       };
     }
 
@@ -221,13 +253,20 @@ export async function processTrusteeWithAppointments(
     let appointmentsProcessed = 0;
 
     if (appointments && appointments.length > 0) {
-      const appointmentResult = await createAppointments(context, trustee, appointments);
+      const appointmentResult = await createAppointments(
+        context,
+        trustee,
+        appointments,
+        overridesCache,
+      );
+
       if (appointmentResult.error) {
         context.logger.error(MODULE_NAME, `Failed to process appointments for trustee ${truId}`, {
           error: appointmentResult.error.message,
         });
       } else {
-        appointmentsProcessed = appointmentResult.data;
+        appointmentsProcessed = appointmentResult.data.successCount;
+        failedAppointments.push(...appointmentResult.data.failedAppointments);
       }
     }
 
@@ -236,6 +275,7 @@ export async function processTrusteeWithAppointments(
       truId,
       success: true,
       appointmentsProcessed,
+      failedAppointments,
     };
   } catch (error) {
     const camsError = getCamsError(error, MODULE_NAME);
@@ -249,6 +289,7 @@ export async function processTrusteeWithAppointments(
       success: false,
       appointmentsProcessed: 0,
       error: camsError.message,
+      failedAppointments: [],
     };
   }
 }
@@ -256,21 +297,32 @@ export async function processTrusteeWithAppointments(
 /**
  * Process a page of trustees.
  * Main entry point for batch processing.
+ * Returns failed appointments for DLQ handling.
  */
 export async function processPageOfTrustees(
   context: ApplicationContext,
   trustees: AtsTrusteeRecord[],
-): Promise<MaybeData<{ processed: number; appointments: number; errors: number }>> {
+  overridesCache: Map<string, TrusteeOverride[]>,
+): Promise<
+  MaybeData<{
+    processed: number;
+    appointments: number;
+    errors: number;
+    failedAppointments: FailedAppointment[];
+  }>
+> {
   let processed = 0;
   let appointments = 0;
   let errors = 0;
+  const allFailedAppointments: FailedAppointment[] = [];
 
   for (const trustee of trustees) {
-    const result = await processTrusteeWithAppointments(context, trustee);
+    const result = await processTrusteeWithAppointments(context, trustee, overridesCache);
 
     if (result.success) {
       processed++;
       appointments += result.appointmentsProcessed;
+      allFailedAppointments.push(...result.failedAppointments);
     } else {
       errors++;
     }
@@ -278,7 +330,7 @@ export async function processPageOfTrustees(
 
   context.logger.info(
     MODULE_NAME,
-    `Page complete: ${processed} trustees, ${appointments} appointments, ${errors} errors`,
+    `Page complete: ${processed} trustees, ${appointments} appointments, ${errors} errors, ${allFailedAppointments.length} failed appointments`,
   );
 
   return {
@@ -286,6 +338,7 @@ export async function processPageOfTrustees(
       processed,
       appointments,
       errors,
+      failedAppointments: allFailedAppointments,
     },
   };
 }
