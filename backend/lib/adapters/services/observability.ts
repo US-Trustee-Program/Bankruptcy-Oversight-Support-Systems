@@ -20,14 +20,7 @@ export function scrubErrorForTelemetry(error: string): string {
   return scrubbed;
 }
 
-/**
- * Initializes and returns the Application Insights client.
- * If the client doesn't exist, explicitly initializes the SDK.
- *
- * @param logger - Optional logger for diagnostics
- * @returns TelemetryClient instance or null if initialization fails
- */
-export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
+function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
   const MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
 
   try {
