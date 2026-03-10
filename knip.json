@@ -44,8 +44,7 @@
         "**/node_modules/**",
         "**/build/**",
         "**/coverage/**"
-      ],
-      "ignoreFiles": ["playwright.config.ts"]
+      ]
     },
     "common": {
       "entry": ["src/**/*.test.ts"],
