@@ -139,7 +139,10 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
         ) AS caseId
       FROM [dbo].[CMMDB]
-      WHERE (CLOSED_BY_COURT_DATE > 20180101 OR CLOSED_BY_UST_DATE > 20180101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))`;
+      WHERE (CLOSED_BY_COURT_DATE > 20180101
+      OR CLOSED_BY_UST_DATE > 20180101
+      OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))
+      AND DELETE_CODE != 'D'`;
 
     try {
       await this.executeQuery(context, selectIntoQuery);

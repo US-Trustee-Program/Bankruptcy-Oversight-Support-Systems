@@ -210,4 +210,152 @@ describe('ACMS gateway tests', () => {
       }),
     );
   });
+
+  test('should load migration table with DELETE_CODE filter', async () => {
+    const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: [],
+      message: '',
+    });
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await gateway.loadMigrationTable(context);
+
+    expect(spy).toHaveBeenCalledWith(context, expect.stringContaining("DELETE_CODE != 'D'"));
+    expect(spy).toHaveBeenCalledWith(
+      context,
+      expect.stringContaining('INSERT INTO dbo.CAMS_MIGRATION_TEMP'),
+    );
+  });
+
+  test('should handle exceptions when loading migration table', async () => {
+    const mockError = new Error('database error');
+    vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await expect(async () => {
+      return await gateway.loadMigrationTable(context);
+    }).rejects.toThrow(
+      expect.objectContaining({
+        status: 500,
+        message: mockError.message,
+        module: 'ACMS-GATEWAY',
+      }),
+    );
+  });
+
+  test('should get migration case IDs for specified range', async () => {
+    const mockCaseIds = [
+      { caseId: '081-23-12345' },
+      { caseId: '081-23-12346' },
+      { caseId: '081-23-12347' },
+    ];
+
+    const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: mockCaseIds,
+      message: '',
+    });
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    const result = await gateway.getMigrationCaseIds(context, 1, 100);
+
+    expect(spy).toHaveBeenCalledWith(
+      context,
+      expect.stringContaining('SELECT caseId FROM dbo.CAMS_MIGRATION_TEMP'),
+    );
+    expect(spy).toHaveBeenCalledWith(
+      context,
+      expect.stringContaining('WHERE id BETWEEN 1 AND 100'),
+    );
+    expect(result).toEqual(['081-23-12345', '081-23-12346', '081-23-12347']);
+  });
+
+  test('should handle exceptions when getting migration case IDs', async () => {
+    const mockError = new Error('database error');
+    vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await expect(async () => {
+      return await gateway.getMigrationCaseIds(context, 1, 100);
+    }).rejects.toThrow(
+      expect.objectContaining({
+        status: 500,
+        message: mockError.message,
+        module: 'ACMS-GATEWAY',
+      }),
+    );
+  });
+
+  test('should empty migration table', async () => {
+    const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: [],
+      message: '',
+    });
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await gateway.emptyMigrationTable(context);
+
+    expect(spy).toHaveBeenCalledWith(context, 'TRUNCATE TABLE dbo.CAMS_MIGRATION_TEMP');
+  });
+
+  test('should handle exceptions when emptying migration table', async () => {
+    const mockError = new Error('database error');
+    vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await expect(async () => {
+      return await gateway.emptyMigrationTable(context);
+    }).rejects.toThrow(
+      expect.objectContaining({
+        status: 500,
+        message: mockError.message,
+        module: 'ACMS-GATEWAY',
+      }),
+    );
+  });
+
+  test('should get migration case count', async () => {
+    const mockCount = [{ total: 1234 }];
+
+    const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: mockCount,
+      message: '',
+    });
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    const result = await gateway.getMigrationCaseCount(context);
+
+    expect(spy).toHaveBeenCalledWith(
+      context,
+      'SELECT COUNT(*) AS total FROM dbo.CAMS_MIGRATION_TEMP',
+    );
+    expect(result).toBe(1234);
+  });
+
+  test('should handle exceptions when getting migration case count', async () => {
+    const mockError = new Error('database error');
+    vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(mockError);
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await expect(async () => {
+      return await gateway.getMigrationCaseCount(context);
+    }).rejects.toThrow(
+      expect.objectContaining({
+        status: 500,
+        message: mockError.message,
+        module: 'ACMS-GATEWAY',
+      }),
+    );
+  });
 });
