@@ -6,7 +6,6 @@
   },
   "workspaces": {
     ".": {
-      "entry": ["eslint.config.mjs"],
       "ignore": [
         "**/node_modules/**",
         "**/dist/**",
@@ -19,7 +18,6 @@
       "entry": [
         "function-apps/**/*.function.ts",
         "function-apps/dataflows/dataflows.ts",
-        "express/server.ts",
         "**/*.test.ts"
       ],
       "project": ["**/*.ts"],
@@ -37,8 +35,6 @@
       "entry": [
         "src/index.tsx",
         "src/initialize.ts",
-        "vite.config.mts",
-        "vitest.config.mts",
         "test/**/*.ts",
         "src/**/*.test.ts",
         "src/**/*.test.tsx"
@@ -52,7 +48,7 @@
       "ignoreFiles": ["playwright.config.ts"]
     },
     "common": {
-      "entry": ["src/index.ts", "src/**/*.test.ts"],
+      "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts"],
       "ignore": [
         "**/node_modules/**",
@@ -62,7 +58,6 @@
     },
     "test/bdd": {
       "entry": [
-        "vitest.config.ts",
         "features/**/*.spec.tsx",
         "helpers/**/*.ts",
         "helpers/**/*.tsx",
@@ -119,7 +114,6 @@
     "typescript-eslint",
     "cams",
     "esbuild",
-    "@vitest/coverage-v8",
     "@launchdarkly/node-server-sdk",
     "launchdarkly-react-client-sdk",
     "@okta/okta-auth-js",
