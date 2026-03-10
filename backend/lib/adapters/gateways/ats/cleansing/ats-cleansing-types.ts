@@ -1,5 +1,5 @@
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { AtsAppointmentRecord } from '../../../adapters/types/ats.types';
+import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 
 /**
  * Classification of appointment after cleansing pipeline
@@ -88,25 +88,5 @@ export interface TrusteeOverride {
   notes?: string;
 }
 
-/**
- * Failed appointment for DLQ
- */
-export interface FailedAppointment {
-  /** CAMS trustee GUID */
-  trusteeId: string;
-
-  /** ATS legacy TRU_ID */
-  truId: string;
-
-  /** Original ATS appointment record */
-  atsAppointment: AtsAppointmentRecord;
-
-  /** Classification that caused failure */
-  classification: CleansingClassification.PROBLEMATIC | CleansingClassification.UNCLEANSABLE;
-
-  /** Cleansing pipeline notes explaining failure */
-  notes: string[];
-
-  /** Timestamp of failure */
-  timestamp: string;
-}
+// Note: FailedAppointment interface removed - gateway now handles failures internally
+// Failed appointments are logged but not returned to callers

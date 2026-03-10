@@ -1,4 +1,4 @@
-import { AtsAppointmentRecord } from '../../../adapters/types/ats.types';
+import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { CleansingWorkRecord } from './ats-cleansing-types';
 import { STATE_TO_SINGLE_COURT_ID, STATE_DISTRICT_TO_COURT_ID } from './ats-cleansing-maps';
 import { normalizeForComparison } from './ats-cleansing-utils';

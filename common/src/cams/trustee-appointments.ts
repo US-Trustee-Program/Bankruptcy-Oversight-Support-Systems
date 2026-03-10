@@ -74,15 +74,6 @@ export function getStatusOptions(
   return statusOptionsConfig[chapter][appointmentType] || defaultStatusOptions;
 }
 
-export function isValidAppointmentForChapter(
-  chapter: AppointmentChapterType,
-  appointmentType: AppointmentType,
-): boolean {
-  const validAppointmentTypes = chapterAppointmentTypeMap[chapter];
-  if (!validAppointmentTypes) return false;
-  return validAppointmentTypes.includes(appointmentType);
-}
-
 export type TrusteeAppointmentInput = {
   chapter: AppointmentChapterType;
   appointmentType: AppointmentType;

@@ -1,8 +1,8 @@
-import { ApplicationContext } from '../../../adapters/types/basic';
-import { AtsAppointmentRecord } from '../../../adapters/types/ats.types';
+import { ApplicationContext } from '../../../../adapters/types/basic';
+import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { TrusteeOverride, CleansingResult, CleansingClassification } from './ats-cleansing-types';
-import { getCamsError } from '../../../common-errors/error-utilities';
-import { MaybeData } from '../queue-types';
+import { getCamsError } from '../../../../common-errors/error-utilities';
+import { MaybeData } from '../../../../use-cases/dataflows/queue-types';
 import { normalizeForComparison } from './ats-cleansing-utils';
 import * as fs from 'fs';
 import * as path from 'path';

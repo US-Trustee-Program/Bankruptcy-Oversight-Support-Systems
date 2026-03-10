@@ -1,5 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../adapters/types/ats.types';
+import { AtsTrusteeRecord } from '../adapters/types/ats.types';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
 import { ConsolidationOrder, Order, RawOrderSync, TransferOrderAction } from '@common/cams/orders';
 import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from '@common/cams/events';
@@ -182,10 +183,15 @@ export interface AtsGateway {
     lastTrusteeId: number | null,
     pageSize: number,
   ): Promise<AtsTrusteeRecord[]>;
+  /**
+   * Get cleansed appointments for a trustee.
+   * Returns CAMS domain types (TrusteeAppointmentInput[]).
+   * Gateway handles ATS data cleansing and transformation internally.
+   */
   getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: number,
-  ): Promise<AtsAppointmentRecord[]>;
+  ): Promise<TrusteeAppointmentInput[]>;
   getTrusteeCount(context: ApplicationContext): Promise<number>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
