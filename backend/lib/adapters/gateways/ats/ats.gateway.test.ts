@@ -148,19 +148,23 @@ describe('ATS Gateway', () => {
       expect(loggerErrorSpy).toHaveBeenCalled();
     });
 
-    test('should query appointments for a specific trustee', async () => {
+    test('should query appointments for a specific trustee and return clean CAMS types', async () => {
+      // Gateway queries raw ATS data
       mockExecuteQuery.mockResolvedValue({
         results: [
           {
             TRU_ID: 123,
-            DISTRICT: '02',
-            DIVISION: '081',
+            DISTRICT: 'Middle',
+            STATE: 'Louisiana',
             CHAPTER: '7',
             STATUS: 'PA',
+            DATE_APPOINTED: new Date('2023-01-15'),
+            EFFECTIVE_DATE: new Date('2023-01-15'),
           },
         ],
       });
 
+      // Gateway returns clean CAMS types (TrusteeAppointmentInput[])
       const appointments = await gateway.getTrusteeAppointments(context, 123);
 
       expect(mockExecuteQuery).toHaveBeenCalledWith(
@@ -169,8 +173,14 @@ describe('ATS Gateway', () => {
         expect.arrayContaining([expect.objectContaining({ name: 'trusteeId', value: 123 })]),
       );
 
+      // Should return clean CAMS appointment types
       expect(appointments).toHaveLength(1);
-      expect(appointments[0].TRU_ID).toBe(123);
+      expect(appointments[0]).toMatchObject({
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '053N', // Middle Louisiana
+        status: 'active',
+      });
     });
 
     test('should get total trustee count', async () => {

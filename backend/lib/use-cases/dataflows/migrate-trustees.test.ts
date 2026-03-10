@@ -17,7 +17,8 @@ import {
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../adapters/types/ats.types';
+import { AtsTrusteeRecord } from '../../adapters/types/ats.types';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 
 describe('Migrate Trustees Use Case', () => {
   let context: ApplicationContext;
@@ -231,113 +232,54 @@ describe('Migrate Trustees Use Case', () => {
     };
 
     test('should create new appointments', async () => {
-      // Using representative ATS data format from TSV
-      const atsAppointments: AtsAppointmentRecord[] = [
+      // Gateway provides clean CAMS domain types
+      const cleanAppointments: TrusteeAppointmentInput[] = [
         {
-          TRU_ID: 100,
-          DISTRICT: 'Middle',
-          STATE: 'Louisiana',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N', // Middle Louisiana
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
       ];
 
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
-      const result = await createAppointments(context, mockTrustee, atsAppointments, new Map());
+      const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
       expect(result.data?.successCount).toBe(1);
-      expect(result.data?.failedAppointments).toHaveLength(0);
       expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
     });
 
     test('should skip duplicate appointments in source data', async () => {
-      // Same appointment twice - should only create once
-      const atsAppointments: AtsAppointmentRecord[] = [
+      // Gateway might return duplicates after multi-expansion - use case deduplicates
+      const cleanAppointments: TrusteeAppointmentInput[] = [
         {
-          TRU_ID: 100,
-          DISTRICT: 'Middle',
-          STATE: 'Louisiana',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
         {
-          TRU_ID: 100,
-          DISTRICT: 'Middle',
-          STATE: 'Louisiana',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
       ];
 
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
-      const result = await createAppointments(context, mockTrustee, atsAppointments, new Map());
+      const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
       // Both are successfully processed (one created, one skipped as duplicate)
       expect(result.data?.successCount).toBe(2);
-      expect(result.data?.failedAppointments).toHaveLength(0);
       // Only one was actually created in the repository
-      expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
-    });
-
-    test('should handle invalid appointments as failed', async () => {
-      // Invalid state - will be classified as PROBLEMATIC or UNCLEANSABLE
-      const atsAppointments: AtsAppointmentRecord[] = [
-        {
-          TRU_ID: 100,
-          DISTRICT: 'InvalidDistrict',
-          STATE: 'InvalidState',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
-        },
-      ];
-
-      const result = await createAppointments(context, mockTrustee, atsAppointments, new Map());
-
-      // Invalid appointment should not be created
-      expect(result.data?.successCount).toBe(0);
-      expect(result.data?.failedAppointments.length).toBeGreaterThan(0);
-      expect(mockAppointmentsRepo.createAppointment).not.toHaveBeenCalled();
-    });
-
-    test('should continue processing when one appointment transformation fails', async () => {
-      const atsAppointments: AtsAppointmentRecord[] = [
-        {
-          TRU_ID: 100,
-          DISTRICT: 'InvalidDistrict', // Invalid district - will be UNCLEANSABLE
-          STATE: 'InvalidState',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
-        },
-        {
-          TRU_ID: 100,
-          DISTRICT: 'Middle', // Valid
-          STATE: 'Louisiana',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-02-15'),
-          EFFECTIVE_DATE: new Date('2023-02-15'),
-        },
-      ];
-
-      mockAppointmentsRepo.createAppointment.mockResolvedValue({});
-
-      const result = await createAppointments(context, mockTrustee, atsAppointments, new Map());
-
-      // First fails, second succeeds
-      expect(result.data?.successCount).toBe(1);
-      expect(result.data?.failedAppointments).toHaveLength(1);
       expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
     });
   });
@@ -356,24 +298,24 @@ describe('Migrate Trustees Use Case', () => {
         name: 'John Doe',
       };
 
-      const mockAppointments: AtsAppointmentRecord[] = [
+      // Gateway returns clean CAMS types
+      const cleanAppointments: TrusteeAppointmentInput[] = [
         {
-          TRU_ID: 1,
-          DISTRICT: 'Middle',
-          STATE: 'Louisiana',
-          CHAPTER: '7',
-          STATUS: 'PA',
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
       ];
 
-      mockAppointments[0].DATE_APPOINTED = new Date('2023-01-15');
-
       mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(cleanAppointments);
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
-      const result = await processTrusteeWithAppointments(context, atsTrustee, new Map());
+      const result = await processTrusteeWithAppointments(context, atsTrustee);
 
       expect(result.success).toBe(true);
       expect(result.trusteeId).toBe('trustee-123');

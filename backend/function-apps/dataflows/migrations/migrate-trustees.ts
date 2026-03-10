@@ -15,7 +15,6 @@ import { CamsError } from '../../../lib/common-errors/cams-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 import { AtsTrusteeRecord } from '../../../lib/adapters/types/ats.types';
-import { loadTrusteeOverrides } from '../../../lib/use-cases/dataflows/ats-cleansing/ats-cleansing-overrides';
 
 const MODULE_NAME = ModuleNames.MIGRATE_TRUSTEES;
 const PAGE_SIZE = 50; // Smaller page size for trustees with appointments
@@ -119,18 +118,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  // Load overrides once per page (cached for batch processing)
-  const overridesResult = await loadTrusteeOverrides(context);
-  if (overridesResult.error) {
-    logger.error(MODULE_NAME, `Failed to load trustee overrides: ${overridesResult.error.message}`);
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(overridesResult.error, MODULE_NAME, HANDLE_PAGE),
-    );
-    return;
-  }
-  const overridesCache = overridesResult.data;
-  logger.info(MODULE_NAME, `Loaded ${overridesCache.size} trustee override entries`);
+  // Note: Overrides are now handled internally by the ATS gateway
 
   // Read current state to get counts
   const stateResult = await MigrationStateService.getOrCreateMigrationState(context);
@@ -184,12 +172,8 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     `Processing ${trustees.length} trustees. Cursor: ${cursor.lastId ?? 'start'} -> ${lastTrusteeId}.`,
   );
 
-  // Process the batch with overrides
-  const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(
-    context,
-    trustees,
-    overridesCache,
-  );
+  // Process the batch (gateway handles cleansing internally)
+  const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(context, trustees);
 
   if (processResult.error) {
     // Update state with FAILED status
@@ -202,39 +186,10 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     return;
   }
 
-  const { processed, appointments, errors, failedAppointments } = processResult.data!;
+  const { processed, appointments, errors } = processResult.data!;
 
-  // Write failed appointments to DLQ
-  if (failedAppointments && failedAppointments.length > 0) {
-    const dlqMessages = failedAppointments.map((failure) => ({
-      type: 'FAILED_APPOINTMENT',
-      trusteeId: failure.trusteeId,
-      truId: failure.truId,
-      classification: failure.classification,
-      notes: failure.notes,
-      timestamp: failure.timestamp,
-      atsAppointment: {
-        DISTRICT: failure.atsAppointment.DISTRICT,
-        STATE: failure.atsAppointment.STATE,
-        DIVISION: failure.atsAppointment.DIVISION,
-        CHAPTER: failure.atsAppointment.CHAPTER,
-        STATUS: failure.atsAppointment.STATUS,
-        DATE_APPOINTED: failure.atsAppointment.DATE_APPOINTED,
-        EFFECTIVE_DATE: failure.atsAppointment.EFFECTIVE_DATE,
-      },
-    }));
-
-    invocationContext.extraOutputs.set(DLQ, dlqMessages);
-
-    logger.warn(
-      MODULE_NAME,
-      `${failedAppointments.length} appointments failed cleansing and sent to DLQ`,
-      {
-        problematic: failedAppointments.filter((f) => f.classification === 'PROBLEMATIC').length,
-        uncleansable: failedAppointments.filter((f) => f.classification === 'UNCLEANSABLE').length,
-      },
-    );
-  }
+  // Note: Failed appointments are now filtered by the gateway during cleansing.
+  // Gateway logs uncleansable/problematic appointments but only returns clean data.
   const newProcessedCount = currentProcessedCount + processed;
   const newAppointmentsCount = currentAppointmentsCount + appointments;
   const newErrors = currentErrors + errors;

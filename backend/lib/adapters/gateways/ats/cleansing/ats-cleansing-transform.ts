@@ -1,4 +1,4 @@
-import { AtsAppointmentRecord } from '../../../adapters/types/ats.types';
+import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { parseChapterAndType, parseTodStatus, applyAppointmentOverrides } from './ats-mappings';
 

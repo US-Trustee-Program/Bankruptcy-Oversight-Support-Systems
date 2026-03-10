@@ -1,4 +1,4 @@
-import { AtsAppointmentRecord } from '../../../adapters/types/ats.types';
+import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { CleansingWorkRecord } from './ats-cleansing-types';
 import {
   STATE_NAME_NORMALIZATION,

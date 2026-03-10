@@ -8,10 +8,9 @@ import {
   formatZipCode,
   transformTrusteeRecord,
   transformAppointmentRecord,
-  isValidAppointmentForChapter,
   getAppointmentKey,
 } from './ats-mappings';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../adapters/types/ats.types';
+import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { AppointmentStatus } from '@common/cams/trustees';
 
 describe('ATS Mappings', () => {
@@ -558,38 +557,8 @@ describe('ATS Mappings', () => {
     });
   });
 
-  describe('isValidAppointmentForChapter', () => {
-    test('should validate chapter 7 appointments', () => {
-      expect(isValidAppointmentForChapter('7', 'panel')).toBe(true);
-      expect(isValidAppointmentForChapter('7', 'off-panel')).toBe(true);
-      expect(isValidAppointmentForChapter('7', 'elected')).toBe(true);
-      expect(isValidAppointmentForChapter('7', 'converted-case')).toBe(true);
-    });
-
-    test('should validate chapter 11 appointments', () => {
-      expect(isValidAppointmentForChapter('11', 'case-by-case')).toBe(true);
-    });
-
-    test('should validate chapter 11-subchapter-v appointments', () => {
-      expect(isValidAppointmentForChapter('11-subchapter-v', 'pool')).toBe(true);
-      expect(isValidAppointmentForChapter('11-subchapter-v', 'out-of-pool')).toBe(true);
-    });
-
-    test('should validate chapter 12 appointments', () => {
-      expect(isValidAppointmentForChapter('12', 'standing')).toBe(true);
-      expect(isValidAppointmentForChapter('12', 'case-by-case')).toBe(true);
-    });
-
-    test('should validate chapter 13 appointments', () => {
-      expect(isValidAppointmentForChapter('13', 'standing')).toBe(true);
-      expect(isValidAppointmentForChapter('13', 'case-by-case')).toBe(true);
-    });
-
-    test('should return false for unknown chapter', () => {
-      // Cast to bypass type checking for edge case test
-      expect(isValidAppointmentForChapter('99' as never, 'panel')).toBe(false);
-    });
-  });
+  // Note: isValidAppointmentForChapter tests removed - function is now imported from common
+  // and is already tested in common/src/cams/trustee-appointments.test.ts
 
   describe('getAppointmentKey', () => {
     test('should create unique key for appointment', () => {

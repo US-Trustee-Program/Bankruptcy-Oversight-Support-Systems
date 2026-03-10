@@ -2,7 +2,7 @@ import { describe, test, expect } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { cleanseAndMapAppointment } from './ats-cleansing-pipeline';
-import { AtsAppointmentRecord } from '../../../adapters/types/ats.types';
+import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import { CleansingClassification, TrusteeOverride } from './ats-cleansing-types';
 
 // Test-only type that includes DIVISION from TSV export (not used in production)
@@ -12,12 +12,12 @@ type TsvAtsAppointmentRecord = AtsAppointmentRecord & {
 
 const TSV_PATH = path.join(
   __dirname,
-  '../../../../../.ustp-cams-fdp/ai/specs/CAMS-596-migrate-trustee-appointments/brainstorming/trustee_cross_reference_enriched_v4_ts.tsv',
+  '../../../../../../.ustp-cams-fdp/ai/specs/CAMS-596-migrate-trustee-appointments/brainstorming/trustee_cross_reference_enriched_v4_ts.tsv',
 );
 
 const OVERRIDE_TSV_PATH = path.join(
   __dirname,
-  '../../../../../.ustp-cams-fdp/ai/specs/CAMS-596-migrate-trustee-appointments/brainstorming/trustee_appointment_overrides.tsv',
+  '../../../../../../.ustp-cams-fdp/ai/specs/CAMS-596-migrate-trustee-appointments/brainstorming/trustee_appointment_overrides.tsv',
 );
 
 type TsvRow = {

@@ -1,5 +1,5 @@
-import { ApplicationContext } from '../../../adapters/types/basic';
-import { AtsAppointmentRecord } from '../../../adapters/types/ats.types';
+import { ApplicationContext } from '../../../../adapters/types/basic';
+import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 import {
   CleansingResult,
   CleansingClassification,

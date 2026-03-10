@@ -5,6 +5,11 @@ import { AtsGateway } from '../../../use-cases/gateways.types';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../types/ats.types';
 import { DbTableFieldSpec } from '../../types/database';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { cleanseAndMapAppointment } from './cleansing/ats-cleansing-pipeline';
+import { CleansingClassification, TrusteeOverride } from './cleansing/ats-cleansing-types';
+import { transformAppointmentRecord } from './cleansing/ats-cleansing-transform';
+import { loadTrusteeOverrides } from './cleansing/ats-cleansing-overrides';
 
 const MODULE_NAME = 'ATS-GATEWAY';
 
@@ -13,10 +18,36 @@ const MODULE_NAME = 'ATS-GATEWAY';
  * Implements queries for trustee demographics and appointments.
  */
 export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
+  private overridesCache?: Map<string, TrusteeOverride[]>;
+
   constructor(context: ApplicationContext) {
     // Use ATS-specific database configuration
     const config = context.config.atsDbConfig;
     super(config, MODULE_NAME);
+  }
+
+  /**
+   * Lazy-load overrides cache on first use
+   */
+  private async getOverridesCache(
+    context: ApplicationContext,
+  ): Promise<Map<string, TrusteeOverride[]>> {
+    if (!this.overridesCache) {
+      const result = await loadTrusteeOverrides(context);
+      if (result.error) {
+        context.logger.error(
+          MODULE_NAME,
+          'Failed to load overrides, proceeding without overrides',
+          {
+            error: result.error.message,
+          },
+        );
+        this.overridesCache = new Map();
+      } else {
+        this.overridesCache = result.data;
+      }
+    }
+    return this.overridesCache;
   }
 
   /**
@@ -99,13 +130,24 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
   }
 
   /**
-   * Get all appointments for a specific trustee.
-   * Includes chapter, division, district, and status information.
+   * Get cleansed appointments for a trustee.
+   * Returns CAMS domain types (TrusteeAppointmentInput[]).
+   *
+   * This method:
+   * 1. Queries raw ATS data from CHAPTER_DETAILS table
+   * 2. Runs each appointment through the cleansing pipeline
+   * 3. Transforms cleansed data to CAMS domain types
+   * 4. Returns 0..N appointments (after expansion and filtering)
+   *
+   * Cleansing handles:
+   * - Invalid/uncleansable data (filtered out)
+   * - Multi-expansion (1:N mapping for multi-district states)
+   * - Data normalization and validation
    */
   async getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: number,
-  ): Promise<AtsAppointmentRecord[]> {
+  ): Promise<TrusteeAppointmentInput[]> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -129,14 +171,82 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     context.logger.debug(MODULE_NAME, `Querying appointments for trustee ID: ${trusteeId}`);
 
     try {
+      // 1. Fetch raw ATS data
       const { results } = await this.executeQuery<AtsAppointmentRecord>(context, query, input);
-      const appointments = results as AtsAppointmentRecord[];
+      const atsAppointments = results as AtsAppointmentRecord[];
 
       context.logger.info(
         MODULE_NAME,
-        `Retrieved ${appointments.length} appointments for trustee ${trusteeId}`,
+        `Retrieved ${atsAppointments.length} raw appointments for trustee ${trusteeId}`,
       );
-      return appointments;
+
+      // 2. Cleanse and transform each appointment
+      const overridesCache = await this.getOverridesCache(context);
+      const cleanAppointments: TrusteeAppointmentInput[] = [];
+      let skippedCount = 0;
+      let failedCount = 0;
+
+      for (const atsAppointment of atsAppointments) {
+        const cleansingResult = cleanseAndMapAppointment(
+          context,
+          String(trusteeId),
+          atsAppointment,
+          overridesCache,
+        );
+
+        // Handle SKIP classification
+        if (cleansingResult.classification === CleansingClassification.SKIP) {
+          context.logger.debug(MODULE_NAME, `Skipping appointment per override directive`, {
+            trusteeId,
+            notes: cleansingResult.notes,
+          });
+          skippedCount++;
+          continue;
+        }
+
+        // Handle UNCLEANSABLE or PROBLEMATIC
+        if (
+          cleansingResult.classification === CleansingClassification.UNCLEANSABLE ||
+          cleansingResult.classification === CleansingClassification.PROBLEMATIC
+        ) {
+          context.logger.warn(
+            MODULE_NAME,
+            `Appointment is ${cleansingResult.classification} for trustee ${trusteeId}`,
+            {
+              notes: cleansingResult.notes,
+            },
+          );
+          failedCount++;
+          continue;
+        }
+
+        // Handle multi-expansion (1:N mapping)
+        if (!cleansingResult.appointment && cleansingResult.courtIds.length > 1) {
+          context.logger.debug(
+            MODULE_NAME,
+            `Multi-expansion: creating ${cleansingResult.courtIds.length} appointments`,
+            {
+              trusteeId,
+              courtIds: cleansingResult.courtIds,
+            },
+          );
+
+          for (const courtId of cleansingResult.courtIds) {
+            const appointmentInput = transformAppointmentRecord(atsAppointment, courtId);
+            cleanAppointments.push(appointmentInput);
+          }
+        } else if (cleansingResult.appointment) {
+          // Single appointment (1:1 mapping)
+          cleanAppointments.push(cleansingResult.appointment);
+        }
+      }
+
+      context.logger.info(
+        MODULE_NAME,
+        `Cleansed ${atsAppointments.length} raw appointments → ${cleanAppointments.length} clean appointments (${skippedCount} skipped, ${failedCount} failed)`,
+      );
+
+      return cleanAppointments;
     } catch (originalError) {
       const error = getCamsError(
         originalError,

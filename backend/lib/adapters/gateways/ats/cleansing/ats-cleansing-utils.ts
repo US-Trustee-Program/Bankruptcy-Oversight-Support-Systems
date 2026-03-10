@@ -1,5 +1,5 @@
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { AtsAppointmentRecord } from '../../../adapters/types/ats.types';
+import { AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
 
 /**
  * Normalize value for comparison (case-insensitive, trim, handle NULL)
