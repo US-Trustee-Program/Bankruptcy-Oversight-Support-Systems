@@ -1,9 +1,9 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 22
+- **Total Workflows**: 23
 - **Main Workflows**: 9
-- **Reusable Workflows**: 13
+- **Reusable Workflows**: 14
 
 ## Legend
 
@@ -94,6 +94,9 @@ flowchart LR
     reusable_unit_test_yml_unit_test["Unit test ${{ inputs.path }}"]
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
+    continuous_deployment_yml_knip["knip"]
+    reusable_knip_yml["reusable-knip.yml"]
+    reusable_knip_yml_knip["Knip"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["Security"]
     sub_security_scan_yml_sca_scan["SCA Scan"]
@@ -153,6 +156,9 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend --> reusable_unit_test_yml
     continuous_deployment_yml --> continuous_deployment_yml_unit_test_common
     continuous_deployment_yml_unit_test_common --> reusable_unit_test_yml
+    continuous_deployment_yml --> continuous_deployment_yml_knip
+    reusable_knip_yml --> reusable_knip_yml_knip
+    continuous_deployment_yml_knip --> reusable_knip_yml
     continuous_deployment_yml --> continuous_deployment_yml_security_scan
     sub_security_scan_yml --> sub_security_scan_yml_sca_scan
     sub_security_scan_yml --> sub_security_scan_yml_sast_scan
@@ -219,6 +225,9 @@ flowchart LR
     class reusable_unit_test_yml_unit_test job
     class continuous_deployment_yml_unit_test_backend job
     class continuous_deployment_yml_unit_test_common job
+    class continuous_deployment_yml_knip job
+    class reusable_knip_yml reusable
+    class reusable_knip_yml_knip job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml mainWorkflow
     class sub_security_scan_yml_sca_scan job
@@ -294,6 +303,9 @@ flowchart LR
         subgraph unit_test_common_subgraph["unit-test-common"]
             unit_test_common_vars["NODE_VERSION"]
         end
+        subgraph knip_subgraph["knip"]
+            knip_vars["NODE_VERSION"]
+        end
         security_scan["Security"]
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
@@ -317,12 +329,14 @@ flowchart LR
     Variables_CAMS_SERVER_PROTOCOL -.-> build_subgraph
     Variables_NODE_VERSION -.-> accessibility_test_subgraph
     Variables_NODE_VERSION -.-> build_subgraph
+    Variables_NODE_VERSION -.-> knip_subgraph
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
     accessibility_test_subgraph ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
+    knip_subgraph ==>|"needs"| deploy_subgraph
     security_scan ==>|"needs"| deploy_subgraph
     setup ==>|"needs"| build_subgraph
     setup ==>|"needs"| deploy_code_slot_subgraph
@@ -341,6 +355,7 @@ flowchart LR
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
+    class knip_subgraph jobSubgraph
     class security_scan job
     class setup job
     class unit_test_backend_subgraph jobSubgraph
@@ -615,6 +630,9 @@ flowchart LR
     reusable_unit_test_yml_unit_test["Unit test ${{ inputs.path }}"]
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
+    continuous_deployment_yml_knip["knip"]
+    reusable_knip_yml["reusable-knip.yml"]
+    reusable_knip_yml_knip["Knip"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["Security"]
     sub_security_scan_yml_sca_scan["SCA Scan"]
@@ -674,6 +692,9 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend --> reusable_unit_test_yml
     continuous_deployment_yml --> continuous_deployment_yml_unit_test_common
     continuous_deployment_yml_unit_test_common --> reusable_unit_test_yml
+    continuous_deployment_yml --> continuous_deployment_yml_knip
+    reusable_knip_yml --> reusable_knip_yml_knip
+    continuous_deployment_yml_knip --> reusable_knip_yml
     continuous_deployment_yml --> continuous_deployment_yml_security_scan
     sub_security_scan_yml --> sub_security_scan_yml_sca_scan
     sub_security_scan_yml --> sub_security_scan_yml_sast_scan
@@ -740,6 +761,9 @@ flowchart LR
     class reusable_unit_test_yml_unit_test job
     class continuous_deployment_yml_unit_test_backend job
     class continuous_deployment_yml_unit_test_common job
+    class continuous_deployment_yml_knip job
+    class reusable_knip_yml reusable
+    class reusable_knip_yml_knip job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml mainWorkflow
     class sub_security_scan_yml_sca_scan job
@@ -815,6 +839,9 @@ flowchart LR
         subgraph unit_test_common_subgraph["unit-test-common"]
             unit_test_common_vars["NODE_VERSION"]
         end
+        subgraph knip_subgraph["knip"]
+            knip_vars["NODE_VERSION"]
+        end
         security_scan["Security"]
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
@@ -838,12 +865,14 @@ flowchart LR
     Variables_CAMS_SERVER_PROTOCOL -.-> build_subgraph
     Variables_NODE_VERSION -.-> accessibility_test_subgraph
     Variables_NODE_VERSION -.-> build_subgraph
+    Variables_NODE_VERSION -.-> knip_subgraph
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
     accessibility_test_subgraph ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
+    knip_subgraph ==>|"needs"| deploy_subgraph
     security_scan ==>|"needs"| deploy_subgraph
     setup ==>|"needs"| build_subgraph
     setup ==>|"needs"| deploy_code_slot_subgraph
@@ -862,6 +891,7 @@ flowchart LR
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
+    class knip_subgraph jobSubgraph
     class security_scan job
     class setup job
     class unit_test_backend_subgraph jobSubgraph
@@ -1209,7 +1239,7 @@ flowchart LR
   - Jobs: 3
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
-  - Jobs: 9
+  - Jobs: 10
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
@@ -1226,6 +1256,8 @@ flowchart LR
 ### Reusable Workflows
 - **Provision and Configure Cloud Resources** (`sub-deploy.yml`)
   - Jobs: 3
+- **Knip Unused Code Check** (`reusable-knip.yml`)
+  - Jobs: 1
 - **Azure Deployment - Supporting Infrastructure** (`reusable-infrastructure-deploy.yml`)
   - Jobs: 2
 - **End-to-end Tests** (`reusable-e2e.yml`)
