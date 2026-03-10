@@ -1,6 +1,7 @@
 import { CamsRole, CamsRoleType, OversightRoles } from '@common/cams/roles';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 
 function toPercent(n: number): number {
   return Math.round(n * 100);
@@ -20,7 +21,17 @@ export type TrusteeNoteMetrics = {
 
 export class TrusteeNotesMetricsUseCase {
   public async gatherMetrics(context: ApplicationContext): Promise<TrusteeNoteMetrics> {
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const stateRepo = factory.getTrusteeNotesMetricsSyncStateRepo(context);
+    let lastSyncDate: string;
+    try {
+      const state = await stateRepo.read('TRUSTEE_NOTES_METRICS_STATE');
+      lastSyncDate = state.lastSyncDate;
+    } catch (e) {
+      if (!isNotFoundError(e)) throw e;
+      // First run — no state exists yet, fall back to 24 hours ago
+      lastSyncDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    }
+    const runAt = new Date().toISOString();
 
     const storage = factory.getStorageGateway(context);
     const roleMapping = storage.getRoleMapping();
@@ -30,7 +41,7 @@ export class TrusteeNotesMetricsUseCase {
       .map(([groupName]) => groupName);
 
     const [notes, trustees, groups] = await Promise.all([
-      factory.getTrusteeNotesRepository(context).getNotesSince(twentyFourHoursAgo),
+      factory.getTrusteeNotesRepository(context).getNotesSince(lastSyncDate),
       factory.getTrusteesRepository(context).listTrustees(),
       factory.getUserGroupsRepository(context).getUserGroupsByNames(context, permissionGroupNames),
     ]);
@@ -64,6 +75,8 @@ export class TrusteeNotesMetricsUseCase {
 
     const userEngagementPercent =
       usersWithNotePermission === 0 ? 0 : toPercent(usersWhoCreatedNotes / usersWithNotePermission);
+
+    await stateRepo.upsert({ documentType: 'TRUSTEE_NOTES_METRICS_STATE', lastSyncDate: runAt });
 
     return {
       notesLast24Hrs: notes.length,

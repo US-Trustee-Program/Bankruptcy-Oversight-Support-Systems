@@ -329,7 +329,8 @@ export type RuntimeStateDocumentType =
   | 'CASES_SYNC_STATE'
   | 'PHONETIC_BACKFILL_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
-  | 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
+  | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
+  | 'TRUSTEE_NOTES_METRICS_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -372,6 +373,11 @@ export type PhoneticBackfillState = RuntimeState & {
 
 export type TrusteeAppointmentsSyncState = RuntimeState & {
   documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
+  lastSyncDate: string;
+};
+
+export type TrusteeNotesMetricsState = RuntimeState & {
+  documentType: 'TRUSTEE_NOTES_METRICS_STATE';
   lastSyncDate: string;
 };
 

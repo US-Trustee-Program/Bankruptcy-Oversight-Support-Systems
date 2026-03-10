@@ -16,7 +16,7 @@ import SyncCases from './import/sync-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
 import SyncTrusteeAppointments from './import/sync-trustee-appointments';
-import SyncTrusteeNotesMetrics from './import/sync-trustee-notes-metrics';
+import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
 /*
 
 dataflows.ts
