@@ -24,7 +24,11 @@ export default function TrusteeAssignedStaff(props: Readonly<TrusteeAssignedStaf
   return (
     <div className="right-side-screen-content">
       <div className="trustee-assigned-staff-container">
-        {error && <Alert type={UswdsAlertStyle.Error}>{error}</Alert>}
+        {error && (
+          <Alert type={UswdsAlertStyle.Error} show={true}>
+            {error}
+          </Alert>
+        )}
 
         <div className="assigned-staff-cards">
           <StaffAssignmentCard

@@ -22,35 +22,27 @@ describe('Test Alert component', () => {
       </React.StrictMode>,
     );
 
-    const alert = screen.getByTestId('alert');
+    const alertContainer = screen.getByTestId('alert-container');
     await waitFor(() => {
-      expect(alert).not.toHaveClass('usa-alert__visible');
+      expect(alertContainer).not.toHaveClass('visible');
     });
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).toHaveClass('usa-alert__unset');
 
     act(() => alertRef.current?.show());
     await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert__visible');
+      expect(alertContainer).toHaveClass('visible');
     });
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
 
     await delay(3000);
     await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert__visible');
+      expect(alertContainer).toHaveClass('visible');
     });
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
 
     await waitFor(
       () => {
-        expect(alert).not.toHaveClass('usa-alert__visible');
+        expect(alertContainer).not.toHaveClass('visible');
       },
       { timeout: 2000 },
     );
-    expect(alert).toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
   }, 8000);
 
   test('should be visible until hide is called if no timeout is provided', async () => {
@@ -74,31 +66,21 @@ describe('Test Alert component', () => {
       expect(alertContainer).not.toHaveClass('inline-alert');
     });
 
-    const alert = screen.getByTestId('alert');
-    expect(alert).not.toHaveClass('usa-alert__visible');
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).toHaveClass('usa-alert__unset');
+    expect(alertContainer).not.toHaveClass('visible');
 
     act(() => alertRef.current?.show());
     await waitFor(() => {
-      expect(alertContainer).not.toHaveClass('inline-alert');
+      expect(alertContainer).toHaveClass('visible');
     });
-    expect(alert).toHaveClass('usa-alert__visible');
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
 
     await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert__visible');
+      expect(alertContainer).toHaveClass('visible');
     });
-    expect(alert).not.toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
 
     act(() => alertRef.current?.hide());
     await waitFor(() => {
-      expect(alert).not.toHaveClass('usa-alert__visible');
+      expect(alertContainer).not.toHaveClass('visible');
     });
-    expect(alert).toHaveClass('usa-alert__hidden');
-    expect(alert).not.toHaveClass('usa-alert__unset');
   }, 8000);
 
   test('should have inline-alert class if declared as inline', async () => {
@@ -317,6 +299,8 @@ describe('Test Alert component', () => {
       </React.StrictMode>,
     );
 
+    act(() => alertRef.current?.show());
+
     const alertMessage = screen.getByTestId('alert-message');
     await waitFor(() => {
       expect(alertMessage).toContainHTML('Test alert message');
@@ -362,6 +346,61 @@ describe('Test Alert component', () => {
     const alert = screen.getByTestId('alert');
     await waitFor(() => {
       expect(alert).toHaveAttribute('role', 'alert');
+    });
+  });
+
+  test('should have aria-labelledby and aria-atomic when title is provided', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            id="test-alert"
+            message="Test alert message"
+            title="Alert Title"
+            type={UswdsAlertStyle.Info}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    act(() => alertRef.current?.show());
+
+    const alert = screen.getByTestId('alert-test-alert');
+    const heading = screen.getByRole('heading', { name: 'Alert Title' });
+
+    await waitFor(() => {
+      expect(alert).toHaveAttribute('aria-atomic', 'true');
+      expect(alert).toHaveAttribute('aria-labelledby', 'test-alert-heading');
+      expect(heading).toHaveAttribute('id', 'test-alert-heading');
+    });
+  });
+
+  test('should have aria-atomic but not aria-labelledby when title is not provided', async () => {
+    const alertRef = React.createRef<AlertRefType>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <Alert
+            id="test-alert"
+            message="Test alert message"
+            type={UswdsAlertStyle.Info}
+            role="status"
+            slim={true}
+            ref={alertRef}
+          ></Alert>
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+
+    const alert = screen.getByTestId('alert-test-alert');
+
+    await waitFor(() => {
+      expect(alert).toHaveAttribute('aria-atomic', 'true');
+      expect(alert).not.toHaveAttribute('aria-labelledby');
     });
   });
 });
