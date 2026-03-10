@@ -118,7 +118,6 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       SELECT
         TRU_ID,
         DISTRICT,
-        DIVISION,
         CHAPTER,
         APPOINTED_DATE AS DATE_APPOINTED,
         STATUS,
