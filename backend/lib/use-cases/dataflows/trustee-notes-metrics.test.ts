@@ -5,6 +5,8 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeNotesMetricsUseCase } from './trustee-notes-metrics';
 import factory from '../../factory';
 import {
+  RuntimeStateRepository,
+  TrusteeNotesMetricsState,
   TrusteeNotesRepository,
   TrusteesRepository,
   UserGroupsRepository,
@@ -12,6 +14,7 @@ import {
 import { StorageGateway } from '../../adapters/types/storage';
 import { UserGroup } from '@common/cams/users';
 import { CamsRole, CamsRoleType } from '@common/cams/roles';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 const ALL_PERMISSION_GROUPS: UserGroup[] = [
   { id: 'g1', groupName: 'USTP CAMS Trustee Admin', users: [] },
@@ -37,12 +40,15 @@ function makeUserGroup(groupName: string, userIds: string[]): UserGroup {
   };
 }
 
+const STORED_SYNC_DATE = '2026-03-09T00:00:00.000Z';
+
 describe('TrusteeNotesMetricsUseCase', () => {
   let context: ApplicationContext;
   let mockNotesRepo: Partial<TrusteeNotesRepository>;
   let mockTrusteesRepo: Partial<TrusteesRepository>;
   let mockUserGroupsRepo: Partial<UserGroupsRepository>;
   let mockStorage: Partial<StorageGateway>;
+  let mockStateRepo: Partial<RuntimeStateRepository<TrusteeNotesMetricsState>>;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -53,6 +59,13 @@ describe('TrusteeNotesMetricsUseCase', () => {
       getUserGroupsByNames: vi.fn().mockResolvedValue(ALL_PERMISSION_GROUPS),
     };
     mockStorage = { getRoleMapping: vi.fn().mockReturnValue(makeRoleMapping()) };
+    mockStateRepo = {
+      read: vi.fn().mockResolvedValue({
+        documentType: 'TRUSTEE_NOTES_METRICS_STATE',
+        lastSyncDate: STORED_SYNC_DATE,
+      }),
+      upsert: vi.fn().mockResolvedValue(undefined),
+    };
 
     vi.spyOn(factory, 'getTrusteeNotesRepository').mockReturnValue(
       mockNotesRepo as TrusteeNotesRepository,
@@ -64,6 +77,9 @@ describe('TrusteeNotesMetricsUseCase', () => {
       mockUserGroupsRepo as UserGroupsRepository,
     );
     vi.spyOn(factory, 'getStorageGateway').mockReturnValue(mockStorage as StorageGateway);
+    vi.spyOn(factory, 'getTrusteeNotesMetricsSyncStateRepo').mockReturnValue(
+      mockStateRepo as RuntimeStateRepository<TrusteeNotesMetricsState>,
+    );
   });
 
   afterEach(() => {
@@ -195,6 +211,39 @@ describe('TrusteeNotesMetricsUseCase', () => {
       const metrics = await new TrusteeNotesMetricsUseCase().gatherMetrics(context);
 
       expect(metrics.usersWithNotePermission).toBe(0);
+    });
+  });
+
+  describe('runtime state', () => {
+    test('should use lastSyncDate from state on subsequent runs', async () => {
+      await new TrusteeNotesMetricsUseCase().gatherMetrics(context);
+
+      expect(mockNotesRepo.getNotesSince).toHaveBeenCalledWith(STORED_SYNC_DATE);
+      expect(mockStateRepo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ documentType: 'TRUSTEE_NOTES_METRICS_STATE' }),
+      );
+    });
+
+    test('should fall back to 24 hours ago on first run when no state exists', async () => {
+      vi.mocked(mockStateRepo.read).mockRejectedValue(
+        new NotFoundError('RUNTIME-STATE-MONGO-REPOSITORY'),
+      );
+      const beforeCall = Date.now();
+
+      await new TrusteeNotesMetricsUseCase().gatherMetrics(context);
+
+      const calledWith = vi.mocked(mockNotesRepo.getNotesSince).mock.calls[0][0];
+      const calledDate = new Date(calledWith).getTime();
+      expect(calledDate).toBeLessThanOrEqual(beforeCall - 23 * 60 * 60 * 1000);
+      expect(calledDate).toBeGreaterThanOrEqual(beforeCall - 25 * 60 * 60 * 1000);
+    });
+
+    test('should rethrow non-NotFound errors from state repo', async () => {
+      vi.mocked(mockStateRepo.read).mockRejectedValue(new Error('DB connection failed'));
+
+      await expect(new TrusteeNotesMetricsUseCase().gatherMetrics(context)).rejects.toThrow(
+        'DB connection failed',
+      );
     });
   });
 });
