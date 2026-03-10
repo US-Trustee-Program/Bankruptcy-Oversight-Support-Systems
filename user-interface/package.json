@@ -57,7 +57,7 @@
     "@tiptap/extension-underline": "3.20.0",
     "@tiptap/extensions": "3.20.0",
     "@tiptap/react": "3.20.0",
-    "@types/jsdom": "21.1.7",
+    "@types/jsdom": "28.0.0",
     "@types/node": "24.10.13",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
