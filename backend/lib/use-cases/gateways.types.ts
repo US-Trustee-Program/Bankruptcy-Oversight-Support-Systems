@@ -185,13 +185,13 @@ export interface AtsGateway {
   ): Promise<AtsTrusteeRecord[]>;
   /**
    * Get cleansed appointments for a trustee.
-   * Returns CAMS domain types (TrusteeAppointmentInput[]).
+   * Returns both clean appointments (for storage) and failed appointments (for DLQ).
    * Gateway handles ATS data cleansing and transformation internally.
    */
   getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: number,
-  ): Promise<TrusteeAppointmentInput[]>;
+  ): Promise<import('../adapters/types/ats.types').TrusteeAppointmentsResult>;
   getTrusteeCount(context: ApplicationContext): Promise<number>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(

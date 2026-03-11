@@ -2,7 +2,12 @@ import * as mssql from 'mssql';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { AtsGateway } from '../../../use-cases/gateways.types';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../types/ats.types';
+import {
+  AtsTrusteeRecord,
+  AtsAppointmentRecord,
+  TrusteeAppointmentsResult,
+  FailedAppointment,
+} from '../../types/ats.types';
 import { DbTableFieldSpec } from '../../types/database';
 import { getCamsError } from '../../../common-errors/error-utilities';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
@@ -131,23 +136,24 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
 
   /**
    * Get cleansed appointments for a trustee.
-   * Returns CAMS domain types (TrusteeAppointmentInput[]).
+   * Returns both clean appointments (for storage) and failed appointments (for DLQ).
+   * Gateway handles ATS data cleansing and transformation internally.
    *
    * This method:
    * 1. Queries raw ATS data from CHAPTER_DETAILS table
    * 2. Runs each appointment through the cleansing pipeline
    * 3. Transforms cleansed data to CAMS domain types
-   * 4. Returns 0..N appointments (after expansion and filtering)
+   * 4. Returns both successful and failed appointments with statistics
    *
    * Cleansing handles:
-   * - Invalid/uncleansable data (filtered out)
+   * - Invalid/uncleansable data (returned as failed appointments)
    * - Multi-expansion (1:N mapping for multi-district states)
    * - Data normalization and validation
    */
   async getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: number,
-  ): Promise<TrusteeAppointmentInput[]> {
+  ): Promise<TrusteeAppointmentsResult> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -184,8 +190,15 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       // 2. Cleanse and transform each appointment
       const overridesCache = await this.getOverridesCache(context);
       const cleanAppointments: TrusteeAppointmentInput[] = [];
-      let skippedCount = 0;
-      let failedCount = 0;
+      const failedAppointments: FailedAppointment[] = [];
+      const stats = {
+        total: atsAppointments.length,
+        clean: 0,
+        autoRecoverable: 0,
+        problematic: 0,
+        uncleansable: 0,
+        skipped: 0,
+      };
 
       for (const atsAppointment of atsAppointments) {
         const cleansingResult = cleanseAndMapAppointment(
@@ -201,11 +214,11 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
             trusteeId,
             notes: cleansingResult.notes,
           });
-          skippedCount++;
+          stats.skipped++;
           continue;
         }
 
-        // Handle UNCLEANSABLE or PROBLEMATIC
+        // Handle UNCLEANSABLE or PROBLEMATIC - ADD TO FAILED LIST
         if (
           cleansingResult.classification === CleansingClassification.UNCLEANSABLE ||
           cleansingResult.classification === CleansingClassification.PROBLEMATIC
@@ -217,8 +230,30 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
               notes: cleansingResult.notes,
             },
           );
-          failedCount++;
+
+          // Add to failed appointments list for DLQ
+          failedAppointments.push({
+            atsAppointment,
+            classification: cleansingResult.classification as 'PROBLEMATIC' | 'UNCLEANSABLE',
+            notes: cleansingResult.notes,
+            mapType: cleansingResult.mapType,
+            timestamp: new Date().toISOString(),
+          });
+
+          if (cleansingResult.classification === CleansingClassification.PROBLEMATIC) {
+            stats.problematic++;
+          } else {
+            stats.uncleansable++;
+          }
+
           continue;
+        }
+
+        // Track CLEAN vs AUTO_RECOVERABLE
+        if (cleansingResult.classification === CleansingClassification.CLEAN) {
+          stats.clean++;
+        } else if (cleansingResult.classification === CleansingClassification.AUTO_RECOVERABLE) {
+          stats.autoRecoverable++;
         }
 
         // Handle multi-expansion (1:N mapping)
@@ -244,10 +279,14 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
 
       context.logger.info(
         MODULE_NAME,
-        `Cleansed ${atsAppointments.length} raw appointments → ${cleanAppointments.length} clean appointments (${skippedCount} skipped, ${failedCount} failed)`,
+        `Cleansed ${atsAppointments.length} raw appointments → ${cleanAppointments.length} clean, ${failedAppointments.length} failed (${stats.skipped} skipped)`,
       );
 
-      return cleanAppointments;
+      return {
+        cleanAppointments,
+        failedAppointments,
+        stats,
+      };
     } catch (originalError) {
       const error = getCamsError(
         originalError,
