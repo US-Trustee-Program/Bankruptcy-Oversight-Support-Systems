@@ -60,7 +60,9 @@ export type TrusteeAppointmentSyncEvent = {
 export type TrusteeAppointmentSyncErrorCode =
   | 'NO_TRUSTEE_MATCH'
   | 'MULTIPLE_TRUSTEES_MATCH'
-  | 'CASE_NOT_FOUND';
+  | 'CASE_NOT_FOUND'
+  | 'IMPERFECT_MATCH'
+  | 'HIGH_CONFIDENCE_MATCH';
 
 /**
  * Sentinel value indicating a candidate trustee has not been scored yet.
