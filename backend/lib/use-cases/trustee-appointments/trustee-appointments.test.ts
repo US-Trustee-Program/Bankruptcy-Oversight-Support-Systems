@@ -36,7 +36,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
 
       const result = await trusteeAppointmentsUseCase.getTrusteeAppointments(context, trusteeId);
 
-      expect(result).toEqual(mockAppointments);
+      // Expect enriched appointments with courtName but courtDivisionName set to undefined
+      const expectedEnrichedAppointments = mockAppointments.map((apt) => ({
+        ...apt,
+        courtDivisionName: undefined, // Division names are not used per product requirements
+      }));
+
+      expect(result).toEqual(expectedEnrichedAppointments);
       expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId);
       expect(MockMongoRepository.prototype.getTrusteeAppointments).toHaveBeenCalledWith(trusteeId);
     });
@@ -504,13 +510,13 @@ describe('TrusteeAppointmentsUseCase tests', () => {
             appointmentType: 'panel',
             divisionCode: 'MAB',
             courtName: 'Test Court',
-            courtDivisionName: 'Boston',
+            courtDivisionName: undefined, // Division names are not used per product requirements
           }),
           after: expect.objectContaining({
             chapter: '11',
             divisionCode: '2',
             courtName: 'Test Court',
-            courtDivisionName: 'Worcester',
+            courtDivisionName: undefined, // Division names are not used per product requirements
           }),
         }),
       );
@@ -712,7 +718,7 @@ describe('TrusteeAppointmentsUseCase tests', () => {
             appointmentType: 'panel',
             divisionCode: 'MAB',
             courtName: 'Test Court',
-            courtDivisionName: 'Boston',
+            courtDivisionName: undefined, // Division names are not used per product requirements
             status: 'active',
           }),
         }),

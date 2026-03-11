@@ -35,6 +35,11 @@ const DLQ = output.storageQueue({
   connection: 'AzureWebJobsStorage',
 });
 
+const FAILED_APPOINTMENTS = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'failed-appointments'),
+  connection: 'AzureWebJobsStorage',
+});
+
 const RETRY = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'retry'),
   connection: 'AzureWebJobsStorage',
@@ -100,7 +105,7 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
     logger.info(MODULE_NAME, 'Starting fresh trustee migration from ATS.');
   }
 
-  const cursorMessage: CursorMessage = { lastId: lastTrusteeId.toString() ?? null };
+  const cursorMessage: CursorMessage = { lastId: lastTrusteeId?.toString() ?? null };
   invocationContext.extraOutputs.set(PAGE, cursorMessage);
 }
 
@@ -177,11 +182,41 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     return;
   }
 
-  const { processed, appointments, errors } = processResult.data;
+  const { processed, appointments, errors, failedAppointments } = processResult.data;
 
   const newProcessedCount = currentProcessedCount + processed;
   const newAppointmentsCount = currentAppointmentsCount + appointments;
   const newErrors = currentErrors + errors;
+
+  // Send failed appointments to FAILED_APPOINTMENTS queue for visibility and review
+  if (failedAppointments && failedAppointments.length > 0) {
+    // Collect all failed appointment messages
+    const failedAppointmentMessages = failedAppointments.map((failedAppt) => ({
+      type: 'FAILED_APPOINTMENT',
+      classification: failedAppt.classification,
+      notes: failedAppt.notes,
+      mapType: failedAppt.mapType,
+      timestamp: failedAppt.timestamp,
+      atsAppointment: {
+        TRU_ID: failedAppt.atsAppointment.TRU_ID,
+        DISTRICT: failedAppt.atsAppointment.DISTRICT,
+        STATE: failedAppt.atsAppointment.STATE,
+        CHAPTER: failedAppt.atsAppointment.CHAPTER,
+        STATUS: failedAppt.atsAppointment.STATUS,
+        // Convert Date objects to ISO strings for queue serialization
+        DATE_APPOINTED: failedAppt.atsAppointment.DATE_APPOINTED?.toISOString() ?? null,
+        EFFECTIVE_DATE: failedAppt.atsAppointment.EFFECTIVE_DATE?.toISOString() ?? null,
+      },
+    }));
+
+    // Send all messages at once (Azure Functions accepts array)
+    invocationContext.extraOutputs.set(FAILED_APPOINTMENTS, failedAppointmentMessages);
+
+    logger.info(
+      MODULE_NAME,
+      `Sent ${failedAppointments.length} failed appointments to failed-appointments queue for review`,
+    );
+  }
 
   const updateResult = await MigrationStateService.updateMigrationState(context, {
     ...currentState,
@@ -225,13 +260,15 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
  * handleError
  *
  * Route failed events to retry queue for another attempt.
- * Distinguishes between QueueError payloads (infrastructure failures from handleStart/handlePage)
- * and TrusteeEvent payloads (individual trustee failures from handleRetry).
- * QueueError payloads are logged and sent to HARD_STOP since they cannot be retried as trustee events.
+ * Distinguishes between:
+ * - QueueError payloads (infrastructure failures) → HARD_STOP
+ * - Failed appointment messages (data quality issues) → HARD_STOP (shouldn't retry)
+ * - TrusteeEvent payloads (individual trustee failures) → RETRY
  */
 async function handleError(event: TrusteeEvent | QueueError, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
+  // Check if this is a QUEUE_ERROR (infrastructure failure)
   if ('type' in event && event.type === 'QUEUE_ERROR') {
     const queueError = event as unknown as QueueError;
     logger.error(
@@ -242,6 +279,21 @@ async function handleError(event: TrusteeEvent | QueueError, invocationContext: 
     return;
   }
 
+  // Check if this is a FAILED_APPOINTMENT message (shouldn't be in error queue)
+  if ('type' in event && event.type === 'FAILED_APPOINTMENT') {
+    const failedEvent = event as { type: string; classification?: string };
+    logger.warn(
+      MODULE_NAME,
+      `Failed appointment message ended up in error queue (should have gone to DLQ). Classification: ${failedEvent.classification}. Routing to hard-stop.`,
+      {
+        event,
+      },
+    );
+    invocationContext.extraOutputs.set(HARD_STOP, [event]);
+    return;
+  }
+
+  // Otherwise treat as TrusteeEvent for retry
   const trusteeEvent = event as TrusteeEvent;
   logger.error(
     MODULE_NAME,
@@ -299,7 +351,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: PAGE.queueName,
     handler: handlePage,
-    extraOutputs: [PAGE, DLQ],
+    extraOutputs: [PAGE, DLQ, FAILED_APPOINTMENTS],
   });
 
   app.storageQueue(HANDLE_ERROR, {
