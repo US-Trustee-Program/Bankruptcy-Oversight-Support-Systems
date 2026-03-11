@@ -106,6 +106,28 @@
       .note-item-content {
         margin-top: 1.25rem;
         margin-bottom: 1.5rem;
+
+        // The note content renders inside an <ol> (the notes list), so the browser
+        // offsets list nesting by one level: content level 1 renders as level 2
+        // (circle), level 2 as level 3 (square), etc. Re-anchor all three levels
+        // back to their expected styles using the top-level list as the root.
+        :not(li) > ul {
+          list-style-type: disc;
+          padding-left: 1.5rem;
+        }
+
+        :not(li) > ul ul {
+          list-style-type: circle;
+        }
+
+        :not(li) > ul ul ul {
+          list-style-type: square;
+        }
+
+        :not(li) > ol {
+          list-style-type: decimal;
+          padding-left: 1.5rem;
+        }
       }
 
       .note-item-content:has(+ .usa-alert-container) {
