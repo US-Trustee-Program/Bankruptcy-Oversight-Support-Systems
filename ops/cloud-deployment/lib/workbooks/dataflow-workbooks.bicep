@@ -32,3 +32,17 @@ resource troubleshootingWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
     serializedData: loadTextContent('dataflow-troubleshooting.json')
   }
 }
+
+resource trusteeNotesEngagementWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid('trustee-notes-engagement-workbook', resourceGroup().id)
+  location: location
+  tags: tags
+  kind: 'shared'
+  properties: {
+    displayName: 'Trustee Notes Engagement'
+    description: 'Track trustee notes adoption, active usage, and user engagement over time.'
+    category: 'workbook'
+    sourceId: appInsightsResourceId
+    serializedData: loadTextContent('trustee-notes-engagement.json')
+  }
+}
