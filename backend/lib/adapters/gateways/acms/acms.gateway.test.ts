@@ -210,4 +210,24 @@ describe('ACMS gateway tests', () => {
       }),
     );
   });
+
+  test('should exclude deleted cases when loading migration table', async () => {
+    const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: [],
+      message: '',
+    });
+    const ssn = '234-21-5326';
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await gateway.loadMigrationTable(context);
+    console.log(ssn);
+
+    expect(spy).toHaveBeenCalledWith(context, expect.stringContaining("DELETE_CODE != 'D'"));
+    expect(spy).toHaveBeenCalledWith(
+      context,
+      expect.stringContaining('INSERT INTO dbo.CAMS_MIGRATION_TEMP'),
+    );
+  });
 });
