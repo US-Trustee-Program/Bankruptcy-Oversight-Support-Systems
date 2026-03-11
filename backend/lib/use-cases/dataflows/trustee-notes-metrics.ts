@@ -15,7 +15,6 @@ export type TrusteeNoteMetrics = {
   totalTrustees: number;
   trusteesWithNotesPercent: number;
   usersWithNotePermission: number;
-  usersWhoCreatedNotes: number;
   userEngagementPercent: number;
 };
 
@@ -71,10 +70,8 @@ export class TrusteeNotesMetricsUseCase {
     const trusteesWithNotesPercent =
       totalTrustees === 0 ? 0 : toPercent(trusteesWithNotes / totalTrustees);
 
-    const usersWhoCreatedNotes = uniqueNoteAuthors;
-
     const userEngagementPercent =
-      usersWithNotePermission === 0 ? 0 : toPercent(usersWhoCreatedNotes / usersWithNotePermission);
+      usersWithNotePermission === 0 ? 0 : toPercent(uniqueNoteAuthors / usersWithNotePermission);
 
     await stateRepo.upsert({ documentType: 'TRUSTEE_NOTES_METRICS_STATE', lastSyncDate: runAt });
 
@@ -86,7 +83,6 @@ export class TrusteeNotesMetricsUseCase {
       totalTrustees,
       trusteesWithNotesPercent,
       usersWithNotePermission,
-      usersWhoCreatedNotes,
       userEngagementPercent,
     };
   }
