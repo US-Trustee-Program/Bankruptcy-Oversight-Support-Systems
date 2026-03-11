@@ -28,6 +28,7 @@ import {
   TrusteeAppointmentsRepository,
   TrusteeAppointmentsSyncState,
   TrusteeAssistantsRepository,
+  TrusteeNotesMetricsState,
   TrusteeNotesRepository,
   TrusteesRepository,
   UserGroupsRepository,
@@ -94,6 +95,7 @@ let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
 let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
 let trusteeAppointmentsSyncStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
+let trusteeNotesMetricsSyncStateRepo: RuntimeStateRepository<TrusteeNotesMetricsState>;
 let usersRepository: UsersRepository;
 
 let mockOrdersRepository: MockMongoRepository;
@@ -286,6 +288,15 @@ const getTrusteeAppointmentsSyncStateRepo = (
   return trusteeAppointmentsSyncStateRepo;
 };
 
+const getTrusteeNotesMetricsSyncStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<TrusteeNotesMetricsState> => {
+  if (!trusteeNotesMetricsSyncStateRepo) {
+    trusteeNotesMetricsSyncStateRepo = getRuntimeStateRepository<TrusteeNotesMetricsState>(context);
+  }
+  return trusteeNotesMetricsSyncStateRepo;
+};
+
 const getUsersRepository = (context: ApplicationContext): UsersRepository => {
   if (context.config.get('dbMock')) {
     return MockMongoRepository.getInstance(context);
@@ -456,6 +467,7 @@ const factory = {
   getCasesSyncStateRepo,
   getPhoneticBackfillStateRepo,
   getTrusteeAppointmentsSyncStateRepo,
+  getTrusteeNotesMetricsSyncStateRepo,
   getAuthorizationGateway,
   getUserSessionUseCase,
   getUserSessionCacheRepository,
