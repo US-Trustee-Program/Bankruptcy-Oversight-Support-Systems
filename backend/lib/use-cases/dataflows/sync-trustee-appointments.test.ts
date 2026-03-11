@@ -84,10 +84,8 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
   test('should create a new CASE_APPOINTMENT when no existing appointment', async () => {
     const events = [makeEvent('case-001', 'John Doe')];
 
-    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
-      context,
-      events,
-    );
+    const { successCount, dlqMessages, scenarioDistribution } =
+      await SyncTrusteeAppointments.processAppointments(context, events);
 
     expect(mockAppointmentsRepo.getActiveCaseAppointment).toHaveBeenCalledWith('case-001');
     expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
@@ -100,6 +98,12 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(mockAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(1);
     expect(dlqMessages).toHaveLength(0);
+    expect(scenarioDistribution.autoMatchCount).toBe(1);
+    expect(scenarioDistribution.imperfectMatchCount).toBe(0);
+    expect(scenarioDistribution.highConfidenceMatchCount).toBe(0);
+    expect(scenarioDistribution.noMatchCount).toBe(0);
+    expect(scenarioDistribution.multipleMatchCount).toBe(0);
+    expect(scenarioDistribution.caseNotFoundCount).toBe(0);
   });
 
   test('should skip when existing appointment has the same trusteeId', async () => {
@@ -175,10 +179,8 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
 
     const events = [makeEvent('case-001', 'Bad Name'), makeEvent('case-002', 'Jane Smith')];
 
-    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
-      context,
-      events,
-    );
+    const { successCount, dlqMessages, scenarioDistribution } =
+      await SyncTrusteeAppointments.processAppointments(context, events);
 
     // First event — unclassified error goes to DLQ with raw error shape
     expect(dlqMessages).toHaveLength(1);
@@ -192,6 +194,8 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
         trusteeId: 'trustee-456',
       }),
     );
+    // Unclassified error doesn't increment any named distribution counter
+    expect(scenarioDistribution.autoMatchCount).toBe(1);
   });
 
   test('should send TrusteeAppointmentSyncError with NO_TRUSTEE_MATCH to DLQ when no trustee found', async () => {
@@ -203,16 +207,17 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       noMatchError,
     );
 
-    const { dlqMessages, successCount } = await SyncTrusteeAppointments.processAppointments(
-      context,
-      [makeEvent('case-001', 'Ghost Trustee')],
-    );
+    const { dlqMessages, successCount, scenarioDistribution } =
+      await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'Ghost Trustee'),
+      ]);
 
     expect(dlqMessages).toHaveLength(1);
     expect((dlqMessages[0] as TrusteeAppointmentSyncError).mismatchReason).toBe('NO_TRUSTEE_MATCH');
     expect((dlqMessages[0] as TrusteeAppointmentSyncError).caseId).toBe('case-001');
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
+    expect(scenarioDistribution.noMatchCount).toBe(1);
   });
 
   test('should route fuzzy match winner to DLQ with HIGH_CONFIDENCE_MATCH instead of auto-linking', async () => {
@@ -266,10 +271,10 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       candidateScores: scoredCandidates,
     });
 
-    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
-      context,
-      [makeEvent('case-001', 'Common Name')],
-    );
+    const { successCount, dlqMessages, scenarioDistribution } =
+      await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'Common Name'),
+      ]);
 
     expect(trusteeMatchHelpers.resolveTrusteeWithFuzzyMatching).toHaveBeenCalledWith(
       context,
@@ -285,6 +290,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(err.matchCandidates).toHaveLength(2);
     expect(err.matchCandidates[0].trusteeId).toBe('t-1');
     expect(err.matchCandidates[0].totalScore).toBe(90);
+    expect(scenarioDistribution.highConfidenceMatchCount).toBe(1);
   });
 
   test('should send TrusteeAppointmentSyncError with matchCandidates when fuzzy matching fails', async () => {
@@ -344,10 +350,10 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       fuzzyMatchError,
     );
 
-    const { dlqMessages, successCount } = await SyncTrusteeAppointments.processAppointments(
-      context,
-      [makeEvent('case-001', 'Common Name')],
-    );
+    const { dlqMessages, successCount, scenarioDistribution } =
+      await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'Common Name'),
+      ]);
 
     const err = dlqMessages[0] as TrusteeAppointmentSyncError;
     expect(err.mismatchReason).toBe('MULTIPLE_TRUSTEES_MATCH');
@@ -356,6 +362,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(err.matchCandidates[0].totalScore).toBe(60);
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
+    expect(scenarioDistribution.multipleMatchCount).toBe(1);
   });
 
   test('should send TrusteeAppointmentSyncError with CASE_NOT_FOUND to DLQ when case is missing from Cosmos', async () => {
@@ -363,14 +370,16 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       new NotFoundError('CASES-REPO', { message: 'Case not found' }),
     );
 
-    const { dlqMessages } = await SyncTrusteeAppointments.processAppointments(context, [
-      makeEvent('missing-case', 'John Doe'),
-    ]);
+    const { dlqMessages, scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      [makeEvent('missing-case', 'John Doe')],
+    );
 
     const err = dlqMessages[0] as TrusteeAppointmentSyncError;
     expect(err.mismatchReason).toBe('CASE_NOT_FOUND');
     expect(err.caseId).toBe('missing-case');
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+    expect(scenarioDistribution.caseNotFoundCount).toBe(1);
   });
 
   test('should send IMPERFECT_MATCH to DLQ when getSyncedCase returns null', async () => {
@@ -378,10 +387,8 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
 
     const events = [makeEvent('case-001', 'John Doe')];
 
-    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
-      context,
-      events,
-    );
+    const { successCount, dlqMessages, scenarioDistribution } =
+      await SyncTrusteeAppointments.processAppointments(context, events);
 
     expect(mockCasesRepo.syncDxtrCase).not.toHaveBeenCalled();
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
@@ -390,6 +397,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     const err = dlqMessages[0] as TrusteeAppointmentSyncError;
     expect(err.mismatchReason).toBe('IMPERFECT_MATCH');
     expect(err.caseId).toBe('case-001');
+    expect(scenarioDistribution.imperfectMatchCount).toBe(1);
   });
 
   test('should send IMPERFECT_MATCH to DLQ when single name match does not meet perfect match criteria', async () => {
@@ -405,10 +413,8 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
 
     const events = [makeEvent('case-001', 'John Doe')];
 
-    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
-      context,
-      events,
-    );
+    const { successCount, dlqMessages, scenarioDistribution } =
+      await SyncTrusteeAppointments.processAppointments(context, events);
 
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
@@ -418,6 +424,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(err.matchCandidates).toHaveLength(1);
     expect(err.matchCandidates[0].trusteeId).toBe('trustee-123');
     expect(err.matchCandidates[0].totalScore).toBe(60);
+    expect(scenarioDistribution.imperfectMatchCount).toBe(1);
   });
 
   test('should fall back to raw error shape when error has data but unknown mismatchReason', async () => {
@@ -436,6 +443,220 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(dlqMessages).toHaveLength(1);
     expect((dlqMessages[0] as TrusteeAppointmentSyncEvent).error).toBeDefined();
     expect('mismatchReason' in dlqMessages[0]).toBe(false);
+  });
+
+  test('scenarioDistribution counts sum to total events processed for mixed batch', async () => {
+    // Event 1: perfect match
+    (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce('trustee-1')
+      // Event 2: NO_TRUSTEE_MATCH
+      .mockRejectedValueOnce(
+        new CamsError('TRUSTEE-MATCH', {
+          message: 'No match',
+          data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+        }),
+      )
+      // Event 3: imperfect match
+      .mockResolvedValueOnce('trustee-3');
+
+    vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch')
+      .mockReturnValueOnce(true) // Event 1
+      .mockReturnValueOnce(false); // Event 3
+
+    vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+      trusteeId: 'trustee-3',
+      trusteeName: 'Trustee 3',
+      totalScore: 50,
+      addressScore: 0,
+      districtDivisionScore: 50,
+      chapterScore: 0,
+    });
+
+    const events = [
+      makeEvent('case-001', 'Perfect'),
+      makeEvent('case-002', 'NoMatch'),
+      makeEvent('case-003', 'Imperfect'),
+    ];
+
+    const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      events,
+    );
+
+    const sum =
+      scenarioDistribution.autoMatchCount +
+      scenarioDistribution.imperfectMatchCount +
+      scenarioDistribution.highConfidenceMatchCount +
+      scenarioDistribution.noMatchCount +
+      scenarioDistribution.multipleMatchCount +
+      scenarioDistribution.caseNotFoundCount;
+
+    expect(sum).toBe(events.length);
+    expect(scenarioDistribution.autoMatchCount).toBe(1);
+    expect(scenarioDistribution.noMatchCount).toBe(1);
+    expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+  });
+
+  test('should emit TRUSTEE_MATCH_AUDIT log for auto-matched event', async () => {
+    const infoSpy = vi.spyOn(context.logger, 'info');
+    const events = [makeEvent('case-001', 'John Doe')];
+
+    await SyncTrusteeAppointments.processAppointments(context, events);
+
+    const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
+    expect(auditCalls).toHaveLength(1);
+    expect(auditCalls[0][2]).toEqual(
+      expect.objectContaining({
+        caseId: 'case-001',
+        dxtrTrusteeName: 'John Doe',
+        matchOutcome: 'auto-matched',
+        matchedTrusteeId: 'trustee-123',
+        appointmentStatus: 'active',
+      }),
+    );
+  });
+
+  test('should emit TRUSTEE_MATCH_AUDIT log for IMPERFECT_MATCH event', async () => {
+    vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+    vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+      trusteeId: 'trustee-123',
+      trusteeName: 'John Doe',
+      totalScore: 60,
+      addressScore: 100,
+      districtDivisionScore: 50,
+      chapterScore: 0,
+    });
+    const infoSpy = vi.spyOn(context.logger, 'info');
+
+    await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001', 'John Doe')]);
+
+    const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
+    expect(auditCalls).toHaveLength(1);
+    expect(auditCalls[0][2]).toEqual(
+      expect.objectContaining({
+        matchOutcome: 'imperfect-match',
+        matchedTrusteeId: 'trustee-123',
+        scoringBreakdown: { districtDivisionScore: 50, chapterScore: 0 },
+      }),
+    );
+  });
+
+  test('should emit TRUSTEE_MATCH_AUDIT log for HIGH_CONFIDENCE_MATCH event', async () => {
+    const matchCandidates = [
+      {
+        trusteeId: 't-1',
+        trusteeName: 'T1',
+        totalScore: -1,
+        addressScore: -1,
+        districtDivisionScore: -1,
+        chapterScore: -1,
+      },
+      {
+        trusteeId: 't-2',
+        trusteeName: 'T2',
+        totalScore: -1,
+        addressScore: -1,
+        districtDivisionScore: -1,
+        chapterScore: -1,
+      },
+    ];
+    (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new CamsError('TRUSTEE-MATCH', {
+        message: 'Multiple match',
+        data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates },
+      }),
+    );
+    vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce({
+      winnerId: 't-1',
+      candidateScores: [
+        {
+          trusteeId: 't-1',
+          trusteeName: 'T1',
+          totalScore: 90,
+          addressScore: 100,
+          districtDivisionScore: 100,
+          chapterScore: 100,
+        },
+        {
+          trusteeId: 't-2',
+          trusteeName: 'T2',
+          totalScore: 40,
+          addressScore: 0,
+          districtDivisionScore: 50,
+          chapterScore: 0,
+        },
+      ],
+    });
+    const infoSpy = vi.spyOn(context.logger, 'info');
+
+    await SyncTrusteeAppointments.processAppointments(context, [
+      makeEvent('case-001', 'Common Name'),
+    ]);
+
+    const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
+    expect(auditCalls).toHaveLength(1);
+    expect(auditCalls[0][2]).toEqual(
+      expect.objectContaining({
+        matchOutcome: 'high-confidence',
+        matchedTrusteeId: 't-1',
+        scoringBreakdown: { districtDivisionScore: 100, chapterScore: 100 },
+      }),
+    );
+  });
+
+  test('should emit TRUSTEE_MATCH_AUDIT log for NO_TRUSTEE_MATCH event', async () => {
+    (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new CamsError('TRUSTEE-MATCH', {
+        message: 'No match',
+        data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+      }),
+    );
+    const infoSpy = vi.spyOn(context.logger, 'info');
+
+    await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001', 'Ghost')]);
+
+    const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
+    expect(auditCalls).toHaveLength(1);
+    expect(auditCalls[0][2]).toEqual(
+      expect.objectContaining({
+        matchOutcome: 'no-match',
+        matchedTrusteeId: null,
+      }),
+    );
+  });
+
+  test('should emit TRUSTEE_MATCH_AUDIT log for CASE_NOT_FOUND event', async () => {
+    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new NotFoundError('CASES-REPO', { message: 'Case not found' }),
+    );
+    const infoSpy = vi.spyOn(context.logger, 'info');
+
+    await SyncTrusteeAppointments.processAppointments(context, [
+      makeEvent('missing-case', 'John Doe'),
+    ]);
+
+    const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
+    expect(auditCalls).toHaveLength(1);
+    expect(auditCalls[0][2]).toEqual(
+      expect.objectContaining({
+        caseId: 'missing-case',
+        matchOutcome: 'case-not-found',
+      }),
+    );
+  });
+
+  test('should emit exactly one TRUSTEE_MATCH_AUDIT per event in a batch', async () => {
+    const infoSpy = vi.spyOn(context.logger, 'info');
+    const events = [
+      makeEvent('case-001', 'John Doe'),
+      makeEvent('case-002', 'Jane Smith'),
+      makeEvent('case-003', 'Bob Jones'),
+    ];
+
+    await SyncTrusteeAppointments.processAppointments(context, events);
+
+    const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
+    expect(auditCalls).toHaveLength(3);
   });
 });
 

@@ -7,6 +7,7 @@ export interface DataflowTraceResult {
   success: boolean;
   error?: string;
   details?: Record<string, string>;
+  additionalMetrics?: { name: string; value: number }[];
 }
 
 const MODULE_NAME = 'DATAFLOW-OBSERVABILITY';
@@ -47,6 +48,10 @@ export function completeDataflowTrace(
     { name: 'DataflowDocumentsWritten', value: result.documentsWritten },
     { name: 'DataflowDocumentsFailed', value: result.documentsFailed },
   ];
+
+  if (result.additionalMetrics) {
+    metrics.push(...result.additionalMetrics);
+  }
 
   observability.completeTrace(
     trace,
