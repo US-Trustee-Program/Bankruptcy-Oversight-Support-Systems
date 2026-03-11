@@ -116,6 +116,29 @@ export function normalizeChapter(chapter: string): string {
 }
 
 /**
+ * Determines if a trustee is a "perfect match" for a case.
+ * A perfect match requires a SINGLE active appointment that matches
+ * court + division + chapter on the same record.
+ * This is stricter than the individual scoring functions which check
+ * these criteria independently across all appointments.
+ */
+export function isPerfectMatch(
+  appointments: TrusteeAppointment[],
+  courtId: string,
+  divisionCode: string,
+  chapter: string,
+): boolean {
+  const normalizedChapter = normalizeChapter(chapter);
+  return appointments.some(
+    (a) =>
+      a.status === 'active' &&
+      a.courtId === courtId &&
+      a.divisionCode === divisionCode &&
+      normalizeChapter(a.chapter) === normalizedChapter,
+  );
+}
+
+/**
  * Calculates district/division match score for a trustee.
  * Scoring:
  * - Exact court + division match with active appointment: 100 points
@@ -212,17 +235,22 @@ export function calculateCandidateScore(
   return candidateScore;
 }
 
+export type FuzzyMatchResult = {
+  winnerId: string;
+  candidateScores: CandidateScore[];
+};
+
 /**
  * Resolves a trustee from multiple candidates using fuzzy matching.
  * Scores each candidate based on address, district/division, and chapter alignment.
  * Winner criteria: score >75% AND 5+ points ahead of next candidate.
- * Returns winning trusteeId or throws enhanced error with candidate scores.
+ * Returns winning trusteeId with candidate scores, or throws enhanced error.
  */
 export async function resolveTrusteeWithFuzzyMatching(
   context: ApplicationContext,
   event: TrusteeAppointmentSyncEvent,
   candidateTrusteeIds: string[],
-): Promise<string> {
+): Promise<FuzzyMatchResult> {
   // Lazy-load case details
   const casesRepo = factory.getCasesRepository(context);
   const syncedCase = await casesRepo.getSyncedCase(event.caseId);
@@ -307,7 +335,7 @@ export async function resolveTrusteeWithFuzzyMatching(
       MODULE_NAME,
       `Fuzzy matching resolved to ${winner.trusteeId} with score ${winner.totalScore}`,
     );
-    return winner.trusteeId;
+    return { winnerId: winner.trusteeId, candidateScores };
   }
 
   // No clear winner - throw error with scores
