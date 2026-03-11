@@ -22,9 +22,35 @@ import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
 
+type ScenarioDistribution = {
+  autoMatchCount: number;
+  imperfectMatchCount: number;
+  highConfidenceMatchCount: number;
+  noMatchCount: number;
+  multipleMatchCount: number;
+  caseNotFoundCount: number;
+};
+
+type MatchAuditEntry = {
+  caseId: string;
+  dxtrTrusteeName: string;
+  matchOutcome:
+    | 'auto-matched'
+    | 'imperfect-match'
+    | 'high-confidence'
+    | 'no-match'
+    | 'multiple-match'
+    | 'case-not-found'
+    | 'error';
+  matchedTrusteeId: string | null;
+  scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null;
+  appointmentStatus: string | null;
+};
+
 type ProcessAppointmentsResult = {
   successCount: number;
   dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[];
+  scenarioDistribution: ScenarioDistribution;
 };
 
 /**
@@ -171,8 +197,25 @@ async function processAppointments(
   const trusteesRepo = factory.getTrusteesRepository(context);
   const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
   let successCount = 0;
+  const scenarioDistribution: ScenarioDistribution = {
+    autoMatchCount: 0,
+    imperfectMatchCount: 0,
+    highConfidenceMatchCount: 0,
+    noMatchCount: 0,
+    multipleMatchCount: 0,
+    caseNotFoundCount: 0,
+  };
 
   for (const event of events) {
+    const audit: MatchAuditEntry = {
+      caseId: event.caseId,
+      dxtrTrusteeName: event.dxtrTrustee.fullName,
+      matchOutcome: 'error',
+      matchedTrusteeId: null,
+      scoringBreakdown: null,
+      appointmentStatus: null,
+    };
+
     try {
       const trusteeId = await matchTrusteeByName(context, event.dxtrTrustee.fullName);
 
@@ -194,6 +237,10 @@ async function processAppointments(
           `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
         );
         successCount++;
+        scenarioDistribution.autoMatchCount++;
+        audit.matchOutcome = 'auto-matched';
+        audit.matchedTrusteeId = trusteeId;
+        audit.appointmentStatus = 'active';
       } else {
         const trustee = await trusteesRepo.read(trusteeId);
         const candidateScore = syncedCase
@@ -212,6 +259,13 @@ async function processAppointments(
               districtDivisionScore: UNSCORED,
               chapterScore: UNSCORED,
             };
+
+        audit.matchOutcome = 'imperfect-match';
+        audit.matchedTrusteeId = trusteeId;
+        audit.scoringBreakdown = {
+          districtDivisionScore: candidateScore.districtDivisionScore,
+          chapterScore: candidateScore.chapterScore,
+        };
 
         throw new CamsError(MODULE_NAME, {
           message: `Single name match for case ${event.caseId} did not meet perfect match criteria.`,
@@ -245,6 +299,16 @@ async function processAppointments(
             mismatchReason: 'HIGH_CONFIDENCE_MATCH',
             matchCandidates: candidateScores,
           });
+          scenarioDistribution.highConfidenceMatchCount++;
+          const winnerScore = candidateScores.find((c) => c.trusteeId === winnerId);
+          audit.matchOutcome = 'high-confidence';
+          audit.matchedTrusteeId = winnerId;
+          if (winnerScore) {
+            audit.scoringBreakdown = {
+              districtDivisionScore: winnerScore.districtDivisionScore,
+              chapterScore: winnerScore.chapterScore,
+            };
+          }
           continue;
         } catch (fuzzyError) {
           const enhancedError = getCamsError(
@@ -254,16 +318,36 @@ async function processAppointments(
           );
           context.logger.warn(MODULE_NAME, `${enhancedError.message}`, enhancedError.data);
           dlqMessages.push(buildDlqMessage(event, enhancedError));
+          scenarioDistribution.multipleMatchCount++;
+          audit.matchOutcome = 'multiple-match';
           continue;
         }
       }
 
       context.logger.warn(MODULE_NAME, `${camsError}`);
-      dlqMessages.push(buildDlqMessage(event, camsError));
+      const dlqMsg = buildDlqMessage(event, camsError);
+      dlqMessages.push(dlqMsg);
+      if ('mismatchReason' in dlqMsg) {
+        switch (dlqMsg.mismatchReason) {
+          case 'NO_TRUSTEE_MATCH':
+            scenarioDistribution.noMatchCount++;
+            audit.matchOutcome = 'no-match';
+            break;
+          case 'IMPERFECT_MATCH':
+            scenarioDistribution.imperfectMatchCount++;
+            break;
+          case 'CASE_NOT_FOUND':
+            scenarioDistribution.caseNotFoundCount++;
+            audit.matchOutcome = 'case-not-found';
+            break;
+        }
+      }
+    } finally {
+      context.logger.info(MODULE_NAME, 'TRUSTEE_MATCH_AUDIT', audit);
     }
   }
 
-  return { successCount, dlqMessages };
+  return { successCount, dlqMessages, scenarioDistribution };
 }
 
 /**
