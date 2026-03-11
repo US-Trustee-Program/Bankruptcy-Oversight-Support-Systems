@@ -25,11 +25,11 @@ export function splitMultiValue(value: string | null | undefined): string[] {
 
 /**
  * Create a unique key for an appointment to prevent duplicates.
- * Division is optional - only included in key if present.
+ * Division is optional - only appended at the end if present.
  */
 export function getAppointmentKey(trusteeId: string, appointment: TrusteeAppointmentInput): string {
-  const divisionPart = appointment.divisionCode ? `-${appointment.divisionCode}` : '';
-  return `${trusteeId}-${appointment.courtId}${divisionPart}-${appointment.chapter}-${appointment.appointmentType}`;
+  const baseKey = `${trusteeId}-${appointment.courtId}-${appointment.chapter}-${appointment.appointmentType}`;
+  return appointment.divisionCode ? `${baseKey}-${appointment.divisionCode}` : baseKey;
 }
 
 /**
