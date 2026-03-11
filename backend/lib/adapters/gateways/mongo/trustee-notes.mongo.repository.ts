@@ -77,6 +77,18 @@ export class TrusteeNotesMongoRepository
     }
   }
 
+  async getNotesSince(isoDate: string): Promise<TrusteeNote[]> {
+    const query = and(
+      doc('documentType').equals('TRUSTEE_NOTE'),
+      doc('createdOn').greaterThanOrEqual(isoDate),
+    );
+    try {
+      return await this.getAdapter<TrusteeNote>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve trustee notes.');
+    }
+  }
+
   async getNotesByTrusteeId(trusteeId: string): Promise<TrusteeNote[]> {
     const query = and(
       doc('documentType').equals('TRUSTEE_NOTE'),
