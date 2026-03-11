@@ -13,6 +13,7 @@ import {
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
   TrusteeAppointmentsSyncState,
+  TrusteesRepository,
 } from '../gateways.types';
 import * as trusteeMatchHelpers from './trustee-match.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
@@ -24,6 +25,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
   let context: ApplicationContext;
   let mockCasesRepo: Partial<CasesRepository>;
   let mockAppointmentsRepo: Partial<TrusteeAppointmentsRepository>;
+  let mockTrusteesRepo: Partial<TrusteesRepository>;
 
   const makeEvent = (caseId: string, fullName: string): TrusteeAppointmentSyncEvent => ({
     caseId,
@@ -35,7 +37,13 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     context = await createMockApplicationContext();
 
     mockCasesRepo = {
-      getSyncedCase: vi.fn().mockResolvedValue({ caseId: 'case-001', trusteeId: undefined }),
+      getSyncedCase: vi.fn().mockResolvedValue({
+        caseId: 'case-001',
+        trusteeId: undefined,
+        courtId: '081',
+        courtDivisionCode: 'NY',
+        chapter: '7',
+      }),
       syncDxtrCase: vi.fn().mockResolvedValue(undefined),
       release: vi.fn(),
     };
@@ -44,6 +52,16 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       getActiveCaseAppointment: vi.fn().mockResolvedValue(null),
       createCaseAppointment: vi.fn().mockResolvedValue({}),
       updateCaseAppointment: vi.fn().mockResolvedValue({}),
+      getTrusteeAppointments: vi.fn().mockResolvedValue([]),
+      release: vi.fn(),
+    };
+
+    mockTrusteesRepo = {
+      read: vi.fn().mockResolvedValue({
+        trusteeId: 'trustee-123',
+        name: 'John Doe',
+        public: { address: {} },
+      }),
       release: vi.fn(),
     };
 
@@ -51,7 +69,11 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
       mockAppointmentsRepo as TrusteeAppointmentsRepository,
     );
+    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+      mockTrusteesRepo as TrusteesRepository,
+    );
     vi.spyOn(trusteeMatchHelpers, 'matchTrusteeByName').mockResolvedValue('trustee-123');
+    vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(true);
   });
 
   afterEach(async () => {
@@ -193,7 +215,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(successCount).toBe(0);
   });
 
-  test('should attempt fuzzy matching when MULTIPLE_TRUSTEES_MATCH error occurs', async () => {
+  test('should route fuzzy match winner to DLQ with HIGH_CONFIDENCE_MATCH instead of auto-linking', async () => {
     const matchCandidates = [
       {
         trusteeId: 't-1',
@@ -220,8 +242,29 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       multiMatchError,
     );
 
-    // Mock fuzzy matching to succeed
-    vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce('t-1');
+    const scoredCandidates = [
+      {
+        trusteeId: 't-1',
+        trusteeName: 'Trustee 1',
+        totalScore: 90,
+        addressScore: 100,
+        districtDivisionScore: 100,
+        chapterScore: 100,
+      },
+      {
+        trusteeId: 't-2',
+        trusteeName: 'Trustee 2',
+        totalScore: 40,
+        addressScore: 0,
+        districtDivisionScore: 50,
+        chapterScore: 0,
+      },
+    ];
+    // Mock fuzzy matching to succeed with a winner
+    vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce({
+      winnerId: 't-1',
+      candidateScores: scoredCandidates,
+    });
 
     const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
       context,
@@ -233,14 +276,15 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       makeEvent('case-001', 'Common Name'),
       ['t-1', 't-2'],
     );
-    expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
-      expect.objectContaining({
-        caseId: 'case-001',
-        trusteeId: 't-1',
-      }),
-    );
-    expect(successCount).toBe(1);
-    expect(dlqMessages).toHaveLength(0);
+    // Fuzzy winner should NOT be auto-linked — routed to DLQ for verification
+    expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+    expect(successCount).toBe(0);
+    expect(dlqMessages).toHaveLength(1);
+    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
+    expect(err.mismatchReason).toBe('HIGH_CONFIDENCE_MATCH');
+    expect(err.matchCandidates).toHaveLength(2);
+    expect(err.matchCandidates[0].trusteeId).toBe('t-1');
+    expect(err.matchCandidates[0].totalScore).toBe(90);
   });
 
   test('should send TrusteeAppointmentSyncError with matchCandidates when fuzzy matching fails', async () => {
@@ -329,7 +373,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
   });
 
-  test('should create a new appointment without syncing case when getSyncedCase returns null', async () => {
+  test('should send IMPERFECT_MATCH to DLQ when getSyncedCase returns null', async () => {
     (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     const events = [makeEvent('case-001', 'John Doe')];
@@ -340,11 +384,40 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     );
 
     expect(mockCasesRepo.syncDxtrCase).not.toHaveBeenCalled();
-    expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
-      expect.objectContaining({ caseId: 'case-001', trusteeId: 'trustee-123' }),
+    expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+    expect(successCount).toBe(0);
+    expect(dlqMessages).toHaveLength(1);
+    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
+    expect(err.mismatchReason).toBe('IMPERFECT_MATCH');
+    expect(err.caseId).toBe('case-001');
+  });
+
+  test('should send IMPERFECT_MATCH to DLQ when single name match does not meet perfect match criteria', async () => {
+    vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+    vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+      trusteeId: 'trustee-123',
+      trusteeName: 'John Doe',
+      totalScore: 60,
+      addressScore: 100,
+      districtDivisionScore: 50,
+      chapterScore: 0,
+    });
+
+    const events = [makeEvent('case-001', 'John Doe')];
+
+    const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      events,
     );
-    expect(successCount).toBe(1);
-    expect(dlqMessages).toHaveLength(0);
+
+    expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+    expect(successCount).toBe(0);
+    expect(dlqMessages).toHaveLength(1);
+    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
+    expect(err.mismatchReason).toBe('IMPERFECT_MATCH');
+    expect(err.matchCandidates).toHaveLength(1);
+    expect(err.matchCandidates[0].trusteeId).toBe('trustee-123');
+    expect(err.matchCandidates[0].totalScore).toBe(60);
   });
 
   test('should fall back to raw error shape when error has data but unknown mismatchReason', async () => {
