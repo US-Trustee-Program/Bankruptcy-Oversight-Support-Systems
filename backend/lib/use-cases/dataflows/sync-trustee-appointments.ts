@@ -4,6 +4,7 @@ import {
   TrusteeAppointmentSyncErrorCode,
   TrusteeAppointmentSyncEvent,
   CandidateScore,
+  UNSCORED,
   isMultipleTrusteesMatchError,
 } from '@common/cams/dataflow-events';
 import factory from '../../factory';
@@ -11,7 +12,12 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import { TrusteeAppointmentsSyncState } from '../gateways.types';
-import { matchTrusteeByName, resolveTrusteeWithFuzzyMatching } from './trustee-match.helpers';
+import {
+  matchTrusteeByName,
+  resolveTrusteeWithFuzzyMatching,
+  isPerfectMatch,
+  calculateCandidateScore,
+} from './trustee-match.helpers';
 import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
@@ -49,10 +55,10 @@ function buildDlqMessage(
     return { ...event, mismatchReason: 'NO_TRUSTEE_MATCH', matchCandidates: [] };
   }
 
-  if (mismatchReason === 'MULTIPLE_TRUSTEES_MATCH') {
+  if (mismatchReason === 'MULTIPLE_TRUSTEES_MATCH' || mismatchReason === 'IMPERFECT_MATCH') {
     return {
       ...event,
-      mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+      mismatchReason,
       matchCandidates: matchCandidates || [],
     };
   }
@@ -153,7 +159,8 @@ async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: 
 /**
  * Process trustee appointment events by:
  * 1. Matching each DXTR trustee to a CAMS trustee by name
- * 2. Updating the SyncedCase with the matched trusteeId
+ * 2. Checking for a perfect match (exact name + active appointment in same court/division/chapter)
+ * 3. Auto-linking only perfect matches; routing all others to DLQ for verification
  */
 async function processAppointments(
   context: ApplicationContext,
@@ -161,14 +168,59 @@ async function processAppointments(
 ): Promise<ProcessAppointmentsResult> {
   const casesRepo = factory.getCasesRepository(context);
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+  const trusteesRepo = factory.getTrusteesRepository(context);
   const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
   let successCount = 0;
 
   for (const event of events) {
     try {
       const trusteeId = await matchTrusteeByName(context, event.dxtrTrustee.fullName);
-      await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo, false);
-      successCount++;
+
+      const syncedCase = await casesRepo.getSyncedCase(event.caseId);
+      const trusteeAppointments = await appointmentsRepo.getTrusteeAppointments(trusteeId);
+
+      if (
+        syncedCase &&
+        isPerfectMatch(
+          trusteeAppointments,
+          syncedCase.courtId,
+          syncedCase.courtDivisionCode,
+          syncedCase.chapter,
+        )
+      ) {
+        await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo, false);
+        context.logger.info(
+          MODULE_NAME,
+          `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
+        );
+        successCount++;
+      } else {
+        const trustee = await trusteesRepo.read(trusteeId);
+        const candidateScore = syncedCase
+          ? calculateCandidateScore(
+              context,
+              event.dxtrTrustee,
+              syncedCase,
+              trustee,
+              trusteeAppointments,
+            )
+          : {
+              trusteeId,
+              trusteeName: trustee.name,
+              totalScore: UNSCORED,
+              addressScore: UNSCORED,
+              districtDivisionScore: UNSCORED,
+              chapterScore: UNSCORED,
+            };
+
+        throw new CamsError(MODULE_NAME, {
+          message: `Single name match for case ${event.caseId} did not meet perfect match criteria.`,
+          data: {
+            mismatchReason: 'IMPERFECT_MATCH',
+            matchCandidates: [candidateScore],
+          },
+        });
+      }
     } catch (originalError) {
       const camsError = getCamsError(
         originalError,
@@ -179,13 +231,20 @@ async function processAppointments(
       if (isMultipleTrusteesMatchError(camsError.data)) {
         try {
           const candidateTrusteeIds = camsError.data.matchCandidates.map((c) => c.trusteeId);
-          const trusteeId = await resolveTrusteeWithFuzzyMatching(
+          const { winnerId, candidateScores } = await resolveTrusteeWithFuzzyMatching(
             context,
             event,
             candidateTrusteeIds,
           );
-          await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo, true);
-          successCount++;
+          context.logger.info(
+            MODULE_NAME,
+            `Fuzzy match winner ${winnerId} for case ${event.caseId} routed to DLQ for verification`,
+          );
+          dlqMessages.push({
+            ...event,
+            mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+            matchCandidates: candidateScores,
+          });
           continue;
         } catch (fuzzyError) {
           const enhancedError = getCamsError(
