@@ -56,25 +56,16 @@ describe('AppointmentCard', () => {
     );
   }
 
-  test('should render appointment card with correct heading', () => {
+  test('should render appointment card with court name in heading when available', () => {
     renderWithProps();
 
+    // Court name is used for display
     expect(
-      screen.getByText(/Southern District of New York \(Manhattan\): Chapter 7 - Panel/i),
+      screen.getByText(/Southern District of New York: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
-  test('should render appointment card with district name when provided', () => {
-    renderWithProps({
-      appointment: { ...mockAppointment, courtName: 'Eastern District of New York' },
-    });
-
-    expect(
-      screen.getByText(/Eastern District of New York \(Manhattan\): Chapter 7 - Panel/i),
-    ).toBeInTheDocument();
-  });
-
-  test('should render appointment card with city name when provided', () => {
+  test('should render appointment card with court name when provided', () => {
     renderWithProps({
       appointment: {
         ...mockAppointment,
@@ -83,8 +74,9 @@ describe('AppointmentCard', () => {
       },
     });
 
+    // Court name is used, division name is not displayed
     expect(
-      screen.getByText(/Eastern District of New York \(Brooklyn\): Chapter 7 - Panel/i),
+      screen.getByText(/Eastern District of New York: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
   });
 
@@ -98,8 +90,9 @@ describe('AppointmentCard', () => {
     });
 
     expect(screen.getByText(/District:/i)).toBeInTheDocument();
+    // Court name is shown
     expect(
-      screen.getByText(/Eastern District of New York \(Brooklyn\)/i, { selector: 'li' }),
+      screen.getByText(/Eastern District of New York/i, { selector: 'li' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Chapter:/i)).toBeInTheDocument();
     expect(screen.getByText(/^7$/, { selector: 'li' })).toBeInTheDocument();
@@ -183,20 +176,34 @@ describe('AppointmentCard', () => {
     expect(screen.getByText('12/01/2025')).toBeInTheDocument();
   });
 
+  test('should display "Not Specified" for Unix epoch sentinel dates', () => {
+    const appointmentWithSentinelDates: TrusteeAppointment = {
+      ...mockAppointment,
+      appointedDate: '1970-01-01T00:00:00.000Z',
+      effectiveDate: '1970-01-01T00:00:00.000Z',
+    };
+
+    renderWithProps({ appointment: appointmentWithSentinelDates });
+
+    // Both dates should show "Not Specified"
+    expect(screen.getAllByText('Not Specified').length).toBe(2);
+  });
+
   test('should display court ID when courtName is missing', () => {
     const appointmentWithoutCourtName: TrusteeAppointment = {
       ...mockAppointment,
       courtName: undefined,
+      courtDivisionName: 'Manhattan',
       courtId: '0208',
     };
 
     renderWithProps({ appointment: appointmentWithoutCourtName });
 
+    // Court ID is shown as fallback when court name is missing
     expect(screen.getByText(/Court 0208: Chapter 7 - Panel/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Court 0208/i).length).toBeGreaterThan(0);
   });
 
-  test('should display courtName without division when courtDivisionName is missing', () => {
+  test('should display court name when courtDivisionName is missing', () => {
     const appointmentWithoutDivisionName: TrusteeAppointment = {
       ...mockAppointment,
       courtDivisionName: undefined,
@@ -204,6 +211,7 @@ describe('AppointmentCard', () => {
 
     renderWithProps({ appointment: appointmentWithoutDivisionName });
 
+    // Court name is displayed regardless of division name
     expect(
       screen.getByText(/Southern District of New York: Chapter 7 - Panel/i),
     ).toBeInTheDocument();
