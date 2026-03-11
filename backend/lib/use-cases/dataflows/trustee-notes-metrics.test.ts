@@ -167,8 +167,7 @@ describe('TrusteeNotesMetricsUseCase', () => {
       expect(metrics.trusteesWithNotes).toBe(2);
       expect(metrics.trusteesWithNotesPercent).toBe(50);
       expect(metrics.usersWithNotePermission).toBe(5);
-      expect(metrics.usersWhoCreatedNotes).toBe(2);
-      expect(metrics.usersWhoCreatedNotes).toBe(metrics.uniqueNoteAuthors);
+      expect(metrics.uniqueNoteAuthors).toBe(2);
       expect(metrics.userEngagementPercent).toBe(40);
     });
 
