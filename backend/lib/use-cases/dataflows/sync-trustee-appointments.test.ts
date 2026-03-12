@@ -84,7 +84,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
   test('should create a new CASE_APPOINTMENT when no existing appointment', async () => {
     const events = [makeEvent('case-001', 'John Doe')];
 
-    const { successCount, dlqMessages, scenarioDistribution } =
+    const { successCount, autoMatchedEvents, dlqMessages, scenarioDistribution } =
       await SyncTrusteeAppointments.processAppointments(context, events);
 
     expect(mockAppointmentsRepo.getActiveCaseAppointment).toHaveBeenCalledWith('case-001');
@@ -97,6 +97,8 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     );
     expect(mockAppointmentsRepo.updateCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(1);
+    expect(autoMatchedEvents).toHaveLength(1);
+    expect(autoMatchedEvents[0]).toEqual(events[0]);
     expect(dlqMessages).toHaveLength(0);
     expect(scenarioDistribution.autoMatchCount).toBe(1);
     expect(scenarioDistribution.imperfectMatchCount).toBe(0);
@@ -207,7 +209,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       noMatchError,
     );
 
-    const { dlqMessages, successCount, scenarioDistribution } =
+    const { dlqMessages, successCount, autoMatchedEvents, scenarioDistribution } =
       await SyncTrusteeAppointments.processAppointments(context, [
         makeEvent('case-001', 'Ghost Trustee'),
       ]);
@@ -217,6 +219,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect((dlqMessages[0] as TrusteeAppointmentSyncError).caseId).toBe('case-001');
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
+    expect(autoMatchedEvents).toHaveLength(0);
     expect(scenarioDistribution.noMatchCount).toBe(1);
   });
 
@@ -643,6 +646,37 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
         matchOutcome: 'case-not-found',
       }),
     );
+  });
+
+  test('autoMatchedEvents contains correct events in mixed batch', async () => {
+    (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce('trustee-1')
+      .mockRejectedValueOnce(
+        new CamsError('TRUSTEE-MATCH', {
+          message: 'No match',
+          data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+        }),
+      )
+      .mockResolvedValueOnce('trustee-3');
+
+    vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch')
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(true);
+
+    const events = [
+      makeEvent('case-001', 'Perfect1'),
+      makeEvent('case-002', 'NoMatch'),
+      makeEvent('case-003', 'Perfect2'),
+    ];
+
+    const { autoMatchedEvents } = await SyncTrusteeAppointments.processAppointments(
+      context,
+      events,
+    );
+
+    expect(autoMatchedEvents).toHaveLength(2);
+    expect(autoMatchedEvents[0]).toEqual(events[0]);
+    expect(autoMatchedEvents[1]).toEqual(events[2]);
   });
 
   test('should emit exactly one TRUSTEE_MATCH_AUDIT per event in a batch', async () => {
