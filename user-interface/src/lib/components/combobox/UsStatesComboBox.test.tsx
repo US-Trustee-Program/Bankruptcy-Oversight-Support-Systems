@@ -15,6 +15,55 @@ describe('UsStatesComboBox', () => {
     vi.clearAllMocks();
   });
 
+  test('should pass undefined selections to ComboBox when selections array is empty', () => {
+    const props = {
+      id: 'test-states',
+      label: 'Select States',
+      onUpdateSelection: vi.fn(),
+      selections: [],
+    };
+
+    render(<UsStatesComboBox {...props} />);
+
+    const comboBoxProps = MockedComboBox.mock.calls[0][0];
+    expect(comboBoxProps.selections).toBeUndefined();
+  });
+
+  test('should map matching state codes to ComboOption selections', () => {
+    const props = {
+      id: 'test-states',
+      label: 'Select States',
+      onUpdateSelection: vi.fn(),
+      selections: ['CA', 'TX'],
+    };
+
+    render(<UsStatesComboBox {...props} />);
+
+    const comboBoxProps = MockedComboBox.mock.calls[0][0];
+    expect(comboBoxProps.selections).toHaveLength(2);
+    expect(comboBoxProps.selections).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ value: 'CA', label: 'CA - California' }),
+        expect.objectContaining({ value: 'TX', label: 'TX - Texas' }),
+      ]),
+    );
+  });
+
+  test('should skip unknown state codes in selections', () => {
+    const props = {
+      id: 'test-states',
+      label: 'Select States',
+      onUpdateSelection: vi.fn(),
+      selections: ['CA', 'ZZ'],
+    };
+
+    render(<UsStatesComboBox {...props} />);
+
+    const comboBoxProps = MockedComboBox.mock.calls[0][0];
+    expect(comboBoxProps.selections).toHaveLength(1);
+    expect(comboBoxProps.selections![0]).toMatchObject({ value: 'CA' });
+  });
+
   test('should render ComboBox with USPS states options and correct labels', () => {
     const props = {
       id: 'test-states',
