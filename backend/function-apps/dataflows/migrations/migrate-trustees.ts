@@ -262,7 +262,6 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
  * Route failed events to retry queue for another attempt.
  * Distinguishes between:
  * - QueueError payloads (infrastructure failures) → HARD_STOP
- * - Failed appointment messages (data quality issues) → HARD_STOP (shouldn't retry)
  * - TrusteeEvent payloads (individual trustee failures) → RETRY
  */
 async function handleError(event: TrusteeEvent | QueueError, invocationContext: InvocationContext) {
@@ -274,20 +273,6 @@ async function handleError(event: TrusteeEvent | QueueError, invocationContext: 
     logger.error(
       MODULE_NAME,
       `Infrastructure error in ${queueError.activityName}: ${queueError.error?.message ?? 'Unknown error'}. Routing to hard-stop.`,
-    );
-    invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    return;
-  }
-
-  // Check if this is a FAILED_APPOINTMENT message (shouldn't be in error queue)
-  if ('type' in event && event.type === 'FAILED_APPOINTMENT') {
-    const failedEvent = event as { type: string; classification?: string };
-    logger.warn(
-      MODULE_NAME,
-      `Failed appointment message ended up in error queue (should have gone to DLQ). Classification: ${failedEvent.classification}. Routing to hard-stop.`,
-      {
-        event,
-      },
     );
     invocationContext.extraOutputs.set(HARD_STOP, [event]);
     return;

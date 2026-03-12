@@ -361,7 +361,6 @@ export async function processPageOfTrustees(
       processed++;
       appointments += result.appointmentsProcessed;
 
-      // Collect failed appointments for DLQ
       if (result.failedAppointments && result.failedAppointments.length > 0) {
         failedAppointments.push(...result.failedAppointments);
       }
