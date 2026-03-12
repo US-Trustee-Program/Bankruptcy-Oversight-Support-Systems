@@ -215,10 +215,6 @@ var applicationSettings = concat(
   createApplicationInsights
     ? [
         {
-          name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
-          value: '~2'
-        }
-        {
           name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
           value: webappInsights.outputs.connectionString
         }
