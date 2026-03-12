@@ -34,21 +34,6 @@ const DLQ = output.storageQueue({
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
-const AUTO_MATCHED = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'auto-matched'),
-  connection: STORAGE_QUEUE_CONNECTION,
-});
-
-const REVIEW_DLQ = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'review-dlq'),
-  connection: STORAGE_QUEUE_CONNECTION,
-});
-
-const FAILURES_DLQ = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'failures-dlq'),
-  connection: STORAGE_QUEUE_CONNECTION,
-});
-
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
@@ -135,32 +120,14 @@ async function handlePage(
 ) {
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
-  const { successCount, autoMatchedEvents, dlqMessages, scenarioDistribution } =
+  const { successCount, dlqMessages, scenarioDistribution } =
     await SyncTrusteeAppointments.processAppointments(appContext, events);
 
   const totalEvents = events.length;
   const autoMatchRate =
     totalEvents > 0 ? (scenarioDistribution.autoMatchCount / totalEvents) * 100 : 0;
 
-  const reviewMessages = dlqMessages.filter(
-    (msg) =>
-      'mismatchReason' in msg &&
-      (msg.mismatchReason === 'IMPERFECT_MATCH' || msg.mismatchReason === 'HIGH_CONFIDENCE_MATCH'),
-  );
-  const failureMessages = dlqMessages.filter(
-    (msg) =>
-      'mismatchReason' in msg &&
-      (msg.mismatchReason === 'MULTIPLE_TRUSTEES_MATCH' ||
-        msg.mismatchReason === 'NO_TRUSTEE_MATCH' ||
-        msg.mismatchReason === 'CASE_NOT_FOUND'),
-  );
-  const errorMessages = dlqMessages.filter((msg) => !('mismatchReason' in msg));
-
-  if (autoMatchedEvents.length) invocationContext.extraOutputs.set(AUTO_MATCHED, autoMatchedEvents);
-  if (reviewMessages.length) invocationContext.extraOutputs.set(REVIEW_DLQ, reviewMessages);
-  if (failureMessages.length) invocationContext.extraOutputs.set(FAILURES_DLQ, failureMessages);
-  if (errorMessages.length) invocationContext.extraOutputs.set(DLQ, errorMessages);
-
+  invocationContext.extraOutputs.set(DLQ, dlqMessages);
   completeDataflowTrace(
     appContext.observability,
     trace,
@@ -179,9 +146,6 @@ async function handlePage(
         noMatchCount: String(scenarioDistribution.noMatchCount),
         multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
         caseNotFoundCount: String(scenarioDistribution.caseNotFoundCount),
-        autoMatchedCount: String(autoMatchedEvents.length),
-        reviewCount: String(reviewMessages.length),
-        failureCount: String(failureMessages.length),
       },
       additionalMetrics: [
         { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
@@ -202,7 +166,7 @@ function setup() {
   app.storageQueue(HANDLE_PAGE, {
     connection: PAGE.connection,
     queueName: PAGE.queueName,
-    extraOutputs: [DLQ, AUTO_MATCHED, REVIEW_DLQ, FAILURES_DLQ],
+    extraOutputs: [DLQ],
     handler: handlePage,
   });
 
@@ -222,10 +186,5 @@ function setup() {
 
 export default {
   MODULE_NAME,
-  handlePage,
   setup,
-  AUTO_MATCHED,
-  REVIEW_DLQ,
-  FAILURES_DLQ,
-  DLQ,
 };
