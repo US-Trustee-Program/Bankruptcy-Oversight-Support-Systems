@@ -148,10 +148,22 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       try {
         const response = await Api2.getCourts();
         const sortedCourts = sortByCourtLocation(response.data);
-        const options = sortedCourts.map((district) => ({
-          value: `${district.courtId}|${district.courtDivisionCode}`,
-          label: `${district.courtName} (${district.courtDivisionName})`,
-        }));
+        const options = sortedCourts.map((district) => {
+          // Build label with guards for missing data
+          let label: string;
+          if (district.courtName && district.courtDivisionName) {
+            label = `${district.courtName} (${district.courtDivisionName})`;
+          } else if (district.courtName) {
+            label = district.courtName;
+          } else {
+            label = `Court ${district.courtId}`;
+          }
+
+          return {
+            value: `${district.courtId}|${district.courtDivisionCode}`,
+            label,
+          };
+        });
 
         setDistrictOptions(options);
       } catch (err) {

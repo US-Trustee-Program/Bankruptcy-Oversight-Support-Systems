@@ -1,0 +1,6 @@
+TRUSTEE_ID	STATUS	DISTRICT	STATE	CHAPTER	ACTION	OVERRIDE_STATUS	OVERRIDE_DISTRICT	OVERRIDE_STATE	OVERRIDE_CHAPTER	OVERRIDE_COURT_ID	NOTES
+17120	NP	test	testt	7	SKIP	NULL	NULL	NULL	NULL	NULL	Test data - exclude from migration
+17120	NP	testd	tests	11	SKIP	NULL	NULL	NULL	NULL	NULL	Test data - exclude from migration
+28	10	NULL	NULL	11	MAP	NP	Central	California	11	0973	Manual correction for trustee 28 with NULL geography
+671	1	NULL	West Virginia	11	MAP	1	Northern	West Virginia	11	0424	Trustee 671 serves both WV districts - Northern
+671	1	NULL	West Virginia	11	MAP	1	Southern	West Virginia	11	0425	Trustee 671 serves both WV districts - Southern

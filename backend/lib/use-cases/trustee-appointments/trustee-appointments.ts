@@ -47,14 +47,14 @@ export class TrusteeAppointmentsUseCase {
     this.courtsUseCase = new CourtsUseCase();
   }
 
-  private findCourtDivision(
-    courts: CourtDivisionDetails[],
-    courtId: string,
-    divisionCode: string,
-  ): CourtDivisionDetails | undefined {
-    return courts.find(
-      (court) => court.courtId === courtId && court.courtDivisionCode === divisionCode,
-    );
+  /**
+   * Find the court district name (e.g., "Eastern District of Missouri") for a given courtId.
+   * Note: We only return the district name (courtName), not division names,
+   * as per product requirements.
+   */
+  private findCourtDistrict(courts: CourtDivisionDetails[], courtId: string): string | undefined {
+    const court = courts.find((c) => c.courtId === courtId);
+    return court?.courtName;
   }
 
   private validateAppointmentData(appointmentData: TrusteeAppointmentInput): void {
@@ -92,11 +92,11 @@ export class TrusteeAppointmentsUseCase {
 
     const withCourtInfo = (snap?: AppointmentSnapshot) => {
       if (!snap) return undefined;
-      const court = this.findCourtDivision(courts, snap.courtId, snap.divisionCode);
+      const courtName = this.findCourtDistrict(courts, snap.courtId);
       return {
         ...snap,
-        courtName: court?.courtName,
-        courtDivisionName: court?.courtDivisionName,
+        courtName,
+        courtDivisionName: undefined, // Division names are not used per product requirements
       };
     };
 
@@ -134,20 +134,21 @@ export class TrusteeAppointmentsUseCase {
         this.courtsUseCase.getCourts(context),
       ]);
 
-      // Enrich appointments with court information
+      // Enrich appointments with court district name
       const enrichedAppointments = appointments.map((appointment) => {
-        const courtDivision = this.findCourtDivision(
-          courts,
-          appointment.courtId,
-          appointment.divisionCode,
+        const courtName = this.findCourtDistrict(courts, appointment.courtId);
+        context.logger.debug(
+          MODULE_NAME,
+          `Enriching appointment ${appointment.id}: courtId=${appointment.courtId} -> courtName=${courtName || 'NOT FOUND'}`,
         );
         return {
           ...appointment,
-          courtName: courtDivision?.courtName,
-          courtDivisionName: courtDivision?.courtDivisionName,
+          courtName,
+          courtDivisionName: undefined, // Division names are not used per product requirements
         };
       });
 
+      context.logger.info(MODULE_NAME, `Enriched ${enrichedAppointments.length} appointments`);
       return enrichedAppointments;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {

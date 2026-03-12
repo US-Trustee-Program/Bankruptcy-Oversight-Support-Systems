@@ -12,6 +12,20 @@ export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
 }
 
+const UNIX_EPOCH = '1970-01-01';
+
+/**
+ * Format appointment date with special handling for sentinel values.
+ * Unix epoch (1970-01-01) is used as a sentinel value during ATS migration
+ * to indicate dates that were not specified in the source system.
+ */
+function formatAppointmentDate(dateString: string): string {
+  if (dateString.startsWith(UNIX_EPOCH)) {
+    return 'Not Specified';
+  }
+  return formatDate(dateString);
+}
+
 export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const navigate = useNavigate();
   const session = LocalStorage.getSession();
@@ -20,14 +34,22 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
-  let districtDisplay;
-  if (props.appointment.courtName && props.appointment.courtDivisionName) {
-    districtDisplay = `${props.appointment.courtName} (${props.appointment.courtDivisionName})`;
+
+  // Build district display with guards for missing data
+  // Use court name (e.g., "Eastern District of Missouri") populated by backend enrichment
+  // Only fallback to court ID if court name is not available
+  let districtDisplay: string;
+  if (props.appointment.courtName) {
+    districtDisplay = props.appointment.courtName;
+  } else if (props.appointment.courtId) {
+    // Fallback to court ID if court name is not available
+    districtDisplay = `Court ${props.appointment.courtId}`;
   } else {
-    districtDisplay = 'Court not found';
+    districtDisplay = 'Court information not available';
   }
-  const formattedEffectiveDate = formatDate(props.appointment.effectiveDate);
-  const formattedAppointedDate = formatDate(props.appointment.appointedDate);
+
+  const formattedEffectiveDate = formatAppointmentDate(props.appointment.effectiveDate);
+  const formattedAppointedDate = formatAppointmentDate(props.appointment.appointedDate);
   const formattedStatus = formatAppointmentStatus(props.appointment.status);
 
   function openEditTrustee() {
