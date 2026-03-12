@@ -17,6 +17,7 @@ import {
   RuntimeState,
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
+  TrusteeMatchVerificationRepository,
   TrusteesRepository,
   TrusteeAssistantsRepository,
   UpdateResult,
@@ -47,6 +48,7 @@ export class MockMongoRepository
     TrusteesRepository,
     TrusteeAppointmentsRepository,
     TrusteeAssistantsRepository,
+    TrusteeMatchVerificationRepository,
     ListsRepository,
     UserGroupsRepository
 {
@@ -364,6 +366,14 @@ export class MockMongoRepository
   }
 
   updateCaseAppointment(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  getVerification(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  upsertVerification(..._ignore: any[]): Promise<void> {
     throw new Error('Method not implemented.');
   }
 }
