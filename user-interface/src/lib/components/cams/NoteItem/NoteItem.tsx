@@ -55,7 +55,7 @@ export function NoteItem({
   getDraftAlertMessage,
 }: NoteItemProps) {
   return (
-    <li className={`note-item grid-container`} data-testid={`note-item-${index}`}>
+    <div role="listitem" className={`note-item grid-container`} data-testid={`note-item-${index}`}>
       <div className="grid-row">
         <div className="grid-col-10">
           <div className="text-wrapper">
@@ -138,6 +138,6 @@ export function NoteItem({
           className="note-item-draft-alert"
         />
       )}
-    </li>
+    </div>
   );
 }
