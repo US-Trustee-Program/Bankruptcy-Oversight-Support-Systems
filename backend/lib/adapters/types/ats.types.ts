@@ -3,6 +3,7 @@
  */
 
 import { AppointmentType, AppointmentStatus } from '@common/cams/trustees';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 
 /**
  * Raw trustee record from ATS TRUSTEES table
@@ -66,7 +67,7 @@ export interface ChapterMapping {
  */
 export interface TrusteeAppointmentsResult {
   /** Successfully cleansed appointments (CLEAN + AUTO_RECOVERABLE) */
-  cleanAppointments: import('@common/cams/trustee-appointments').TrusteeAppointmentInput[];
+  cleanAppointments: TrusteeAppointmentInput[];
 
   /** Failed appointments (PROBLEMATIC + UNCLEANSABLE) with error details */
   failedAppointments: FailedAppointment[];

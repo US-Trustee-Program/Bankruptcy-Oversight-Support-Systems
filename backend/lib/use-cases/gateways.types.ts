@@ -1,5 +1,5 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { AtsTrusteeRecord } from '../adapters/types/ats.types';
+import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
 import { ConsolidationOrder, Order, RawOrderSync, TransferOrderAction } from '@common/cams/orders';
@@ -191,7 +191,7 @@ export interface AtsGateway {
   getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: number,
-  ): Promise<import('../adapters/types/ats.types').TrusteeAppointmentsResult>;
+  ): Promise<TrusteeAppointmentsResult>;
   getTrusteeCount(context: ApplicationContext): Promise<number>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
