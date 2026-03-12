@@ -49,7 +49,6 @@ type MatchAuditEntry = {
 
 type ProcessAppointmentsResult = {
   successCount: number;
-  autoMatchedEvents: TrusteeAppointmentSyncEvent[];
   dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[];
   scenarioDistribution: ScenarioDistribution;
 };
@@ -197,7 +196,6 @@ async function processAppointments(
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
   const trusteesRepo = factory.getTrusteesRepository(context);
   const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
-  const autoMatchedEvents: TrusteeAppointmentSyncEvent[] = [];
   let successCount = 0;
   const scenarioDistribution: ScenarioDistribution = {
     autoMatchCount: 0,
@@ -238,7 +236,6 @@ async function processAppointments(
           MODULE_NAME,
           `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
         );
-        autoMatchedEvents.push(event);
         successCount++;
         scenarioDistribution.autoMatchCount++;
         audit.matchOutcome = 'auto-matched';
@@ -350,7 +347,7 @@ async function processAppointments(
     }
   }
 
-  return { successCount, autoMatchedEvents, dlqMessages, scenarioDistribution };
+  return { successCount, dlqMessages, scenarioDistribution };
 }
 
 /**
