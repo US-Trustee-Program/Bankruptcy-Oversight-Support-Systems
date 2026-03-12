@@ -7,11 +7,18 @@ import {
   UNSCORED,
   isMultipleTrusteesMatchError,
 } from '@common/cams/dataflow-events';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import { TrusteeAppointmentsSyncState } from '../gateways.types';
+import {
+  CasesRepository,
+  TrusteeAppointmentsRepository,
+  TrusteeAppointmentsSyncState,
+  TrusteeMatchVerificationRepository,
+} from '../gateways.types';
 import {
   matchTrusteeByName,
   resolveTrusteeWithFuzzyMatching,
@@ -183,6 +190,45 @@ async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: 
 }
 
 /**
+ * Upserts a TrusteeMatchVerification document for a non-auto-match outcome.
+ * Skips the write if the existing document has already been resolved or dismissed.
+ */
+async function upsertMatchVerification(
+  verificationRepo: TrusteeMatchVerificationRepository,
+  event: TrusteeAppointmentSyncEvent,
+  mismatchReason: TrusteeAppointmentSyncErrorCode,
+  matchCandidates: CandidateScore[],
+): Promise<void> {
+  const existing = await verificationRepo.getVerification(event.caseId);
+  if (existing && existing.status !== 'pending') {
+    return; // Operator has already resolved or dismissed — do not overwrite
+  }
+  if (existing) {
+    await verificationRepo.upsertVerification({
+      ...existing,
+      mismatchReason,
+      matchCandidates,
+      updatedOn: new Date().toISOString(),
+      updatedBy: SYSTEM_USER_REFERENCE,
+    });
+  } else {
+    const doc = createAuditRecord<TrusteeMatchVerification>(
+      {
+        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        caseId: event.caseId,
+        courtId: event.courtId,
+        dxtrTrustee: event.dxtrTrustee,
+        mismatchReason,
+        matchCandidates,
+        status: 'pending',
+      },
+      SYSTEM_USER_REFERENCE,
+    );
+    await verificationRepo.upsertVerification(doc);
+  }
+}
+
+/**
  * Process trustee appointment events by:
  * 1. Matching each DXTR trustee to a CAMS trustee by name
  * 2. Checking for a perfect match (exact name + active appointment in same court/division/chapter)
@@ -195,6 +241,7 @@ async function processAppointments(
   const casesRepo = factory.getCasesRepository(context);
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
   const trusteesRepo = factory.getTrusteesRepository(context);
+  const verificationRepo = factory.getTrusteeMatchVerificationRepository(context);
   const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
   let successCount = 0;
   const scenarioDistribution: ScenarioDistribution = {
@@ -300,6 +347,12 @@ async function processAppointments(
             matchCandidates: candidateScores,
           });
           scenarioDistribution.highConfidenceMatchCount++;
+          await upsertMatchVerification(
+            verificationRepo,
+            event,
+            'HIGH_CONFIDENCE_MATCH',
+            candidateScores,
+          );
           const winnerScore = candidateScores.find((c) => c.trusteeId === winnerId);
           audit.matchOutcome = 'high-confidence';
           audit.matchedTrusteeId = winnerId;
@@ -319,6 +372,7 @@ async function processAppointments(
           context.logger.warn(MODULE_NAME, `${enhancedError.message}`, enhancedError.data);
           dlqMessages.push(buildDlqMessage(event, enhancedError));
           scenarioDistribution.multipleMatchCount++;
+          await upsertMatchVerification(verificationRepo, event, 'MULTIPLE_TRUSTEES_MATCH', []);
           audit.matchOutcome = 'multiple-match';
           continue;
         }
@@ -332,9 +386,16 @@ async function processAppointments(
           case 'NO_TRUSTEE_MATCH':
             scenarioDistribution.noMatchCount++;
             audit.matchOutcome = 'no-match';
+            await upsertMatchVerification(verificationRepo, event, 'NO_TRUSTEE_MATCH', []);
             break;
           case 'IMPERFECT_MATCH':
             scenarioDistribution.imperfectMatchCount++;
+            await upsertMatchVerification(
+              verificationRepo,
+              event,
+              'IMPERFECT_MATCH',
+              dlqMsg.matchCandidates ?? [],
+            );
             break;
           case 'CASE_NOT_FOUND':
             scenarioDistribution.caseNotFoundCount++;
