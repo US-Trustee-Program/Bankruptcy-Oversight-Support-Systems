@@ -57,12 +57,16 @@ export type TrusteeAppointmentSyncEvent = {
   retryCount?: number;
 };
 
+export const TrusteeAppointmentSyncErrorCode = {
+  NoTrusteeMatch: 'NO_TRUSTEE_MATCH',
+  MultipleTrusteesMatch: 'MULTIPLE_TRUSTEES_MATCH',
+  CaseNotFound: 'CASE_NOT_FOUND',
+  ImperfectMatch: 'IMPERFECT_MATCH',
+  HighConfidenceMatch: 'HIGH_CONFIDENCE_MATCH',
+} as const;
+
 export type TrusteeAppointmentSyncErrorCode =
-  | 'NO_TRUSTEE_MATCH'
-  | 'MULTIPLE_TRUSTEES_MATCH'
-  | 'CASE_NOT_FOUND'
-  | 'IMPERFECT_MATCH'
-  | 'HIGH_CONFIDENCE_MATCH';
+  (typeof TrusteeAppointmentSyncErrorCode)[keyof typeof TrusteeAppointmentSyncErrorCode];
 
 /**
  * Sentinel value indicating a candidate trustee has not been scored yet.
@@ -116,7 +120,7 @@ export function isMultipleTrusteesMatchError(
   };
 
   return (
-    candidate.mismatchReason === 'MULTIPLE_TRUSTEES_MATCH' &&
+    candidate.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch &&
     Array.isArray(candidate.matchCandidates)
   );
 }

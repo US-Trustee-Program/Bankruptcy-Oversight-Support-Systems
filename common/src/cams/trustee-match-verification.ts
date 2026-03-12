@@ -5,7 +5,14 @@ import {
   TrusteeAppointmentSyncErrorCode,
 } from './dataflow-events';
 
-export type TrusteeMatchVerificationStatus = 'pending' | 'resolved' | 'dismissed';
+export const TrusteeMatchVerificationStatus = {
+  Pending: 'pending',
+  Resolved: 'resolved',
+  Dismissed: 'dismissed',
+} as const;
+
+export type TrusteeMatchVerificationStatus =
+  (typeof TrusteeMatchVerificationStatus)[keyof typeof TrusteeMatchVerificationStatus];
 
 export type TrusteeMatchVerification = Auditable & {
   id?: string;
