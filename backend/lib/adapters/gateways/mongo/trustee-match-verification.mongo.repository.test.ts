@@ -1,7 +1,10 @@
 import { vi, describe, test, expect, beforeEach, afterEach, afterAll } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { TrusteeMatchVerificationMongoRepository } from './trustee-match-verification.mongo.repository';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeMatchVerification,
+  TrusteeMatchVerificationStatus,
+} from '@common/cams/trustee-match-verification';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
@@ -19,7 +22,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     dxtrTrustee: { fullName: 'John Doe' },
     mismatchReason: 'IMPERFECT_MATCH',
     matchCandidates: [],
-    status: 'pending',
+    status: TrusteeMatchVerificationStatus.Pending,
     createdOn: '2025-01-01T00:00:00.000Z',
     updatedOn: '2025-01-01T00:00:00.000Z',
     updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
