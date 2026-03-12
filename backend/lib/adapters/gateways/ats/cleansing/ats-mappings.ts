@@ -4,18 +4,15 @@ import {
   AppointmentType,
   TrusteeInput,
 } from '@common/cams/trustees';
-import {
-  TrusteeAppointmentInput,
-  chapterAppointmentTypeMap,
-} from '@common/cams/trustee-appointments';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { ContactInformation } from '@common/cams/contact';
-import { USTP_OFFICE_NAME_MAP } from '../dxtr/dxtr.constants';
+import { USTP_OFFICE_NAME_MAP } from '../../dxtr/dxtr.constants';
 import {
   AtsTrusteeRecord,
   AtsAppointmentRecord,
   StatusMapping,
   ChapterMapping,
-} from '../../types/ats.types';
+} from '../../../types/ats.types';
 import {
   TOD_STATUS_MAP,
   DEFAULT_STATUS_MAPPING,
@@ -28,7 +25,7 @@ import {
   CBC_STATUS_MAP,
   SUBCHAPTER_V_STATUS_CODES,
   CODE_1_STANDING_CHAPTERS,
-} from './ats.constants';
+} from '../ats.constants';
 
 /**
  * Parse chapter code from ATS, handling special case-by-case codes.
@@ -297,7 +294,7 @@ export function transformTrusteeRecord(
  * @param statusMapping - Parsed status mapping from ATS
  * @returns Resolved chapter, appointment type, and status
  */
-function applyAppointmentOverrides(
+export function applyAppointmentOverrides(
   chapterMapping: ChapterMapping,
   originalChapter: string,
   statusCode: string,
@@ -406,14 +403,6 @@ export function transformAppointmentRecord(
  * @param appointmentType - Appointment type
  * @returns True if valid combination
  */
-export function isValidAppointmentForChapter(
-  chapter: AppointmentChapterType,
-  appointmentType: AppointmentType,
-): boolean {
-  const validTypes = chapterAppointmentTypeMap[chapter];
-  return validTypes ? validTypes.includes(appointmentType) : false;
-}
-
 /**
  * Create a unique key for an appointment to prevent duplicates.
  *

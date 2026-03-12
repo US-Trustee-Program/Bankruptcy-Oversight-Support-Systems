@@ -35,6 +35,11 @@ const DLQ = output.storageQueue({
   connection: 'AzureWebJobsStorage',
 });
 
+const FAILED_APPOINTMENTS = output.storageQueue({
+  queueName: buildQueueName(MODULE_NAME, 'failed-appointments'),
+  connection: 'AzureWebJobsStorage',
+});
+
 const RETRY = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'retry'),
   connection: 'AzureWebJobsStorage',
@@ -79,7 +84,6 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
 
   const existingState = stateResult.data;
 
-  // If already completed, skip
   if (existingState?.status === 'COMPLETED') {
     logger.info(
       MODULE_NAME,
@@ -88,7 +92,6 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
     return;
   }
 
-  // Resume from existing state or start fresh
   const lastTrusteeId = existingState?.lastTrusteeId ?? null;
   const processedCount = existingState?.processedCount ?? 0;
   const appointmentsProcessedCount = existingState?.appointmentsProcessedCount ?? 0;
@@ -102,8 +105,7 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
     logger.info(MODULE_NAME, 'Starting fresh trustee migration from ATS.');
   }
 
-  // Queue the first/next cursor message
-  const cursorMessage: CursorMessage = { lastId: lastTrusteeId };
+  const cursorMessage: CursorMessage = { lastId: lastTrusteeId?.toString() ?? null };
   invocationContext.extraOutputs.set(PAGE, cursorMessage);
 }
 
@@ -118,7 +120,6 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  // Read current state to get counts
   const stateResult = await MigrationStateService.getOrCreateMigrationState(context);
   if (stateResult.error) {
     invocationContext.extraOutputs.set(
@@ -128,15 +129,14 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     return;
   }
 
-  const currentState = stateResult.data!;
+  const currentState = stateResult.data;
   const currentProcessedCount = currentState.processedCount ?? 0;
   const currentAppointmentsCount = currentState.appointmentsProcessedCount ?? 0;
   const currentErrors = currentState.errors ?? 0;
 
-  // Fetch page using cursor
   const pageResult = await MigrateTrusteesUseCase.getPageOfTrustees(
     context,
-    cursor.lastId as number | null,
+    cursor.lastId ? Number.parseInt(cursor.lastId) : null,
     PAGE_SIZE,
   );
 
@@ -163,18 +163,16 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     return;
   }
 
-  const lastTrusteeId = trustees[trustees.length - 1].ID;
+  const lastTrusteeId = trustees.at(-1).ID;
 
   logger.debug(
     MODULE_NAME,
     `Processing ${trustees.length} trustees. Cursor: ${cursor.lastId ?? 'start'} -> ${lastTrusteeId}.`,
   );
 
-  // Process the batch
   const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(context, trustees);
 
   if (processResult.error) {
-    // Update state with FAILED status
     await MigrationStateService.failMigration(context, currentState, processResult.error.message);
 
     invocationContext.extraOutputs.set(
@@ -184,12 +182,42 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     return;
   }
 
-  const { processed, appointments, errors } = processResult.data!;
+  const { processed, appointments, errors, failedAppointments } = processResult.data;
+
   const newProcessedCount = currentProcessedCount + processed;
   const newAppointmentsCount = currentAppointmentsCount + appointments;
   const newErrors = currentErrors + errors;
 
-  // Update state with new cursor position
+  // Send failed appointments to FAILED_APPOINTMENTS queue for visibility and review
+  if (failedAppointments && failedAppointments.length > 0) {
+    // Collect all failed appointment messages
+    const failedAppointmentMessages = failedAppointments.map((failedAppt) => ({
+      type: 'FAILED_APPOINTMENT',
+      classification: failedAppt.classification,
+      notes: failedAppt.notes,
+      mapType: failedAppt.mapType,
+      timestamp: failedAppt.timestamp,
+      atsAppointment: {
+        TRU_ID: failedAppt.atsAppointment.TRU_ID,
+        DISTRICT: failedAppt.atsAppointment.DISTRICT,
+        STATE: failedAppt.atsAppointment.STATE,
+        CHAPTER: failedAppt.atsAppointment.CHAPTER,
+        STATUS: failedAppt.atsAppointment.STATUS,
+        // Convert Date objects to ISO strings for queue serialization
+        DATE_APPOINTED: failedAppt.atsAppointment.DATE_APPOINTED?.toISOString() ?? null,
+        EFFECTIVE_DATE: failedAppt.atsAppointment.EFFECTIVE_DATE?.toISOString() ?? null,
+      },
+    }));
+
+    // Send all messages at once (Azure Functions accepts array)
+    invocationContext.extraOutputs.set(FAILED_APPOINTMENTS, failedAppointmentMessages);
+
+    logger.info(
+      MODULE_NAME,
+      `Sent ${failedAppointments.length} failed appointments to failed-appointments queue for review`,
+    );
+  }
+
   const updateResult = await MigrationStateService.updateMigrationState(context, {
     ...currentState,
     lastTrusteeId,
@@ -207,10 +235,9 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     return;
   }
 
-  // Handle failed trustees
   if (errors > 0) {
-    logger.warn(MODULE_NAME, `${errors} trustees failed to migrate in this batch.`);
     // Failed trustees are already logged in the use case
+    logger.warn(MODULE_NAME, `${errors} trustees failed to migrate in this batch.`);
   }
 
   logger.debug(
@@ -218,9 +245,8 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     `Successfully migrated ${processed} trustees with ${appointments} appointments. Total processed: ${newProcessedCount}.`,
   );
 
-  // If there are more results, queue next cursor message
   if (hasMore) {
-    const nextCursor: CursorMessage = { lastId: lastTrusteeId };
+    const nextCursor: CursorMessage = { lastId: lastTrusteeId.toString() ?? null };
     invocationContext.extraOutputs.set(PAGE, nextCursor);
   } else {
     logger.info(
@@ -234,15 +260,16 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
  * handleError
  *
  * Route failed events to retry queue for another attempt.
- * Distinguishes between QueueError payloads (infrastructure failures from handleStart/handlePage)
- * and TrusteeEvent payloads (individual trustee failures from handleRetry).
- * QueueError payloads are logged and sent to HARD_STOP since they cannot be retried as trustee events.
+ * Distinguishes between:
+ * - QueueError payloads (infrastructure failures) → HARD_STOP
+ * - TrusteeEvent payloads (individual trustee failures) → RETRY
  */
 async function handleError(event: TrusteeEvent | QueueError, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
+  // Check if this is a QUEUE_ERROR (infrastructure failure)
   if ('type' in event && event.type === 'QUEUE_ERROR') {
-    const queueError = event as QueueError;
+    const queueError = event as unknown as QueueError;
     logger.error(
       MODULE_NAME,
       `Infrastructure error in ${queueError.activityName}: ${queueError.error?.message ?? 'Unknown error'}. Routing to hard-stop.`,
@@ -251,6 +278,7 @@ async function handleError(event: TrusteeEvent | QueueError, invocationContext: 
     return;
   }
 
+  // Otherwise treat as TrusteeEvent for retry
   const trusteeEvent = event as TrusteeEvent;
   logger.error(
     MODULE_NAME,
@@ -271,10 +299,10 @@ async function handleRetry(event: TrusteeEvent, invocationContext: InvocationCon
   const { logger } = context;
 
   const RETRY_LIMIT = 3;
-  if (!event.retryCount) {
-    event.retryCount = 1;
-  } else {
+  if (event.retryCount) {
     event.retryCount += 1;
+  } else {
+    event.retryCount = 1;
   }
 
   if (event.retryCount > RETRY_LIMIT) {
@@ -285,14 +313,14 @@ async function handleRetry(event: TrusteeEvent, invocationContext: InvocationCon
 
   const result = await MigrateTrusteesUseCase.processTrusteeWithAppointments(context, event);
 
-  if (!result.success) {
-    event.error = new Error(result.error ?? 'Unknown error');
-    invocationContext.extraOutputs.set(DLQ, [event]);
-  } else {
+  if (result.success) {
     logger.info(
       MODULE_NAME,
       `Successfully retried migration for trustee ${event.ID} with ${result.appointmentsProcessed} appointments.`,
     );
+  } else {
+    event.error = new Error(result.error ?? 'Unknown error');
+    invocationContext.extraOutputs.set(DLQ, [event]);
   }
 }
 
@@ -308,7 +336,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: PAGE.queueName,
     handler: handlePage,
-    extraOutputs: [PAGE, DLQ],
+    extraOutputs: [PAGE, DLQ, FAILED_APPOINTMENTS],
   });
 
   app.storageQueue(HANDLE_ERROR, {

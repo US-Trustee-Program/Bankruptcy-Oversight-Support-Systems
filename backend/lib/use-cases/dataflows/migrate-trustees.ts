@@ -1,13 +1,27 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../adapters/types/ats.types';
-import { transformTrusteeRecord } from '../../adapters/gateways/ats/ats-mappings';
+import {
+  AtsTrusteeRecord,
+  TrusteeAppointmentsResult,
+  FailedAppointment,
+} from '../../adapters/types/ats.types';
+import { transformTrusteeRecord } from '../../adapters/gateways/ats/cleansing/ats-mappings';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { Trustee } from '@common/cams/trustees';
-import { processSingleAppointment, SYSTEM_USER } from './appointments-sync.helpers';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { getAppointmentKey } from '../../adapters/gateways/ats/cleansing/ats-cleansing-utils';
+import { CamsUserReference } from '@common/cams/users';
 
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
+
+/**
+ * System user reference for audit trail
+ */
+const SYSTEM_USER: CamsUserReference = {
+  id: 'SYSTEM',
+  name: 'ATS Migration',
+};
 
 /**
  * Result of processing a single trustee with appointments
@@ -17,6 +31,7 @@ type TrusteeProcessingResult = {
   truId: string;
   success: boolean;
   appointmentsProcessed: number;
+  failedAppointments?: FailedAppointment[];
   error?: string;
 };
 
@@ -72,22 +87,24 @@ export async function getPageOfTrustees(
 }
 
 /**
- * Get all appointments for a trustee from ATS.
+ * Get cleansed appointments for a trustee from ATS gateway.
+ * Gateway handles ATS data fetching, cleansing, and transformation.
+ * Returns both clean appointments (for storage) and failed appointments (for DLQ).
  */
 export async function getTrusteeAppointments(
   context: ApplicationContext,
   trusteeId: number,
-): Promise<MaybeData<AtsAppointmentRecord[]>> {
+): Promise<MaybeData<TrusteeAppointmentsResult>> {
   try {
     const atsGateway = factory.getAtsGateway(context);
-    const appointments = await atsGateway.getTrusteeAppointments(context, trusteeId);
+    const result = await atsGateway.getTrusteeAppointments(context, trusteeId);
 
     context.logger.debug(
       MODULE_NAME,
-      `Retrieved ${appointments.length} appointments for trustee ${trusteeId}`,
+      `Retrieved ${result.cleanAppointments.length} clean, ${result.failedAppointments.length} failed appointments for trustee ${trusteeId}`,
     );
 
-    return { data: appointments };
+    return { data: result };
   } catch (originalError) {
     return {
       error: getCamsError(
@@ -141,37 +158,69 @@ export async function upsertTrustee(
 }
 
 /**
- * Create appointments for a trustee.
- * Uses a unique key (trusteeId-courtId-divisionCode-chapter-appointmentType) to prevent duplicates
- * within the same migration batch.
+ * Create appointments for a trustee (idempotent).
+ * Receives clean CAMS domain types from gateway (already cleansed).
+ * Fetches existing appointments and only creates new ones that don't already exist.
+ * Uses a unique key (trusteeId-courtId-divisionCode-chapter-appointmentType) to prevent duplicates.
  */
 export async function createAppointments(
   context: ApplicationContext,
   trustee: Trustee,
-  atsAppointments: AtsAppointmentRecord[],
-): Promise<MaybeData<number>> {
+  cleanAppointments: TrusteeAppointmentInput[],
+): Promise<MaybeData<{ successCount: number }>> {
   try {
     const repo = factory.getTrusteeAppointmentsRepository(context);
+
+    // Fetch existing appointments for idempotency check
+    const existingAppointments = await repo.getTrusteeAppointments(trustee.trusteeId);
+    const existingKeys = new Set<string>(
+      existingAppointments.map((apt) => getAppointmentKey(trustee.trusteeId, apt)),
+    );
+
     const processedKeys = new Set<string>();
     let successCount = 0;
+    let skippedCount = 0;
 
-    for (const atsAppointment of atsAppointments) {
-      const result = await processSingleAppointment(
-        context,
-        repo,
-        trustee,
-        atsAppointment,
-        processedKeys,
-      );
-      if (result.success) successCount++;
+    // Clean appointments are already validated by gateway - just check for duplicates
+    for (const appointmentInput of cleanAppointments) {
+      const appointmentKey = getAppointmentKey(trustee.trusteeId, appointmentInput);
+
+      // Skip if appointment already exists in database (idempotency)
+      if (existingKeys.has(appointmentKey)) {
+        context.logger.debug(MODULE_NAME, `Skipping existing appointment ${appointmentKey}`);
+        successCount++;
+        skippedCount++;
+        continue;
+      }
+
+      // Skip if we've already processed this appointment in this batch (duplicate in source data)
+      if (processedKeys.has(appointmentKey)) {
+        context.logger.debug(
+          MODULE_NAME,
+          `Skipping duplicate appointment in batch ${appointmentKey}`,
+        );
+        successCount++;
+        skippedCount++;
+        continue;
+      }
+
+      processedKeys.add(appointmentKey);
+
+      context.logger.debug(MODULE_NAME, `Creating appointment ${appointmentKey}`);
+      await repo.createAppointment(trustee.trusteeId, appointmentInput, SYSTEM_USER);
+      successCount++;
     }
 
     context.logger.info(
       MODULE_NAME,
-      `Processed ${successCount}/${atsAppointments.length} appointments for trustee ${trustee.trusteeId}`,
+      `Processed ${successCount}/${cleanAppointments.length} appointments for trustee ${trustee.trusteeId} (${skippedCount} already existed)`,
     );
 
-    return { data: successCount };
+    return {
+      data: {
+        successCount,
+      },
+    };
   } catch (originalError) {
     return {
       error: getCamsError(
@@ -186,11 +235,27 @@ export async function createAppointments(
 /**
  * Process a single trustee with all their appointments.
  * This is the main unit of work for the migration.
+ * Gateway handles appointment cleansing - use case just stores clean data.
  */
 export async function processTrusteeWithAppointments(
   context: ApplicationContext,
   atsTrustee: AtsTrusteeRecord,
 ): Promise<TrusteeProcessingResult> {
+  // Guard against malformed trustee records
+  if (!atsTrustee?.ID) {
+    context.logger.error(MODULE_NAME, 'Received malformed trustee record without ID', {
+      trustee: atsTrustee,
+    });
+    return {
+      trusteeId: '',
+      truId: 'UNKNOWN',
+      success: false,
+      appointmentsProcessed: 0,
+      failedAppointments: [],
+      error: 'Malformed trustee record: missing ID',
+    };
+  }
+
   const truId = atsTrustee.ID.toString();
 
   try {
@@ -202,7 +267,7 @@ export async function processTrusteeWithAppointments(
 
     const trustee = trusteeResult.data;
 
-    // Get and process appointments
+    // Get appointments (clean + failed) from gateway
     const appointmentsResult = await getTrusteeAppointments(context, atsTrustee.ID);
     if (appointmentsResult.error) {
       // Log error but don't fail the trustee processing
@@ -214,28 +279,41 @@ export async function processTrusteeWithAppointments(
         truId,
         success: true,
         appointmentsProcessed: 0,
+        failedAppointments: [],
       };
     }
 
-    const appointments = appointmentsResult.data;
+    const { cleanAppointments, failedAppointments, stats } = appointmentsResult.data;
     let appointmentsProcessed = 0;
 
-    if (appointments && appointments.length > 0) {
-      const appointmentResult = await createAppointments(context, trustee, appointments);
+    // Process clean appointments
+    if (cleanAppointments && cleanAppointments.length > 0) {
+      const appointmentResult = await createAppointments(context, trustee, cleanAppointments);
+
       if (appointmentResult.error) {
         context.logger.error(MODULE_NAME, `Failed to process appointments for trustee ${truId}`, {
           error: appointmentResult.error.message,
         });
       } else {
-        appointmentsProcessed = appointmentResult.data;
+        appointmentsProcessed = appointmentResult.data.successCount;
       }
     }
+
+    // Log statistics
+    context.logger.info(MODULE_NAME, `Trustee ${truId} stats:`, {
+      clean: stats.clean,
+      autoRecoverable: stats.autoRecoverable,
+      problematic: stats.problematic,
+      uncleansable: stats.uncleansable,
+      skipped: stats.skipped,
+    });
 
     return {
       trusteeId: trustee.trusteeId,
       truId,
       success: true,
       appointmentsProcessed,
+      failedAppointments,
     };
   } catch (error) {
     const camsError = getCamsError(error, MODULE_NAME);
@@ -248,6 +326,7 @@ export async function processTrusteeWithAppointments(
       truId,
       success: false,
       appointmentsProcessed: 0,
+      failedAppointments: [],
       error: camsError.message,
     };
   }
@@ -256,14 +335,24 @@ export async function processTrusteeWithAppointments(
 /**
  * Process a page of trustees.
  * Main entry point for batch processing.
+ * Gateway handles appointment cleansing internally.
+ * Returns both processing stats and failed appointments for DLQ.
  */
 export async function processPageOfTrustees(
   context: ApplicationContext,
   trustees: AtsTrusteeRecord[],
-): Promise<MaybeData<{ processed: number; appointments: number; errors: number }>> {
+): Promise<
+  MaybeData<{
+    processed: number;
+    appointments: number;
+    errors: number;
+    failedAppointments: FailedAppointment[];
+  }>
+> {
   let processed = 0;
   let appointments = 0;
   let errors = 0;
+  const failedAppointments: FailedAppointment[] = [];
 
   for (const trustee of trustees) {
     const result = await processTrusteeWithAppointments(context, trustee);
@@ -271,6 +360,10 @@ export async function processPageOfTrustees(
     if (result.success) {
       processed++;
       appointments += result.appointmentsProcessed;
+
+      if (result.failedAppointments && result.failedAppointments.length > 0) {
+        failedAppointments.push(...result.failedAppointments);
+      }
     } else {
       errors++;
     }
@@ -278,7 +371,7 @@ export async function processPageOfTrustees(
 
   context.logger.info(
     MODULE_NAME,
-    `Page complete: ${processed} trustees, ${appointments} appointments, ${errors} errors`,
+    `Page complete: ${processed} trustees, ${appointments} appointments, ${failedAppointments.length} failed, ${errors} errors`,
   );
 
   return {
@@ -286,6 +379,7 @@ export async function processPageOfTrustees(
       processed,
       appointments,
       errors,
+      failedAppointments,
     },
   };
 }

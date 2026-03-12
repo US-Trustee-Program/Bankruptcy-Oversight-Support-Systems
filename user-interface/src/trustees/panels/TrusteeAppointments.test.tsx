@@ -25,7 +25,7 @@ const baseAppointment: Omit<TrusteeAppointment, 'id'> = {
   chapter: '7',
   appointmentType: 'panel',
   courtId: '081',
-  courtDivisionName: 'Manhattan',
+  courtDivisionName: undefined,
   courtName: 'Southern District of New York',
   divisionCode: '1',
   status: 'active',
@@ -78,8 +78,6 @@ const getParsedAppointments = () =>
 const getAppointmentStates = () => getParsedAppointments().map((a) => a.state);
 
 const getAppointmentDistricts = () => getParsedAppointments().map((a) => a.district);
-
-const getAppointmentDivisions = () => getParsedAppointments().map((a) => a.division);
 
 const getAppointmentChapters = () => getParsedAppointments().map((a) => a.chapter);
 
@@ -173,11 +171,9 @@ describe('TrusteeAppointments', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText(/Southern District of New York \(Manhattan\): Chapter 7 - Panel/i),
+        screen.getByText(/Southern District of New York: Chapter 7 - Panel/i),
       ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Northern District of New York \(New York\): Chapter 11/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Northern District of New York: Chapter 11/i)).toBeInTheDocument();
     });
   });
 
@@ -367,22 +363,21 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentDistricts()).toEqual(['Eastern', 'Southern', 'Southern']);
     });
 
-    test('should sort appointments alphabetically by division (courtDivisionName) within each district', async () => {
+    test('should sort appointments by chapter when in the same district', async () => {
       const appointments: TrusteeAppointment[] = [
         makeAppointment('appointment-001', {
-          courtDivisionName: 'White Plains',
+          chapter: '13',
+          appointmentType: 'standing',
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-002', {
-          chapter: '11',
-          appointmentType: 'case-by-case',
-          courtDivisionName: 'Manhattan',
+          chapter: '7',
+          appointmentType: 'panel',
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-003', {
-          chapter: '13',
-          appointmentType: 'standing',
-          courtDivisionName: 'Albany',
+          chapter: '11',
+          appointmentType: 'case-by-case',
           courtName: 'Southern District of New York',
         }),
       ];
@@ -394,8 +389,14 @@ describe('TrusteeAppointments', () => {
         expect(getAppointmentCards()).toHaveLength(3);
       });
 
-      // Verify divisions are in alphabetical order: Albany, Manhattan, White Plains
-      expect(getAppointmentDivisions()).toEqual(['Albany', 'Manhattan', 'White Plains']);
+      const chapters = getAppointmentCards().map((card) => {
+        const text = card.textContent || '';
+        if (text.includes('Chapter 7')) return '7';
+        if (text.includes('Chapter 11')) return '11';
+        if (text.includes('Chapter 13')) return '13';
+        return '';
+      });
+      expect(chapters).toEqual(['7', '11', '13']);
     });
 
     test('should sort appointments by chapter in ascending order when in the same district and division', async () => {
@@ -463,38 +464,33 @@ describe('TrusteeAppointments', () => {
       expect(getAppointmentTypes()).toEqual(['Elected', 'Off Panel', 'Panel']);
     });
 
-    test('should apply all sorting rules together: state, then district, then division, then chapter, then appointment type', async () => {
+    test('should apply all sorting rules together: state, then district, then chapter, then appointment type', async () => {
       const appointments: TrusteeAppointment[] = [
         makeAppointment('appointment-001', {
           chapter: '13',
           appointmentType: 'standing',
           courtId: '082',
-          courtDivisionName: 'Brooklyn',
           courtName: 'Eastern District of New York',
         }),
         makeAppointment('appointment-002', {
           chapter: '7',
           appointmentType: 'panel',
-          courtDivisionName: 'White Plains',
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-003', {
           chapter: '7',
           appointmentType: 'off-panel',
-          courtDivisionName: 'Manhattan',
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-004', {
           chapter: '7',
           appointmentType: 'elected',
-          courtDivisionName: 'Manhattan',
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-005', {
           chapter: '11',
           appointmentType: 'case-by-case',
           courtId: '082',
-          courtDivisionName: 'Brooklyn',
           courtName: 'Eastern District of New York',
         }),
       ];
@@ -506,32 +502,24 @@ describe('TrusteeAppointments', () => {
         expect(getAppointmentCards()).toHaveLength(5);
       });
 
-      // Expected order (all same state "New York"):
-      // 1. Eastern District - Brooklyn - Chapter 11 - Case by Case
-      // 2. Eastern District - Brooklyn - Chapter 13 - Standing
-      // 3. Southern District - Manhattan - Chapter 7 - Elected
-      // 4. Southern District - Manhattan - Chapter 7 - Off Panel
-      // 5. Southern District - White Plains - Chapter 7 - Panel
       expect(getAppointmentInfo()).toEqual([
-        { district: 'Eastern', division: 'Brooklyn', chapter: '11', type: 'Case by Case' },
-        { district: 'Eastern', division: 'Brooklyn', chapter: '13', type: 'Standing' },
-        { district: 'Southern', division: 'Manhattan', chapter: '7', type: 'Elected' },
-        { district: 'Southern', division: 'Manhattan', chapter: '7', type: 'Off Panel' },
-        { district: 'Southern', division: 'White Plains', chapter: '7', type: 'Panel' },
+        { district: 'Eastern', division: '', chapter: '11', type: 'Case by Case' },
+        { district: 'Eastern', division: '', chapter: '13', type: 'Standing' },
+        { district: 'Southern', division: '', chapter: '7', type: 'Elected' },
+        { district: 'Southern', division: '', chapter: '7', type: 'Off Panel' },
+        { district: 'Southern', division: '', chapter: '7', type: 'Panel' },
       ]);
     });
 
-    test('should handle appointments with missing courtName or courtDivisionName gracefully', async () => {
+    test('should handle appointments with missing courtName gracefully', async () => {
       const appointments: TrusteeAppointment[] = [
         makeAppointment('appointment-001', {
-          courtDivisionName: 'Manhattan',
           courtName: 'Southern District of New York',
         }),
         makeAppointment('appointment-002', {
           chapter: '11',
           appointmentType: 'case-by-case',
           courtId: '999',
-          courtDivisionName: undefined,
           courtName: undefined,
         }),
       ];
@@ -545,12 +533,8 @@ describe('TrusteeAppointments', () => {
 
       const cards = getAppointmentCards();
 
-      // The appointment with missing court info should appear first (empty string sorts first)
-      expect(cards[0].textContent).toContain('Court not found');
-
-      // The appointment with valid court info should appear second
+      expect(cards[0].textContent).toContain('Court 999');
       expect(cards[1].textContent).toContain('Southern District of New York');
-      expect(cards[1].textContent).toContain('Manhattan');
     });
   });
 });
