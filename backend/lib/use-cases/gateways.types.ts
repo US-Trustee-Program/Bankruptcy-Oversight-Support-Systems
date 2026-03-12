@@ -41,6 +41,7 @@ import {
   TrusteeAppointment,
   TrusteeAppointmentInput,
 } from '@common/cams/trustee-appointments';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Auditable } from '@common/cams/auditable';
 import {
@@ -435,6 +436,11 @@ export interface ObservabilityGateway {
     completion: TraceCompletion,
     metrics?: { name: string; value: number }[],
   ): void;
+}
+
+export interface TrusteeMatchVerificationRepository extends Releasable {
+  getVerification(caseId: string): Promise<TrusteeMatchVerification | null>;
+  upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
 }
 
 export interface UserGroupsRepository extends Releasable {
