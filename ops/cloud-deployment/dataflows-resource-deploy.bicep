@@ -463,7 +463,11 @@ var baseApplicationSettings = concat(
 var dataflowsApplicationSettings = concat(
   baseApplicationSettings,
   createApplicationInsights
-    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: dataflowsFunctionAppInsights.outputs.connectionString }]
+    ? [
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: dataflowsFunctionAppInsights.outputs.connectionString }
+        { name: 'APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION', value: 'false' }
+        { name: 'AzureFunctionsJobHost__logging__console__isEnabled', value: 'false' }
+      ]
     : []
 )
 
