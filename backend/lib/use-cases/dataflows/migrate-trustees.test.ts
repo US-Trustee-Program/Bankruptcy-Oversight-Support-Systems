@@ -169,11 +169,21 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+        cleanAppointments: mockAppointments,
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+        },
+      });
 
       const result = await getTrusteeAppointments(context, 1);
 
-      expect(result.data).toEqual(mockAppointments);
+      expect(result.data?.cleanAppointments).toEqual(mockAppointments);
       expect(mockAtsGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, 1);
     });
 
@@ -412,7 +422,17 @@ describe('Migrate Trustees Use Case', () => {
 
       mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(cleanAppointments);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+        cleanAppointments,
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+        },
+      });
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
       const result = await processTrusteeWithAppointments(context, atsTrustee);

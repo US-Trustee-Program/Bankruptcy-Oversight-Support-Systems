@@ -41,14 +41,14 @@ describe('ATS Gateway', () => {
     });
 
     test('should return trustee appointments', async () => {
-      const appointments = await gateway.getTrusteeAppointments(context, 1);
-      expect(appointments.length).toBeGreaterThan(0);
-      expect(appointments[0].TRU_ID).toBe(1);
+      const result = await gateway.getTrusteeAppointments(context, 1);
+      expect(result.cleanAppointments.length).toBeGreaterThan(0);
 
-      // Check for CBC appointment for trustee 1 (status '1' = case-by-case, active)
-      const cbcAppointment = appointments.find((a) => a.CHAPTER === '12CBC');
-      expect(cbcAppointment).toBeDefined();
-      expect(cbcAppointment?.STATUS).toBe('1');
+      // MockAtsGateway returns raw ATS records cast as TrusteeAppointmentInput[] for simplicity
+      // Note: In mock, these are AtsAppointmentRecords, not fully cleansed CAMS types
+      expect(result.cleanAppointments.length).toBe(2); // Trustee 1 has 2 appointments in mock data
+      expect(result.stats.total).toBe(2);
+      expect(result.stats.clean).toBe(2);
     });
 
     test('should return correct trustee count', async () => {
@@ -164,8 +164,8 @@ describe('ATS Gateway', () => {
         ],
       });
 
-      // Gateway returns clean CAMS types (TrusteeAppointmentInput[])
-      const appointments = await gateway.getTrusteeAppointments(context, 123);
+      // Gateway returns TrusteeAppointmentsResult with clean CAMS types
+      const result = await gateway.getTrusteeAppointments(context, 123);
 
       expect(mockExecuteQuery).toHaveBeenCalledWith(
         context,
@@ -174,8 +174,8 @@ describe('ATS Gateway', () => {
       );
 
       // Should return clean CAMS appointment types
-      expect(appointments).toHaveLength(1);
-      expect(appointments[0]).toMatchObject({
+      expect(result.cleanAppointments).toHaveLength(1);
+      expect(result.cleanAppointments[0]).toMatchObject({
         chapter: '7',
         appointmentType: 'panel',
         courtId: '053N', // Middle Louisiana
@@ -266,10 +266,10 @@ describe('ATS Gateway', () => {
         ],
       });
 
-      const appointments = await gateway.getTrusteeAppointments(context, 17120);
+      const result = await gateway.getTrusteeAppointments(context, 17120);
 
-      // Should return empty array (skipped)
-      expect(appointments).toHaveLength(0);
+      // Should return empty cleanAppointments array (skipped)
+      expect(result.cleanAppointments).toHaveLength(0);
     });
 
     test('should filter out UNCLEANSABLE appointments', async () => {
@@ -290,10 +290,10 @@ describe('ATS Gateway', () => {
 
       const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
 
-      const appointments = await gateway.getTrusteeAppointments(context, 999);
+      const result = await gateway.getTrusteeAppointments(context, 999);
 
-      // Should return empty array (filtered out)
-      expect(appointments).toHaveLength(0);
+      // Should return empty cleanAppointments array (filtered out)
+      expect(result.cleanAppointments).toHaveLength(0);
       expect(loggerWarnSpy).toHaveBeenCalled();
     });
 
@@ -317,11 +317,11 @@ describe('ATS Gateway', () => {
 
       const loggerDebugSpy = vi.spyOn(context.logger, 'debug');
 
-      const appointments = await gateway.getTrusteeAppointments(context, 456);
+      const result = await gateway.getTrusteeAppointments(context, 456);
 
       // Should create appointments (may be single or expanded based on cleansing logic)
-      expect(appointments.length).toBeGreaterThanOrEqual(1);
-      expect(appointments.every((apt) => apt.status === 'active')).toBe(true);
+      expect(result.cleanAppointments.length).toBeGreaterThanOrEqual(1);
+      expect(result.cleanAppointments.every((apt) => apt.status === 'active')).toBe(true);
 
       // Verify debug logging occurred during cleansing
       expect(loggerDebugSpy).toHaveBeenCalled();
