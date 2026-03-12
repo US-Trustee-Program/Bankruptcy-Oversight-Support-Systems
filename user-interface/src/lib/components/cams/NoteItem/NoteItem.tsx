@@ -99,7 +99,7 @@ export function NoteItem({
               modalRef={removeModalRef}
               ref={removeButtonRef}
               openProps={removeButtonProps}
-              ariaLabel={`Remove note titled ${note.title}`}
+              ariaLabel={`Delete note titled ${note.title}`}
             >
               <IconLabel icon="delete" label="Delete"></IconLabel>
             </OpenModalButton>
