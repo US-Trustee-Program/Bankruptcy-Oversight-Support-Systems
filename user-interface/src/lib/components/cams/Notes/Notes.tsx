@@ -343,9 +343,14 @@ function Notes_(props: NotesProps, ref: React.Ref<NotesRef>) {
               </div>
             )}
             {notes && notes.length > 0 && (
-              <ol className="search-notes" id="searchable-notes" data-testid="searchable-notes">
+              <div
+                role="list"
+                className="search-notes"
+                id="searchable-notes"
+                data-testid="searchable-notes"
+              >
                 {renderNotes()}
-              </ol>
+              </div>
             )}
           </>
         )}
