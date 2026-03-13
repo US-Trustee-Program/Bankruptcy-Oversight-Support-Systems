@@ -14,11 +14,11 @@ import { TrusteeOverride, CleansingResult } from './ats-cleansing-types';
 import { ApplicationContext } from '../../../types/basic';
 
 // Test-only type that includes DIVISION from TSV export (not used in production)
-export type TsvAtsAppointmentRecord = AtsAppointmentRecord & {
+type TsvAtsAppointmentRecord = AtsAppointmentRecord & {
   DIVISION?: string;
 };
 
-export type TsvRow = {
+type TsvRow = {
   trusteeid: string;
   status: string;
   district: string;
