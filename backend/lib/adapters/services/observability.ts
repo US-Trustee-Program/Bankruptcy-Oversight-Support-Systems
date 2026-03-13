@@ -27,7 +27,7 @@ export function scrubErrorForTelemetry(error: string): string {
  * @param logger - Optional logger for diagnostics
  * @returns TelemetryClient instance or null if initialization fails
  */
-export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
+function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
   const MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
 
   try {
