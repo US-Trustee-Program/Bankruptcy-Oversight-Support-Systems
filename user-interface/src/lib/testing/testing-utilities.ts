@@ -149,10 +149,11 @@ async function toggleComboBoxItemSelection(id: string, itemIndex: number = 0, se
 
   await userEvent.click(listItem);
   await vi.waitFor(() => {
+    const currentItem = screen.getByTestId(testId);
     if (selected) {
-      expect(listItem).toHaveClass('selected');
+      expect(currentItem).toHaveClass('selected');
     } else {
-      expect(listItem).not.toHaveClass('selected');
+      expect(currentItem).not.toHaveClass('selected');
     }
   });
 }
