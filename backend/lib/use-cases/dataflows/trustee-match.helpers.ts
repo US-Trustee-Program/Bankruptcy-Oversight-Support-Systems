@@ -235,7 +235,7 @@ export function calculateCandidateScore(
   return candidateScore;
 }
 
-export type FuzzyMatchResult = {
+type FuzzyMatchResult = {
   winnerId: string;
   candidateScores: CandidateScore[];
 };
