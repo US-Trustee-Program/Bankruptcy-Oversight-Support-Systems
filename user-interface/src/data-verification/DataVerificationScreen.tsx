@@ -15,6 +15,7 @@ import {
   TransferOrder,
   isConsolidationOrder,
   isTransferOrder,
+  isTrusteeMatchVerification,
 } from '@common/cams/orders';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import useFeatureFlags, {
@@ -163,6 +164,7 @@ export default function DataVerificationScreen() {
         return true;
       }
     })
+    .filter((o): o is TransferOrder | ConsolidationOrder => !isTrusteeMatchVerification(o))
     .sort((a, b) => sortByDate(a.orderDate, b.orderDate))
     .map((order) => {
       const isHidden =
