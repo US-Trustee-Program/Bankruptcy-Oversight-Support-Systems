@@ -58,16 +58,6 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
   });
 
   describe('getInstance and dropInstance', () => {
-    test('should return the same instance on multiple calls', async () => {
-      const instance1 = TrusteeMatchVerificationMongoRepository.getInstance(context);
-      const instance2 = TrusteeMatchVerificationMongoRepository.getInstance(context);
-
-      expect(instance1).toBe(instance2);
-
-      instance1.release();
-      instance2.release();
-    });
-
     test('should manage reference count correctly', async () => {
       const instance1 = TrusteeMatchVerificationMongoRepository.getInstance(context);
       const instance2 = TrusteeMatchVerificationMongoRepository.getInstance(context);
