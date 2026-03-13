@@ -2,6 +2,7 @@ import { CaseAssignment } from './assignments';
 import { CaseDocketEntry, CaseSummary } from './cases';
 import { Consolidation } from './events';
 import { CamsDocument } from './document';
+import { TrusteeMatchVerification } from './trustee-match-verification';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
 export type OrderType = 'transfer' | 'consolidation';
@@ -136,7 +137,7 @@ export type RawConsolidationOrder = ConsolidationOrderCase & {
   leadCaseIdHint?: string;
 };
 
-export type Order = TransferOrder | ConsolidationOrder;
+export type Order = TransferOrder | ConsolidationOrder | TrusteeMatchVerification;
 
 export function isTransferOrder(order: Order): order is TransferOrder {
   return order.orderType === 'transfer';

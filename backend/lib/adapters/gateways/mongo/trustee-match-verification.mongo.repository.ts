@@ -70,7 +70,7 @@ export class TrusteeMatchVerificationMongoRepository
     try {
       const queryDoc = using<TrusteeMatchVerification>();
       const query = and(
-        queryDoc('documentType').equals('TRUSTEE_MATCH_VERIFICATION'),
+        queryDoc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
         queryDoc('caseId').equals(doc.caseId),
       );
       await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, doc, true);

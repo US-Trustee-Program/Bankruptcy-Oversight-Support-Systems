@@ -21,7 +21,6 @@ import { closeDeferred } from '../../deferrable/defer-close';
 import { CamsError } from '../../common-errors/cams-error';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CasesInterface } from '../cases/cases.interface';
-import { TrusteeMatchVerificationStatus } from '@common/cams/trustee-match-verification';
 
 describe('SyncTrusteeAppointments.processAppointments', () => {
   let context: ApplicationContext;
@@ -693,7 +692,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
           caseId: 'case-001',
           courtId: '081',
           mismatchReason: 'IMPERFECT_MATCH',
-          status: TrusteeMatchVerificationStatus.Pending,
+          status: 'pending',
         }),
       );
     });
@@ -756,7 +755,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
           caseId: 'case-001',
           mismatchReason: 'HIGH_CONFIDENCE_MATCH',
           matchCandidates: scoredCandidates,
-          status: TrusteeMatchVerificationStatus.Pending,
+          status: 'pending',
         }),
       );
     });
@@ -802,7 +801,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
           documentType: 'TRUSTEE_MATCH_VERIFICATION',
           caseId: 'case-001',
           mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
-          status: TrusteeMatchVerificationStatus.Pending,
+          status: 'pending',
         }),
       );
     });
@@ -825,7 +824,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
           caseId: 'case-001',
           mismatchReason: 'NO_TRUSTEE_MATCH',
           matchCandidates: [],
-          status: TrusteeMatchVerificationStatus.Pending,
+          status: 'pending',
         }),
       );
     });
@@ -854,7 +853,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
         documentType: 'TRUSTEE_MATCH_VERIFICATION',
         caseId: 'case-001',
-        status: TrusteeMatchVerificationStatus.Resolved,
+        status: 'approved',
         createdOn: '2025-01-01T00:00:00.000Z',
         updatedOn: '2025-01-01T00:00:00.000Z',
         updatedBy: { id: 'user-1', name: 'Operator' },
@@ -880,7 +879,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
         documentType: 'TRUSTEE_MATCH_VERIFICATION',
         caseId: 'case-001',
-        status: TrusteeMatchVerificationStatus.Dismissed,
+        status: 'rejected',
         createdOn: '2025-01-01T00:00:00.000Z',
         updatedOn: '2025-01-01T00:00:00.000Z',
         updatedBy: { id: 'user-1', name: 'Operator' },
@@ -902,7 +901,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
         documentType: 'TRUSTEE_MATCH_VERIFICATION',
         caseId: 'case-001',
-        status: TrusteeMatchVerificationStatus.Pending,
+        status: 'pending',
         createdOn: existingCreatedOn,
         updatedOn: existingCreatedOn,
         updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
