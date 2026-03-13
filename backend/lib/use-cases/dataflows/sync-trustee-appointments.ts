@@ -63,11 +63,11 @@ type ProcessAppointmentsResult = {
 };
 
 /**
- * Classify a caught error into a DLQ message.
+ * Classify a caught error into a typed match outcome.
  * Known permanent errors become typed TrusteeAppointmentSyncError with a mismatchReason.
  * Unclassified/transient errors fall back to the raw event shape with error set.
  */
-function buildDlqMessage(
+function classifyMatchOutcome(
   event: TrusteeAppointmentSyncEvent,
   error: CamsError,
 ): TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent {
@@ -165,7 +165,7 @@ async function applyResolvedTrustee(
 /**
  * Get trustee appointment events from DXTR.
  * Queries for trustee appointment transactions and returns events with party data.
- * Throws error on failure to allow caller to route to DLQ.
+ * Throws error on failure to allow caller to handle appropriately.
  */
 async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: string) {
   try {
@@ -242,7 +242,7 @@ async function upsertMatchVerification(
  * Process trustee appointment events by:
  * 1. Matching each DXTR trustee to a CAMS trustee by name
  * 2. Checking for a perfect match (exact name + active appointment in same court/division/chapter)
- * 3. Auto-linking only perfect matches; routing all others to DLQ for verification
+ * 3. Auto-linking only perfect matches; persisting all others to trustee-match-verification collection
  */
 async function processAppointments(
   context: ApplicationContext,
@@ -344,13 +344,8 @@ async function processAppointments(
           );
           context.logger.info(
             MODULE_NAME,
-            `Fuzzy match winner ${winnerId} for case ${event.caseId} routed to DLQ for verification`,
+            `Fuzzy match winner ${winnerId} for case ${event.caseId} saved for verification`,
           );
-          dlqMessages.push({
-            ...event,
-            mismatchReason: TrusteeAppointmentSyncErrorCode.HighConfidenceMatch,
-            matchCandidates: candidateScores,
-          });
           scenarioDistribution.highConfidenceMatchCount++;
           await upsertMatchVerification(
             verificationRepo,
@@ -375,7 +370,6 @@ async function processAppointments(
             `Fuzzy matching failed for case ${event.caseId}.`,
           );
           context.logger.warn(MODULE_NAME, `${enhancedError.message}`, enhancedError.data);
-          dlqMessages.push(buildDlqMessage(event, enhancedError));
           scenarioDistribution.multipleMatchCount++;
           await upsertMatchVerification(
             verificationRepo,
@@ -389,10 +383,9 @@ async function processAppointments(
       }
 
       context.logger.warn(MODULE_NAME, `${camsError}`);
-      const dlqMsg = buildDlqMessage(event, camsError);
-      dlqMessages.push(dlqMsg);
-      if ('mismatchReason' in dlqMsg) {
-        switch (dlqMsg.mismatchReason) {
+      const classified = classifyMatchOutcome(event, camsError);
+      if ('mismatchReason' in classified) {
+        switch (classified.mismatchReason) {
           case TrusteeAppointmentSyncErrorCode.NoTrusteeMatch:
             scenarioDistribution.noMatchCount++;
             audit.matchOutcome = 'no-match';
@@ -409,14 +402,23 @@ async function processAppointments(
               verificationRepo,
               event,
               TrusteeAppointmentSyncErrorCode.ImperfectMatch,
-              dlqMsg.matchCandidates ?? [],
+              classified.matchCandidates ?? [],
             );
             break;
           case TrusteeAppointmentSyncErrorCode.CaseNotFound:
             scenarioDistribution.caseNotFoundCount++;
             audit.matchOutcome = 'case-not-found';
+            await upsertMatchVerification(
+              verificationRepo,
+              event,
+              TrusteeAppointmentSyncErrorCode.CaseNotFound,
+              [],
+            );
             break;
         }
+      } else {
+        // Unexpected/unclassified error — route to DLQ
+        dlqMessages.push(classified);
       }
     } finally {
       context.logger.info(MODULE_NAME, 'TRUSTEE_MATCH_AUDIT', audit);
