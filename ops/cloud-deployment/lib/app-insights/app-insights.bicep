@@ -25,18 +25,6 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-// CAMS-709: Disabled App Insights diagnostic settings to prevent log duplication
-// Per Azure "Single-Pipe" configuration, workspace-based App Insights should not
-// forward telemetry back to the same workspace via diagnostic settings.
-// This was causing all customEvents to appear twice.
-// module diagnosticsSettings 'diagnostics-settings-appi.bicep' = {
-//   name: '${appInsightsName}-diag-settings-module'
-//   params: {
-//     appInsightsName: appInsights.name
-//     workspaceResourceId: workspaceResourceId
-//   }
-// }
-
 output id string = appInsights.id
 output connectionString string = appInsights.properties.ConnectionString
 output instrumentationKey string = appInsights.properties.InstrumentationKey

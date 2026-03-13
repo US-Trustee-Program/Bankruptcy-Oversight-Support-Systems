@@ -1,6 +1,7 @@
 <!-- docs/operations/_sidebar.md -->
 
 - [< Back](/)
+- [Application Insights Configuration](/operations/application-insights-configuration.md)
 - [Deployment](/operations/deployment.md)
 - [Okta Configuration](/operations/okta-configuration.md)
 - [Phonetic Backfill Migration](/operations/phonetic-backfill.md)
