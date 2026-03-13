@@ -116,7 +116,7 @@ export function generateSearchTokens(text: string): string[] {
   return Array.from(generateAllTokensForWords([text]));
 }
 
-export interface StructuredQueryTokens {
+interface StructuredQueryTokens {
   searchWords: string[];
   nicknameWords: string[];
   searchMetaphones: string[];

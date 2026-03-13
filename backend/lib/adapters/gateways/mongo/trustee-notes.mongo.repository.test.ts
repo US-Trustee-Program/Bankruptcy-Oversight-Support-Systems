@@ -40,6 +40,25 @@ describe('trustee notes repo tests', () => {
       expect(actual).toEqual(expectedNote);
     });
 
+    test('should return notes from the last 24 hours when calling getNotesSince', async () => {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const mockNotes = [
+        MockData.getTrusteeNote({ createdOn: new Date().toISOString() }),
+        MockData.getTrusteeNote({ createdOn: new Date().toISOString() }),
+      ];
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockNotes);
+      const actual = await repo.getNotesSince(cutoff);
+      expect(actual).toEqual(mockNotes);
+    });
+
+    test('should return empty array when getNotesSince finds no notes', async () => {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const actual = await repo.getNotesSince(cutoff);
+      expect(actual).toEqual([]);
+    });
+
     test('should return notes list when calling getNotesByTrusteeId', async () => {
       const trusteeId = 'trustee-uuid-1234';
       const mockNotes = [
@@ -136,6 +155,19 @@ describe('trustee notes repo tests', () => {
       await expect(() => repo.archiveTrusteeNote(archiveNote)).rejects.toThrow(
         expect.objectContaining({
           message: 'Unable to archive trustee note.',
+          status: 500,
+          module: 'TRUSTEE-NOTES-MONGO-REPOSITORY',
+          originalError: expect.stringContaining('Error: some error'),
+        }),
+      );
+    });
+
+    test('should handle error on getNotesSince', async () => {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
+      await expect(() => repo.getNotesSince(cutoff)).rejects.toThrow(
+        expect.objectContaining({
+          message: 'Unable to retrieve trustee notes.',
           status: 500,
           module: 'TRUSTEE-NOTES-MONGO-REPOSITORY',
           originalError: expect.stringContaining('Error: some error'),

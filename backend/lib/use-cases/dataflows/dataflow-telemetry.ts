@@ -1,7 +1,7 @@
 import { LoggerImpl } from '../../adapters/services/logger.service';
 import { ObservabilityGateway, ObservabilityTrace } from '../gateways.types';
 
-export interface DataflowTraceResult {
+interface DataflowTraceResult {
   documentsWritten: number;
   documentsFailed: number;
   success: boolean;

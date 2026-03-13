@@ -10,7 +10,7 @@ const mongoConnectionStringPattern = /(?:mongodb(?:\+srv)?:\/\/)\S+/gi;
 const mssqlConnectionStringPattern =
   /(?:Server|Data Source)=[^'")\]]*?(?:Password|Pwd)=[^\s;'")\]]+[;]?/gi;
 
-export type AppInsightsClientFactory = (logger?: LoggerImpl) => TelemetryClient | null;
+type AppInsightsClientFactory = (logger?: LoggerImpl) => TelemetryClient | null;
 
 export function scrubErrorForTelemetry(error: string): string {
   let scrubbed = scrubMessage(error);
@@ -20,7 +20,14 @@ export function scrubErrorForTelemetry(error: string): string {
   return scrubbed;
 }
 
-function getAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
+/**
+ * Initializes and returns the Application Insights client.
+ * If the client doesn't exist, explicitly initializes the SDK.
+ *
+ * @param logger - Optional logger for diagnostics
+ * @returns TelemetryClient instance or null if initialization fails
+ */
+function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
   const MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
 
   try {
@@ -28,21 +35,40 @@ function getAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
     const appInsights = require('applicationinsights');
 
     if (!appInsights) {
-      logger?.warn(MODULE_NAME, 'applicationinsights module loaded but is falsy');
+      logger?.error(MODULE_NAME, 'applicationinsights module loaded but is falsy');
       return null;
     }
 
-    if (!appInsights.defaultClient) {
-      logger?.warn(
+    // If defaultClient already exists, return it
+    if (appInsights.defaultClient) {
+      return appInsights.defaultClient as TelemetryClient;
+    }
+
+    // Client doesn't exist - try to initialize it ourselves
+    const connectionString = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
+    if (!connectionString) {
+      logger?.error(
         MODULE_NAME,
-        'applicationinsights.defaultClient is null/undefined - SDK not initialized',
+        'CRITICAL: APPLICATIONINSIGHTS_CONNECTION_STRING not set - telemetry unavailable',
       );
       return null;
     }
 
+    logger?.info(MODULE_NAME, 'Initializing Application Insights SDK explicitly');
+    appInsights.setup(connectionString).start();
+
+    if (!appInsights.defaultClient) {
+      logger?.error(
+        MODULE_NAME,
+        'CRITICAL: App Insights SDK initialized but defaultClient still null',
+      );
+      return null;
+    }
+
+    logger?.info(MODULE_NAME, 'Application Insights SDK initialized successfully');
     return appInsights.defaultClient as TelemetryClient;
   } catch (error) {
-    logger?.error(MODULE_NAME, 'Failed to load applicationinsights module', error);
+    logger?.error(MODULE_NAME, 'CRITICAL: Failed to initialize Application Insights', error);
     return null;
   }
 }
@@ -55,7 +81,7 @@ export class AppInsightsObservability implements ObservabilityGateway {
     private readonly logger?: LoggerImpl,
     clientFactory?: AppInsightsClientFactory,
   ) {
-    this.clientFactory = clientFactory ?? getAppInsightsClient;
+    this.clientFactory = clientFactory ?? getOrInitializeAppInsightsClient;
   }
 
   startTrace(invocationId: string): ObservabilityTrace {
@@ -92,7 +118,13 @@ export class AppInsightsObservability implements ObservabilityGateway {
 
     const client = this.clientFactory(this.logger);
 
-    if (!client) return;
+    if (!client) {
+      this.logger?.error(
+        this.MODULE_NAME,
+        `CRITICAL: Telemetry not sent for ${eventName} - App Insights client unavailable (business reporting impacted)`,
+      );
+      return;
+    }
 
     client.trackEvent({
       name: eventName,

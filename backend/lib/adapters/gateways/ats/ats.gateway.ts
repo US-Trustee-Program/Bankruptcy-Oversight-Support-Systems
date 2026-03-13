@@ -2,9 +2,19 @@ import * as mssql from 'mssql';
 import { ApplicationContext } from '../../types/basic';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { AtsGateway } from '../../../use-cases/gateways.types';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../types/ats.types';
+import {
+  AtsTrusteeRecord,
+  AtsAppointmentRecord,
+  TrusteeAppointmentsResult,
+  FailedAppointment,
+} from '../../types/ats.types';
 import { DbTableFieldSpec } from '../../types/database';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { cleanseAndMapAppointment } from './cleansing/ats-cleansing-pipeline';
+import { CleansingClassification, TrusteeOverride } from './cleansing/ats-cleansing-types';
+import { transformAppointmentRecord } from './cleansing/ats-cleansing-transform';
+import { loadTrusteeOverrides } from './cleansing/ats-cleansing-overrides';
 
 const MODULE_NAME = 'ATS-GATEWAY';
 
@@ -13,10 +23,36 @@ const MODULE_NAME = 'ATS-GATEWAY';
  * Implements queries for trustee demographics and appointments.
  */
 export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
+  private overridesCache?: Map<string, TrusteeOverride[]>;
+
   constructor(context: ApplicationContext) {
     // Use ATS-specific database configuration
     const config = context.config.atsDbConfig;
     super(config, MODULE_NAME);
+  }
+
+  /**
+   * Lazy-load overrides cache on first use
+   */
+  private async getOverridesCache(
+    context: ApplicationContext,
+  ): Promise<Map<string, TrusteeOverride[]>> {
+    if (!this.overridesCache) {
+      const result = await loadTrusteeOverrides(context);
+      if (result.error) {
+        context.logger.error(
+          MODULE_NAME,
+          'Failed to load overrides, proceeding without overrides',
+          {
+            error: result.error.message,
+          },
+        );
+        this.overridesCache = new Map();
+      } else {
+        this.overridesCache = result.data;
+      }
+    }
+    return this.overridesCache;
   }
 
   /**
@@ -99,13 +135,25 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
   }
 
   /**
-   * Get all appointments for a specific trustee.
-   * Includes chapter, division, district, and status information.
+   * Get cleansed appointments for a trustee.
+   * Returns both clean appointments (for storage) and failed appointments (for DLQ).
+   * Gateway handles ATS data cleansing and transformation internally.
+   *
+   * This method:
+   * 1. Queries raw ATS data from CHAPTER_DETAILS table
+   * 2. Runs each appointment through the cleansing pipeline
+   * 3. Transforms cleansed data to CAMS domain types
+   * 4. Returns both successful and failed appointments with statistics
+   *
+   * Cleansing handles:
+   * - Invalid/uncleansable data (returned as failed appointments)
+   * - Multi-expansion (1:N mapping for multi-district states)
+   * - Data normalization and validation
    */
   async getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: number,
-  ): Promise<AtsAppointmentRecord[]> {
+  ): Promise<TrusteeAppointmentsResult> {
     const input: DbTableFieldSpec[] = [];
 
     input.push({
@@ -118,7 +166,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       SELECT
         TRU_ID,
         DISTRICT,
-        DIVISION,
+        SERVING_STATE AS STATE,
         CHAPTER,
         APPOINTED_DATE AS DATE_APPOINTED,
         STATUS,
@@ -130,14 +178,115 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     context.logger.debug(MODULE_NAME, `Querying appointments for trustee ID: ${trusteeId}`);
 
     try {
+      // 1. Fetch raw ATS data
       const { results } = await this.executeQuery<AtsAppointmentRecord>(context, query, input);
-      const appointments = results as AtsAppointmentRecord[];
+      const atsAppointments = results as AtsAppointmentRecord[];
 
       context.logger.info(
         MODULE_NAME,
-        `Retrieved ${appointments.length} appointments for trustee ${trusteeId}`,
+        `Retrieved ${atsAppointments.length} raw appointments for trustee ${trusteeId}`,
       );
-      return appointments;
+
+      // 2. Cleanse and transform each appointment
+      const overridesCache = await this.getOverridesCache(context);
+      const cleanAppointments: TrusteeAppointmentInput[] = [];
+      const failedAppointments: FailedAppointment[] = [];
+      const stats = {
+        total: atsAppointments.length,
+        clean: 0,
+        autoRecoverable: 0,
+        problematic: 0,
+        uncleansable: 0,
+        skipped: 0,
+      };
+
+      for (const atsAppointment of atsAppointments) {
+        const cleansingResult = cleanseAndMapAppointment(
+          context,
+          String(trusteeId),
+          atsAppointment,
+          overridesCache,
+        );
+
+        // Handle SKIP classification
+        if (cleansingResult.classification === CleansingClassification.SKIP) {
+          context.logger.debug(MODULE_NAME, `Skipping appointment per override directive`, {
+            trusteeId,
+            notes: cleansingResult.notes,
+          });
+          stats.skipped++;
+          continue;
+        }
+
+        // Handle UNCLEANSABLE or PROBLEMATIC - ADD TO FAILED LIST
+        if (
+          cleansingResult.classification === CleansingClassification.UNCLEANSABLE ||
+          cleansingResult.classification === CleansingClassification.PROBLEMATIC
+        ) {
+          context.logger.warn(
+            MODULE_NAME,
+            `Appointment is ${cleansingResult.classification} for trustee ${trusteeId}`,
+            {
+              notes: cleansingResult.notes,
+            },
+          );
+
+          // Add to failed appointments list for DLQ
+          failedAppointments.push({
+            atsAppointment,
+            classification: cleansingResult.classification as 'PROBLEMATIC' | 'UNCLEANSABLE',
+            notes: cleansingResult.notes,
+            mapType: cleansingResult.mapType,
+            timestamp: new Date().toISOString(),
+          });
+
+          if (cleansingResult.classification === CleansingClassification.PROBLEMATIC) {
+            stats.problematic++;
+          } else {
+            stats.uncleansable++;
+          }
+
+          continue;
+        }
+
+        // Track CLEAN vs AUTO_RECOVERABLE
+        if (cleansingResult.classification === CleansingClassification.CLEAN) {
+          stats.clean++;
+        } else if (cleansingResult.classification === CleansingClassification.AUTO_RECOVERABLE) {
+          stats.autoRecoverable++;
+        }
+
+        // Handle multi-expansion (1:N mapping)
+        if (!cleansingResult.appointment && cleansingResult.courtIds.length > 1) {
+          context.logger.debug(
+            MODULE_NAME,
+            `Multi-expansion: creating ${cleansingResult.courtIds.length} appointments`,
+            {
+              trusteeId,
+              courtIds: cleansingResult.courtIds,
+            },
+          );
+
+          for (const courtId of cleansingResult.courtIds) {
+            const appointmentInput = transformAppointmentRecord(atsAppointment, courtId);
+            cleanAppointments.push(appointmentInput);
+          }
+        } else if (cleansingResult.appointment) {
+          // Single appointment (1:1 mapping)
+          cleanAppointments.push(cleansingResult.appointment);
+        }
+      }
+
+      context.logger.info(
+        MODULE_NAME,
+        `Cleansed ${atsAppointments.length} raw appointments → ${cleanAppointments.length} clean, ${failedAppointments.length} failed (${stats.skipped} skipped)`,
+      );
+
+      return {
+        cleanAppointments,
+        failedAppointments,
+        stats,
+      };
     } catch (originalError) {
       const error = getCamsError(
         originalError,

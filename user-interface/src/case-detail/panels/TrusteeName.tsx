@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 
-export interface TrusteeNameProps {
+interface TrusteeNameProps {
   trusteeName: string;
   trusteeId?: string | null;
 }

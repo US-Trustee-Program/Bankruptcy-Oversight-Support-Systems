@@ -5,6 +5,10 @@ import { Closable } from '../../deferrable/defer-close';
 import { ObservabilityGateway, Releasable } from '../../use-cases/gateways.types';
 import { LoggerImpl } from '../services/logger.service';
 
+export interface ExtraOutputs {
+  set(output: unknown, value: unknown): void;
+}
+
 export interface ApplicationContext<B = unknown> {
   config: ApplicationConfiguration;
   featureFlags: FeatureFlagSet;
@@ -15,7 +19,7 @@ export interface ApplicationContext<B = unknown> {
   request?: CamsHttpRequest<B>;
   closables: Closable[];
   releasables: Releasable[];
-  extraOutputs: unknown;
+  extraOutputs: ExtraOutputs;
 }
 
 export interface ObjectKeyVal {

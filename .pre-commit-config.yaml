@@ -7,6 +7,7 @@ repos:
         exclude: '^.*/package-lock.json$'
       - id: check-yaml
       - id: check-added-large-files
+        exclude: '^backend/lib/adapters/gateways/ats/cleansing/test-data/.*\.tsv$'
   - repo: https://github.com/pre-commit/mirrors-eslint
     rev: 'v10.0.3' # Use the sha / tag you want to point at
     hooks:

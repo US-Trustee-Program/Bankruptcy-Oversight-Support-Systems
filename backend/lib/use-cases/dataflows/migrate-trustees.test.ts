@@ -17,7 +17,8 @@ import {
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../adapters/types/ats.types';
+import { AtsTrusteeRecord } from '../../adapters/types/ats.types';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 
 describe('Migrate Trustees Use Case', () => {
   let context: ApplicationContext;
@@ -49,6 +50,7 @@ describe('Migrate Trustees Use Case', () => {
 
     mockAppointmentsRepo = {
       createAppointment: vi.fn(),
+      getTrusteeAppointments: vi.fn().mockResolvedValue([]),
     };
 
     mockRuntimeStateRepo = {
@@ -60,6 +62,9 @@ describe('Migrate Trustees Use Case', () => {
     vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(mockTrusteesRepo);
     vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(mockAppointmentsRepo);
     vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(mockRuntimeStateRepo);
+
+    // NOTE: We let the cleansing pipeline run for real so it can properly classify
+    // valid vs invalid data. Tests will use real representative ATS data.
   });
 
   afterEach(() => {
@@ -100,6 +105,17 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data).toEqual(existingState);
       expect(mockRuntimeStateRepo.upsert).not.toHaveBeenCalled();
     });
+
+    test('should handle error when creating state fails', async () => {
+      mockRuntimeStateRepo.read.mockRejectedValue(new Error('Not found'));
+      mockRuntimeStateRepo.upsert.mockRejectedValue(new Error('Database write failed'));
+
+      const result = await getOrCreateMigrationState(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to get or create migration state');
+      expect(result.data).toBeUndefined();
+    });
   });
 
   describe('getPageOfTrustees', () => {
@@ -128,26 +144,57 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data?.trustees).toEqual(mockTrustees);
       expect(result.data?.hasMore).toBe(false);
     });
+
+    test('should handle error when getting page fails', async () => {
+      mockAtsGateway.getTrusteesPage.mockRejectedValue(new Error('Database connection failed'));
+
+      const result = await getPageOfTrustees(context, null, 10);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to get page of trustees');
+      expect(result.data).toBeUndefined();
+    });
   });
 
   describe('getTrusteeAppointments', () => {
     test('should get appointments for a trustee', async () => {
-      const mockAppointments: AtsAppointmentRecord[] = [
+      const mockAppointments: TrusteeAppointmentInput[] = [
         {
-          TRU_ID: 1,
-          DISTRICT: '02',
-          DIVISION: '081',
-          CHAPTER: '7',
-          STATUS: 'PA',
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
       ];
 
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+        cleanAppointments: mockAppointments,
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+        },
+      });
 
       const result = await getTrusteeAppointments(context, 1);
 
-      expect(result.data).toEqual(mockAppointments);
+      expect(result.data?.cleanAppointments).toEqual(mockAppointments);
       expect(mockAtsGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, 1);
+    });
+
+    test('should handle error when getting appointments fails', async () => {
+      mockAtsGateway.getTrusteeAppointments.mockRejectedValue(new Error('Database error'));
+
+      const result = await getTrusteeAppointments(context, 1);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to get appointments for trustee 1');
+      expect(result.data).toBeUndefined();
     });
   });
 
@@ -210,6 +257,22 @@ describe('Migrate Trustees Use Case', () => {
       );
       expect(mockTrusteesRepo.createTrustee).not.toHaveBeenCalled();
     });
+
+    test('should handle error when upsert fails', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+      };
+
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockRejectedValue(new Error('Database error'));
+
+      const result = await upsertTrustee(context, atsTrustee);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to upsert trustee 1');
+      expect(result.data).toBeUndefined();
+    });
   });
 
   describe('createAppointments', () => {
@@ -227,110 +290,107 @@ describe('Migrate Trustees Use Case', () => {
     };
 
     test('should create new appointments', async () => {
-      const atsAppointments: AtsAppointmentRecord[] = [
+      // Gateway provides clean CAMS domain types
+      const cleanAppointments: TrusteeAppointmentInput[] = [
         {
-          TRU_ID: 100,
-          DISTRICT: '02',
-          DIVISION: '081',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N', // Middle Louisiana
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
       ];
 
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
-      const result = await createAppointments(context, mockTrustee, atsAppointments);
+      const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
-      expect(result.data).toBe(1);
+      expect(result.data?.successCount).toBe(1);
       expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
     });
 
     test('should skip duplicate appointments in source data', async () => {
-      const atsAppointments: AtsAppointmentRecord[] = [
+      // Gateway might return duplicates after multi-expansion - use case deduplicates
+      const cleanAppointments: TrusteeAppointmentInput[] = [
         {
-          TRU_ID: 100,
-          DISTRICT: '02',
-          DIVISION: '081',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
         {
-          TRU_ID: 100,
-          DISTRICT: '02',
-          DIVISION: '081',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
       ];
 
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
-      const result = await createAppointments(context, mockTrustee, atsAppointments);
+      const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
-      expect(result.data).toBe(1);
+      // Both are successfully processed (one created, one skipped as duplicate)
+      expect(result.data?.successCount).toBe(2);
+      // Only one was actually created in the repository
       expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
     });
 
-    test('should skip invalid appointment type for chapter with warning', async () => {
-      // Standing is not valid for chapter 7
-      const atsAppointments: AtsAppointmentRecord[] = [
+    test('should skip appointments that already exist in database', async () => {
+      const existingAppointment = {
+        id: 'existing-id',
+        trusteeId: 'trustee-100',
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '053N',
+        appointedDate: '2023-01-15',
+        status: 'active',
+        effectiveDate: '2023-01-15',
+      };
+
+      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([existingAppointment]);
+
+      const cleanAppointments: TrusteeAppointmentInput[] = [
         {
-          TRU_ID: 100,
-          DISTRICT: '02',
-          DIVISION: '081',
-          CHAPTER: '7',
-          STATUS: 'S', // standing - invalid for chapter 7
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
       ];
 
-      const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
+      const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
-      const result = await createAppointments(context, mockTrustee, atsAppointments);
-
-      expect(result.data).toBe(0);
-      expect(loggerWarnSpy).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.stringContaining('Invalid appointment type'),
-      );
+      expect(result.data?.successCount).toBe(1);
       expect(mockAppointmentsRepo.createAppointment).not.toHaveBeenCalled();
     });
 
-    test('should continue processing when one appointment transformation fails', async () => {
-      const atsAppointments: AtsAppointmentRecord[] = [
+    test('should handle error when creating appointments fails', async () => {
+      const cleanAppointments: TrusteeAppointmentInput[] = [
         {
-          TRU_ID: 100,
-          DISTRICT: '99', // Invalid district - will throw
-          DIVISION: '081',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-01-15'),
-          EFFECTIVE_DATE: new Date('2023-01-15'),
-        },
-        {
-          TRU_ID: 100,
-          DISTRICT: '02', // Valid
-          DIVISION: '081',
-          CHAPTER: '7',
-          STATUS: 'PA',
-          DATE_APPOINTED: new Date('2023-02-15'),
-          EFFECTIVE_DATE: new Date('2023-02-15'),
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
       ];
 
-      mockAppointmentsRepo.createAppointment.mockResolvedValue({});
+      mockAppointmentsRepo.createAppointment.mockRejectedValue(new Error('Database write failed'));
 
-      const result = await createAppointments(context, mockTrustee, atsAppointments);
+      const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
-      // First one fails (invalid district), second one succeeds
-      expect(result.data).toBe(1);
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to create appointments for trustee');
+      expect(result.data).toBeUndefined();
     });
   });
 
@@ -348,21 +408,31 @@ describe('Migrate Trustees Use Case', () => {
         name: 'John Doe',
       };
 
-      const mockAppointments: AtsAppointmentRecord[] = [
+      // Gateway returns clean CAMS types
+      const cleanAppointments: TrusteeAppointmentInput[] = [
         {
-          TRU_ID: 1,
-          DISTRICT: '02',
-          DIVISION: '081',
-          CHAPTER: '7',
-          STATUS: 'PA',
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
         },
       ];
 
-      mockAppointments[0].DATE_APPOINTED = new Date('2023-01-15');
-
       mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(mockAppointments);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+        cleanAppointments,
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+        },
+      });
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
       const result = await processTrusteeWithAppointments(context, atsTrustee);
@@ -393,6 +463,89 @@ describe('Migrate Trustees Use Case', () => {
       const result = await processTrusteeWithAppointments(context, atsTrustee);
 
       expect(result.success).toBe(true);
+      expect(result.appointmentsProcessed).toBe(0);
+    });
+
+    test('should handle error when upserting trustee fails', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 3,
+        FIRST_NAME: 'Bob',
+        LAST_NAME: 'Johnson',
+      };
+
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockRejectedValue(
+        new Error('Database connection lost'),
+      );
+
+      const result = await processTrusteeWithAppointments(context, atsTrustee);
+
+      expect(result.success).toBe(false);
+      expect(result.truId).toBe('3');
+      expect(result.appointmentsProcessed).toBe(0);
+      expect(result.error).toBeDefined();
+    });
+
+    test('should continue processing trustee when getting appointments fails', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 4,
+        FIRST_NAME: 'Alice',
+        LAST_NAME: 'Williams',
+      };
+
+      const createdTrustee = {
+        id: 'new-id',
+        trusteeId: 'trustee-789',
+        name: 'Alice Williams',
+      };
+
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
+      mockAtsGateway.getTrusteeAppointments.mockRejectedValue(new Error('ATS connection timeout'));
+
+      const result = await processTrusteeWithAppointments(context, atsTrustee);
+
+      // Trustee should be processed successfully even though appointments failed
+      expect(result.success).toBe(true);
+      expect(result.trusteeId).toBe('trustee-789');
+      expect(result.appointmentsProcessed).toBe(0);
+    });
+
+    test('should continue processing trustee when creating appointments fails', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 5,
+        FIRST_NAME: 'Charlie',
+        LAST_NAME: 'Brown',
+      };
+
+      const createdTrustee = {
+        id: 'new-id',
+        trusteeId: 'trustee-999',
+        name: 'Charlie Brown',
+      };
+
+      const cleanAppointments: TrusteeAppointmentInput[] = [
+        {
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
+        },
+      ];
+
+      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(cleanAppointments);
+      mockAppointmentsRepo.createAppointment.mockRejectedValue(
+        new Error('Appointment database error'),
+      );
+
+      const result = await processTrusteeWithAppointments(context, atsTrustee);
+
+      // Trustee should be processed successfully even though appointments failed
+      expect(result.success).toBe(true);
+      expect(result.trusteeId).toBe('trustee-999');
       expect(result.appointmentsProcessed).toBe(0);
     });
   });
@@ -428,6 +581,16 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data).toBe(500);
       expect(mockAtsGateway.getTrusteeCount).toHaveBeenCalledWith(context);
     });
+
+    test('should handle error when getting count fails', async () => {
+      mockAtsGateway.getTrusteeCount.mockRejectedValue(new Error('Database timeout'));
+
+      const result = await getTotalTrusteeCount(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to get total trustee count');
+      expect(result.data).toBeUndefined();
+    });
   });
 
   describe('completeMigration', () => {
@@ -455,6 +618,49 @@ describe('Migrate Trustees Use Case', () => {
           status: 'COMPLETED',
         }),
       );
+    });
+
+    test('should handle error when migration state does not exist', async () => {
+      const state: TrusteeMigrationState = {
+        documentType: 'TRUSTEE_MIGRATION_STATE',
+        lastTrusteeId: 100,
+        processedCount: 100,
+        appointmentsProcessedCount: 300,
+        errors: 0,
+        startedAt: '2023-01-01T00:00:00Z',
+        lastUpdatedAt: '2023-01-01T01:00:00Z',
+        status: 'IN_PROGRESS',
+        divisionMappingVersion: '1.0.0',
+      };
+
+      mockRuntimeStateRepo.read.mockResolvedValue(null);
+
+      const result = await completeMigration(context, state);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Cannot update non-existent migration state');
+    });
+
+    test('should handle error when updating state fails', async () => {
+      const state: TrusteeMigrationState = {
+        documentType: 'TRUSTEE_MIGRATION_STATE',
+        lastTrusteeId: 100,
+        processedCount: 100,
+        appointmentsProcessedCount: 300,
+        errors: 0,
+        startedAt: '2023-01-01T00:00:00Z',
+        lastUpdatedAt: '2023-01-01T01:00:00Z',
+        status: 'IN_PROGRESS',
+        divisionMappingVersion: '1.0.0',
+      };
+
+      mockRuntimeStateRepo.read.mockResolvedValue(state);
+      mockRuntimeStateRepo.upsert.mockRejectedValue(new Error('Database write error'));
+
+      const result = await completeMigration(context, state);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to update migration state');
     });
   });
 
