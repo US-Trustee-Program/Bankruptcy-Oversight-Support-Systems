@@ -6,27 +6,68 @@ import {
   CandidateScore,
   isMultipleTrusteesMatchError,
 } from '@common/cams/dataflow-events';
+import {
+  TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
+  TrusteeMatchVerification,
+} from '@common/cams/trustee-match-verification';
+import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
-import { isNotFoundError } from '../../common-errors/not-found-error';
-import { TrusteeAppointmentsSyncState } from '../gateways.types';
-import { matchTrusteeByName, resolveTrusteeWithFuzzyMatching } from './trustee-match.helpers';
+import { isNotFoundError, NotFoundError } from '../../common-errors/not-found-error';
+import {
+  CasesRepository,
+  TrusteeAppointmentsRepository,
+  TrusteeAppointmentsSyncState,
+  TrusteeMatchVerificationRepository,
+} from '../gateways.types';
+import {
+  matchTrusteeByName,
+  resolveTrusteeWithFuzzyMatching,
+  isPerfectMatch,
+  calculateCandidateScore,
+} from './trustee-match.helpers';
 import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
 
+type ScenarioDistribution = {
+  autoMatchCount: number;
+  imperfectMatchCount: number;
+  highConfidenceMatchCount: number;
+  noMatchCount: number;
+  multipleMatchCount: number;
+  caseNotFoundCount: number;
+};
+
+type MatchAuditEntry = {
+  caseId: string;
+  dxtrTrusteeName: string;
+  matchOutcome:
+    | 'auto-matched'
+    | 'imperfect-match'
+    | 'high-confidence'
+    | 'no-match'
+    | 'multiple-match'
+    | 'case-not-found'
+    | 'error';
+  matchedTrusteeId: string | null;
+  scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null;
+  appointmentStatus: string | null;
+};
+
 type ProcessAppointmentsResult = {
   successCount: number;
   dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[];
+  scenarioDistribution: ScenarioDistribution;
 };
 
 /**
- * Classify a caught error into a DLQ message.
+ * Classify a caught error into a typed match outcome.
  * Known permanent errors become typed TrusteeAppointmentSyncError with a mismatchReason.
  * Unclassified/transient errors fall back to the raw event shape with error set.
  */
-function buildDlqMessage(
+function classifyMatchOutcome(
   event: TrusteeAppointmentSyncEvent,
   error: CamsError,
 ): TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent {
@@ -34,7 +75,7 @@ function buildDlqMessage(
   const { data } = error;
   if (!data) {
     if (isNotFoundError(error)) {
-      return { ...event, mismatchReason: 'CASE_NOT_FOUND' };
+      return { ...event, mismatchReason: TrusteeAppointmentSyncErrorCode.CaseNotFound };
     }
 
     return DEFAULT_MESSAGE;
@@ -45,14 +86,21 @@ function buildDlqMessage(
     matchCandidates?: CandidateScore[];
   };
 
-  if (mismatchReason === 'NO_TRUSTEE_MATCH') {
-    return { ...event, mismatchReason: 'NO_TRUSTEE_MATCH', matchCandidates: [] };
-  }
-
-  if (mismatchReason === 'MULTIPLE_TRUSTEES_MATCH') {
+  if (mismatchReason === TrusteeAppointmentSyncErrorCode.NoTrusteeMatch) {
     return {
       ...event,
-      mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+      mismatchReason: TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
+      matchCandidates: [],
+    };
+  }
+
+  if (
+    mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch ||
+    mismatchReason === TrusteeAppointmentSyncErrorCode.ImperfectMatch
+  ) {
+    return {
+      ...event,
+      mismatchReason,
       matchCandidates: matchCandidates || [],
     };
   }
@@ -117,7 +165,7 @@ async function applyResolvedTrustee(
 /**
  * Get trustee appointment events from DXTR.
  * Queries for trustee appointment transactions and returns events with party data.
- * Throws error on failure to allow caller to route to DLQ.
+ * Throws error on failure to allow caller to handle appropriately.
  */
 async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: string) {
   try {
@@ -151,9 +199,50 @@ async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: 
 }
 
 /**
+ * Upserts a TrusteeMatchVerification document for a non-auto-match outcome.
+ * Skips the write if the existing document has already been resolved or dismissed.
+ */
+async function upsertMatchVerification(
+  verificationRepo: TrusteeMatchVerificationRepository,
+  event: TrusteeAppointmentSyncEvent,
+  mismatchReason: TrusteeAppointmentSyncErrorCode,
+  matchCandidates: CandidateScore[],
+): Promise<void> {
+  const existing = await verificationRepo.getVerification(event.caseId);
+  if (existing && existing.status !== 'pending') {
+    return; // Operator has already approved or rejected — do not overwrite
+  }
+  if (existing) {
+    await verificationRepo.upsertVerification({
+      ...existing,
+      mismatchReason,
+      matchCandidates,
+      updatedOn: new Date().toISOString(),
+      updatedBy: SYSTEM_USER_REFERENCE,
+    });
+  } else {
+    const doc = createAuditRecord<TrusteeMatchVerification>(
+      {
+        documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
+        caseId: event.caseId,
+        courtId: event.courtId,
+        dxtrTrustee: event.dxtrTrustee,
+        mismatchReason,
+        matchCandidates,
+        orderType: 'trustee-match',
+        status: 'pending',
+      },
+      SYSTEM_USER_REFERENCE,
+    );
+    await verificationRepo.upsertVerification(doc);
+  }
+}
+
+/**
  * Process trustee appointment events by:
  * 1. Matching each DXTR trustee to a CAMS trustee by name
- * 2. Updating the SyncedCase with the matched trusteeId
+ * 2. Checking for a perfect match (exact name + active appointment in same court/division/chapter)
+ * 3. Auto-linking only perfect matches; persisting all others to trustee-match-verification collection
  */
 async function processAppointments(
   context: ApplicationContext,
@@ -161,14 +250,83 @@ async function processAppointments(
 ): Promise<ProcessAppointmentsResult> {
   const casesRepo = factory.getCasesRepository(context);
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+  const trusteesRepo = factory.getTrusteesRepository(context);
+  const verificationRepo = factory.getTrusteeMatchVerificationRepository(context);
   const dlqMessages: (TrusteeAppointmentSyncError | TrusteeAppointmentSyncEvent)[] = [];
   let successCount = 0;
+  const scenarioDistribution: ScenarioDistribution = {
+    autoMatchCount: 0,
+    imperfectMatchCount: 0,
+    highConfidenceMatchCount: 0,
+    noMatchCount: 0,
+    multipleMatchCount: 0,
+    caseNotFoundCount: 0,
+  };
 
   for (const event of events) {
+    const audit: MatchAuditEntry = {
+      caseId: event.caseId,
+      dxtrTrusteeName: event.dxtrTrustee.fullName,
+      matchOutcome: 'error',
+      matchedTrusteeId: null,
+      scoringBreakdown: null,
+      appointmentStatus: null,
+    };
+
     try {
       const trusteeId = await matchTrusteeByName(context, event.dxtrTrustee.fullName);
-      await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo, false);
-      successCount++;
+
+      const syncedCase = await casesRepo.getSyncedCase(event.caseId);
+      if (!syncedCase) {
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Case ${event.caseId} not found in synced cases.`,
+        });
+      }
+      const trusteeAppointments = await appointmentsRepo.getTrusteeAppointments(trusteeId);
+
+      if (
+        isPerfectMatch(
+          trusteeAppointments,
+          syncedCase.courtId,
+          syncedCase.courtDivisionCode,
+          syncedCase.chapter,
+        )
+      ) {
+        await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo, false);
+        context.logger.info(
+          MODULE_NAME,
+          `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
+        );
+        successCount++;
+        scenarioDistribution.autoMatchCount++;
+        audit.matchOutcome = 'auto-matched';
+        audit.matchedTrusteeId = trusteeId;
+        audit.appointmentStatus = 'active';
+      } else {
+        const trustee = await trusteesRepo.read(trusteeId);
+        const candidateScore = calculateCandidateScore(
+          context,
+          event.dxtrTrustee,
+          syncedCase,
+          trustee,
+          trusteeAppointments,
+        );
+
+        audit.matchOutcome = 'imperfect-match';
+        audit.matchedTrusteeId = trusteeId;
+        audit.scoringBreakdown = {
+          districtDivisionScore: candidateScore.districtDivisionScore,
+          chapterScore: candidateScore.chapterScore,
+        };
+
+        throw new CamsError(MODULE_NAME, {
+          message: `Single name match for case ${event.caseId} did not meet perfect match criteria.`,
+          data: {
+            mismatchReason: TrusteeAppointmentSyncErrorCode.ImperfectMatch,
+            matchCandidates: [candidateScore],
+          },
+        });
+      }
     } catch (originalError) {
       const camsError = getCamsError(
         originalError,
@@ -179,13 +337,31 @@ async function processAppointments(
       if (isMultipleTrusteesMatchError(camsError.data)) {
         try {
           const candidateTrusteeIds = camsError.data.matchCandidates.map((c) => c.trusteeId);
-          const trusteeId = await resolveTrusteeWithFuzzyMatching(
+          const { winnerId, candidateScores } = await resolveTrusteeWithFuzzyMatching(
             context,
             event,
             candidateTrusteeIds,
           );
-          await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo, true);
-          successCount++;
+          context.logger.info(
+            MODULE_NAME,
+            `Fuzzy match winner ${winnerId} for case ${event.caseId} saved for verification`,
+          );
+          scenarioDistribution.highConfidenceMatchCount++;
+          await upsertMatchVerification(
+            verificationRepo,
+            event,
+            TrusteeAppointmentSyncErrorCode.HighConfidenceMatch,
+            candidateScores,
+          );
+          const winnerScore = candidateScores.find((c) => c.trusteeId === winnerId);
+          audit.matchOutcome = 'high-confidence';
+          audit.matchedTrusteeId = winnerId;
+          if (winnerScore) {
+            audit.scoringBreakdown = {
+              districtDivisionScore: winnerScore.districtDivisionScore,
+              chapterScore: winnerScore.chapterScore,
+            };
+          }
           continue;
         } catch (fuzzyError) {
           const enhancedError = getCamsError(
@@ -194,17 +370,62 @@ async function processAppointments(
             `Fuzzy matching failed for case ${event.caseId}.`,
           );
           context.logger.warn(MODULE_NAME, `${enhancedError.message}`, enhancedError.data);
-          dlqMessages.push(buildDlqMessage(event, enhancedError));
+          scenarioDistribution.multipleMatchCount++;
+          await upsertMatchVerification(
+            verificationRepo,
+            event,
+            TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch,
+            (enhancedError.data as { matchCandidates?: CandidateScore[] })?.matchCandidates ?? [],
+          );
+          audit.matchOutcome = 'multiple-match';
           continue;
         }
       }
 
       context.logger.warn(MODULE_NAME, `${camsError}`);
-      dlqMessages.push(buildDlqMessage(event, camsError));
+      const classified = classifyMatchOutcome(event, camsError);
+      if ('mismatchReason' in classified) {
+        switch (classified.mismatchReason) {
+          case TrusteeAppointmentSyncErrorCode.NoTrusteeMatch:
+            scenarioDistribution.noMatchCount++;
+            audit.matchOutcome = 'no-match';
+            await upsertMatchVerification(
+              verificationRepo,
+              event,
+              TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
+              [],
+            );
+            break;
+          case TrusteeAppointmentSyncErrorCode.ImperfectMatch:
+            scenarioDistribution.imperfectMatchCount++;
+            await upsertMatchVerification(
+              verificationRepo,
+              event,
+              TrusteeAppointmentSyncErrorCode.ImperfectMatch,
+              classified.matchCandidates ?? [],
+            );
+            break;
+          case TrusteeAppointmentSyncErrorCode.CaseNotFound:
+            scenarioDistribution.caseNotFoundCount++;
+            audit.matchOutcome = 'case-not-found';
+            await upsertMatchVerification(
+              verificationRepo,
+              event,
+              TrusteeAppointmentSyncErrorCode.CaseNotFound,
+              [],
+            );
+            break;
+        }
+      } else {
+        // Unexpected/unclassified error — route to DLQ
+        dlqMessages.push(classified);
+      }
+    } finally {
+      context.logger.info(MODULE_NAME, 'TRUSTEE_MATCH_AUDIT', audit);
     }
   }
 
-  return { successCount, dlqMessages };
+  return { successCount, dlqMessages, scenarioDistribution };
 }
 
 /**

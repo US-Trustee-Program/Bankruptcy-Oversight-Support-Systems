@@ -16,7 +16,6 @@ import {
   ConsolidationOrder,
   ConsolidationOrderCase,
   ConsolidationType,
-  Order,
   RawConsolidationOrder,
   TransferOrder,
 } from '../orders';
@@ -408,7 +407,7 @@ function getConsolidationOrder(
   return { ...consolidationOrder, ...override };
 }
 
-function getSortedOrders(count: number = 10): Order[] {
+function getSortedOrders(count: number = 10): (TransferOrder | ConsolidationOrder)[] {
   let transferCount = count;
   let consolidationCount = 0;
 

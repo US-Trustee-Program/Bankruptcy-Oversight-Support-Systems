@@ -74,13 +74,17 @@ import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-
 import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
 import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
 import { TrusteeAssistantsMongoRepository } from './adapters/gateways/mongo/trustee-assistants.mongo.repository';
+import { TrusteeMatchVerificationMongoRepository } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
 import {
   ServerConfigError,
   UNSUPPORTED_AUTHENTICATION_PROVIDER,
 } from './common-errors/server-config-error';
-import { ApiToDataflowsGateway } from './use-cases/gateways.types';
+import {
+  ApiToDataflowsGateway,
+  TrusteeMatchVerificationRepository,
+} from './use-cases/gateways.types';
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 
 let casesGateway: CasesInterface;
@@ -442,6 +446,17 @@ const getListsGateway = (context: ApplicationContext): ListsRepository => {
   return repo;
 };
 
+const getTrusteeMatchVerificationRepository = (
+  context: ApplicationContext,
+): TrusteeMatchVerificationRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = TrusteeMatchVerificationMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 const getApiToDataflowsGateway = (context: ApplicationContext): ApiToDataflowsGateway => {
   return new ApiToDataflowsGatewayImpl(context);
 };
@@ -478,6 +493,7 @@ const factory = {
   getTrusteeAppointmentsRepository,
   getTrusteeAssistantsRepository,
   getTrusteeNotesRepository,
+  getTrusteeMatchVerificationRepository,
   getListsGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,

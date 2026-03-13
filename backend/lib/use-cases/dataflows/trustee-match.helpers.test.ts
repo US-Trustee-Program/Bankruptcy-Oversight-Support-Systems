@@ -9,6 +9,7 @@ import {
   normalizeChapter,
   calculateCandidateScore,
   resolveTrusteeWithFuzzyMatching,
+  isPerfectMatch,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -566,6 +567,83 @@ describe('calculateCandidateScore', () => {
   });
 });
 
+describe('isPerfectMatch', () => {
+  test('should return true when active appointment matches court, division, and chapter', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(true);
+  });
+
+  test('should return false when appointments array is empty', () => {
+    expect(isPerfectMatch([], '081', '1', '7')).toBe(false);
+  });
+
+  test('should return false when matching appointment has status inactive', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'inactive' }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+  });
+
+  test('should return false when matching appointment has status voluntarily-suspended', () => {
+    const appointments = [
+      makeAppointment({
+        courtId: '081',
+        divisionCode: '1',
+        chapter: '7',
+        status: 'voluntarily-suspended',
+      }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+  });
+
+  test('should return false when court and division match but chapter does not', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+  });
+
+  test('should return false when chapter matches but court does not', () => {
+    const appointments = [
+      makeAppointment({ courtId: '082', divisionCode: '1', chapter: '7', status: 'active' }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+  });
+
+  test('should return false when court and chapter match on different appointments', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'active' }),
+      makeAppointment({ courtId: '082', divisionCode: '2', chapter: '7', status: 'active' }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(false);
+  });
+
+  test('should return true with chapter normalization: case "07" matches appointment "7"', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '1', '07')).toBe(true);
+  });
+
+  test('should return true with chapter normalization: case "11-subchapter-v" matches appointment "11"', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '11', status: 'active' }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '1', '11-subchapter-v')).toBe(true);
+  });
+
+  test('should return true when multiple appointments exist and one is a perfect match', () => {
+    const appointments = [
+      makeAppointment({ courtId: '082', divisionCode: '2', chapter: '13', status: 'active' }),
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+      makeAppointment({ courtId: '083', divisionCode: '3', chapter: '11', status: 'inactive' }),
+    ];
+    expect(isPerfectMatch(appointments, '081', '1', '7')).toBe(true);
+  });
+});
+
 describe('resolveTrusteeWithFuzzyMatching', () => {
   let context: ApplicationContext;
   let mockCasesRepo: Partial<CasesRepository>;
@@ -671,7 +749,8 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       'trustee-2',
     ]);
 
-    expect(result).toBe('trustee-1');
+    expect(result.winnerId).toBe('trustee-1');
+    expect(result.candidateScores).toHaveLength(2);
   });
 
   test('should throw error when no candidate scores >75%', async () => {
@@ -849,7 +928,8 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
 
     const result = await resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']);
 
-    expect(result).toBe('trustee-1');
+    expect(result.winnerId).toBe('trustee-1');
+    expect(result.candidateScores).toHaveLength(1);
   });
 
   test('should lazy-load case, trustee, and appointment data', async () => {
@@ -917,7 +997,8 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
       'trustee-2',
     ]);
 
-    expect(result).toBe('trustee-2');
+    expect(result.winnerId).toBe('trustee-2');
+    expect(result.candidateScores).toHaveLength(1);
   });
 
   test('should throw when all candidates return undefined from repository', async () => {

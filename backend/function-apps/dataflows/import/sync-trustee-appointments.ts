@@ -120,10 +120,12 @@ async function handlePage(
 ) {
   const appContext = await ContextCreator.getApplicationContext({ invocationContext });
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
-  const { successCount, dlqMessages } = await SyncTrusteeAppointments.processAppointments(
-    appContext,
-    events,
-  );
+  const { successCount, dlqMessages, scenarioDistribution } =
+    await SyncTrusteeAppointments.processAppointments(appContext, events);
+
+  const totalEvents = events.length;
+  const autoMatchRate =
+    totalEvents > 0 ? (scenarioDistribution.autoMatchCount / totalEvents) * 100 : 0;
 
   invocationContext.extraOutputs.set(DLQ, dlqMessages);
   completeDataflowTrace(
@@ -136,7 +138,19 @@ async function handlePage(
       documentsWritten: successCount,
       documentsFailed: dlqMessages.length,
       success: true,
-      details: { totalEvents: String(events.length) },
+      details: {
+        totalEvents: String(totalEvents),
+        autoMatchCount: String(scenarioDistribution.autoMatchCount),
+        imperfectMatchCount: String(scenarioDistribution.imperfectMatchCount),
+        highConfidenceMatchCount: String(scenarioDistribution.highConfidenceMatchCount),
+        noMatchCount: String(scenarioDistribution.noMatchCount),
+        multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
+        caseNotFoundCount: String(scenarioDistribution.caseNotFoundCount),
+      },
+      additionalMetrics: [
+        { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
+        { name: 'TrusteeTotalEventsProcessed', value: totalEvents },
+      ],
     },
   );
 }
