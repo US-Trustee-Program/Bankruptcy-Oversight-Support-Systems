@@ -15,6 +15,11 @@
           "partitionKeys": ["/consolidationId"]
         },
         {
+          "name": "trustee-match-verification",
+          "partitionKey1": "id",
+          "partitionKeys": ["/id"]
+        },
+        {
           "name": "healthcheck",
           "partitionKey1": "id",
           "partitionKeys": ["/id"]
