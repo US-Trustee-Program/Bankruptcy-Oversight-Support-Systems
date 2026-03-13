@@ -10,6 +10,7 @@ import {
 } from '@common/cams/orders';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import Api2 from '@/lib/models/api2';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
@@ -17,6 +18,15 @@ import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.m
 import * as courtUtils from '@/lib/utils/court-utils';
 
 describe('Review Orders screen', () => {
+  function setupFeatureFlags(overrides: Record<string, boolean> = {}) {
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+      'transfer-orders-enabled': true,
+      'consolidations-enabled': true,
+      'trustee-verification-enabled': false,
+      ...overrides,
+    });
+  }
+
   beforeEach(async () => {
     testingUtilities.setUser({
       roles: [CamsRole.DataVerifier],
@@ -31,6 +41,9 @@ describe('Review Orders screen', () => {
   });
 
   test('should call sortByCourtLocation when loading courts', async () => {
+    setupFeatureFlags();
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
     const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
 
     render(
@@ -80,10 +93,12 @@ describe('Review Orders screen', () => {
   });
 
   test('should render a list of orders', async () => {
+    setupFeatureFlags();
     const ordersResponse = {
       data: MockData.getSortedOrders(15),
     };
     vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
+    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({ data: [] });
 
     render(
       <BrowserRouter>
@@ -123,6 +138,7 @@ describe('Review Orders screen', () => {
   });
 
   test('should show "all cases reviewed" alert when order list does not contain pending orders', async () => {
+    setupFeatureFlags();
     const ordersResponse = {
       data: [
         MockData.getTransferOrder({ override: { status: 'approved' } }),
@@ -147,6 +163,7 @@ describe('Review Orders screen', () => {
   });
 
   test('should show "select filters" alert when a list is empty because filters are applied', async () => {
+    setupFeatureFlags();
     const ordersResponse = {
       data: [
         MockData.getTransferOrder({ override: { status: 'approved' } }),
@@ -160,7 +177,6 @@ describe('Review Orders screen', () => {
       ],
     };
     vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
-
     render(
       <BrowserRouter>
         <DataVerificationScreen />
@@ -197,11 +213,7 @@ describe('Review Orders screen', () => {
       isConsolidationOrder(order),
     ) as ConsolidationOrder[];
 
-    const mockFeatureFlags = {
-      'consolidations-enabled': false,
-      'transfer-orders-enabled': true,
-    };
-    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    setupFeatureFlags({ 'consolidations-enabled': false });
 
     render(
       <BrowserRouter>
@@ -239,6 +251,104 @@ describe('Review Orders screen', () => {
     expect(consolidationsFilter).not.toBeInTheDocument();
   });
 
+  const sampleVerificationOrder: TrusteeMatchVerification = {
+    id: 'case-001:johndoe',
+    documentType: 'TRUSTEE_MATCH_VERIFICATION',
+    orderType: 'trustee-match',
+    caseId: '081-22-11111',
+    courtId: '0881',
+    status: 'pending',
+    mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+    dxtrTrustee: { fullName: 'John Doe' },
+    matchCandidates: [],
+    updatedOn: '2026-01-15T10:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    createdOn: '2026-01-15T10:00:00.000Z',
+    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  };
+
+  test('should not call getTrusteeVerificationOrders when flag is off', async () => {
+    setupFeatureFlags();
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    const verificationSpy = vi.spyOn(Api2, 'getTrusteeVerificationOrders');
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(verificationSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  test('should call getTrusteeVerificationOrders and render results when flag is on', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({
+      data: [sampleVerificationOrder],
+    });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const accordion = screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`);
+      expect(accordion).toBeInTheDocument();
+      expect(accordion.textContent).toContain('Trustee Match Verification');
+    });
+  });
+
+  test('should show "Trustee Match Verification" filter toggle only when flag is on', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({ data: [] });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const filter = screen.getByTestId('order-status-filter-trustee-match');
+      expect(filter).toBeInTheDocument();
+    });
+  });
+
+  test('should hide trustee verification accordion when filter is toggled off', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({
+      data: [sampleVerificationOrder],
+    });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`),
+      ).toBeInTheDocument();
+    });
+
+    const filter = screen.getByTestId('order-status-filter-trustee-match');
+    fireEvent.click(filter);
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`),
+      ).not.toBeVisible();
+    });
+  });
+
   test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
     testingUtilities.setUserWithRoles([]);
     render(
@@ -269,10 +379,7 @@ describe('Review Orders screen', () => {
   });
 
   test('Should filter on type when clicking type filter', async () => {
-    // const mockFeatureFlags = {
-    //   'consolidations-enabled': true,
-    // };
-    // vi.spyOn(FeatureFlagHook, 'default').mockReturnValue(mockFeatureFlags);
+    setupFeatureFlags();
     const ordersResponse = {
       data: MockData.getSortedOrders(15),
     };
