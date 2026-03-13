@@ -46,8 +46,12 @@ export default function DataVerificationScreen() {
     'cams:filter:data-verification:status',
     [],
   );
-  const typeFilter = typeSelections.map((s) => s.value as OrderType);
-  const statusFilter = statusSelections.map((s) => s.value as OrderStatus);
+  const [statusFilter, setStatusFilter] = useState<OrderStatus[]>(['pending']);
+  const [typeFilter, setTypeFilter] = useState<OrderType[]>(
+    featureFlags[TRUSTEE_VERIFICATION_ENABLED]
+      ? ['transfer', 'consolidation', 'trustee-match']
+      : ['transfer', 'consolidation'],
+  );
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [courts, setCourts] = useState<Array<CourtDivisionDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
@@ -67,7 +71,48 @@ export default function DataVerificationScreen() {
   // TODO: This needs to be dynamic!
   const regionHeader = 'Region 02';
 
+<<<<<<< HEAD
   const accordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
+=======
+  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
+
+  async function getOrders() {
+    setIsOrderListLoading(true);
+    try {
+      const [ordersResponse, verificationResponse] = await Promise.all([
+        Api2.getOrders(),
+        featureFlags[TRUSTEE_VERIFICATION_ENABLED]
+          ? Api2.getTrusteeVerificationOrders()
+          : Promise.resolve({ data: [] as TrusteeMatchVerification[] }),
+      ]);
+      setOrderList([
+        ...(ordersResponse as ResponseBody<Order[]>).data,
+        ...(verificationResponse as ResponseBody<TrusteeMatchVerification[]>).data,
+      ]);
+    } catch {
+      setOrderList([]);
+    } finally {
+      setIsOrderListLoading(false);
+    }
+  }
+
+  async function getCourts() {
+    Api2.getCourts()
+      .then((response) => {
+        const courts = (response as ResponseBody<CourtDivisionDetails[]>).data;
+        setCourts(sortByCourtLocation(courts));
+        setRegionsMap(
+          courts.reduce((regionsMap, court) => {
+            if (!regionsMap.has(court.regionId)) {
+              regionsMap.set(court.regionId, court.regionName);
+            }
+            return regionsMap;
+          }, new Map()),
+        );
+      })
+      .catch(() => {});
+  }
+>>>>>>> 63880b1c7 (CAMS-717: Slice 1 — trustee match verification read-only view)
 
   function handleTransferOrderUpdate(alertDetails: AlertDetails, updatedOrder?: TransferOrder) {
     if (updatedOrder) {
@@ -227,7 +272,10 @@ export default function DataVerificationScreen() {
             orderType={orderType}
             statusType={orderStatusType}
             fieldHeaders={accordionFieldHeaders}
+<<<<<<< HEAD
             courts={courts}
+=======
+>>>>>>> 63880b1c7 (CAMS-717: Slice 1 — trustee match verification read-only view)
             hidden={isHidden}
           ></TrusteeMatchVerificationAccordion>
         );
@@ -285,6 +333,7 @@ export default function DataVerificationScreen() {
             <>
               <h2>{regionHeader}</h2>
               <section className="order-list-container">
+<<<<<<< HEAD
                 <div className="filters">
                   <ComboBox
                     id="task-type-filter"
@@ -320,6 +369,61 @@ export default function DataVerificationScreen() {
                     singularLabel="status"
                     pluralLabel="statuses"
                   />
+=======
+                <div className="filters order-status">
+                  <div className="event-type-container">
+                    <h4 className="event-header">Event Status</h4>
+                    <div>
+                      {featureFlags[TRANSFER_ORDERS_ENABLED] && (
+                        <Filter<OrderType>
+                          label="Transfer"
+                          filterType="transfer"
+                          filters={typeFilter}
+                          callback={handleTypeFilter}
+                        />
+                      )}
+                      {featureFlags[CONSOLIDATIONS_ENABLED] && (
+                        <Filter<OrderType>
+                          label="Consolidation"
+                          filterType="consolidation"
+                          filters={typeFilter}
+                          callback={handleTypeFilter}
+                        />
+                      )}
+                      {featureFlags[TRUSTEE_VERIFICATION_ENABLED] && (
+                        <Filter<OrderType>
+                          label="Trustee Match Verification"
+                          filterType="trustee-match"
+                          filters={typeFilter}
+                          callback={handleTypeFilter}
+                        />
+                      )}
+                    </div>
+                  </div>
+                  <div className="event-status-container">
+                    <h4 className="event-header">Event Status</h4>
+                    <div>
+                      <Filter<OrderStatus>
+                        label="Pending Review"
+                        filterType="pending"
+                        filters={statusFilter}
+                        callback={handleStatusFilter}
+                      />
+                      <Filter<OrderStatus>
+                        label="Verified"
+                        filterType="approved"
+                        filters={statusFilter}
+                        callback={handleStatusFilter}
+                      />
+                      <Filter<OrderStatus>
+                        label="Rejected"
+                        filterType="rejected"
+                        filters={statusFilter}
+                        callback={handleStatusFilter}
+                      />
+                    </div>
+                  </div>
+>>>>>>> 63880b1c7 (CAMS-717: Slice 1 — trustee match verification read-only view)
                 </div>
                 {pendingItemCount === 0 && visibleItemCount > 0 && (
                   <Alert

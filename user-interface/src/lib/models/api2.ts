@@ -428,7 +428,7 @@ async function getOrders() {
   return api().get<Order[]>(`/orders`, {});
 }
 
-async function getTrusteeMatchVerifications() {
+async function getTrusteeVerificationOrders() {
   return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, {});
 }
 
@@ -582,7 +582,11 @@ export const _Api2 = {
   getOfficeAssignees,
   getOffices,
   getOrders,
+<<<<<<< HEAD
   getTrusteeMatchVerifications,
+=======
+  getTrusteeVerificationOrders,
+>>>>>>> 63880b1c7 (CAMS-717: Slice 1 — trustee match verification read-only view)
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,
