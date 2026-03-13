@@ -101,6 +101,49 @@ describe('trustee-migration-state.service', () => {
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain('Failed to get or create migration state');
     });
+
+    test('should create new state when reset is true, even if existing state exists', async () => {
+      const existingState: TrusteeMigrationState = {
+        documentType: 'TRUSTEE_MIGRATION_STATE',
+        lastTrusteeId: 100,
+        processedCount: 50,
+        appointmentsProcessedCount: 75,
+        errors: 2,
+        startedAt: '2024-01-01T00:00:00Z',
+        lastUpdatedAt: '2024-01-02T00:00:00Z',
+        status: 'IN_PROGRESS',
+        divisionMappingVersion: '1.0.0',
+      };
+
+      mockRepository.read.mockResolvedValue(existingState);
+      mockRepository.upsert.mockResolvedValue(undefined);
+
+      const result = await getOrCreateMigrationState(context, true);
+
+      // Should create new state instead of returning existing
+      expect(result.data).toBeDefined();
+      expect(result.data?.lastTrusteeId).toBeNull();
+      expect(result.data?.processedCount).toBe(0);
+      expect(result.data?.appointmentsProcessedCount).toBe(0);
+      expect(result.data?.errors).toBe(0);
+      expect(result.data?.status).toBe('IN_PROGRESS');
+      expect(result.error).toBeUndefined();
+
+      // Should NOT attempt to read existing state when reset is true
+      expect(mockRepository.read).not.toHaveBeenCalled();
+
+      // Should upsert the new state
+      expect(mockRepository.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'TRUSTEE_MIGRATION_STATE',
+          lastTrusteeId: null,
+          processedCount: 0,
+          appointmentsProcessedCount: 0,
+          errors: 0,
+          status: 'IN_PROGRESS',
+        }),
+      );
+    });
   });
 
   describe('updateMigrationState', () => {
