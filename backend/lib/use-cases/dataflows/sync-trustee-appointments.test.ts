@@ -3,10 +3,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import SyncTrusteeAppointments from './sync-trustee-appointments';
 import factory from '../../factory';
-import {
-  TrusteeAppointmentSyncError,
-  TrusteeAppointmentSyncEvent,
-} from '@common/cams/dataflow-events';
+import { TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 import {
   CasesRepository,
@@ -209,7 +206,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(scenarioDistribution.autoMatchCount).toBe(1);
   });
 
-  test('should send TrusteeAppointmentSyncError with NO_TRUSTEE_MATCH to DLQ when no trustee found', async () => {
+  test('should persist NO_TRUSTEE_MATCH to verification collection, not DLQ', async () => {
     const noMatchError = new CamsError('TRUSTEE-MATCH', {
       message: 'No match',
       data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
@@ -223,15 +220,14 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
         makeEvent('case-001', 'Ghost Trustee'),
       ]);
 
-    expect(dlqMessages).toHaveLength(1);
-    expect((dlqMessages[0] as TrusteeAppointmentSyncError).mismatchReason).toBe('NO_TRUSTEE_MATCH');
-    expect((dlqMessages[0] as TrusteeAppointmentSyncError).caseId).toBe('case-001');
+    expect(dlqMessages).toHaveLength(0);
+    expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
     expect(scenarioDistribution.noMatchCount).toBe(1);
   });
 
-  test('should route fuzzy match winner to DLQ with HIGH_CONFIDENCE_MATCH instead of auto-linking', async () => {
+  test('should persist HIGH_CONFIDENCE_MATCH to verification collection, not DLQ', async () => {
     const matchCandidates = [
       {
         trusteeId: 't-1',
@@ -292,19 +288,15 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       makeEvent('case-001', 'Common Name'),
       ['t-1', 't-2'],
     );
-    // Fuzzy winner should NOT be auto-linked — routed to DLQ for verification
+    // Fuzzy winner should NOT be auto-linked — saved to verification collection
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
-    expect(dlqMessages).toHaveLength(1);
-    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
-    expect(err.mismatchReason).toBe('HIGH_CONFIDENCE_MATCH');
-    expect(err.matchCandidates).toHaveLength(2);
-    expect(err.matchCandidates[0].trusteeId).toBe('t-1');
-    expect(err.matchCandidates[0].totalScore).toBe(90);
+    expect(dlqMessages).toHaveLength(0);
+    expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
     expect(scenarioDistribution.highConfidenceMatchCount).toBe(1);
   });
 
-  test('should send TrusteeAppointmentSyncError with matchCandidates when fuzzy matching fails', async () => {
+  test('should persist MULTIPLE_TRUSTEES_MATCH to verification collection when fuzzy matching fails, not DLQ', async () => {
     const matchCandidates = [
       {
         trusteeId: 't-1',
@@ -366,17 +358,14 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
         makeEvent('case-001', 'Common Name'),
       ]);
 
-    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
-    expect(err.mismatchReason).toBe('MULTIPLE_TRUSTEES_MATCH');
-    expect(err.matchCandidates).toHaveLength(2);
-    expect(err.matchCandidates[0].trusteeId).toBe('t-1');
-    expect(err.matchCandidates[0].totalScore).toBe(60);
+    expect(dlqMessages).toHaveLength(0);
+    expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
     expect(scenarioDistribution.multipleMatchCount).toBe(1);
   });
 
-  test('should send TrusteeAppointmentSyncError with CASE_NOT_FOUND to DLQ when case is missing from Cosmos', async () => {
+  test('should persist CASE_NOT_FOUND to verification collection, not DLQ, when case is missing from Cosmos', async () => {
     (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
       new NotFoundError('CASES-REPO', { message: 'Case not found' }),
     );
@@ -386,14 +375,20 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       [makeEvent('missing-case', 'John Doe')],
     );
 
-    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
-    expect(err.mismatchReason).toBe('CASE_NOT_FOUND');
-    expect(err.caseId).toBe('missing-case');
+    expect(dlqMessages).toHaveLength(0);
+    expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        caseId: 'missing-case',
+        mismatchReason: 'CASE_NOT_FOUND',
+        status: 'pending',
+      }),
+    );
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(scenarioDistribution.caseNotFoundCount).toBe(1);
   });
 
-  test('should send CASE_NOT_FOUND to DLQ when getSyncedCase returns null', async () => {
+  test('should persist CASE_NOT_FOUND to verification collection when getSyncedCase returns null', async () => {
     (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     const events = [makeEvent('case-001', 'John Doe')];
@@ -404,14 +399,19 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(mockCasesRepo.syncDxtrCase).not.toHaveBeenCalled();
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
-    expect(dlqMessages).toHaveLength(1);
-    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
-    expect(err.mismatchReason).toBe('CASE_NOT_FOUND');
-    expect(err.caseId).toBe('case-001');
+    expect(dlqMessages).toHaveLength(0);
+    expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        caseId: 'case-001',
+        mismatchReason: 'CASE_NOT_FOUND',
+        status: 'pending',
+      }),
+    );
     expect(scenarioDistribution.caseNotFoundCount).toBe(1);
   });
 
-  test('should send IMPERFECT_MATCH to DLQ when single name match does not meet perfect match criteria', async () => {
+  test('should persist IMPERFECT_MATCH to verification collection, not DLQ', async () => {
     vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
     vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
       trusteeId: 'trustee-123',
@@ -429,12 +429,8 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
 
     expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
     expect(successCount).toBe(0);
-    expect(dlqMessages).toHaveLength(1);
-    const err = dlqMessages[0] as TrusteeAppointmentSyncError;
-    expect(err.mismatchReason).toBe('IMPERFECT_MATCH');
-    expect(err.matchCandidates).toHaveLength(1);
-    expect(err.matchCandidates[0].trusteeId).toBe('trustee-123');
-    expect(err.matchCandidates[0].totalScore).toBe(60);
+    expect(dlqMessages).toHaveLength(0);
+    expect(mockVerificationRepo.upsertVerification).toHaveBeenCalled();
     expect(scenarioDistribution.imperfectMatchCount).toBe(1);
   });
 
@@ -829,7 +825,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       );
     });
 
-    test('does NOT upsert for CASE_NOT_FOUND outcome', async () => {
+    test('upserts verification doc for CASE_NOT_FOUND outcome', async () => {
       (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
         new NotFoundError('CASES-REPO', { message: 'Case not found' }),
       );
@@ -838,7 +834,16 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
         makeEvent('missing-case', 'John Doe'),
       ]);
 
-      expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'missing-case',
+          courtId: '081',
+          mismatchReason: 'CASE_NOT_FOUND',
+          matchCandidates: [],
+          status: 'pending',
+        }),
+      );
     });
 
     test('does NOT upsert for auto-matched outcome', async () => {
