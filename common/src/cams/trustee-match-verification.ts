@@ -5,6 +5,8 @@ import {
   TrusteeAppointmentSyncErrorCode,
 } from './dataflow-events';
 
+export const TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE = 'TRUSTEE_MATCH_VERIFICATION' as const;
+
 export const TrusteeMatchVerificationStatus = {
   Pending: 'pending',
   Resolved: 'resolved',

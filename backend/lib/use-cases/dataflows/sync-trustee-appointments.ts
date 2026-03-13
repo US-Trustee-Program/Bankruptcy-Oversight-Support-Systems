@@ -4,10 +4,10 @@ import {
   TrusteeAppointmentSyncErrorCode,
   TrusteeAppointmentSyncEvent,
   CandidateScore,
-  UNSCORED,
   isMultipleTrusteesMatchError,
 } from '@common/cams/dataflow-events';
 import {
+  TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
   TrusteeMatchVerification,
   TrusteeMatchVerificationStatus,
 } from '@common/cams/trustee-match-verification';
@@ -15,7 +15,7 @@ import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
-import { isNotFoundError } from '../../common-errors/not-found-error';
+import { isNotFoundError, NotFoundError } from '../../common-errors/not-found-error';
 import {
   CasesRepository,
   TrusteeAppointmentsRepository,
@@ -224,7 +224,7 @@ async function upsertMatchVerification(
   } else {
     const doc = createAuditRecord<TrusteeMatchVerification>(
       {
-        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
         caseId: event.caseId,
         courtId: event.courtId,
         dxtrTrustee: event.dxtrTrustee,
@@ -277,10 +277,14 @@ async function processAppointments(
       const trusteeId = await matchTrusteeByName(context, event.dxtrTrustee.fullName);
 
       const syncedCase = await casesRepo.getSyncedCase(event.caseId);
+      if (!syncedCase) {
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Case ${event.caseId} not found in synced cases.`,
+        });
+      }
       const trusteeAppointments = await appointmentsRepo.getTrusteeAppointments(trusteeId);
 
       if (
-        syncedCase &&
         isPerfectMatch(
           trusteeAppointments,
           syncedCase.courtId,
@@ -300,22 +304,13 @@ async function processAppointments(
         audit.appointmentStatus = 'active';
       } else {
         const trustee = await trusteesRepo.read(trusteeId);
-        const candidateScore = syncedCase
-          ? calculateCandidateScore(
-              context,
-              event.dxtrTrustee,
-              syncedCase,
-              trustee,
-              trusteeAppointments,
-            )
-          : {
-              trusteeId,
-              trusteeName: trustee.name,
-              totalScore: UNSCORED,
-              addressScore: UNSCORED,
-              districtDivisionScore: UNSCORED,
-              chapterScore: UNSCORED,
-            };
+        const candidateScore = calculateCandidateScore(
+          context,
+          event.dxtrTrustee,
+          syncedCase,
+          trustee,
+          trusteeAppointments,
+        );
 
         audit.matchOutcome = 'imperfect-match';
         audit.matchedTrusteeId = trusteeId;
@@ -386,7 +381,7 @@ async function processAppointments(
             verificationRepo,
             event,
             TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch,
-            [],
+            (enhancedError.data as { matchCandidates?: CandidateScore[] })?.matchCandidates ?? [],
           );
           audit.matchOutcome = 'multiple-match';
           continue;

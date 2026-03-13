@@ -394,7 +394,7 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(scenarioDistribution.caseNotFoundCount).toBe(1);
   });
 
-  test('should send IMPERFECT_MATCH to DLQ when getSyncedCase returns null', async () => {
+  test('should send CASE_NOT_FOUND to DLQ when getSyncedCase returns null', async () => {
     (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     const events = [makeEvent('case-001', 'John Doe')];
@@ -407,9 +407,9 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
     expect(successCount).toBe(0);
     expect(dlqMessages).toHaveLength(1);
     const err = dlqMessages[0] as TrusteeAppointmentSyncError;
-    expect(err.mismatchReason).toBe('IMPERFECT_MATCH');
+    expect(err.mismatchReason).toBe('CASE_NOT_FOUND');
     expect(err.caseId).toBe('case-001');
-    expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+    expect(scenarioDistribution.caseNotFoundCount).toBe(1);
   });
 
   test('should send IMPERFECT_MATCH to DLQ when single name match does not meet perfect match criteria', async () => {
