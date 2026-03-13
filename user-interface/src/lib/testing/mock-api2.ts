@@ -21,6 +21,7 @@ import {
   FlexibleTransferOrderAction,
   Order,
 } from '@common/cams/orders';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { CasesSearchPredicate } from '@common/api/search';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
@@ -820,6 +821,38 @@ const consolidationLeadCase = {
   judgeName: 'Geraldine Morar',
   _actions: [],
 };
+
+const trusteeMatchVerificationOrders: TrusteeMatchVerification[] = [
+  {
+    id: '081-22-11111:Smith John',
+    documentType: 'TRUSTEE_MATCH_VERIFICATION',
+    orderType: 'trustee-match',
+    caseId: '081-22-11111',
+    courtId: '0881',
+    status: 'pending',
+    mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+    dxtrTrustee: {
+      fullName: 'Smith John',
+      legacy: {
+        cityStateZipCountry: 'New York, NY 10001',
+      },
+    },
+    matchCandidates: [
+      {
+        trusteeId: 'trustee-001',
+        trusteeName: 'John Smith',
+        totalScore: 88,
+        addressScore: 100,
+        districtDivisionScore: 100,
+        chapterScore: 60,
+      },
+    ],
+    updatedOn: '2026-01-15T10:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    createdOn: '2026-01-15T10:00:00.000Z',
+    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  },
+];
 
 const orders = [
   {
@@ -1790,6 +1823,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: [caseDetails],
     };
+  } else if (path.match(/\/trustee-verification-orders/)) {
+    response = {
+      data: trusteeMatchVerificationOrders,
+    };
   } else if (path.match(/\/orders/)) {
     response = {
       data: orders,
@@ -2319,6 +2356,10 @@ async function getOrders(): Promise<ResponseBody<Order[]>> {
   return get<Order[]>(`/orders`);
 }
 
+async function getTrusteeVerificationOrders(): Promise<ResponseBody<TrusteeMatchVerification[]>> {
+  return get<TrusteeMatchVerification[]>(`/trustee-verification-orders`);
+}
+
 async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSummary[]>> {
   return get<CaseSummary[]>(`/orders-suggestions/${caseId}/`);
 }
@@ -2762,6 +2803,7 @@ const MockApi2 = {
   getOfficeAssignees,
   getOffices,
   getOrders,
+  getTrusteeVerificationOrders,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,

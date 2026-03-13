@@ -2,7 +2,13 @@ import { ApplicationContext } from '../adapters/types/basic';
 import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
-import { ConsolidationOrder, Order, RawOrderSync, TransferOrderAction } from '@common/cams/orders';
+import {
+  ConsolidationOrder,
+  Order,
+  OrderStatus,
+  RawOrderSync,
+  TransferOrderAction,
+} from '@common/cams/orders';
 import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from '@common/cams/events';
 import { CaseHistory } from '@common/cams/history';
 import { CaseDocket, CaseNote, SyncedCase } from '@common/cams/cases';
@@ -454,6 +460,8 @@ export interface ObservabilityGateway {
 export interface TrusteeMatchVerificationRepository extends Releasable {
   getVerification(caseId: string): Promise<TrusteeMatchVerification | null>;
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
+  search(predicate?: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]>;
+  update(id: string, updates: Partial<TrusteeMatchVerification>): Promise<TrusteeMatchVerification>;
 }
 
 export interface UserGroupsRepository extends Releasable {
