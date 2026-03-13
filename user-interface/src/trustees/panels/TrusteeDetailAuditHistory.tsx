@@ -254,14 +254,26 @@ function ShowTrusteeAppointmentHistory(props: ShowTrusteeAppointmentHistoryProps
   const formatAppointmentData = (data: typeof history.before | typeof history.after) => {
     if (!data) return '(none)';
     const { chapter, appointmentType } = data;
+
+    // Build district display with guards for missing data
+    let districtDisplay: string;
+    if (data.courtName && data.courtDivisionName) {
+      districtDisplay = `${data.courtName} (${data.courtDivisionName})`;
+    } else if (data.courtName) {
+      districtDisplay = data.courtName;
+    } else if (data.courtId) {
+      districtDisplay = `Court ${data.courtId}`;
+    } else if (data.divisionCode) {
+      districtDisplay = data.divisionCode;
+    } else {
+      districtDisplay = 'Court information not available';
+    }
+
     return (
       <>
         Chapter: {getAppointmentDetails(chapter, appointmentType)}
         <br />
-        District:{' '}
-        {data.courtName && data.courtDivisionName
-          ? `${data.courtName} (${data.courtDivisionName})`
-          : data.divisionCode}
+        District: {districtDisplay}
         <br />
         Appointed: {formatDate(data.appointedDate)}
         <br />

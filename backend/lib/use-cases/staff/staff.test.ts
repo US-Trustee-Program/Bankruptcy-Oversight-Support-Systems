@@ -235,5 +235,49 @@ describe('StaffUseCase', () => {
         ],
       });
     });
+
+    test('should return empty result when no oversight roles are configured', async () => {
+      // Mock storage gateway with no oversight roles in mapping
+      mockStorageGateway.getRoleMapping.mockReturnValue(
+        new Map([
+          ['USTP CAMS Super User', CamsRole.SuperUser], // Only non-oversight role
+        ]),
+      );
+
+      const loggerSpy = vi.spyOn(mockApplicationContext.logger, 'info');
+
+      const result = await staffUseCase.getOversightStaff(mockApplicationContext);
+
+      expect(result).toEqual({
+        TrialAttorney: [],
+        Auditor: [],
+        Paralegal: [],
+      });
+      expect(loggerSpy).toHaveBeenCalledWith(
+        'STAFF-USE-CASE',
+        'No oversight role groups configured in storage, returning empty result',
+      );
+      expect(mockUserGroupsRepository.getUserGroupsByNames).not.toHaveBeenCalled();
+    });
+
+    test('should handle groups with undefined users property', async () => {
+      const mockGroups: UserGroup[] = [
+        {
+          id: '1',
+          groupName: 'USTP CAMS Trial Attorney',
+          users: undefined,
+        },
+      ];
+
+      mockUserGroupsRepository.getUserGroupsByNames.mockResolvedValue(mockGroups);
+
+      const result = await staffUseCase.getOversightStaff(mockApplicationContext);
+
+      expect(result).toEqual({
+        [CamsRole.OversightAttorney]: [],
+        [CamsRole.OversightAuditor]: [],
+        [CamsRole.OversightParalegal]: [],
+      });
+    });
   });
 });

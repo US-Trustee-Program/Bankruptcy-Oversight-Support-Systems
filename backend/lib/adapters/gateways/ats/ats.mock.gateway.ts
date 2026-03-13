@@ -1,6 +1,10 @@
 import { ApplicationContext } from '../../types/basic';
 import { AtsGateway } from '../../../use-cases/gateways.types';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../types/ats.types';
+import {
+  AtsTrusteeRecord,
+  AtsAppointmentRecord,
+  TrusteeAppointmentsResult,
+} from '../../types/ats.types';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 
 const MODULE_NAME = 'ATS-MOCK-GATEWAY';
@@ -59,6 +63,8 @@ export class MockAtsGateway implements AtsGateway {
 
   /**
    * Get mock appointments for a trustee.
+   * Returns both clean appointments (for storage) and failed appointments (for DLQ).
+   *
    * Returns varied data based on trusteeId to test different mapping scenarios:
    *
    * Trustee 1: Standard letter codes (PA) + 12CBC with numeric status
@@ -71,7 +77,7 @@ export class MockAtsGateway implements AtsGateway {
   async getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: number,
-  ): Promise<AtsAppointmentRecord[]> {
+  ): Promise<TrusteeAppointmentsResult> {
     context.logger.debug(MODULE_NAME, `Mock: Getting appointments for trustee ${trusteeId}`);
 
     // Return varied mock appointments for testing different mappings
@@ -347,7 +353,21 @@ export class MockAtsGateway implements AtsGateway {
       );
     }
 
-    return mockAppointments;
+    // Mock gateway returns raw ATS appointments as cleanAppointments
+    // In reality, these would be cleansed TrusteeAppointmentInput[], but for mock purposes
+    // we return raw records and let the consumer handle transformation if needed
+    return {
+      cleanAppointments: mockAppointments as unknown as TrusteeAppointmentInput[], // Mock simplification
+      failedAppointments: [], // Mocks typically don't have failures
+      stats: {
+        total: mockAppointments.length,
+        clean: mockAppointments.length,
+        autoRecoverable: 0,
+        problematic: 0,
+        uncleansable: 0,
+        skipped: 0,
+      },
+    };
   }
 
   async getTrusteeCount(context: ApplicationContext): Promise<number> {

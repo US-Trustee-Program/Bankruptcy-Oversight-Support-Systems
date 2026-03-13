@@ -1,5 +1,6 @@
 import { ApplicationContext } from '../adapters/types/basic';
-import { AtsTrusteeRecord, AtsAppointmentRecord } from '../adapters/types/ats.types';
+import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
 import { ConsolidationOrder, Order, RawOrderSync, TransferOrderAction } from '@common/cams/orders';
 import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from '@common/cams/events';
@@ -141,7 +142,8 @@ export interface CaseNotesRepository<T = CaseNote>
 }
 
 export interface TrusteeNotesRepository<T = TrusteeNote>
-  extends Creates<T, T>, Updates<Partial<T>>, Reads<T> {
+  extends Creates<T, T>, Updates<Partial<T>>, Reads<T>, Releasable {
+  getNotesSince(isoDate: string): Promise<TrusteeNote[]>;
   getNotesByTrusteeId(trusteeId: string): Promise<TrusteeNote[]>;
   archiveTrusteeNote(archiveNote: Partial<TrusteeNote>): Promise<UpdateResult>;
 }
@@ -183,10 +185,15 @@ export interface AtsGateway {
     lastTrusteeId: number | null,
     pageSize: number,
   ): Promise<AtsTrusteeRecord[]>;
+  /**
+   * Get cleansed appointments for a trustee.
+   * Returns both clean appointments (for storage) and failed appointments (for DLQ).
+   * Gateway handles ATS data cleansing and transformation internally.
+   */
   getTrusteeAppointments(
     context: ApplicationContext,
     trusteeId: number,
-  ): Promise<AtsAppointmentRecord[]>;
+  ): Promise<TrusteeAppointmentsResult>;
   getTrusteeCount(context: ApplicationContext): Promise<number>;
   testConnection(context: ApplicationContext): Promise<boolean>;
   executeQuery(
@@ -329,7 +336,8 @@ export type RuntimeStateDocumentType =
   | 'CASES_SYNC_STATE'
   | 'PHONETIC_BACKFILL_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
-  | 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
+  | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
+  | 'TRUSTEE_NOTES_METRICS_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -372,6 +380,11 @@ export type PhoneticBackfillState = RuntimeState & {
 
 export type TrusteeAppointmentsSyncState = RuntimeState & {
   documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE';
+  lastSyncDate: string;
+};
+
+export type TrusteeNotesMetricsState = RuntimeState & {
+  documentType: 'TRUSTEE_NOTES_METRICS_STATE';
   lastSyncDate: string;
 };
 

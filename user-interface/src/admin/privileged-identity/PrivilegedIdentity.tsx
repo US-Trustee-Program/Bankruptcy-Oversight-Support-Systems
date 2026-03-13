@@ -154,6 +154,7 @@ export function PrivilegedIdentity() {
 
   async function handleSave() {
     const userId = userListRef.current?.getSelections()[0].value;
+    if (!userId) return;
     const permissions: ElevatePrivilegedUserAction = {
       groups: [
         ...(roleListRef.current?.getSelections().map((option) => option.value) || []),
@@ -177,6 +178,7 @@ export function PrivilegedIdentity() {
 
   async function handleDelete() {
     const userId = userListRef.current?.getSelections()[0].value;
+    if (!userId) return;
     Api2.deletePrivilegedIdentityUser(userId)
       .then(() => {
         alert?.success(

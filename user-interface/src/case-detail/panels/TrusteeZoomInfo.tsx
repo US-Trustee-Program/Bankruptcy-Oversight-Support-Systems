@@ -2,7 +2,7 @@ import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 import { formatMeetingId } from '@/lib/utils/zoomInfo';
 import { Trustee } from '@common/cams/trustees';
 
-export interface TrusteeZoomInfoProps {
+interface TrusteeZoomInfoProps {
   trusteeId?: string | null;
   trustee: Trustee | null;
   loading: boolean;

@@ -78,7 +78,7 @@ export type TrusteeAppointmentInput = {
   chapter: AppointmentChapterType;
   appointmentType: AppointmentType;
   courtId: string;
-  divisionCode: string;
+  divisionCode?: string;
   appointedDate: string;
   status: AppointmentStatus;
   effectiveDate: string;
@@ -90,7 +90,7 @@ export type TrusteeAppointment = Auditable &
     chapter: AppointmentChapterType;
     appointmentType: AppointmentType;
     courtId: string;
-    divisionCode: string;
+    divisionCode?: string;
     appointedDate: string;
     status: AppointmentStatus;
     effectiveDate: string;
