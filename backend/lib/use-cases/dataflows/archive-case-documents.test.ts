@@ -291,4 +291,47 @@ describe('ArchiveCaseDocuments use case', () => {
     expect(result.archivedCount).toBe(0);
     expect(result.errors).toHaveLength(0);
   });
+
+  /**
+   * Test 13: Should handle documents without id field (skip delete)
+   */
+  test('should handle documents without id field', async () => {
+    const documentWithoutId = { caseId, documentType: 'SYNCED_CASE' }; // No id field
+
+    vi.spyOn(MockMongoRepository.prototype, 'findByCaseIdAndType')
+      .mockResolvedValueOnce([documentWithoutId]) // SYNCED_CASE without id
+      .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+    const deleteSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'delete')
+      .mockResolvedValue(undefined);
+    vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
+
+    const result = await archiveCaseAndRelatedDocuments(context, caseId);
+
+    expect(result.caseId).toBe(caseId);
+    expect(result.archivedCount).toBe(1);
+    expect(result.errors).toHaveLength(0);
+    // delete() should not be called for document without id
+    expect(deleteSpy).not.toHaveBeenCalled();
+  });
+
+  /**
+   * Test 14: Should handle non-Error thrown values
+   */
+  test('should handle non-Error thrown values', async () => {
+    vi.spyOn(MockMongoRepository.prototype, 'findByCaseIdAndType')
+      .mockRejectedValueOnce('String error message') // Non-Error value
+      .mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'delete').mockResolvedValue(undefined);
+    vi.spyOn(MockMongoRepository.prototype, 'archiveDocument').mockResolvedValue(undefined);
+
+    const result = await archiveCaseAndRelatedDocuments(context, caseId);
+
+    expect(result.caseId).toBe(caseId);
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors[0].type).toBe('SYNCED_CASE');
+    expect(result.errors[0].error).toBe('String error message');
+  });
 });
