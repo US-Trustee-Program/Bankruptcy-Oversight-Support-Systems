@@ -9,7 +9,6 @@ import {
 import {
   TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
   TrusteeMatchVerification,
-  TrusteeMatchVerificationStatus,
 } from '@common/cams/trustee-match-verification';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import factory from '../../factory';
@@ -210,8 +209,8 @@ async function upsertMatchVerification(
   matchCandidates: CandidateScore[],
 ): Promise<void> {
   const existing = await verificationRepo.getVerification(event.caseId);
-  if (existing && existing.status !== TrusteeMatchVerificationStatus.Pending) {
-    return; // Operator has already resolved or dismissed — do not overwrite
+  if (existing && existing.status !== 'pending') {
+    return; // Operator has already approved or rejected — do not overwrite
   }
   if (existing) {
     await verificationRepo.upsertVerification({
@@ -230,7 +229,8 @@ async function upsertMatchVerification(
         dxtrTrustee: event.dxtrTrustee,
         mismatchReason,
         matchCandidates,
-        status: TrusteeMatchVerificationStatus.Pending,
+        orderType: 'trustee-match',
+        status: 'pending',
       },
       SYSTEM_USER_REFERENCE,
     );
