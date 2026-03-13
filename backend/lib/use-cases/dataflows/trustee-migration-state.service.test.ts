@@ -103,19 +103,6 @@ describe('trustee-migration-state.service', () => {
     });
 
     test('should create new state when reset is true, even if existing state exists', async () => {
-      const existingState: TrusteeMigrationState = {
-        documentType: 'TRUSTEE_MIGRATION_STATE',
-        lastTrusteeId: 100,
-        processedCount: 50,
-        appointmentsProcessedCount: 75,
-        errors: 2,
-        startedAt: '2024-01-01T00:00:00Z',
-        lastUpdatedAt: '2024-01-02T00:00:00Z',
-        status: 'IN_PROGRESS',
-        divisionMappingVersion: '1.0.0',
-      };
-
-      mockRepository.read.mockResolvedValue(existingState);
       mockRepository.upsert.mockResolvedValue(undefined);
 
       const result = await getOrCreateMigrationState(context, true);
