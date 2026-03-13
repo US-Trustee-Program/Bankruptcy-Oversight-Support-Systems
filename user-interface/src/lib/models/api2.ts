@@ -19,6 +19,7 @@ import {
   TransferOrder,
   TransferOrderActionRejection,
 } from '@common/cams/orders';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { CamsSession } from '@common/cams/session';
 import { CaseHistory } from '@common/cams/history';
 import { AttorneyUser, CamsUserReference, PrivilegedIdentityUser, Staff } from '@common/cams/users';
@@ -427,6 +428,10 @@ async function getOrders() {
   return api().get<Order[]>(`/orders`, {});
 }
 
+async function getTrusteeVerificationOrders() {
+  return api().get<TrusteeMatchVerification[]>(`/trustee-verification-orders`, {});
+}
+
 async function getOrderSuggestions(caseId: string) {
   return api().get<CaseSummary[]>(`/orders-suggestions/${caseId}/`, {});
 }
@@ -577,6 +582,7 @@ export const _Api2 = {
   getOfficeAssignees,
   getOffices,
   getOrders,
+  getTrusteeVerificationOrders,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,

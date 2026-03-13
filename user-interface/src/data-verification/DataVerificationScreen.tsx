@@ -21,7 +21,10 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import useFeatureFlags, {
   CONSOLIDATIONS_ENABLED,
   TRANSFER_ORDERS_ENABLED,
+  TRUSTEE_VERIFICATION_ENABLED,
 } from '../lib/hooks/UseFeatureFlags';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import { TrusteeMatchVerificationAccordion } from './trustee-verification/TrusteeMatchVerificationAccordion';
 import { sortByDate } from '@/lib/utils/datetime';
 import Api2 from '@/lib/models/api2';
 import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
@@ -35,7 +38,11 @@ import { Stop } from '@/lib/components/Stop';
 export default function DataVerificationScreen() {
   const featureFlags = useFeatureFlags();
   const [statusFilter, setStatusFilter] = useState<OrderStatus[]>(['pending']);
-  const [typeFilter, setTypeFilter] = useState<OrderType[]>(['transfer', 'consolidation']);
+  const [typeFilter, setTypeFilter] = useState<OrderType[]>(
+    featureFlags[TRUSTEE_VERIFICATION_ENABLED]
+      ? ['transfer', 'consolidation', 'trustee-match']
+      : ['transfer', 'consolidation'],
+  );
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [courts, setCourts] = useState<Array<CourtDivisionDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
@@ -59,15 +66,22 @@ export default function DataVerificationScreen() {
 
   async function getOrders() {
     setIsOrderListLoading(true);
-    Api2.getOrders()
-      .then((response) => {
-        setOrderList((response as ResponseBody<Order[]>).data);
-        setIsOrderListLoading(false);
-      })
-      .catch(() => {
-        setOrderList([]);
-        setIsOrderListLoading(false);
-      });
+    try {
+      const [ordersResponse, verificationResponse] = await Promise.all([
+        Api2.getOrders(),
+        featureFlags[TRUSTEE_VERIFICATION_ENABLED]
+          ? Api2.getTrusteeVerificationOrders()
+          : Promise.resolve({ data: [] as TrusteeMatchVerification[] }),
+      ]);
+      setOrderList([
+        ...(ordersResponse as ResponseBody<Order[]>).data,
+        ...(verificationResponse as ResponseBody<TrusteeMatchVerification[]>).data,
+      ]);
+    } catch {
+      setOrderList([]);
+    } finally {
+      setIsOrderListLoading(false);
+    }
   }
 
   async function getCourts() {
@@ -164,8 +178,18 @@ export default function DataVerificationScreen() {
         return true;
       }
     })
-    .filter((o): o is TransferOrder | ConsolidationOrder => !isTrusteeMatchVerification(o))
-    .sort((a, b) => sortByDate(a.orderDate, b.orderDate))
+    .filter((o) => {
+      if (isTrusteeMatchVerification(o)) {
+        return featureFlags[TRUSTEE_VERIFICATION_ENABLED];
+      } else {
+        return true;
+      }
+    })
+    .sort((a, b) => {
+      const dateA = (a as TransferOrder).orderDate ?? (a as TrusteeMatchVerification).createdOn;
+      const dateB = (b as TransferOrder).orderDate ?? (b as TrusteeMatchVerification).createdOn;
+      return sortByDate(dateA, dateB);
+    })
     .map((order) => {
       const isHidden =
         !typeFilter.includes(order.orderType) || !statusFilter.includes(order.status);
@@ -176,31 +200,46 @@ export default function DataVerificationScreen() {
         pendingItemCount++;
       }
 
-      return isTransferOrder(order) ? (
-        <TransferOrderAccordion
-          key={`accordion-${order.id}`}
-          order={order}
-          regionsMap={regionsMap}
-          courts={courts}
-          orderType={orderType}
-          statusType={orderStatusType}
-          onOrderUpdate={handleTransferOrderUpdate}
-          fieldHeaders={accordionFieldHeaders}
-          hidden={isHidden}
-        ></TransferOrderAccordion>
-      ) : (
-        <ConsolidationOrderAccordion
-          key={`accordion-${order.id}`}
-          order={order}
-          regionsMap={regionsMap}
-          courts={courts}
-          orderType={orderType}
-          statusType={orderStatusType}
-          onOrderUpdate={handleConsolidationOrderUpdate}
-          fieldHeaders={accordionFieldHeaders}
-          hidden={isHidden}
-        ></ConsolidationOrderAccordion>
-      );
+      if (isTransferOrder(order)) {
+        return (
+          <TransferOrderAccordion
+            key={`accordion-${order.id}`}
+            order={order}
+            regionsMap={regionsMap}
+            courts={courts}
+            orderType={orderType}
+            statusType={orderStatusType}
+            onOrderUpdate={handleTransferOrderUpdate}
+            fieldHeaders={accordionFieldHeaders}
+            hidden={isHidden}
+          ></TransferOrderAccordion>
+        );
+      } else if (isTrusteeMatchVerification(order)) {
+        return (
+          <TrusteeMatchVerificationAccordion
+            key={`accordion-${order.id}`}
+            order={order}
+            orderType={orderType}
+            statusType={orderStatusType}
+            fieldHeaders={accordionFieldHeaders}
+            hidden={isHidden}
+          ></TrusteeMatchVerificationAccordion>
+        );
+      } else {
+        return (
+          <ConsolidationOrderAccordion
+            key={`accordion-${order.id}`}
+            order={order}
+            regionsMap={regionsMap}
+            courts={courts}
+            orderType={orderType}
+            statusType={orderStatusType}
+            onOrderUpdate={handleConsolidationOrderUpdate}
+            fieldHeaders={accordionFieldHeaders}
+            hidden={isHidden}
+          ></ConsolidationOrderAccordion>
+        );
+      }
     });
 
   return (
@@ -257,6 +296,14 @@ export default function DataVerificationScreen() {
                         <Filter<OrderType>
                           label="Consolidation"
                           filterType="consolidation"
+                          filters={typeFilter}
+                          callback={handleTypeFilter}
+                        />
+                      )}
+                      {featureFlags[TRUSTEE_VERIFICATION_ENABLED] && (
+                        <Filter<OrderType>
+                          label="Trustee Match Verification"
+                          filterType="trustee-match"
                           filters={typeFilter}
                           callback={handleTypeFilter}
                         />

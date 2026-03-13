@@ -9,6 +9,7 @@ export const orderStatusType = new Map([
 export const orderType = new Map<OrderType, string>([
   ['transfer', 'Transfer'],
   ['consolidation', 'Consolidation'],
+  ['trustee-match', 'Trustee Match Verification'],
 ]);
 
 export const consolidationTypeMap = new Map<ConsolidationType, string>([
