@@ -4,7 +4,10 @@ import { NotFoundError } from '../../../common-errors/not-found-error';
 import { TrusteeMatchVerificationRepository } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
-import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import {
+  TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
+  TrusteeMatchVerification,
+} from '@common/cams/trustee-match-verification';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-match-verification';
@@ -49,7 +52,7 @@ export class TrusteeMatchVerificationMongoRepository
     try {
       const doc = using<TrusteeMatchVerification>();
       const query = and(
-        doc('documentType').equals('TRUSTEE_MATCH_VERIFICATION'),
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
         doc('caseId').equals(caseId),
       );
       return await this.getAdapter<TrusteeMatchVerification>().findOne(query);

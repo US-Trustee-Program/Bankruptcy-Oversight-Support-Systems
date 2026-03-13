@@ -88,7 +88,7 @@ export function calculateAddressScore(
   const zipMatch = dxtrZip && camsZip && dxtrZip === camsZip;
 
   // Perfect match: city, state, and zip all match
-  if (cityMatch && zipMatch) return 100;
+  if (cityMatch && stateMatch && zipMatch) return 100;
 
   // High confidence: zip match (zip is more specific than city)
   if (zipMatch) return 60;
