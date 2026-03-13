@@ -1,6 +1,5 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
-import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
 import {
   ConsolidationOrder,
