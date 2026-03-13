@@ -6,7 +6,7 @@ This document explains the Application Insights telemetry configuration for CAMS
 
 ## Problem Background
 
-During investigation (CAMS-709), we discovered that telemetry data (customEvents, traces, requests) was appearing twice in Application Insights with identical timestamps and data but different itemIds. This duplication was caused by Azure platform-level configuration conflicts.
+During the investigation (CAMS-709), we discovered that telemetry data (customEvents, traces, requests) was appearing twice in Application Insights with identical timestamps and data but different itemIds. This duplication was caused by Azure platform-level configuration conflicts.
 
 ## Root Causes
 
@@ -49,9 +49,11 @@ Function apps require two environment variables to prevent the Azure Functions H
 
 **Implementation:** In `ops/cloud-deployment/backend-api-deploy.bicep` and `dataflows-resource-deploy.bicep`, these settings are added to application settings.
 
+**Note on Diagnostics:** Disabling console logging (`AzureFunctionsJobHost__logging__console__isEnabled=false`) only prevents the Functions Host from capturing direct `console.log()` calls, which were causing duplication. All production logging through `LoggerImpl` (via `invocationContext.log()`) and Application Insights SDK telemetry (custom events, traces, exceptions) remains fully functional and unaffected. The codebase uses `invocationContext.log()` for all application logging, so no diagnostic information is lost.
+
 ## Verification
 
-After deployment, verify single telemetry by running this query in Log Analytics:
+After deployment, verify that telemetry is not duplicated by running this query in Log Analytics:
 
 ```kusto
 // For webapp customEvents
