@@ -19,7 +19,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     dxtrTrustee: { fullName: 'John Doe' },
     mismatchReason: 'IMPERFECT_MATCH',
     matchCandidates: [],
-    orderType: 'trustee-match',
+    orderType: 'trustee-match-verification',
     status: 'pending',
     createdOn: '2025-01-01T00:00:00.000Z',
     updatedOn: '2025-01-01T00:00:00.000Z',

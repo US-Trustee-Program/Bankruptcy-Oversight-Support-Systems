@@ -5,7 +5,7 @@ import { CamsDocument } from './document';
 import { TrusteeMatchVerification } from './trustee-match-verification';
 
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
-export type OrderType = 'transfer' | 'consolidation' | 'trustee-match';
+export type OrderType = 'transfer' | 'consolidation' | 'trustee-match-verification';
 export type ConsolidationType = 'administrative' | 'substantive';
 
 export type ConsolidationOrderActionRejection = {
@@ -148,7 +148,7 @@ export function isConsolidationOrder(order: Order): order is ConsolidationOrder 
 }
 
 export function isTrusteeMatchVerification(order: Order): order is TrusteeMatchVerification {
-  return order.orderType === 'trustee-match';
+  return order.orderType === 'trustee-match-verification';
 }
 
 export type TransferOrderActionRejection = {

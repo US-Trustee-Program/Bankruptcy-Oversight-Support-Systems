@@ -229,7 +229,7 @@ async function upsertMatchVerification(
         dxtrTrustee: event.dxtrTrustee,
         mismatchReason,
         matchCandidates,
-        orderType: 'trustee-match',
+        orderType: 'trustee-match-verification',
         status: 'pending',
       },
       SYSTEM_USER_REFERENCE,

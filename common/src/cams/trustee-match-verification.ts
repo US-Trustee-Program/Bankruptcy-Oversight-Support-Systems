@@ -18,6 +18,6 @@ export type TrusteeMatchVerification = Auditable & {
   matchCandidates: CandidateScore[];
   status: OrderStatus;
   resolvedTrusteeId?: string;
-  orderType: 'trustee-match';
+  orderType: 'trustee-match-verification';
   reason?: string;
 };
