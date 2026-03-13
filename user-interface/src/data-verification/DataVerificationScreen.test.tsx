@@ -322,7 +322,8 @@ describe('Review Orders screen', () => {
 
   test('should hide trustee verification accordion when filter is toggled off', async () => {
     setupFeatureFlags({ 'trustee-verification-enabled': true });
-    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    const transferOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [transferOrder] });
     vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({
       data: [sampleVerificationOrder],
     });
