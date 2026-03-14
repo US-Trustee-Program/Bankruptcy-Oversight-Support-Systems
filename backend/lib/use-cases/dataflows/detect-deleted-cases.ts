@@ -13,7 +13,14 @@ export type CaseDeletedEvent = {
 async function getDeletedCaseEvents(context: ApplicationContext): Promise<CaseDeletedEvent[]> {
   // Retrieve current sync state from runtime state repository
   const runtimeStateRepo = factory.getRuntimeStateRepository(context);
-  const syncState = await runtimeStateRepo.read('DELETED_CASES_SYNC_STATE');
+  let syncState: DeletedCasesSyncState | null = null;
+
+  try {
+    syncState = await runtimeStateRepo.read('DELETED_CASES_SYNC_STATE');
+  } catch (_error) {
+    // Runtime state document doesn't exist yet (first run)
+    syncState = null;
+  }
 
   const lastChangeDate = syncState?.lastChangeDate ?? '2018-01-01';
   context.logger.debug(
