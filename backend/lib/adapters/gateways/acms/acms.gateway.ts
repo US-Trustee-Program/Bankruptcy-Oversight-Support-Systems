@@ -198,14 +198,18 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
   ): Promise<{ caseIds: string[]; latestDeletedCaseDate: string }> {
     const input: DbTableFieldSpec[] = [];
 
+    // Convert YYYY-MM-DD to YYYYMMDD integer (e.g., '2018-01-01' -> 20180101)
+    const lastChangeDateInt = parseInt(lastChangeDate.replace(/-/g, ''));
+
     input.push({
       name: 'lastChangeDate',
-      type: mssql.DateTime,
-      value: new Date(lastChangeDate),
+      type: mssql.Int,
+      value: lastChangeDateInt,
     });
 
     // Query for cases marked as deleted in ACMS (DELETE_CODE='D')
     // where the change date is after the last sync date
+    // LAST_CHANGE_DATE is stored as YYYYMMDD integer, not datetime
     const query = `
       SELECT
         CONCAT(
@@ -215,7 +219,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
           '-',
           RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
         ) AS caseId,
-        CONVERT(VARCHAR(10), LAST_CHANGE_DATE, 120) AS lastChangeDate
+        LAST_CHANGE_DATE AS lastChangeDate
       FROM [dbo].[CMMDB]
       WHERE DELETE_CODE = 'D'
       AND LAST_CHANGE_DATE > @lastChangeDate
@@ -223,7 +227,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
     type ResultType = {
       caseId: string;
-      lastChangeDate: string;
+      lastChangeDate: number;
     };
 
     try {
@@ -232,9 +236,11 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       const deletedCaseResults = results as ResultType[];
 
       const caseIds = deletedCaseResults.map((r) => r.caseId);
+      // Convert YYYYMMDD integer back to YYYY-MM-DD string
+      // Latest date is first element (query orders DESC), not last element
       const latestDeletedCaseDate =
         deletedCaseResults.length > 0
-          ? deletedCaseResults[deletedCaseResults.length - 1].lastChangeDate
+          ? this.formatAcmsDateToString(deletedCaseResults[0].lastChangeDate)
           : lastChangeDate;
 
       return { caseIds, latestDeletedCaseDate };
@@ -246,5 +252,10 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
   private formatCaseId(caseId: string): string {
     const padded = caseId.padStart(10, '0');
     return `${padded.slice(0, 3)}-${padded.slice(3, 5)}-${padded.slice(5)}`;
+  }
+
+  private formatAcmsDateToString(acmsDate: number): string {
+    const dateStr = acmsDate.toString();
+    return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
   }
 }

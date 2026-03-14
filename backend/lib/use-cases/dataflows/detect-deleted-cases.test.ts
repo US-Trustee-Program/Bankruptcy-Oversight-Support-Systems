@@ -132,13 +132,18 @@ describe('getDeletedCaseEvents tests', () => {
   test('should initialize runtime state if it does not exist', async () => {
     const latestDeletedCaseDate = '2025-02-11';
     const caseIds = ['001-25-00001'];
+    const defaultStartDate = '2018-01-01';
 
-    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(
+      new Error('No matching item found.'),
+    );
 
-    vi.spyOn(AcmsGatewayImpl.prototype, 'getDeletedCaseIds').mockResolvedValue({
-      caseIds,
-      latestDeletedCaseDate,
-    });
+    const getDeletedCaseIdsSpy = vi
+      .spyOn(AcmsGatewayImpl.prototype, 'getDeletedCaseIds')
+      .mockResolvedValue({
+        caseIds,
+        latestDeletedCaseDate,
+      });
 
     const upsertSpy = vi
       .spyOn(MockMongoRepository.prototype, 'upsert')
@@ -146,6 +151,7 @@ describe('getDeletedCaseEvents tests', () => {
 
     await DetectDeletedCases.getDeletedCaseEvents(context);
 
+    expect(getDeletedCaseIdsSpy).toHaveBeenCalledWith(expect.anything(), defaultStartDate);
     expect(upsertSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         documentType: 'DELETED_CASES_SYNC_STATE',

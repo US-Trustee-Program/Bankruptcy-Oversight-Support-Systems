@@ -2,6 +2,7 @@ node_modules/
 dist/
 coverage/
 .env
+test-data/
 
 # Compiled config files (TypeScript configs are source of truth)
 *.config.js
