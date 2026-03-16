@@ -38,6 +38,7 @@ describe('Review Orders screen', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     vi.restoreAllMocks();
+    sessionStorage.clear();
   });
 
   test('should call sortByCourtLocation when loading courts', async () => {
@@ -115,10 +116,10 @@ describe('Review Orders screen', () => {
       expect(accordionGroup).toBeInTheDocument();
     });
 
-    const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
-    const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
-    fireEvent.click(approvedOrderFilter);
-    fireEvent.click(rejectedOrderFilter);
+    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
+    fireEvent.click(expandBtn);
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-0'));
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-1'));
 
     for (const order of ordersResponse.data) {
       await waitFor(async () => {
@@ -130,11 +131,11 @@ describe('Review Orders screen', () => {
       });
     }
 
-    const transfersFilter = screen.queryByTestId('order-status-filter-transfer');
-    expect(transfersFilter).toBeInTheDocument();
+    const transferOption = screen.queryByTestId('task-type-filter-option-item-0');
+    expect(transferOption).toBeInTheDocument();
 
-    const consolidationsFilter = screen.queryByTestId('order-status-filter-transfer');
-    expect(consolidationsFilter).toBeInTheDocument();
+    const consolidationOption = screen.queryByTestId('task-type-filter-option-item-1');
+    expect(consolidationOption).toBeInTheDocument();
   });
 
   test('should show "all cases reviewed" alert when order list does not contain pending orders', async () => {
@@ -142,7 +143,9 @@ describe('Review Orders screen', () => {
     const ordersResponse = {
       data: [
         MockData.getTransferOrder({ override: { status: 'approved' } }),
-        MockData.getConsolidationOrder({ override: { status: 'approved' } }),
+        MockData.getConsolidationOrder({
+          override: { status: 'approved', leadCase: MockData.getCaseSummary() },
+        }),
       ],
     };
     vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
@@ -158,8 +161,15 @@ describe('Review Orders screen', () => {
       expect(spinner).not.toBeInTheDocument();
     });
 
-    const alert = screen.getByTestId('alert-no-pending-orders');
-    expect(alert).toBeInTheDocument();
+    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
+    fireEvent.click(expandBtn);
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-0'));
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-1'));
+
+    await waitFor(() => {
+      const alert = screen.getByTestId('alert-no-pending-orders');
+      expect(alert).toBeInTheDocument();
+    });
   });
 
   test('should show "select filters" alert when a list is empty because filters are applied', async () => {
@@ -186,12 +196,10 @@ describe('Review Orders screen', () => {
     await waitFor(() => {
       expect(loadingSpinner).not.toBeInTheDocument();
     });
-    const pendingOrderFilter = screen.getByTestId(`order-status-filter-pending`);
-    fireEvent.click(pendingOrderFilter);
-    const consolidationOrderFilter = screen.getByTestId(`order-status-filter-consolidation`);
-    fireEvent.click(consolidationOrderFilter);
-    const transferOrderFilter = screen.getByTestId(`order-status-filter-transfer`);
-    fireEvent.click(transferOrderFilter);
+    const statusExpandBtn = document.querySelector('#task-status-filter-expand') as HTMLElement;
+    fireEvent.click(statusExpandBtn);
+    const rejectedOption = screen.getByTestId('task-status-filter-option-item-2');
+    fireEvent.click(rejectedOption);
 
     await waitFor(() => {
       const alert = screen.queryByTestId('alert-too-many-filters');
@@ -227,11 +235,6 @@ describe('Review Orders screen', () => {
       expect(accordionGroup).toBeInTheDocument();
     });
 
-    const approvedOrderFilter = screen.getByTestId(`order-status-filter-approved`);
-    const rejectedOrderFilter = screen.getByTestId(`order-status-filter-rejected`);
-    fireEvent.click(approvedOrderFilter);
-    fireEvent.click(rejectedOrderFilter);
-
     for (const order of transferOrders) {
       await waitFor(() => {
         const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
@@ -244,11 +247,11 @@ describe('Review Orders screen', () => {
       expect(heading).not.toBeInTheDocument();
     });
 
-    const transfersFilter = screen.queryByTestId('order-status-filter-transfer');
-    expect(transfersFilter).toBeInTheDocument();
+    const transferOption = screen.queryByTestId('task-type-filter-option-item-0');
+    expect(transferOption).toBeInTheDocument();
 
-    const consolidationsFilter = screen.queryByTestId('order-status-filter-consolidation');
-    expect(consolidationsFilter).not.toBeInTheDocument();
+    const consolidationOption = screen.queryByTestId('task-type-filter-option-item-1');
+    expect(consolidationOption).not.toBeInTheDocument();
   });
 
   const sampleVerificationOrder: TrusteeMatchVerification = {
@@ -299,7 +302,7 @@ describe('Review Orders screen', () => {
     await waitFor(() => {
       const accordion = screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`);
       expect(accordion).toBeInTheDocument();
-      expect(accordion.textContent).toContain('Trustee Match Verification');
+      expect(accordion.textContent).toContain('Trustee Mismatch');
     });
   });
 
@@ -315,8 +318,9 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      const filter = screen.getByTestId('order-status-filter-trustee-match');
-      expect(filter).toBeInTheDocument();
+      const trusteeMismatchOption = screen.getByTestId('task-type-filter-option-item-2');
+      expect(trusteeMismatchOption).toBeInTheDocument();
+      expect(trusteeMismatchOption.textContent).toContain('Trustee Mismatch');
     });
   });
 
@@ -340,8 +344,10 @@ describe('Review Orders screen', () => {
       ).toBeInTheDocument();
     });
 
-    const filter = screen.getByTestId('order-status-filter-trustee-match');
-    fireEvent.click(filter);
+    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
+    fireEvent.click(expandBtn);
+    const transferOption = screen.getByTestId('task-type-filter-option-item-0');
+    fireEvent.click(transferOption);
 
     await waitFor(() => {
       expect(
@@ -397,64 +403,47 @@ describe('Review Orders screen', () => {
       </BrowserRouter>,
     );
 
-    // Make sure all the order statuses are visible.
-    let approveFilter;
-    let rejectFilter;
-
+    // All orders are in the document (hidden by default until a filter is selected).
     await waitFor(() => {
-      approveFilter = screen.getByTestId(`order-status-filter-approved`);
-      rejectFilter = screen.getByTestId(`order-status-filter-rejected`);
-    });
-
-    fireEvent.click(approveFilter!);
-    fireEvent.click(rejectFilter!);
-
-    await waitFor(() => {
-      // Check if all the orders are listed by default.
       for (const order of orders) {
         const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
         expect(heading).toBeInTheDocument();
       }
     });
 
-    // disabling transfer filter
-    let transferFilter: HTMLElement;
-    await waitFor(() => {
-      transferFilter = screen.getByTestId(`order-status-filter-transfer`);
-      expect(transferFilter).toBeInTheDocument();
-    });
-    fireEvent.click(transferFilter!);
+    // Select Transfer type only → only transfers visible.
+    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
+    fireEvent.click(expandBtn);
+    const transferOption = screen.getByTestId('task-type-filter-option-item-0');
+    fireEvent.click(transferOption);
 
-    // make sure only consolidations are visible
     await waitFor(async () => {
       for (const order of transferOrders) {
-        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
-        expect(heading).not.toBeVisible();
-      }
-
-      for (const order of consolidationOrders) {
         const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
         expect(heading).toBeInTheDocument();
         expect(heading).toBeVisible();
       }
+
+      for (const order of consolidationOrders) {
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
+        expect(heading).not.toBeVisible();
+      }
     });
 
-    // deselect consolidation filter and select transfer filter
-    const consolidationFilter = screen.getByTestId(`order-status-filter-consolidation`);
-    expect(consolidationFilter).toBeInTheDocument();
-    fireEvent.click(transferFilter!);
-    fireEvent.click(consolidationFilter);
+    // Deselect Transfer, select Consolidation → only consolidations visible.
+    fireEvent.click(transferOption);
+    const consolidationOption = screen.getByTestId('task-type-filter-option-item-1');
+    fireEvent.click(consolidationOption);
 
-    // make sure only transfers are visible
-    for (const order of transferOrders) {
+    for (const order of consolidationOrders) {
       await waitFor(async () => {
-        const heading = screen.getByTestId(`accordion-order-list-${order.id}`);
+        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
         expect(heading).toBeInTheDocument();
         expect(heading).toBeVisible();
       });
     }
 
-    for (const order of consolidationOrders) {
+    for (const order of transferOrders) {
       await waitFor(async () => {
         const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
         expect(heading).not.toBeVisible();

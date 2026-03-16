@@ -1,15 +1,6 @@
 .data-verification-screen {
   .order-list-container {
-    .order-type {
-      span {
-        background-color: #0050d8;
-        color: white;
-        padding: 0rem 0.5rem 0.125rem 0.5rem;
-        border-radius: 0.125rem;
-      }
-    }
-
-    .order-form {
+.order-form {
       .court-selection {
         display: flex;
         > div {
@@ -37,86 +28,20 @@
     line-height: 1.3;
   }
 
-  .order-status {
-    span,
-    .filter {
-      display: inline-block;
-      color: white;
-      padding: 0rem 0.5rem 0.125rem 0.5rem;
-      border-radius: 0.125rem;
-      text-decoration: none;
-    }
-    .filter {
-      display: inline-flex;
-      align-items: center;
-      flex-flow: row;
-      flex-direction: row;
-      justify-content: center;
-      svg {
-        display: none;
-        padding-left: 0.125rem;
-      }
-    }
-    .filter {
-      margin-bottom: 1.5rem;
-    }
-    .event-header {
-      font-weight: bold;
-      margin-bottom: 0.5rem;
-    }
-    .event-type-container {
-      display: inline-block;
-      flex-flow: row;
-      margin-right: 1rem;
-    }
-    .event-status-container {
-      display: inline-block;
-      flex-flow: row;
-    }
-    .consolidation {
-      background: #0050d8;
-    }
-    .transfer {
-      background: #0050d8;
-    }
-    .trustee-match {
-      background: #0050d8;
-    }
-    .consolidation .inactive {
-      background: #5c5c5c;
-    }
-    .transfer .inactive {
-      background: #5c5c5c;
-    }
-    .trustee-match .inactive {
-      background: #5c5c5c;
-    }
-    .pending {
-      // pa11y failed background color #C2850C for contrast.
-      // The backgound color #a26b00 was specified by pa11y.
-      // background: #C2850C;
-      background: #a26b00;
-    }
-    .approved {
-      background: #008817;
-    }
-    .rejected {
-      background: #d83933;
-    }
-    .filter {
-      margin-right: 0.5rem;
-    }
-    .filter:hover {
-      cursor: pointer;
-    }
-    .inactive {
-      background: #5c5c5c;
-      font-weight: normal;
-    }
-    .active {
-      font-weight: bold;
-      svg.active {
-        display: inline;
+  .filters {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: flex-end;
+
+    .combo-box-form-group {
+      min-width: 220px;
+      margin-bottom: 0;
+
+      .selection-label:empty::before {
+        content: '- Select one more -';
+        color: #71767a;
       }
     }
   }
@@ -126,6 +51,7 @@
     font-weight: bold;
     h3 {
       margin: 0;
+      font-size: 1rem;
     }
   }
 }
