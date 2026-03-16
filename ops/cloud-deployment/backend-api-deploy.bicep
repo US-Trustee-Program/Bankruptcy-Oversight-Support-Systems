@@ -457,7 +457,11 @@ var baseApplicationSettings = concat(
 var apiApplicationSettings = concat(
   baseApplicationSettings,
   createApplicationInsights
-    ? [{ name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }]
+    ? [
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }
+        { name: 'APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION', value: 'false' }
+        { name: 'AzureFunctionsJobHost__logging__console__isEnabled', value: 'false' }
+      ]
     : []
 )
 
