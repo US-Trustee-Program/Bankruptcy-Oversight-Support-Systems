@@ -22,10 +22,12 @@ test.describe('Data Verification', () => {
     test.setTimeout(COMPLEX_TEST_TIMEOUT);
     await expect(page.locator('[data-testid="data-verification-screen"]')).toBeVisible();
 
-    // Toggle filters
-    await page.locator('button.filter.approved').click();
-    await page.locator('button.filter.rejected').click();
-    await page.locator('button.filter.consolidation').click();
+    // Select status filters to make all orders visible
+    await page.locator('#task-status-filter .input-container').click();
+    await page.locator('[id="option-pending"]').click();
+    await page.locator('[id="option-approved"]').click();
+    await page.locator('[id="option-rejected"]').click();
+    await page.keyboard.press('Escape');
 
     // Open first accordion and interact with it
     await page.locator('[data-testid="accordion-button-order-list-guid-0"]').click();
@@ -81,9 +83,10 @@ test.describe('Data Verification', () => {
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
-    // Toggle filters again
-    await page.locator('button.filter.consolidation').click();
-    await page.locator('button.filter.transfer').click();
+    // Add type filter to narrow to consolidation orders
+    await page.locator('#task-type-filter .input-container').click();
+    await page.locator('[id="option-consolidation"]').click();
+    await page.keyboard.press('Escape');
 
     // Continue accordion navigation - fourth accordion
     await page.locator('[data-testid="accordion-button-order-list-guid-3"]').click();

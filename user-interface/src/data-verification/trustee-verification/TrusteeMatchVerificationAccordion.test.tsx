@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { TrusteeMatchVerificationAccordion } from './TrusteeMatchVerificationAccordion';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
+import MockData from '@common/cams/test-utilities/mock-data';
 
 const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
@@ -196,5 +197,112 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
     const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
     expect(heading).not.toBeVisible();
+  });
+
+  test('should render DXTR trustee legacy address with line breaks between multiple lines', () => {
+    const orderWithAddress: TrusteeMatchVerification = {
+      ...sampleOrder,
+      dxtrTrustee: {
+        fullName: 'John Doe',
+        legacy: {
+          address1: '123 Main St',
+          address2: 'Suite 200',
+          cityStateZipCountry: 'New York, NY 10001',
+          phone: '555-1234',
+          email: 'john@example.com',
+        },
+      },
+    };
+    renderComponent(orderWithAddress);
+
+    const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+    expect(content.textContent).toContain('123 Main St');
+    expect(content.textContent).toContain('Suite 200');
+    expect(content.textContent).toContain('New York, NY 10001');
+    expect(content.textContent).toContain('555-1234');
+  });
+
+  test('should render match candidate with full address, phone extension, and multiple appointments', () => {
+    const orderWithFullCandidate: TrusteeMatchVerification = {
+      ...sampleOrder,
+      matchCandidates: [
+        {
+          trusteeId: 'trustee-1',
+          trusteeName: 'Jane Smith',
+          totalScore: 95,
+          addressScore: 90,
+          districtDivisionScore: 100,
+          chapterScore: 95,
+          address: {
+            address1: '456 Oak Ave',
+            address2: 'Suite 100',
+            city: 'Boston',
+            state: 'MA',
+            zipCode: '02101',
+            countryCode: 'US',
+          },
+          phone: { number: '555-5678', extension: '123' },
+          email: 'jane@example.com',
+          appointments: [
+            MockData.getTrusteeAppointment({
+              courtName: 'Southern District',
+              courtDivisionName: 'Manhattan',
+            }),
+            MockData.getTrusteeAppointment({
+              courtName: 'Eastern District',
+              courtDivisionName: 'Brooklyn',
+            }),
+          ],
+        },
+      ],
+    };
+    render(
+      <BrowserRouter>
+        <TrusteeMatchVerificationAccordion
+          order={orderWithFullCandidate}
+          orderType={orderType}
+          statusType={orderStatusType}
+          fieldHeaders={fieldHeaders}
+        />
+      </BrowserRouter>,
+    );
+
+    const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+    expect(content.textContent).toContain('456 Oak Ave');
+    expect(content.textContent).toContain('Boston, MA 02101');
+    expect(content.textContent).toContain('555-5678 x123');
+    expect(content.textContent).toContain('Southern District');
+    expect(content.textContent).toContain('Eastern District');
+  });
+
+  test('should render match candidate phone without extension', () => {
+    const orderWithPhoneNoExt: TrusteeMatchVerification = {
+      ...sampleOrder,
+      matchCandidates: [
+        {
+          trusteeId: 'trustee-2',
+          trusteeName: 'Bob Johnson',
+          totalScore: 80,
+          addressScore: 75,
+          districtDivisionScore: 90,
+          chapterScore: 80,
+          phone: { number: '555-9999' },
+        },
+      ],
+    };
+    render(
+      <BrowserRouter>
+        <TrusteeMatchVerificationAccordion
+          order={orderWithPhoneNoExt}
+          orderType={orderType}
+          statusType={orderStatusType}
+          fieldHeaders={fieldHeaders}
+        />
+      </BrowserRouter>,
+    );
+
+    const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+    expect(content.textContent).toContain('555-9999');
+    expect(content.textContent).not.toContain('x555');
   });
 });
