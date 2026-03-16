@@ -59,12 +59,12 @@ describe('NoteItem', () => {
 
   test('does not show remove button when canRemove is false', () => {
     render(<NoteItem {...defaultProps} canRemove={false} />);
-    expect(screen.queryByLabelText(`Remove note titled ${baseNote.title}`)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(`Delete note titled ${baseNote.title}`)).not.toBeInTheDocument();
   });
 
   test('shows remove button when canRemove is true', () => {
     render(<NoteItem {...defaultProps} canRemove={true} />);
-    expect(screen.getByLabelText(`Remove note titled ${baseNote.title}`)).toBeInTheDocument();
+    expect(screen.getByLabelText(`Delete note titled ${baseNote.title}`)).toBeInTheDocument();
   });
 
   test('does not show draft alert when draft is null', () => {
@@ -84,6 +84,6 @@ describe('NoteItem', () => {
   test('renders both edit and remove buttons when both are permitted', () => {
     render(<NoteItem {...defaultProps} canEdit={true} canRemove={true} />);
     expect(screen.getByLabelText(`Edit note titled ${baseNote.title}`)).toBeInTheDocument();
-    expect(screen.getByLabelText(`Remove note titled ${baseNote.title}`)).toBeInTheDocument();
+    expect(screen.getByLabelText(`Delete note titled ${baseNote.title}`)).toBeInTheDocument();
   });
 });
