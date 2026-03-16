@@ -25,14 +25,6 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
 }
 
-module diagnosticsSettings 'diagnostics-settings-appi.bicep' = {
-  name: '${appInsightsName}-diag-settings-module'
-  params: {
-    appInsightsName: appInsights.name
-    workspaceResourceId: workspaceResourceId
-  }
-}
-
 output id string = appInsights.id
 output connectionString string = appInsights.properties.ConnectionString
 output instrumentationKey string = appInsights.properties.InstrumentationKey
