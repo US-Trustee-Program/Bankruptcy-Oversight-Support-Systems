@@ -7,6 +7,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
+import Api2 from '@/lib/models/api2';
 
 describe('Review Orders screen - Alert', () => {
   const user = testingUtilities.setUserWithRoles([CamsRole.DataVerifier]);
@@ -14,15 +15,24 @@ describe('Review Orders screen - Alert', () => {
   beforeEach(async () => {
     LocalStorage.setSession(MockData.getCamsSession({ user }));
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+    sessionStorage.setItem(
+      'cams:filter:data-verification:type',
+      JSON.stringify([{ value: 'transfer', label: 'Transfer' }]),
+    );
   });
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+    sessionStorage.clear();
   });
 
   test('should display alert and update order list when an order is updated by the TransferOrderAccordion', async () => {
     const mockOrder = MockData.getTransferOrder({ override: { status: 'approved' } });
     const mockAlertMessage = `Transfer of case to ${mockOrder.docketSuggestedCaseNumber} in ${mockOrder.newCase?.courtName} (${mockOrder.newCase?.courtDivisionName}) was approved.`;
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
 
     vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
       (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {

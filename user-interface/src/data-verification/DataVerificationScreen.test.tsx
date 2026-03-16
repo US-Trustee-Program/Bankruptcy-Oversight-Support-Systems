@@ -33,6 +33,7 @@ describe('Review Orders screen', () => {
       offices: MOCKED_USTP_OFFICES_ARRAY,
     });
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
   });
 
   afterEach(() => {
@@ -44,7 +45,6 @@ describe('Review Orders screen', () => {
   test('should call sortByCourtLocation when loading courts', async () => {
     setupFeatureFlags();
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
     const sortSpy = vi.spyOn(courtUtils, 'sortByCourtLocation');
 
     render(
@@ -107,19 +107,20 @@ describe('Review Orders screen', () => {
       </BrowserRouter>,
     );
 
-    const ordersScreen = screen.getByTestId('data-verification-screen');
-    expect(ordersScreen).toBeInTheDocument();
+    expect(screen.getByTestId('data-verification-screen')).toBeInTheDocument();
 
-    let accordionGroup;
     await waitFor(() => {
-      accordionGroup = screen.getByTestId('accordion-group');
-      expect(accordionGroup).toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
 
     const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
     fireEvent.click(expandBtn);
     fireEvent.click(screen.getByTestId('task-type-filter-option-item-0'));
     fireEvent.click(screen.getByTestId('task-type-filter-option-item-1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('accordion-group')).toBeInTheDocument();
+    });
 
     for (const order of ordersResponse.data) {
       await waitFor(async () => {
@@ -229,10 +230,16 @@ describe('Review Orders screen', () => {
       </BrowserRouter>,
     );
 
-    let accordionGroup;
     await waitFor(() => {
-      accordionGroup = screen.getByTestId('accordion-group');
-      expect(accordionGroup).toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
+    fireEvent.click(expandBtn);
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-0'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('accordion-group')).toBeInTheDocument();
     });
 
     for (const order of transferOrders) {
@@ -300,6 +307,14 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
+    fireEvent.click(expandBtn);
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-2'));
+
+    await waitFor(() => {
       const accordion = screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`);
       expect(accordion).toBeInTheDocument();
       expect(accordion.textContent).toContain('Trustee Mismatch');
@@ -339,15 +354,21 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`),
-      ).toBeInTheDocument();
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
 
     const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
     fireEvent.click(expandBtn);
-    const transferOption = screen.getByTestId('task-type-filter-option-item-0');
-    fireEvent.click(transferOption);
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-0'));
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-2'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`),
+      ).toBeVisible();
+    });
+
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-2'));
 
     await waitFor(() => {
       expect(
@@ -403,12 +424,8 @@ describe('Review Orders screen', () => {
       </BrowserRouter>,
     );
 
-    // All orders are in the document (hidden by default until a filter is selected).
     await waitFor(() => {
-      for (const order of orders) {
-        const heading = screen.queryByTestId(`accordion-order-list-${order.id}`);
-        expect(heading).toBeInTheDocument();
-      }
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
 
     // Select Transfer type only → only transfers visible.

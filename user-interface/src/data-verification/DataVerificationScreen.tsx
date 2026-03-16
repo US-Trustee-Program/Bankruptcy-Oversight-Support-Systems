@@ -69,43 +69,6 @@ export default function DataVerificationScreen() {
 
   const accordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
-  async function getOrders() {
-    setIsOrderListLoading(true);
-    try {
-      const [ordersResponse, verificationResponse] = await Promise.all([
-        Api2.getOrders(),
-        featureFlags[TRUSTEE_VERIFICATION_ENABLED]
-          ? Api2.getTrusteeVerificationOrders()
-          : Promise.resolve({ data: [] as TrusteeMatchVerification[] }),
-      ]);
-      setOrderList([
-        ...(ordersResponse as ResponseBody<Order[]>).data,
-        ...(verificationResponse as ResponseBody<TrusteeMatchVerification[]>).data,
-      ]);
-    } catch {
-      setOrderList([]);
-    } finally {
-      setIsOrderListLoading(false);
-    }
-  }
-
-  async function getCourts() {
-    Api2.getCourts()
-      .then((response) => {
-        const courts = (response as ResponseBody<CourtDivisionDetails[]>).data;
-        setCourts(sortByCourtLocation(courts));
-        setRegionsMap(
-          courts.reduce((regionsMap, court) => {
-            if (!regionsMap.has(court.regionId)) {
-              regionsMap.set(court.regionId, court.regionName);
-            }
-            return regionsMap;
-          }, new Map()),
-        );
-      })
-      .catch(() => {});
-  }
-
   function handleTransferOrderUpdate(alertDetails: AlertDetails, updatedOrder?: TransferOrder) {
     if (updatedOrder) {
       setOrderList(
@@ -144,15 +107,52 @@ export default function DataVerificationScreen() {
   }
 
   useEffect(() => {
-    if (showDataVerification) {
-      getCourts();
-    }
-  }, []);
+    if (!showDataVerification) return;
 
-  useEffect(() => {
-    if (showDataVerification) {
-      getOrders();
+    let cancelled = false;
+    setIsOrderListLoading(true);
+
+    async function loadOrders() {
+      try {
+        const [ordersResponse, verificationResponse, courtsResponse] = await Promise.all([
+          Api2.getOrders(),
+          featureFlags[TRUSTEE_VERIFICATION_ENABLED]
+            ? Api2.getTrusteeVerificationOrders()
+            : Promise.resolve({ data: [] as TrusteeMatchVerification[] }),
+          Api2.getCourts(),
+        ]);
+        if (cancelled) return;
+        setOrderList([
+          ...(ordersResponse as ResponseBody<Order[]>).data,
+          ...(verificationResponse as ResponseBody<TrusteeMatchVerification[]>).data,
+        ]);
+        const courtList = (courtsResponse as ResponseBody<CourtDivisionDetails[]>).data;
+        setCourts(sortByCourtLocation(courtList));
+        setRegionsMap(
+          courtList.reduce((regionsMap, court) => {
+            if (!regionsMap.has(court.regionId)) {
+              regionsMap.set(court.regionId, court.regionName);
+            }
+            return regionsMap;
+          }, new Map()),
+        );
+      } catch {
+        if (cancelled) return;
+        setOrderList([]);
+      } finally {
+        if (!cancelled) setIsOrderListLoading(false);
+      }
     }
+
+    loadOrders();
+
+    return () => {
+      cancelled = true;
+    };
+    // featureFlags object and showDataVerification are intentionally omitted: we only want to
+    // re-fetch when the trustee-verification flag toggles. showDataVerification is always true
+    // for authenticated users by the time this effect runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED]]);
 
   let visibleItemCount = 0;
