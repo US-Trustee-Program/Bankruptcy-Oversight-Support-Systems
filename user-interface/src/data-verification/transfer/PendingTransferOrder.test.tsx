@@ -127,6 +127,22 @@ describe('PendingTransferOrder component', () => {
       });
     });
 
+    test('should call onOrderUpdate with error when getOrderSuggestions fails', async () => {
+      const errorMessage = 'Failed to load suggestions';
+      vi.spyOn(Api2, 'getOrderSuggestions').mockRejectedValue(new Error(errorMessage));
+
+      const { onOrderUpdate } = renderWithProps();
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            message: errorMessage,
+            type: UswdsAlertStyle.Error,
+          }),
+        );
+      });
+    });
+
     test('should show enabled approve button when a suggested case is selected', async () => {
       renderWithProps();
 

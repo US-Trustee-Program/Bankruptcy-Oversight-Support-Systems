@@ -6,7 +6,7 @@ import CaseNoteFormModal, {
   getCaseNotesTitleValue,
   buildCaseNoteFormKey,
 } from './CaseNoteFormModal';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
@@ -733,6 +733,39 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     const id = '';
     const key = buildCaseNoteFormKey(caseId, mode, id);
     expect(key).toBe('case-notes-123-45-67890');
+  });
+
+  test('should show validation error and throttle when content is cleared before submit', async () => {
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(
+      modalRef,
+      {},
+      {
+        title: 'Test Title',
+        content: '<p>Test Content</p>',
+        initialTitle: '',
+        initialContent: '',
+      },
+      richTextEditorRef,
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+
+    richTextEditorRef.current?.clearValue();
+
+    fireEvent.click(submitButton);
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Title and content are both required inputs.')).toBeInTheDocument();
+    });
   });
 
   test('buildCaseNoteFormKey should generate correct key for edit mode', () => {

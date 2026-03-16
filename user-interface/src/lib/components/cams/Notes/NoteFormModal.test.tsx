@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import NoteFormModal, { NoteFormModalRef } from './NoteFormModal';
 import { NoteInput } from './types';
@@ -467,6 +467,52 @@ describe('NoteFormModal', () => {
 
     await waitFor(() => {
       expect(LocalFormCache.clearForm).toHaveBeenCalled();
+    });
+  });
+
+  test('should show validation error and throttle when content is cleared before submit', async () => {
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+
+    render(
+      <NoteFormModal
+        modalId="test-note-modal"
+        onSave={mockOnSave}
+        onModalClosed={mockOnModalClosed}
+        RichTextEditorRef={richTextEditorRef}
+        ref={modalRef}
+      />,
+    );
+
+    modalRef.current?.show({
+      mode: 'create',
+      entityId: 'entity-123',
+      title: 'Test Note',
+      content: '<p>Test content</p>',
+      cacheKey: 'notes-entity-123',
+      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      initialTitle: '',
+      initialContent: '',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Note')).toBeInTheDocument();
+    });
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+
+    // Clears contentRef.current synchronously; React state/useEffect updates are queued
+    richTextEditorRef.current?.clearValue();
+
+    // First click: throttle fires, validFields('Test Note', '') → false → lines 211-212, 221-222 hit
+    fireEvent.click(submitButton);
+    // Second click: isThrottled.current is still true → line 32 hit
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Title and content are both required inputs.')).toBeInTheDocument();
     });
   });
 

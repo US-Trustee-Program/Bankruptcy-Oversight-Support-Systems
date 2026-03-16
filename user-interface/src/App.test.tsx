@@ -74,6 +74,19 @@ describe('App', () => {
     });
   });
 
+  test('should export App directly when featureFlagClientId is not configured', async () => {
+    vi.resetModules();
+    vi.doMock('@/configuration/appConfiguration', () => ({
+      default: () => ({ featureFlagClientId: undefined }),
+    }));
+
+    const { default: AppComponent } = await import('./App');
+    expect(AppComponent).toBeDefined();
+
+    vi.doUnmock('@/configuration/appConfiguration');
+    vi.resetModules();
+  });
+
   test('should scroll to top when scroll-to-top button is clicked', async () => {
     renderWithoutProps();
     const scrollToTopBtn = document.querySelector('.scroll-to-top-button');
