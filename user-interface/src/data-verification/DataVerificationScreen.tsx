@@ -143,6 +143,15 @@ export default function DataVerificationScreen() {
     alertRef.current?.show();
   }
 
+  function handleTrusteeVerificationOrderUpdate(
+    alertDetails: AlertDetails,
+    updatedOrder: TrusteeMatchVerification,
+  ) {
+    setOrderList(orderList.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)));
+    setReviewOrderAlert(alertDetails);
+    alertRef.current?.show();
+  }
+
   function handleTypeFilter(selections: ComboOption[]) {
     setTypeSelections(selections);
   }
@@ -277,6 +286,7 @@ export default function DataVerificationScreen() {
 =======
 >>>>>>> 63880b1c7 (CAMS-717: Slice 1 — trustee match verification read-only view)
             hidden={isHidden}
+            onOrderUpdate={handleTrusteeVerificationOrderUpdate}
           ></TrusteeMatchVerificationAccordion>
         );
       } else {
