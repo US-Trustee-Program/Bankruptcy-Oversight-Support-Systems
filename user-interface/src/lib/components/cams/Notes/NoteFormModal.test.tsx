@@ -503,12 +503,9 @@ describe('NoteFormModal', () => {
       expect(submitButton).toBeEnabled();
     });
 
-    // Clears contentRef.current synchronously; React state/useEffect updates are queued
     richTextEditorRef.current?.clearValue();
 
-    // First click: throttle fires, validFields('Test Note', '') → false → lines 211-212, 221-222 hit
     fireEvent.click(submitButton);
-    // Second click: isThrottled.current is still true → line 32 hit
     fireEvent.click(submitButton);
 
     await waitFor(() => {

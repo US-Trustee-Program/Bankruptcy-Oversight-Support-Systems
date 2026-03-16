@@ -47,13 +47,11 @@ describe('ScrollToTopButton', () => {
     const { appDiv, unmount } = renderWithAppDiv();
     const scrollButton = screen.getByTitle('Scroll to top');
 
-    // First scroll down to show the button
     Object.defineProperty(window, 'scrollY', { value: 150, writable: true, configurable: true });
     act(() => {
       window.dispatchEvent(new Event('scroll'));
     });
 
-    // Then scroll back up
     Object.defineProperty(window, 'scrollY', { value: 50, writable: true, configurable: true });
     act(() => {
       window.dispatchEvent(new Event('scroll'));
@@ -72,18 +70,15 @@ describe('ScrollToTopButton', () => {
 
     const { unmount } = render(<ScrollToTopButton />);
 
-    // Rename the class so document.querySelector('.scroll-to-top-button') returns null
     const scrollBtn = document.querySelector('.scroll-to-top-button') as HTMLElement | null;
     if (scrollBtn) scrollBtn.className = '';
 
-    // Scroll down — L13 if(scrollButton) false branch
     Object.defineProperty(window, 'scrollY', { value: 150, writable: true, configurable: true });
     act(() => {
       window.dispatchEvent(new Event('scroll'));
     });
     expect(appDiv.className).toBe('App header-scrolled-out');
 
-    // Scroll up — L16 if(scrollButton) false branch
     Object.defineProperty(window, 'scrollY', { value: 50, writable: true, configurable: true });
     act(() => {
       window.dispatchEvent(new Event('scroll'));
@@ -95,7 +90,6 @@ describe('ScrollToTopButton', () => {
   });
 
   test('does nothing when .App element is not found', () => {
-    // Render without the .App div wrapper
     render(<ScrollToTopButton />);
 
     Object.defineProperty(window, 'scrollY', { value: 150, writable: true, configurable: true });

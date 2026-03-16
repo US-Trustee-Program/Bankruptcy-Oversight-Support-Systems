@@ -66,10 +66,8 @@ describe('useTrustee', () => {
 
     unmount();
 
-    // Resolve after unmount - trustee should remain null
     resolveRequest({ data: trustee });
 
-    // No state updates should occur after unmount
     expect(result.current.trustee).toBeNull();
   });
 
