@@ -271,7 +271,7 @@ export default function DataVerificationScreen() {
             ></Stop>
           )}
           {isOrderListLoading && showDataVerification && (
-            <LoadingSpinner caption="Loading court orders..." />
+            <LoadingSpinner caption="Loading data verification tasks..." />
           )}
           {!isOrderListLoading && showDataVerification && (
             <>
@@ -317,8 +317,8 @@ export default function DataVerificationScreen() {
                   <Alert
                     id="no-pending-orders"
                     type={UswdsAlertStyle.Info}
-                    title="All case events reviewed"
-                    message="There are no case events pending review"
+                    title="No data verification tasks found"
+                    message="There are no data verification tasks."
                     show={true}
                     inline={true}
                     className="measure-6"
@@ -329,8 +329,8 @@ export default function DataVerificationScreen() {
                   <Alert
                     id="too-many-filters"
                     type={UswdsAlertStyle.Info}
-                    title="All Cases Hidden"
-                    message="Please enable one or more filters to show hidden cases"
+                    title="No data verification tasks found"
+                    message="Please modify your search criteria to see events."
                     show={true}
                     inline={true}
                     className="measure-6"
