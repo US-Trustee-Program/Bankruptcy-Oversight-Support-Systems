@@ -123,6 +123,7 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Releasable {
   count: (keyRoot: string) => Promise<number>;
   updateManyByQuery: (query: Query<T>, update: unknown) => Promise<UpdateResult>;
+  findByCaseId(caseId: string): Promise<ConsolidationOrder[]>;
 }
 
 export interface UserSessionCacheRepository<T = CamsSession>
@@ -133,6 +134,8 @@ export interface CaseAssignmentRepository<T = CaseAssignment>
   getAssignmentsForCases(caseIds: string[]): Promise<Map<string, CaseAssignment[]>>;
   findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
   getAllActiveAssignments(): Promise<CaseAssignment[]>;
+  findByCaseId(caseId: string): Promise<CaseAssignment[]>;
+  delete(id: string): Promise<void>;
 }
 
 export interface CaseNotesRepository<T = CaseNote>
@@ -154,7 +157,15 @@ export interface OrdersRepository<T = Order>
     CreatesMany<T, T[]>,
     Reads<T>,
     Updates<TransferOrderAction>,
-    Releasable {}
+    Deletes,
+    Releasable {
+  findByCaseId(caseId: string): Promise<Order[]>;
+}
+
+export interface ArchivedCasesRepository extends Releasable {
+  archiveDocument<T>(document: T, originalCollection: string, caseId: string): Promise<void>;
+  getCaseArchives<T>(caseId: string): Promise<T[]>;
+}
 
 export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
   extends Reads<T>, Upserts<T, T> {}
@@ -177,6 +188,10 @@ export interface AcmsGateway {
   getMigrationCaseIds(context: ApplicationContext, start: number, end: number);
   emptyMigrationTable(context: ApplicationContext);
   getMigrationCaseCount(context: ApplicationContext);
+  getDeletedCaseIds(
+    context: ApplicationContext,
+    lastChangeDate: string,
+  ): Promise<{ caseIds: string[]; latestDeletedCaseDate: string }>;
 }
 
 export interface AtsGateway {
@@ -235,6 +250,8 @@ export interface CasesRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<{ caseId: string; _id: string }[]>;
+  findByCaseIdAndType<T>(caseId: string, documentType: string): Promise<T[]>;
+  delete(id: string): Promise<void>;
 }
 
 export interface OfficesRepository
@@ -311,6 +328,8 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   getActiveCaseAppointment(caseId: string): Promise<CaseAppointment | null>;
   createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
+  findByCaseId(caseId: string): Promise<CaseAppointment[]>;
+  delete(id: string): Promise<void>;
 }
 
 export interface TrusteeAssistantsRepository extends Releasable {
@@ -337,7 +356,8 @@ export type RuntimeStateDocumentType =
   | 'PHONETIC_BACKFILL_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
   | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
-  | 'TRUSTEE_NOTES_METRICS_STATE';
+  | 'TRUSTEE_NOTES_METRICS_STATE'
+  | 'DELETED_CASES_SYNC_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -386,6 +406,11 @@ export type TrusteeAppointmentsSyncState = RuntimeState & {
 export type TrusteeNotesMetricsState = RuntimeState & {
   documentType: 'TRUSTEE_NOTES_METRICS_STATE';
   lastSyncDate: string;
+};
+
+export type DeletedCasesSyncState = RuntimeState & {
+  documentType: 'DELETED_CASES_SYNC_STATE';
+  lastChangeDate: string; // YYYY-MM-DD format
 };
 
 export interface DocumentCollectionAdapter<T> {

@@ -25,7 +25,7 @@ import {
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
-import { TrusteeHistory } from '@common/cams/trustees';
+import { Trustee, TrusteeHistory } from '@common/cams/trustees';
 import {
   BankList,
   BankListItem,
@@ -52,10 +52,6 @@ export class MockMongoRepository
     ListsRepository,
     UserGroupsRepository
 {
-  deleteSyncedCases(): Promise<void> {
-    throw new Error('Method not implemented.');
-  }
-
   release() {
     return;
   }
@@ -366,6 +362,25 @@ export class MockMongoRepository
   }
 
   updateCaseAppointment(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+  findTrusteeByLegacyTruId(_ignore: any): Promise<Trustee | null> {
+    throw new Error('Method not implemented.');
+  }
+
+  deleteSyncedCases(): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  findByCaseId(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  findByCaseIdAndType(..._ignore): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  archiveDocument(..._ignore): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

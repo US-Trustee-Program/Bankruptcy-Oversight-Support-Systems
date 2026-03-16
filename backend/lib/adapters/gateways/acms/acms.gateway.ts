@@ -192,6 +192,57 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
+  public async getDeletedCaseIds(
+    context: ApplicationContext,
+    lastChangeDate: string,
+  ): Promise<{ caseIds: string[]; latestDeletedCaseDate: string }> {
+    const input: DbTableFieldSpec[] = [];
+
+    input.push({
+      name: 'lastChangeDate',
+      type: mssql.DateTime,
+      value: new Date(lastChangeDate),
+    });
+
+    // Query for cases marked as deleted in ACMS (DELETE_CODE='D')
+    // where the change date is after the last sync date
+    const query = `
+      SELECT
+        CONCAT(
+          RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
+          '-',
+          RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
+          '-',
+          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
+        ) AS caseId,
+        CONVERT(VARCHAR(10), LAST_CHANGE_DATE, 120) AS lastChangeDate
+      FROM [dbo].[CMMDB]
+      WHERE DELETE_CODE = 'D'
+      AND LAST_CHANGE_DATE > @lastChangeDate
+      ORDER BY LAST_CHANGE_DATE DESC`;
+
+    type ResultType = {
+      caseId: string;
+      lastChangeDate: string;
+    };
+
+    try {
+      context.logger.debug(MODULE_NAME, `Querying for deleted cases since: ${lastChangeDate}`);
+      const { results } = await this.executeQuery<ResultType>(context, query, input);
+      const deletedCaseResults = results as ResultType[];
+
+      const caseIds = deletedCaseResults.map((r) => r.caseId);
+      const latestDeletedCaseDate =
+        deletedCaseResults.length > 0
+          ? deletedCaseResults[deletedCaseResults.length - 1].lastChangeDate
+          : lastChangeDate;
+
+      return { caseIds, latestDeletedCaseDate };
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
   private formatCaseId(caseId: string): string {
     const padded = caseId.padStart(10, '0');
     return `${padded.slice(0, 3)}-${padded.slice(3, 5)}-${padded.slice(5)}`;

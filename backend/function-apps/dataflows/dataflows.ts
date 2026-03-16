@@ -3,6 +3,8 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
+import CaseDeletedEvent from './events/case-deleted-event';
+import DetectDeletedCases from './timers/detect-deleted-cases';
 import LoadE2eDb from './e2e/load-e2e-db';
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import MigrateAssignees from './migrations/migrate-assignees';
@@ -102,6 +104,8 @@ dataflows.register(
   BackfillPhoneticTokens,
   CaseAssignmentEvent,
   CaseClosedEvent,
+  CaseDeletedEvent,
+  DetectDeletedCases,
   LoadE2eDb,
   MigrateAssignees,
   MigrateCases,
