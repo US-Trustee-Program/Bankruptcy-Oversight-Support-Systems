@@ -7,6 +7,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
+import { getCaseNumber } from '@/lib/utils/caseNumber';
 
 export interface TrusteeMatchVerificationAccordionProps {
   order: TrusteeMatchVerification;
@@ -80,112 +81,104 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         className="accordion-content trustee-match-content"
         data-testid={`accordion-content-${order.id}`}
       >
-        <p>
+        <p className="problem-statement">
           Trustee is inactive in CAMS but was appointed to case:{' '}
           <Link to={`/case-detail/${order.caseId}`} className="case-link">
             <Icon name="launch" />
-            {order.caseId}
+            {getCaseNumber(order.caseId)}
           </Link>
         </p>
 
         <h3>Court Information</h3>
-        <table className="usa-table usa-table--borderless trustee-info-table">
-          <colgroup>
-            <col style={{ width: '15%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '57%' }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Address</th>
-              <th scope="col">Phone</th>
-              <th scope="col">Email</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{order.dxtrTrustee.fullName}</td>
-              <td>
-                {addressLines.map((line, i) => (
-                  <span key={i}>
-                    {line}
-                    {i < addressLines.length - 1 && <br />}
-                  </span>
-                ))}
-              </td>
-              <td>{legacy?.phone ?? ''}</td>
-              <td>{legacy?.email ?? ''}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="trustee-data-grid trustee-info-grid">
+          <div className="trustee-data-header grid-row grid-gap-lg">
+            <div className="trustee-data-cell grid-col-2">Name</div>
+            <div className="trustee-data-cell grid-col-2">Address</div>
+            <div className="trustee-data-cell grid-col-1">Phone</div>
+            <div className="trustee-data-cell grid-col-2">Email</div>
+            <div className="trustee-data-cell grid-col-3 no-border"></div>
+            <div className="trustee-data-cell grid-col-2 no-border"></div>
+          </div>
+          <div className="trustee-data-row grid-row grid-gap-lg">
+            <div className="trustee-data-cell grid-col-2" data-cell="Name">
+              {order.dxtrTrustee.fullName}
+            </div>
+            <div className="trustee-data-cell grid-col-2" data-cell="Address">
+              {addressLines.map((line, i) => (
+                <span key={i}>
+                  {line}
+                  {i < addressLines.length - 1 && <br />}
+                </span>
+              ))}
+            </div>
+            <div className="trustee-data-cell grid-col-1" data-cell="Phone">
+              {legacy?.phone ?? ''}
+            </div>
+            <div className="trustee-data-cell grid-col-2" data-cell="Email">
+              {legacy?.email ?? ''}
+            </div>
+            <div className="trustee-data-cell grid-col-3 no-border"></div>
+            <div className="trustee-data-cell grid-col-2 no-border"></div>
+          </div>
+        </div>
 
         <h3>CAMS Strongest Match</h3>
         {strongestMatch ? (
           <>
-            <table className="usa-table usa-table--borderless trustee-candidates-table">
-              <colgroup>
-                <col style={{ width: '15%' }} />
-                <col style={{ width: '16%' }} />
-                <col style={{ width: '12%' }} />
-                <col style={{ width: '17%' }} />
-                <col style={{ width: '28%' }} />
-                <col style={{ width: '12%' }} />
-              </colgroup>
-              <thead>
-                <tr>
-                  <th scope="col">Name</th>
-                  <th scope="col">Address</th>
-                  <th scope="col">Phone</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Trustee Appointment</th>
-                  <th scope="col">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>{strongestMatch.trusteeName}</td>
-                  <td>
-                    {strongestMatch.address &&
-                      [
-                        strongestMatch.address.address1,
-                        strongestMatch.address.address2,
-                        strongestMatch.address.address3,
-                        `${strongestMatch.address.city}, ${strongestMatch.address.state} ${strongestMatch.address.zipCode}`,
-                      ]
-                        .filter(Boolean)
-                        .map((line, i, arr) => (
-                          <span key={i}>
-                            {line}
-                            {i < arr.length - 1 && <br />}
-                          </span>
-                        ))}
-                  </td>
-                  <td>
-                    {strongestMatch.phone
-                      ? `${strongestMatch.phone.number}${strongestMatch.phone.extension ? ` x${strongestMatch.phone.extension}` : ''}`
-                      : ''}
-                  </td>
-                  <td>{strongestMatch.email ?? ''}</td>
-                  <td>
-                    {strongestMatch.appointments?.map((appt, i, arr) => (
-                      <span key={i}>
-                        {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
-                        {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
-                        {i < arr.length - 1 && <br />}
-                      </span>
-                    ))}
-                  </td>
-                  <td>
-                    <Link to="#" className="match-trustee-link">
-                      <Icon name="check" />
-                      Match Trustee
-                    </Link>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="trustee-data-grid trustee-candidates-grid">
+              <div className="trustee-data-header grid-row grid-gap-lg">
+                <div className="trustee-data-cell grid-col-2">Name</div>
+                <div className="trustee-data-cell grid-col-2">Address</div>
+                <div className="trustee-data-cell grid-col-1">Phone</div>
+                <div className="trustee-data-cell grid-col-2">Email</div>
+                <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
+                <div className="trustee-data-cell grid-col-2">Action</div>
+              </div>
+              <div className="trustee-data-row grid-row grid-gap-lg">
+                <div className="trustee-data-cell grid-col-2" data-cell="Name">
+                  {strongestMatch.trusteeName}
+                </div>
+                <div className="trustee-data-cell grid-col-2" data-cell="Address">
+                  {strongestMatch.address &&
+                    [
+                      strongestMatch.address.address1,
+                      strongestMatch.address.address2,
+                      strongestMatch.address.address3,
+                      `${strongestMatch.address.city}, ${strongestMatch.address.state} ${strongestMatch.address.zipCode}`,
+                    ]
+                      .filter(Boolean)
+                      .map((line, i, arr) => (
+                        <span key={i}>
+                          {line}
+                          {i < arr.length - 1 && <br />}
+                        </span>
+                      ))}
+                </div>
+                <div className="trustee-data-cell grid-col-1" data-cell="Phone">
+                  {strongestMatch.phone
+                    ? `${strongestMatch.phone.number}${strongestMatch.phone.extension ? ` x${strongestMatch.phone.extension}` : ''}`
+                    : ''}
+                </div>
+                <div className="trustee-data-cell grid-col-2" data-cell="Email">
+                  {strongestMatch.email ?? ''}
+                </div>
+                <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
+                  {strongestMatch.appointments?.map((appt, i, arr) => (
+                    <span key={i}>
+                      {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
+                      {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
+                      {i < arr.length - 1 && <br />}
+                    </span>
+                  ))}
+                </div>
+                <div className="trustee-data-cell grid-col-2" data-cell="Action">
+                  <Link to="#" className="match-trustee-link">
+                    <Icon name="check" />
+                    Match Trustee
+                  </Link>
+                </div>
+              </div>
+            </div>
             <Link to="/trustee/search" className="search-trustee-link">
               Search for a different trustee.
             </Link>

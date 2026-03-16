@@ -89,7 +89,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
   test('should render case link in content', () => {
     renderComponent();
 
-    const link = screen.getByRole('link', { name: sampleOrder.caseId, hidden: true });
+    const link = screen.getByRole('link', { name: '22-11111', hidden: true });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
   });
