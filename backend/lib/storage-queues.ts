@@ -29,6 +29,16 @@ export const CASE_CLOSED_EVENT_DLQ = output.storageQueue({
   connection,
 });
 
+export const CASE_DELETED_EVENT_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.CASE_DELETED_EVENT),
+  connection,
+});
+
+export const CASE_DELETED_EVENT_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.CASE_DELETED_EVENT, 'DLQ'),
+  connection,
+});
+
 export const SYNC_CASES_PAGE_QUEUE = output.storageQueue({
   queueName: buildQueueName(ModuleNames.SYNC_CASES_PAGE),
   connection,

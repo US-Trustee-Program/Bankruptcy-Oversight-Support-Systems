@@ -9,6 +9,7 @@ import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock
 import { ConnectionPool, config } from 'mssql';
 import {
   AcmsGateway,
+  ArchivedCasesRepository,
   AtsGateway,
   CaseAssignmentRepository,
   CaseNotesRepository,
@@ -58,6 +59,7 @@ import { CaseAssignmentMongoRepository } from './adapters/gateways/mongo/case-as
 import { OrdersMongoRepository } from './adapters/gateways/mongo/orders.mongo.repository';
 import { CasesMongoRepository } from './adapters/gateways/mongo/cases.mongo.repository';
 import ConsolidationOrdersMongoRepository from './adapters/gateways/mongo/consolidations.mongo.repository';
+import { ArchivedCasesMongoRepository } from './adapters/gateways/mongo/archived-cases.mongo.repository';
 import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
 import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
 import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
@@ -231,6 +233,15 @@ const getCasesRepository = (context: ApplicationContext): CasesRepository => {
     return mockCasesRepository;
   }
   const repo = CasesMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+const getArchivedCasesRepository = (context: ApplicationContext): ArchivedCasesRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = ArchivedCasesMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -476,6 +487,7 @@ const factory = {
   getOrdersRepository,
   getConsolidationOrdersRepository,
   getCasesRepository,
+  getArchivedCasesRepository,
   getRuntimeStateRepository,
   getOrderSyncStateRepo,
   getOfficeStaffSyncStateRepo,
