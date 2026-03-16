@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import {
   TrusteeMatchVerificationAccordion,
@@ -7,6 +8,7 @@ import {
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import MockData from '@common/cams/test-utilities/mock-data';
+import Api2 from '@/lib/models/api2';
 
 const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
@@ -109,8 +111,22 @@ describe('TrusteeMatchVerificationAccordion', () => {
     };
     renderWithProps({ order: orderWithCandidates });
 
-    expect(screen.getByText('Jane Smith')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Match Trustee/, hidden: true })).toBeInTheDocument();
+    const candidateInfo = screen.getByTestId('candidate-info');
+    expect(candidateInfo).toBeInTheDocument();
+    expect(screen.getByTestId('candidate-name').textContent).toContain('Jane Smith');
+  });
+
+  test('should NOT render candidate-info section for approved order', () => {
+    renderComponent({ ...sampleOrderWithCandidates, status: 'approved' });
+
+    expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
+  });
+
+  test('should render strongest match name in CAMS Strongest Match table for pending order', () => {
+    renderComponent(sampleOrderWithCandidates);
+
+    expect(screen.getByTestId('candidate-name').textContent).toContain('Jane Smith');
+    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Search for a trustee.', hidden: true }),
     ).not.toBeInTheDocument();

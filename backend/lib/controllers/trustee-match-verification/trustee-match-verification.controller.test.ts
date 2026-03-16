@@ -1,5 +1,6 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { TrusteeMatchVerificationController } from './trustee-match-verification.controller';
+import { TrusteeVerificationOrdersUseCase } from '../../use-cases/trustee-verification-orders/trustee-verification-orders.use-case';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
@@ -87,52 +88,116 @@ describe('TrusteeMatchVerificationController', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
+    context.request.method = 'GET';
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test('should return verification orders enriched with trustee contact and appointment data', async () => {
-    mockVerificationRepo([sampleOrder]);
-    mockEnrichmentRepos();
+  describe('GET', () => {
+    test('should return verification orders enriched with trustee contact and appointment data', async () => {
+      mockVerificationRepo([sampleOrder]);
+      mockEnrichmentRepos();
 
     const controller = new TrusteeMatchVerificationController();
     const response = await controller.handleRequest(context);
 
-    expect(response.body.data).toHaveLength(1);
-    const candidate = response.body.data[0].matchCandidates[0];
-    expect(candidate.address).toEqual(mockTrustee.public.address);
-    expect(candidate.phone).toEqual(mockTrustee.public.phone);
-    expect(candidate.email).toEqual(mockTrustee.public.email);
-    expect(candidate.appointments).toEqual(mockAppointments);
+      expect(response.body.data).toHaveLength(1);
+      const candidate = response.body.data[0].matchCandidates[0];
+      expect(candidate.address).toEqual(mockTrustee.public.address);
+      expect(candidate.phone).toEqual(mockTrustee.public.phone);
+      expect(candidate.email).toEqual(mockTrustee.public.email);
+      expect(candidate.appointments).toEqual(mockAppointments);
+    });
+
+    test('should return original candidate when enrichment fails', async () => {
+      mockVerificationRepo([sampleOrder]);
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new Error('Trustee not found')),
+        }),
+      );
+      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getTrusteeAppointments: vi.fn().mockResolvedValue([]),
+        }),
+      );
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toHaveLength(1);
+      const candidate = response.body.data[0].matchCandidates[0];
+      expect(candidate.address).toBeUndefined();
+      expect(candidate.appointments).toBeUndefined();
+    });
+
+    test('should return empty array when repository returns no documents', async () => {
+      mockVerificationRepo([]);
+      mockEnrichmentRepos();
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toEqual([]);
+    });
+
+    test('should throw a CamsError when the repository throws', async () => {
+      const error = new Error('Database failure');
+      vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), { search: vi.fn().mockRejectedValue(error) }),
+      );
+
+      const controller = new TrusteeMatchVerificationController();
+      const expectedError = getCamsError(error, 'TRUSTEE-VERIFICATION-ORDERS-CONTROLLER');
+
+      await expect(controller.handleRequest(context)).rejects.toThrow(expectedError.message);
+    });
   });
 
-  test('should return original candidate when enrichment fails', async () => {
-    mockVerificationRepo([sampleOrder]);
-    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        read: vi.fn().mockRejectedValue(new Error('Trustee not found')),
-      }),
-    );
-    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), {
-        getTrusteeAppointments: vi.fn().mockResolvedValue([]),
-      }),
-    );
+  describe('PATCH', () => {
+    beforeEach(() => {
+      context.request.method = 'PATCH';
+      context.request.params = { id: 'verification-1' };
+      context.request.body = { resolvedTrusteeId: 'trustee-001' };
+    });
 
-    const controller = new TrusteeMatchVerificationController();
-    const response = await controller.handleRequest(context);
+    test('should call useCase.approveVerification and return 204', async () => {
+      vi.spyOn(TrusteeVerificationOrdersUseCase.prototype, 'approveVerification').mockResolvedValue(
+        undefined,
+      );
 
-    expect(response.body.data).toHaveLength(1);
-    const candidate = response.body.data[0].matchCandidates[0];
-    expect(candidate.address).toBeUndefined();
-    expect(candidate.appointments).toBeUndefined();
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(TrusteeVerificationOrdersUseCase.prototype.approveVerification).toHaveBeenCalledWith(
+        context,
+        'verification-1',
+        'trustee-001',
+      );
+      expect(response.statusCode).toBe(204);
+    });
+
+    test('should throw BadRequestError when id is missing', async () => {
+      context.request.params = {};
+
+      const controller = new TrusteeMatchVerificationController();
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Missing verification ID.');
+    });
+
+    test('should throw BadRequestError when resolvedTrusteeId is missing', async () => {
+      context.request.body = {};
+
+      const controller = new TrusteeMatchVerificationController();
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Missing resolvedTrusteeId.');
+    });
   });
 
-  test('should return empty array when repository returns no documents', async () => {
-    mockVerificationRepo([]);
-    mockEnrichmentRepos();
+  test('should throw BadRequestError for unsupported method', async () => {
+    context.request.method = 'DELETE';
 
     const controller = new TrusteeMatchVerificationController();
     const response = await controller.handleRequest(context);

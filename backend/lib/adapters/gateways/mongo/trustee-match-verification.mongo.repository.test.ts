@@ -148,6 +148,45 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     });
   });
 
+  describe('update', () => {
+    test('should merge partial updates, persist, and return the merged document', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(sampleVerification);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
+        id: 'verification-1',
+        modifiedCount: 1,
+        upsertedCount: 0,
+      });
+
+      const result = await repository.update('verification-1', { status: 'approved' });
+
+      expect(result).toEqual({ ...sampleVerification, status: 'approved' });
+      expect(MongoCollectionAdapter.prototype.replaceOne).toHaveBeenCalledWith(
+        expect.objectContaining({ conjunction: 'AND' }),
+        { ...sampleVerification, status: 'approved' },
+      );
+    });
+
+    test('should re-throw NotFoundError when document does not exist', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new NotFoundError('MONGO', { message: 'Not found' }),
+      );
+
+      await expect(repository.update('missing-id', { status: 'approved' })).rejects.toThrow(
+        NotFoundError,
+      );
+    });
+
+    test('should wrap unexpected errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('Database failure'),
+      );
+
+      await expect(repository.update('verification-1', { status: 'approved' })).rejects.toThrow(
+        'Failed to update trustee match verification verification-1.',
+      );
+    });
+  });
+
   describe('upsertVerification', () => {
     test('should call replaceOne with upsert = true', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockResolvedValue({
