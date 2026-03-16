@@ -8,15 +8,11 @@ describe('useTrustee', () => {
     vi.restoreAllMocks();
   });
 
-  test('returns null trustee and false loading when no trusteeId is provided', () => {
-    const { result } = renderHook(() => useTrustee(undefined));
-
-    expect(result.current.trustee).toBeNull();
-    expect(result.current.loading).toBe(false);
-  });
-
-  test('returns null trustee and false loading when trusteeId is null', () => {
-    const { result } = renderHook(() => useTrustee(null));
+  test.each([
+    ['undefined', undefined],
+    ['null', null],
+  ])('returns null trustee and false loading when trusteeId is %s', (_, trusteeId) => {
+    const { result } = renderHook(() => useTrustee(trusteeId as never));
 
     expect(result.current.trustee).toBeNull();
     expect(result.current.loading).toBe(false);

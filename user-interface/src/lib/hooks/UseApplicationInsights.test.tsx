@@ -9,7 +9,10 @@ describe('UseApplicationInsights', () => {
     vi.restoreAllMocks();
   });
 
-  test('should not load app insights when connection string is undefined', async () => {
+  test.each([
+    ['undefined', undefined],
+    ['empty string', ''],
+  ])('should not load app insights when connection string is %s', async (_, connectionString) => {
     const mockLoadAppInsights = vi.fn();
     const mockAddTelemetryInitializer = vi.fn();
 
@@ -25,32 +28,7 @@ describe('UseApplicationInsights', () => {
       ReactPlugin: vi.fn(function () {}),
     }));
     vi.doMock('@/configuration/appConfiguration', () => ({
-      default: () => ({ applicationInsightsConnectionString: undefined }),
-    }));
-
-    await import('./UseApplicationInsights');
-
-    expect(mockLoadAppInsights).not.toHaveBeenCalled();
-    expect(mockAddTelemetryInitializer).not.toHaveBeenCalled();
-  });
-
-  test('should not load app insights when connection string is empty', async () => {
-    const mockLoadAppInsights = vi.fn();
-    const mockAddTelemetryInitializer = vi.fn();
-
-    vi.doMock('@microsoft/applicationinsights-web', () => ({
-      ApplicationInsights: vi.fn(function () {
-        return {
-          loadAppInsights: mockLoadAppInsights,
-          addTelemetryInitializer: mockAddTelemetryInitializer,
-        };
-      }),
-    }));
-    vi.doMock('@microsoft/applicationinsights-react-js', () => ({
-      ReactPlugin: vi.fn(function () {}),
-    }));
-    vi.doMock('@/configuration/appConfiguration', () => ({
-      default: () => ({ applicationInsightsConnectionString: '' }),
+      default: () => ({ applicationInsightsConnectionString: connectionString }),
     }));
 
     await import('./UseApplicationInsights');
@@ -86,7 +64,7 @@ describe('UseApplicationInsights', () => {
     expect(mockAddTelemetryInitializer).toHaveBeenCalled();
   });
 
-  test('should set tags to empty array when env.tags is undefined', async () => {
+  async function setupTelemetryCapture() {
     type TelemetryInitializer = (env: Record<string, unknown>) => void;
     let capturedInitializer: TelemetryInitializer | undefined;
 
@@ -104,50 +82,31 @@ describe('UseApplicationInsights', () => {
       ReactPlugin: vi.fn(function () {}),
     }));
     vi.doMock('@/configuration/appConfiguration', () => ({
-      default: () => ({
-        applicationInsightsConnectionString: 'InstrumentationKey=test-key',
-      }),
+      default: () => ({ applicationInsightsConnectionString: 'InstrumentationKey=test-key' }),
     }));
 
     await import('./UseApplicationInsights');
+    return capturedInitializer!;
+  }
+
+  test('should set tags to empty array when env.tags is undefined', async () => {
+    const capturedInitializer = await setupTelemetryCapture();
 
     expect(capturedInitializer).toBeDefined();
     const env: Record<string, unknown> = {};
-    capturedInitializer!(env);
+    capturedInitializer(env);
 
     expect(Array.isArray(env.tags)).toBe(true);
     expect((env.tags as Record<string, string>)['ai.cloud.role']).toBe('ustp.cams.web');
   });
 
   test('should preserve existing tags object when env.tags is already set', async () => {
-    type TelemetryInitializer = (env: Record<string, unknown>) => void;
-    let capturedInitializer: TelemetryInitializer | undefined;
-
-    vi.doMock('@microsoft/applicationinsights-web', () => ({
-      ApplicationInsights: vi.fn(function () {
-        return {
-          loadAppInsights: vi.fn(),
-          addTelemetryInitializer: vi.fn(function (fn: TelemetryInitializer) {
-            capturedInitializer = fn;
-          }),
-        };
-      }),
-    }));
-    vi.doMock('@microsoft/applicationinsights-react-js', () => ({
-      ReactPlugin: vi.fn(function () {}),
-    }));
-    vi.doMock('@/configuration/appConfiguration', () => ({
-      default: () => ({
-        applicationInsightsConnectionString: 'InstrumentationKey=test-key',
-      }),
-    }));
-
-    await import('./UseApplicationInsights');
+    const capturedInitializer = await setupTelemetryCapture();
 
     expect(capturedInitializer).toBeDefined();
     const existingTags: Record<string, string> = { 'existing-tag': 'value' };
     const env: Record<string, unknown> = { tags: existingTags };
-    capturedInitializer!(env);
+    capturedInitializer(env);
 
     expect(env.tags).toBe(existingTags);
     expect((env.tags as Record<string, string>)['ai.cloud.role']).toBe('ustp.cams.web');

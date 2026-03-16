@@ -85,6 +85,10 @@ const mockStore: AssignAttorneyModalStore = {
 const useCase = assignAttorneyModalUseCase(mockStore, mockControls);
 
 describe('assignAttorneyModalUseCase tests', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('test handleFocus', () => {
     test('handleFocus should scroll input element into view if the input is above the visible screen', async () => {
       const mockInput = document.createElement('input');
@@ -324,7 +328,6 @@ describe('assignAttorneyModalUseCase tests', () => {
     );
     (await localUseCase.fetchAttorneys()) as unknown as Promise<void>;
     expect(localSetAttorneyList).toHaveBeenCalledWith(mockAttorneys);
-    vi.restoreAllMocks();
   });
 
   test('fetchAttorneys should set a global alert error when the API call fails', async () => {
@@ -341,7 +344,6 @@ describe('assignAttorneyModalUseCase tests', () => {
     );
     (await localUseCase.fetchAttorneys()) as unknown as Promise<void>;
     expect(localSetGlobalAlertError).toHaveBeenCalledWith('Network error');
-    vi.restoreAllMocks();
   });
 
   test('submitValues should call submissionCallback with success and invoke the assignment change callback', async () => {
@@ -366,7 +368,6 @@ describe('assignAttorneyModalUseCase tests', () => {
       expect.objectContaining({ status: 'success' }),
     );
     expect(mockAssignmentChangeCallback).toHaveBeenCalled();
-    vi.restoreAllMocks();
   });
 
   test('submitValues should call submissionCallback with error status when the API call fails', async () => {
@@ -389,7 +390,6 @@ describe('assignAttorneyModalUseCase tests', () => {
     expect(mockSubmissionCallback).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'error' }),
     );
-    vi.restoreAllMocks();
   });
 
   test('updateCheckList should remove attorney from checklist when unchecked', () => {
