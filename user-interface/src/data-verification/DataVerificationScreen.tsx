@@ -1,6 +1,7 @@
 import './DataVerificationScreen.scss';
-import Icon from '@/lib/components/uswds/Icon';
 import { useEffect, useRef, useState } from 'react';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { useSessionState } from '@/lib/hooks/UseSessionState';
 import { AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TransferOrderAccordion } from './TransferOrderAccordion';
 import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -37,16 +38,20 @@ import { Stop } from '@/lib/components/Stop';
 
 export default function DataVerificationScreen() {
   const featureFlags = useFeatureFlags();
-  const [statusFilter, setStatusFilter] = useState<OrderStatus[]>(['pending']);
-  const [typeFilter, setTypeFilter] = useState<OrderType[]>(
-    featureFlags[TRUSTEE_VERIFICATION_ENABLED]
-      ? ['transfer', 'consolidation', 'trustee-match']
-      : ['transfer', 'consolidation'],
+  const [typeSelections, setTypeSelections] = useSessionState<ComboOption[]>(
+    'cams:filter:data-verification:type',
+    [],
   );
+  const [statusSelections, setStatusSelections] = useSessionState<ComboOption[]>(
+    'cams:filter:data-verification:status',
+    [],
+  );
+  const typeFilter = typeSelections.map((s) => s.value as OrderType);
+  const statusFilter = statusSelections.map((s) => s.value as OrderStatus);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [courts, setCourts] = useState<Array<CourtDivisionDetails>>([]);
   const [orderList, setOrderList] = useState<Array<Order>>([]);
-  const [isOrderListLoading, setIsOrderListLoading] = useState(false);
+  const [isOrderListLoading, setIsOrderListLoading] = useState(true);
   const alertRef = useRef<AlertRefType>(null);
   const [reviewOrderAlert, setReviewOrderAlert] = useState<AlertDetails>({
     message: '',
@@ -62,7 +67,7 @@ export default function DataVerificationScreen() {
   // TODO: This needs to be dynamic!
   const regionHeader = 'Region 02';
 
-  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
+  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
   async function getOrders() {
     setIsOrderListLoading(true);
@@ -130,36 +135,25 @@ export default function DataVerificationScreen() {
     alertRef.current?.show();
   }
 
-  function handleStatusFilter(filterString: OrderStatus) {
-    if (statusFilter.includes(filterString)) {
-      setStatusFilter(
-        statusFilter.filter((filter) => {
-          return filter !== filterString;
-        }),
-      );
-    } else {
-      setStatusFilter([...statusFilter, filterString]);
-    }
+  function handleTypeFilter(selections: ComboOption[]) {
+    setTypeSelections(selections);
   }
 
-  function handleTypeFilter(filterString: OrderType) {
-    if (typeFilter.includes(filterString)) {
-      setTypeFilter(
-        typeFilter.filter((filter) => {
-          return filter !== filterString;
-        }),
-      );
-    } else {
-      setTypeFilter([...typeFilter, filterString]);
-    }
+  function handleStatusFilter(selections: ComboOption[]) {
+    setStatusSelections(selections);
   }
 
   useEffect(() => {
     if (showDataVerification) {
-      getOrders();
       getCourts();
     }
   }, []);
+
+  useEffect(() => {
+    if (showDataVerification) {
+      getOrders();
+    }
+  }, [featureFlags[TRUSTEE_VERIFICATION_ENABLED]]);
 
   let visibleItemCount = 0;
   let pendingItemCount = 0;
@@ -191,8 +185,11 @@ export default function DataVerificationScreen() {
       return sortByDate(dateA, dateB);
     })
     .map((order) => {
+      const noFiltersSelected = typeFilter.length === 0 && statusFilter.length === 0;
       const isHidden =
-        !typeFilter.includes(order.orderType) || !statusFilter.includes(order.status);
+        noFiltersSelected ||
+        (typeFilter.length > 0 && !typeFilter.includes(order.orderType)) ||
+        (statusFilter.length > 0 && !statusFilter.includes(order.status));
       if (!isHidden) {
         visibleItemCount++;
       }
@@ -222,6 +219,7 @@ export default function DataVerificationScreen() {
             orderType={orderType}
             statusType={orderStatusType}
             fieldHeaders={accordionFieldHeaders}
+            courts={courts}
             hidden={isHidden}
           ></TrusteeMatchVerificationAccordion>
         );
@@ -278,63 +276,44 @@ export default function DataVerificationScreen() {
           {!isOrderListLoading && showDataVerification && (
             <>
               <h2>{regionHeader}</h2>
-              <h3>Filters</h3>
               <section className="order-list-container">
-                <div className="filters order-status">
-                  <div className="event-type-container">
-                    <h4 className="event-header">Event Status</h4>
-                    <div>
-                      {featureFlags[TRANSFER_ORDERS_ENABLED] && (
-                        <Filter<OrderType>
-                          label="Transfer"
-                          filterType="transfer"
-                          filters={typeFilter}
-                          callback={handleTypeFilter}
-                        />
-                      )}
-                      {featureFlags[CONSOLIDATIONS_ENABLED] && (
-                        <Filter<OrderType>
-                          label="Consolidation"
-                          filterType="consolidation"
-                          filters={typeFilter}
-                          callback={handleTypeFilter}
-                        />
-                      )}
-                      {featureFlags[TRUSTEE_VERIFICATION_ENABLED] && (
-                        <Filter<OrderType>
-                          label="Trustee Match Verification"
-                          filterType="trustee-match"
-                          filters={typeFilter}
-                          callback={handleTypeFilter}
-                        />
-                      )}
-                    </div>
-                  </div>
-                  <div className="event-status-container">
-                    <h4 className="event-header">Event Status</h4>
-                    <div>
-                      <Filter<OrderStatus>
-                        label="Pending Review"
-                        filterType="pending"
-                        filters={statusFilter}
-                        callback={handleStatusFilter}
-                      />
-                      <Filter<OrderStatus>
-                        label="Verified"
-                        filterType="approved"
-                        filters={statusFilter}
-                        callback={handleStatusFilter}
-                      />
-                      <Filter<OrderStatus>
-                        label="Rejected"
-                        filterType="rejected"
-                        filters={statusFilter}
-                        callback={handleStatusFilter}
-                      />
-                    </div>
-                  </div>
+                <div className="filters">
+                  <ComboBox
+                    id="task-type-filter"
+                    label="Task Type"
+                    multiSelect={true}
+                    options={[
+                      ...(featureFlags[TRANSFER_ORDERS_ENABLED]
+                        ? [{ value: 'transfer', label: 'Transfer' }]
+                        : []),
+                      ...(featureFlags[CONSOLIDATIONS_ENABLED]
+                        ? [{ value: 'consolidation', label: 'Consolidation' }]
+                        : []),
+                      ...(featureFlags[TRUSTEE_VERIFICATION_ENABLED]
+                        ? [{ value: 'trustee-match', label: 'Trustee Mismatch' }]
+                        : []),
+                    ]}
+                    selections={typeSelections}
+                    onUpdateSelection={handleTypeFilter}
+                    singularLabel="type"
+                    pluralLabel="types"
+                  />
+                  <ComboBox
+                    id="task-status-filter"
+                    label="Task Status"
+                    multiSelect={true}
+                    options={[
+                      { value: 'pending', label: 'Pending Review' },
+                      { value: 'approved', label: 'Verified' },
+                      { value: 'rejected', label: 'Rejected' },
+                    ]}
+                    selections={statusSelections}
+                    onUpdateSelection={handleStatusFilter}
+                    singularLabel="status"
+                    pluralLabel="statuses"
+                  />
                 </div>
-                {pendingItemCount === 0 && (
+                {pendingItemCount === 0 && visibleItemCount > 0 && (
                   <Alert
                     id="no-pending-orders"
                     type={UswdsAlertStyle.Info}
@@ -378,36 +357,5 @@ export default function DataVerificationScreen() {
         </div>
       </div>
     </MainContent>
-  );
-}
-
-interface FilterProps<T extends string> {
-  label: string;
-  filterType: T;
-  filters: T[];
-  callback: (filterString: T) => void;
-}
-
-function generateTooltip(label: string, isActive: boolean) {
-  const base = `${label} ${isActive ? 'shown' : 'hidden'}.`.toLowerCase();
-  const tooltip = base.slice(0, 1).toUpperCase() + base.slice(1);
-  return tooltip;
-}
-
-function Filter<T extends string>(props: FilterProps<T>) {
-  const { label, filterType, filters, callback } = props;
-  return (
-    <button
-      className={`filter ${filterType}${filters.includes(filterType) ? ' active' : ' inactive'} usa-tag--big usa-button--unstyled`}
-      aria-label={`Filter on ${label} status`}
-      role="switch"
-      aria-checked={filters.includes(filterType) ? true : false}
-      onClick={() => callback(filterType)}
-      data-testid={`order-status-filter-${filterType}`}
-      title={generateTooltip(label, filters.includes(filterType))}
-    >
-      {label}
-      <Icon name="check" className={filters.includes(filterType) ? 'active' : ''}></Icon>
-    </button>
   );
 }

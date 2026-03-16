@@ -35,6 +35,56 @@ describe('TrusteeVerificationOrdersController', () => {
     createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
   };
 
+  const mockTrustee = {
+    public: {
+      address: {
+        address1: '123 Main St',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '10001',
+        countryCode: 'US',
+      },
+      phone: { number: '(212) 555-0100' },
+      email: 'john.doe@example.com',
+    },
+  };
+
+  const mockAppointments = [
+    {
+      id: 'appt-001',
+      trusteeId: 'trustee-001',
+      chapter: '7',
+      appointmentType: 'panel',
+      courtId: '081',
+      courtName: 'Test Court',
+      courtDivisionName: 'Division A',
+      appointedDate: '2020-01-01',
+      status: 'active',
+      effectiveDate: '2020-01-01',
+    },
+  ];
+
+  function mockVerificationRepo(orders: TrusteeMatchVerification[]) {
+    vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        search: vi.fn().mockResolvedValue(orders),
+      }),
+    );
+  }
+
+  function mockEnrichmentRepos() {
+    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        read: vi.fn().mockResolvedValue(mockTrustee),
+      }),
+    );
+    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        getTrusteeAppointments: vi.fn().mockResolvedValue(mockAppointments),
+      }),
+    );
+  }
+
   beforeEach(async () => {
     context = await createMockApplicationContext();
   });
@@ -43,23 +93,46 @@ describe('TrusteeVerificationOrdersController', () => {
     vi.restoreAllMocks();
   });
 
-  test('should return verification orders from the repository', async () => {
-    vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
+  test('should return verification orders enriched with trustee contact and appointment data', async () => {
+    mockVerificationRepo([sampleOrder]);
+    mockEnrichmentRepos();
+
+    const controller = new TrusteeVerificationOrdersController(context);
+    const response = await controller.handleRequest(context);
+
+    expect(response.body.data).toHaveLength(1);
+    const candidate = response.body.data[0].matchCandidates[0];
+    expect(candidate.address).toEqual(mockTrustee.public.address);
+    expect(candidate.phone).toEqual(mockTrustee.public.phone);
+    expect(candidate.email).toEqual(mockTrustee.public.email);
+    expect(candidate.appointments).toEqual(mockAppointments);
+  });
+
+  test('should return original candidate when enrichment fails', async () => {
+    mockVerificationRepo([sampleOrder]);
+    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        search: vi.fn().mockResolvedValue([sampleOrder]),
+        read: vi.fn().mockRejectedValue(new Error('Trustee not found')),
+      }),
+    );
+    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+      Object.assign(new MockMongoRepository(), {
+        getTrusteeAppointments: vi.fn().mockResolvedValue([]),
       }),
     );
 
     const controller = new TrusteeVerificationOrdersController(context);
     const response = await controller.handleRequest(context);
 
-    expect(response.body.data).toEqual([sampleOrder]);
+    expect(response.body.data).toHaveLength(1);
+    const candidate = response.body.data[0].matchCandidates[0];
+    expect(candidate.address).toBeUndefined();
+    expect(candidate.appointments).toBeUndefined();
   });
 
   test('should return empty array when repository returns no documents', async () => {
-    vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), { search: vi.fn().mockResolvedValue([]) }),
-    );
+    mockVerificationRepo([]);
+    mockEnrichmentRepos();
 
     const controller = new TrusteeVerificationOrdersController(context);
     const response = await controller.handleRequest(context);

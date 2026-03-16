@@ -16,10 +16,39 @@ export class TrusteeVerificationOrdersController {
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
       const data = await repo.search();
+
+      const trusteesRepo = factory.getTrusteesRepository(context);
+      const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+
+      const enriched = await Promise.all(
+        data.map(async (verification) => {
+          const enrichedCandidates = await Promise.all(
+            verification.matchCandidates.map(async (candidate) => {
+              try {
+                const [trustee, appointments] = await Promise.all([
+                  trusteesRepo.read(candidate.trusteeId),
+                  appointmentsRepo.getTrusteeAppointments(candidate.trusteeId),
+                ]);
+                return {
+                  ...candidate,
+                  address: trustee.public.address,
+                  phone: trustee.public.phone,
+                  email: trustee.public.email,
+                  appointments,
+                };
+              } catch {
+                return candidate;
+              }
+            }),
+          );
+          return { ...verification, matchCandidates: enrichedCandidates };
+        }),
+      );
+
       return httpSuccess({
         body: {
           meta: { self: context.request.url },
-          data,
+          data: enriched,
         },
       });
     } catch (originalError) {
