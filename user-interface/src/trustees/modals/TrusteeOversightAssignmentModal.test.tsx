@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeOversightAssignmentModal from './TrusteeOversightAssignmentModal';
 import Api2 from '@/lib/models/api2';
@@ -460,6 +460,122 @@ describe('TrusteeOversightAssignmentModal', () => {
 
       const modal = screen.getByTestId('modal-test-modal');
       expect(modal).toHaveTextContent('Add Auditor');
+    });
+  });
+
+  describe('Branch coverage edge cases', () => {
+    test('should use "staff member" fallback label when role is unknown', async () => {
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      render(
+        <TrusteeOversightAssignmentModal
+          modalId="test-modal"
+          trusteeId="trustee-123"
+          role={'unknown-role' as unknown as OversightRoleType}
+          onAssignment={onAssignment}
+          ref={ref}
+        />,
+      );
+
+      act(() => ref.current!.show());
+
+      await waitFor(() => {
+        expect(screen.getByText('Loading staff members...')).toBeInTheDocument();
+      });
+    });
+
+    test('should handle null data from getOversightStaff', async () => {
+      vi.spyOn(Api2, 'getOversightStaff').mockResolvedValueOnce({
+        data: null as unknown as Record<OversightRoleType, Staff[]>,
+      });
+
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
+
+      act(() => ref.current!.show());
+
+      await waitFor(() => {
+        expect(document.querySelector('#staff-search')).toBeInTheDocument();
+      });
+    });
+
+    test('should handle missing role key in staff response', async () => {
+      vi.spyOn(Api2, 'getOversightStaff').mockResolvedValueOnce({
+        data: {} as unknown as Record<OversightRoleType, Staff[]>,
+      });
+
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
+
+      act(() => ref.current!.show());
+
+      await waitFor(() => {
+        expect(document.querySelector('#staff-search')).toBeInTheDocument();
+      });
+    });
+
+    test('should not set selectedStaff when assignment user is not in staff list', async () => {
+      const assignmentWithUnknownUser: TrusteeOversightAssignment = {
+        id: 'assignment-99',
+        trusteeId: 'trustee-123',
+        user: { id: 'unknown-user-id', name: 'Unknown User' },
+        role: CamsRole.OversightAttorney,
+        createdBy: { id: 'user-1', name: 'Admin User' },
+        createdOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'user-1', name: 'Admin User' },
+        updatedOn: '2023-01-01T00:00:00Z',
+      };
+
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
+
+      act(() => ref.current!.show(assignmentWithUnknownUser));
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
+
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      await waitFor(() => {
+        expect(submitButton).toBeDisabled();
+      });
+    });
+
+    test('should do nothing when submit fires with no staff selected', async () => {
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
+
+      act(() => ref.current!.show());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
+
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      submitButton.removeAttribute('disabled');
+      fireEvent.click(submitButton);
+
+      expect(Api2.createTrusteeOversightAssignment).not.toHaveBeenCalled();
+    });
+
+    test('should show generic error when assignment rejects with a non-Error value', async () => {
+      vi.spyOn(Api2, 'createTrusteeOversightAssignment').mockRejectedValueOnce(
+        'plain string error',
+      );
+
+      const onAssignment = vi.fn();
+      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
+      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
+
+      act(() => ref.current!.show());
+      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
+
+      await TestingUtilities.toggleComboBoxItemSelection('staff-search', 0);
+
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      await userEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockGlobalAlert.error).toHaveBeenCalledWith('Failed to assign attorney');
+      });
     });
   });
 

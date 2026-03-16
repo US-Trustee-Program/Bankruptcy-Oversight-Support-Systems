@@ -1036,6 +1036,30 @@ describe('DateRangePicker validation tests', () => {
     });
   });
 
+  test('should use default "Start date" and "End date" labels when none are provided', () => {
+    renderDateRangePicker({
+      id: 'date-picker-default-labels',
+      startDateLabel: undefined,
+      endDateLabel: undefined,
+    });
+
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument();
+    expect(screen.getByLabelText('End date')).toBeInTheDocument();
+  });
+
+  test('should not invoke missing callbacks when both inputs are cleared', async () => {
+    const { startInput } = renderDateRangePicker({
+      id: 'date-picker-no-callbacks',
+    });
+
+    fireEvent.change(startInput, { target: { value: '2024-01-01' } });
+    fireEvent.change(startInput, { target: { value: '' } });
+
+    await waitFor(() => {
+      expect(startInput).toHaveValue('');
+    });
+  });
+
   test('should call callback when both dates are cleared', async () => {
     const mockHandlerStart = vi.fn();
     const mockHandlerEnd = vi.fn();
