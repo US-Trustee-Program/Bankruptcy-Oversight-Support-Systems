@@ -58,7 +58,7 @@ export class CollectionHumble<T> {
   }
 }
 
-export class DatabaseHumble {
+class DatabaseHumble {
   private readonly database: Db;
 
   constructor(client: MongoClient, name: string) {

@@ -10,7 +10,7 @@ const mongoConnectionStringPattern = /(?:mongodb(?:\+srv)?:\/\/)\S+/gi;
 const mssqlConnectionStringPattern =
   /(?:Server|Data Source)=[^'")\]]*?(?:Password|Pwd)=[^\s;'")\]]+[;]?/gi;
 
-export type AppInsightsClientFactory = (logger?: LoggerImpl) => TelemetryClient | null;
+type AppInsightsClientFactory = (logger?: LoggerImpl) => TelemetryClient | null;
 
 export function scrubErrorForTelemetry(error: string): string {
   let scrubbed = scrubMessage(error);
@@ -27,7 +27,7 @@ export function scrubErrorForTelemetry(error: string): string {
  * @param logger - Optional logger for diagnostics
  * @returns TelemetryClient instance or null if initialization fails
  */
-export function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
+function getOrInitializeAppInsightsClient(logger?: LoggerImpl): TelemetryClient | null {
   const MODULE_NAME = 'APP-INSIGHTS-OBSERVABILITY';
 
   try {
