@@ -180,6 +180,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               </div>
             </div>
             <Link to="/trustee/search" className="search-trustee-link">
+              <Icon name="search" />
               Search for a different trustee.
             </Link>
           </>
