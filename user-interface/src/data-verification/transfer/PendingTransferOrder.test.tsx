@@ -273,7 +273,7 @@ describe('PendingTransferOrder component', () => {
     });
 
     afterEach(() => {
-      vi.resetAllMocks();
+      vi.restoreAllMocks();
     });
 
     test('should display modal and when Approve is clicked, upon submission of modal should update the status of order to approved', async () => {

@@ -27,7 +27,7 @@ describe('App', () => {
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should show message when error boundary catches an error', async () => {

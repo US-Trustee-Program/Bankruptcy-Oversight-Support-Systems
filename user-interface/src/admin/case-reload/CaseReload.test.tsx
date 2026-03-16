@@ -41,14 +41,12 @@ function enterCaseNumber(value: string) {
 
 describe.sequential('CaseReload Component', () => {
   beforeEach(() => {
-    vi.resetAllMocks();
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
     vi.restoreAllMocks();
     vi.unstubAllEnvs();
   });

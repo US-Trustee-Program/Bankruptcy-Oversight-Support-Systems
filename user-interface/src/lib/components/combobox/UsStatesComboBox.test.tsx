@@ -11,8 +11,12 @@ vi.mock('./ComboBox', () => ({
 const MockedComboBox = vi.mocked(ComboBox);
 
 describe('UsStatesComboBox', () => {
+  beforeEach(() => {
+    MockedComboBox.mockClear();
+  });
+
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should pass undefined selections to ComboBox when selections array is empty', () => {

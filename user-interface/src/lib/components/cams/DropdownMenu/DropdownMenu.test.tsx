@@ -64,7 +64,7 @@ describe('DropdownMenu component tests', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('Menu should expand when clicking menu button, and focused item should be first menu item in list', async () => {
