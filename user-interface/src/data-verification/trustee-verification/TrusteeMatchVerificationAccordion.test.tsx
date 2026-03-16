@@ -134,7 +134,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       </BrowserRouter>,
     );
 
-    expect(screen.getByText('Jane Smith', { hidden: true })).toBeInTheDocument();
+    expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Match Trustee/, hidden: true })).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Search for a trustee.', hidden: true }),
