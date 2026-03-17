@@ -9,7 +9,7 @@ import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 
-interface TrusteeMatchVerificationAccordionProps {
+export interface TrusteeMatchVerificationAccordionProps {
   order: TrusteeMatchVerification;
   statusType: Map<string, string>;
   orderType: Map<string, string>;

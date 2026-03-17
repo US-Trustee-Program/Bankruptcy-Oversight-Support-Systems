@@ -21,7 +21,7 @@ export default async function handler(
       logger,
     });
 
-    const controller = new TrusteeVerificationOrdersController(context);
+    const controller = new TrusteeVerificationOrdersController();
     const response = await controller.handleRequest(context);
     return toAzureSuccess(response);
   } catch (camsError) {
