@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 23
-- **Main Workflows**: 9
+- **Total Workflows**: 24
+- **Main Workflows**: 10
 - **Reusable Workflows**: 14
 
 ## Legend
@@ -72,6 +72,39 @@ flowchart LR
     class azure_remove_branch_yml_list job
     class azure_remove_branch_yml_check job
     class azure_remove_branch_yml_clean_up job
+```
+
+### Pull_request Triggered Workflows
+
+Workflows triggered by `pull_request`:
+- **Focused Coverage (PR)** (`focused-coverage.yml`)
+
+```mermaid
+flowchart LR
+    trigger_pull_request(["pull_request"])
+    focused_coverage_yml["Focused Coverage (PR)"]
+    focused_coverage_yml_detect_changes["Detect Changed Files"]
+    focused_coverage_yml_coverage_backend["Focused Coverage - Backend"]
+    focused_coverage_yml_coverage_frontend["Focused Coverage - Frontend"]
+    focused_coverage_yml_coverage_common["Focused Coverage - Common"]
+
+    trigger_pull_request --> focused_coverage_yml
+    focused_coverage_yml --> focused_coverage_yml_detect_changes
+    focused_coverage_yml --> focused_coverage_yml_coverage_backend
+    focused_coverage_yml --> focused_coverage_yml_coverage_frontend
+    focused_coverage_yml --> focused_coverage_yml_coverage_common
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_pull_request trigger
+    class focused_coverage_yml mainWorkflow
+    class focused_coverage_yml_detect_changes job
+    class focused_coverage_yml_coverage_backend job
+    class focused_coverage_yml_coverage_frontend job
+    class focused_coverage_yml_coverage_common job
 ```
 
 ### Push Triggered Workflows
@@ -1180,6 +1213,8 @@ flowchart LR
     update_dependencies_yml["NPM Package Updates"]
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
+    trigger_pull_request(["pull_request"])
+    focused_coverage_yml["Focused Coverage (PR)"]
     trigger_push(["push"])
     continuous_deployment_yml["Continuous Deployment"]
     trigger_schedule(["schedule"])
@@ -1197,6 +1232,7 @@ flowchart LR
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
     trigger_delete --> azure_remove_branch_yml
+    trigger_pull_request --> focused_coverage_yml
     trigger_push --> continuous_deployment_yml
     trigger_schedule --> build_azure_cli_image_yml
     trigger_schedule --> dast_scan_yml
@@ -1208,6 +1244,7 @@ flowchart LR
     class trigger_workflow_call trigger
     class trigger_workflow_dispatch trigger
     class trigger_delete trigger
+    class trigger_pull_request trigger
     class trigger_push trigger
     class trigger_schedule trigger
     class trigger_workflow_run trigger
@@ -1215,6 +1252,7 @@ flowchart LR
     class deploy_security_scan_storage_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
+    class focused_coverage_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
     class dast_scan_yml mainWorkflow
@@ -1237,6 +1275,9 @@ flowchart LR
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
   - Triggers: delete, workflow_dispatch
   - Jobs: 3
+- **Focused Coverage (PR)** (`focused-coverage.yml`)
+  - Triggers: pull_request
+  - Jobs: 4
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
   - Jobs: 10
