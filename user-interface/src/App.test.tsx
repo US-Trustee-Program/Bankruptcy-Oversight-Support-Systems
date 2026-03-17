@@ -27,7 +27,7 @@ describe('App', () => {
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should show message when error boundary catches an error', async () => {
@@ -72,6 +72,19 @@ describe('App', () => {
     await waitFor(() => {
       expect(scrollToTopBtn).not.toHaveClass('show');
     });
+  });
+
+  test('should export App directly when featureFlagClientId is not configured', async () => {
+    vi.resetModules();
+    vi.doMock('@/configuration/appConfiguration', () => ({
+      default: () => ({ featureFlagClientId: undefined }),
+    }));
+
+    const { default: AppComponent } = await import('./App');
+    expect(AppComponent).toBeDefined();
+
+    vi.doUnmock('@/configuration/appConfiguration');
+    vi.resetModules();
   });
 
   test('should scroll to top when scroll-to-top button is clicked', async () => {

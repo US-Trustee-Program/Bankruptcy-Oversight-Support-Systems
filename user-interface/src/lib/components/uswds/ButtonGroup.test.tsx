@@ -111,6 +111,48 @@ describe('tests for USWDS button group', () => {
     expect(button2).toBeInTheDocument();
   });
 
+  test('should use radiogroup role and radio role with aria-checked when singleSelect is true', () => {
+    const onButtonClick = vi.fn();
+    renderWithProps({
+      singleSelect: true,
+      activeButtonId: 'button-1',
+      onButtonClick,
+      children: [
+        <Button id="button-1" key="button-key-1">
+          Button 1
+        </Button>,
+        <Button id="button-2" key="button-key-2">
+          Button 2
+        </Button>,
+      ],
+    });
+
+    const buttonGroup = screen.getByTestId(`button-group-${buttonGroupId}`);
+    expect(buttonGroup).toHaveAttribute('role', 'radiogroup');
+
+    const button1 = screen.getByTestId('button-button-1');
+    const button2 = screen.getByTestId('button-button-2');
+    expect(button1).toHaveAttribute('role', 'radio');
+    expect(button1).toHaveAttribute('aria-checked', 'true');
+    expect(button2).toHaveAttribute('role', 'radio');
+    expect(button2).toHaveAttribute('aria-checked', 'false');
+  });
+
+  test('should call onButtonClick even when button has no individual onClick handler', () => {
+    const onButtonClick = vi.fn();
+    renderWithProps({
+      onButtonClick,
+      children: [
+        <Button id="button-1" key="button-key-1">
+          Button 1
+        </Button>,
+      ],
+    });
+
+    fireEvent.click(screen.getByTestId('button-button-1'));
+    expect(onButtonClick).toHaveBeenCalledWith('button-1');
+  });
+
   test('should render children with supplied class names', () => {
     renderWithProps({
       children: [

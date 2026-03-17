@@ -6,7 +6,7 @@ import CaseNoteFormModal, {
   getCaseNotesTitleValue,
   buildCaseNoteFormKey,
 } from './CaseNoteFormModal';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { BrowserRouter } from 'react-router-dom';
 import React from 'react';
@@ -18,6 +18,7 @@ import { getCamsUserReference } from '@common/cams/session';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { randomUUID } from 'crypto';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 interface RichTextEditorRef {
   clearValue: () => void;
@@ -735,11 +736,225 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     expect(key).toBe('case-notes-123-45-67890');
   });
 
+  test('should show validation error and throttle when content is cleared before submit', async () => {
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(
+      modalRef,
+      {},
+      {
+        title: 'Test Title',
+        content: '<p>Test Content</p>',
+        initialTitle: '',
+        initialContent: '',
+      },
+      richTextEditorRef,
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
+
+    richTextEditorRef.current?.clearValue();
+
+    // sendCaseNoteToApi is throttled at 300ms. The first click fires the throttled function;
+    // the second click is needed to trigger the show() on the alert ref within the same tick.
+    fireEvent.click(submitButton);
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Title and content are both required inputs.')).toBeInTheDocument();
+    });
+  });
+
   test('buildCaseNoteFormKey should generate correct key for edit mode', () => {
     const caseId = '123-45-67890';
     const mode = 'edit';
     const id = 'note-id-123';
     const key = buildCaseNoteFormKey(caseId, mode, id);
     expect(key).toBe('case-notes-123-45-67890-note-id-123');
+  });
+
+  test('should use default modal ID when modalId prop is empty string', () => {
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    render(
+      <React.StrictMode>
+        <BrowserRouter>
+          <CaseNoteFormModal modalId={''} ref={modalRef} />
+        </BrowserRouter>
+      </React.StrictMode>,
+    );
+    // The component resolves noteModalId = props.modalId || 'case-note-form-modal'.
+    // testid format is modal-${noteModalId}, so finding 'modal-case-note-form-modal'
+    // confirms the default ID was applied when an empty string was passed as modalId.
+    expect(screen.getByTestId('modal-case-note-form-modal')).toBeInTheDocument();
+  });
+
+  test('should call clearForm when both title and content are empty after clearing title', async () => {
+    const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef);
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    await userEvent.type(titleInput, 'a');
+    await userEvent.clear(titleInput);
+
+    await waitFor(() => {
+      expect(clearFormSpy).toHaveBeenCalled();
+    });
+  });
+
+  test('should not show error when postCaseNote is rejected with FORBIDDEN status', async () => {
+    vi.spyOn(Api2, 'postCaseNote').mockRejectedValue({ data: HttpStatusCodes.FORBIDDEN });
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    renderComponent(modalRef, {}, {}, richTextEditorRef);
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    await userEvent.type(titleInput, 'Test Title');
+    act(() => richTextEditorRef.current?.setValue('<p>Test Content</p>'));
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.queryByText(ERROR_MESSAGE)).not.toBeInTheDocument();
+    });
+  });
+
+  test('should not show error when putCaseNote is rejected with FORBIDDEN status', async () => {
+    const note = MockData.getCaseNote();
+    vi.spyOn(Api2, 'putCaseNote').mockRejectedValue({ data: HttpStatusCodes.FORBIDDEN });
+
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    renderComponent(
+      modalRef,
+      {},
+      {
+        id: note.id,
+        caseId: TEST_CASE_ID,
+        title: note.title,
+        content: note.content,
+        mode: 'edit',
+      },
+      richTextEditorRef,
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, 'Edited Title');
+    act(() => richTextEditorRef.current?.setValue('<p>Edited Content</p>'));
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.queryByText(ERROR_MESSAGE)).not.toBeInTheDocument();
+    });
+  });
+
+  test('should show validation error in edit mode when content is cleared before submit', async () => {
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    const noteId = randomUUID();
+
+    renderComponent(
+      modalRef,
+      {},
+      {
+        id: noteId,
+        title: 'Test Title',
+        content: '<p>Test Content</p>',
+        initialTitle: '',
+        initialContent: '',
+        mode: 'edit',
+      },
+      richTextEditorRef,
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => expect(submitButton).toBeEnabled());
+
+    richTextEditorRef.current?.clearValue();
+
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Title and content are both required inputs.')).toBeInTheDocument();
+    });
+  });
+
+  test('should open modal when show() is called with undefined title and content', async () => {
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    renderComponent(modalRef);
+
+    act(() => {
+      modalRef.current?.show({
+        caseId: TEST_CASE_ID,
+        title: undefined as unknown as string,
+        content: undefined as unknown as string,
+        callback: vi.fn(),
+        openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+        initialTitle: '',
+        initialContent: '',
+        mode: 'create',
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId(MODAL_WRAPPER_ID)).toHaveClass('is-visible');
+    });
+  });
+
+  test('should enable save button when only content changes from initial value', async () => {
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+    const modalRef = React.createRef<CaseNoteFormModalRef>();
+    const existingTitle = 'Existing Title';
+
+    renderComponent(
+      modalRef,
+      {},
+      {
+        title: existingTitle,
+        content: '',
+        initialTitle: existingTitle,
+        initialContent: '',
+        mode: 'create',
+      },
+      richTextEditorRef,
+    );
+
+    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
+    await userEvent.click(openButton);
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => expect(submitButton).toBeDisabled());
+
+    act(() => richTextEditorRef.current?.setValue('<p>New content</p>'));
+
+    await waitFor(() => {
+      expect(submitButton).toBeEnabled();
+    });
   });
 });
