@@ -54,10 +54,6 @@ async function detectDeletedCasesTimer(_ignore: Timer, invocationContext: Invoca
   }
 }
 
-/**
- * Queue trigger: Archives documents for deleted cases
- * Processes CASE_DELETED events from queue and moves documents to archived-cases collection
- */
 async function archiveDeletedCaseQueue(
   event: CaseDeletedEvent,
   invocationContext: InvocationContext,
@@ -82,14 +78,12 @@ async function archiveDeletedCaseQueue(
 }
 
 function setup() {
-  // Timer trigger to detect deleted cases
   app.timer(DETECT_HANDLER, {
     schedule: '0 * * * * *',
     handler: detectDeletedCasesTimer,
     extraOutputs: [CASE_DELETED_EVENT_QUEUE],
   });
 
-  // Queue trigger to archive deleted case documents
   app.storageQueue(ARCHIVE_HANDLER, {
     connection: CASE_DELETED_EVENT_QUEUE.connection,
     queueName: CASE_DELETED_EVENT_QUEUE.queueName,

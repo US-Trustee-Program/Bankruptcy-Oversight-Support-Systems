@@ -198,7 +198,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
   ): Promise<{ caseIds: string[]; latestDeletedCaseDate: string }> {
     const input: DbTableFieldSpec[] = [];
 
-    // Convert YYYY-MM-DD to YYYYMMDD integer (e.g., '2018-01-01' -> 20180101)
     const lastChangeDateInt = parseInt(lastChangeDate.replace(/-/g, ''));
 
     input.push({
@@ -207,9 +206,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       value: lastChangeDateInt,
     });
 
-    // Query for cases marked as deleted in ACMS (DELETE_CODE='D')
-    // where the change date is after the last sync date
-    // LAST_CHANGE_DATE is stored as YYYYMMDD integer, not datetime
     const query = `
       SELECT
         CONCAT(
@@ -236,8 +232,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       const deletedCaseResults = results as ResultType[];
 
       const caseIds = deletedCaseResults.map((r) => r.caseId);
-      // Convert YYYYMMDD integer back to YYYY-MM-DD string
-      // Latest date is first element (query orders DESC), not last element
       const latestDeletedCaseDate =
         deletedCaseResults.length > 0
           ? this.formatAcmsDateToString(deletedCaseResults[0].lastChangeDate)
