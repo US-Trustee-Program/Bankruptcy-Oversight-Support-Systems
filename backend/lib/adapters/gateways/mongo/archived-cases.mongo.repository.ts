@@ -1,6 +1,5 @@
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
-import QueryBuilder from '../../../query/query-builder';
 import { ArchivedCasesRepository } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
@@ -15,9 +14,6 @@ interface ArchivedDocument {
   originalCollection: string;
   caseId: string;
 }
-
-const { using } = QueryBuilder;
-const doc = using<ArchivedDocument>();
 
 export class ArchivedCasesMongoRepository
   extends BaseMongoRepository
@@ -69,20 +65,6 @@ export class ArchivedCasesMongoRepository
         camsStackInfo: {
           module: MODULE_NAME,
           message: `Failed to archive document from ${originalCollection}.`,
-        },
-      });
-    }
-  }
-
-  async getCaseArchives<T>(caseId: string): Promise<T[]> {
-    try {
-      const query = doc('caseId').equals(caseId);
-      return await this.getAdapter<T>().find(query);
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        camsStackInfo: {
-          module: MODULE_NAME,
-          message: `Failed to retrieve archived documents for case ${caseId}.`,
         },
       });
     }

@@ -79,7 +79,7 @@ async function archiveDeletedCaseQueue(
 
 function setup() {
   app.timer(DETECT_HANDLER, {
-    schedule: '0 * * * * *',
+    schedule: '0 0 10 * * *',
     handler: detectDeletedCasesTimer,
     extraOutputs: [CASE_DELETED_EVENT_QUEUE],
   });

@@ -163,7 +163,6 @@ export interface OrdersRepository<T = Order>
 
 export interface ArchivedCasesRepository extends Releasable {
   archiveDocument<T>(document: T, originalCollection: string, caseId: string): Promise<void>;
-  getCaseArchives<T>(caseId: string): Promise<T[]>;
 }
 
 export interface RuntimeStateRepository<T extends RuntimeState = RuntimeState>
