@@ -8,3 +8,8 @@ export function composeCaseTitle(caseDetail?: CaseDetail): string {
 
   return caseDetail.debtor.name;
 }
+
+export function testFunction(name: string): string {
+  if (name.toLocaleLowerCase() === 'john') return 'The best is back';
+  return `Hello ${name}`;
+}
