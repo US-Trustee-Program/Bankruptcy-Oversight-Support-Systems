@@ -18,6 +18,6 @@
     "dotenv": "17.3.1",
     "express": "5.2.1",
     "applicationinsights": "3.14.0",
-    "natural": "8.1.0"
+    "natural": "8.1.1"
   }
 }
