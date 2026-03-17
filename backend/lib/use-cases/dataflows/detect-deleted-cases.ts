@@ -11,14 +11,12 @@ export type CaseDeletedEvent = {
 };
 
 async function getDeletedCaseEvents(context: ApplicationContext): Promise<CaseDeletedEvent[]> {
-  // Retrieve current sync state from runtime state repository
   const runtimeStateRepo = factory.getRuntimeStateRepository(context);
   let syncState: DeletedCasesSyncState | null = null;
 
   try {
     syncState = await runtimeStateRepo.read('DELETED_CASES_SYNC_STATE');
   } catch (_error) {
-    // Runtime state document doesn't exist yet (first run)
     syncState = null;
   }
 
@@ -28,7 +26,6 @@ async function getDeletedCaseEvents(context: ApplicationContext): Promise<CaseDe
     `Starting deleted cases detection from date: ${lastChangeDate}`,
   );
 
-  // Query ACMS gateway for deleted cases since last sync
   const acmsGateway = factory.getAcmsGateway(context);
   const { caseIds, latestDeletedCaseDate } = await acmsGateway.getDeletedCaseIds(
     context,
@@ -41,14 +38,12 @@ async function getDeletedCaseEvents(context: ApplicationContext): Promise<CaseDe
   );
   context.logger.debug(MODULE_NAME, `Deleted case IDs: ${JSON.stringify(caseIds)}`);
 
-  // Create CaseDeletedEvent for each deleted case
   const events: CaseDeletedEvent[] = caseIds.map((caseId) => ({
     type: 'CASE_DELETED',
     caseId,
     deletedDate: latestDeletedCaseDate,
   }));
 
-  // Update runtime state with the latest deleted case date
   const updatedSyncState: DeletedCasesSyncState = {
     id: syncState?.id ?? 'DELETED_CASES_SYNC_STATE',
     documentType: 'DELETED_CASES_SYNC_STATE',
