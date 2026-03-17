@@ -50,13 +50,13 @@
     "mongodb": "7.1.0",
     "mssql": "12.2.0",
     "name-match": "1.0.4",
-    "natural": "8.1.0"
+    "natural": "8.1.1"
   },
   "devDependencies": {
     "@eslint/js": "10.0.0",
     "@types/express": "5.0.6",
     "@types/mssql": "9.1.9",
-    "@types/node": "24.10.15",
+    "@types/node": "24.11.0",
     "@vitest/coverage-v8": "4.0.18",
     "azure-function-context-mock": "0.0.7",
     "dependency-cruiser": "17.3.8",
