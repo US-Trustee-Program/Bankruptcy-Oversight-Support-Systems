@@ -50,7 +50,7 @@ async function getDeletedCaseEvents(context: ApplicationContext): Promise<CaseDe
 
   // Update runtime state with the latest deleted case date
   const updatedSyncState: DeletedCasesSyncState = {
-    ...syncState,
+    id: syncState?.id ?? 'DELETED_CASES_SYNC_STATE',
     documentType: 'DELETED_CASES_SYNC_STATE',
     lastChangeDate: latestDeletedCaseDate,
   };
