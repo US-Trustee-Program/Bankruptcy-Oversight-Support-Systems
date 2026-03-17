@@ -91,19 +91,21 @@ jobs:
         run: |
           FILES="${{ needs.detect-changes.outputs.backend }}"
 
-          # Limit coverage report to only the changed files
+          # vitest related requires absolute paths to resolve the import graph.
+          # Limit coverage report to only the changed files via --coverage.include.
+          ABS_FILES=""
           INCLUDE_FLAGS=""
           for f in $FILES; do
+            ABS_FILES="$ABS_FILES $(pwd)/$f"
             INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
           done
 
-          # Use vitest related to find and run only tests that cover the changed files.
           # Thresholds are disabled here — the full coverage run enforces them.
           npx vitest related --run --reporter=verbose --coverage \
             --coverage.thresholds.lines=0 \
             --coverage.thresholds.branches=0 \
             $INCLUDE_FLAGS \
-            $FILES
+            $ABS_FILES
 
   coverage-frontend:
     name: Focused Coverage - Frontend
@@ -129,9 +131,12 @@ jobs:
         run: |
           FILES="${{ needs.detect-changes.outputs.frontend }}"
 
-          # Limit coverage report to only the changed files
+          # vitest related requires absolute paths to resolve the import graph.
+          # Limit coverage report to only the changed files via --coverage.include.
+          ABS_FILES=""
           INCLUDE_FLAGS=""
           for f in $FILES; do
+            ABS_FILES="$ABS_FILES $(pwd)/$f"
             INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
           done
 
@@ -140,7 +145,7 @@ jobs:
             --coverage.thresholds.lines=0 \
             --coverage.thresholds.branches=0 \
             $INCLUDE_FLAGS \
-            $FILES
+            $ABS_FILES
 
   coverage-common:
     name: Focused Coverage - Common
@@ -166,9 +171,12 @@ jobs:
         run: |
           FILES="${{ needs.detect-changes.outputs.common }}"
 
-          # Limit coverage report to only the changed files
+          # vitest related requires absolute paths to resolve the import graph.
+          # Limit coverage report to only the changed files via --coverage.include.
+          ABS_FILES=""
           INCLUDE_FLAGS=""
           for f in $FILES; do
+            ABS_FILES="$ABS_FILES $(pwd)/$f"
             INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
           done
 
@@ -176,4 +184,4 @@ jobs:
             --coverage.thresholds.lines=0 \
             --coverage.thresholds.branches=0 \
             $INCLUDE_FLAGS \
-            $FILES
+            $ABS_FILES
