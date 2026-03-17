@@ -761,6 +761,8 @@ describe('CaseNoteFormModal - Simple Tests', () => {
 
     richTextEditorRef.current?.clearValue();
 
+    // sendCaseNoteToApi is throttled at 300ms. The first click fires the throttled function;
+    // the second click is needed to trigger the show() on the alert ref within the same tick.
     fireEvent.click(submitButton);
     fireEvent.click(submitButton);
 
@@ -786,6 +788,9 @@ describe('CaseNoteFormModal - Simple Tests', () => {
         </BrowserRouter>
       </React.StrictMode>,
     );
+    // The component resolves noteModalId = props.modalId || 'case-note-form-modal'.
+    // testid format is modal-${noteModalId}, so finding 'modal-case-note-form-modal'
+    // confirms the default ID was applied when an empty string was passed as modalId.
     expect(screen.getByTestId('modal-case-note-form-modal')).toBeInTheDocument();
   });
 

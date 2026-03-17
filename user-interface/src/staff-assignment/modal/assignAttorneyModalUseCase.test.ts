@@ -84,6 +84,11 @@ const mockStore: AssignAttorneyModalStore = {
 
 const useCase = assignAttorneyModalUseCase(mockStore, mockControls);
 
+function buildLocalUseCase(overrides: Record<string, unknown> = {}) {
+  const localStore = { ...mockStore, ...overrides } as unknown as AssignAttorneyModalStore;
+  return assignAttorneyModalUseCase(localStore, mockControls);
+}
+
 describe('assignAttorneyModalUseCase tests', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -317,32 +322,22 @@ describe('assignAttorneyModalUseCase tests', () => {
     const mockAttorneys = [{ id: 'att-1', name: 'Attorney One' }];
     vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue({ data: mockAttorneys } as never);
     const localSetAttorneyList = vi.fn();
-    const localStore = {
-      ...mockStore,
+    const localUseCase = buildLocalUseCase({
       bCase: { caseId: 'c1', officeCode: 'OFF' },
       setAttorneyList: localSetAttorneyList,
-    };
-    const localUseCase = assignAttorneyModalUseCase(
-      localStore as unknown as AssignAttorneyModalStore,
-      mockControls,
-    );
-    (await localUseCase.fetchAttorneys()) as unknown as Promise<void>;
+    });
+    await localUseCase.fetchAttorneys();
     expect(localSetAttorneyList).toHaveBeenCalledWith(mockAttorneys);
   });
 
   test('fetchAttorneys should set a global alert error when the API call fails', async () => {
     vi.spyOn(Api2, 'getOfficeAttorneys').mockRejectedValue(new Error('Network error'));
     const localSetGlobalAlertError = vi.fn();
-    const localStore = {
-      ...mockStore,
+    const localUseCase = buildLocalUseCase({
       bCase: { caseId: 'c1', officeCode: 'OFF' },
       setGlobalAlertError: localSetGlobalAlertError,
-    };
-    const localUseCase = assignAttorneyModalUseCase(
-      localStore as unknown as AssignAttorneyModalStore,
-      mockControls,
-    );
-    (await localUseCase.fetchAttorneys()) as unknown as Promise<void>;
+    });
+    await localUseCase.fetchAttorneys();
     expect(localSetGlobalAlertError).toHaveBeenCalledWith('Network error');
   });
 
@@ -350,20 +345,15 @@ describe('assignAttorneyModalUseCase tests', () => {
     vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({} as never);
     const mockSubmissionCallback = vi.fn();
     const mockAssignmentChangeCallback = vi.fn();
-    const localStore = {
-      ...mockStore,
+    const localUseCase = buildLocalUseCase({
       bCase: { caseId: 'c1', officeCode: 'OFF', assignments: [] },
       checkListValues: [],
       attorneyList: [],
       submissionCallback: mockSubmissionCallback,
       setCheckListValues: vi.fn(),
       setIsUpdatingAssignment: vi.fn(),
-    };
-    const localUseCase = assignAttorneyModalUseCase(
-      localStore as unknown as AssignAttorneyModalStore,
-      mockControls,
-    );
-    (await localUseCase.submitValues(mockAssignmentChangeCallback)) as unknown as Promise<void>;
+    });
+    await localUseCase.submitValues(mockAssignmentChangeCallback);
     expect(mockSubmissionCallback).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'success' }),
     );
@@ -373,20 +363,15 @@ describe('assignAttorneyModalUseCase tests', () => {
   test('submitValues should call submissionCallback with error status when the API call fails', async () => {
     vi.spyOn(Api2, 'postStaffAssignments').mockRejectedValue(new Error('API error'));
     const mockSubmissionCallback = vi.fn();
-    const localStore = {
-      ...mockStore,
+    const localUseCase = buildLocalUseCase({
       bCase: { caseId: 'c1', officeCode: 'OFF', assignments: [] },
       checkListValues: [],
       attorneyList: [],
       submissionCallback: mockSubmissionCallback,
       setCheckListValues: vi.fn(),
       setIsUpdatingAssignment: vi.fn(),
-    };
-    const localUseCase = assignAttorneyModalUseCase(
-      localStore as unknown as AssignAttorneyModalStore,
-      mockControls,
-    );
-    (await localUseCase.submitValues(() => {})) as unknown as Promise<void>;
+    });
+    await localUseCase.submitValues(() => {});
     expect(mockSubmissionCallback).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'error' }),
     );
@@ -395,16 +380,11 @@ describe('assignAttorneyModalUseCase tests', () => {
   test('updateCheckList should remove attorney from checklist when unchecked', () => {
     const mockAttorney: AttorneyUser = { id: 'att-1', name: 'Attorney One' };
     const localSetCheckListValues = vi.fn();
-    const localStore = {
-      ...mockStore,
+    const localUseCase = buildLocalUseCase({
       bCase: { caseId: 'c1', assignments: [] },
       checkListValues: [mockAttorney],
       setCheckListValues: localSetCheckListValues,
-    };
-    const localUseCase = assignAttorneyModalUseCase(
-      localStore as unknown as AssignAttorneyModalStore,
-      mockControls,
-    );
+    });
     const mockInput = document.createElement('input');
     mockInput.checked = false;
     const mockEvent = { target: mockInput } as unknown as ChangeEvent<HTMLInputElement>;
@@ -428,17 +408,12 @@ describe('assignAttorneyModalUseCase tests', () => {
   test('show should call setSubmissionCallback when a callback is provided', () => {
     const mockCallback = vi.fn();
     const localSetSubmissionCallback = vi.fn();
-    const localStore = {
-      ...mockStore,
+    const localUseCase = buildLocalUseCase({
       setBCase: vi.fn(),
       setCheckListValues: vi.fn(),
       setPreviouslySelectedList: vi.fn(),
       setSubmissionCallback: localSetSubmissionCallback,
-    };
-    const localUseCase = assignAttorneyModalUseCase(
-      localStore as unknown as AssignAttorneyModalStore,
-      mockControls,
-    );
+    });
     localUseCase.show({
       bCase: { caseId: 'c1', assignments: [{ userId: 'u1', name: 'Alice' }] },
       callback: mockCallback,

@@ -89,7 +89,7 @@ describe('UseApplicationInsights', () => {
     return capturedInitializer!;
   }
 
-  test('should set tags to empty array when env.tags is undefined', async () => {
+  test('should initialize tags to empty array and set cloud role when env.tags is undefined', async () => {
     const capturedInitializer = await setupTelemetryCapture();
 
     expect(capturedInitializer).toBeDefined();

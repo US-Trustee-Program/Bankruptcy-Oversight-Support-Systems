@@ -1048,15 +1048,18 @@ describe('DateRangePicker validation tests', () => {
   });
 
   test('should not invoke missing callbacks when both inputs are cleared', async () => {
-    const { startInput } = renderDateRangePicker({
+    const { startInput, endInput } = renderDateRangePicker({
       id: 'date-picker-no-callbacks',
     });
 
     fireEvent.change(startInput, { target: { value: '2024-01-01' } });
+    fireEvent.change(endInput, { target: { value: '2024-12-31' } });
     fireEvent.change(startInput, { target: { value: '' } });
+    fireEvent.change(endInput, { target: { value: '' } });
 
     await waitFor(() => {
       expect(startInput).toHaveValue('');
+      expect(endInput).toHaveValue('');
     });
   });
 

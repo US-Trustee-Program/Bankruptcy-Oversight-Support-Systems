@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor, act, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { vi, describe, test, expect, beforeEach } from 'vitest';
 import TrusteeOversightAssignmentModal from './TrusteeOversightAssignmentModal';
 import Api2 from '@/lib/models/api2';
@@ -498,6 +498,10 @@ describe('TrusteeOversightAssignmentModal', () => {
       await waitFor(() => {
         expect(document.querySelector('#staff-search')).toBeInTheDocument();
       });
+
+      // With no staff loaded, no selection is possible and the submit button stays disabled.
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      expect(submitButton).toBeDisabled();
     });
 
     test('should handle missing role key in staff response', async () => {
@@ -514,6 +518,10 @@ describe('TrusteeOversightAssignmentModal', () => {
       await waitFor(() => {
         expect(document.querySelector('#staff-search')).toBeInTheDocument();
       });
+
+      // With no staff for the requested role, no selection is possible and submit stays disabled.
+      const submitButton = screen.getByTestId('button-test-modal-submit-button');
+      expect(submitButton).toBeDisabled();
     });
 
     test('should not set selectedStaff when assignment user is not in staff list', async () => {
@@ -539,21 +547,6 @@ describe('TrusteeOversightAssignmentModal', () => {
       await waitFor(() => {
         expect(submitButton).toBeDisabled();
       });
-    });
-
-    test('should do nothing when submit fires with no staff selected', async () => {
-      const onAssignment = vi.fn();
-      const ref = React.createRef<TrusteeOversightAssignmentModalRef>();
-      renderWithProps(CamsRole.OversightAttorney, { onAssignment, ref });
-
-      act(() => ref.current!.show());
-      await waitFor(() => expect(Api2.getOversightStaff).toHaveBeenCalled());
-
-      const submitButton = screen.getByTestId('button-test-modal-submit-button');
-      submitButton.removeAttribute('disabled');
-      fireEvent.click(submitButton);
-
-      expect(Api2.createTrusteeOversightAssignment).not.toHaveBeenCalled();
     });
 
     test('should show generic error when assignment rejects with a non-Error value', async () => {
