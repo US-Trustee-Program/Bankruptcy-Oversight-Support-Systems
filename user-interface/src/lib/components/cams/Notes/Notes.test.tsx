@@ -28,7 +28,6 @@ describe('Notes Component', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    capturedNoteModalOnSave = undefined;
     mockOnCreateNote = vi.fn().mockResolvedValue(undefined);
     mockOnUpdateNote = vi.fn().mockResolvedValue(undefined);
     mockOnDeleteNote = vi.fn().mockResolvedValue(undefined);
