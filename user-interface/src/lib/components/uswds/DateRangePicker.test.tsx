@@ -3,7 +3,6 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import DateRangePicker from './DateRangePicker';
 import { DateRangePickerRef } from '@/lib/type-declarations/input-fields';
 
-// Test helper to reduce boilerplate
 type DateRangeTestIds = {
   id: string;
 };
@@ -1033,6 +1032,33 @@ describe('DateRangePicker validation tests', () => {
 
     await waitFor(() => {
       expect(mockHandlerEnd).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('should use default "Start date" and "End date" labels when none are provided', () => {
+    renderDateRangePicker({
+      id: 'date-picker-default-labels',
+      startDateLabel: undefined,
+      endDateLabel: undefined,
+    });
+
+    expect(screen.getByLabelText('Start date')).toBeInTheDocument();
+    expect(screen.getByLabelText('End date')).toBeInTheDocument();
+  });
+
+  test('should clear both inputs without error when no callbacks are provided', async () => {
+    const { startInput, endInput } = renderDateRangePicker({
+      id: 'date-picker-no-callbacks',
+    });
+
+    fireEvent.change(startInput, { target: { value: '2024-01-01' } });
+    fireEvent.change(endInput, { target: { value: '2024-12-31' } });
+    fireEvent.change(startInput, { target: { value: '' } });
+    fireEvent.change(endInput, { target: { value: '' } });
+
+    await waitFor(() => {
+      expect(startInput).toHaveValue('');
+      expect(endInput).toHaveValue('');
     });
   });
 

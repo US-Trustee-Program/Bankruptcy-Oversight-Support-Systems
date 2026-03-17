@@ -121,10 +121,15 @@ describe('test cams combobox', () => {
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   test('Clicking on the toggle button should open or close the dropdown list and put the focus on the input field.  When closed it should call onClose()', async () => {

@@ -2,6 +2,8 @@ import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { AssignAttorneyModalControls, AssignAttorneyModalStore } from './assignAttorneyModal.types';
 import assignAttorneyModalUseCase from './assignAttorneyModalUseCase';
 import { ChangeEvent } from 'react';
+import Api2 from '@/lib/models/api2';
+import { AttorneyUser } from '@common/cams/users';
 
 type RectProps = {
   top?: number;
@@ -82,7 +84,16 @@ const mockStore: AssignAttorneyModalStore = {
 
 const useCase = assignAttorneyModalUseCase(mockStore, mockControls);
 
+function buildLocalUseCase(overrides: Record<string, unknown> = {}) {
+  const localStore = { ...mockStore, ...overrides } as unknown as AssignAttorneyModalStore;
+  return assignAttorneyModalUseCase(localStore, mockControls);
+}
+
 describe('assignAttorneyModalUseCase tests', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('test handleFocus', () => {
     test('handleFocus should scroll input element into view if the input is above the visible screen', async () => {
       const mockInput = document.createElement('input');
@@ -288,4 +299,125 @@ describe('assignAttorneyModalUseCase tests', () => {
     },
     10000,
   );
+
+  test('handleFocus should do nothing when event target is not an HTMLInputElement', () => {
+    const mockDiv = document.createElement('div');
+    mockControls.tableContainerRef.current!.scrollTop = 50;
+    useCase.handleFocus({ target: mockDiv } as unknown as React.FocusEvent<HTMLElement>);
+    expect(mockControls.tableContainerRef.current!.scrollTop).toEqual(50);
+  });
+
+  test('handleTab should not throw when the description element does not exist in the DOM', () => {
+    document.body.innerHTML = '<button class="usa-modal__close" />';
+    const closeButton = document.querySelector('.usa-modal__close') as HTMLButtonElement;
+    const reactTabEvent = {
+      key: 'Tab',
+      shiftKey: false,
+      target: closeButton,
+    } as unknown as React.KeyboardEvent;
+    expect(() => useCase.handleTab(reactTabEvent, true, 'nonexistent-modal-id')).not.toThrow();
+  });
+
+  test('fetchAttorneys should populate the attorney list when bCase is set', async () => {
+    const mockAttorneys = [{ id: 'att-1', name: 'Attorney One' }];
+    vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue({ data: mockAttorneys } as never);
+    const localSetAttorneyList = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', officeCode: 'OFF' },
+      setAttorneyList: localSetAttorneyList,
+    });
+    await localUseCase.fetchAttorneys();
+    expect(localSetAttorneyList).toHaveBeenCalledWith(mockAttorneys);
+  });
+
+  test('fetchAttorneys should set a global alert error when the API call fails', async () => {
+    vi.spyOn(Api2, 'getOfficeAttorneys').mockRejectedValue(new Error('Network error'));
+    const localSetGlobalAlertError = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', officeCode: 'OFF' },
+      setGlobalAlertError: localSetGlobalAlertError,
+    });
+    await localUseCase.fetchAttorneys();
+    expect(localSetGlobalAlertError).toHaveBeenCalledWith('Network error');
+  });
+
+  test('submitValues should call submissionCallback with success and invoke the assignment change callback', async () => {
+    vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({} as never);
+    const mockSubmissionCallback = vi.fn();
+    const mockAssignmentChangeCallback = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', officeCode: 'OFF', assignments: [] },
+      checkListValues: [],
+      attorneyList: [],
+      submissionCallback: mockSubmissionCallback,
+      setCheckListValues: vi.fn(),
+      setIsUpdatingAssignment: vi.fn(),
+    });
+    await localUseCase.submitValues(mockAssignmentChangeCallback);
+    expect(mockSubmissionCallback).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'success' }),
+    );
+    expect(mockAssignmentChangeCallback).toHaveBeenCalled();
+  });
+
+  test('submitValues should call submissionCallback with error status when the API call fails', async () => {
+    vi.spyOn(Api2, 'postStaffAssignments').mockRejectedValue(new Error('API error'));
+    const mockSubmissionCallback = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', officeCode: 'OFF', assignments: [] },
+      checkListValues: [],
+      attorneyList: [],
+      submissionCallback: mockSubmissionCallback,
+      setCheckListValues: vi.fn(),
+      setIsUpdatingAssignment: vi.fn(),
+    });
+    await localUseCase.submitValues(() => {});
+    expect(mockSubmissionCallback).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'error' }),
+    );
+  });
+
+  test('updateCheckList should remove attorney from checklist when unchecked', () => {
+    const mockAttorney: AttorneyUser = { id: 'att-1', name: 'Attorney One' };
+    const localSetCheckListValues = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', assignments: [] },
+      checkListValues: [mockAttorney],
+      setCheckListValues: localSetCheckListValues,
+    });
+    const mockInput = document.createElement('input');
+    mockInput.checked = false;
+    const mockEvent = { target: mockInput } as unknown as ChangeEvent<HTMLInputElement>;
+    localUseCase.updateCheckList(mockEvent, mockAttorney);
+    expect(localSetCheckListValues).toHaveBeenCalledWith([]);
+  });
+
+  test('hide should call modalRef.hide', () => {
+    const mockHide = vi.fn();
+    const localControls: AssignAttorneyModalControls = {
+      ...mockControls,
+      modalRef: {
+        current: { ...mockControls.modalRef.current, hide: mockHide },
+      } as React.RefObject<ModalRefType | null>,
+    };
+    const localUseCase = assignAttorneyModalUseCase(mockStore, localControls);
+    localUseCase.hide();
+    expect(mockHide).toHaveBeenCalled();
+  });
+
+  test('show should call setSubmissionCallback when a callback is provided', () => {
+    const mockCallback = vi.fn();
+    const localSetSubmissionCallback = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      setBCase: vi.fn(),
+      setCheckListValues: vi.fn(),
+      setPreviouslySelectedList: vi.fn(),
+      setSubmissionCallback: localSetSubmissionCallback,
+    });
+    localUseCase.show({
+      bCase: { caseId: 'c1', assignments: [{ userId: 'u1', name: 'Alice' }] },
+      callback: mockCallback,
+    } as never);
+    expect(localSetSubmissionCallback).toHaveBeenCalled();
+  });
 });

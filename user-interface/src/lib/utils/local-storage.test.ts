@@ -153,4 +153,67 @@ describe('Local storage', () => {
       expect(window.localStorage.getItem(LAST_INTERACTION_KEY)).toEqual('100');
     });
   });
+
+  describe('when localStorage is not available', () => {
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('getSession should return null', () => {
+      vi.spyOn(window, 'localStorage', 'get').mockReturnValueOnce(undefined as unknown as Storage);
+      expect(LocalStorage.getSession()).toBeNull();
+    });
+
+    test('setSession should not store the session', () => {
+      window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_SESSION_KEY);
+      vi.spyOn(window, 'localStorage', 'get').mockReturnValueOnce(undefined as unknown as Storage);
+      LocalStorage.setSession(testSession);
+      expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY)).toBeNull();
+    });
+
+    test('removeSession should not remove an existing session', () => {
+      window.localStorage.setItem(LOGIN_LOCAL_STORAGE_SESSION_KEY, JSON.stringify(testSession));
+      vi.spyOn(window, 'localStorage', 'get').mockReturnValueOnce(undefined as unknown as Storage);
+      LocalStorage.removeSession();
+      expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_SESSION_KEY)).toEqual(
+        JSON.stringify(testSession),
+      );
+    });
+
+    test('getAck should return false', () => {
+      vi.spyOn(window, 'localStorage', 'get').mockReturnValueOnce(undefined as unknown as Storage);
+      expect(LocalStorage.getAck()).toEqual(false);
+    });
+
+    test('setAck should not store the ack value', () => {
+      window.localStorage.removeItem(LOGIN_LOCAL_STORAGE_ACK_KEY);
+      vi.spyOn(window, 'localStorage', 'get').mockReturnValueOnce(undefined as unknown as Storage);
+      LocalStorage.setAck(true);
+      expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_ACK_KEY)).toBeNull();
+    });
+
+    test('removeAck should not remove an existing ack', () => {
+      window.localStorage.setItem(LOGIN_LOCAL_STORAGE_ACK_KEY, 'true');
+      vi.spyOn(window, 'localStorage', 'get').mockReturnValueOnce(undefined as unknown as Storage);
+      LocalStorage.removeAck();
+      expect(window.localStorage.getItem(LOGIN_LOCAL_STORAGE_ACK_KEY)).toEqual('true');
+    });
+
+    test('isTokenBeingRenewed should return undefined', () => {
+      vi.spyOn(window, 'localStorage', 'get').mockReturnValueOnce(undefined as unknown as Storage);
+      expect(LocalStorage.isTokenBeingRenewed()).toBeUndefined();
+    });
+
+    test('setRenewingToken should return undefined', () => {
+      vi.spyOn(window, 'localStorage', 'get').mockReturnValueOnce(undefined as unknown as Storage);
+      expect(LocalStorage.setRenewingToken()).toBeUndefined();
+    });
+
+    test('removeRenewingToken should not remove an existing token', () => {
+      window.localStorage.setItem(LocalStorage.RENEWING_TOKEN, 'true');
+      vi.spyOn(window, 'localStorage', 'get').mockReturnValueOnce(undefined as unknown as Storage);
+      LocalStorage.removeRenewingToken();
+      expect(window.localStorage.getItem(LocalStorage.RENEWING_TOKEN)).toEqual('true');
+    });
+  });
 });

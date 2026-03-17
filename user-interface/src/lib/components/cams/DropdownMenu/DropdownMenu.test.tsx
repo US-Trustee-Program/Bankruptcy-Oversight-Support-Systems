@@ -64,7 +64,7 @@ describe('DropdownMenu component tests', () => {
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('Menu should expand when clicking menu button, and focused item should be first menu item in list', async () => {
@@ -245,6 +245,103 @@ describe('DropdownMenu component tests', () => {
     renderMenu();
     await userEvent.click(menu);
     expect(clickFn).toHaveBeenCalled();
+  });
+
+  test('should expand without calling onClick when onClick prop is not provided', async () => {
+    render(
+      <BrowserRouter>
+        <DropdownMenu id={menuId} menuItems={menuItems} ariaLabel="No Handler">
+          Test Menu
+        </DropdownMenu>
+      </BrowserRouter>,
+    );
+    const toggleButton = document.querySelector(`#${menuId}`) as HTMLElement;
+    await userEvent.click(toggleButton);
+    expect(toggleButton.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('clicking inside the item list should not close the menu', async () => {
+    renderMenu();
+    await userEvent.click(menu);
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+    await userEvent.click(item1);
+    expect(menu.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('ArrowDown at last item should not wrap when first item is not in the DOM', async () => {
+    renderMenu();
+    await userEvent.click(menu);
+    item4.focus();
+    document.querySelector(`#menu-link-${menuId}-0`)?.remove();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(document.activeElement).toBe(item4);
+  });
+
+  test('ArrowDown should not move focus when the next sibling is not in the DOM', async () => {
+    renderMenu();
+    await userEvent.click(menu);
+    item3.focus();
+    document.querySelector(`#li-${menuId}-3`)?.remove();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(document.activeElement).toBe(item3);
+  });
+
+  test('ArrowUp at first item should not wrap when last item is not in the DOM', async () => {
+    renderMenu();
+    await userEvent.click(menu);
+    item1.focus();
+    document.querySelector(`#menu-link-${menuId}-3`)?.remove();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(document.activeElement).toBe(item1);
+  });
+
+  test('ArrowUp should not move focus when the previous sibling is not in the DOM', async () => {
+    renderMenu();
+    await userEvent.click(menu);
+    item2.focus();
+    document.querySelector(`#li-${menuId}-0`)?.remove();
+    await userEvent.keyboard('{ArrowUp}');
+    expect(document.activeElement).toBe(item2);
+  });
+
+  test('Home key should not move focus when first item is not in the DOM', async () => {
+    renderMenu();
+    await userEvent.click(menu);
+    item4.focus();
+    document.querySelector(`#menu-link-${menuId}-0`)?.remove();
+    await userEvent.keyboard('{Home}');
+    expect(document.activeElement).toBe(item4);
+  });
+
+  test('End key should not move focus when last item is not in the DOM', async () => {
+    renderMenu();
+    await userEvent.click(menu);
+    item1.focus();
+    document.querySelector(`#menu-link-${menuId}-3`)?.remove();
+    await userEvent.keyboard('{End}');
+    expect(document.activeElement).toBe(item1);
+  });
+
+  test('letter key should not move focus when the matching menu item is not in the DOM', async () => {
+    renderMenu();
+    await userEvent.click(menu);
+    item2.focus();
+    document.querySelector(`#menu-link-${menuId}-0`)?.remove();
+    await userEvent.keyboard('a');
+    expect(document.activeElement).toBe(item2);
+  });
+
+  test('expanding a menu with no items should not throw when first item does not exist', async () => {
+    render(
+      <BrowserRouter>
+        <DropdownMenu id={menuId} menuItems={[]} ariaLabel="Empty Menu">
+          Empty
+        </DropdownMenu>
+      </BrowserRouter>,
+    );
+    const emptyMenu = document.querySelector(`#${menuId}`) as HTMLElement;
+    await userEvent.click(emptyMenu);
+    expect(emptyMenu.getAttribute('aria-expanded')).toBe('true');
   });
 
   describe('Test link activation', () => {

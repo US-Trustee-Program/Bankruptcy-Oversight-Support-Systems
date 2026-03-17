@@ -91,4 +91,61 @@ describe('StaffAssignmentRowInternal', () => {
       expect(state.assignments).toEqual(expect.arrayContaining(startingAssignments));
     });
   });
+
+  test('should do nothing when status is success but bCase is undefined', async () => {
+    const { actions } = Internal.useStateActions(initialState);
+
+    actions.updateAssignmentsCallback({
+      status: 'success',
+      apiResult: {},
+      bCase: undefined as never,
+      previouslySelectedList: mappedCaseAssignments,
+      selectedAttorneyList: mappedCaseAssignments,
+    });
+
+    await waitFor(() => {
+      expect(globalAlert.success).not.toHaveBeenCalled();
+      expect(globalAlert.error).not.toHaveBeenCalled();
+    });
+  });
+
+  test('should only mention added assignments when no one is removed', async () => {
+    const attorney = MockData.getAttorneyUser();
+    const { actions } = Internal.useStateActions(initialState);
+
+    actions.updateAssignmentsCallback({
+      status: 'success',
+      apiResult: {},
+      bCase,
+      previouslySelectedList: [],
+      selectedAttorneyList: [{ id: attorney.id, name: attorney.name }],
+    });
+
+    await waitFor(() => {
+      expect(globalAlert.success).toHaveBeenCalledWith(expect.stringContaining(attorney.name));
+      expect(globalAlert.success).toHaveBeenCalledWith(expect.stringContaining('assigned to'));
+      expect(globalAlert.success).toHaveBeenCalledWith(expect.not.stringContaining('unassigned'));
+    });
+  });
+
+  test('should only mention removed assignments when no one is added', async () => {
+    const { actions } = Internal.useStateActions(initialState);
+    const removedAttorney = mappedCaseAssignments[0];
+
+    actions.updateAssignmentsCallback({
+      status: 'success',
+      apiResult: {},
+      bCase,
+      previouslySelectedList: mappedCaseAssignments,
+      selectedAttorneyList: [],
+    });
+
+    await waitFor(() => {
+      expect(globalAlert.success).toHaveBeenCalledWith(
+        expect.stringContaining(removedAttorney.name),
+      );
+      expect(globalAlert.success).toHaveBeenCalledWith(expect.stringContaining('unassigned from'));
+      expect(globalAlert.success).toHaveBeenCalledWith(expect.not.stringContaining('assigned to'));
+    });
+  });
 });
