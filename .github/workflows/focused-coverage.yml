@@ -91,21 +91,35 @@ jobs:
         run: |
           FILES="${{ needs.detect-changes.outputs.backend }}"
 
-          # vitest related requires absolute paths to resolve the import graph.
-          # Limit coverage report to only the changed files via --coverage.include.
-          ABS_FILES=""
+          # For each changed file, resolve its co-located test file(s).
+          # Also pass changed test files through directly.
+          TEST_FILES=""
           INCLUDE_FLAGS=""
           for f in $FILES; do
-            ABS_FILES="$ABS_FILES $(pwd)/$f"
-            INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
+            if echo "$f" | grep -qE '\.(test|spec)\.(ts|tsx)$'; then
+              TEST_FILES="$TEST_FILES $f"
+            else
+              BASE="${f%.*}"
+              for candidate in "${BASE}.test.ts" "${BASE}.test.tsx" "${BASE}.spec.ts" "${BASE}.spec.tsx"; do
+                [ -f "$candidate" ] && TEST_FILES="$TEST_FILES $candidate"
+              done
+              INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
+            fi
           done
 
+          if [ -z "$TEST_FILES" ]; then
+            echo "No test files found for the changed files. Skipping."
+            exit 0
+          fi
+
+          echo "Running tests: $TEST_FILES"
+
           # Thresholds are disabled here — the full coverage run enforces them.
-          npx vitest related --run --reporter=verbose --coverage \
+          npx vitest run --reporter=verbose --coverage \
             --coverage.thresholds.lines=0 \
             --coverage.thresholds.branches=0 \
             $INCLUDE_FLAGS \
-            $ABS_FILES
+            $TEST_FILES
 
   coverage-frontend:
     name: Focused Coverage - Frontend
@@ -131,21 +145,36 @@ jobs:
         run: |
           FILES="${{ needs.detect-changes.outputs.frontend }}"
 
-          # vitest related requires absolute paths to resolve the import graph.
-          # Limit coverage report to only the changed files via --coverage.include.
-          ABS_FILES=""
+          # For each changed file, resolve its co-located test file(s).
+          # Also pass changed test files through directly.
+          TEST_FILES=""
           INCLUDE_FLAGS=""
           for f in $FILES; do
-            ABS_FILES="$ABS_FILES $(pwd)/$f"
-            INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
+            if echo "$f" | grep -qE '\.(test|spec)\.(ts|tsx)$'; then
+              TEST_FILES="$TEST_FILES $f"
+            else
+              BASE="${f%.*}"
+              for candidate in "${BASE}.test.ts" "${BASE}.test.tsx" "${BASE}.spec.ts" "${BASE}.spec.tsx"; do
+                [ -f "$candidate" ] && TEST_FILES="$TEST_FILES $candidate"
+              done
+              INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
+            fi
           done
 
+          if [ -z "$TEST_FILES" ]; then
+            echo "No test files found for the changed files. Skipping."
+            exit 0
+          fi
+
+          echo "Running tests: $TEST_FILES"
+
           export CAMS_USE_FAKE_API=true
-          npx vitest related --run --reporter=verbose --coverage \
+          # Thresholds are disabled here — the full coverage run enforces them.
+          npx vitest run --reporter=verbose --coverage \
             --coverage.thresholds.lines=0 \
             --coverage.thresholds.branches=0 \
             $INCLUDE_FLAGS \
-            $ABS_FILES
+            $TEST_FILES
 
   coverage-common:
     name: Focused Coverage - Common
@@ -171,17 +200,32 @@ jobs:
         run: |
           FILES="${{ needs.detect-changes.outputs.common }}"
 
-          # vitest related requires absolute paths to resolve the import graph.
-          # Limit coverage report to only the changed files via --coverage.include.
-          ABS_FILES=""
+          # For each changed file, resolve its co-located test file(s).
+          # Also pass changed test files through directly.
+          TEST_FILES=""
           INCLUDE_FLAGS=""
           for f in $FILES; do
-            ABS_FILES="$ABS_FILES $(pwd)/$f"
-            INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
+            if echo "$f" | grep -qE '\.(test|spec)\.(ts|tsx)$'; then
+              TEST_FILES="$TEST_FILES $f"
+            else
+              BASE="${f%.*}"
+              for candidate in "${BASE}.test.ts" "${BASE}.test.tsx" "${BASE}.spec.ts" "${BASE}.spec.tsx"; do
+                [ -f "$candidate" ] && TEST_FILES="$TEST_FILES $candidate"
+              done
+              INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
+            fi
           done
 
-          npx vitest related --run --reporter=verbose --coverage \
+          if [ -z "$TEST_FILES" ]; then
+            echo "No test files found for the changed files. Skipping."
+            exit 0
+          fi
+
+          echo "Running tests: $TEST_FILES"
+
+          # Thresholds are disabled here — the full coverage run enforces them.
+          npx vitest run --reporter=verbose --coverage \
             --coverage.thresholds.lines=0 \
             --coverage.thresholds.branches=0 \
             $INCLUDE_FLAGS \
-            $ABS_FILES
+            $TEST_FILES
