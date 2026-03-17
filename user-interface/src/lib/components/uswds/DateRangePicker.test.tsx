@@ -3,7 +3,6 @@ import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import DateRangePicker from './DateRangePicker';
 import { DateRangePickerRef } from '@/lib/type-declarations/input-fields';
 
-// Test helper to reduce boilerplate
 type DateRangeTestIds = {
   id: string;
 };
@@ -1047,7 +1046,7 @@ describe('DateRangePicker validation tests', () => {
     expect(screen.getByLabelText('End date')).toBeInTheDocument();
   });
 
-  test('should not invoke missing callbacks when both inputs are cleared', async () => {
+  test('should clear both inputs without error when no callbacks are provided', async () => {
     const { startInput, endInput } = renderDateRangePicker({
       id: 'date-picker-no-callbacks',
     });

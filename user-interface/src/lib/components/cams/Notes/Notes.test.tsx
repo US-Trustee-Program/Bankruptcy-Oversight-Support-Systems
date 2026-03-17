@@ -1,24 +1,10 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, type MockedFunction } from 'vitest';
 import Notes, { NotesRef } from './Notes';
 import { Note, NoteInput } from './types';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import React from 'react';
-
-let capturedNoteModalOnSave: ((noteData: NoteInput) => Promise<void>) | undefined;
-
-vi.mock('./NoteFormModal', () => ({
-  default: vi.fn(
-    (props: {
-      onSave: (noteData: NoteInput) => Promise<void>;
-      onModalClosed?: () => void;
-      modalId?: string;
-    }) => {
-      capturedNoteModalOnSave = props.onSave;
-      return null;
-    },
-  ),
-}));
+import * as NoteFormModalModule from './NoteFormModal';
 
 const createTestNote = (overrides: Partial<Note> = {}): Note => ({
   id: 'note-1',
@@ -33,6 +19,8 @@ const createTestNote = (overrides: Partial<Note> = {}): Note => ({
 });
 
 describe('Notes Component', () => {
+  type NoteFormModalRenderFn = (props: { onSave: (noteData: NoteInput) => Promise<void> }) => null;
+  let noteFormModalRenderSpy!: MockedFunction<NoteFormModalRenderFn>;
   let mockOnCreateNote: (noteData: NoteInput) => Promise<void>;
   let mockOnUpdateNote: (noteId: string, noteData: NoteInput) => Promise<void>;
   let mockOnDeleteNote: (noteId: string) => Promise<void>;
@@ -46,6 +34,9 @@ describe('Notes Component', () => {
     mockOnDeleteNote = vi.fn().mockResolvedValue(undefined);
     notesRef = React.createRef<NotesRef>() as React.RefObject<NotesRef>;
 
+    noteFormModalRenderSpy = vi
+      .spyOn(NoteFormModalModule.default as unknown as { render: NoteFormModalRenderFn }, 'render')
+      .mockImplementation(() => null);
     vi.spyOn(LocalFormCache, 'getForm').mockReturnValue(null);
     vi.spyOn(LocalFormCache, 'getFormsByPattern').mockReturnValue([]);
   });
@@ -503,11 +494,8 @@ describe('Notes Component', () => {
       />,
     );
 
-    await capturedNoteModalOnSave?.({
-      entityId: 'entity-123',
-      title: 'New Note',
-      content: '<p>Content</p>',
-    });
+    const { onSave } = noteFormModalRenderSpy.mock.calls[0][0];
+    await onSave({ entityId: 'entity-123', title: 'New Note', content: '<p>Content</p>' });
 
     expect(mockOnCreateNote).toHaveBeenCalledWith(expect.objectContaining({ title: 'New Note' }));
   });
@@ -527,7 +515,8 @@ describe('Notes Component', () => {
       />,
     );
 
-    await capturedNoteModalOnSave?.({
+    const { onSave } = noteFormModalRenderSpy.mock.calls[0][0];
+    await onSave({
       id: 'note-1',
       entityId: 'entity-123',
       title: 'Updated Note',
