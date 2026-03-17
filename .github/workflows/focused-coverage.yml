@@ -1,8 +1,8 @@
 name: Focused Coverage (PR)
 
 # Runs coverage only for files changed in a PR, giving a fast, targeted view
-# of how well the changed code is tested. Does not enforce thresholds so it
-# complements (not replaces) the full coverage run in continuous-deployment.yml.
+# of how well the changed code is tested. Fails if any changed file is below
+# 90% line or branch coverage (per-file, not aggregate).
 
 on:
   pull_request:
@@ -114,10 +114,11 @@ jobs:
 
           echo "Running tests: $TEST_FILES"
 
-          # Thresholds are disabled here — the full coverage run enforces them.
+          # Fail if any individual changed file is below 90% line or branch coverage.
           npx vitest run --reporter=verbose --coverage \
-            --coverage.thresholds.lines=0 \
-            --coverage.thresholds.branches=0 \
+            --coverage.thresholds.perFile=true \
+            --coverage.thresholds.lines=90 \
+            --coverage.thresholds.branches=90 \
             $INCLUDE_FLAGS \
             $TEST_FILES
 
@@ -169,10 +170,11 @@ jobs:
           echo "Running tests: $TEST_FILES"
 
           export CAMS_USE_FAKE_API=true
-          # Thresholds are disabled here — the full coverage run enforces them.
+          # Fail if any individual changed file is below 90% line or branch coverage.
           npx vitest run --reporter=verbose --coverage \
-            --coverage.thresholds.lines=0 \
-            --coverage.thresholds.branches=0 \
+            --coverage.thresholds.perFile=true \
+            --coverage.thresholds.lines=90 \
+            --coverage.thresholds.branches=90 \
             $INCLUDE_FLAGS \
             $TEST_FILES
 
@@ -223,9 +225,10 @@ jobs:
 
           echo "Running tests: $TEST_FILES"
 
-          # Thresholds are disabled here — the full coverage run enforces them.
+          # Fail if any individual changed file is below 90% line or branch coverage.
           npx vitest run --reporter=verbose --coverage \
-            --coverage.thresholds.lines=0 \
-            --coverage.thresholds.branches=0 \
+            --coverage.thresholds.perFile=true \
+            --coverage.thresholds.lines=90 \
+            --coverage.thresholds.branches=90 \
             $INCLUDE_FLAGS \
             $TEST_FILES
