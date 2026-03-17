@@ -35,20 +35,6 @@ describe('archived cases repo tests', () => {
       expect(MongoCollectionAdapter.prototype.insertOne).toHaveBeenCalled();
     });
 
-    test('should retrieve all archived documents for a case', async () => {
-      const caseId = '12-12345';
-      const archivedDocs = [
-        { id: 'arch1', caseId, originalCollection: 'cases' },
-        { id: 'arch2', caseId, originalCollection: 'cases' },
-      ];
-
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(archivedDocs);
-
-      const result = await repo.getCaseArchives(caseId);
-
-      expect(result).toEqual(archivedDocs);
-    });
-
     test('should handle archiving documents from different collections', async () => {
       const doc = MockData.getSyncedCase();
       const caseId = doc.caseId;
@@ -90,16 +76,6 @@ describe('archived cases repo tests', () => {
       expect(callArgs).toHaveProperty('originalCollection', 'cases');
       expect(callArgs).toHaveProperty('caseId', '12-12345');
     });
-
-    test('should return empty array when no archives exist for a case', async () => {
-      const caseId = 'nonexistent-case';
-
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
-
-      const result = await repo.getCaseArchives(caseId);
-
-      expect(result).toEqual([]);
-    });
   });
 
   describe('error handling', () => {
@@ -110,17 +86,6 @@ describe('archived cases repo tests', () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
 
       await expect(() => repo.archiveDocument(doc, 'cases', doc.caseId)).rejects.toThrow(
-        expect.objectContaining({
-          module: 'ARCHIVED-CASES-MONGO-REPOSITORY',
-        }),
-      );
-    });
-
-    test('should handle error on getCaseArchives', async () => {
-      const caseId = '12-12345';
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
-
-      await expect(() => repo.getCaseArchives(caseId)).rejects.toThrow(
         expect.objectContaining({
           module: 'ARCHIVED-CASES-MONGO-REPOSITORY',
         }),

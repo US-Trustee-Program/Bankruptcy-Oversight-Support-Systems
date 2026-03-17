@@ -4,18 +4,6 @@ import factory from '../../factory';
 
 const MODULE_NAME = 'ARCHIVE-CASE-DOCUMENTS';
 
-type ArchiveSummary = {
-  caseId: string;
-  archivedCount: number;
-  errors: Array<{ type: string; error: string }>;
-};
-
-type ArchivalStep = {
-  type: string;
-  collection: string;
-  execute: () => Promise<readonly unknown[]>;
-};
-
 async function archiveDocuments(
   docs: readonly unknown[],
   type: string,
@@ -23,7 +11,11 @@ async function archiveDocuments(
   caseId: string,
   archivedRepo: ArchivedCasesRepository,
   deleteAsync: (id: string) => Promise<void>,
-  summary: ArchiveSummary,
+  summary: {
+    caseId: string;
+    archivedCount: number;
+    errors: Array<{ type: string; error: string }>;
+  },
   context: ApplicationContext,
 ): Promise<void> {
   for (const doc of docs) {
@@ -40,8 +32,12 @@ async function archiveDocuments(
 export async function archiveCaseAndRelatedDocuments(
   context: ApplicationContext,
   caseId: string,
-): Promise<ArchiveSummary> {
-  const summary: ArchiveSummary = {
+): Promise<{
+  caseId: string;
+  archivedCount: number;
+  errors: Array<{ type: string; error: string }>;
+}> {
+  const summary = {
     caseId,
     archivedCount: 0,
     errors: [],
@@ -59,7 +55,7 @@ export async function archiveCaseAndRelatedDocuments(
 
     const allOrders = await ordersRepo.findByCaseId(caseId);
 
-    const archivalSteps: ArchivalStep[] = [
+    const archivalSteps = [
       {
         type: 'case-documents',
         collection: 'cases',
@@ -109,10 +105,9 @@ export async function archiveCaseAndRelatedDocuments(
           summary,
           context,
         );
-      } catch (err) {
-        const error = err instanceof Error ? err.message : String(err);
-        summary.errors.push({ type: step.type, error });
-        context.logger.error(MODULE_NAME, `Error archiving ${step.type}: ${error}`);
+      } catch (error) {
+        summary.errors.push({ type: step.type, error: error.message });
+        context.logger.error(MODULE_NAME, `Error archiving ${step.type}`, error);
       }
     }
 
