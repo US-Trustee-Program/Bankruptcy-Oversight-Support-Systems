@@ -109,7 +109,7 @@ describe('getDeletedCaseEvents tests', () => {
 
   test('should handle empty results (no deleted cases)', async () => {
     const lastChangeDate = '2025-01-15';
-    const latestDeletedCaseDate = '2025-01-15'; // Same as lastChangeDate when no new deletions
+    const latestDeletedCaseDate = '2025-01-15';
 
     const syncState: DeletedCasesSyncState = {
       documentType: 'DELETED_CASES_SYNC_STATE',

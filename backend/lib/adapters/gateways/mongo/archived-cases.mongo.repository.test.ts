@@ -95,7 +95,6 @@ describe('archived cases repo tests', () => {
 
   describe('singleton and release logic', () => {
     test('singleton getInstance and dropInstance logic', async () => {
-      // Ensure clean state
       while (ArchivedCasesMongoRepository['referenceCount'] > 0) {
         await ArchivedCasesMongoRepository.dropInstance();
       }

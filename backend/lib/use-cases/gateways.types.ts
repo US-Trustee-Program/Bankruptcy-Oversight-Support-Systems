@@ -412,7 +412,7 @@ export type TrusteeNotesMetricsState = RuntimeState & {
 
 export type DeletedCasesSyncState = RuntimeState & {
   documentType: 'DELETED_CASES_SYNC_STATE';
-  lastChangeDate: string; // YYYY-MM-DD format
+  lastChangeDate: string;
 };
 
 export interface DocumentCollectionAdapter<T> {

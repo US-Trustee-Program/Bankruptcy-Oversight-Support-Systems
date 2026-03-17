@@ -245,16 +245,14 @@ describe('ACMS gateway tests', () => {
 
       await gateway.getDeletedCaseIds(context, lastChangeDate);
 
-      // Verify the input parameter is converted correctly
       const calls = spy.mock.calls[0];
       const inputParams = calls[2];
       const lastChangeDateParam = inputParams.find((p) => p.name === 'lastChangeDate');
 
       expect(lastChangeDateParam).toBeDefined();
       expect(lastChangeDateParam.name).toBe('lastChangeDate');
-      expect(lastChangeDateParam.value).toBe(20260313); // YYYYMMDD integer
+      expect(lastChangeDateParam.value).toBe(20260313);
       expect(lastChangeDateParam.type).toBeDefined();
-      // Verify it's an Int type by checking the type's name property
       expect(lastChangeDateParam.type.name).toBe('Int');
     });
 
@@ -278,7 +276,6 @@ describe('ACMS gateway tests', () => {
       const result = await gateway.getDeletedCaseIds(context, lastChangeDate);
 
       expect(result.caseIds).toEqual(['081-24-00001', '081-24-00002', '081-24-00003']);
-      // Latest date is from first element (DESC order), not last
       expect(result.latestDeletedCaseDate).toBe('2026-03-15');
     });
 
@@ -303,7 +300,7 @@ describe('ACMS gateway tests', () => {
       const testCases = [
         { input: '2018-01-01', expected: 20180101 },
         { input: '2026-12-31', expected: 20261231 },
-        { input: '2020-02-29', expected: 20200229 }, // leap year
+        { input: '2020-02-29', expected: 20200229 },
       ];
 
       for (const testCase of testCases) {
