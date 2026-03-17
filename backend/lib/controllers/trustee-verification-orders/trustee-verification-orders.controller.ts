@@ -8,8 +8,6 @@ import { TrusteeMatchVerification } from '@common/cams/trustee-match-verificatio
 const MODULE_NAME = 'TRUSTEE-VERIFICATION-ORDERS-CONTROLLER';
 
 export class TrusteeVerificationOrdersController {
-  constructor(private readonly context: ApplicationContext) {}
-
   async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<TrusteeMatchVerification[]>> {

@@ -114,18 +114,27 @@ export default function DataVerificationScreen() {
 
     async function loadOrders() {
       try {
-        const [ordersResponse, verificationResponse, courtsResponse] = await Promise.all([
+        const [ordersResponse, verificationResponse] = await Promise.all([
           Api2.getOrders(),
           featureFlags[TRUSTEE_VERIFICATION_ENABLED]
             ? Api2.getTrusteeVerificationOrders()
             : Promise.resolve({ data: [] as TrusteeMatchVerification[] }),
-          Api2.getCourts(),
         ]);
         if (cancelled) return;
         setOrderList([
           ...(ordersResponse as ResponseBody<Order[]>).data,
           ...(verificationResponse as ResponseBody<TrusteeMatchVerification[]>).data,
         ]);
+      } catch {
+        if (cancelled) return;
+        setOrderList([]);
+      }
+
+      if (cancelled) return;
+
+      try {
+        const courtsResponse = await Api2.getCourts();
+        if (cancelled) return;
         const courtList = (courtsResponse as ResponseBody<CourtDivisionDetails[]>).data;
         setCourts(sortByCourtLocation(courtList));
         setRegionsMap(
@@ -137,11 +146,10 @@ export default function DataVerificationScreen() {
           }, new Map()),
         );
       } catch {
-        if (cancelled) return;
-        setOrderList([]);
-      } finally {
-        if (!cancelled) setIsOrderListLoading(false);
+        // courts failure — orders still display, court names fall back to court IDs
       }
+
+      if (!cancelled) setIsOrderListLoading(false);
     }
 
     loadOrders();

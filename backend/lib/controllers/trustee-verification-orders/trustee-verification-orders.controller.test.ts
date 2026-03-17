@@ -97,7 +97,7 @@ describe('TrusteeVerificationOrdersController', () => {
     mockVerificationRepo([sampleOrder]);
     mockEnrichmentRepos();
 
-    const controller = new TrusteeVerificationOrdersController(context);
+    const controller = new TrusteeVerificationOrdersController();
     const response = await controller.handleRequest(context);
 
     expect(response.body.data).toHaveLength(1);
@@ -121,7 +121,7 @@ describe('TrusteeVerificationOrdersController', () => {
       }),
     );
 
-    const controller = new TrusteeVerificationOrdersController(context);
+    const controller = new TrusteeVerificationOrdersController();
     const response = await controller.handleRequest(context);
 
     expect(response.body.data).toHaveLength(1);
@@ -134,7 +134,7 @@ describe('TrusteeVerificationOrdersController', () => {
     mockVerificationRepo([]);
     mockEnrichmentRepos();
 
-    const controller = new TrusteeVerificationOrdersController(context);
+    const controller = new TrusteeVerificationOrdersController();
     const response = await controller.handleRequest(context);
 
     expect(response.body.data).toEqual([]);
@@ -146,7 +146,7 @@ describe('TrusteeVerificationOrdersController', () => {
       Object.assign(new MockMongoRepository(), { search: vi.fn().mockRejectedValue(error) }),
     );
 
-    const controller = new TrusteeVerificationOrdersController(context);
+    const controller = new TrusteeVerificationOrdersController();
     const expectedError = getCamsError(error, 'TRUSTEE-VERIFICATION-ORDERS-CONTROLLER');
 
     await expect(controller.handleRequest(context)).rejects.toThrow(expectedError.message);

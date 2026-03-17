@@ -1,16 +1,14 @@
 import { useState } from 'react';
 
 export function useSessionState<T>(key: string, initialValue: T): [T, (value: T) => void] {
-  const storedValue = (() => {
+  const [state, setState] = useState<T>(() => {
     try {
       const item = window.sessionStorage.getItem(key);
       return item ? (JSON.parse(item) as T) : initialValue;
     } catch {
       return initialValue;
     }
-  })();
-
-  const [state, setState] = useState<T>(storedValue);
+  });
 
   function setValue(value: T) {
     try {

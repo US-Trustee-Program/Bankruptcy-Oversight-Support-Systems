@@ -96,7 +96,7 @@ export class TrusteeMatchVerificationMongoRepository
       );
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: 'Failed to search trustee match verifications.',
+        message: 'Failed to find trustee match verification records.',
       });
     }
   }
