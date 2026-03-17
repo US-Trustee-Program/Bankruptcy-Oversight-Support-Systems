@@ -1,3 +1,4 @@
+import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import DataVerificationScreen from './DataVerificationScreen';
 import { BrowserRouter } from 'react-router-dom';
@@ -16,6 +17,9 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import * as courtUtils from '@/lib/utils/court-utils';
+import * as transferOrderAccordionModule from './TransferOrderAccordion';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 describe('Review Orders screen', () => {
   function setupFeatureFlags(overrides: Record<string, boolean> = {}) {
@@ -377,6 +381,119 @@ describe('Review Orders screen', () => {
     });
   });
 
+  test('should build regions map from courts response', async () => {
+    setupFeatureFlags();
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+
+    const mockCourts: CourtDivisionDetails[] = [
+      {
+        officeName: 'Manhattan',
+        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+        courtId: '0208',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '081',
+        courtDivisionName: 'Manhattan',
+        groupDesignator: 'NY',
+        regionId: '2',
+        regionName: 'NEW YORK',
+      },
+      {
+        officeName: 'White Plains',
+        officeCode: 'USTP_CAMS_Region_2_Office_Manhattan',
+        courtId: '0208',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '087',
+        courtDivisionName: 'White Plains',
+        groupDesignator: 'NY',
+        regionId: '2',
+        regionName: 'NEW YORK',
+      },
+      {
+        officeName: 'Wilmington',
+        officeCode: 'USTP_CAMS_Region_3_Office_Wilmington',
+        courtId: '0311',
+        courtName: 'District of Delaware',
+        courtDivisionCode: '111',
+        courtDivisionName: 'Delaware',
+        groupDesignator: 'WL',
+        regionId: '3',
+        regionName: 'PHILADELPHIA',
+      },
+    ];
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Data Verification')).toBeInTheDocument();
+  });
+
+  test('should still render the screen when getCourts API fails', async () => {
+    setupFeatureFlags();
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('Network error'));
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Data Verification')).toBeInTheDocument();
+  });
+
+  test('should display alert without updating order list when onOrderUpdate is called without an updated order', async () => {
+    setupFeatureFlags();
+    const mockOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
+    const mockAlertMessage = 'An error occurred.';
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [mockOrder] });
+
+    vi.spyOn(transferOrderAccordionModule, 'TransferOrderAccordion').mockImplementation(
+      (props: transferOrderAccordionModule.TransferOrderAccordionProps) => {
+        const { onOrderUpdate } = props;
+        React.useEffect(() => {
+          onOrderUpdate({
+            message: mockAlertMessage,
+            type: UswdsAlertStyle.Error,
+            timeOut: 8,
+          });
+        }, [onOrderUpdate]);
+        return <></>;
+      },
+    );
+
+    sessionStorage.setItem(
+      'cams:filter:data-verification:type',
+      JSON.stringify([{ value: 'transfer', label: 'Transfer' }]),
+    );
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const alertContainer = screen.getByTestId('alert-container-data-verification-alert');
+      expect(alertContainer).toHaveClass('visible');
+      expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(
+        mockAlertMessage,
+      );
+    });
+  });
+
   test('should render permission invalid error when CaseAssignmentManager is not found in user roles', async () => {
     testingUtilities.setUserWithRoles([]);
     render(
@@ -386,6 +503,59 @@ describe('Review Orders screen', () => {
     );
 
     expect(screen.getByTestId('alert-container-forbidden-alert')).toBeInTheDocument();
+  });
+
+  test('should show no-office message when user has DataVerifier role but no offices assigned', () => {
+    testingUtilities.setUser({ roles: [CamsRole.DataVerifier], offices: [] });
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    expect(screen.getByTestId('alert-container-no-office')).toBeInTheDocument();
+  });
+
+  test('should sort trustee verification orders using createdOn when orderDate is absent', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+
+    const firstVerification: TrusteeMatchVerification = {
+      ...sampleVerificationOrder,
+      id: 'verification-1',
+      createdOn: '2026-01-10T10:00:00.000Z',
+    };
+    const secondVerification: TrusteeMatchVerification = {
+      ...sampleVerificationOrder,
+      id: 'verification-2',
+      createdOn: '2026-01-20T10:00:00.000Z',
+    };
+    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({
+      data: [secondVerification, firstVerification],
+    });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+    });
+
+    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
+    fireEvent.click(expandBtn);
+    fireEvent.click(screen.getByTestId('task-type-filter-option-item-2'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId(`accordion-order-list-${firstVerification.id}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`accordion-order-list-${secondVerification.id}`),
+      ).toBeInTheDocument();
+    });
   });
 
   test('should not render a list if an API error is encountered', async () => {
