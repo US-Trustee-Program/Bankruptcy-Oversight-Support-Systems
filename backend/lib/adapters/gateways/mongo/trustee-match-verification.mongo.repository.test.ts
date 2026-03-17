@@ -143,7 +143,7 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
       );
 
       await expect(repository.search()).rejects.toThrow(
-        'Failed to search trustee match verifications.',
+        'Failed to find trustee match verification records.',
       );
     });
   });
