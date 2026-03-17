@@ -24,7 +24,7 @@ export class ArchivedCasesMongoRepository
   implements ArchivedCasesRepository
 {
   private static referenceCount: number = 0;
-  private static instance: ArchivedCasesMongoRepository;
+  private static instance: ArchivedCasesMongoRepository | null;
 
   constructor(context: ApplicationContext) {
     super(context, MODULE_NAME, COLLECTION_NAME);
