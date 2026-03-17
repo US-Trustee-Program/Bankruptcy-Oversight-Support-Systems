@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { getDivisionComboOptions } from './dataVerificationHelper';
+import { getDivisionComboOptions, testMethodTwo } from './dataVerificationHelper';
 
 describe('data verification helper tests', () => {
   test('should properly map court information for selection', () => {
@@ -122,5 +122,15 @@ describe('data verification helper tests', () => {
 
     const actualOptions = getDivisionComboOptions(testOffices);
     expect(actualOptions).toStrictEqual(expectedOptions);
+  });
+
+  test('should guess right number', () => {
+    const result = testMethodTwo(173);
+    expect(result).toEqual(true);
+  });
+
+  test('should not guess right number', () => {
+    const result = testMethodTwo(444);
+    expect(result).toEqual(false);
   });
 });

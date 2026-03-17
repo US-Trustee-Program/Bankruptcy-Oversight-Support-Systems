@@ -11,3 +11,7 @@ export function getDivisionComboOptions(officesList: CourtDivisionDetails[]): Co
     };
   });
 }
+
+export function testMethodTwo(value: number): boolean {
+  return value === 173;
+}
