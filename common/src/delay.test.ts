@@ -4,7 +4,7 @@ import { delay } from './delay';
 describe('delay', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.spyOn(global, 'setTimeout');
+    vi.spyOn(globalThis, 'setTimeout');
   });
 
   afterEach(() => {

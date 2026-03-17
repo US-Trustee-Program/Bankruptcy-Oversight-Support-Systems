@@ -103,4 +103,24 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  async findByCaseId(caseId: string): Promise<Order[]> {
+    try {
+      const doc = using<Order>();
+      const query = doc('caseId').equals(caseId);
+      return await this.getAdapter<Order>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    try {
+      const doc = using<Order>();
+      const query = doc('id').equals(id);
+      await this.getAdapter<Order>().deleteOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }

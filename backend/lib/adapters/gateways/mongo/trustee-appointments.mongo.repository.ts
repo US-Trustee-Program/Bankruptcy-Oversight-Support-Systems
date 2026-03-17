@@ -229,4 +229,31 @@ export class TrusteeAppointmentsMongoRepository
       });
     }
   }
+
+  async findByCaseId(caseId: string): Promise<CaseAppointment[]> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('CASE_APPOINTMENT'),
+        doc('caseId').equals(caseId),
+      );
+      return await this.getAdapter<CaseAppointmentDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to retrieve case appointments for case ${caseId}.`,
+      });
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    try {
+      const doc = using<CaseAppointmentDocument>();
+      const query = doc('id').equals(id);
+      await this.getAdapter<CaseAppointmentDocument>().deleteOne(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to delete case appointment ${id}.`,
+      });
+    }
+  }
 }

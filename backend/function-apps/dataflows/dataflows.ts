@@ -3,8 +3,6 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
-import CaseDeletedEvent from './events/case-deleted-event';
-import DetectDeletedCases from './timers/detect-deleted-cases';
 import LoadE2eDb from './e2e/load-e2e-db';
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import MigrateAssignees from './migrations/migrate-assignees';
@@ -15,6 +13,7 @@ import MigrateTrustees from './migrations/migrate-trustees';
 import ResyncRemainingCases from './migrations/resync-remaining-cases';
 import ResyncTerminalTransactionCases from './migrations/resync-terminal-transaction-cases';
 import SyncCases from './import/sync-cases';
+import SyncDeletedCases from './import/sync-deleted-cases';
 import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
 import SyncTrusteeAppointments from './import/sync-trustee-appointments';
@@ -104,8 +103,6 @@ dataflows.register(
   BackfillPhoneticTokens,
   CaseAssignmentEvent,
   CaseClosedEvent,
-  CaseDeletedEvent,
-  DetectDeletedCases,
   LoadE2eDb,
   MigrateAssignees,
   MigrateCases,
@@ -115,6 +112,7 @@ dataflows.register(
   ResyncRemainingCases,
   ResyncTerminalTransactionCases,
   SyncCases,
+  SyncDeletedCases,
   SyncOfficeStaff,
   SyncOrders,
   SyncTrusteeAppointments,

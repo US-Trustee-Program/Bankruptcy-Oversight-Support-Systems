@@ -6,6 +6,7 @@ import { CamsUserReference, UserGroup } from '@common/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import {
+  ArchivedCasesRepository,
   CamsPaginationResponse,
   CaseAssignmentRepository,
   CasesRepository,
@@ -36,6 +37,7 @@ import { Creatable } from '@common/cams/creatable';
 
 export class MockMongoRepository
   implements
+    ArchivedCasesRepository,
     CaseAssignmentRepository,
     CasesRepository,
     ConsolidationOrdersRepository,
@@ -381,6 +383,10 @@ export class MockMongoRepository
   }
 
   archiveDocument(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getCaseArchives(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
 

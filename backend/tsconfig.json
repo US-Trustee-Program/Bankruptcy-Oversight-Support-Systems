@@ -16,6 +16,5 @@
       "@common/*": ["../common/src/*"]
     }
   },
-  "references": [{ "path": "../common" }],
   "exclude": ["node_modules"]
 }

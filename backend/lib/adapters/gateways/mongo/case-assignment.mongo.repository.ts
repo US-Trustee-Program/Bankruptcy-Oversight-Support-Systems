@@ -112,4 +112,24 @@ export class CaseAssignmentMongoRepository
       throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignments.');
     }
   }
+
+  async findByCaseId(caseId: string): Promise<CaseAssignment[]> {
+    const query = and(doc('documentType').equals('ASSIGNMENT'), doc('caseId').equals(caseId));
+
+    try {
+      return await this.getAdapter<CaseAssignment>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve assignments.');
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    const query = doc('id').equals(id);
+
+    try {
+      await this.getAdapter<CaseAssignment>().deleteOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to delete assignment.');
+    }
+  }
 }

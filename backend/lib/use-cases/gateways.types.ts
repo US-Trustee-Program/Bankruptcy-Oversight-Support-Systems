@@ -1,6 +1,5 @@
 import { ApplicationContext } from '../adapters/types/basic';
 import { AtsTrusteeRecord, TrusteeAppointmentsResult } from '../adapters/types/ats.types';
-import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { DbTableFieldSpec, QueryResults } from '../adapters/types/database';
 import { ConsolidationOrder, Order, RawOrderSync, TransferOrderAction } from '@common/cams/orders';
 import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from '@common/cams/events';
@@ -130,7 +129,7 @@ export interface UserSessionCacheRepository<T = CamsSession>
   extends Reads<T>, Upserts<T, T>, Releasable {}
 
 export interface CaseAssignmentRepository<T = CaseAssignment>
-  extends Creates<T, string>, Updates<CaseAssignment, string> {
+  extends Creates<T, string>, Updates<CaseAssignment, string>, Releasable {
   getAssignmentsForCases(caseIds: string[]): Promise<Map<string, CaseAssignment[]>>;
   findAssignmentsByAssignee(userId: string): Promise<CaseAssignment[]>;
   getAllActiveAssignments(): Promise<CaseAssignment[]>;
@@ -250,7 +249,11 @@ export interface CasesRepository extends Releasable {
     lastId: string | null,
     limit: number,
   ): Promise<{ caseId: string; _id: string }[]>;
-  findByCaseIdAndType<T>(caseId: string, documentType: string): Promise<T[]>;
+  findByCaseIdAndType<T extends { caseId: string; documentType: string }>(
+    caseId: string,
+    documentType: string,
+  ): Promise<T[]>;
+  findByCaseId(caseId: string): Promise<unknown[]>;
   delete(id: string): Promise<void>;
 }
 
