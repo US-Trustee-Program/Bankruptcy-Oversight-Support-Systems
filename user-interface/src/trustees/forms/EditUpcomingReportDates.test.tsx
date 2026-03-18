@@ -127,9 +127,7 @@ describe('EditUpcomingReportDates', () => {
     await userEvent.selectOptions(document.getElementById('tpr-review-period-start-day')!, '01');
     await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
 
-    expect(
-      screen.getByText('TPR Review Period End is required when Start is set.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('TPR Review Period End is required.')).toBeInTheDocument();
     expect(putSpy).not.toHaveBeenCalled();
   });
 
@@ -145,9 +143,37 @@ describe('EditUpcomingReportDates', () => {
     await userEvent.selectOptions(document.getElementById('tir-review-period-end-day')!, '30');
     await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
 
-    expect(
-      screen.getByText('TIR Review Period Start is required when End is set.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('TIR Review Period Start is required.')).toBeInTheDocument();
+    expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  test('shows error and blocks save when only month is selected in a MonthDaySelector', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    await userEvent.selectOptions(document.getElementById('tpr-review-period-start-month')!, '04');
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+
+    expect(screen.getByText('Must be a valid date mm/dd.')).toBeInTheDocument();
+    expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  test('shows error and blocks save when only day is selected in a MonthDaySelector', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    await userEvent.selectOptions(document.getElementById('tir-review-period-end-day')!, '15');
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+
+    expect(screen.getByText('Must be a valid date mm/dd.')).toBeInTheDocument();
     expect(putSpy).not.toHaveBeenCalled();
   });
 

@@ -26,6 +26,12 @@ function toMonthYearDate(isoDate: string): string {
   return `${year}-${month}-01`;
 }
 
+function isPartialMonthDay(value: string): boolean {
+  if (!value) return false;
+  const parts = value.split('-');
+  return parts.length === 3 && (!parts[1] || !parts[2]);
+}
+
 type FormState = {
   fieldExam: string;
   audit: string;
@@ -105,6 +111,34 @@ export default function EditUpcomingReportDates() {
   }
 
   async function handleSave() {
+    const PARTIAL_ERROR = 'Must be a valid date mm/dd.';
+    const MONTH_DAY_FIELDS = [
+      'tprReviewPeriodStart',
+      'tprReviewPeriodEnd',
+      'tirReviewPeriodStart',
+      'tirReviewPeriodEnd',
+    ] as const;
+
+    const partialErrors = {
+      tprReviewPeriodStart: '',
+      tprReviewPeriodEnd: '',
+      tirReviewPeriodStart: '',
+      tirReviewPeriodEnd: '',
+    };
+
+    let hasPartialError = false;
+    for (const field of MONTH_DAY_FIELDS) {
+      if (isPartialMonthDay(form[field])) {
+        partialErrors[field] = PARTIAL_ERROR;
+        hasPartialError = true;
+      }
+    }
+
+    if (hasPartialError) {
+      setErrors(partialErrors);
+      return;
+    }
+
     const isoInput: TrusteeUpcomingReportDatesInput = {
       trusteeId: trusteeId!,
       appointmentId: appointmentId!,
