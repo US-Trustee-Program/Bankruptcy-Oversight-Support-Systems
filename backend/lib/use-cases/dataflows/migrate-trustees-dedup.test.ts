@@ -364,7 +364,7 @@ describe('Trustee Deduplication', () => {
 
     test('should throw error for empty array', () => {
       expect(() => selectPrimaryAddress([])).toThrow(
-        'Cannot select primary address from empty array',
+        'Cannot select primary record from empty array',
       );
     });
   });
@@ -600,6 +600,346 @@ describe('Trustee Deduplication', () => {
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain('Cannot upsert trustee 1');
       expect(mockTrusteesRepo.findTrusteeByNameAndState).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Address Deduplication', () => {
+    test('should deduplicate addresses when merging with existing trustee', async () => {
+      const mergedData = {
+        primary: {
+          ID: 2,
+          FIRST_NAME: 'John',
+          LAST_NAME: 'Doe',
+          STREET: '123 Main St',
+          CITY: 'New York',
+          STATE: 'NY',
+        },
+        todIds: ['2'],
+        additionalAddresses: [
+          {
+            address1: '456 Oak Ave',
+            cityStateZipCountry: 'Los Angeles, CA, 90001',
+          },
+          {
+            address1: '123 Main St',
+            cityStateZipCountry: 'New York, NY, 10001',
+          },
+        ],
+        allAppointments: [],
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-456',
+        name: 'John Doe',
+        legacy: {
+          truIds: ['1'],
+          addresses: [
+            {
+              address1: '123 Main St',
+              cityStateZipCountry: 'New York, NY, 10001',
+            },
+          ],
+        },
+      };
+
+      const updatedTrustee = {
+        ...existingTrustee,
+        legacy: {
+          truIds: ['1', '2'],
+          addresses: [
+            {
+              address1: '123 Main St',
+              cityStateZipCountry: 'New York, NY, 10001',
+            },
+            {
+              address1: '456 Oak Ave',
+              cityStateZipCountry: 'Los Angeles, CA, 90001',
+            },
+          ],
+        },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue(updatedTrustee);
+
+      const result = await upsertTrustee(context, mergedData);
+
+      expect(result.data).toEqual(updatedTrustee);
+
+      // Verify that only the new unique address was added
+      const updateCall = mockTrusteesRepo.updateTrustee.mock.calls[0];
+      const updatedLegacy = updateCall[1].legacy;
+      expect(updatedLegacy.addresses).toHaveLength(2);
+      expect(updatedLegacy.addresses[0].address1).toBe('123 Main St');
+      expect(updatedLegacy.addresses[1].address1).toBe('456 Oak Ave');
+    });
+
+    test('should handle case-insensitive address deduplication', async () => {
+      const mergedData = {
+        primary: {
+          ID: 2,
+          FIRST_NAME: 'John',
+          LAST_NAME: 'Doe',
+          STREET: '123 Main St',
+          CITY: 'New York',
+          STATE: 'NY',
+        },
+        todIds: ['2'],
+        additionalAddresses: [
+          {
+            address1: '123 MAIN ST',
+            cityStateZipCountry: 'NEW YORK, NY, 10001',
+          },
+        ],
+        allAppointments: [],
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-456',
+        name: 'John Doe',
+        legacy: {
+          truIds: ['1'],
+          addresses: [
+            {
+              address1: '123 main st',
+              cityStateZipCountry: 'new york, ny, 10001',
+            },
+          ],
+        },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue(existingTrustee);
+
+      const result = await upsertTrustee(context, mergedData);
+
+      expect(result.error).toBeUndefined();
+
+      // Verify that duplicate address was NOT added
+      const updateCall = mockTrusteesRepo.updateTrustee.mock.calls[0];
+      const updatedLegacy = updateCall[1].legacy;
+      expect(updatedLegacy.addresses).toHaveLength(1);
+    });
+
+    test('should handle whitespace differences in address deduplication', async () => {
+      const mergedData = {
+        primary: {
+          ID: 2,
+          FIRST_NAME: 'John',
+          LAST_NAME: 'Doe',
+          STREET: '123 Main St',
+          CITY: 'New York',
+          STATE: 'NY',
+        },
+        todIds: ['2'],
+        additionalAddresses: [
+          {
+            address1: '  123 Main St  ',
+            cityStateZipCountry: '  New York, NY, 10001  ',
+          },
+        ],
+        allAppointments: [],
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-456',
+        name: 'John Doe',
+        legacy: {
+          truIds: ['1'],
+          addresses: [
+            {
+              address1: '123 Main St',
+              cityStateZipCountry: 'New York, NY, 10001',
+            },
+          ],
+        },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue(existingTrustee);
+
+      const result = await upsertTrustee(context, mergedData);
+
+      expect(result.error).toBeUndefined();
+
+      // Verify that duplicate address was NOT added
+      const updateCall = mockTrusteesRepo.updateTrustee.mock.calls[0];
+      const updatedLegacy = updateCall[1].legacy;
+      expect(updatedLegacy.addresses).toHaveLength(1);
+    });
+
+    test('should keep addresses with empty/null fields', async () => {
+      const mergedData = {
+        primary: {
+          ID: 2,
+          FIRST_NAME: 'John',
+          LAST_NAME: 'Doe',
+          STREET: '123 Main St',
+          CITY: 'New York',
+          STATE: 'NY',
+        },
+        todIds: ['2'],
+        additionalAddresses: [
+          {
+            address1: null,
+            cityStateZipCountry: null,
+          },
+          {
+            address1: '',
+            cityStateZipCountry: '',
+          },
+        ],
+        allAppointments: [],
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-456',
+        name: 'John Doe',
+        legacy: {
+          truIds: ['1'],
+          addresses: [],
+        },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue(existingTrustee);
+
+      const result = await upsertTrustee(context, mergedData);
+
+      expect(result.error).toBeUndefined();
+
+      // Verify that addresses with empty keys are kept
+      const updateCall = mockTrusteesRepo.updateTrustee.mock.calls[0];
+      const updatedLegacy = updateCall[1].legacy;
+      expect(updatedLegacy.addresses).toHaveLength(2);
+    });
+
+    test('should prevent unbounded growth on re-runs', async () => {
+      // Simulate re-running the migration with the same data multiple times
+      const mergedData = {
+        primary: {
+          ID: 2,
+          FIRST_NAME: 'John',
+          LAST_NAME: 'Doe',
+          STREET: '123 Main St',
+          CITY: 'New York',
+          STATE: 'NY',
+        },
+        todIds: ['2'],
+        additionalAddresses: [
+          {
+            address1: '456 Oak Ave',
+            cityStateZipCountry: 'Los Angeles, CA, 90001',
+          },
+          {
+            address1: '789 Elm St',
+            cityStateZipCountry: 'Chicago, IL, 60601',
+          },
+        ],
+        allAppointments: [],
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-456',
+        name: 'John Doe',
+        legacy: {
+          truIds: ['1'],
+          addresses: [
+            {
+              address1: '456 Oak Ave',
+              cityStateZipCountry: 'Los Angeles, CA, 90001',
+            },
+          ],
+        },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue(existingTrustee);
+
+      // First run
+      await upsertTrustee(context, mergedData);
+
+      let updateCall = mockTrusteesRepo.updateTrustee.mock.calls[0];
+      let updatedLegacy = updateCall[1].legacy;
+      expect(updatedLegacy.addresses).toHaveLength(2);
+
+      // Update mock to return the result from first run
+      const afterFirstRun = {
+        ...existingTrustee,
+        legacy: {
+          truIds: ['1', '2'],
+          addresses: updatedLegacy.addresses,
+        },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(afterFirstRun);
+
+      // Second run (re-run with same data)
+      await upsertTrustee(context, mergedData);
+
+      updateCall = mockTrusteesRepo.updateTrustee.mock.calls[1];
+      updatedLegacy = updateCall[1].legacy;
+
+      // Verify addresses didn't grow - should still be 2
+      expect(updatedLegacy.addresses).toHaveLength(2);
+    });
+
+    test('should deduplicate within additionalAddresses array itself', async () => {
+      const mergedData = {
+        primary: {
+          ID: 1,
+          FIRST_NAME: 'John',
+          LAST_NAME: 'Doe',
+          STREET: '123 Main St',
+          CITY: 'New York',
+          STATE: 'NY',
+        },
+        todIds: ['1'],
+        additionalAddresses: [
+          {
+            address1: '456 Oak Ave',
+            cityStateZipCountry: 'Los Angeles, CA, 90001',
+          },
+          {
+            address1: '456 Oak Ave',
+            cityStateZipCountry: 'Los Angeles, CA, 90001',
+          },
+          {
+            address1: '789 Elm St',
+            cityStateZipCountry: 'Chicago, IL, 60601',
+          },
+        ],
+        allAppointments: [],
+      };
+
+      const existingTrustee = {
+        id: 'existing-id',
+        trusteeId: 'trustee-456',
+        name: 'John Doe',
+        legacy: {
+          truIds: ['0'],
+          addresses: [],
+        },
+      };
+
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
+      mockTrusteesRepo.updateTrustee.mockResolvedValue(existingTrustee);
+
+      const result = await upsertTrustee(context, mergedData);
+
+      expect(result.error).toBeUndefined();
+
+      // Verify that duplicate within additionalAddresses was removed
+      const updateCall = mockTrusteesRepo.updateTrustee.mock.calls[0];
+      const updatedLegacy = updateCall[1].legacy;
+      expect(updatedLegacy.addresses).toHaveLength(2);
+      expect(updatedLegacy.addresses[0].address1).toBe('456 Oak Ave');
+      expect(updatedLegacy.addresses[1].address1).toBe('789 Elm St');
     });
   });
 

@@ -131,19 +131,9 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   describe('findByCamsTrusteeId', () => {
     const camsTrusteeId = 'trustee-1';
     const expectedQuery = {
-      conjunction: 'AND',
-      values: [
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'documentType' },
-          rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
-        },
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'camsTrusteeId' },
-          rightOperand: camsTrusteeId,
-        },
-      ],
+      condition: 'EQUALS',
+      leftOperand: { name: 'camsTrusteeId' },
+      rightOperand: camsTrusteeId,
     };
 
     test('should find all professional IDs for a trustee', async () => {
@@ -182,17 +172,11 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       const result = await repository.findByCamsTrusteeId('trustee-unknown');
 
-      expect(mockAdapter).toHaveBeenCalledWith(
-        expect.objectContaining({
-          conjunction: 'AND',
-          values: expect.arrayContaining([
-            expect.objectContaining({
-              leftOperand: { name: 'camsTrusteeId' },
-              rightOperand: 'trustee-unknown',
-            }),
-          ]),
-        }),
-      );
+      expect(mockAdapter).toHaveBeenCalledWith({
+        condition: 'EQUALS',
+        leftOperand: { name: 'camsTrusteeId' },
+        rightOperand: 'trustee-unknown',
+      });
       expect(result).toHaveLength(0);
     });
 
@@ -212,19 +196,9 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   describe('findByAcmsProfessionalId', () => {
     const acmsProfessionalId = 'AK-01414';
     const expectedQuery = {
-      conjunction: 'AND',
-      values: [
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'documentType' },
-          rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
-        },
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'acmsProfessionalId' },
-          rightOperand: acmsProfessionalId,
-        },
-      ],
+      condition: 'EQUALS',
+      leftOperand: { name: 'acmsProfessionalId' },
+      rightOperand: acmsProfessionalId,
     };
 
     test('should find all trustees with a given ACMS professional ID', async () => {
@@ -279,17 +253,11 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       const result = await repository.findByAcmsProfessionalId('XX-99999');
 
-      expect(mockAdapter).toHaveBeenCalledWith(
-        expect.objectContaining({
-          conjunction: 'AND',
-          values: expect.arrayContaining([
-            expect.objectContaining({
-              leftOperand: { name: 'acmsProfessionalId' },
-              rightOperand: 'XX-99999',
-            }),
-          ]),
-        }),
-      );
+      expect(mockAdapter).toHaveBeenCalledWith({
+        condition: 'EQUALS',
+        leftOperand: { name: 'acmsProfessionalId' },
+        rightOperand: 'XX-99999',
+      });
       expect(result).toHaveLength(0);
     });
 
@@ -309,19 +277,9 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   describe('deleteByCamsTrusteeId', () => {
     const camsTrusteeId = 'trustee-1';
     const expectedQuery = {
-      conjunction: 'AND',
-      values: [
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'documentType' },
-          rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
-        },
-        {
-          condition: 'EQUALS',
-          leftOperand: { name: 'camsTrusteeId' },
-          rightOperand: camsTrusteeId,
-        },
-      ],
+      condition: 'EQUALS',
+      leftOperand: { name: 'camsTrusteeId' },
+      rightOperand: camsTrusteeId,
     };
 
     test('should delete all professional IDs for a trustee', async () => {
@@ -348,11 +306,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   });
 
   describe('deleteAll', () => {
-    const expectedQuery = {
-      condition: 'EQUALS',
-      leftOperand: { name: 'documentType' },
-      rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
-    };
+    const expectedQuery = {};
 
     test('should delete all professional IDs and return count', async () => {
       const deletedCount = 150;

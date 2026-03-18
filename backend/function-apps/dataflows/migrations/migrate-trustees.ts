@@ -1,6 +1,7 @@
 import { app, InvocationContext, output } from '@azure/functions';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
+import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import {
   buildFunctionName,
   buildQueueName,
@@ -68,6 +69,56 @@ type MigrationStartMessage = StartMessage & {
 };
 
 /**
+ * performDeleteAllIfRequested
+ *
+ * Handle deleteAll workflow if requested in the start message.
+ * Deletes all existing trustees and appointments, then resets migration state.
+ *
+ * @returns true if workflow succeeded or was not requested, false if errors occurred (DLQ already populated)
+ */
+async function performDeleteAllIfRequested(
+  start: MigrationStartMessage,
+  context: ApplicationContext,
+  invocationContext: InvocationContext,
+): Promise<boolean> {
+  const { logger } = context;
+
+  if (!start.deleteAll) {
+    return true; // nothing to do, continue normal flow
+  }
+
+  logger.info(
+    MODULE_NAME,
+    'deleteAll flag detected. Deleting all existing trustees and appointments.',
+  );
+
+  const deleteResult = await MigrateTrusteesUseCase.deleteAllTrusteesAndAppointments(context);
+  if (deleteResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
+    );
+    return false;
+  }
+
+  logger.info(
+    MODULE_NAME,
+    `Successfully deleted ${deleteResult.data.deletedTrustees} trustees and ${deleteResult.data.deletedAppointments} appointments.`,
+  );
+
+  const resetResult = await MigrationStateService.resetMigrationState(context);
+  if (resetResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(resetResult.error, MODULE_NAME, HANDLE_START),
+    );
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * handleStart
  *
  * Initialize the trustee migration by reading existing state for resumability.
@@ -78,36 +129,9 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  if (start.deleteAll) {
-    logger.info(
-      MODULE_NAME,
-      'deleteAll flag detected. Deleting all existing trustees and appointments.',
-    );
-
-    const deleteResult = await MigrateTrusteesUseCase.deleteAllTrusteesAndAppointments(context);
-
-    if (deleteResult.error) {
-      invocationContext.extraOutputs.set(
-        DLQ,
-        buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
-      );
-      return;
-    }
-
-    logger.info(
-      MODULE_NAME,
-      `Successfully deleted ${deleteResult.data.deletedTrustees} trustees and ${deleteResult.data.deletedAppointments} appointments.`,
-    );
-
-    // Reset migration state after deletion
-    const resetResult = await MigrationStateService.resetMigrationState(context);
-    if (resetResult.error) {
-      invocationContext.extraOutputs.set(
-        DLQ,
-        buildQueueError(resetResult.error, MODULE_NAME, HANDLE_START),
-      );
-      return;
-    }
+  const deleteOk = await performDeleteAllIfRequested(start, context, invocationContext);
+  if (!deleteOk) {
+    return; // DLQ already populated
   }
 
   const stateResult = await MigrationStateService.getOrCreateMigrationState(context, !!start.reset);
