@@ -16,6 +16,7 @@ import { CamsError } from '../../../lib/common-errors/cams-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 import { AtsTrusteeRecord } from '../../../lib/adapters/types/ats.types';
+import { TrusteeMigrationStartEvent } from '@common/cams/dataflow-events';
 
 const MODULE_NAME = ModuleNames.MIGRATE_TRUSTEES;
 const PAGE_SIZE = 50; // Smaller page size for trustees with appointments
@@ -63,10 +64,7 @@ type TrusteeEvent = AtsTrusteeRecord & {
   error?: Error;
 };
 
-type MigrationStartMessage = StartMessage & {
-  reset?: boolean;
-  deleteAll?: boolean;
-};
+type MigrationStartMessage = StartMessage & TrusteeMigrationStartEvent;
 
 /**
  * performDeleteAllIfRequested

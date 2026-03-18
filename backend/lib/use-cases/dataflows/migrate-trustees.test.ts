@@ -460,7 +460,7 @@ describe('Migrate Trustees Use Case', () => {
 
       expect(result.success).toBe(true);
       expect(result.trusteeId).toBe('trustee-123');
-      expect(result.truId).toBe('1');
+      expect(result.todIds).toEqual(['1']);
       expect(result.appointmentsProcessed).toBe(1);
     });
 
@@ -516,7 +516,7 @@ describe('Migrate Trustees Use Case', () => {
       const result = await processTrusteeWithAppointments(context, mergedData);
 
       expect(result.success).toBe(false);
-      expect(result.truId).toBe('3');
+      expect(result.todIds).toEqual(['3']);
       expect(result.appointmentsProcessed).toBe(0);
       expect(result.error).toBeDefined();
     });

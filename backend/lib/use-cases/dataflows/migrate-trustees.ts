@@ -214,8 +214,7 @@ export function mergeTrusteeRecords(records: AtsTrusteeRecord[]): MergedTrusteeD
  */
 type TrusteeProcessingResult = {
   trusteeId: string;
-  truId: string; // comma-joined for backward compatibility
-  todIds: string[]; // structured form
+  todIds: string[];
   success: boolean;
   appointmentsProcessed: number;
   failedAppointments?: FailedAppointment[];
@@ -369,13 +368,8 @@ export async function upsertTrustee(
         `Updating existing trustee ${existingTrustee.trusteeId} with TOD IDs: ${todIds.join(', ')}`,
       );
 
-      // Handle backward compatibility: legacy.truId (singular) vs legacy.truIds (array)
-      const existingTodIds: string[] = [];
-      if (existingTrustee.legacy?.truIds) {
-        existingTodIds.push(...existingTrustee.legacy.truIds);
-      } else if (existingTrustee.legacy?.truId) {
-        existingTodIds.push(existingTrustee.legacy.truId);
-      }
+      // Get existing TOD IDs from trustee
+      const existingTodIds: string[] = existingTrustee.legacy?.truIds || [];
 
       // Merge TOD IDs (deduplicate)
       const mergedTodIds = Array.from(new Set([...existingTodIds, ...todIds]));
@@ -597,7 +591,6 @@ export async function processTrusteeWithAppointments(
     });
     return {
       trusteeId: '',
-      truId: 'UNKNOWN',
       todIds: [],
       success: false,
       appointmentsProcessed: 0,
@@ -605,8 +598,6 @@ export async function processTrusteeWithAppointments(
       error: 'Malformed trustee record: missing ID',
     };
   }
-
-  const truId = todIds.join(',');
 
   try {
     // Upsert the trustee (with deduplication)
@@ -632,7 +623,7 @@ export async function processTrusteeWithAppointments(
       if (appointmentResult.error) {
         context.logger.error(
           MODULE_NAME,
-          `Failed to process appointments for trustee TOD IDs ${truId}`,
+          `Failed to process appointments for trustee TOD IDs ${todIds.join(', ')}`,
           {
             error: appointmentResult.error.message,
           },
@@ -643,11 +634,10 @@ export async function processTrusteeWithAppointments(
     }
 
     // Log statistics
-    context.logger.info(MODULE_NAME, `Trustee TOD IDs ${truId} stats:`, stats);
+    context.logger.info(MODULE_NAME, `Trustee TOD IDs ${todIds.join(', ')} stats:`, stats);
 
     return {
       trusteeId: trustee.trusteeId,
-      truId,
       todIds,
       success: true,
       appointmentsProcessed,
@@ -655,13 +645,12 @@ export async function processTrusteeWithAppointments(
     };
   } catch (error) {
     const camsError = getCamsError(error, MODULE_NAME);
-    context.logger.error(MODULE_NAME, `Failed to process trustee TOD IDs ${truId}`, {
+    context.logger.error(MODULE_NAME, `Failed to process trustee TOD IDs ${todIds.join(', ')}`, {
       error: camsError.message,
     });
 
     return {
       trusteeId: '',
-      truId,
       todIds,
       success: false,
       appointmentsProcessed: 0,
