@@ -7,6 +7,7 @@ import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import { TrusteeUpcomingReportDatesUseCase } from '../../use-cases/trustee-upcoming-report-dates/trustee-upcoming-report-dates';
 import { BadRequestError } from '../../common-errors/bad-request';
 import {
+  DATE_FIELDS,
   TrusteeUpcomingReportDates,
   TrusteeUpcomingReportDatesInput,
 } from '@common/cams/trustee-upcoming-report-dates';
@@ -42,18 +43,7 @@ export class TrusteeUpcomingReportDatesController implements CamsController {
 
       if (context.request.method === 'PUT') {
         const input = context.request.body as TrusteeUpcomingReportDatesInput;
-        const DATE_FIELD_KEYS: (keyof TrusteeUpcomingReportDatesInput)[] = [
-          'fieldExam',
-          'audit',
-          'tprReviewPeriodStart',
-          'tprReviewPeriodEnd',
-          'tprDue',
-          'tirReviewPeriodStart',
-          'tirReviewPeriodEnd',
-          'tirSubmission',
-          'tirReview',
-        ];
-        const invalidFields = DATE_FIELD_KEYS.filter(
+        const invalidFields = DATE_FIELDS.filter(
           (field) => input[field] !== null && !Validators.isValidDate(input[field]).valid,
         );
         if (invalidFields.length > 0) {

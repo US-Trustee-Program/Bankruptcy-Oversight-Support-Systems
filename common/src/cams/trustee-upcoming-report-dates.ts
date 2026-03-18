@@ -90,6 +90,29 @@ export type TrusteeUpcomingReportDatesHistory = AbstractTrusteeHistory<
   appointmentId: string;
 };
 
+export type DateField =
+  | 'fieldExam'
+  | 'audit'
+  | 'tprReviewPeriodStart'
+  | 'tprReviewPeriodEnd'
+  | 'tprDue'
+  | 'tirReviewPeriodStart'
+  | 'tirReviewPeriodEnd'
+  | 'tirSubmission'
+  | 'tirReview';
+
+export const DATE_FIELDS: DateField[] = [
+  'fieldExam',
+  'audit',
+  'tprReviewPeriodStart',
+  'tprReviewPeriodEnd',
+  'tprDue',
+  'tirReviewPeriodStart',
+  'tirReviewPeriodEnd',
+  'tirSubmission',
+  'tirReview',
+];
+
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');
   return `${month}/${day}/${year}`;
@@ -124,18 +147,18 @@ export function mmddToISO(str: string): string {
   return `1900-${month}-${day}`;
 }
 
+function isValidISODate(iso: string): boolean {
+  const date = new Date(iso);
+  return !isNaN(date.getTime()) && date.toISOString().split('T')[0] === iso;
+}
+
 export function validateMMDDYYYY(value: unknown): ValidatorResult {
   const error = { reasons: ['Must be a valid date mm/dd/yyyy.'] };
   if (typeof value !== 'string' || !/^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
     return error;
   }
   const [month, day, year] = value.split('/');
-  const iso = `${year}-${month}-${day}`;
-  const date = new Date(iso);
-  if (isNaN(date.getTime()) || date.toISOString().split('T')[0] !== iso) {
-    return error;
-  }
-  return VALID;
+  return isValidISODate(`${year}-${month}-${day}`) ? VALID : error;
 }
 
 export function validateMMYYYY(value: unknown): ValidatorResult {
@@ -154,12 +177,7 @@ export function validateMMDD(value: unknown): ValidatorResult {
     return error;
   }
   const [month, day] = value.split('/');
-  const iso = `2000-${month}-${day}`;
-  const date = new Date(iso);
-  if (isNaN(date.getTime()) || date.toISOString().split('T')[0] !== iso) {
-    return error;
-  }
-  return VALID;
+  return isValidISODate(`2000-${month}-${day}`) ? VALID : error;
 }
 
 export function validateMMDDRange(value: unknown): ValidatorResult {
