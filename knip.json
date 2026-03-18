@@ -6,13 +6,7 @@
   },
   "workspaces": {
     ".": {
-      "ignore": [
-        "**/node_modules/**",
-        "**/dist/**",
-        "**/build/**",
-        "**/coverage/**",
-        "**/.cache/**"
-      ]
+      "ignore": []
     },
     "backend": {
       "entry": [
@@ -21,11 +15,7 @@
         "**/*.test.ts"
       ],
       "project": ["**/*.ts"],
-      "ignore": [
-        "**/node_modules/**",
-        "**/dist/**",
-        "**/coverage/**"
-      ],
+      "ignore": [],
       "ignoreFiles": [
         "function-apps/api/index.ts",
         "lib/testing/mock-gateways/mock-oauth2-constants.ts"
@@ -33,27 +23,17 @@
     },
     "user-interface": {
       "entry": [
-        "src/index.tsx",
-        "src/initialize.ts",
         "test/**/*.ts",
         "src/**/*.test.ts",
         "src/**/*.test.tsx"
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.ts", "!playwright.config.ts"],
-      "ignore": [
-        "**/node_modules/**",
-        "**/build/**",
-        "**/coverage/**"
-      ]
+      "ignore": []
     },
     "common": {
       "entry": ["src/**/*.test.ts"],
       "project": ["src/**/*.ts"],
-      "ignore": [
-        "**/node_modules/**",
-        "**/dist/**",
-        "**/coverage/**"
-      ]
+      "ignore": []
     },
     "test/bdd": {
       "entry": [
@@ -63,27 +43,23 @@
         "fixtures/**/*.ts"
       ],
       "project": ["**/*.{ts,tsx}"],
-      "ignore": [
-        "**/node_modules/**",
-        "**/coverage/**"
-      ]
+      "ignore": []
     },
     "test/e2e": {
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
-      "ignore": ["**/node_modules/**"]
+      "ignore": []
     },
     "dev-tools": {
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
-      "ignore": ["**/node_modules/**", "**/data/**"]
+      "ignore": []
     }
   },
   "ignoreBinaries": [
     "pushd",
     "popd",
     "playwright",
-    "date",
     "dot",
     "dev-tools/.venv-docs/bin/python",
     "dev-tools/.venv-docs/bin/python3",
