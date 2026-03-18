@@ -411,3 +411,28 @@ resource userGroupsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbData
     }
   }
 }
+
+resource archivedCasesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'archived-cases'
+  properties: {
+    resource: {
+      id: 'archived-cases'
+      shardKey: {
+        caseId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['caseId']
+          }
+        }
+      ]
+    }
+  }
+}

@@ -210,4 +210,124 @@ describe('ACMS gateway tests', () => {
       }),
     );
   });
+
+  test('should exclude deleted cases when loading migration table', async () => {
+    const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+      success: true,
+      results: [],
+      message: '',
+    });
+    const ssn = '234-21-5326';
+
+    const context = await createMockApplicationContext();
+    const gateway = new AcmsGatewayImpl(context);
+    await gateway.loadMigrationTable(context);
+    console.log(ssn);
+
+    expect(spy).toHaveBeenCalledWith(context, expect.stringContaining("DELETE_CODE != 'D'"));
+    expect(spy).toHaveBeenCalledWith(
+      context,
+      expect.stringContaining('INSERT INTO dbo.CAMS_MIGRATION_TEMP'),
+    );
+  });
+
+  describe('getDeletedCaseIds', () => {
+    test('should convert date string to YYYYMMDD integer and pass mssql.Int type', async () => {
+      const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: [],
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const lastChangeDate = '2026-03-13';
+
+      await gateway.getDeletedCaseIds(context, lastChangeDate);
+
+      const calls = spy.mock.calls[0];
+      const inputParams = calls[2];
+      const lastChangeDateParam = inputParams.find((p) => p.name === 'lastChangeDate');
+
+      expect(lastChangeDateParam).toBeDefined();
+      expect(lastChangeDateParam.name).toBe('lastChangeDate');
+      expect(lastChangeDateParam.value).toBe(20260313);
+      expect(lastChangeDateParam.type).toBeDefined();
+      expect(lastChangeDateParam.type.name).toBe('Int');
+    });
+
+    test('should return latest date from first element when results ordered DESC', async () => {
+      const databaseResults = [
+        { caseId: '081-24-00001', lastChangeDate: 20260315 },
+        { caseId: '081-24-00002', lastChangeDate: 20260314 },
+        { caseId: '081-24-00003', lastChangeDate: 20260313 },
+      ];
+
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: databaseResults,
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const lastChangeDate = '2026-03-12';
+
+      const result = await gateway.getDeletedCaseIds(context, lastChangeDate);
+
+      expect(result.caseIds).toEqual(['081-24-00001', '081-24-00002', '081-24-00003']);
+      expect(result.latestDeletedCaseDate).toBe('2026-03-15');
+    });
+
+    test('should return input date when no deleted cases found', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: [],
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const lastChangeDate = '2026-03-12';
+
+      const result = await gateway.getDeletedCaseIds(context, lastChangeDate);
+
+      expect(result.caseIds).toEqual([]);
+      expect(result.latestDeletedCaseDate).toBe('2026-03-12');
+    });
+
+    test('should handle various date formats correctly', async () => {
+      const testCases = [
+        { input: '2018-01-01', expected: 20180101 },
+        { input: '2026-12-31', expected: 20261231 },
+        { input: '2020-02-29', expected: 20200229 },
+      ];
+
+      for (const testCase of testCases) {
+        const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+          success: true,
+          results: [],
+          message: '',
+        });
+
+        const context = await createMockApplicationContext();
+        const gateway = new AcmsGatewayImpl(context);
+
+        await gateway.getDeletedCaseIds(context, testCase.input);
+
+        expect(spy).toHaveBeenCalledWith(
+          context,
+          expect.any(String),
+          expect.arrayContaining([
+            expect.objectContaining({
+              name: 'lastChangeDate',
+              value: testCase.expected,
+            }),
+          ]),
+        );
+
+        vi.restoreAllMocks();
+      }
+    });
+  });
 });

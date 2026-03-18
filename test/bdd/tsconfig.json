@@ -41,10 +41,5 @@
     "../../backend/lib/**/*.ts",
     "../../common/src/**/*.ts"
   ],
-  "exclude": ["node_modules", "dist", "coverage"],
-  "references": [
-    { "path": "../../common" },
-    { "path": "../../user-interface" },
-    { "path": "../../backend" }
-  ]
+  "exclude": ["node_modules", "dist", "coverage"]
 }

@@ -139,7 +139,10 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
         ) AS caseId
       FROM [dbo].[CMMDB]
-      WHERE (CLOSED_BY_COURT_DATE > 20180101 OR CLOSED_BY_UST_DATE > 20180101 OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))`;
+      WHERE (CLOSED_BY_COURT_DATE > 20180101
+      OR CLOSED_BY_UST_DATE > 20180101
+      OR (CLOSED_BY_COURT_DATE = 0 and CLOSED_BY_UST_DATE = 0))
+      AND DELETE_CODE != 'D'`;
 
     try {
       await this.executeQuery(context, selectIntoQuery);
@@ -189,8 +192,64 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
+  public async getDeletedCaseIds(
+    context: ApplicationContext,
+    lastChangeDate: string,
+  ): Promise<{ caseIds: string[]; latestDeletedCaseDate: string }> {
+    const input: DbTableFieldSpec[] = [];
+
+    const lastChangeDateInt = parseInt(lastChangeDate.replace(/-/g, ''));
+
+    input.push({
+      name: 'lastChangeDate',
+      type: mssql.Int,
+      value: lastChangeDateInt,
+    });
+
+    const query = `
+      SELECT
+        CONCAT(
+          RIGHT('000' + CAST(CASE_DIV AS VARCHAR), 3),
+          '-',
+          RIGHT('00' + CAST(CASE_YEAR AS VARCHAR), 2),
+          '-',
+          RIGHT('00000' + CAST(CASE_NUMBER AS VARCHAR), 5)
+        ) AS caseId,
+        LAST_CHANGE_DATE AS lastChangeDate
+      FROM [dbo].[CMMDB]
+      WHERE DELETE_CODE = 'D'
+      AND LAST_CHANGE_DATE > @lastChangeDate
+      ORDER BY LAST_CHANGE_DATE DESC`;
+
+    type ResultType = {
+      caseId: string;
+      lastChangeDate: number;
+    };
+
+    try {
+      context.logger.debug(MODULE_NAME, `Querying for deleted cases since: ${lastChangeDate}`);
+      const { results } = await this.executeQuery<ResultType>(context, query, input);
+      const deletedCaseResults = results as ResultType[];
+
+      const caseIds = deletedCaseResults.map((r) => r.caseId);
+      const latestDeletedCaseDate =
+        deletedCaseResults.length > 0
+          ? this.formatAcmsDateToString(deletedCaseResults[0].lastChangeDate)
+          : lastChangeDate;
+
+      return { caseIds, latestDeletedCaseDate };
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, originalError.message);
+    }
+  }
+
   private formatCaseId(caseId: string): string {
     const padded = caseId.padStart(10, '0');
     return `${padded.slice(0, 3)}-${padded.slice(3, 5)}-${padded.slice(5)}`;
+  }
+
+  private formatAcmsDateToString(acmsDate: number): string {
+    const dateStr = acmsDate.toString();
+    return `${dateStr.slice(0, 4)}-${dateStr.slice(4, 6)}-${dateStr.slice(6, 8)}`;
   }
 }

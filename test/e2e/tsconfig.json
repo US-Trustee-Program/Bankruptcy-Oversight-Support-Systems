@@ -6,6 +6,5 @@
     "lib": ["es6", "dom"],
     "types": ["node"]
   },
-  "references": [{ "path": "../../common" }, { "path": "../../backend" }],
   "include": ["**/*.ts"]
 }
