@@ -29,7 +29,7 @@ function requirePair(
   };
 }
 
-export const trusteeUpcomingReportDatesSpec: ValidationSpec<TrusteeUpcomingReportDatesInput> = {
+const trusteeUpcomingReportDatesSpec: ValidationSpec<TrusteeUpcomingReportDatesInput> = {
   $: [
     requirePair(
       'tprReviewPeriodStart',
