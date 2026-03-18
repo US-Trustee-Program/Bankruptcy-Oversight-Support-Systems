@@ -1,7 +1,10 @@
 import './EditUpcomingReportDates.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { TrusteeUpcomingReportDatesInput } from '@common/cams/trustee-upcoming-report-dates';
+import {
+  TrusteeUpcomingReportDatesInput,
+  validateTrusteeUpcomingReportDates,
+} from '@common/cams/trustee-upcoming-report-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -101,35 +104,7 @@ export default function EditUpcomingReportDates() {
     };
   }
 
-  //TODO: instead of inlining the validation logic here lets use a ValidationSpec
-  function validate(): boolean {
-    const newErrors = {
-      tprReviewPeriodStart: '',
-      tprReviewPeriodEnd: '',
-      tirReviewPeriodStart: '',
-      tirReviewPeriodEnd: '',
-    };
-
-    if (form.tprReviewPeriodStart && !form.tprReviewPeriodEnd) {
-      newErrors.tprReviewPeriodEnd = 'TPR Review Period End is required when Start is set.';
-    }
-    if (form.tprReviewPeriodEnd && !form.tprReviewPeriodStart) {
-      newErrors.tprReviewPeriodStart = 'TPR Review Period Start is required when End is set.';
-    }
-    if (form.tirReviewPeriodStart && !form.tirReviewPeriodEnd) {
-      newErrors.tirReviewPeriodEnd = 'TIR Review Period End is required when Start is set.';
-    }
-    if (form.tirReviewPeriodEnd && !form.tirReviewPeriodStart) {
-      newErrors.tirReviewPeriodStart = 'TIR Review Period Start is required when End is set.';
-    }
-
-    setErrors(newErrors);
-    return Object.values(newErrors).every((e) => e === '');
-  }
-
   async function handleSave() {
-    if (!validate()) return;
-
     const isoInput: TrusteeUpcomingReportDatesInput = {
       trusteeId: trusteeId!,
       appointmentId: appointmentId!,
@@ -147,6 +122,15 @@ export default function EditUpcomingReportDates() {
       tirSubmission: form.tirSubmission ? toSentinelDate(form.tirSubmission) : null,
       tirReview: form.tirReview ? toSentinelDate(form.tirReview) : null,
     };
+
+    const result = validateTrusteeUpcomingReportDates(isoInput);
+    setErrors({
+      tprReviewPeriodStart: result.reasonMap?.tprReviewPeriodStart?.reasons?.[0] ?? '',
+      tprReviewPeriodEnd: result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0] ?? '',
+      tirReviewPeriodStart: result.reasonMap?.tirReviewPeriodStart?.reasons?.[0] ?? '',
+      tirReviewPeriodEnd: result.reasonMap?.tirReviewPeriodEnd?.reasons?.[0] ?? '',
+    });
+    if (!result.valid) return;
 
     setIsSaving(true);
     try {
