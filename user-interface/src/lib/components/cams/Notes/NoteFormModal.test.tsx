@@ -1,11 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import NoteFormModal, { NoteFormModalRef } from './NoteFormModal';
 import { NoteInput } from './types';
 import React from 'react';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import userEvent from '@testing-library/user-event';
 import { RichTextEditorRef } from '@/lib/components/cams/RichTextEditor/RichTextEditor';
+import * as ModalModule from '@/lib/components/uswds/modal/Modal';
 
 /**
  * NOTE: We mock RichTextEditor to avoid jsdom/ProseMirror compatibility issues.
@@ -108,6 +109,10 @@ describe('NoteFormModal', () => {
   let modalRef: React.RefObject<NoteFormModalRef>;
   let mockOnSave: (noteData: NoteInput) => Promise<void>;
   let mockOnModalClosed: () => void;
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   beforeEach(() => {
     vi.restoreAllMocks();
@@ -511,6 +516,214 @@ describe('NoteFormModal', () => {
     await waitFor(() => {
       expect(screen.getByText('Title and content are both required inputs.')).toBeInTheDocument();
     });
+  });
+
+  test('should handle show and hide gracefully when modal ref is not set', async () => {
+    type ModalRenderFn = (...args: unknown[]) => null;
+    vi.spyOn(
+      ModalModule.default as unknown as { render: ModalRenderFn },
+      'render',
+    ).mockImplementation(() => null);
+
+    render(
+      <NoteFormModal
+        modalId="test-note-modal"
+        onSave={mockOnSave}
+        onModalClosed={mockOnModalClosed}
+        ref={modalRef}
+      />,
+    );
+
+    // modalRef.current is null because Modal's render was mocked to null
+    // This covers the false branches of `if (modalRef.current?.show)` and
+    // `if (modalRef.current?.hide)`, plus the ?. null branches in show() and hide()
+    expect(() =>
+      modalRef.current?.show({
+        mode: 'create',
+        entityId: 'entity-123',
+        title: 'Test',
+        content: '<p>Content</p>',
+        cacheKey: 'notes-entity-123',
+        openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+        initialTitle: '',
+        initialContent: '',
+      }),
+    ).not.toThrow();
+
+    expect(() => modalRef.current?.hide()).not.toThrow();
+  });
+
+  test('should skip cache operations when form key is not yet set', async () => {
+    render(<NoteFormModal modalId="test-note-modal" onSave={mockOnSave} ref={modalRef} />);
+
+    // Trigger updateFormCache before show() so formKeyRef.current is still ''
+    // This covers the saveFormData path where neither branch fires (falsy formKey)
+    const titleInput = screen.getByTestId('note-title-input');
+    fireEvent.change(titleInput, { target: { value: 'abc' } });
+
+    expect(LocalFormCache.saveForm).not.toHaveBeenCalled();
+    expect(LocalFormCache.clearForm).not.toHaveBeenCalled();
+  });
+
+  test('should fall back to empty string when getHtml returns null', async () => {
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+
+    render(
+      <NoteFormModal
+        modalId="test-note-modal"
+        onSave={mockOnSave}
+        onModalClosed={mockOnModalClosed}
+        RichTextEditorRef={richTextEditorRef}
+        ref={modalRef}
+      />,
+    );
+
+    modalRef.current?.show({
+      mode: 'create',
+      entityId: 'entity-123',
+      title: 'Test Note',
+      content: '<p>Test content</p>',
+      cacheKey: 'notes-entity-123',
+      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      initialTitle: '',
+      initialContent: '',
+    });
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => expect(submitButton).toBeEnabled());
+
+    // Make getHtml() return null to exercise the ?? '' fallback in both
+    // getNotesRichTextContentValue (line 49) and updateFormCache (line 159)
+    vi.spyOn(richTextEditorRef.current!, 'getHtml').mockReturnValue(null as unknown as string);
+
+    fireEvent.click(submitButton);
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('Title and content are both required inputs.')).toBeInTheDocument();
+    });
+  });
+
+  test('should fall back to empty string when show is called with undefined title and content', async () => {
+    render(<NoteFormModal modalId="test-note-modal" onSave={mockOnSave} ref={modalRef} />);
+
+    // Pass undefined for title/content to exercise the ?? '' fallback in show()
+    modalRef.current?.show({
+      mode: 'create',
+      entityId: 'entity-123',
+      title: undefined as unknown as string,
+      content: undefined as unknown as string,
+      cacheKey: 'notes-entity-123',
+      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      initialTitle: '',
+      initialContent: '',
+    });
+
+    expect(await screen.findByText('Create Note')).toBeInTheDocument();
+  });
+
+  test('should use default modal ID when modalId prop is empty string', () => {
+    render(<NoteFormModal modalId="" onSave={mockOnSave} ref={modalRef} />);
+    expect(screen.getByTestId('modal-note-form-modal')).toBeInTheDocument();
+  });
+
+  test('should not throw when hide is called without onModalClosed', async () => {
+    render(<NoteFormModal modalId="test-note-modal" onSave={mockOnSave} ref={modalRef} />);
+
+    modalRef.current?.show({
+      mode: 'create',
+      entityId: 'entity-123',
+      title: 'Test',
+      content: '<p>Content</p>',
+      cacheKey: 'notes-entity-123',
+      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      initialTitle: '',
+      initialContent: '',
+    });
+
+    expect(await screen.findByText('Create Note')).toBeInTheDocument();
+
+    expect(() => modalRef.current?.hide()).not.toThrow();
+  });
+
+  test('should clear form cache when form key is set but both title and content are empty', async () => {
+    render(
+      <NoteFormModal
+        modalId="test-note-modal"
+        onSave={mockOnSave}
+        onModalClosed={mockOnModalClosed}
+        ref={modalRef}
+      />,
+    );
+
+    // Showing with empty title and content: Input.getValue() returns its initial
+    // state (''), RichTextEditor.getHtml() returns '' for empty content —
+    // so updateFormCache sees both as '' and hits saveFormData's else-if branch.
+    modalRef.current?.show({
+      mode: 'create',
+      entityId: 'entity-123',
+      title: '',
+      content: '',
+      cacheKey: 'notes-entity-123',
+      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      initialTitle: '',
+      initialContent: '',
+    });
+
+    await waitFor(() => {
+      expect(LocalFormCache.clearForm).toHaveBeenCalledWith('notes-entity-123');
+    });
+  });
+
+  test('should block second submission via throttle guard and reset timer after delay', async () => {
+    const failingOnSave = vi.fn().mockRejectedValue(new Error('Save failed'));
+    const richTextEditorRef = React.createRef<RichTextEditorRef>();
+
+    render(
+      <NoteFormModal
+        modalId="test-note-modal"
+        onSave={failingOnSave}
+        onModalClosed={mockOnModalClosed}
+        RichTextEditorRef={richTextEditorRef}
+        ref={modalRef}
+      />,
+    );
+
+    modalRef.current?.show({
+      mode: 'create',
+      entityId: 'entity-123',
+      title: 'Test Note',
+      content: '<p>Test content</p>',
+      cacheKey: 'notes-entity-123',
+      openModalButtonRef: { focus: vi.fn(), disableButton: vi.fn() },
+      initialTitle: '',
+      initialContent: '',
+    });
+
+    const submitButton = screen.getByTestId(SUBMIT_BUTTON_ID);
+    await waitFor(() => expect(submitButton).toBeEnabled());
+
+    // Switch to fake timers so the throttle's setTimeout(cb, 300) doesn't auto-fire
+    vi.useFakeTimers();
+
+    // First click: throttle fires, onSave rejects, finally re-enables button.
+    // act(async) is required here to flush the Promise rejection microtask so
+    // the finally block runs and re-enables the button before the second click.
+    // eslint-disable-next-line testing-library/no-unnecessary-act
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
+
+    // isThrottled.current is still true (setTimeout frozen); button re-enabled by finally
+    // Second click: hits the throttle guard (line 32)
+    fireEvent.click(submitButton);
+
+    expect(failingOnSave).toHaveBeenCalledTimes(1);
+
+    // Advance frozen timer to reset throttle (line 39)
+    vi.advanceTimersByTime(300);
+
+    vi.useRealTimers();
   });
 
   test('should call onModalClosed when modal is closed', async () => {

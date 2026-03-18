@@ -48,7 +48,7 @@ describe('Consolidation UseCase tests', () => {
     expect(store.foundValidCaseNumber).toBe(false);
   };
 
-  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Event Type', 'Event Status'];
+  const accordionFieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
   const initUseCase = () => {
     const props = {

@@ -1,6 +1,8 @@
 import { CaseAssignment } from './assignments';
 import { DxtrCase } from './cases';
 import { LegacyAddress } from './parties';
+import { Address, PhoneNumber } from './contact';
+import { TrusteeAppointment } from './trustee-appointments';
 
 /**
  * Event triggered when trial attorney assignments change (add/remove).
@@ -85,6 +87,10 @@ export type CandidateScore = {
   addressScore: number;
   districtDivisionScore: number;
   chapterScore: number;
+  address?: Address;
+  phone?: PhoneNumber;
+  email?: string;
+  appointments?: TrusteeAppointment[];
 };
 
 /**
