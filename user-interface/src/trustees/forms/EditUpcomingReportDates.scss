@@ -1,0 +1,38 @@
+.edit-upcoming-report-dates {
+  .usa-form-group {
+    max-width: 308px;
+  }
+
+  .review-period-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    max-width: 308px;
+
+    .usa-form-group {
+      max-width: none;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .review-period-separator {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      align-self: flex-end;
+      height: 3.25rem;
+    }
+  }
+
+  .usa-button-group {
+    padding-top: 2.5rem;
+    gap: 1rem;
+  }
+
+  .date-picker .date-error,
+  .month-day-selector .date-error {
+    padding-bottom: 0;
+    padding-top: 0.5rem;
+  }
+
+}

@@ -1,4 +1,11 @@
 .appointment-card-container {
+  .appointment-cards-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
   .appointment-card-heading {
     margin: 0 0 1.25rem 0;
     font-size: 1.25rem;
