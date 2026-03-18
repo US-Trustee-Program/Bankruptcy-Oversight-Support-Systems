@@ -100,8 +100,8 @@ describe('TrusteeMatchVerificationController', () => {
       mockVerificationRepo([sampleOrder]);
       mockEnrichmentRepos();
 
-    const controller = new TrusteeMatchVerificationController();
-    const response = await controller.handleRequest(context);
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
 
       expect(response.body.data).toHaveLength(1);
       const candidate = response.body.data[0].matchCandidates[0];

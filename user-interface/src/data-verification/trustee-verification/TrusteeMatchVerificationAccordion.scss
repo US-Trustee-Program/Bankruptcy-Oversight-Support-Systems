@@ -58,8 +58,16 @@
     margin: 0.5rem 0 1rem;
 
     .search-trustee-link {
-      display: inline;
+      color: #005ea2;
       margin-top: 0;
+
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      svg {
+        width: 1.275rem;
+        height: 1.275rem;
+      }
     }
   }
 
@@ -67,9 +75,20 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+    color: #005ea2;
+    text-decoration: underline;
     svg {
       width: 1.275rem;
       height: 1.275rem;
+    }
+
+    &:is(button) {
+      background: none;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-size: inherit;
+      font-family: inherit;
     }
   }
 

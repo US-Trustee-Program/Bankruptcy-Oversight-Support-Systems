@@ -10,7 +10,7 @@ import HttpStatusCodes from '@common/api/http-status-codes';
 
 const MODULE_NAME = 'TRUSTEE-VERIFICATION-ORDERS-CONTROLLER';
 
-export class TrusteeVerificationOrdersController {
+export class TrusteeMatchVerificationController {
   constructor(private readonly context: ApplicationContext) {}
 
   async handleRequest(

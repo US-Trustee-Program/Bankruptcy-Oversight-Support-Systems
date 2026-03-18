@@ -107,24 +107,6 @@ export class TrusteeMatchVerificationMongoRepository
   ): Promise<TrusteeMatchVerification> {
     try {
       const doc = using<TrusteeMatchVerification>();
-      const query = doc('id').equals(id);
-      const existing = await this.getAdapter<TrusteeMatchVerification>().findOne(query);
-      const updated = { ...existing, ...updates };
-      await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, updated);
-      return updated;
-    } catch (originalError) {
-      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to update trustee match verification ${id}.`,
-      });
-    }
-  }
-
-  async update(
-    id: string,
-    updates: Partial<TrusteeMatchVerification>,
-  ): Promise<TrusteeMatchVerification> {
-    try {
-      const doc = using<TrusteeMatchVerification>();
       const query = and(
         doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
         doc('id').equals(id),

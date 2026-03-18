@@ -206,20 +206,22 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     </span>
                   ))}
                 </div>
-                <div className="trustee-data-cell grid-col-2" data-cell="Action">
+                <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
                   <button
                     data-testid="approve-button"
                     onClick={handleApprove}
                     disabled={isProcessing}
-                    className="usa-button"
+                    className="match-trustee-link"
                   >
-                    Confirm Match
+                    <Icon name="check" />
+                    Match Trustee
                   </button>
                 </div>
               </div>
             </div>
             <Link to="/trustee/search" className="search-trustee-link">
-              Search for a different trustee.
+              <Icon name="search" />
+              Search for a different trustee
             </Link>
           </div>
         ) : preselected ? (
@@ -270,7 +272,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     </span>
                   ))}
                 </div>
-                <div className="trustee-data-cell grid-col-2" data-cell="Action">
+                <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
                   <Link to="#" className="match-trustee-link">
                     <Icon name="check" />
                     Match Trustee
@@ -287,7 +289,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           <p className="no-candidates-message">
             There are no suggested matches in CAMS.{' '}
             <Link to="/trustee/search" className="search-trustee-link">
-              Search for a trustee.
+              <Icon name="search" />
+              Search for a trustee
             </Link>
           </p>
         )}
