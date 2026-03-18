@@ -428,8 +428,8 @@ async function getOrders() {
   return api().get<Order[]>(`/orders`, {});
 }
 
-async function getTrusteeVerificationOrders() {
-  return api().get<TrusteeMatchVerification[]>(`/trustee-verification-orders`, {});
+async function getTrusteeMatchVerifications() {
+  return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, {});
 }
 
 async function getOrderSuggestions(caseId: string) {
@@ -582,7 +582,7 @@ export const _Api2 = {
   getOfficeAssignees,
   getOffices,
   getOrders,
-  getTrusteeVerificationOrders,
+  getTrusteeMatchVerifications,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,

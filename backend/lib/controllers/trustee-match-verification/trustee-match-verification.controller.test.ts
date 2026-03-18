@@ -1,5 +1,5 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { TrusteeVerificationOrdersController } from './trustee-verification-orders.controller';
+import { TrusteeMatchVerificationController } from './trustee-match-verification.controller';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
@@ -7,7 +7,7 @@ import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
-describe('TrusteeVerificationOrdersController', () => {
+describe('TrusteeMatchVerificationController', () => {
   let context: ApplicationContext;
 
   const sampleOrder: TrusteeMatchVerification = {
@@ -97,7 +97,7 @@ describe('TrusteeVerificationOrdersController', () => {
     mockVerificationRepo([sampleOrder]);
     mockEnrichmentRepos();
 
-    const controller = new TrusteeVerificationOrdersController();
+    const controller = new TrusteeMatchVerificationController();
     const response = await controller.handleRequest(context);
 
     expect(response.body.data).toHaveLength(1);
@@ -121,7 +121,7 @@ describe('TrusteeVerificationOrdersController', () => {
       }),
     );
 
-    const controller = new TrusteeVerificationOrdersController();
+    const controller = new TrusteeMatchVerificationController();
     const response = await controller.handleRequest(context);
 
     expect(response.body.data).toHaveLength(1);
@@ -134,7 +134,7 @@ describe('TrusteeVerificationOrdersController', () => {
     mockVerificationRepo([]);
     mockEnrichmentRepos();
 
-    const controller = new TrusteeVerificationOrdersController();
+    const controller = new TrusteeMatchVerificationController();
     const response = await controller.handleRequest(context);
 
     expect(response.body.data).toEqual([]);
@@ -146,8 +146,8 @@ describe('TrusteeVerificationOrdersController', () => {
       Object.assign(new MockMongoRepository(), { search: vi.fn().mockRejectedValue(error) }),
     );
 
-    const controller = new TrusteeVerificationOrdersController();
-    const expectedError = getCamsError(error, 'TRUSTEE-VERIFICATION-ORDERS-CONTROLLER');
+    const controller = new TrusteeMatchVerificationController();
+    const expectedError = getCamsError(error, 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER');
 
     await expect(controller.handleRequest(context)).rejects.toThrow(expectedError.message);
   });

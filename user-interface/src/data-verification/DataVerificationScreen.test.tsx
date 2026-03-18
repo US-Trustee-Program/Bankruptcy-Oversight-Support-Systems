@@ -103,7 +103,7 @@ describe('Review Orders screen', () => {
       data: MockData.getSortedOrders(15),
     };
     vi.spyOn(Api2, 'getOrders').mockResolvedValue(ordersResponse);
-    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({ data: [] });
 
     render(
       <BrowserRouter>
@@ -281,10 +281,10 @@ describe('Review Orders screen', () => {
     createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
   };
 
-  test('should not call getTrusteeVerificationOrders when flag is off', async () => {
+  test('should not call getTrusteeMatchVerifications when flag is off', async () => {
     setupFeatureFlags();
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
-    const verificationSpy = vi.spyOn(Api2, 'getTrusteeVerificationOrders');
+    const verificationSpy = vi.spyOn(Api2, 'getTrusteeMatchVerifications');
 
     render(
       <BrowserRouter>
@@ -297,10 +297,10 @@ describe('Review Orders screen', () => {
     });
   });
 
-  test('should call getTrusteeVerificationOrders and render results when flag is on', async () => {
+  test('should call getTrusteeMatchVerifications and render results when flag is on', async () => {
     setupFeatureFlags({ 'trustee-verification-enabled': true });
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
       data: [sampleVerificationOrder],
     });
 
@@ -328,7 +328,7 @@ describe('Review Orders screen', () => {
   test('should show "Trustee Match Verification" filter toggle only when flag is on', async () => {
     setupFeatureFlags({ 'trustee-verification-enabled': true });
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
-    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({ data: [] });
 
     render(
       <BrowserRouter>
@@ -347,7 +347,7 @@ describe('Review Orders screen', () => {
     setupFeatureFlags({ 'trustee-verification-enabled': true });
     const transferOrder = MockData.getTransferOrder({ override: { status: 'pending' } });
     vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [transferOrder] });
-    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
       data: [sampleVerificationOrder],
     });
 
@@ -530,7 +530,7 @@ describe('Review Orders screen', () => {
       id: 'verification-2',
       createdOn: '2026-01-20T10:00:00.000Z',
     };
-    vi.spyOn(Api2, 'getTrusteeVerificationOrders').mockResolvedValue({
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
       data: [secondVerification, firstVerification],
     });
 

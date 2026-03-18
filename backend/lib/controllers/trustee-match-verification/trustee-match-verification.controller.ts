@@ -5,9 +5,9 @@ import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import factory from '../../factory';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 
-const MODULE_NAME = 'TRUSTEE-VERIFICATION-ORDERS-CONTROLLER';
+const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER';
 
-export class TrusteeVerificationOrdersController {
+export class TrusteeMatchVerificationController {
   async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<TrusteeMatchVerification[]>> {

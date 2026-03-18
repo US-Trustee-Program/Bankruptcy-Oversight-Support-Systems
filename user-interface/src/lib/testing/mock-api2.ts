@@ -1850,7 +1850,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: [caseDetails],
     };
-  } else if (path.match(/\/trustee-verification-orders/)) {
+  } else if (path.match(/\/trustee-match-verification/)) {
     response = {
       data: trusteeMatchVerificationOrders,
     };
@@ -2383,8 +2383,8 @@ async function getOrders(): Promise<ResponseBody<Order[]>> {
   return get<Order[]>(`/orders`);
 }
 
-async function getTrusteeVerificationOrders(): Promise<ResponseBody<TrusteeMatchVerification[]>> {
-  return get<TrusteeMatchVerification[]>(`/trustee-verification-orders`);
+async function getTrusteeMatchVerifications(): Promise<ResponseBody<TrusteeMatchVerification[]>> {
+  return get<TrusteeMatchVerification[]>(`/trustee-match-verification`);
 }
 
 async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSummary[]>> {
@@ -2830,7 +2830,7 @@ const MockApi2 = {
   getOfficeAssignees,
   getOffices,
   getOrders,
-  getTrusteeVerificationOrders,
+  getTrusteeMatchVerifications,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,

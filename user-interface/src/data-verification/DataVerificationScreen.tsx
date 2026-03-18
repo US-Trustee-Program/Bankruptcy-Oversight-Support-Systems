@@ -117,7 +117,7 @@ export default function DataVerificationScreen() {
         const [ordersResponse, verificationResponse] = await Promise.all([
           Api2.getOrders(),
           featureFlags[TRUSTEE_VERIFICATION_ENABLED]
-            ? Api2.getTrusteeVerificationOrders()
+            ? Api2.getTrusteeMatchVerifications()
             : Promise.resolve({ data: [] as TrusteeMatchVerification[] }),
         ]);
         if (cancelled) return;
