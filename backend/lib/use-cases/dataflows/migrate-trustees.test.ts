@@ -7,6 +7,8 @@ import {
   processTrusteeWithAppointments,
   processPageOfTrustees,
   getTotalTrusteeCount,
+  deleteAllTrusteesAndAppointments,
+  mergeTrusteeRecords,
 } from './migrate-trustees';
 import {
   getOrCreateMigrationState,
@@ -19,6 +21,14 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { AtsTrusteeRecord } from '../../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+
+/**
+ * Helper function to wrap a single trustee for the new merged data format.
+ * For backward compatibility with existing tests.
+ */
+function wrapTrusteeForProcessing(atsTrustee: AtsTrusteeRecord) {
+  return mergeTrusteeRecords([atsTrustee]);
+}
 
 describe('Migrate Trustees Use Case', () => {
   let context: ApplicationContext;
@@ -44,13 +54,16 @@ describe('Migrate Trustees Use Case', () => {
     mockTrusteesRepo = {
       listTrustees: vi.fn().mockResolvedValue([]),
       findTrusteeByLegacyTruId: vi.fn().mockResolvedValue(null),
+      findTrusteeByNameAndState: vi.fn().mockResolvedValue(null),
       createTrustee: vi.fn(),
       updateTrustee: vi.fn(),
+      deleteAll: vi.fn(),
     };
 
     mockAppointmentsRepo = {
       createAppointment: vi.fn(),
       getTrusteeAppointments: vi.fn().mockResolvedValue([]),
+      deleteAll: vi.fn(),
     };
 
     mockRuntimeStateRepo = {
@@ -204,6 +217,7 @@ describe('Migrate Trustees Use Case', () => {
         ID: 1,
         FIRST_NAME: 'John',
         LAST_NAME: 'Doe',
+        STATE: 'NY',
       };
 
       const createdTrustee = {
@@ -212,10 +226,11 @@ describe('Migrate Trustees Use Case', () => {
         name: 'John Doe',
       };
 
-      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
 
-      const result = await upsertTrustee(context, atsTrustee);
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await upsertTrustee(context, mergedData);
 
       expect(result.data).toEqual(createdTrustee);
       expect(mockTrusteesRepo.createTrustee).toHaveBeenCalledWith(
@@ -230,13 +245,14 @@ describe('Migrate Trustees Use Case', () => {
         ID: 1,
         FIRST_NAME: 'John',
         LAST_NAME: 'Doe',
+        STATE: 'NY',
       };
 
       const existingTrustee = {
         id: 'existing-id',
         trusteeId: 'trustee-123',
         name: 'John Doe',
-        legacy: { truId: '1' },
+        legacy: { truIds: ['1'] },
       };
 
       const updatedTrustee = {
@@ -244,10 +260,11 @@ describe('Migrate Trustees Use Case', () => {
         name: 'John Doe',
       };
 
-      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(existingTrustee);
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
       mockTrusteesRepo.updateTrustee.mockResolvedValue(updatedTrustee);
 
-      const result = await upsertTrustee(context, atsTrustee);
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await upsertTrustee(context, mergedData);
 
       expect(result.data).toEqual(updatedTrustee);
       expect(mockTrusteesRepo.updateTrustee).toHaveBeenCalledWith(
@@ -263,11 +280,13 @@ describe('Migrate Trustees Use Case', () => {
         ID: 1,
         FIRST_NAME: 'John',
         LAST_NAME: 'Doe',
+        STATE: 'NY',
       };
 
-      mockTrusteesRepo.findTrusteeByLegacyTruId.mockRejectedValue(new Error('Database error'));
+      mockTrusteesRepo.findTrusteeByNameAndState.mockRejectedValue(new Error('Database error'));
 
-      const result = await upsertTrustee(context, atsTrustee);
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await upsertTrustee(context, mergedData);
 
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain('Failed to upsert trustee 1');
@@ -400,6 +419,7 @@ describe('Migrate Trustees Use Case', () => {
         ID: 1,
         FIRST_NAME: 'John',
         LAST_NAME: 'Doe',
+        STATE: 'NY',
       };
 
       const createdTrustee = {
@@ -420,7 +440,7 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
       mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
         cleanAppointments,
@@ -435,7 +455,8 @@ describe('Migrate Trustees Use Case', () => {
       });
       mockAppointmentsRepo.createAppointment.mockResolvedValue({});
 
-      const result = await processTrusteeWithAppointments(context, atsTrustee);
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await processTrusteeWithAppointments(context, mergedData);
 
       expect(result.success).toBe(true);
       expect(result.trusteeId).toBe('trustee-123');
@@ -448,6 +469,7 @@ describe('Migrate Trustees Use Case', () => {
         ID: 2,
         FIRST_NAME: 'Jane',
         LAST_NAME: 'Smith',
+        STATE: 'CA',
       };
 
       const createdTrustee = {
@@ -456,11 +478,23 @@ describe('Migrate Trustees Use Case', () => {
         name: 'Jane Smith',
       };
 
-      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue([]);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
 
-      const result = await processTrusteeWithAppointments(context, atsTrustee);
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await processTrusteeWithAppointments(context, mergedData);
 
       expect(result.success).toBe(true);
       expect(result.appointmentsProcessed).toBe(0);
@@ -471,13 +505,15 @@ describe('Migrate Trustees Use Case', () => {
         ID: 3,
         FIRST_NAME: 'Bob',
         LAST_NAME: 'Johnson',
+        STATE: 'TX',
       };
 
-      mockTrusteesRepo.findTrusteeByLegacyTruId.mockRejectedValue(
+      mockTrusteesRepo.findTrusteeByNameAndState.mockRejectedValue(
         new Error('Database connection lost'),
       );
 
-      const result = await processTrusteeWithAppointments(context, atsTrustee);
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await processTrusteeWithAppointments(context, mergedData);
 
       expect(result.success).toBe(false);
       expect(result.truId).toBe('3');
@@ -490,6 +526,7 @@ describe('Migrate Trustees Use Case', () => {
         ID: 4,
         FIRST_NAME: 'Alice',
         LAST_NAME: 'Williams',
+        STATE: 'FL',
       };
 
       const createdTrustee = {
@@ -498,11 +535,12 @@ describe('Migrate Trustees Use Case', () => {
         name: 'Alice Williams',
       };
 
-      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
       mockAtsGateway.getTrusteeAppointments.mockRejectedValue(new Error('ATS connection timeout'));
 
-      const result = await processTrusteeWithAppointments(context, atsTrustee);
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await processTrusteeWithAppointments(context, mergedData);
 
       // Trustee should be processed successfully even though appointments failed
       expect(result.success).toBe(true);
@@ -515,6 +553,7 @@ describe('Migrate Trustees Use Case', () => {
         ID: 5,
         FIRST_NAME: 'Charlie',
         LAST_NAME: 'Brown',
+        STATE: 'IL',
       };
 
       const createdTrustee = {
@@ -534,14 +573,26 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue(cleanAppointments);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+        cleanAppointments,
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
       mockAppointmentsRepo.createAppointment.mockRejectedValue(
         new Error('Appointment database error'),
       );
 
-      const result = await processTrusteeWithAppointments(context, atsTrustee);
+      const mergedData = wrapTrusteeForProcessing(atsTrustee);
+      const result = await processTrusteeWithAppointments(context, mergedData);
 
       // Trustee should be processed successfully even though appointments failed
       expect(result.success).toBe(true);
@@ -553,17 +604,28 @@ describe('Migrate Trustees Use Case', () => {
   describe('processPageOfTrustees', () => {
     test('should process multiple trustees', async () => {
       const trustees: AtsTrusteeRecord[] = [
-        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe' },
-        { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith' },
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' },
+        { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' },
       ];
 
-      mockTrusteesRepo.findTrusteeByLegacyTruId.mockResolvedValue(null);
+      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
       mockTrusteesRepo.createTrustee.mockResolvedValue({
         id: 'new-id',
         trusteeId: 'trustee-123',
         name: 'Test',
       });
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue([]);
+      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
 
       const result = await processPageOfTrustees(context, trustees);
 
@@ -689,6 +751,54 @@ describe('Migrate Trustees Use Case', () => {
           status: 'FAILED',
         }),
       );
+    });
+  });
+
+  describe('deleteAllTrusteesAndAppointments', () => {
+    test('should delete all trustees and appointments successfully', async () => {
+      const deletedTrustees = 42;
+      const deletedAppointments = 156;
+
+      mockTrusteesRepo.deleteAll.mockResolvedValue(deletedTrustees);
+      mockAppointmentsRepo.deleteAll.mockResolvedValue(deletedAppointments);
+
+      const result = await deleteAllTrusteesAndAppointments(context);
+
+      expect(result.error).toBeUndefined();
+      expect(result.data).toBeDefined();
+      expect(result.data?.deletedTrustees).toBe(deletedTrustees);
+      expect(result.data?.deletedAppointments).toBe(deletedAppointments);
+      expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
+      expect(mockAppointmentsRepo.deleteAll).toHaveBeenCalledTimes(1);
+    });
+
+    test('should handle error when deleting trustees fails', async () => {
+      const error = new Error('Database error while deleting trustees');
+      mockTrusteesRepo.deleteAll.mockRejectedValue(error);
+
+      const result = await deleteAllTrusteesAndAppointments(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to delete all trustees and appointments');
+      expect(result.data).toBeUndefined();
+      expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
+      expect(mockAppointmentsRepo.deleteAll).not.toHaveBeenCalled();
+    });
+
+    test('should handle error when deleting appointments fails', async () => {
+      const deletedTrustees = 42;
+      const error = new Error('Database error while deleting appointments');
+
+      mockTrusteesRepo.deleteAll.mockResolvedValue(deletedTrustees);
+      mockAppointmentsRepo.deleteAll.mockRejectedValue(error);
+
+      const result = await deleteAllTrusteesAndAppointments(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to delete all trustees and appointments');
+      expect(result.data).toBeUndefined();
+      expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
+      expect(mockAppointmentsRepo.deleteAll).toHaveBeenCalledTimes(1);
     });
   });
 });

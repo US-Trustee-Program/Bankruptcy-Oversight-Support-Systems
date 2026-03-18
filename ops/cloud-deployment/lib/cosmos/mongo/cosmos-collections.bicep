@@ -436,3 +436,36 @@ resource archivedCasesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbD
     }
   }
 }
+
+resource trusteeProfessionalIdsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'trustee-professionalids'
+  properties: {
+    resource: {
+      id: 'trustee-professionalids'
+      shardKey: {
+        camsTrusteeId: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['camsTrusteeId']
+          }
+        }
+        {
+          key: {
+            keys: ['acmsProfessionalId']
+          }
+          options: {
+            unique: true
+          }
+        }
+      ]
+    }
+  }
+}
