@@ -18,6 +18,15 @@ import {
   getAppointmentDetails,
   ZoomInfo,
 } from '@common/cams/trustees';
+import {
+  TrusteeUpcomingReportDatesHistory,
+  TrusteeUpcomingReportDates,
+  isoToMMDDYYYY,
+  isoToMMYYYY,
+  isoToMMDD,
+  isoRangeToMMDD,
+} from '@common/cams/trustee-upcoming-report-dates';
+import React from 'react';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
@@ -345,6 +354,102 @@ function ShowTrusteeAssistantHistory(props: ShowTrusteeAssistantHistoryProps) {
   );
 }
 
+function UpcomingReportDateFields({
+  data,
+}: Readonly<{ data: Partial<TrusteeUpcomingReportDates> | undefined }>) {
+  if (!data) return <>(none)</>;
+
+  const fields: { label: string; value: string }[] = [];
+
+  if ('fieldExam' in data) {
+    fields.push({
+      label: 'Field Exam',
+      value: data.fieldExam ? isoToMMDDYYYY(data.fieldExam) : '(none)',
+    });
+  }
+  if ('audit' in data) {
+    fields.push({
+      label: 'Audit',
+      value: data.audit ? isoToMMYYYY(data.audit) : '(none)',
+    });
+  }
+  if ('tprReviewPeriodStart' in data) {
+    fields.push({
+      label: 'TPR Review Period',
+      value:
+        data.tprReviewPeriodStart && data.tprReviewPeriodEnd
+          ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
+          : '(none)',
+    });
+  }
+  if ('tprDue' in data) {
+    fields.push({
+      label: 'TPR Due',
+      value: data.tprDue ? isoToMMYYYY(data.tprDue) : '(none)',
+    });
+  }
+  if ('tirReviewPeriodStart' in data) {
+    fields.push({
+      label: 'TIR Review Period',
+      value:
+        data.tirReviewPeriodStart && data.tirReviewPeriodEnd
+          ? isoRangeToMMDD(data.tirReviewPeriodStart, data.tirReviewPeriodEnd)
+          : '(none)',
+    });
+  }
+  if ('tirSubmission' in data) {
+    fields.push({
+      label: 'TIR Submission',
+      value: data.tirSubmission ? isoToMMDD(data.tirSubmission) : '(none)',
+    });
+  }
+  if ('tirReview' in data) {
+    fields.push({
+      label: 'TIR Review',
+      value: data.tirReview ? isoToMMDD(data.tirReview) : '(none)',
+    });
+  }
+
+  if (fields.length === 0) return <>(none)</>;
+
+  return (
+    <dl>
+      {fields.map(({ label, value }) => (
+        <React.Fragment key={label}>
+          <dt>{label}:</dt>
+          <dd>{value}</dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
+}
+
+type ShowTrusteeUpcomingReportDatesHistoryProps = Readonly<{
+  history: TrusteeUpcomingReportDatesHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeUpcomingReportDatesHistory(props: ShowTrusteeUpcomingReportDatesHistoryProps) {
+  const { history, idx } = props;
+  return (
+    <tr>
+      <td data-testid={`change-type-upcoming-report-dates-${idx}`}>Upcoming Report Dates</td>
+      <td data-testid={`previous-upcoming-report-dates-${idx}`}>
+        <UpcomingReportDateFields data={history.before} />
+      </td>
+      <td data-testid={`new-upcoming-report-dates-${idx}`}>
+        <UpcomingReportDateFields data={history.after} />
+      </td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
 function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[] }>) {
   const { trusteeHistory } = props;
   return (
@@ -393,6 +498,14 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
           case 'AUDIT_ASSISTANT':
             return (
               <ShowTrusteeAssistantHistory
+                key={`${history.trusteeId || history.id}-${idx}`}
+                history={history}
+                idx={idx}
+              />
+            );
+          case 'AUDIT_UPCOMING_REPORT_DATES':
+            return (
+              <ShowTrusteeUpcomingReportDatesHistory
                 key={`${history.trusteeId || history.id}-${idx}`}
                 history={history}
                 idx={idx}
