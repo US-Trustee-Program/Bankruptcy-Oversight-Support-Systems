@@ -99,23 +99,20 @@ function calculateAddressScore(atsTrustee: AtsTrusteeRecord): number {
 }
 
 /**
- * Select the primary address from multiple trustee records.
+ * Select the primary record from multiple trustee records based on address completeness.
  * Chooses the record with the most complete address data.
- * Returns the primary record and additional addresses from other records.
+ * Uses ID as a tiebreaker for consistent selection.
  *
  * @param records - Array of ATS trustee records (same person, different TOD IDs)
- * @returns Primary record and array of additional addresses
+ * @returns Primary record with the most complete address
  */
-export function selectPrimaryAddress(records: AtsTrusteeRecord[]): {
-  primary: AtsTrusteeRecord;
-  additional: LegacyAddress[];
-} {
+function selectPrimaryRecord(records: AtsTrusteeRecord[]): AtsTrusteeRecord {
   if (records.length === 0) {
-    throw new Error('Cannot select primary address from empty array');
+    throw new Error('Cannot select primary record from empty array');
   }
 
   if (records.length === 1) {
-    return { primary: records[0], additional: [] };
+    return records[0];
   }
 
   // Score each record and select the one with highest score
@@ -132,12 +129,23 @@ export function selectPrimaryAddress(records: AtsTrusteeRecord[]): {
     return a.record.ID - b.record.ID;
   });
 
-  const primary = scoredRecords[0].record;
+  return scoredRecords[0].record;
+}
 
-  // Build additional addresses from remaining records
-  const additional: LegacyAddress[] = scoredRecords
-    .slice(1)
-    .map((scored) => scored.record)
+/**
+ * Build additional addresses from non-primary trustee records.
+ * Transforms ATS records into LegacyAddress format, filtering out empty addresses.
+ *
+ * @param records - Array of ATS trustee records (same person, different TOD IDs)
+ * @param primary - The primary record (will be excluded from additional addresses)
+ * @returns Array of additional addresses in LegacyAddress format
+ */
+function buildAdditionalAddresses(
+  records: AtsTrusteeRecord[],
+  primary: AtsTrusteeRecord,
+): LegacyAddress[] {
+  return records
+    .filter((record) => record.ID !== primary.ID)
     .filter(
       (record) =>
         // Only include if address has meaningful data
@@ -161,7 +169,22 @@ export function selectPrimaryAddress(records: AtsTrusteeRecord[]): {
 
       return address;
     });
+}
 
+/**
+ * Select the primary address from multiple trustee records.
+ * Chooses the record with the most complete address data.
+ * Returns the primary record and additional addresses from other records.
+ *
+ * @param records - Array of ATS trustee records (same person, different TOD IDs)
+ * @returns Primary record and array of additional addresses
+ */
+export function selectPrimaryAddress(records: AtsTrusteeRecord[]): {
+  primary: AtsTrusteeRecord;
+  additional: LegacyAddress[];
+} {
+  const primary = selectPrimaryRecord(records);
+  const additional = buildAdditionalAddresses(records, primary);
   return { primary, additional };
 }
 
@@ -191,7 +214,8 @@ export function mergeTrusteeRecords(records: AtsTrusteeRecord[]): MergedTrusteeD
  */
 type TrusteeProcessingResult = {
   trusteeId: string;
-  truId: string;
+  truId: string; // comma-joined for backward compatibility
+  todIds: string[]; // structured form
   success: boolean;
   appointmentsProcessed: number;
   failedAppointments?: FailedAppointment[];
@@ -280,6 +304,22 @@ export async function getTrusteeAppointments(
 }
 
 /**
+ * Build a deduplication key for an address based on normalized address1 and cityStateZipCountry.
+ * Used to identify duplicate addresses when merging trustees.
+ *
+ * @param address - Legacy address object
+ * @returns Normalized key string for deduplication
+ */
+function getAddressKey(address: {
+  address1?: string | null;
+  cityStateZipCountry?: string | null;
+}): string {
+  const addr1 = (address.address1 ?? '').trim().toLowerCase();
+  const cityStateZip = (address.cityStateZipCountry ?? '').trim().toLowerCase();
+  return `${addr1}|${cityStateZip}`;
+}
+
+/**
  * Upsert a trustee to CAMS MongoDB.
  * Handles deduplication by (firstName, lastName, state).
  * If trustee exists, merges TOD IDs and addresses.
@@ -340,9 +380,21 @@ export async function upsertTrustee(
       // Merge TOD IDs (deduplicate)
       const mergedTodIds = Array.from(new Set([...existingTodIds, ...todIds]));
 
-      // Merge addresses
+      // Merge addresses with deduplication
       const existingAddresses = existingTrustee.legacy?.addresses || [];
-      const mergedAddresses = [...existingAddresses, ...additionalAddresses];
+      const existingAddressKeys = new Set(
+        existingAddresses.map((address: LegacyAddress) => getAddressKey(address)),
+      );
+
+      const dedupedAdditionalAddresses = additionalAddresses.filter((address: LegacyAddress) => {
+        const key = getAddressKey(address);
+        if (!key || key === '|') return true; // If we can't compute a key, keep the address
+        if (existingAddressKeys.has(key)) return false;
+        existingAddressKeys.add(key);
+        return true;
+      });
+
+      const mergedAddresses = [...existingAddresses, ...dedupedAdditionalAddresses];
 
       const merged = {
         ...existingTrustee,
@@ -460,6 +512,70 @@ export async function createAppointments(
 }
 
 /**
+ * Fetch and aggregate appointments across multiple TOD IDs.
+ * Collects all clean and failed appointments, merging statistics.
+ *
+ * @param context - Application context
+ * @param todIds - Array of TOD IDs to fetch appointments for
+ * @returns Aggregated appointments, failures, and statistics
+ */
+async function fetchAndAggregateAppointments(
+  context: ApplicationContext,
+  todIds: string[],
+): Promise<{
+  cleanAppointments: TrusteeAppointmentInput[];
+  failedAppointments: FailedAppointment[];
+  stats: {
+    total: number;
+    clean: number;
+    autoRecoverable: number;
+    problematic: number;
+    uncleansable: number;
+    skipped: number;
+  };
+}> {
+  const allCleanAppointments: TrusteeAppointmentInput[] = [];
+  const allFailedAppointments: FailedAppointment[] = [];
+  const totalStats = {
+    total: 0,
+    clean: 0,
+    autoRecoverable: 0,
+    problematic: 0,
+    uncleansable: 0,
+    skipped: 0,
+  };
+
+  for (const todId of todIds) {
+    const appointmentsResult = await getTrusteeAppointments(context, parseInt(todId, 10));
+    if (appointmentsResult.error) {
+      // Log error but continue processing other TOD IDs
+      context.logger.error(MODULE_NAME, `Failed to get appointments for TOD ID ${todId}`, {
+        error: appointmentsResult.error.message,
+      });
+      continue;
+    }
+
+    const { cleanAppointments, failedAppointments, stats } = appointmentsResult.data;
+    allCleanAppointments.push(...cleanAppointments);
+    allFailedAppointments.push(...failedAppointments);
+
+    // Aggregate stats
+    totalStats.total += stats.total;
+    totalStats.clean += stats.clean;
+    totalStats.autoRecoverable += stats.autoRecoverable;
+    totalStats.problematic += stats.problematic;
+    totalStats.uncleansable += stats.uncleansable;
+    totalStats.skipped += stats.skipped;
+  }
+
+  return {
+    cleanAppointments: allCleanAppointments,
+    failedAppointments: allFailedAppointments,
+    stats: totalStats,
+  };
+}
+
+/**
  * Process a single merged trustee group with all their appointments.
  * This is the main unit of work for the migration with deduplication.
  * Gateway handles appointment cleansing - use case just stores clean data.
@@ -482,6 +598,7 @@ export async function processTrusteeWithAppointments(
     return {
       trusteeId: '',
       truId: 'UNKNOWN',
+      todIds: [],
       success: false,
       appointmentsProcessed: 0,
       failedAppointments: [],
@@ -500,46 +617,17 @@ export async function processTrusteeWithAppointments(
 
     const trustee = trusteeResult.data;
 
-    // Get appointments for ALL TOD IDs and merge them
-    const allCleanAppointments: TrusteeAppointmentInput[] = [];
-    const allFailedAppointments: FailedAppointment[] = [];
-    const totalStats = {
-      total: 0,
-      clean: 0,
-      autoRecoverable: 0,
-      problematic: 0,
-      uncleansable: 0,
-      skipped: 0,
-    };
-
-    for (const todId of todIds) {
-      const appointmentsResult = await getTrusteeAppointments(context, parseInt(todId, 10));
-      if (appointmentsResult.error) {
-        // Log error but continue processing other TOD IDs
-        context.logger.error(MODULE_NAME, `Failed to get appointments for TOD ID ${todId}`, {
-          error: appointmentsResult.error.message,
-        });
-        continue;
-      }
-
-      const { cleanAppointments, failedAppointments, stats } = appointmentsResult.data;
-      allCleanAppointments.push(...cleanAppointments);
-      allFailedAppointments.push(...failedAppointments);
-
-      // Aggregate stats
-      totalStats.total += stats.total;
-      totalStats.clean += stats.clean;
-      totalStats.autoRecoverable += stats.autoRecoverable;
-      totalStats.problematic += stats.problematic;
-      totalStats.uncleansable += stats.uncleansable;
-      totalStats.skipped += stats.skipped;
-    }
+    // Fetch and aggregate appointments for all TOD IDs
+    const { cleanAppointments, failedAppointments, stats } = await fetchAndAggregateAppointments(
+      context,
+      todIds,
+    );
 
     let appointmentsProcessed = 0;
 
     // Process merged clean appointments
-    if (allCleanAppointments.length > 0) {
-      const appointmentResult = await createAppointments(context, trustee, allCleanAppointments);
+    if (cleanAppointments.length > 0) {
+      const appointmentResult = await createAppointments(context, trustee, cleanAppointments);
 
       if (appointmentResult.error) {
         context.logger.error(
@@ -555,14 +643,15 @@ export async function processTrusteeWithAppointments(
     }
 
     // Log statistics
-    context.logger.info(MODULE_NAME, `Trustee TOD IDs ${truId} stats:`, totalStats);
+    context.logger.info(MODULE_NAME, `Trustee TOD IDs ${truId} stats:`, stats);
 
     return {
       trusteeId: trustee.trusteeId,
       truId,
+      todIds,
       success: true,
       appointmentsProcessed,
-      failedAppointments: allFailedAppointments,
+      failedAppointments,
     };
   } catch (error) {
     const camsError = getCamsError(error, MODULE_NAME);
@@ -573,6 +662,7 @@ export async function processTrusteeWithAppointments(
     return {
       trusteeId: '',
       truId,
+      todIds,
       success: false,
       appointmentsProcessed: 0,
       failedAppointments: [],
