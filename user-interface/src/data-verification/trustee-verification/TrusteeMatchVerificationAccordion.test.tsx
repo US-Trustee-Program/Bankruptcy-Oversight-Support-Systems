@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   TrusteeMatchVerificationAccordion,
@@ -8,7 +7,6 @@ import {
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import MockData from '@common/cams/test-utilities/mock-data';
-import Api2 from '@/lib/models/api2';
 
 const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
@@ -28,6 +26,20 @@ const sampleOrder: TrusteeMatchVerification = {
   createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
 };
 
+const sampleOrderWithCandidates: TrusteeMatchVerification = {
+  ...sampleOrder,
+  matchCandidates: [
+    {
+      trusteeId: 'trustee-1',
+      trusteeName: 'Jane Smith',
+      totalScore: 95,
+      addressScore: 90,
+      districtDivisionScore: 100,
+      chapterScore: 95,
+    },
+  ],
+};
+
 function renderWithProps(props: Partial<TrusteeMatchVerificationAccordionProps> = {}) {
   const defaultProps: TrusteeMatchVerificationAccordionProps = {
     order: sampleOrder,
@@ -35,6 +47,7 @@ function renderWithProps(props: Partial<TrusteeMatchVerificationAccordionProps> 
     statusType: orderStatusType,
     fieldHeaders,
     hidden: false,
+    onOrderUpdate: vi.fn(),
   };
   return render(
     <BrowserRouter>
@@ -90,46 +103,27 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
     expect(content.textContent).toContain('John Doe');
 
-    const noMatchLink = screen.getByRole('link', { name: 'Search for a trustee.', hidden: true });
+    const noMatchLink = screen.getByRole('link', { name: /Search for a trustee/, hidden: true });
     expect(noMatchLink).toBeInTheDocument();
     expect(noMatchLink.closest('p')).toHaveTextContent('There are no suggested matches in CAMS.');
   });
 
-  test('should render strongest match candidate with Match Trustee link', () => {
-    const orderWithCandidates: TrusteeMatchVerification = {
-      ...sampleOrder,
-      matchCandidates: [
-        {
-          trusteeId: 'trustee-1',
-          trusteeName: 'Jane Smith',
-          totalScore: 95,
-          addressScore: 90,
-          districtDivisionScore: 100,
-          chapterScore: 95,
-        },
-      ],
-    };
-    renderWithProps({ order: orderWithCandidates });
+  test('should render candidate-info section with Confirm Match button for pending order', () => {
+    renderWithProps({ order: sampleOrderWithCandidates });
 
     const candidateInfo = screen.getByTestId('candidate-info');
     expect(candidateInfo).toBeInTheDocument();
     expect(screen.getByTestId('candidate-name').textContent).toContain('Jane Smith');
+    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /Search for a trustee/, hidden: true }),
+    ).not.toBeInTheDocument();
   });
 
   test('should NOT render candidate-info section for approved order', () => {
-    renderComponent({ ...sampleOrderWithCandidates, status: 'approved' });
+    renderWithProps({ order: { ...sampleOrderWithCandidates, status: 'approved' } });
 
     expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
-  });
-
-  test('should render strongest match name in CAMS Strongest Match table for pending order', () => {
-    renderComponent(sampleOrderWithCandidates);
-
-    expect(screen.getByTestId('candidate-name').textContent).toContain('Jane Smith');
-    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: 'Search for a trustee.', hidden: true }),
-    ).not.toBeInTheDocument();
   });
 
   test('should render "Search for a different trustee." link when match candidates exist', () => {
