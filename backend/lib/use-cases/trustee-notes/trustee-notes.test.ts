@@ -250,6 +250,41 @@ describe('Test trustee-notes use case', () => {
     expect(readSpy).toHaveBeenCalledWith(existingNote.id);
   });
 
+  test('should throw NotFoundError when note is not found during archiveTrusteeNote', async () => {
+    const userRef = MockData.getCamsUserReference();
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
+    const useCase = new TrusteeNotesUseCase(context);
+
+    const archiveRequest = MockData.getTrusteeNoteDeletionRequest({
+      id: randomUUID(),
+      sessionUser: userRef,
+    });
+
+    await expect(useCase.archiveTrusteeNote(archiveRequest)).rejects.toThrow(
+      'Trustee note not found.',
+    );
+  });
+
+  test('should throw NotFoundError when note is not found during editTrusteeNote', async () => {
+    const userRef = MockData.getCamsUserReference();
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
+
+    const context = await createMockApplicationContext();
+    context.session = await createMockApplicationContextSession({ user: userRef });
+    const useCase = new TrusteeNotesUseCase(context);
+
+    const existingNote = MockData.getTrusteeNote({ createdBy: userRef });
+    const editRequest = MockData.getTrusteeNoteEditRequest({
+      note: existingNote,
+      sessionUser: userRef,
+    });
+
+    await expect(useCase.editTrusteeNote(editRequest)).rejects.toThrow('Trustee note not found.');
+  });
+
   test('should propagate error when read throws during archiveTrusteeNote', async () => {
     const userRef = MockData.getCamsUserReference();
     const readError = new Error('Database read failed');

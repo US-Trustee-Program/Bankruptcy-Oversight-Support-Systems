@@ -5,6 +5,7 @@ import {
   buildNoteFormKey,
   getEditDraftsPattern,
   MINIMUM_SEARCH_CHARACTERS,
+  SortOrder,
 } from './notes-utils';
 import { Note } from './types';
 
@@ -88,6 +89,14 @@ describe('sortNotes', () => {
     const result = sortNotes(notes, 'title');
 
     expect(result).toEqual([note1]);
+  });
+
+  test('should return notes unsorted for unrecognised sort order', () => {
+    const notes = [note1, note2, note3];
+
+    const result = sortNotes(notes, 'unknown' as SortOrder);
+
+    expect(result).toEqual(notes);
   });
 });
 
