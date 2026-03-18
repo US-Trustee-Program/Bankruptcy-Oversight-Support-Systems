@@ -62,17 +62,21 @@ type TrusteeEvent = AtsTrusteeRecord & {
   error?: Error;
 };
 
+type MigrationStartMessage = StartMessage & {
+  reset?: boolean;
+};
+
 /**
  * handleStart
  *
  * Initialize the trustee migration by reading existing state for resumability.
  * If already completed, skip. Otherwise, queue first/next CursorMessage with lastTrusteeId from state.
  */
-async function handleStart(_ignore: StartMessage, invocationContext: InvocationContext) {
+async function handleStart(start: MigrationStartMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  const stateResult = await MigrationStateService.getOrCreateMigrationState(context);
+  const stateResult = await MigrationStateService.getOrCreateMigrationState(context, !!start.reset);
 
   if (stateResult.error) {
     invocationContext.extraOutputs.set(
