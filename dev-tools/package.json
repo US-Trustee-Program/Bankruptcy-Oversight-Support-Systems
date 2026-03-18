@@ -5,7 +5,8 @@
   "scripts": {
     "generate-api-key": "tsx --env-file=.env api-keys/generate-key.ts",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "tsc": "npx tsc --noEmit"
   },
   "author": "",
   "license": "CC0 v1.0",
