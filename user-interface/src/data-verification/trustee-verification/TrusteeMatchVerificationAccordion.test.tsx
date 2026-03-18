@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import {
   TrusteeMatchVerificationAccordion,
@@ -7,6 +7,8 @@ import {
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import MockData from '@common/cams/test-utilities/mock-data';
+import Api2 from '@/lib/models/api2';
+import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
@@ -126,6 +128,72 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
   });
 
+  test('should render resolved statement for approved order with trustee name and case link', () => {
+    renderWithProps({
+      order: {
+        ...sampleOrderWithCandidates,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-1',
+      },
+    });
+
+    const resolved = screen.getByTestId('resolved-statement');
+    expect(resolved.textContent).toContain('Jane Smith');
+    expect(resolved.textContent).toContain('was appointed to case');
+
+    const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
+
+    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+  });
+
+  test('clicking Match Trustee calls patchTrusteeVerificationOrderApproval with correct args', async () => {
+    vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+    renderWithProps({ order: sampleOrderWithCandidates });
+
+    fireEvent.click(screen.getByTestId('approve-button'));
+
+    await waitFor(() => {
+      expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
+        sampleOrderWithCandidates.id,
+        'trustee-1',
+      );
+    });
+  });
+
+  test('calls onOrderUpdate with success alert and updated order on approve success', async () => {
+    vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+    const onOrderUpdate = vi.fn();
+    renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+
+    fireEvent.click(screen.getByTestId('approve-button'));
+
+    await waitFor(() => {
+      expect(onOrderUpdate).toHaveBeenCalledWith(
+        { message: 'Trustee match confirmed.', type: UswdsAlertStyle.Success, timeOut: 8 },
+        { ...sampleOrderWithCandidates, status: 'approved', resolvedTrusteeId: 'trustee-1' },
+      );
+    });
+  });
+
+  test('calls onOrderUpdate with error alert on approve failure', async () => {
+    vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
+      new Error('Network error'),
+    );
+    const onOrderUpdate = vi.fn();
+    renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+
+    fireEvent.click(screen.getByTestId('approve-button'));
+
+    await waitFor(() => {
+      expect(onOrderUpdate).toHaveBeenCalledWith(
+        { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+        sampleOrderWithCandidates,
+      );
+    });
+  });
+
   test('should render "Search for a different trustee." link when match candidates exist', () => {
     renderWithProps({
       order: {
@@ -230,6 +298,117 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(content.textContent).toContain('555-5678 x123');
     expect(content.textContent).toContain('Southern District');
     expect(content.textContent).toContain('Eastern District');
+  });
+
+  test('should render read-only candidate table for rejected order, selecting highest-scoring candidate', () => {
+    renderWithProps({
+      order: {
+        ...sampleOrder,
+        status: 'rejected',
+        matchCandidates: [
+          {
+            trusteeId: 'trustee-medium',
+            trusteeName: 'Medium Score',
+            totalScore: 70,
+            addressScore: 70,
+            districtDivisionScore: 70,
+            chapterScore: 70,
+          },
+          {
+            trusteeId: 'trustee-high',
+            trusteeName: 'High Score',
+            totalScore: 90,
+            addressScore: 95,
+            districtDivisionScore: 90,
+            chapterScore: 85,
+            address: {
+              address1: '2 High Ave',
+              city: 'Buffalo',
+              state: 'NY',
+              zipCode: '14201',
+              countryCode: 'US',
+            },
+            phone: { number: '555-0002', extension: '99' },
+            email: 'high@example.com',
+            appointments: [
+              MockData.getTrusteeAppointment({ courtName: 'Southern District' }),
+              MockData.getTrusteeAppointment({ courtName: 'Northern District' }),
+            ],
+          },
+          {
+            trusteeId: 'trustee-low',
+            trusteeName: 'Low Score',
+            totalScore: 50,
+            addressScore: 40,
+            districtDivisionScore: 60,
+            chapterScore: 50,
+          },
+        ],
+      },
+    });
+
+    // Branch B renders a Link (not a button) and no approve-button
+    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
+
+    // Highest-scoring candidate is selected
+    const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+    expect(content.textContent).toContain('High Score');
+    expect(content.textContent).not.toContain('Low Score');
+    expect(content.textContent).toContain('2 High Ave');
+    expect(content.textContent).toContain('Buffalo, NY 14201');
+    expect(content.textContent).toContain('555-0002');
+  });
+
+  test('should render Branch B with empty phone, email, and no appointments when candidate has no enrichment', () => {
+    renderWithProps({
+      order: {
+        ...sampleOrder,
+        status: 'rejected',
+        matchCandidates: [
+          {
+            trusteeId: 'trustee-bare',
+            trusteeName: 'Bare Candidate',
+            totalScore: 80,
+            addressScore: 80,
+            districtDivisionScore: 80,
+            chapterScore: 80,
+          },
+        ],
+      },
+    });
+
+    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+    const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+    expect(content.textContent).toContain('Bare Candidate');
+  });
+
+  test('should use updatedOn as date fallback when createdOn is absent, and render phone without extension in Branch B', () => {
+    const { createdOn: _omit, ...orderWithoutCreatedOn } = sampleOrder;
+    renderWithProps({
+      order: {
+        ...orderWithoutCreatedOn,
+        status: 'rejected',
+        matchCandidates: [
+          {
+            trusteeId: 'trustee-1',
+            trusteeName: 'No Extension',
+            totalScore: 80,
+            addressScore: 80,
+            districtDivisionScore: 80,
+            chapterScore: 80,
+            phone: { number: '555-7777' },
+          },
+        ],
+      },
+    });
+
+    const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
+    expect(heading.textContent).toContain('01/15/2026');
+
+    const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+    expect(content.textContent).toContain('555-7777');
+    expect(content.textContent).not.toContain(' x');
   });
 
   test('should render match candidate phone without extension', () => {
