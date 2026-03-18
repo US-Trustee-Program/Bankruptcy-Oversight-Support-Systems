@@ -1,10 +1,12 @@
+$input-max-width: 20.75rem;
+
 .edit-upcoming-report-dates {
   .usa-form-group {
-    max-width: 308px;
+    max-width: $input-max-width;
   }
 
   .review-period-group {
-    max-width: 308px;
+    max-width: $input-max-width;
 
     .date-error {
       padding-top: 0.5rem;
