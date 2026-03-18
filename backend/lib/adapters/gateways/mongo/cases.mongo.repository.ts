@@ -573,4 +573,37 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  async findByCaseIdAndType<T extends { caseId: string; documentType: string }>(
+    caseId: string,
+    documentType: string,
+  ): Promise<T[]> {
+    try {
+      const doc = using<T>();
+      const query = and(doc('caseId').equals(caseId), doc('documentType').equals(documentType));
+      return await this.getAdapter<T>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async findByCaseId(caseId: string): Promise<unknown[]> {
+    try {
+      const doc = using<{ caseId: string }>();
+      const query = doc('caseId').equals(caseId);
+      return await this.getAdapter<{ caseId: string; [key: string]: unknown }>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    try {
+      const doc = using<{ id: string }>();
+      const query = doc('id').equals(id);
+      await this.getAdapter<{ id: string; [key: string]: unknown }>().deleteOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }
