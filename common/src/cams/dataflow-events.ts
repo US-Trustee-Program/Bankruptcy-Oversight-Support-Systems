@@ -133,9 +133,23 @@ export function isMultipleTrusteesMatchError(
 
 /**
  * Event triggered to start trustee migration from ATS.
- * Supports optional deleteAll flag to remove all existing trustees and appointments before migration.
+ * Supports optional flags for migration control.
  */
 export type TrusteeMigrationStartEvent = {
+  /**
+   * If true, delete all existing trustees and appointments before starting migration.
+   * Enables clean re-runs from scratch.
+   */
   deleteAll?: boolean;
+  /**
+   * If true, reset migration state to start from beginning.
+   * Useful for resuming failed migrations.
+   */
+  reset?: boolean;
+  /**
+   * Number of trustees to fetch per page from ATS.
+   * Controls batch size for cursor-based pagination.
+   * Default is typically 50-100.
+   */
   pageSize?: number;
 };

@@ -5,5 +5,9 @@ export type TrusteeProfessionalId = Auditable &
   Identifiable & {
     documentType: 'TRUSTEE_PROFESSIONAL_ID';
     camsTrusteeId: string;
-    acmsProfessionalId: string; // Format: "{GROUP_DESIGNATOR}-{PROF_CODE}"
+    /**
+     * Format: "{GROUP_DESIGNATOR}-{PROF_CODE}"
+     * Example: "NY-00063"
+     */
+    acmsProfessionalId: string;
   };

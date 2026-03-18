@@ -534,54 +534,6 @@ describe('Trustee Deduplication', () => {
       );
     });
 
-    test('should handle backward compatibility with legacy.truId (singular)', async () => {
-      const mergedData = {
-        primary: {
-          ID: 2,
-          FIRST_NAME: 'John',
-          LAST_NAME: 'Doe',
-          STREET: '123 Main St',
-          CITY: 'New York',
-          STATE: 'NY',
-        },
-        todIds: ['2'],
-        additionalAddresses: [],
-        allAppointments: [],
-      };
-
-      const existingTrustee = {
-        id: 'existing-id',
-        trusteeId: 'trustee-456',
-        name: 'John Doe',
-        legacy: {
-          truId: '1', // Old format (singular)
-        },
-      };
-
-      const updatedTrustee = {
-        ...existingTrustee,
-        legacy: {
-          truIds: ['1', '2'], // Merged (converted to array)
-        },
-      };
-
-      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
-      mockTrusteesRepo.updateTrustee.mockResolvedValue(updatedTrustee);
-
-      const result = await upsertTrustee(context, mergedData);
-
-      expect(result.data).toEqual(updatedTrustee);
-      expect(mockTrusteesRepo.updateTrustee).toHaveBeenCalledWith(
-        'trustee-456',
-        expect.objectContaining({
-          legacy: expect.objectContaining({
-            truIds: ['1', '2'],
-          }),
-        }),
-        expect.anything(),
-      );
-    });
-
     test('should skip trustee with incomplete name or state', async () => {
       const mergedData = {
         primary: {
