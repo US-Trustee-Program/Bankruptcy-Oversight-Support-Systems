@@ -33,10 +33,16 @@ export default function UpcomingReportDates(props: Readonly<UpcomingReportDatesP
   const [data, setData] = useState<TrusteeUpcomingReportDates | null>(null);
 
   useEffect(() => {
-    Api2.getUpcomingReportDates(trusteeId, appointmentId).then((response) => {
-      setData(response.data);
-      setIsLoading(false);
-    });
+    Api2.getUpcomingReportDates(trusteeId, appointmentId)
+      .then((response) => {
+        setData(response.data);
+      })
+      .catch(() => {
+        setData(null);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [trusteeId, appointmentId]);
 
   function openEdit() {

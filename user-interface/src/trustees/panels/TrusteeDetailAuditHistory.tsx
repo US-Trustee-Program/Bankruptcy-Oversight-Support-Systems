@@ -354,61 +354,56 @@ function ShowTrusteeAssistantHistory(props: ShowTrusteeAssistantHistoryProps) {
   );
 }
 
+type ReportDateFieldConfig = {
+  key: keyof TrusteeUpcomingReportDates;
+  label: string;
+  format: (data: Partial<TrusteeUpcomingReportDates>) => string;
+};
+
+const REPORT_DATE_FIELD_CONFIG: ReportDateFieldConfig[] = [
+  {
+    key: 'fieldExam',
+    label: 'Field Exam',
+    format: (d) => (d.fieldExam ? isoToMMDDYYYY(d.fieldExam) : '(none)'),
+  },
+  { key: 'audit', label: 'Audit', format: (d) => (d.audit ? isoToMMYYYY(d.audit) : '(none)') },
+  {
+    key: 'tprReviewPeriodStart',
+    label: 'TPR Review Period',
+    format: (d) =>
+      d.tprReviewPeriodStart && d.tprReviewPeriodEnd
+        ? isoRangeToMMDD(d.tprReviewPeriodStart, d.tprReviewPeriodEnd)
+        : '(none)',
+  },
+  { key: 'tprDue', label: 'TPR Due', format: (d) => (d.tprDue ? isoToMMYYYY(d.tprDue) : '(none)') },
+  {
+    key: 'tirReviewPeriodStart',
+    label: 'TIR Review Period',
+    format: (d) =>
+      d.tirReviewPeriodStart && d.tirReviewPeriodEnd
+        ? isoRangeToMMDD(d.tirReviewPeriodStart, d.tirReviewPeriodEnd)
+        : '(none)',
+  },
+  {
+    key: 'tirSubmission',
+    label: 'TIR Submission',
+    format: (d) => (d.tirSubmission ? isoToMMDD(d.tirSubmission) : '(none)'),
+  },
+  {
+    key: 'tirReview',
+    label: 'TIR Review',
+    format: (d) => (d.tirReview ? isoToMMDD(d.tirReview) : '(none)'),
+  },
+];
+
 function UpcomingReportDateFields({
   data,
 }: Readonly<{ data: Partial<TrusteeUpcomingReportDates> | undefined }>) {
   if (!data) return <>(none)</>;
 
-  const fields: { label: string; value: string }[] = [];
-
-  if ('fieldExam' in data) {
-    fields.push({
-      label: 'Field Exam',
-      value: data.fieldExam ? isoToMMDDYYYY(data.fieldExam) : '(none)',
-    });
-  }
-  if ('audit' in data) {
-    fields.push({
-      label: 'Audit',
-      value: data.audit ? isoToMMYYYY(data.audit) : '(none)',
-    });
-  }
-  if ('tprReviewPeriodStart' in data) {
-    fields.push({
-      label: 'TPR Review Period',
-      value:
-        data.tprReviewPeriodStart && data.tprReviewPeriodEnd
-          ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
-          : '(none)',
-    });
-  }
-  if ('tprDue' in data) {
-    fields.push({
-      label: 'TPR Due',
-      value: data.tprDue ? isoToMMYYYY(data.tprDue) : '(none)',
-    });
-  }
-  if ('tirReviewPeriodStart' in data) {
-    fields.push({
-      label: 'TIR Review Period',
-      value:
-        data.tirReviewPeriodStart && data.tirReviewPeriodEnd
-          ? isoRangeToMMDD(data.tirReviewPeriodStart, data.tirReviewPeriodEnd)
-          : '(none)',
-    });
-  }
-  if ('tirSubmission' in data) {
-    fields.push({
-      label: 'TIR Submission',
-      value: data.tirSubmission ? isoToMMDD(data.tirSubmission) : '(none)',
-    });
-  }
-  if ('tirReview' in data) {
-    fields.push({
-      label: 'TIR Review',
-      value: data.tirReview ? isoToMMDD(data.tirReview) : '(none)',
-    });
-  }
+  const fields = REPORT_DATE_FIELD_CONFIG.filter(({ key }) => key in data).map(
+    ({ label, format }) => ({ label, value: format(data) }),
+  );
 
   if (fields.length === 0) return <>(none)</>;
 

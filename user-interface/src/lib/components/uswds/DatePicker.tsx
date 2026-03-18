@@ -216,6 +216,10 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const getAriaDescribedBy = () => {
     const ids: string[] = [];
 
+    if (hint) {
+      ids.push(`${id}-hint`);
+    }
+
     if (dateValue) {
       ids.push(`${id}-current-value`);
     }
@@ -269,7 +273,9 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       <label className="usa-label" id={id + '-label'} htmlFor={id}>
         {label || ''}
       </label>
-      <span className="usa-hint">{hint}</span>
+      <span id={`${id}-hint`} className="usa-hint">
+        {hint}
+      </span>
       <div className="usa-date-picker">
         <input
           type="date"

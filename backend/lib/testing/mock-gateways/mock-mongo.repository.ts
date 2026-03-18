@@ -401,10 +401,10 @@ export class MockMongoRepository
   }
 
   getByAppointmentId(..._ignore: any[]): Promise<any> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve(null);
   }
 
   createHistory(..._ignore: any[]): Promise<void> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve();
   }
 }

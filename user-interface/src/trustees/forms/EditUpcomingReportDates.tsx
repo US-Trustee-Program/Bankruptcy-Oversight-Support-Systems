@@ -76,23 +76,29 @@ export default function EditUpcomingReportDates() {
   });
 
   useEffect(() => {
-    Api2.getUpcomingReportDates(trusteeId!, appointmentId!).then((response) => {
-      const data = response.data;
-      if (data) {
-        setForm({
-          fieldExam: data.fieldExam ?? '',
-          audit: data.audit ?? '',
-          tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
-          tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
-          tprDue: data.tprDue ?? '',
-          tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
-          tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
-          tirSubmission: data.tirSubmission ?? '',
-          tirReview: data.tirReview ?? '',
-        });
-      }
-      setIsLoading(false);
-    });
+    Api2.getUpcomingReportDates(trusteeId!, appointmentId!)
+      .then((response) => {
+        const data = response.data;
+        if (data) {
+          setForm({
+            fieldExam: data.fieldExam ?? '',
+            audit: data.audit ?? '',
+            tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
+            tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
+            tprDue: data.tprDue ?? '',
+            tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
+            tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
+            tirSubmission: data.tirSubmission ?? '',
+            tirReview: data.tirReview ?? '',
+          });
+        }
+      })
+      .catch((err) => {
+        globalAlert?.error(`Failed to load upcoming report dates: ${(err as Error).message}`);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, [trusteeId, appointmentId]);
 
   function handleChange(field: keyof FormState) {

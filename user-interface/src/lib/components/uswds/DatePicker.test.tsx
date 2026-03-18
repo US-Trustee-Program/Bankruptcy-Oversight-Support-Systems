@@ -191,7 +191,7 @@ describe('DatePicker additional coverage tests', () => {
     renderWithProps({ 'aria-describedby': 'custom-description', 'aria-live': 'polite' });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
-    expect(inputEl).toHaveAttribute('aria-describedby', 'custom-description');
+    expect(inputEl).toHaveAttribute('aria-describedby', `${DEFAULT_ID}-hint custom-description`);
     expect(inputEl).toHaveAttribute('aria-live', 'polite');
   });
 
