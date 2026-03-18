@@ -20,10 +20,10 @@ function requirePair(
     const input = obj as TrusteeUpcomingReportDatesInput;
     const reasonMap: ValidatorReasonMap = {};
     if (input[startField] !== null && input[endField] === null) {
-      reasonMap[endField as string] = { reasons: [`${endLabel} is required when Start is set.`] };
+      reasonMap[endField as string] = { reasons: [`${endLabel} is required.`] };
     }
     if (input[endField] !== null && input[startField] === null) {
-      reasonMap[startField as string] = { reasons: [`${startLabel} is required when End is set.`] };
+      reasonMap[startField as string] = { reasons: [`${startLabel} is required.`] };
     }
     return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
   };
