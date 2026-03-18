@@ -3,11 +3,18 @@
     max-width: 308px;
   }
 
+  .review-period-group {
+    max-width: 308px;
+
+    .date-error {
+      padding-top: 0.5rem;
+    }
+  }
+
   .review-period-row {
     display: flex;
     align-items: flex-end;
     gap: 0.5rem;
-    max-width: 308px;
 
     .usa-form-group {
       max-width: none;

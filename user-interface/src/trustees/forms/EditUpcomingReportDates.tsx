@@ -168,23 +168,30 @@ export default function EditUpcomingReportDates() {
         onChange={handleChange('audit')}
         disableMax
       />
-      <div className="review-period-row">
-        <MonthDaySelector
-          id="tpr-review-period-start"
-          label="TPR Review Period"
-          value={form.tprReviewPeriodStart}
-          onChange={handleMonthDayChange('tprReviewPeriodStart')}
-          customErrorMessage={errors.tprReviewPeriodStart}
-        />
-        <span className="review-period-separator" aria-hidden="true">
-          <Icon name="remove" />
-        </span>
-        <MonthDaySelector
-          id="tpr-review-period-end"
-          value={form.tprReviewPeriodEnd}
-          onChange={handleMonthDayChange('tprReviewPeriodEnd')}
-          customErrorMessage={errors.tprReviewPeriodEnd}
-        />
+      <div className="review-period-group">
+        <div className="review-period-row">
+          <MonthDaySelector
+            id="tpr-review-period-start"
+            label="TPR Review Period"
+            value={form.tprReviewPeriodStart}
+            onChange={handleMonthDayChange('tprReviewPeriodStart')}
+            hasError={!!errors.tprReviewPeriodStart}
+          />
+          <span className="review-period-separator" aria-hidden="true">
+            <Icon name="remove" />
+          </span>
+          <MonthDaySelector
+            id="tpr-review-period-end"
+            value={form.tprReviewPeriodEnd}
+            onChange={handleMonthDayChange('tprReviewPeriodEnd')}
+            hasError={!!errors.tprReviewPeriodEnd}
+          />
+        </div>
+        {(errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd) && (
+          <div className="date-error usa-input__error-message" aria-live="polite">
+            {errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
+          </div>
+        )}
       </div>
       <DatePicker
         id="tpr-due"
@@ -193,23 +200,30 @@ export default function EditUpcomingReportDates() {
         onChange={handleChange('tprDue')}
         disableMax
       />
-      <div className="review-period-row">
-        <MonthDaySelector
-          id="tir-review-period-start"
-          label="TIR Review Period"
-          value={form.tirReviewPeriodStart}
-          onChange={handleMonthDayChange('tirReviewPeriodStart')}
-          customErrorMessage={errors.tirReviewPeriodStart}
-        />
-        <span className="review-period-separator" aria-hidden="true">
-          <Icon name="remove" />
-        </span>
-        <MonthDaySelector
-          id="tir-review-period-end"
-          value={form.tirReviewPeriodEnd}
-          onChange={handleMonthDayChange('tirReviewPeriodEnd')}
-          customErrorMessage={errors.tirReviewPeriodEnd}
-        />
+      <div className="review-period-group">
+        <div className="review-period-row">
+          <MonthDaySelector
+            id="tir-review-period-start"
+            label="TIR Review Period"
+            value={form.tirReviewPeriodStart}
+            onChange={handleMonthDayChange('tirReviewPeriodStart')}
+            hasError={!!errors.tirReviewPeriodStart}
+          />
+          <span className="review-period-separator" aria-hidden="true">
+            <Icon name="remove" />
+          </span>
+          <MonthDaySelector
+            id="tir-review-period-end"
+            value={form.tirReviewPeriodEnd}
+            onChange={handleMonthDayChange('tirReviewPeriodEnd')}
+            hasError={!!errors.tirReviewPeriodEnd}
+          />
+        </div>
+        {(errors.tirReviewPeriodStart || errors.tirReviewPeriodEnd) && (
+          <div className="date-error usa-input__error-message" aria-live="polite">
+            {errors.tirReviewPeriodStart || errors.tirReviewPeriodEnd}
+          </div>
+        )}
       </div>
       <DatePicker
         id="tir-submission"

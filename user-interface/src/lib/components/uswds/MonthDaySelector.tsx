@@ -11,6 +11,7 @@ type MonthDaySelectorProps = {
   disabled?: boolean;
   required?: boolean;
   customErrorMessage?: string;
+  hasError?: boolean;
   className?: string;
 };
 
@@ -37,12 +38,20 @@ function parseValue(value?: string): { month: string; day: string } {
 
 //TODO: MAYBE COME UP WITH A BETTER NAME?
 export default function MonthDaySelector(props: MonthDaySelectorProps) {
-  const { id, label, disabled, required, customErrorMessage, className } = props;
+  const {
+    id,
+    label,
+    disabled,
+    required,
+    customErrorMessage,
+    hasError: hasErrorProp,
+    className,
+  } = props;
 
   const parsed = parseValue(props.value);
   const [month, setMonth] = useState(parsed.month);
   const [day, setDay] = useState(parsed.day);
-  const hasError = !!customErrorMessage;
+  const hasError = !!customErrorMessage || !!hasErrorProp;
 
   // Sync local state when the value is reset externally (e.g. form clear)
   useEffect(() => {
