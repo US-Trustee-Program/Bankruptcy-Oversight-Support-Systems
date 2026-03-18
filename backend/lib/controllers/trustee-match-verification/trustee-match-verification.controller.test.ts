@@ -150,7 +150,7 @@ describe('TrusteeMatchVerificationController', () => {
       );
 
       const controller = new TrusteeMatchVerificationController();
-      const expectedError = getCamsError(error, 'TRUSTEE-VERIFICATION-ORDERS-CONTROLLER');
+      const expectedError = getCamsError(error, 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER');
 
       await expect(controller.handleRequest(context)).rejects.toThrow(expectedError.message);
     });
@@ -200,9 +200,8 @@ describe('TrusteeMatchVerificationController', () => {
     context.request.method = 'DELETE';
 
     const controller = new TrusteeMatchVerificationController();
-    const response = await controller.handleRequest(context);
 
-    expect(response.body.data).toEqual([]);
+    await expect(controller.handleRequest(context)).rejects.toThrow('Unsupported method.');
   });
 
   test('should throw a CamsError when the repository throws', async () => {

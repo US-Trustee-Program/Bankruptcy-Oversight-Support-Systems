@@ -433,7 +433,7 @@ async function getTrusteeMatchVerifications() {
 }
 
 async function patchTrusteeVerificationOrderApproval(id: string, resolvedTrusteeId: string) {
-  return api().patch(`/trustee-verification-orders/${id}`, { resolvedTrusteeId });
+  return api().patch(`/trustee-match-verification/${id}`, { resolvedTrusteeId });
 }
 
 async function getOrderSuggestions(caseId: string) {
