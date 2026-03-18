@@ -90,7 +90,7 @@ export type TrusteeUpcomingReportDatesHistory = AbstractTrusteeHistory<
   appointmentId: string;
 };
 
-export type DateField =
+type DateField =
   | 'fieldExam'
   | 'audit'
   | 'tprReviewPeriodStart'
