@@ -1,7 +1,56 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { AbstractTrusteeHistory } from './trustee-history-base';
-import { VALID, ValidatorResult } from './validation';
+import {
+  VALID,
+  ValidatorFunction,
+  ValidatorReasonMap,
+  ValidatorResult,
+  ValidationSpec,
+  validateObject,
+} from './validation';
+
+function requirePair(
+  startField: keyof TrusteeUpcomingReportDatesInput,
+  endField: keyof TrusteeUpcomingReportDatesInput,
+  startLabel: string,
+  endLabel: string,
+): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingReportDatesInput;
+    const reasonMap: ValidatorReasonMap = {};
+    if (input[startField] !== null && input[endField] === null) {
+      reasonMap[endField as string] = { reasons: [`${endLabel} is required when Start is set.`] };
+    }
+    if (input[endField] !== null && input[startField] === null) {
+      reasonMap[startField as string] = { reasons: [`${startLabel} is required when End is set.`] };
+    }
+    return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+  };
+}
+
+export const trusteeUpcomingReportDatesSpec: ValidationSpec<TrusteeUpcomingReportDatesInput> = {
+  $: [
+    requirePair(
+      'tprReviewPeriodStart',
+      'tprReviewPeriodEnd',
+      'TPR Review Period Start',
+      'TPR Review Period End',
+    ),
+    requirePair(
+      'tirReviewPeriodStart',
+      'tirReviewPeriodEnd',
+      'TIR Review Period Start',
+      'TIR Review Period End',
+    ),
+  ],
+};
+
+export function validateTrusteeUpcomingReportDates(
+  input: TrusteeUpcomingReportDatesInput,
+): ValidatorResult {
+  return validateObject(trusteeUpcomingReportDatesSpec, input);
+}
 
 export type TrusteeUpcomingReportDates = Auditable &
   Identifiable & {
