@@ -130,3 +130,12 @@ export function isMultipleTrusteesMatchError(
     Array.isArray(candidate.matchCandidates)
   );
 }
+
+/**
+ * Event triggered to start trustee migration from ATS.
+ * Supports optional deleteAll flag to remove all existing trustees and appointments before migration.
+ */
+export type TrusteeMigrationStartEvent = {
+  deleteAll?: boolean;
+  pageSize?: number;
+};

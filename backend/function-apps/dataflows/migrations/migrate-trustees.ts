@@ -64,6 +64,7 @@ type TrusteeEvent = AtsTrusteeRecord & {
 
 type MigrationStartMessage = StartMessage & {
   reset?: boolean;
+  deleteAll?: boolean;
 };
 
 /**
@@ -71,10 +72,43 @@ type MigrationStartMessage = StartMessage & {
  *
  * Initialize the trustee migration by reading existing state for resumability.
  * If already completed, skip. Otherwise, queue first/next CursorMessage with lastTrusteeId from state.
+ * If deleteAll flag is present, delete all existing trustees and appointments before starting.
  */
 async function handleStart(start: MigrationStartMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
+
+  if (start.deleteAll) {
+    logger.info(
+      MODULE_NAME,
+      'deleteAll flag detected. Deleting all existing trustees and appointments.',
+    );
+
+    const deleteResult = await MigrateTrusteesUseCase.deleteAllTrusteesAndAppointments(context);
+
+    if (deleteResult.error) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(deleteResult.error, MODULE_NAME, HANDLE_START),
+      );
+      return;
+    }
+
+    logger.info(
+      MODULE_NAME,
+      `Successfully deleted ${deleteResult.data.deletedTrustees} trustees and ${deleteResult.data.deletedAppointments} appointments.`,
+    );
+
+    // Reset migration state after deletion
+    const resetResult = await MigrationStateService.resetMigrationState(context);
+    if (resetResult.error) {
+      invocationContext.extraOutputs.set(
+        DLQ,
+        buildQueueError(resetResult.error, MODULE_NAME, HANDLE_START),
+      );
+      return;
+    }
+  }
 
   const stateResult = await MigrationStateService.getOrCreateMigrationState(context, !!start.reset);
 
