@@ -63,13 +63,13 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
   function handleMonthChange(ev: React.ChangeEvent<HTMLSelectElement>) {
     const newMonth = ev.target.value;
     setMonth(newMonth);
-    props.onChange?.(newMonth && day ? `1900-${newMonth}-${day}` : '');
+    props.onChange?.(newMonth || day ? `1900-${newMonth}-${day}` : '');
   }
 
   function handleDayChange(ev: React.ChangeEvent<HTMLSelectElement>) {
     const newDay = ev.target.value;
     setDay(newDay);
-    props.onChange?.(month && newDay ? `1900-${month}-${newDay}` : '');
+    props.onChange?.(month || newDay ? `1900-${month}-${newDay}` : '');
   }
 
   return (

@@ -59,22 +59,32 @@ describe('MonthDaySelector', () => {
     expect(onChange).toHaveBeenLastCalledWith('1900-04-01');
   });
 
-  test('calls onChange with empty string when only month is selected', async () => {
+  test('calls onChange with partial value when only month is selected', async () => {
     const onChange = vi.fn();
     render(<MonthDaySelector id="test" onChange={onChange} />);
 
     await userEvent.selectOptions(monthSelect(), '04');
 
-    expect(onChange).toHaveBeenCalledWith('');
+    expect(onChange).toHaveBeenCalledWith('1900-04-');
   });
 
-  test('calls onChange with empty string when only day is selected', async () => {
+  test('calls onChange with partial value when only day is selected', async () => {
     const onChange = vi.fn();
     render(<MonthDaySelector id="test" onChange={onChange} />);
 
     await userEvent.selectOptions(daySelect(), '15');
 
-    expect(onChange).toHaveBeenCalledWith('');
+    expect(onChange).toHaveBeenCalledWith('1900--15');
+  });
+
+  test('calls onChange with empty string when both month and day are cleared', async () => {
+    const onChange = vi.fn();
+    render(<MonthDaySelector id="test" value="1900-04-15" onChange={onChange} />);
+
+    await userEvent.selectOptions(monthSelect(), '');
+    await userEvent.selectOptions(daySelect(), '');
+
+    expect(onChange).toHaveBeenLastCalledWith('');
   });
 
   test('shows custom error message', () => {
