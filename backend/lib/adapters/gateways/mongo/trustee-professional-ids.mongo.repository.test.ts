@@ -306,7 +306,11 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
   });
 
   describe('deleteAll', () => {
-    const expectedQuery = {};
+    const expectedQuery = {
+      condition: 'EQUALS',
+      leftOperand: { name: 'documentType' },
+      rightOperand: 'TRUSTEE_PROFESSIONAL_ID',
+    };
 
     test('should delete all professional IDs and return count', async () => {
       const deletedCount = 150;
