@@ -30,7 +30,7 @@ export function sanitizeDeep<T>(
     },
   });
 
-  logger.info(
+  logger.debug(
     MODULE_NAME,
     `Total Depth: ${result.metadata.totalDepth}, Total Key Count: ${result.metadata.totalKeyCount}`,
   );

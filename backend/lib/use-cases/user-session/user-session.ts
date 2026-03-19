@@ -95,6 +95,18 @@ export class UserSessionUseCase {
       // Augment the user session with additional roles if applicable.
       const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
 
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: Creating session for user ${user.name} (${user.id}) with ${user.offices?.length || 0} offices and ${user.roles?.length || 0} roles.`,
+        {
+          userId: user.id,
+          userName: user.name,
+          officeCount: user.offices?.length || 0,
+          roleCount: user.roles?.length || 0,
+          offices: user.offices?.map((o) => o.idpGroupName) || [],
+        },
+      );
+
       // Cache and return a new session.
       const newSession = {
         user,
