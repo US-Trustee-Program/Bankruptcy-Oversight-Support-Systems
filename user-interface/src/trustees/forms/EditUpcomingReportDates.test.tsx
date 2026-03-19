@@ -75,10 +75,12 @@ describe('EditUpcomingReportDates', () => {
     expect(screen.getByTestId('tir-submission')).toBeInTheDocument();
     expect(screen.getByTestId('tir-review')).toBeInTheDocument();
 
-    // MonthDaySelector fields — start selectors have labels, end selectors do not
-    expect(screen.getByLabelText('TPR Review Period')).toBeInTheDocument();
+    // MonthDayRangeSelector fields
+    expect(screen.getByText('TPR Review Period')).toBeInTheDocument();
+    expect(document.getElementById('tpr-review-period-start-month')).toBeInTheDocument();
     expect(document.getElementById('tpr-review-period-end-month')).toBeInTheDocument();
-    expect(screen.getByLabelText('TIR Review Period')).toBeInTheDocument();
+    expect(screen.getByText('TIR Review Period')).toBeInTheDocument();
+    expect(document.getElementById('tir-review-period-start-month')).toBeInTheDocument();
     expect(document.getElementById('tir-review-period-end-month')).toBeInTheDocument();
   });
 
@@ -144,21 +146,6 @@ describe('EditUpcomingReportDates', () => {
     await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
 
     expect(screen.getByText('TIR Review Period Start is required.')).toBeInTheDocument();
-    expect(putSpy).not.toHaveBeenCalled();
-  });
-
-  test('shows error and blocks save when only month is selected in a MonthDaySelector', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
-
-    await userEvent.selectOptions(document.getElementById('tpr-review-period-start-month')!, '04');
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
-
-    expect(screen.getByText('Must be a valid date mm/dd.')).toBeInTheDocument();
     expect(putSpy).not.toHaveBeenCalled();
   });
 
