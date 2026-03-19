@@ -89,7 +89,7 @@ async function verifyToken(token: string): Promise<CamsJwt> {
 }
 
 async function getUser(
-  _context: ApplicationContext,
+  context: ApplicationContext,
   accessToken: string,
 ): Promise<{ user: CamsUserReference; jwt: CamsJwt }> {
   const { userInfoUri } = getAuthorizationConfig();
@@ -120,8 +120,33 @@ async function getUser(
         return acc;
       }, []);
 
+      // DIAGNOSTIC: Log JWT groups before merging
+      const originalGroups = jwt.claims.groups ?? [];
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: JWT for user ${user.name} (${user.id}) contains ${originalGroups.length} standard groups and ${adGroups.flat().length} ad_groups.`,
+        {
+          userId: user.id,
+          userName: user.name,
+          standardGroupCount: originalGroups.length,
+          adGroupCount: adGroups.flat().length,
+        },
+      );
+
       jwt.claims.groups = Array.from(
         new Set<string>([].concat(jwt.claims.groups ?? [], ...adGroups)),
+      );
+
+      // DIAGNOSTIC: Log merged groups
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: After merging, JWT has ${jwt.claims.groups.length} total groups.`,
+        {
+          userId: user.id,
+          userName: user.name,
+          totalGroupCount: jwt.claims.groups.length,
+          groups: jwt.claims.groups,
+        },
       );
 
       return { user, jwt };
