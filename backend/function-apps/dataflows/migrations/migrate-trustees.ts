@@ -371,7 +371,9 @@ async function handleRetry(event: TrusteeEvent, invocationContext: InvocationCon
     return;
   }
 
-  const result = await MigrateTrusteesUseCase.processTrusteeWithAppointments(context, event);
+  // Wrap single trustee into MergedTrusteeData structure for processing
+  const mergedData = MigrateTrusteesUseCase.mergeTrusteeRecords([event]);
+  const result = await MigrateTrusteesUseCase.processTrusteeWithAppointments(context, mergedData);
 
   if (result.success) {
     logger.info(
