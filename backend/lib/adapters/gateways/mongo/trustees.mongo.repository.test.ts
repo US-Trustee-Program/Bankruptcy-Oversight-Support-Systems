@@ -348,7 +348,7 @@ describe('TrusteesMongoRepository', () => {
           {
             condition: 'REGEX',
             leftOperand: { name: 'name' },
-            rightOperand: /^John Doe$/i,
+            rightOperand: /\bJohn\b.*\bDoe\b/i,
           },
           {
             condition: 'EQUALS',
@@ -378,7 +378,7 @@ describe('TrusteesMongoRepository', () => {
           {
             condition: 'REGEX',
             leftOperand: { name: 'name' },
-            rightOperand: /^John Doe$/i,
+            rightOperand: /\bJohn\b.*\bDoe\b/i,
           },
           {
             condition: 'EQUALS',
@@ -407,7 +407,7 @@ describe('TrusteesMongoRepository', () => {
           {
             condition: 'REGEX',
             leftOperand: { name: 'name' },
-            rightOperand: /^John Michael Doe Smith$/i,
+            rightOperand: /\bJohn Michael\b.*\bDoe Smith\b/i,
           },
           {
             condition: 'EQUALS',

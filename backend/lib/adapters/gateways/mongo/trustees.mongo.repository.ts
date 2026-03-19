@@ -139,15 +139,16 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const normalizedLastName = normalizeName(lastName);
       const normalizedState = state.trim().toUpperCase();
 
-      // Build full name pattern
-      const fullName = `${normalizedFirstName} ${normalizedLastName}`;
-      const escapedFullName = escapeRegex(fullName);
+      // Escape regex special characters
+      const escapedFirstName = escapeRegex(normalizedFirstName);
+      const escapedLastName = escapeRegex(normalizedLastName);
 
-      // Build query that matches normalized name pattern and state
+      // Build query with word-boundary matching to handle middle names/suffixes
+      // Matches "John Smith", "John Q. Smith", "John Smith Jr.", etc.
       const doc = using<TrusteeDocument>();
       const query = and(
         doc('documentType').equals('TRUSTEE'),
-        doc('name').regex(new RegExp(`^${escapedFullName}$`, 'i')),
+        doc('name').regex(new RegExp(`\\b${escapedFirstName}\\b.*\\b${escapedLastName}\\b`, 'i')),
         doc('public.address.state').equals(normalizedState),
       );
 
@@ -165,7 +166,10 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   async findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null> {
     try {
       const doc = using<TrusteeDocumentQueryable>();
-      const query = and(doc('documentType').equals('TRUSTEE'), doc('legacy.truIds').equals(truId));
+      const query = and(
+        doc('documentType').equals('TRUSTEE'),
+        doc('legacy.truIds').contains(truId),
+      );
       return await this.getAdapter<TrusteeDocumentQueryable>().findOne(query);
     } catch (originalError) {
       if (isNotFoundError(originalError)) {
