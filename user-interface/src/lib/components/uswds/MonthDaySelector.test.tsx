@@ -31,15 +31,51 @@ describe('MonthDaySelector', () => {
     expect(options).toHaveLength(13);
   });
 
-  test('renders day options 1 through 31', () => {
+  test('day dropdown is disabled when no month is selected', () => {
     render(<MonthDaySelector id="test" />);
+
+    expect(daySelect()).toBeDisabled();
+  });
+
+  test('day dropdown is enabled when a month is selected', async () => {
+    render(<MonthDaySelector id="test" />);
+
+    await userEvent.selectOptions(monthSelect(), '01');
+
+    expect(daySelect()).not.toBeDisabled();
+  });
+
+  test('renders 31 days for January', async () => {
+    render(<MonthDaySelector id="test" />);
+
+    await userEvent.selectOptions(monthSelect(), '01');
 
     const options = Array.from(daySelect().options).map((o) => o.text);
     expect(options[0]).toBe('');
-    expect(options[1]).toBe('01');
-    expect(options[9]).toBe('09');
     expect(options[31]).toBe('31');
     expect(options).toHaveLength(32);
+  });
+
+  test('renders 28 days for February', async () => {
+    render(<MonthDaySelector id="test" />);
+
+    await userEvent.selectOptions(monthSelect(), '02');
+
+    const options = Array.from(daySelect().options).map((o) => o.text);
+    expect(options[0]).toBe('');
+    expect(options[28]).toBe('28');
+    expect(options).toHaveLength(29);
+  });
+
+  test('renders 30 days for April', async () => {
+    render(<MonthDaySelector id="test" />);
+
+    await userEvent.selectOptions(monthSelect(), '04');
+
+    const options = Array.from(daySelect().options).map((o) => o.text);
+    expect(options[0]).toBe('');
+    expect(options[30]).toBe('30');
+    expect(options).toHaveLength(31);
   });
 
   test('pre-populates month and day from value prop', () => {
@@ -68,13 +104,13 @@ describe('MonthDaySelector', () => {
     expect(onChange).toHaveBeenCalledWith('1900-04-');
   });
 
-  test('calls onChange with partial value when only day is selected', async () => {
+  test('cannot select day when no month is selected', async () => {
     const onChange = vi.fn();
     render(<MonthDaySelector id="test" onChange={onChange} />);
 
-    await userEvent.selectOptions(daySelect(), '15');
-
-    expect(onChange).toHaveBeenCalledWith('1900--15');
+    // Day select is disabled, so attempting to select should not call onChange
+    expect(daySelect()).toBeDisabled();
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   test('calls onChange with empty string when both month and day are cleared', async () => {
@@ -126,5 +162,37 @@ describe('MonthDaySelector', () => {
 
     expect(monthSelect()).toHaveValue('');
     expect(daySelect()).toHaveValue('');
+  });
+
+  test('clears day when switching from a month with 31 days to February', async () => {
+    const onChange = vi.fn();
+    render(<MonthDaySelector id="test" value="1900-01-31" onChange={onChange} />);
+
+    expect(daySelect()).toHaveValue('31');
+
+    await userEvent.selectOptions(monthSelect(), '02');
+
+    expect(daySelect()).toHaveValue('');
+    expect(onChange).toHaveBeenCalledWith('1900-02-');
+  });
+
+  test('clears day when switching from a 31-day month to a 30-day month', async () => {
+    const onChange = vi.fn();
+    render(<MonthDaySelector id="test" value="1900-01-31" onChange={onChange} />);
+
+    await userEvent.selectOptions(monthSelect(), '04');
+
+    expect(daySelect()).toHaveValue('');
+    expect(onChange).toHaveBeenCalledWith('1900-04-');
+  });
+
+  test('preserves day when switching months if day is valid for new month', async () => {
+    const onChange = vi.fn();
+    render(<MonthDaySelector id="test" value="1900-01-15" onChange={onChange} />);
+
+    await userEvent.selectOptions(monthSelect(), '02');
+
+    expect(daySelect()).toHaveValue('15');
+    expect(onChange).toHaveBeenCalledWith('1900-02-15');
   });
 });
