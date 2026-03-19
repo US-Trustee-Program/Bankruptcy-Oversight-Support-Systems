@@ -11,6 +11,7 @@ type MonthDayRangeSelectorProps = {
   onEndChange: (value: string) => void;
   onValidationChange?: (isValid: boolean) => void;
   externalError?: string;
+  submitted?: boolean;
 };
 
 const PARTIAL_DATE_ERROR = 'Must be a valid date mm/dd.';
@@ -31,6 +32,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
     onEndChange,
     onValidationChange,
     externalError,
+    submitted,
   } = props;
 
   const [internalError, setInternalError] = useState('');
@@ -50,8 +52,8 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startValue, endValue]);
 
-  // External errors take precedence over internal errors
-  const displayError = externalError || internalError;
+  // External errors take precedence over internal errors; internal errors only show after submission
+  const displayError = externalError || (submitted ? internalError : '');
   const hasError = !!displayError;
 
   return (

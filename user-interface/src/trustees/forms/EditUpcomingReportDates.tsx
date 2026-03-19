@@ -60,6 +60,7 @@ export default function EditUpcomingReportDates() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState({
     tprReviewPeriodStart: '',
@@ -106,6 +107,7 @@ export default function EditUpcomingReportDates() {
 
   function handleMonthDayChange(field: keyof FormState) {
     return (value: string) => {
+      setSubmitted(false);
       setForm((prev) => ({ ...prev, [field]: value }));
       if (field in errors) {
         setErrors((prev) => ({ ...prev, [field]: '' }));
@@ -114,6 +116,8 @@ export default function EditUpcomingReportDates() {
   }
 
   async function handleSave() {
+    setSubmitted(true);
+
     // Check validation state from MonthDayRangeSelectors
     if (!validationState.tprReviewPeriod || !validationState.tirReviewPeriod) {
       return; // Errors are already shown by the components
@@ -193,6 +197,7 @@ export default function EditUpcomingReportDates() {
           setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
         }
         externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
+        submitted={submitted}
       />
       <DatePicker
         id="tpr-due"
@@ -212,6 +217,7 @@ export default function EditUpcomingReportDates() {
           setValidationState((prev) => ({ ...prev, tirReviewPeriod: isValid }))
         }
         externalError={errors.tirReviewPeriodStart || errors.tirReviewPeriodEnd}
+        submitted={submitted}
       />
       <DatePicker
         id="tir-submission"
