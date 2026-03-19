@@ -723,7 +723,7 @@ describe('Trustee Deduplication', () => {
       expect(updatedLegacy.addresses).toHaveLength(1);
     });
 
-    test('should keep addresses with empty/null fields', async () => {
+    test('should drop addresses with empty/null fields', async () => {
       const mergedData = {
         primary: {
           ID: 2,
@@ -764,10 +764,10 @@ describe('Trustee Deduplication', () => {
 
       expect(result.error).toBeUndefined();
 
-      // Verify that addresses with empty keys are kept
+      // Verify that addresses with empty keys are dropped (not kept)
       const updateCall = mockTrusteesRepo.updateTrustee.mock.calls[0];
       const updatedLegacy = updateCall[1].legacy;
-      expect(updatedLegacy.addresses).toHaveLength(2);
+      expect(updatedLegacy.addresses).toBeUndefined(); // No addresses added since both were empty
     });
 
     test('should prevent unbounded growth on re-runs', async () => {
