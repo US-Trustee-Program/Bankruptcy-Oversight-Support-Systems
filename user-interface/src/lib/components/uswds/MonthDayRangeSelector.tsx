@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import MonthDaySelector from './MonthDaySelector';
 import Icon from './Icon';
+import Button, { UswdsButtonStyle } from './Button';
 
 type MonthDayRangeSelectorProps = {
   id: string;
@@ -56,12 +57,33 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
   const displayError = externalError || (submitted ? internalError : '');
   const hasError = !!displayError;
 
+  const hasValue = !!(startValue || endValue);
+
+  function handleClear() {
+    onStartChange('');
+    onEndChange('');
+  }
+
   return (
     <div className="review-period-group">
+      <div className="review-period-header">
+        <label className="usa-label" htmlFor={`${id}-start-month`}>
+          {label}
+        </label>
+        {hasValue && (
+          <Button
+            id={`${id}-clear`}
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+            onClick={handleClear}
+            aria-label={`Clear ${label}`}
+          >
+            Clear
+          </Button>
+        )}
+      </div>
       <div className="review-period-row">
         <MonthDaySelector
           id={`${id}-start`}
-          label={label}
           value={startValue}
           onChange={onStartChange}
           hasError={hasError}
