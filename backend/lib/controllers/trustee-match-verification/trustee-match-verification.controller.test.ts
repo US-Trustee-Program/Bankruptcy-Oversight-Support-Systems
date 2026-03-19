@@ -1,6 +1,6 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { TrusteeMatchVerificationController } from './trustee-match-verification.controller';
-import { TrusteeVerificationOrdersUseCase } from '../../use-cases/trustee-verification-orders/trustee-verification-orders.use-case';
+import { TrusteeMatchVerificationUseCase } from '../../use-cases/trustee-match-verification/trustee-match-verification.use-case';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
@@ -164,14 +164,14 @@ describe('TrusteeMatchVerificationController', () => {
     });
 
     test('should call useCase.approveVerification and return 204', async () => {
-      vi.spyOn(TrusteeVerificationOrdersUseCase.prototype, 'approveVerification').mockResolvedValue(
+      vi.spyOn(TrusteeMatchVerificationUseCase.prototype, 'approveVerification').mockResolvedValue(
         undefined,
       );
 
       const controller = new TrusteeMatchVerificationController();
       const response = await controller.handleRequest(context);
 
-      expect(TrusteeVerificationOrdersUseCase.prototype.approveVerification).toHaveBeenCalledWith(
+      expect(TrusteeMatchVerificationUseCase.prototype.approveVerification).toHaveBeenCalledWith(
         context,
         'verification-1',
         'trustee-001',

@@ -1,15 +1,15 @@
 import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { TrusteeVerificationOrdersUseCase } from './trustee-verification-orders.use-case';
+import { TrusteeMatchVerificationUseCase } from './trustee-match-verification.use-case';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 
-describe('TrusteeVerificationOrdersUseCase', () => {
+describe('TrusteeMatchVerificationUseCase', () => {
   let context: ApplicationContext;
-  let useCase: TrusteeVerificationOrdersUseCase;
+  let useCase: TrusteeMatchVerificationUseCase;
 
   const sampleVerification: TrusteeMatchVerification = {
     id: 'verification-1',
@@ -49,7 +49,7 @@ describe('TrusteeVerificationOrdersUseCase', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    useCase = new TrusteeVerificationOrdersUseCase();
+    useCase = new TrusteeMatchVerificationUseCase();
 
     mockSearch = vi.fn().mockResolvedValue([sampleVerification]);
     mockUpdate = vi.fn().mockResolvedValue({ ...sampleVerification, status: 'approved' });

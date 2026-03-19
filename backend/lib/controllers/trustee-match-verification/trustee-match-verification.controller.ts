@@ -5,7 +5,7 @@ import { BadRequestError } from '../../common-errors/bad-request';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import factory from '../../factory';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
-import { TrusteeVerificationOrdersUseCase } from '../../use-cases/trustee-verification-orders/trustee-verification-orders.use-case';
+import { TrusteeMatchVerificationUseCase } from '../../use-cases/trustee-match-verification/trustee-match-verification.use-case';
 import HttpStatusCodes from '@common/api/http-status-codes';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER';
@@ -81,7 +81,7 @@ export class TrusteeMatchVerificationController {
     if (!body?.resolvedTrusteeId) {
       throw new BadRequestError(MODULE_NAME, { message: 'Missing resolvedTrusteeId.' });
     }
-    const useCase = new TrusteeVerificationOrdersUseCase();
+    const useCase = new TrusteeMatchVerificationUseCase();
     await useCase.approveVerification(context, id, body.resolvedTrusteeId);
     return httpSuccess({ statusCode: HttpStatusCodes.NO_CONTENT });
   }
