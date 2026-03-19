@@ -10,8 +10,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
-import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
-import Icon from '@/lib/components/uswds/Icon';
+import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 
 // ISO date with sentinel year 1900 for month/day-only fields
 const MMDD_MIN = '1900-01-01';
@@ -24,12 +23,6 @@ function toSentinelDate(isoDate: string): string {
 function toMonthYearDate(isoDate: string): string {
   const [year, month] = isoDate.split('-');
   return `${year}-${month}-01`;
-}
-
-function isPartialMonthDay(value: string): boolean {
-  if (!value) return false;
-  const parts = value.split('-');
-  return parts.length === 3 && (!parts[1] || !parts[2]);
 }
 
 type FormState = {
@@ -74,6 +67,10 @@ export default function EditUpcomingReportDates() {
     tirReviewPeriodStart: '',
     tirReviewPeriodEnd: '',
   });
+  const [validationState, setValidationState] = useState({
+    tprReviewPeriod: true,
+    tirReviewPeriod: true,
+  });
 
   useEffect(() => {
     Api2.getUpcomingReportDates(trusteeId!, appointmentId!)
@@ -117,32 +114,9 @@ export default function EditUpcomingReportDates() {
   }
 
   async function handleSave() {
-    const PARTIAL_ERROR = 'Must be a valid date mm/dd.';
-    const MONTH_DAY_FIELDS = [
-      'tprReviewPeriodStart',
-      'tprReviewPeriodEnd',
-      'tirReviewPeriodStart',
-      'tirReviewPeriodEnd',
-    ] as const;
-
-    const partialErrors = {
-      tprReviewPeriodStart: '',
-      tprReviewPeriodEnd: '',
-      tirReviewPeriodStart: '',
-      tirReviewPeriodEnd: '',
-    };
-
-    let hasPartialError = false;
-    for (const field of MONTH_DAY_FIELDS) {
-      if (isPartialMonthDay(form[field])) {
-        partialErrors[field] = PARTIAL_ERROR;
-        hasPartialError = true;
-      }
-    }
-
-    if (hasPartialError) {
-      setErrors(partialErrors);
-      return;
+    // Check validation state from MonthDayRangeSelectors
+    if (!validationState.tprReviewPeriod || !validationState.tirReviewPeriod) {
+      return; // Errors are already shown by the components
     }
 
     const isoInput: TrusteeUpcomingReportDatesInput = {
@@ -208,31 +182,18 @@ export default function EditUpcomingReportDates() {
         onChange={handleChange('audit')}
         disableMax
       />
-      <div className="review-period-group">
-        <div className="review-period-row">
-          <MonthDaySelector
-            id="tpr-review-period-start"
-            label="TPR Review Period"
-            value={form.tprReviewPeriodStart}
-            onChange={handleMonthDayChange('tprReviewPeriodStart')}
-            hasError={!!errors.tprReviewPeriodStart}
-          />
-          <span className="review-period-separator" aria-hidden="true">
-            <Icon name="remove" />
-          </span>
-          <MonthDaySelector
-            id="tpr-review-period-end"
-            value={form.tprReviewPeriodEnd}
-            onChange={handleMonthDayChange('tprReviewPeriodEnd')}
-            hasError={!!errors.tprReviewPeriodEnd}
-          />
-        </div>
-        {(errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd) && (
-          <div className="date-error usa-input__error-message" aria-live="polite">
-            {errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
-          </div>
-        )}
-      </div>
+      <MonthDayRangeSelector
+        id="tpr-review-period"
+        label="TPR Review Period"
+        startValue={form.tprReviewPeriodStart}
+        endValue={form.tprReviewPeriodEnd}
+        onStartChange={handleMonthDayChange('tprReviewPeriodStart')}
+        onEndChange={handleMonthDayChange('tprReviewPeriodEnd')}
+        onValidationChange={(isValid) =>
+          setValidationState((prev) => ({ ...prev, tprReviewPeriod: isValid }))
+        }
+        externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
+      />
       <DatePicker
         id="tpr-due"
         label="TPR Due"
@@ -240,31 +201,18 @@ export default function EditUpcomingReportDates() {
         onChange={handleChange('tprDue')}
         disableMax
       />
-      <div className="review-period-group">
-        <div className="review-period-row">
-          <MonthDaySelector
-            id="tir-review-period-start"
-            label="TIR Review Period"
-            value={form.tirReviewPeriodStart}
-            onChange={handleMonthDayChange('tirReviewPeriodStart')}
-            hasError={!!errors.tirReviewPeriodStart}
-          />
-          <span className="review-period-separator" aria-hidden="true">
-            <Icon name="remove" />
-          </span>
-          <MonthDaySelector
-            id="tir-review-period-end"
-            value={form.tirReviewPeriodEnd}
-            onChange={handleMonthDayChange('tirReviewPeriodEnd')}
-            hasError={!!errors.tirReviewPeriodEnd}
-          />
-        </div>
-        {(errors.tirReviewPeriodStart || errors.tirReviewPeriodEnd) && (
-          <div className="date-error usa-input__error-message" aria-live="polite">
-            {errors.tirReviewPeriodStart || errors.tirReviewPeriodEnd}
-          </div>
-        )}
-      </div>
+      <MonthDayRangeSelector
+        id="tir-review-period"
+        label="TIR Review Period"
+        startValue={form.tirReviewPeriodStart}
+        endValue={form.tirReviewPeriodEnd}
+        onStartChange={handleMonthDayChange('tirReviewPeriodStart')}
+        onEndChange={handleMonthDayChange('tirReviewPeriodEnd')}
+        onValidationChange={(isValid) =>
+          setValidationState((prev) => ({ ...prev, tirReviewPeriod: isValid }))
+        }
+        externalError={errors.tirReviewPeriodStart || errors.tirReviewPeriodEnd}
+      />
       <DatePicker
         id="tir-submission"
         label="TIR Submission"
