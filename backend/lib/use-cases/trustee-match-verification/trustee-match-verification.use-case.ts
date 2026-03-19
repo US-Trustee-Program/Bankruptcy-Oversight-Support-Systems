@@ -4,9 +4,9 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { getCamsUserReference } from '@common/cams/session';
 
-const MODULE_NAME = 'TRUSTEE-VERIFICATION-ORDERS-USE-CASE';
+const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 
-export class TrusteeVerificationOrdersUseCase {
+export class TrusteeMatchVerificationUseCase {
   async approveVerification(
     context: ApplicationContext,
     id: string,

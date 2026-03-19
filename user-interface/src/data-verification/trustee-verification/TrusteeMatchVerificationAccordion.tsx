@@ -41,6 +41,22 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
       ? order.matchCandidates.reduce((best, c) => (c.totalScore > best.totalScore ? c : best))
       : undefined;
 
+  type ViewMode =
+    | 'resolved'
+    | 'pending-with-candidate'
+    | 'readonly-with-candidate'
+    | 'no-candidates';
+  let viewMode: ViewMode;
+  if (order.status === 'approved') {
+    viewMode = 'resolved';
+  } else if (preselected && order.status === 'pending') {
+    viewMode = 'pending-with-candidate';
+  } else if (preselected) {
+    viewMode = 'readonly-with-candidate';
+  } else {
+    viewMode = 'no-candidates';
+  }
+
   async function handleApprove() {
     setIsProcessing(true);
     try {
@@ -107,7 +123,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         className="accordion-content trustee-match-content"
         data-testid={`accordion-content-${order.id}`}
       >
-        {order.status === 'approved' ? (
+        {viewMode === 'resolved' ? (
           <p className="resolved-statement" data-testid="resolved-statement">
             Trustee{' '}
             {order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
@@ -166,7 +182,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             </div>
 
             <h3>CAMS Strongest Match</h3>
-            {preselected && order.status === 'pending' ? (
+            {viewMode === 'pending-with-candidate' && preselected && (
               <div className="trustee-match-candidate-section" data-testid="candidate-info">
                 <div className="trustee-data-grid trustee-candidates-grid">
                   <div className="trustee-data-header grid-row grid-gap-lg">
@@ -220,6 +236,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     </div>
                     <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
                       <button
+                        type="button"
                         data-testid="approve-button"
                         onClick={handleApprove}
                         disabled={isProcessing}
@@ -236,7 +253,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   Search for a different trustee
                 </Link>
               </div>
-            ) : preselected ? (
+            )}
+            {viewMode === 'readonly-with-candidate' && preselected && (
               <>
                 <div className="trustee-data-grid trustee-candidates-grid">
                   <div className="trustee-data-header grid-row grid-gap-lg">
@@ -297,7 +315,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   Search for a different trustee.
                 </Link>
               </>
-            ) : (
+            )}
+            {viewMode === 'no-candidates' && (
               <p className="no-candidates-message">
                 There are no suggested matches in CAMS.{' '}
                 <Link to="/trustee/search" className="search-trustee-link">

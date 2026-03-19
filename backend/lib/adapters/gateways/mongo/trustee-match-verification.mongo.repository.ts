@@ -112,7 +112,8 @@ export class TrusteeMatchVerificationMongoRepository
         doc('id').equals(id),
       );
       const existing = await this.getAdapter<TrusteeMatchVerification>().findOne(query);
-      const merged: TrusteeMatchVerification = { ...existing, ...updates };
+      const { id: _id, documentType: _documentType, ...safeUpdates } = updates;
+      const merged: TrusteeMatchVerification = { ...existing, ...safeUpdates };
       await this.getAdapter<TrusteeMatchVerification>().replaceOne(query, merged);
       return merged;
     } catch (originalError) {

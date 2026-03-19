@@ -98,11 +98,13 @@ export default function DataVerificationScreen() {
     alertRef.current?.show();
   }
 
-  function handleTrusteeVerificationOrderUpdate(
+  function handleTrusteeMatchVerificationUpdate(
     alertDetails: AlertDetails,
     updatedOrder: TrusteeMatchVerification,
   ) {
-    setOrderList(orderList.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)));
+    setOrderList((prev) =>
+      prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
+    );
     setReviewOrderAlert(alertDetails);
     alertRef.current?.show();
   }
@@ -238,7 +240,7 @@ export default function DataVerificationScreen() {
             fieldHeaders={accordionFieldHeaders}
             courts={courts}
             hidden={isHidden}
-            onOrderUpdate={handleTrusteeVerificationOrderUpdate}
+            onOrderUpdate={handleTrusteeMatchVerificationUpdate}
           ></TrusteeMatchVerificationAccordion>
         );
       } else {
