@@ -115,7 +115,9 @@ export class TrusteeProfessionalIdsMongoRepository
 
   async deleteAll(): Promise<number> {
     try {
-      return await this.getAdapter<TrusteeProfessionalIdDocument>().deleteMany({});
+      const doc = using<TrusteeProfessionalIdDocument>();
+      const query = doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID');
+      return await this.getAdapter<TrusteeProfessionalIdDocument>().deleteMany(query);
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to delete all professional IDs.',

@@ -382,7 +382,7 @@ export async function upsertTrustee(
 
       const dedupedAdditionalAddresses = additionalAddresses.filter((address: LegacyAddress) => {
         const key = getAddressKey(address);
-        if (!key || key === '|') return true; // If we can't compute a key, keep the address
+        if (!key || key === '|') return false; // Drop addresses with empty keys
         if (existingAddressKeys.has(key)) return false;
         existingAddressKeys.add(key);
         return true;
