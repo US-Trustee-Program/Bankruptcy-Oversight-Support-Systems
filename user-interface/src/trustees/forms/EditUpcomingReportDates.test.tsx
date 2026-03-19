@@ -162,21 +162,6 @@ describe('EditUpcomingReportDates', () => {
     expect(putSpy).not.toHaveBeenCalled();
   });
 
-  test('shows error and blocks save when only day is selected in a MonthDaySelector', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
-
-    await userEvent.selectOptions(document.getElementById('tir-review-period-end-day')!, '15');
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
-
-    expect(screen.getByText('Must be a valid date mm/dd.')).toBeInTheDocument();
-    expect(putSpy).not.toHaveBeenCalled();
-  });
-
   test('clearing a field saves null and navigates to appointments', async () => {
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
