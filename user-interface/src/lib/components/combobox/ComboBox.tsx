@@ -619,7 +619,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         )}
       </div>
       {selectedMap.size > 0 && (
-        <Button //COPY HERE!!!!
+        <Button
           className="clear-all-button"
           uswdsStyle={UswdsButtonStyle.Unstyled}
           onClick={handleClearAllClick}
