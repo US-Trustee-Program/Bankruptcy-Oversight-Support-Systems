@@ -1,0 +1,38 @@
+{
+  "name": "@cams/downstream",
+  "version": "1.0.0",
+  "description": "CAMS downstream integration layer for Chapter 15 case assignments",
+  "main": "index.js",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "clean": "rimraf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:mutation": "stryker run",
+    "start": "func start",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.0.0",
+    "mssql": "^10.0.0"
+  },
+  "devDependencies": {
+    "@stryker-mutator/core": "^8.0.0",
+    "@stryker-mutator/typescript-checker": "^8.0.0",
+    "@stryker-mutator/vitest-runner": "^8.0.0",
+    "@types/mssql": "^9.1.0",
+    "@types/node": "^20.0.0",
+    "@vitest/coverage-v8": "^1.0.0",
+    "azure-functions-core-tools": "^4.0.0",
+    "rimraf": "^5.0.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

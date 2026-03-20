@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;AccountName=YOUR_ACCOUNT;AccountKey=YOUR_KEY;EndpointSuffix=core.windows.net",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "DOWNSTREAM_SQL_CONNECTION_STRING": "Server=YOUR_SERVER;Database=cams_downstream_test;User ID=YOUR_USER;Password=YOUR_PASSWORD;",
+    "ACMS_REPLICA_DATABASE": "acms_replica_test"
+  },
+  "ConnectionStrings": {},
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}

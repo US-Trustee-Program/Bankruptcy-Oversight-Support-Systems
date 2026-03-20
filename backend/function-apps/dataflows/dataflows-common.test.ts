@@ -1,9 +1,7 @@
 import { vi } from 'vitest';
 import { HttpRequest, InvocationContext, StorageQueueOutput, Timer } from '@azure/functions';
 import {
-  buildFunctionName,
   buildHttpTrigger,
-  buildQueueName,
   buildStartQueueHttpTrigger,
   buildStartQueueTimerTrigger,
   isAuthorized,
@@ -24,21 +22,9 @@ describe('Dataflows Common', () => {
     process.env = env;
   });
 
-  describe('buildFunctionName', () => {
-    test('should return a function name according to our naming convention', () => {
-      expect(buildFunctionName()).toEqual('');
-      expect(buildFunctionName('ONE_FOO')).toEqual('ONE-FOO');
-      expect(buildFunctionName('TWO', 'THREE_four')).toEqual('TWO-THREE-four');
-    });
-  });
-
-  describe('buildQueueName', () => {
-    test('should return a queue name conforming to StorageAccount queue name constraints', () => {
-      expect(buildQueueName()).toEqual('');
-      expect(buildQueueName('ONE')).toEqual('one');
-      expect(buildQueueName('TWO', 'THREE')).toEqual('two-three');
-    });
-  });
+  // Note: buildFunctionName and buildQueueName tests have been moved to
+  // common/src/queues/queue-helpers.test.ts
+  // Tests for these functions are now in the shared common package
 
   describe('isAuthorized', () => {
     test('should return true', async () => {
