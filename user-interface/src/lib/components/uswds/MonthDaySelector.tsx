@@ -58,7 +58,6 @@ function parseValue(value?: string): { month: string; day: string } {
   return { month: '', day: '' };
 }
 
-//TODO: MAYBE COME UP WITH A BETTER NAME?
 export default function MonthDaySelector(props: MonthDaySelectorProps) {
   const {
     id,
