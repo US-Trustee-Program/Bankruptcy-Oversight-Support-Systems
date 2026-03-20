@@ -54,6 +54,15 @@
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": []
+    },
+    "downstream": {
+      "entry": [
+        "functions/**/index.ts",
+        "**/*.test.ts"
+      ],
+      "project": ["**/*.ts"],
+      "ignore": [],
+      "ignoreFiles": []
     }
   },
   "ignoreBinaries": [
@@ -96,6 +105,7 @@
     "launchdarkly-react-client-sdk",
     "react-router-dom",
     "common",
+    "@common/cams",
     "globals"
   ]
 }
