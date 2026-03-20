@@ -23,7 +23,7 @@ import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
 import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
-import EditUpcomingReportDates from './forms/EditUpcomingReportDates';
+import UpcomingReportDatesForm from './forms/UpcomingReportDatesForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 
@@ -237,7 +237,7 @@ export default function TrusteeDetailScreen() {
     {
       path: 'appointments/:appointmentId/upcoming-report-dates/edit',
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
-      content: <EditUpcomingReportDates />,
+      content: <UpcomingReportDatesForm />,
     },
     {
       path: 'assigned-staff',

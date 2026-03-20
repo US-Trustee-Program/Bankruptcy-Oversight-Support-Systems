@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import EditUpcomingReportDates from './EditUpcomingReportDates';
+import UpcomingReportDatesForm from './UpcomingReportDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { TrusteeUpcomingReportDates } from '@common/cams/trustee-upcoming-report-dates';
@@ -44,7 +44,7 @@ const populatedDocument: TrusteeUpcomingReportDates = {
 function renderComponent() {
   return render(
     <BrowserRouter>
-      <EditUpcomingReportDates />
+      <UpcomingReportDatesForm />
     </BrowserRouter>,
   );
 }
