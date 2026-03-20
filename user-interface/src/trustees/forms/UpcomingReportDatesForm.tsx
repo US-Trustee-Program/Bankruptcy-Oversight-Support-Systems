@@ -49,8 +49,7 @@ const EMPTY_FORM: FormState = {
   tirReview: '',
 };
 
-export default function EditUpcomingReportDates() {
-  // Rename component? follow pattern Feature_Form
+export default function UpcomingReportDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
