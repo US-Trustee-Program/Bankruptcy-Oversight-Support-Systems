@@ -57,6 +57,15 @@
       "ignore": [],
       "ignoreDependencies": ["dotenv"]
     },
+    "downstream": {
+      "entry": [
+        "functions/**/index.ts",
+        "**/*.test.ts"
+      ],
+      "project": ["**/*.ts"],
+      "ignore": [],
+      "ignoreFiles": []
+    },
     "test/integration": {
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
@@ -107,6 +116,7 @@
     "launchdarkly-react-client-sdk",
     "react-router-dom",
     "common",
+    "@common/cams",
     "globals"
   ]
 }
