@@ -12,6 +12,7 @@ import {
   TrusteeUpcomingReportDatesInput,
 } from '@common/cams/trustee-upcoming-report-dates';
 import Validators from '@common/cams/validators';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 const MODULE_NAME = 'TRUSTEE-UPCOMING-REPORT-DATES-CONTROLLER';
 
@@ -28,6 +29,9 @@ export class TrusteeUpcomingReportDatesController implements CamsController {
     CamsHttpResponseInit | CamsHttpResponseInit<{ data: TrusteeUpcomingReportDates | null }>
   > {
     try {
+      if (!context.featureFlags['display-chpt7-panel-upcoming-report-dates']) {
+        throw new NotFoundError(MODULE_NAME);
+      }
       const { trusteeId, appointmentId } = context.request.params;
 
       if (!trusteeId || !appointmentId) {

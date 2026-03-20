@@ -10,6 +10,7 @@ import {
 } from '@common/cams/trustee-upcoming-report-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import HttpStatusCodes from '@common/api/http-status-codes';
+import { NotFoundError } from '../../common-errors/not-found-error';
 
 function buildMockDocument(
   overrides: Partial<TrusteeUpcomingReportDates> = {},
@@ -32,10 +33,25 @@ describe('TrusteeUpcomingReportDatesController', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
+    context.featureFlags['display-chpt7-panel-upcoming-report-dates'] = true;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test('throws NotFoundError when display-chpt7-panel-upcoming-report-dates flag is disabled', async () => {
+    context.featureFlags['display-chpt7-panel-upcoming-report-dates'] = false;
+    context.request = mockCamsHttpRequest({
+      method: 'GET',
+      params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+    });
+
+    const controller = new TrusteeUpcomingReportDatesController(context);
+
+    await expect(controller.handleRequest(context)).rejects.toThrow(
+      new NotFoundError(expect.anything()),
+    );
   });
 
   test('GET returns 200 with document when found', async () => {
