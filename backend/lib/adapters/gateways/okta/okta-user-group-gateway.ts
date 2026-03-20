@@ -150,7 +150,7 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
       context.logger.info(
         MODULE_NAME,
         `CAMS-710 DIAGNOSTIC: Retrieved ${groupNames.length} groups from Okta for user ${user.name} (${id}).`,
-        { userId: id, userName: user.name, groupCount: groupNames.length },
+        { userId: id, userName: user.name, groupCount: groupNames.length, groupNames },
       );
 
       const offices = await UsersHelpers.getOfficesFromGroupNames(context, groupNames);
@@ -159,7 +159,14 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
       context.logger.info(
         MODULE_NAME,
         `CAMS-710 DIAGNOSTIC: Constructed user with ${offices.length} offices and ${roles.length} roles.`,
-        { userId: id, userName: user.name, officeCount: offices.length, roleCount: roles.length },
+        {
+          userId: id,
+          userName: user.name,
+          officeCount: offices.length,
+          roleCount: roles.length,
+          offices: offices.map((o) => o.idpGroupName),
+          roles,
+        },
       );
 
       return {
