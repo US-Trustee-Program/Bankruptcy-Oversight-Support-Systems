@@ -14,6 +14,10 @@ export class TrusteeMatchVerificationController {
   async handleRequest(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<TrusteeMatchVerification[] | undefined>> {
+    if (!context.featureFlags['trustee-verification-enabled']) {
+      return { statusCode: 404 };
+    }
+
     try {
       if (context.request.method === 'GET') {
         return await this.getVerificationOrders(context);
