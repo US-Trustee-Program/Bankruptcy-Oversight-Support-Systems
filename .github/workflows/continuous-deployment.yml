@@ -30,6 +30,46 @@ jobs:
     with:
       environment: ${{ endsWith(github.ref,'refs/heads/main') && 'Main-Gov' || 'Develop' }}
 
+  detect-changes:
+    name: Detect Changed Files
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.detect.outputs.backend }}
+      frontend: ${{ steps.detect.outputs.frontend }}
+      common: ${{ steps.detect.outputs.common }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+
+      - name: Get changed source files per workspace
+        id: detect
+        shell: bash
+        run: |
+          BASE=${{ github.event.before }}
+          HEAD=${{ github.sha }}
+
+          # First push to a new branch has no base; skip focused coverage
+          if [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            echo "First push to branch, skipping focused coverage"
+            echo "backend=" >> "$GITHUB_OUTPUT"
+            echo "frontend=" >> "$GITHUB_OUTPUT"
+            echo "common=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          CHANGED=$(git diff --name-only "$BASE" "$HEAD" -- '*.ts' '*.tsx' \
+            | grep -v '\.d\.ts$\|vitest\.config\|eslint\.config\|playwright\.config' \
+            || true)
+
+          BACKEND=$(echo "$CHANGED" | grep '^backend/' | sed 's|^backend/||' | tr '\n' ' ' | xargs || true)
+          FRONTEND=$(echo "$CHANGED" | grep '^user-interface/src/' | sed 's|^user-interface/||' | tr '\n' ' ' | xargs || true)
+          COMMON=$(echo "$CHANGED" | grep '^common/src/' | sed 's|^common/||' | tr '\n' ' ' | xargs || true)
+
+          echo "backend=$BACKEND" >> "$GITHUB_OUTPUT"
+          echo "frontend=$FRONTEND" >> "$GITHUB_OUTPUT"
+          echo "common=$COMMON" >> "$GITHUB_OUTPUT"
+
   accessibility-test:
     uses: ./.github/workflows/reusable-accessibility.yml
     with:
@@ -37,22 +77,28 @@ jobs:
       node-version: ${{ vars.NODE_VERSION }}
 
   unit-test-frontend:
+    needs: [detect-changes]
     uses: ./.github/workflows/reusable-unit-test.yml
     with:
       path: user-interface
       node-version: ${{ vars.NODE_VERSION }}
+      changed-files: ${{ needs.detect-changes.outputs.frontend }}
 
   unit-test-backend:
+    needs: [detect-changes]
     uses: ./.github/workflows/reusable-unit-test.yml
     with:
       path: backend
       node-version: ${{ vars.NODE_VERSION }}
+      changed-files: ${{ needs.detect-changes.outputs.backend }}
 
   unit-test-common:
+    needs: [detect-changes]
     uses: ./.github/workflows/reusable-unit-test.yml
     with:
       path: common
       node-version: ${{ vars.NODE_VERSION }}
+      changed-files: ${{ needs.detect-changes.outputs.common }}
 
   knip:
     uses: ./.github/workflows/reusable-knip.yml
