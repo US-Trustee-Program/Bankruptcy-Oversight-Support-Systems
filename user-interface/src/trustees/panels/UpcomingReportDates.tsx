@@ -37,7 +37,8 @@ export default function UpcomingReportDates(props: Readonly<UpcomingReportDatesP
       .then((response) => {
         setData(response.data);
       })
-      .catch(() => {
+      .catch((error) => {
+        console.error('Could not load upcoming report dates', error);
         setData(null);
       })
       .finally(() => {
