@@ -21,6 +21,7 @@ import {
   FlexibleTransferOrderAction,
   Order,
 } from '@common/cams/orders';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { CasesSearchPredicate } from '@common/api/search';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
@@ -821,6 +822,65 @@ const consolidationLeadCase = {
   judgeName: 'Geraldine Morar',
   _actions: [],
 };
+
+const trusteeMatchVerificationOrders: TrusteeMatchVerification[] = [
+  {
+    id: '081-22-11111:Smith John',
+    documentType: 'TRUSTEE_MATCH_VERIFICATION',
+    orderType: 'trustee-match',
+    caseId: '081-22-11111',
+    courtId: '0881',
+    status: 'pending',
+    mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+    dxtrTrustee: {
+      fullName: 'Smith John',
+      legacy: {
+        cityStateZipCountry: 'New York, NY 10001',
+      },
+    },
+    matchCandidates: [
+      {
+        trusteeId: 'trustee-001',
+        trusteeName: 'John Smith',
+        totalScore: 88,
+        addressScore: 100,
+        districtDivisionScore: 100,
+        chapterScore: 60,
+        address: {
+          address1: '123 Main St',
+          city: 'New York',
+          state: 'NY',
+          zipCode: '10001',
+          countryCode: 'US',
+        },
+        phone: { number: '(212) 555-0100' },
+        email: 'jsmith@example.com',
+        appointments: [
+          {
+            id: 'appt-001',
+            trusteeId: 'trustee-001',
+            chapter: '7',
+            appointmentType: 'panel',
+            courtId: '0881',
+            courtName: 'Southern District of New York',
+            courtDivisionName: 'Manhattan',
+            appointedDate: '2015-03-01',
+            status: 'active',
+            effectiveDate: '2015-03-01',
+            createdOn: '2015-03-01T00:00:00.000Z',
+            createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+            updatedOn: '2015-03-01T00:00:00.000Z',
+            updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+          },
+        ],
+      },
+    ],
+    updatedOn: '2026-01-15T10:00:00.000Z',
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    createdOn: '2026-01-15T10:00:00.000Z',
+    createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+  },
+];
 
 const orders = [
   {
@@ -1791,6 +1851,10 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
     response = {
       data: [caseDetails],
     };
+  } else if (path.match(/\/trustee-match-verification/)) {
+    response = {
+      data: trusteeMatchVerificationOrders,
+    };
   } else if (path.match(/\/orders/)) {
     response = {
       data: orders,
@@ -2320,6 +2384,10 @@ async function getOrders(): Promise<ResponseBody<Order[]>> {
   return get<Order[]>(`/orders`);
 }
 
+async function getTrusteeMatchVerifications(): Promise<ResponseBody<TrusteeMatchVerification[]>> {
+  return get<TrusteeMatchVerification[]>(`/trustee-match-verification`);
+}
+
 async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSummary[]>> {
   return get<CaseSummary[]>(`/orders-suggestions/${caseId}/`);
 }
@@ -2778,6 +2846,7 @@ const MockApi2 = {
   getOfficeAssignees,
   getOffices,
   getOrders,
+  getTrusteeMatchVerifications,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,
