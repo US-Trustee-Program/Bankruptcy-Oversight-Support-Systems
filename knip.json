@@ -23,6 +23,7 @@
     },
     "user-interface": {
       "entry": [
+        "src/initialize.ts",
         "test/**/*.ts",
         "src/**/*.test.ts",
         "src/**/*.test.tsx"
@@ -57,6 +58,7 @@
     }
   },
   "ignoreBinaries": [
+    "date",
     "pushd",
     "popd",
     "playwright",
