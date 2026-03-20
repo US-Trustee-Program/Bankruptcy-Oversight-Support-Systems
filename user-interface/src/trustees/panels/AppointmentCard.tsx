@@ -8,6 +8,9 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
+import useFeatureFlags, {
+  DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES,
+} from '@/lib/hooks/UseFeatureFlags';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
@@ -32,6 +35,9 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const session = LocalStorage.getSession();
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
+  const featureFlags = useFeatureFlags();
+  const displayChpt7PanelUpcomingReportDates =
+    featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES] === true;
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
@@ -113,7 +119,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             </div>
           </div>
         </div>
-        {isPanelChapter7 && canManage && (
+        {displayChpt7PanelUpcomingReportDates && isPanelChapter7 && canManage && (
           <UpcomingReportDates
             trusteeId={props.appointment.trusteeId}
             appointmentId={props.appointment.id}
