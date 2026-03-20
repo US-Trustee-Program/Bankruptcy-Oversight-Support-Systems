@@ -22,6 +22,12 @@ test.describe('Consolidation Orders', () => {
       timeout: 30000,
     });
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
+
+    // Select pending status filter to make orders visible in the accordion
+    await page.locator('#task-status-filter .input-container').click();
+    await page.locator('[id="option-pending"]').click();
+    await page.keyboard.press('Escape');
+
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     await officesRequestPromise;
@@ -45,7 +51,6 @@ test.describe('Consolidation Orders', () => {
     ) as ConsolidationOrder;
 
     expect(pendingConsolidationOrder).not.toBeFalsy();
-    await page.getByTestId('order-status-filter-transfer').click();
     await page.getByTestId(`accordion-button-order-list-${pendingConsolidationOrder.id}`).click();
 
     // select substantive consolidation type
@@ -104,18 +109,6 @@ test.describe('Consolidation Orders', () => {
     ) as ConsolidationOrder;
 
     expect(pendingConsolidationOrder).not.toBeFalsy();
-
-    // Action update filter
-    await page.getByTestId('order-status-filter-transfer').click();
-
-    // Assert state of all filters
-    await expect(page.getByTestId('order-status-filter-pending').locator('svg')).toBeVisible();
-    await expect(page.getByTestId('order-status-filter-approved').locator('svg')).not.toBeVisible();
-    await expect(page.getByTestId('order-status-filter-rejected').locator('svg')).not.toBeVisible();
-    await expect(page.getByTestId('order-status-filter-transfer').locator('svg')).not.toBeVisible();
-    await expect(
-      page.getByTestId('order-status-filter-consolidation').locator('svg'),
-    ).toBeVisible();
 
     // Action open accordion
     await page.getByTestId(`accordion-button-order-list-${pendingConsolidationOrder.id}`).click();
