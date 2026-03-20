@@ -92,6 +92,18 @@ export class UserSessionUseCase {
         throw new UnauthorizedError('Missing JWT from identity provider');
       }
 
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: Retrieved user from IDP: ${camsUserReference.name} (${camsUserReference.id}). JWT contains ${jwt.claims.groups?.length || 0} groups.`,
+        {
+          userId: camsUserReference.id,
+          userName: camsUserReference.name,
+          userEmail: camsUserReference.email,
+          jwtGroupCount: jwt.claims.groups?.length || 0,
+          jwtGroups: jwt.claims.groups || [],
+        },
+      );
+
       // Augment the user session with additional roles if applicable.
       const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
 
