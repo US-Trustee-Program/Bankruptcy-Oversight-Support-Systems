@@ -29,9 +29,10 @@ describe('AppointmentCard', () => {
     vi.clearAllMocks();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]: true,
-    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
