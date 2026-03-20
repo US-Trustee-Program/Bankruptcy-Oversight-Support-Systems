@@ -33,14 +33,15 @@
     "start:dataflows": "(cd function-apps/dataflows && npm run start)",
     "start:express": "tsx --watch express/server.ts",
     "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest run",
-    "test:watch": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest watch"
+    "test:watch": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest watch",
+    "tsc": "npx tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
     "@azure/cosmos": "4.9.1",
     "@azure/functions": "4.11.2",
     "@azure/identity": "4.13.0",
     "@azure/keyvault-secrets": "4.10.0",
-    "@launchdarkly/node-server-sdk": "9.10.8",
+    "@launchdarkly/node-server-sdk": "9.10.9",
     "@okta/jwt-verifier": "4.0.2",
     "@okta/okta-sdk-nodejs": "8.0.0",
     "applicationinsights": "3.14.0",

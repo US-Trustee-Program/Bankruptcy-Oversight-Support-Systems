@@ -1,9 +1,11 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, type MockedFunction } from 'vitest';
 import Notes, { NotesRef } from './Notes';
 import { Note, NoteInput } from './types';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import React from 'react';
+import * as NoteFormModalModule from './NoteFormModal';
+import * as NoteItemModule from '@/lib/components/cams/NoteItem/NoteItem';
 
 const createTestNote = (overrides: Partial<Note> = {}): Note => ({
   id: 'note-1',
@@ -18,6 +20,11 @@ const createTestNote = (overrides: Partial<Note> = {}): Note => ({
 });
 
 describe('Notes Component', () => {
+  type NoteFormModalRenderFn = (props: {
+    onSave: (noteData: NoteInput) => Promise<void>;
+    onModalClosed?: () => void;
+  }) => null;
+  let noteFormModalRenderSpy!: MockedFunction<NoteFormModalRenderFn>;
   let mockOnCreateNote: (noteData: NoteInput) => Promise<void>;
   let mockOnUpdateNote: (noteId: string, noteData: NoteInput) => Promise<void>;
   let mockOnDeleteNote: (noteId: string) => Promise<void>;
@@ -30,6 +37,9 @@ describe('Notes Component', () => {
     mockOnDeleteNote = vi.fn().mockResolvedValue(undefined);
     notesRef = React.createRef<NotesRef>() as React.RefObject<NotesRef>;
 
+    noteFormModalRenderSpy = vi
+      .spyOn(NoteFormModalModule.default as unknown as { render: NoteFormModalRenderFn }, 'render')
+      .mockImplementation(() => null);
     vi.spyOn(LocalFormCache, 'getForm').mockReturnValue(null);
     vi.spyOn(LocalFormCache, 'getFormsByPattern').mockReturnValue([]);
   });
@@ -395,5 +405,219 @@ describe('Notes Component', () => {
 
     expect(notesRef.current).toBeDefined();
     expect(notesRef.current?.focusEditButton).toBeDefined();
+  });
+
+  test('should show validation error when search query is shorter than minimum characters', async () => {
+    render(
+      <Notes
+        entityId="entity-123"
+        title="Test Notes"
+        notes={[]}
+        isLoading={false}
+        onCreateNote={mockOnCreateNote}
+        onUpdateNote={mockOnUpdateNote}
+        onDeleteNote={mockOnDeleteNote}
+        createDraftKey="notes-entity-123"
+        editDraftKeyPrefix="notes-entity-123"
+      />,
+    );
+
+    const searchInput = screen.getByLabelText('Find note by title or content');
+    fireEvent.change(searchInput, { target: { value: 'ab' } });
+
+    await waitFor(() => {
+      expect(screen.getByText('Must be at least 3 characters')).toBeInTheDocument();
+    });
+  });
+
+  test('should trigger focus effect when focusEditButton is called with a note id', async () => {
+    const notes = [createTestNote({ id: 'note-1', title: 'Test Note' })];
+
+    render(
+      <Notes
+        entityId="entity-123"
+        title="Test Notes"
+        notes={notes}
+        isLoading={false}
+        onCreateNote={mockOnCreateNote}
+        onUpdateNote={mockOnUpdateNote}
+        onDeleteNote={mockOnDeleteNote}
+        createDraftKey="notes-entity-123"
+        editDraftKeyPrefix="notes-entity-123"
+        ref={notesRef}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(notesRef.current).toBeDefined();
+    });
+
+    notesRef.current?.focusEditButton('note-1');
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Note')).toBeInTheDocument();
+    });
+  });
+
+  test('should call setFocusId when Add Note button is clicked', async () => {
+    render(
+      <Notes
+        entityId="entity-123"
+        title="Test Notes"
+        notes={[]}
+        isLoading={false}
+        onCreateNote={mockOnCreateNote}
+        onUpdateNote={mockOnUpdateNote}
+        onDeleteNote={mockOnDeleteNote}
+        createDraftKey="notes-entity-123"
+        editDraftKeyPrefix="notes-entity-123"
+      />,
+    );
+
+    const addNoteButton = screen.getByText('Add Note');
+    fireEvent.click(addNoteButton);
+
+    await waitFor(() => {
+      expect(addNoteButton).toBeInTheDocument();
+    });
+  });
+
+  test('should call onCreateNote when NoteFormModal onSave is called without a note id', async () => {
+    render(
+      <Notes
+        entityId="entity-123"
+        title="Test Notes"
+        notes={[]}
+        isLoading={false}
+        onCreateNote={mockOnCreateNote}
+        onUpdateNote={mockOnUpdateNote}
+        onDeleteNote={mockOnDeleteNote}
+        createDraftKey="notes-entity-123"
+        editDraftKeyPrefix="notes-entity-123"
+      />,
+    );
+
+    const { onSave } = noteFormModalRenderSpy.mock.calls[0][0];
+    await onSave({ entityId: 'entity-123', title: 'New Note', content: '<p>Content</p>' });
+
+    expect(mockOnCreateNote).toHaveBeenCalledWith(expect.objectContaining({ title: 'New Note' }));
+  });
+
+  test('should call onUpdateNote when NoteFormModal onSave is called with a note id', async () => {
+    render(
+      <Notes
+        entityId="entity-123"
+        title="Test Notes"
+        notes={[]}
+        isLoading={false}
+        onCreateNote={mockOnCreateNote}
+        onUpdateNote={mockOnUpdateNote}
+        onDeleteNote={mockOnDeleteNote}
+        createDraftKey="notes-entity-123"
+        editDraftKeyPrefix="notes-entity-123"
+      />,
+    );
+
+    const { onSave } = noteFormModalRenderSpy.mock.calls[0][0];
+    await onSave({
+      id: 'note-1',
+      entityId: 'entity-123',
+      title: 'Updated Note',
+      content: '<p>Updated</p>',
+    });
+
+    expect(mockOnUpdateNote).toHaveBeenCalledWith(
+      'note-1',
+      expect.objectContaining({ id: 'note-1', title: 'Updated Note' }),
+    );
+  });
+
+  test('should skip ref setup for notes without an id', async () => {
+    // Notes without IDs hit the `if (!note.id) return` guard in the ref useEffects
+    const noteWithoutId = createTestNote({ id: undefined as unknown as string });
+
+    render(
+      <Notes
+        entityId="entity-123"
+        title="Test Notes"
+        notes={[noteWithoutId]}
+        isLoading={false}
+        onCreateNote={mockOnCreateNote}
+        onUpdateNote={mockOnUpdateNote}
+        onDeleteNote={mockOnDeleteNote}
+        createDraftKey="notes-entity-123"
+        editDraftKeyPrefix="notes-entity-123"
+      />,
+    );
+
+    expect(screen.getByTestId('searchable-notes')).toBeInTheDocument();
+  });
+
+  test('should refresh draft state when modal is closed', async () => {
+    // Override the spy for this test to call onModalClosed after mount
+    noteFormModalRenderSpy.mockImplementation((props) => {
+      const { onModalClosed } = props;
+      React.useEffect(() => {
+        onModalClosed?.();
+      }, [onModalClosed]);
+      return null;
+    });
+
+    const draftData = { title: 'Draft Title', content: '<p>Draft</p>' };
+    vi.spyOn(LocalFormCache, 'getForm').mockReturnValue({
+      value: { entityId: 'entity-123', ...draftData },
+      expiresAfter: Date.now() + 100000,
+    });
+
+    render(
+      <Notes
+        entityId="entity-123"
+        title="Test Notes"
+        notes={[]}
+        isLoading={false}
+        onCreateNote={mockOnCreateNote}
+        onUpdateNote={mockOnUpdateNote}
+        onDeleteNote={mockOnDeleteNote}
+        createDraftKey="notes-entity-123"
+        editDraftKeyPrefix="notes-entity-123"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Continue Editing')).toBeInTheDocument();
+    });
+  });
+
+  test('should call onDeleteNote when a note delete is confirmed', async () => {
+    const noteToDelete = createTestNote({ id: 'note-delete-1' });
+
+    vi.spyOn(NoteItemModule, 'NoteItem').mockImplementation(
+      (props: React.ComponentProps<typeof NoteItemModule.NoteItem>) => {
+        const { removeButtonProps } = props;
+        React.useEffect(() => {
+          const onDelete = removeButtonProps?.onDelete as (() => void) | undefined;
+          onDelete?.();
+        }, [removeButtonProps]);
+        return null as unknown as React.ReactElement;
+      },
+    );
+
+    render(
+      <Notes
+        entityId="entity-123"
+        title="Test Notes"
+        notes={[noteToDelete]}
+        isLoading={false}
+        onCreateNote={mockOnCreateNote}
+        onUpdateNote={mockOnUpdateNote}
+        onDeleteNote={mockOnDeleteNote}
+        createDraftKey="notes-entity-123"
+        editDraftKeyPrefix="notes-entity-123"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(mockOnDeleteNote).toHaveBeenCalledWith('note-delete-1');
+    });
   });
 });

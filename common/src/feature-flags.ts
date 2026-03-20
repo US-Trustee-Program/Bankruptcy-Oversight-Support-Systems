@@ -17,4 +17,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'trustee-management': true,
   'phonetic-search-enabled': true,
   'show-debtor-name-column': true,
+  'trustee-verification-enabled': false,
 };

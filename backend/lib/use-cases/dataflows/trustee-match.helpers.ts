@@ -224,6 +224,10 @@ export function calculateCandidateScore(
     addressScore,
     districtDivisionScore,
     chapterScore,
+    address: camsTrustee.public.address,
+    phone: camsTrustee.public.phone,
+    email: camsTrustee.public.email,
+    appointments,
   };
 
   context.logger.info(
@@ -376,6 +380,9 @@ export async function matchTrusteeByName(
       addressScore: UNSCORED,
       districtDivisionScore: UNSCORED,
       chapterScore: UNSCORED,
+      address: t.public.address,
+      phone: t.public.phone,
+      email: t.public.email,
     }));
     throw new CamsError(MODULE_NAME, {
       message: `Multiple CAMS trustees found matching name "${normalized}": ${candidates}.`,

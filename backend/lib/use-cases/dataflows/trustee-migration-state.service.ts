@@ -28,22 +28,24 @@ export type TrusteeMigrationState = RuntimeState & {
  */
 export async function getOrCreateMigrationState(
   context: ApplicationContext,
+  reset: boolean = false,
 ): Promise<MaybeData<TrusteeMigrationState>> {
   try {
     const repo = factory.getRuntimeStateRepository<TrusteeMigrationState>(context);
 
-    // Try to find existing state by reading with documentType
-    try {
-      const existingState = await repo.read('TRUSTEE_MIGRATION_STATE');
-      if (existingState) {
-        context.logger.info(
-          MODULE_NAME,
-          `Resuming migration from trustee ID ${existingState.lastTrusteeId}`,
-        );
-        return { data: existingState };
+    if (!reset) {
+      try {
+        const existingState = await repo.read('TRUSTEE_MIGRATION_STATE');
+        if (existingState) {
+          context.logger.info(
+            MODULE_NAME,
+            `Resuming migration from trustee ID ${existingState.lastTrusteeId}`,
+          );
+          return { data: existingState };
+        }
+      } catch {
+        context.logger.info(MODULE_NAME, 'Migration runtime state not found.');
       }
-    } catch (_e) {
-      // State doesn't exist yet, create new one
     }
 
     // Create new state

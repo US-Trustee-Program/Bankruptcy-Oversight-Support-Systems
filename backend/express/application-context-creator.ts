@@ -48,7 +48,7 @@ function expressToCamsHttpRequest<B = unknown>(request: Request): CamsHttpReques
       url: fullUrl,
       headers,
       query: request.query as CamsDict,
-      params: request.params,
+      params: request.params as CamsDict,
       body: request.body as B | undefined,
     };
   } catch (originalError) {

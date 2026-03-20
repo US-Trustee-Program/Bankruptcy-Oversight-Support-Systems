@@ -1001,6 +1001,56 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
     expect(result.candidateScores).toHaveLength(1);
   });
 
+  test('should throw CASE_NOT_FOUND when getSyncedCase returns null', async () => {
+    const event = makeEvent();
+
+    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+
+    await expect(
+      resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining(`Case ${event.caseId} not found during fuzzy matching`),
+      data: {
+        mismatchReason: 'CASE_NOT_FOUND',
+        matchCandidates: [],
+      },
+    });
+  });
+
+  test('should skip candidate and throw NO_TRUSTEE_MATCH when repository fetch throws an Error', async () => {
+    const event = makeEvent();
+    const syncedCase = makeCase();
+
+    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error('Database connection failed'),
+    );
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    await expect(
+      resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('no valid candidates could be scored'),
+      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+    });
+  });
+
+  test('should skip candidate and throw NO_TRUSTEE_MATCH when repository fetch throws a non-Error value', async () => {
+    const event = makeEvent();
+    const syncedCase = makeCase();
+
+    (mockCasesRepo.getSyncedCase as ReturnType<typeof vi.fn>).mockResolvedValue(syncedCase);
+    (mockTrusteesRepo.read as ReturnType<typeof vi.fn>).mockRejectedValue('timeout');
+    (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+
+    await expect(
+      resolveTrusteeWithFuzzyMatching(context, event, ['trustee-1']),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('no valid candidates could be scored'),
+      data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+    });
+  });
+
   test('should throw when all candidates return undefined from repository', async () => {
     const event = makeEvent();
     const syncedCase = makeCase();

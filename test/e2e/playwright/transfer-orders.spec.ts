@@ -29,6 +29,12 @@ test.describe('Transfer Orders', () => {
       predicate: (e) => e.url().includes('api/courts'),
     });
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
+
+    // Select pending status filter to make orders visible in the accordion
+    await page.locator('#task-status-filter .input-container').click();
+    await page.locator('[id="option-pending"]').click();
+    await page.keyboard.press('Escape');
+
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
@@ -58,7 +64,7 @@ test.describe('Transfer Orders', () => {
     // Wait for the transfer orders.
     const request = await ordersRequestPromise;
     const response = await request.response();
-    const ordersResponse = (await response.json()).data;
+    const ordersResponse = (await response.json()).data as Order[];
     const pendingTransfers = ordersResponse.filter(
       (o) => o.orderType === 'transfer' && o.status === 'pending',
     );

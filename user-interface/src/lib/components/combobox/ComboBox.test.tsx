@@ -121,10 +121,15 @@ describe('test cams combobox', () => {
 
   beforeEach(() => {
     userEvent = TestingUtilities.setupUserEvent();
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   test('Clicking on the toggle button should open or close the dropdown list and put the focus on the input field.  When closed it should call onClose()', async () => {
@@ -682,10 +687,17 @@ describe('test cams combobox', () => {
     const clearAllBtn = getClearAllButton();
     expect(clearAllBtn).toBeInTheDocument();
 
-    // Close the dropdown and wait for it to be fully closed
+    // Close the dropdown and wait for it to be fully closed, then wait for the
+    // requestAnimationFrame inside focusCombobox() to fire and settle focus on
+    // the container — if we don't wait, the rAF can fire after button1.focus()
+    // and steal focus at a point where Tab would skip the container.
     await toggleDropdown();
     await waitFor(() => {
       expect(isDropdownClosed()).toBeTruthy();
+    });
+    const inputContainer = document.querySelector('.input-container');
+    await waitFor(() => {
+      expect(inputContainer).toHaveFocus();
     });
 
     // Click button1 and explicitly set focus to it

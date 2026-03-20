@@ -127,4 +127,36 @@ describe('staff assignment filter use case tests', () => {
 
     expect(setOfficeAssigneesSpy).not.toHaveBeenCalled();
   });
+
+  test('fetchAssignees should do nothing when session is null', async () => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+    useCase.fetchAssignees();
+
+    await vi.waitFor(() => {
+      expect(setOfficeAssigneesSpy).not.toHaveBeenCalled();
+      expect(setOfficeAssigneesErrorSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  test('handleFilterAssignee should call setFocusOnRender but not filterAssigneeCallback when callback is null', () => {
+    const setFocusOnRenderSpy = vi.spyOn(mockStore, 'setFocusOnRender');
+    mockStore.filterAssigneeCallback = null;
+
+    useCase.handleFilterAssignee([]);
+
+    expect(setFocusOnRenderSpy).toHaveBeenCalledWith(true);
+  });
+
+  test('handleFilterAssignee should call filterAssigneeCallback when it is set', () => {
+    const setFocusOnRenderSpy = vi.spyOn(mockStore, 'setFocusOnRender');
+    const callbackSpy = vi.fn();
+    mockStore.filterAssigneeCallback = callbackSpy;
+    const options = [{ value: 'user-1', label: 'User One' }];
+
+    useCase.handleFilterAssignee(options);
+
+    expect(setFocusOnRenderSpy).toHaveBeenCalledWith(true);
+    expect(callbackSpy).toHaveBeenCalledWith(options);
+  });
 });
