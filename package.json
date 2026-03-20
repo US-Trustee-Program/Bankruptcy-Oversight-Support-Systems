@@ -9,7 +9,6 @@
     "backend",
     "user-interface",
     "dev-tools",
-    "test/bdd",
     "test/e2e",
     "test/uswds"
   ],
