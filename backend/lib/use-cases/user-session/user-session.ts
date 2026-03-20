@@ -104,8 +104,21 @@ export class UserSessionUseCase {
         },
       );
 
+      // Use verified JWT groups to build user offices and roles
+      // (avoids redundant Okta API call that may have different permissions)
+      const offices = await UsersHelpers.getOfficesFromGroupNames(context, jwt.claims.groups || []);
+      const roles = UsersHelpers.getRolesFromGroupNames(jwt.claims.groups || []);
+
       // Augment the user session with additional roles if applicable.
-      const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
+      const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id, {
+        idpUser: {
+          id: camsUserReference.id,
+          name: camsUserReference.name,
+          email: camsUserReference.email,
+          offices,
+          roles,
+        },
+      });
 
       context.logger.info(
         MODULE_NAME,
