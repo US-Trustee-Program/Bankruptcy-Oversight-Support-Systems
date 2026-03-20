@@ -394,6 +394,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findById(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
   upsertVerification(..._ignore: any[]): Promise<void> {
     throw new Error('Method not implemented.');
   }

@@ -2,11 +2,13 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { BadRequestError } from '../../common-errors/bad-request';
+import { UnauthorizedError } from '../../common-errors/unauthorized-error';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import factory from '../../factory';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { TrusteeMatchVerificationUseCase } from '../../use-cases/trustee-match-verification/trustee-match-verification.use-case';
 import HttpStatusCodes from '@common/api/http-status-codes';
+import { CamsRole } from '@common/cams/roles';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER';
 
@@ -77,6 +79,10 @@ export class TrusteeMatchVerificationController {
   private async approveVerification(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<undefined>> {
+    if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
+      throw new UnauthorizedError(MODULE_NAME);
+    }
+
     const id = context.request.params['id'];
     if (!id) {
       throw new BadRequestError(MODULE_NAME, { message: 'Missing verification ID.' });

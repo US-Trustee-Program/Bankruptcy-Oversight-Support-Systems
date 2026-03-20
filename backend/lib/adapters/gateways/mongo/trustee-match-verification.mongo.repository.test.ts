@@ -110,6 +110,34 @@ describe('TrusteeMatchVerificationMongoRepository', () => {
     });
   });
 
+  describe('findById', () => {
+    test('should return the document when found by id', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(sampleVerification);
+
+      const result = await repository.findById('verification-1');
+
+      expect(result).toEqual(sampleVerification);
+    });
+
+    test('should re-throw NotFoundError when document does not exist', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new NotFoundError('MONGO', { message: 'Not found' }),
+      );
+
+      await expect(repository.findById('missing-id')).rejects.toThrow(NotFoundError);
+    });
+
+    test('should wrap unexpected errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.findById('verification-1')).rejects.toThrow(
+        'Failed to find trustee match verification verification-1.',
+      );
+    });
+  });
+
   describe('search', () => {
     test('should return all TRUSTEE_MATCH_VERIFICATION documents when no predicate', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([sampleVerification]);

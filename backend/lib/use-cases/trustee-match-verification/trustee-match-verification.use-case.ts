@@ -18,9 +18,8 @@ export class TrusteeMatchVerificationUseCase {
       const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
 
       // 1. Find the pending verification
-      const all = await repo.search({ status: ['pending'] });
-      const verification = all.find((v) => v.id === id);
-      if (!verification) {
+      const verification = await repo.findById(id);
+      if (verification.status !== 'pending') {
         throw new NotFoundError(MODULE_NAME, {
           message: `Pending verification ${id} not found.`,
         });

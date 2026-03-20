@@ -101,6 +101,24 @@ export class TrusteeMatchVerificationMongoRepository
     }
   }
 
+  async findById(id: string): Promise<TrusteeMatchVerification> {
+    try {
+      const doc = using<TrusteeMatchVerification>();
+      const query = and(
+        doc('documentType').equals(TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE),
+        doc('id').equals(id),
+      );
+      return await this.getAdapter<TrusteeMatchVerification>().findOne(query);
+    } catch (originalError) {
+      if (originalError instanceof NotFoundError) {
+        throw originalError;
+      }
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustee match verification ${id}.`,
+      });
+    }
+  }
+
   async update(
     id: string,
     updates: Partial<TrusteeMatchVerification>,
