@@ -10,7 +10,7 @@ type PrivilegedIdentityHelperOptions = {
   pimUser?: PrivilegedIdentityUser;
 };
 
-const MODULE_NAME = 'USERS-HELPERS';
+const MODULE_NAME = 'USERS-GROUP-MANAGEMENT';
 
 async function getPrivilegedIdentityUser(
   context: ApplicationContext,
@@ -96,10 +96,10 @@ async function getOfficesFromGroupNames(
   return matchedOffices;
 }
 
-const UsersHelpers = {
+const UsersGroupManagement = {
   getPrivilegedIdentityUser,
   getRolesFromGroupNames,
   getOfficesFromGroupNames,
 };
 
-export default UsersHelpers;
+export default UsersGroupManagement;

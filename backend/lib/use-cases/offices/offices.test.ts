@@ -9,7 +9,7 @@ import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.m
 import StaffUseCase from '../staff/staff';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '@common/cams/roles';
-import UsersHelpers from '../users/users.helpers';
+import UsersGroupManagement from '../users/usersGroupManagement';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
 import { buildOfficeCode, getOfficeName } from './offices';
 
@@ -108,7 +108,7 @@ describe('offices use case tests', () => {
       },
     );
 
-    vi.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockImplementation(
+    vi.spyOn(UsersGroupManagement, 'getPrivilegedIdentityUser').mockImplementation(
       async (_context: ApplicationContext, userId: string) => {
         const user = { id: userId, name: '', roles: [], offices: [] };
         users.forEach((staff) => {
@@ -149,7 +149,7 @@ describe('offices use case tests', () => {
     const users: Staff[] = MockData.buildArray(MockData.getAttorneyUser, 3);
     vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroups').mockResolvedValue([officeGroup]);
     vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers').mockResolvedValue(users);
-    vi.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockImplementation(
+    vi.spyOn(UsersGroupManagement, 'getPrivilegedIdentityUser').mockImplementation(
       async (_context, userId) => {
         const user = users.find((u) => u.id === userId);
         return { ...user };
@@ -178,7 +178,7 @@ describe('offices use case tests', () => {
     const users: Staff[] = MockData.buildArray(MockData.getAttorneyUser, 2);
     vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroups').mockResolvedValue([officeGroup]);
     vi.spyOn(MockUserGroupGateway.prototype, 'getUserGroupUsers').mockResolvedValue(users);
-    vi.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockImplementation(
+    vi.spyOn(UsersGroupManagement, 'getPrivilegedIdentityUser').mockImplementation(
       async (_context, userId) => {
         const user = users.find((u) => u.id === userId);
         return { ...user };

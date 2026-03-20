@@ -7,7 +7,7 @@ import OktaHumble, {
   ListGroupsRequest,
   ListGroupUsersRequest,
 } from '../../../humble-objects/okta-humble';
-import UsersHelpers from '../../../use-cases/users/users.helpers';
+import UsersGroupManagement from '../../../use-cases/users/usersGroupManagement';
 
 const MODULE_NAME = 'OKTA-USER-GROUP-GATEWAY';
 const MAX_PAGE_SIZE = 200;
@@ -153,8 +153,8 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
         { userId: id, userName: user.name, groupCount: groupNames.length, groupNames },
       );
 
-      const offices = await UsersHelpers.getOfficesFromGroupNames(context, groupNames);
-      const roles = UsersHelpers.getRolesFromGroupNames(groupNames);
+      const offices = await UsersGroupManagement.getOfficesFromGroupNames(context, groupNames);
+      const roles = UsersGroupManagement.getRolesFromGroupNames(groupNames);
 
       context.logger.info(
         MODULE_NAME,

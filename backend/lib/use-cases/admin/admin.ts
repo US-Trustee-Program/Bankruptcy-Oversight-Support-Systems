@@ -6,7 +6,7 @@ import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import LocalStorageGateway from '../../adapters/gateways/storage/local-storage-gateway';
 import { UnknownError } from '../../common-errors/unknown-error';
-import UsersHelpers from '../users/users.helpers';
+import UsersGroupManagement from '../users/usersGroupManagement';
 
 const MODULE_NAME = 'ADMIN-USE-CASE';
 
@@ -136,12 +136,14 @@ export class AdminUseCase {
       }
 
       const officesRepo = factory.getOfficesRepository(context);
-      const offices = await UsersHelpers.getOfficesFromGroupNames(
+      const offices = await UsersGroupManagement.getOfficesFromGroupNames(
         context,
         privilegedIdentityUser.claims.groups,
       );
       for (const office of offices) {
-        const roles = UsersHelpers.getRolesFromGroupNames(privilegedIdentityUser.claims.groups);
+        const roles = UsersGroupManagement.getRolesFromGroupNames(
+          privilegedIdentityUser.claims.groups,
+        );
         const staff = { ...userReference, roles };
         await officesRepo.putOrExtendOfficeStaff(office.officeCode, staff, options.expires);
       }
