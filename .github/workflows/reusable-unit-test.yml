@@ -9,6 +9,11 @@ on:
       node-version:
         required: true
         type: string
+      changed-files:
+        description: 'Space-separated list of changed source files (relative to the workspace path). When provided, runs all tests but checks coverage only for these files at 90% per-file threshold.'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   unit-test:
@@ -38,3 +43,31 @@ jobs:
         shell: bash
         run: |
           export CAMS_LOGIN_PROVIDER_CONFIG='{"issuer": "http://localhost:7071/api/oauth2/default", "clientId": ""}' && npm run coverage:ci
+
+      - name: Run all tests and check coverage for changed files
+        if: inputs.changed-files != ''
+        working-directory: ${{ inputs.path }}
+        shell: bash
+        env:
+          CAMS_LOGIN_PROVIDER_CONFIG: '{"issuer": "http://localhost:7071/api/oauth2/default", "clientId": ""}'
+          CAMS_USE_FAKE_API: 'true'
+        run: |
+          FILES="${{ inputs.changed-files }}"
+          INCLUDE_FLAGS=""
+          for f in $FILES; do
+            if ! echo "$f" | grep -qE '\.(test|spec)\.(ts|tsx)$'; then
+              INCLUDE_FLAGS="$INCLUDE_FLAGS --coverage.include=$f"
+            fi
+          done
+
+          if [ -z "$INCLUDE_FLAGS" ]; then
+            echo "No source files to check coverage for. Skipping."
+            exit 0
+          fi
+
+          echo "Checking coverage for changed files: $FILES"
+          npx vitest run --coverage \
+            --coverage.thresholds.perFile=true \
+            --coverage.thresholds.lines=90 \
+            --coverage.thresholds.branches=90 \
+            $INCLUDE_FLAGS
