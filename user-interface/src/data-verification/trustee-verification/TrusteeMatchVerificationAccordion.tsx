@@ -75,6 +75,83 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     }
   }
 
+  type CandidateTableProps = {
+    candidate: TrusteeMatchVerification['matchCandidates'][number];
+    onApprove?: () => void;
+    isProcessing?: boolean;
+  };
+
+  function CandidateTable({ candidate, onApprove, isProcessing }: CandidateTableProps) {
+    return (
+      <div className="trustee-data-grid trustee-candidates-grid">
+        <div className="trustee-data-header grid-row grid-gap-lg">
+          <div className="trustee-data-cell grid-col-2">Name</div>
+          <div className="trustee-data-cell grid-col-2">Address</div>
+          <div className="trustee-data-cell grid-col-1">Phone</div>
+          <div className="trustee-data-cell grid-col-2">Email</div>
+          <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
+          <div className="trustee-data-cell grid-col-2">Action</div>
+        </div>
+        <div className="trustee-data-row grid-row grid-gap-lg">
+          <div
+            className="trustee-data-cell grid-col-2"
+            data-cell="Name"
+            data-testid="candidate-name"
+          >
+            {candidate.trusteeName}
+          </div>
+          <div className="trustee-data-cell grid-col-2" data-cell="Address">
+            {candidate.address &&
+              [
+                candidate.address.address1,
+                candidate.address.address2,
+                candidate.address.address3,
+                `${candidate.address.city}, ${candidate.address.state} ${candidate.address.zipCode}`,
+              ]
+                .filter(Boolean)
+                .map((line, i, arr) => (
+                  <span key={i}>
+                    {line}
+                    {i < arr.length - 1 && <br />}
+                  </span>
+                ))}
+          </div>
+          <div className="trustee-data-cell grid-col-1" data-cell="Phone">
+            {candidate.phone
+              ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
+              : ''}
+          </div>
+          <div className="trustee-data-cell grid-col-2" data-cell="Email">
+            {candidate.email ?? ''}
+          </div>
+          <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
+            {candidate.appointments?.map((appt, i, arr) => (
+              <span key={i}>
+                {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
+                {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
+                {i < arr.length - 1 && <br />}
+              </span>
+            ))}
+          </div>
+          <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
+            {onApprove && (
+              <button
+                type="button"
+                data-testid="approve-button"
+                onClick={onApprove}
+                disabled={isProcessing}
+                className="match-trustee-link"
+              >
+                <Icon name="check" />
+                Match Trustee
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Accordion key={order.id} id={`order-list-${order.id}`} hidden={hidden}>
       <section
@@ -184,70 +261,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             <h3>CAMS Strongest Match</h3>
             {viewMode === 'pending-with-candidate' && preselected && (
               <div className="trustee-match-candidate-section" data-testid="candidate-info">
-                <div className="trustee-data-grid trustee-candidates-grid">
-                  <div className="trustee-data-header grid-row grid-gap-lg">
-                    <div className="trustee-data-cell grid-col-2">Name</div>
-                    <div className="trustee-data-cell grid-col-2">Address</div>
-                    <div className="trustee-data-cell grid-col-1">Phone</div>
-                    <div className="trustee-data-cell grid-col-2">Email</div>
-                    <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
-                    <div className="trustee-data-cell grid-col-2">Action</div>
-                  </div>
-                  <div className="trustee-data-row grid-row grid-gap-lg">
-                    <div
-                      className="trustee-data-cell grid-col-2"
-                      data-cell="Name"
-                      data-testid="candidate-name"
-                    >
-                      {preselected.trusteeName}
-                    </div>
-                    <div className="trustee-data-cell grid-col-2" data-cell="Address">
-                      {preselected.address &&
-                        [
-                          preselected.address.address1,
-                          preselected.address.address2,
-                          preselected.address.address3,
-                          `${preselected.address.city}, ${preselected.address.state} ${preselected.address.zipCode}`,
-                        ]
-                          .filter(Boolean)
-                          .map((line, i, arr) => (
-                            <span key={i}>
-                              {line}
-                              {i < arr.length - 1 && <br />}
-                            </span>
-                          ))}
-                    </div>
-                    <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-                      {preselected.phone
-                        ? `${preselected.phone.number}${preselected.phone.extension ? ` x${preselected.phone.extension}` : ''}`
-                        : ''}
-                    </div>
-                    <div className="trustee-data-cell grid-col-2" data-cell="Email">
-                      {preselected.email ?? ''}
-                    </div>
-                    <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
-                      {preselected.appointments?.map((appt, i, arr) => (
-                        <span key={i}>
-                          {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
-                          {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
-                          {i < arr.length - 1 && <br />}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
-                      <button
-                        type="button"
-                        data-testid="approve-button"
-                        onClick={handleApprove}
-                        disabled={isProcessing}
-                        className="match-trustee-link"
-                      >
-                        <Icon name="check" />
-                        Match Trustee
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <CandidateTable
+                  candidate={preselected}
+                  onApprove={handleApprove}
+                  isProcessing={isProcessing}
+                />
                 <Link to="/trustee/search" className="search-trustee-link">
                   <Icon name="search" />
                   Search for a different trustee
@@ -256,60 +274,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             )}
             {viewMode === 'readonly-with-candidate' && preselected && (
               <>
-                <div className="trustee-data-grid trustee-candidates-grid">
-                  <div className="trustee-data-header grid-row grid-gap-lg">
-                    <div className="trustee-data-cell grid-col-2">Name</div>
-                    <div className="trustee-data-cell grid-col-2">Address</div>
-                    <div className="trustee-data-cell grid-col-1">Phone</div>
-                    <div className="trustee-data-cell grid-col-2">Email</div>
-                    <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
-                    <div className="trustee-data-cell grid-col-2">Action</div>
-                  </div>
-                  <div className="trustee-data-row grid-row grid-gap-lg">
-                    <div className="trustee-data-cell grid-col-2" data-cell="Name">
-                      {preselected.trusteeName}
-                    </div>
-                    <div className="trustee-data-cell grid-col-2" data-cell="Address">
-                      {preselected.address &&
-                        [
-                          preselected.address.address1,
-                          preselected.address.address2,
-                          preselected.address.address3,
-                          `${preselected.address.city}, ${preselected.address.state} ${preselected.address.zipCode}`,
-                        ]
-                          .filter(Boolean)
-                          .map((line, i, arr) => (
-                            <span key={i}>
-                              {line}
-                              {i < arr.length - 1 && <br />}
-                            </span>
-                          ))}
-                    </div>
-                    <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-                      {preselected.phone
-                        ? `${preselected.phone.number}${preselected.phone.extension ? ` x${preselected.phone.extension}` : ''}`
-                        : ''}
-                    </div>
-                    <div className="trustee-data-cell grid-col-2" data-cell="Email">
-                      {preselected.email ?? ''}
-                    </div>
-                    <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
-                      {preselected.appointments?.map((appt, i, arr) => (
-                        <span key={i}>
-                          {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
-                          {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
-                          {i < arr.length - 1 && <br />}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
-                      <Link to="#" className="match-trustee-link">
-                        <Icon name="check" />
-                        Match Trustee
-                      </Link>
-                    </div>
-                  </div>
-                </div>
+                <CandidateTable candidate={preselected} />
                 <Link to="/trustee/search" className="search-trustee-link">
                   <Icon name="search" />
                   Search for a different trustee.

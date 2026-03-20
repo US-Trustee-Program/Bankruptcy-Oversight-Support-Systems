@@ -7,6 +7,7 @@ import { TrusteeMatchVerification } from '@common/cams/trustee-match-verificatio
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { CamsRole } from '@common/cams/roles';
 
 describe('TrusteeMatchVerificationController', () => {
   let context: ApplicationContext;
@@ -171,6 +172,15 @@ describe('TrusteeMatchVerificationController', () => {
       context.request.method = 'PATCH';
       context.request.params = { id: 'verification-1' };
       context.request.body = { resolvedTrusteeId: 'trustee-001' };
+      context.session.user.roles = [CamsRole.DataVerifier];
+    });
+
+    test('should return 401 when user does not have DataVerifier role', async () => {
+      context.session.user.roles = [];
+
+      const controller = new TrusteeMatchVerificationController();
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Unauthorized');
     });
 
     test('should call useCase.approveVerification and return 204', async () => {

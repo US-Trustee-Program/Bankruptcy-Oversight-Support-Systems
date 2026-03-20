@@ -39,7 +39,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     assignedOn: '2024-01-01T00:00:00.000Z',
   };
 
-  let mockSearch: ReturnType<typeof vi.fn>;
+  let mockFindById: ReturnType<typeof vi.fn>;
   let mockUpdate: ReturnType<typeof vi.fn>;
   let mockGetSyncedCase: ReturnType<typeof vi.fn>;
   let mockSyncDxtrCase: ReturnType<typeof vi.fn>;
@@ -51,7 +51,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     context = await createMockApplicationContext();
     useCase = new TrusteeMatchVerificationUseCase();
 
-    mockSearch = vi.fn().mockResolvedValue([sampleVerification]);
+    mockFindById = vi.fn().mockResolvedValue(sampleVerification);
     mockUpdate = vi.fn().mockResolvedValue({ ...sampleVerification, status: 'approved' });
     mockGetSyncedCase = vi.fn().mockResolvedValue(sampleSyncedCase);
     mockSyncDxtrCase = vi.fn().mockResolvedValue(undefined);
@@ -61,7 +61,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
     vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
-        search: mockSearch,
+        findById: mockFindById,
         update: mockUpdate,
       }),
     );
@@ -88,7 +88,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
     test('happy path: updates synced case, soft-closes old appointment, creates new, marks approved', async () => {
       await useCase.approveVerification(context, 'verification-1', 'trustee-new');
 
-      expect(mockSearch).toHaveBeenCalledWith({ status: ['pending'] });
+      expect(mockFindById).toHaveBeenCalledWith('verification-1');
       expect(mockSyncDxtrCase).toHaveBeenCalledWith(
         expect.objectContaining({ trusteeId: 'trustee-new' }),
       );
@@ -140,11 +140,19 @@ describe('TrusteeMatchVerificationUseCase', () => {
       );
     });
 
-    test('throws NotFoundError when no pending verification with given id exists', async () => {
-      mockSearch.mockResolvedValue([]);
+    test('throws NotFoundError when document does not exist', async () => {
+      mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
 
       await expect(
         useCase.approveVerification(context, 'missing-id', 'trustee-new'),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    test('throws NotFoundError when verification exists but is not pending', async () => {
+      mockFindById.mockResolvedValue({ ...sampleVerification, status: 'approved' });
+
+      await expect(
+        useCase.approveVerification(context, 'verification-1', 'trustee-new'),
       ).rejects.toThrow(NotFoundError);
     });
   });
