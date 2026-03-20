@@ -13,8 +13,10 @@ import MockOpenIdConnectGateway from '../../testing/mock-gateways/mock-oauth2-ga
 import * as Verifier from '../../adapters/gateways/okta/HumbleVerifier';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { NotFoundError } from '../../common-errors/not-found-error';
-import UsersHelpers from '../users/users.helpers';
 import * as delayModule from '@common/delay';
+import { MockOfficesGateway } from '../../testing/mock-gateways/mock.offices.gateway';
+import { CamsRole } from '@common/cams/roles';
+import { UsersRepository } from '../gateways.types';
 
 describe('user-session.gateway test', () => {
   const jwtString = MockData.getJwt();
@@ -27,9 +29,13 @@ describe('user-session.gateway test', () => {
     groups: [],
   };
   const provider = 'mock';
-  const mockUser = MockData.getCamsUser();
+  const mockUser = MockData.getCamsUserReference();
   const expectedSession = MockData.getCamsSession({
-    user: mockUser,
+    user: {
+      ...mockUser,
+      offices: [],
+      roles: [],
+    },
     accessToken: jwtString,
     provider: expect.any(String),
   });
@@ -64,8 +70,16 @@ describe('user-session.gateway test', () => {
 
     vi.spyOn(Verifier, 'verifyAccessToken').mockResolvedValue(camsJwt);
     getUserSpy = vi.spyOn(MockOpenIdConnectGateway, 'getUser');
-    vi.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockResolvedValue(expectedSession.user);
     vi.spyOn(delayModule, 'delay').mockResolvedValue(undefined);
+
+    // Mock gateway layer - offices gateway returns mock offices
+    vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(new MockOfficesGateway());
+
+    // Mock PIM repository to return NotFoundError (no privileged identity)
+    const mockUsersRepository: Partial<UsersRepository> = {
+      getPrivilegedIdentityUser: vi.fn().mockRejectedValue(new NotFoundError('No PIM record')),
+    };
+    vi.spyOn(factory, 'getUsersRepository').mockReturnValue(mockUsersRepository as UsersRepository);
   });
 
   afterEach(() => {
@@ -75,7 +89,6 @@ describe('user-session.gateway test', () => {
   test('should return valid session and add to cache when cache miss is encountered', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
     getUserSpy.mockResolvedValue({ user: mockUser, jwt: camsJwt });
-    vi.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockResolvedValue(expectedSession.user);
     const createSpy = vi
       .spyOn(MockMongoRepository.prototype, 'upsert')
       .mockResolvedValue(mockCamsSession);
@@ -146,7 +159,6 @@ describe('user-session.gateway test', () => {
       .mockRejectedValueOnce(new UnauthorizedError('Transient error 1'))
       .mockRejectedValueOnce(new UnauthorizedError('Transient error 2'))
       .mockResolvedValue({ user: mockUser, jwt: camsJwt });
-    vi.spyOn(UsersHelpers, 'getPrivilegedIdentityUser').mockResolvedValue(expectedSession.user);
     const upsertSpy = vi
       .spyOn(MockMongoRepository.prototype, 'upsert')
       .mockResolvedValue(mockCamsSession);
@@ -174,5 +186,80 @@ describe('user-session.gateway test', () => {
     expect(delayModule.delay).toHaveBeenCalledTimes(2);
     expect(delayModule.delay).toHaveBeenNthCalledWith(1, 2000);
     expect(delayModule.delay).toHaveBeenNthCalledWith(2, 4000);
+  });
+
+  test('should extract offices and roles from JWT groups', async () => {
+    const jwtGroups = ['USTP CAMS Region 2 Office Buffalo', 'USTP CAMS Case Assignment Manager'];
+    const jwtWithGroups = {
+      ...camsJwt,
+      claims: { ...claims, groups: jwtGroups },
+    };
+
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
+    getUserSpy.mockResolvedValue({ user: mockUser, jwt: jwtWithGroups });
+    const upsertSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'upsert')
+      .mockResolvedValue(mockCamsSession);
+
+    const session = await gateway.lookup(context, jwtString);
+
+    // Verify offices were extracted from JWT groups (MockOfficesGateway contains this office)
+    expect(session.user.offices).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          idpGroupName: 'USTP CAMS Region 2 Office Buffalo',
+        }),
+      ]),
+    );
+
+    // Verify roles were extracted from JWT groups (LocalStorageGateway maps this role)
+    expect(session.user.roles).toContain(CamsRole.CaseAssignmentManager);
+
+    expect(upsertSpy).toHaveBeenCalled();
+    expect(getUserSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('should handle empty JWT groups', async () => {
+    const jwtWithEmptyGroups = {
+      ...camsJwt,
+      claims: { ...claims, groups: [] },
+    };
+
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
+    getUserSpy.mockResolvedValue({ user: mockUser, jwt: jwtWithEmptyGroups });
+    const upsertSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'upsert')
+      .mockResolvedValue(mockCamsSession);
+
+    const session = await gateway.lookup(context, jwtString);
+
+    // With no groups, should have no offices or roles
+    expect(session.user.offices).toEqual([]);
+    expect(session.user.roles).toEqual([]);
+
+    expect(upsertSpy).toHaveBeenCalled();
+  });
+
+  test('should handle JWT groups with roles but no matching offices', async () => {
+    const jwtGroups = ['USTP CAMS Trial Attorney', 'NonExistentOfficeGroup'];
+    const jwtWithGroups = {
+      ...camsJwt,
+      claims: { ...claims, groups: jwtGroups },
+    };
+
+    vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new NotFoundError(''));
+    getUserSpy.mockResolvedValue({ user: mockUser, jwt: jwtWithGroups });
+    const upsertSpy = vi
+      .spyOn(MockMongoRepository.prototype, 'upsert')
+      .mockResolvedValue(mockCamsSession);
+
+    const session = await gateway.lookup(context, jwtString);
+
+    // Should extract role even if no offices match
+    expect(session.user.roles).toContain(CamsRole.TrialAttorney);
+    // No offices should match the groups
+    expect(session.user.offices).toEqual([]);
+
+    expect(upsertSpy).toHaveBeenCalled();
   });
 });
