@@ -1,0 +1,11 @@
+{
+  "bindings": [
+    {
+      "name": "queueItem",
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "downstream-chapter15-assignments-event",
+      "connection": "AzureWebJobsStorage"
+    }
+  ]
+}

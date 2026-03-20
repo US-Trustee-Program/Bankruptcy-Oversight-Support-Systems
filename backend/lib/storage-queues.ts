@@ -1,4 +1,4 @@
-import { buildQueueName } from '../function-apps/dataflows/dataflows-common';
+import { buildQueueName } from '@common/cams';
 import { output } from '@azure/functions';
 import ModuleNames from '../function-apps/dataflows/module-names';
 

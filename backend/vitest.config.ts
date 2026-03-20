@@ -5,9 +5,14 @@ import path from 'path';
 
 export default defineConfig({
   resolve: {
-    alias: {
-      '@common': path.resolve(__dirname, '../common/src'),
-    },
+    alias: [
+      { find: /^@common\/cams$/, replacement: path.resolve(__dirname, '../common/src/index.ts') },
+      {
+        find: /^@common\/cams\/(.+)$/,
+        replacement: path.resolve(__dirname, '../common/src/cams/$1'),
+      },
+      { find: '@common', replacement: path.resolve(__dirname, '../common/src') },
+    ],
   },
   test: {
     globals: true,
