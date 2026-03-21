@@ -153,6 +153,10 @@ describe('TrusteeMatchVerificationAccordion', () => {
     renderWithProps({ order: sampleOrderWithCandidates });
 
     fireEvent.click(screen.getByTestId('approve-button'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
 
     await waitFor(() => {
       expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
@@ -168,6 +172,10 @@ describe('TrusteeMatchVerificationAccordion', () => {
     renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
 
     fireEvent.click(screen.getByTestId('approve-button'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
 
     await waitFor(() => {
       expect(onOrderUpdate).toHaveBeenCalledWith(
@@ -185,6 +193,10 @@ describe('TrusteeMatchVerificationAccordion', () => {
     renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
 
     fireEvent.click(screen.getByTestId('approve-button'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
 
     await waitFor(() => {
       expect(onOrderUpdate).toHaveBeenCalledWith(
@@ -432,5 +444,165 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
     expect(content.textContent).toContain('555-9999');
     expect(content.textContent).not.toContain('x555');
+  });
+
+  describe('Slice 3 — reject flow', () => {
+    const orderWithTwoCandidates: TrusteeMatchVerification = {
+      ...sampleOrderWithCandidates,
+      matchCandidates: [
+        {
+          trusteeId: 'trustee-1',
+          trusteeName: 'Jane Smith',
+          totalScore: 95,
+          addressScore: 90,
+          districtDivisionScore: 100,
+          chapterScore: 95,
+        },
+        {
+          trusteeId: 'trustee-2',
+          trusteeName: 'Bob Jones',
+          totalScore: 70,
+          addressScore: 65,
+          districtDivisionScore: 80,
+          chapterScore: 65,
+        },
+      ],
+    };
+
+    test('renders reject-preselection-button alongside approve-button for pending order with candidate', () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      expect(screen.getByTestId('approve-button')).toBeInTheDocument();
+      expect(screen.getByTestId('reject-preselection-button')).toBeInTheDocument();
+    });
+
+    test('reject-preselection-button does not appear for non-pending orders (Branch B)', () => {
+      renderWithProps({ order: { ...sampleOrderWithCandidates, status: 'rejected' } });
+
+      expect(screen.queryByTestId('reject-preselection-button')).not.toBeInTheDocument();
+    });
+
+    test('clicking reject-preselection-button shows all-candidates table and reject button', async () => {
+      renderWithProps({ order: orderWithTwoCandidates });
+
+      fireEvent.click(screen.getByTestId('reject-preselection-button'));
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
+        expect(screen.getByTestId('reject-button')).toBeInTheDocument();
+        expect(screen.getByTestId(`approve-candidate-trustee-1`)).toBeInTheDocument();
+        expect(screen.getByTestId(`approve-candidate-trustee-2`)).toBeInTheDocument();
+      });
+    });
+
+    test('clicking Match Trustee on a non-preselected candidate calls approve with that trusteeId', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ order: orderWithTwoCandidates, onOrderUpdate });
+
+      fireEvent.click(screen.getByTestId('reject-preselection-button'));
+      await screen.findByTestId('approve-candidate-trustee-2');
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-2'));
+      const modalSubmit = document.getElementById(
+        `trustee-confirmation-modal-${orderWithTwoCandidates.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
+          orderWithTwoCandidates.id,
+          'trustee-2',
+        );
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({ type: UswdsAlertStyle.Success }),
+          expect.objectContaining({ status: 'approved', resolvedTrusteeId: 'trustee-2' }),
+        );
+      });
+    });
+
+    test('submitting reject with no reason calls patchTrusteeVerificationOrderRejection with undefined', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      fireEvent.click(screen.getByTestId('reject-preselection-button'));
+      fireEvent.click(await screen.findByTestId('reject-button'));
+      // click the modal's submit button
+      const modalSubmit = document.getElementById(
+        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(Api2.patchTrusteeVerificationOrderRejection).toHaveBeenCalledWith(
+          sampleOrderWithCandidates.id,
+          undefined,
+        );
+      });
+    });
+
+    test('submitting reject with a reason calls patchTrusteeVerificationOrderRejection with reason', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      fireEvent.click(screen.getByTestId('reject-preselection-button'));
+      fireEvent.click(await screen.findByTestId('reject-button'));
+      fireEvent.change(
+        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
+        { target: { value: 'Not the right person' } },
+      );
+      const modalSubmit = document.getElementById(
+        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(Api2.patchTrusteeVerificationOrderRejection).toHaveBeenCalledWith(
+          sampleOrderWithCandidates.id,
+          'Not the right person',
+        );
+      });
+    });
+
+    test('on reject success calls onOrderUpdate with Warning alert and rejected status', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+
+      fireEvent.click(screen.getByTestId('reject-preselection-button'));
+      fireEvent.click(await screen.findByTestId('reject-button'));
+      const modalSubmit = document.getElementById(
+        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          { message: 'Trustee match rejected.', type: UswdsAlertStyle.Warning, timeOut: 8 },
+          expect.objectContaining({ status: 'rejected' }),
+        );
+      });
+    });
+
+    test('on reject failure calls onOrderUpdate with error alert and original order', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockRejectedValue(
+        new Error('Network error'),
+      );
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+
+      fireEvent.click(screen.getByTestId('reject-preselection-button'));
+      fireEvent.click(await screen.findByTestId('reject-button'));
+      const modalSubmit = document.getElementById(
+        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          { message: 'Failed to reject trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+          sampleOrderWithCandidates,
+        );
+      });
+    });
   });
 });

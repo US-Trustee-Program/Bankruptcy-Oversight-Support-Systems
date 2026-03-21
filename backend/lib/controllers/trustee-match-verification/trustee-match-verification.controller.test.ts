@@ -171,7 +171,7 @@ describe('TrusteeMatchVerificationController', () => {
     beforeEach(() => {
       context.request.method = 'PATCH';
       context.request.params = { id: 'verification-1' };
-      context.request.body = { resolvedTrusteeId: 'trustee-001' };
+      context.request.body = { action: 'approve', resolvedTrusteeId: 'trustee-001' };
       context.session.user.roles = [CamsRole.DataVerifier];
     });
 
@@ -199,6 +199,40 @@ describe('TrusteeMatchVerificationController', () => {
       expect(response.statusCode).toBe(204);
     });
 
+    test('should call useCase.rejectVerification with reason and return 204', async () => {
+      context.request.body = { action: 'reject', reason: 'Not the right trustee' };
+      vi.spyOn(TrusteeMatchVerificationUseCase.prototype, 'rejectVerification').mockResolvedValue(
+        undefined,
+      );
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(TrusteeMatchVerificationUseCase.prototype.rejectVerification).toHaveBeenCalledWith(
+        context,
+        'verification-1',
+        'Not the right trustee',
+      );
+      expect(response.statusCode).toBe(204);
+    });
+
+    test('should call useCase.rejectVerification without reason and return 204', async () => {
+      context.request.body = { action: 'reject' };
+      vi.spyOn(TrusteeMatchVerificationUseCase.prototype, 'rejectVerification').mockResolvedValue(
+        undefined,
+      );
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(TrusteeMatchVerificationUseCase.prototype.rejectVerification).toHaveBeenCalledWith(
+        context,
+        'verification-1',
+        undefined,
+      );
+      expect(response.statusCode).toBe(204);
+    });
+
     test('should throw BadRequestError when id is missing', async () => {
       context.request.params = {};
 
@@ -207,12 +241,28 @@ describe('TrusteeMatchVerificationController', () => {
       await expect(controller.handleRequest(context)).rejects.toThrow('Missing verification ID.');
     });
 
-    test('should throw BadRequestError when resolvedTrusteeId is missing', async () => {
-      context.request.body = {};
+    test('should throw BadRequestError when resolvedTrusteeId is missing for approve', async () => {
+      context.request.body = { action: 'approve' };
 
       const controller = new TrusteeMatchVerificationController();
 
       await expect(controller.handleRequest(context)).rejects.toThrow('Missing resolvedTrusteeId.');
+    });
+
+    test('should throw BadRequestError for missing action', async () => {
+      context.request.body = {};
+
+      const controller = new TrusteeMatchVerificationController();
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Missing or invalid action.');
+    });
+
+    test('should throw BadRequestError for unrecognized action', async () => {
+      context.request.body = { action: 'unknown' };
+
+      const controller = new TrusteeMatchVerificationController();
+
+      await expect(controller.handleRequest(context)).rejects.toThrow('Missing or invalid action.');
     });
   });
 
