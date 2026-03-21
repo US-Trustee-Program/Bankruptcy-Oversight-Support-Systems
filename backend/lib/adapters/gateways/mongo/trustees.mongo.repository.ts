@@ -26,7 +26,7 @@ export type TrusteeDocument = Trustee & {
 
 // Type augmentation for dot-notation queries on nested fields
 type TrusteeDocumentQueryable = TrusteeDocument & {
-  'legacy.truId'?: string;
+  'legacy.truIds'?: string[];
 };
 
 type TrusteeOversightAssignmentDocument = TrusteeOversightAssignment & {
@@ -128,10 +128,48 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
+  async findTrusteeByNameAndState(
+    firstName: string,
+    lastName: string,
+    state: string,
+  ): Promise<Trustee | null> {
+    try {
+      // Normalize the name components
+      const normalizedFirstName = normalizeName(firstName);
+      const normalizedLastName = normalizeName(lastName);
+      const normalizedState = state.trim().toUpperCase();
+
+      // Escape regex special characters
+      const escapedFirstName = escapeRegex(normalizedFirstName);
+      const escapedLastName = escapeRegex(normalizedLastName);
+
+      // Build query with word-boundary matching to handle middle names/suffixes
+      // Matches "John Smith", "John Q. Smith", "John Smith Jr.", etc.
+      const doc = using<TrusteeDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE'),
+        doc('name').regex(new RegExp(`\\b${escapedFirstName}\\b.*\\b${escapedLastName}\\b`, 'i')),
+        doc('public.address.state').equals(normalizedState),
+      );
+
+      return await this.getAdapter<TrusteeDocument>().findOne(query);
+    } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        return null;
+      }
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to find trustee by name and state.`,
+      });
+    }
+  }
+
   async findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null> {
     try {
       const doc = using<TrusteeDocumentQueryable>();
-      const query = and(doc('documentType').equals('TRUSTEE'), doc('legacy.truId').equals(truId));
+      const query = and(
+        doc('documentType').equals('TRUSTEE'),
+        doc('legacy.truIds').contains(truId),
+      );
       return await this.getAdapter<TrusteeDocumentQueryable>().findOne(query);
     } catch (originalError) {
       if (isNotFoundError(originalError)) {
@@ -275,6 +313,18 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
           module: MODULE_NAME,
           message: `Failed to update oversight assignment ${id}.`,
         },
+      });
+    }
+  }
+
+  async deleteAll(): Promise<number> {
+    try {
+      const doc = using<TrusteeDocument>();
+      const query = doc('documentType').equals('TRUSTEE');
+      return await this.getAdapter<TrusteeDocument>().deleteMany(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to delete all trustees.',
       });
     }
   }
