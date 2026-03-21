@@ -24,7 +24,7 @@ export class TrusteeMatchVerificationController {
       if (context.request.method === 'GET') {
         return await this.getVerificationOrders(context);
       } else if (context.request.method === 'PATCH') {
-        return await this.approveVerification(context);
+        return await this.handlePatch(context);
       }
       throw new BadRequestError(MODULE_NAME, { message: 'Unsupported method.' });
     } catch (originalError) {
@@ -76,9 +76,7 @@ export class TrusteeMatchVerificationController {
     });
   }
 
-  private async approveVerification(
-    context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<undefined>> {
+  private async handlePatch(context: ApplicationContext): Promise<CamsHttpResponseInit<undefined>> {
     if (!context.session.user.roles.includes(CamsRole.DataVerifier)) {
       throw new UnauthorizedError(MODULE_NAME);
     }
@@ -87,12 +85,25 @@ export class TrusteeMatchVerificationController {
     if (!id) {
       throw new BadRequestError(MODULE_NAME, { message: 'Missing verification ID.' });
     }
-    const body = context.request.body as { resolvedTrusteeId?: string };
-    if (!body?.resolvedTrusteeId) {
-      throw new BadRequestError(MODULE_NAME, { message: 'Missing resolvedTrusteeId.' });
-    }
+
+    const body = context.request.body as {
+      action?: string;
+      resolvedTrusteeId?: string;
+      reason?: string;
+    };
     const useCase = new TrusteeMatchVerificationUseCase();
-    await useCase.approveVerification(context, id, body.resolvedTrusteeId);
-    return httpSuccess({ statusCode: HttpStatusCodes.NO_CONTENT });
+
+    if (body?.action === 'approve') {
+      if (!body.resolvedTrusteeId) {
+        throw new BadRequestError(MODULE_NAME, { message: 'Missing resolvedTrusteeId.' });
+      }
+      await useCase.approveVerification(context, id, body.resolvedTrusteeId);
+      return httpSuccess({ statusCode: HttpStatusCodes.NO_CONTENT });
+    } else if (body?.action === 'reject') {
+      await useCase.rejectVerification(context, id, body.reason);
+      return httpSuccess({ statusCode: HttpStatusCodes.NO_CONTENT });
+    }
+
+    throw new BadRequestError(MODULE_NAME, { message: 'Missing or invalid action.' });
   }
 }
