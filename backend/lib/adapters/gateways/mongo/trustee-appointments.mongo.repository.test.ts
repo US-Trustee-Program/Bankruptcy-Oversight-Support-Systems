@@ -613,4 +613,39 @@ describe('TrusteeAppointmentsMongoRepository', () => {
       );
     });
   });
+
+  describe('deleteAll', () => {
+    test('should delete all trustee appointments successfully', async () => {
+      const deletedCount = 156;
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValue(deletedCount);
+
+      const result = await repository.deleteAll();
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'TRUSTEE_APPOINTMENT',
+      });
+      expect(result).toBe(deletedCount);
+    });
+
+    test('should handle database errors when deleting all appointments', async () => {
+      const error = new Error('Database connection failed');
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockRejectedValue(error);
+
+      await expect(repository.deleteAll()).rejects.toThrow(
+        'Failed to delete all trustee appointments.',
+      );
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'TRUSTEE_APPOINTMENT',
+      });
+    });
+  });
 });

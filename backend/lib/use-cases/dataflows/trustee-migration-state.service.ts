@@ -140,3 +140,34 @@ export async function failMigration(
     lastUpdatedAt: new Date().toISOString(),
   });
 }
+
+/**
+ * Reset the migration state to start fresh.
+ * Used when deleteAll flag is set to begin a clean migration.
+ */
+export async function resetMigrationState(context: ApplicationContext): Promise<MaybeData<void>> {
+  try {
+    const repo = factory.getRuntimeStateRepository<TrusteeMigrationState>(context);
+
+    const newState: TrusteeMigrationState = {
+      documentType: 'TRUSTEE_MIGRATION_STATE',
+      lastTrusteeId: null,
+      processedCount: 0,
+      appointmentsProcessedCount: 0,
+      errors: 0,
+      startedAt: new Date().toISOString(),
+      lastUpdatedAt: new Date().toISOString(),
+      status: 'IN_PROGRESS',
+      divisionMappingVersion: '1.0.0',
+    };
+
+    await repo.upsert(newState);
+    context.logger.info(MODULE_NAME, 'Migration state reset successfully');
+
+    return { data: undefined };
+  } catch (originalError) {
+    return {
+      error: getCamsError(originalError, MODULE_NAME, 'Failed to reset migration state'),
+    };
+  }
+}
