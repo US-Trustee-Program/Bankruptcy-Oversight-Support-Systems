@@ -5,7 +5,7 @@ import factory from '../../factory';
 import { OfficeStaffSyncState } from '../gateways.types';
 import { USTP_OFFICE_NAME_MAP } from '../../adapters/gateways/dxtr/dxtr.constants';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
-import UsersHelpers from '../users/users.helpers';
+import UsersGroupManagement from '../users/usersGroupManagement';
 import { sanitizeDeep } from '../validations';
 import { DocumentCountSummary } from '../dataflow.types';
 
@@ -105,7 +105,10 @@ export class OfficesUseCase {
           userMap.set(user.id, user);
         }
         const userWithRoles = userMap.get(user.id);
-        const maybeElevatedUser = await UsersHelpers.getPrivilegedIdentityUser(context, user.id);
+        const maybeElevatedUser = await UsersGroupManagement.getPrivilegedIdentityUser(
+          context,
+          user.id,
+        );
         userWithRoles.roles = maybeElevatedUser.roles;
         office.staff.push(userWithRoles);
         try {

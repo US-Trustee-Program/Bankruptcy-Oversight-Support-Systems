@@ -7,7 +7,7 @@ import OktaHumble, {
   ListGroupsRequest,
   ListGroupUsersRequest,
 } from '../../../humble-objects/okta-humble';
-import UsersHelpers from '../../../use-cases/users/users.helpers';
+import UsersGroupManagement from '../../../use-cases/users/usersGroupManagement';
 
 const MODULE_NAME = 'OKTA-USER-GROUP-GATEWAY';
 const MAX_PAGE_SIZE = 200;
@@ -146,12 +146,35 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
       for (const oktaGroup of groups) {
         groupNames.push(oktaGroup.name);
       }
+
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: Retrieved ${groupNames.length} groups from Okta for user ${user.name} (${id}).`,
+        { userId: id, userName: user.name, groupCount: groupNames.length, groupNames },
+      );
+
+      const offices = await UsersGroupManagement.getOfficesFromGroupNames(context, groupNames);
+      const roles = UsersGroupManagement.getRolesFromGroupNames(groupNames);
+
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: Constructed user with ${offices.length} offices and ${roles.length} roles.`,
+        {
+          userId: id,
+          userName: user.name,
+          officeCount: offices.length,
+          roleCount: roles.length,
+          offices: offices.map((o) => o.idpGroupName),
+          roles,
+        },
+      );
+
       return {
         id: user.id,
         name: user.name,
         email: user.email,
-        offices: await UsersHelpers.getOfficesFromGroupNames(context, groupNames),
-        roles: UsersHelpers.getRolesFromGroupNames(groupNames),
+        offices,
+        roles,
       };
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {

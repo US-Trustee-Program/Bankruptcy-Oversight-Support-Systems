@@ -106,7 +106,29 @@ export default class OfficesDxtrGateway implements OfficesGateway {
     if (queryResult.success) {
       const flatOfficeDetails = (queryResult.results as mssql.IResult<DxtrFlatOfficeDetails>)
         .recordset;
-      return toUstpOfficeDetails(flatOfficeDetails);
+
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: DXTR query returned ${flatOfficeDetails.length} rows.`,
+        { rowCount: flatOfficeDetails.length },
+      );
+
+      const offices = toUstpOfficeDetails(flatOfficeDetails);
+
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: Transformed into ${offices.length} office objects.`,
+        {
+          officeCount: offices.length,
+          offices: offices.map((o) => ({
+            officeCode: o.officeCode,
+            officeName: o.officeName,
+            idpGroupName: o.idpGroupName,
+          })),
+        },
+      );
+
+      return offices;
     } else {
       throw new CamsError(MODULE_NAME, { message: queryResult.message });
     }
