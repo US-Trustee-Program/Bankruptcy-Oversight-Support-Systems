@@ -40,11 +40,6 @@
 
     .combo-box-form-group {
       margin-bottom: 0;
-
-      .selection-label:empty::before {
-        content: '- Select one more -';
-        color: #71767a;
-      }
     }
 
     @media screen and (min-width: 680px) {
