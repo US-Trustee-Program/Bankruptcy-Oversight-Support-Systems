@@ -56,12 +56,12 @@ describe('EditUpcomingReportDates', () => {
   let userEvent: CamsUserEvent;
 
   beforeEach(() => {
+    vi.restoreAllMocks();
     mockUseNavigate.mockReturnValue(mockNavigate);
     userEvent = TestingUtilities.setupUserEvent();
-    vi.clearAllMocks();
   });
 
-  test('renders all 11 labeled inputs', async () => {
+  test('renders all 9 labeled inputs', async () => {
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
 
     renderComponent();
@@ -70,14 +70,12 @@ describe('EditUpcomingReportDates', () => {
       expect(screen.getByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
     });
 
-    // DatePicker fields
+    // DatePicker fields (Field Exam and Audit are the renamed "next" fields)
     expect(screen.getByTestId('field-exam')).toBeInTheDocument();
     expect(screen.getByTestId('audit')).toBeInTheDocument();
     expect(screen.getByTestId('tpr-due')).toBeInTheDocument();
     expect(screen.getByTestId('tir-submission')).toBeInTheDocument();
     expect(screen.getByTestId('tir-review')).toBeInTheDocument();
-    expect(screen.getByTestId('next-field-exam')).toBeInTheDocument();
-    expect(screen.getByTestId('next-independent-audit-required')).toBeInTheDocument();
 
     // MonthDayRangeSelector fields
     expect(screen.getByText('TPR Review Period')).toBeInTheDocument();
@@ -94,10 +92,10 @@ describe('EditUpcomingReportDates', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('field-exam')).toHaveValue('2026-06-15');
+      expect(screen.getByTestId('field-exam')).toHaveValue('2029-08-01');
     });
 
-    expect(screen.getByTestId('audit')).toHaveValue('2026-08-01');
+    expect(screen.getByTestId('audit')).toHaveValue('2032-08-01');
     expect(document.getElementById('tpr-review-period-start-month')).toHaveValue('04');
     expect(document.getElementById('tpr-review-period-start-day')).toHaveValue('01');
     expect(document.getElementById('tpr-review-period-end-month')).toHaveValue('03');
@@ -109,8 +107,6 @@ describe('EditUpcomingReportDates', () => {
     expect(document.getElementById('tir-review-period-end-day')).toHaveValue('30');
     expect(screen.getByTestId('tir-submission')).toHaveValue('1900-10-15');
     expect(screen.getByTestId('tir-review')).toHaveValue('1900-11-01');
-    expect(screen.getByTestId('next-field-exam')).toHaveValue('2029-08-01');
-    expect(screen.getByTestId('next-independent-audit-required')).toHaveValue('2032-08-01');
   });
 
   test('shows empty inputs when API returns null', async () => {
@@ -161,7 +157,7 @@ describe('EditUpcomingReportDates', () => {
 
     renderComponent();
 
-    await waitFor(() => expect(screen.getByTestId('field-exam')).toHaveValue('2026-06-15'));
+    await waitFor(() => expect(screen.getByTestId('field-exam')).toHaveValue('2029-08-01'));
 
     await userEvent.clear(screen.getByTestId('field-exam'));
     await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
@@ -170,7 +166,7 @@ describe('EditUpcomingReportDates', () => {
     expect(putSpy).toHaveBeenCalledWith(
       'trustee-001',
       'appointment-001',
-      expect.objectContaining({ fieldExam: null }),
+      expect.objectContaining({ nextFieldExam: null }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
@@ -183,14 +179,14 @@ describe('EditUpcomingReportDates', () => {
 
     expect(await screen.findByTestId('field-exam')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId('field-exam'), { target: { value: '2026-06-15' } });
+    fireEvent.change(screen.getByTestId('field-exam'), { target: { value: '2029-08-15' } });
     await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
 
     await waitFor(() => expect(putSpy).toHaveBeenCalled());
     expect(putSpy).toHaveBeenCalledWith(
       'trustee-001',
       'appointment-001',
-      expect.objectContaining({ fieldExam: '2026-06-15' }),
+      expect.objectContaining({ nextFieldExam: '2029-08-15' }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
@@ -213,21 +209,26 @@ describe('EditUpcomingReportDates', () => {
     });
   });
 
-  test('auto-calculates nextFieldExam and nextIndependentAuditRequired when fieldExam changes', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+  test('save preserves non-displayed fields (fieldExam, audit) from API response', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('field-exam')).toHaveValue('2029-08-01'));
 
-    fireEvent.change(screen.getByTestId('field-exam'), { target: { value: '2025-03-31' } });
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
 
-    await waitFor(() => {
-      // 2025-03-31 + 3 years = 2028-03-31 → 2028-03-01
-      expect(screen.getByTestId('next-field-exam')).toHaveValue('2028-03-01');
-      // 2025-03-31 + 6 years = 2031-03-31 → 2031-03-01
-      expect(screen.getByTestId('next-independent-audit-required')).toHaveValue('2031-03-01');
-    });
+    await waitFor(() =>
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({
+          fieldExam: '2026-06-15',
+          audit: '2026-08-01',
+        }),
+      ),
+    );
   });
 
   test('Cancel navigates without calling PUT', async () => {

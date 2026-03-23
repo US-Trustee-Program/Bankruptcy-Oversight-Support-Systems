@@ -290,6 +290,16 @@ describe('AppointmentCard', () => {
     });
   });
 
+  test('renders PastReportDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
+    renderWithProps({
+      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-report-dates-card')).toBeInTheDocument();
+    });
+  });
+
   test('does not render UpcomingReportDates for non-panel appointment', async () => {
     renderWithProps({
       appointment: { ...mockAppointment, chapter: '7', appointmentType: 'converted-case' },
