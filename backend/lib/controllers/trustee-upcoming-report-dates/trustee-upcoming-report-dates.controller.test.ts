@@ -146,6 +146,8 @@ describe('TrusteeUpcomingReportDatesController', () => {
         tirReviewPeriodEnd: null,
         tirSubmission: null,
         tirReview: null,
+        nextFieldExam: null,
+        nextIndependentAuditRequired: null,
         ...overrides,
       };
     }
