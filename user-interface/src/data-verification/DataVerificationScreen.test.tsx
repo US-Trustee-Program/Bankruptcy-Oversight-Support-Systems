@@ -115,15 +115,6 @@ describe('Review Orders screen', () => {
     expect(screen.getByTestId('data-verification-screen')).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-    });
-
-    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
-    fireEvent.click(expandBtn);
-    fireEvent.click(screen.getByTestId('task-type-filter-option-item-0'));
-    fireEvent.click(screen.getByTestId('task-type-filter-option-item-1'));
-
-    await waitFor(() => {
       expect(screen.getByTestId('accordion-group')).toBeInTheDocument();
     });
 
@@ -225,8 +216,8 @@ describe('Review Orders screen', () => {
     });
     const statusExpandBtn = document.querySelector('#task-status-filter-expand') as HTMLElement;
     fireEvent.click(statusExpandBtn);
-    const rejectedOption = screen.getByTestId('task-status-filter-option-item-2');
-    fireEvent.click(rejectedOption);
+    fireEvent.click(screen.getByTestId('task-status-filter-option-item-0'));
+    fireEvent.click(screen.getByTestId('task-status-filter-option-item-1'));
 
     await waitFor(() => {
       const alert = screen.queryByTestId('alert-too-many-filters');
@@ -333,14 +324,6 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-    });
-
-    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
-    fireEvent.click(expandBtn);
-    fireEvent.click(screen.getByTestId('task-type-filter-option-item-2'));
-
-    await waitFor(() => {
       const accordion = screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`);
       expect(accordion).toBeInTheDocument();
       expect(accordion.textContent).toContain('Trustee Mismatch');
@@ -380,20 +363,13 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-    });
-
-    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
-    fireEvent.click(expandBtn);
-    fireEvent.click(screen.getByTestId('task-type-filter-option-item-0'));
-    fireEvent.click(screen.getByTestId('task-type-filter-option-item-2'));
-
-    await waitFor(() => {
       expect(
         screen.getByTestId(`accordion-order-list-${sampleVerificationOrder.id}`),
       ).toBeVisible();
     });
 
+    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
+    fireEvent.click(expandBtn);
     fireEvent.click(screen.getByTestId('task-type-filter-option-item-2'));
 
     await waitFor(() => {
@@ -563,14 +539,6 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-    });
-
-    const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
-    fireEvent.click(expandBtn);
-    fireEvent.click(screen.getByTestId('task-type-filter-option-item-2'));
-
-    await waitFor(() => {
       expect(
         screen.getByTestId(`accordion-order-list-${firstVerification.id}`),
       ).toBeInTheDocument();
@@ -617,14 +585,14 @@ describe('Review Orders screen', () => {
     );
 
     await waitFor(() => {
-      expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
+      expect(screen.getByTestId('accordion-group')).toBeInTheDocument();
     });
 
-    // Select Transfer type only → only transfers visible.
+    // Deselect Consolidation → only transfers visible.
     const expandBtn = document.querySelector('#task-type-filter-expand') as HTMLElement;
     fireEvent.click(expandBtn);
-    const transferOption = screen.getByTestId('task-type-filter-option-item-0');
-    fireEvent.click(transferOption);
+    const consolidationOption = screen.getByTestId('task-type-filter-option-item-1');
+    fireEvent.click(consolidationOption);
 
     await waitFor(async () => {
       for (const order of transferOrders) {
@@ -639,9 +607,9 @@ describe('Review Orders screen', () => {
       }
     });
 
-    // Deselect Transfer, select Consolidation → only consolidations visible.
+    // Deselect Transfer, reselect Consolidation → only consolidations visible.
+    const transferOption = screen.getByTestId('task-type-filter-option-item-0');
     fireEvent.click(transferOption);
-    const consolidationOption = screen.getByTestId('task-type-filter-option-item-1');
     fireEvent.click(consolidationOption);
 
     for (const order of consolidationOrders) {
