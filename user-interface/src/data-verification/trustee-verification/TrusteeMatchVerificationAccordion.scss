@@ -1,3 +1,5 @@
+@use '@/styles/abstracts/colors';
+
 .usa-accordion__content:has(.trustee-match-content) {
   padding-top: 0;
 }
@@ -97,6 +99,25 @@
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
+    svg {
+      width: 1.275rem;
+      height: 1.275rem;
+    }
+  }
+
+  .reject-task-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    color: colors.$secondary-dark;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
     svg {
       width: 1.275rem;
       height: 1.275rem;

@@ -47,6 +47,8 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   pluralLabel?: string;
   overflowStrategy?: 'ellipsis';
   errorMessage?: string;
+  hideClearAllButton?: boolean;
+  placeholder?: string;
 }
 
 function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -67,6 +69,8 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     pluralLabel,
     overflowStrategy,
     errorMessage,
+    hideClearAllButton,
+    placeholder,
     ...otherProps
   } = props;
 
@@ -169,7 +173,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function getSelectedLabel() {
     if (selectedMap.size === 0) {
-      return '';
+      return placeholder ?? '';
     } else if (selectedMap.size === 1) {
       return [...selectedMap.values()][0].selectedLabel ?? [...selectedMap.values()][0].label;
     } else {
@@ -618,7 +622,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           </div>
         )}
       </div>
-      {selectedMap.size > 0 && (
+      {selectedMap.size > 0 && !hideClearAllButton && (
         <Button
           className="clear-all-button"
           uswdsStyle={UswdsButtonStyle.Unstyled}

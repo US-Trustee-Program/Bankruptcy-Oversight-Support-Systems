@@ -7,6 +7,32 @@ import { getCamsUserReference } from '@common/cams/session';
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-USE-CASE';
 
 export class TrusteeMatchVerificationUseCase {
+  async rejectVerification(
+    context: ApplicationContext,
+    id: string,
+    reason?: string,
+  ): Promise<void> {
+    try {
+      const repo = factory.getTrusteeMatchVerificationRepository(context);
+      const verification = await repo.findById(id);
+      if (verification.status !== 'pending') {
+        throw new NotFoundError(MODULE_NAME, {
+          message: `Pending verification ${id} not found.`,
+        });
+      }
+      const now = new Date().toISOString();
+      const userRef = getCamsUserReference(context.session.user);
+      await repo.update(id, {
+        status: 'rejected',
+        reason,
+        updatedBy: userRef,
+        updatedOn: now,
+      });
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
   async approveVerification(
     context: ApplicationContext,
     id: string,
