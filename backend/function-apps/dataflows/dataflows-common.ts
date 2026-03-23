@@ -35,31 +35,8 @@ export function isAuthorized(request: HttpRequest) {
   return process.env.ADMIN_KEY && parts[0] === 'ApiKey' && parts[1] === process.env.ADMIN_KEY;
 }
 
-/**
- * buildFunctionName
- *
- * Builds an Azure function name as seen in the Azure Portal that avoids duplicate names
- * by using the MODULE_NAME as a name space.
- *
- * @param parts
- * @returns
- */
-export function buildFunctionName(...parts): string {
-  return parts.join('-').replace(/_/g, '-').replace(' ', '-');
-}
-
-/**
- * buildQueueName
- *
- * Builds an Azure storage queue name as seen in the Azure Portal that avoids duplicate names
- * by using the MODULE_NAME as a name space and abides by naming requirements.
- *
- * @param parts
- * @returns
- */
-export function buildQueueName(...parts): string {
-  return buildFunctionName(...parts).toLowerCase();
-}
+// Re-export shared queue helpers from common
+export { buildFunctionName, buildQueueName } from '@common/cams';
 
 /**
  * buildHttpTrigger
