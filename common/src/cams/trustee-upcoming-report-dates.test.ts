@@ -11,6 +11,9 @@ import {
   validateMMYYYY,
   validateMMDD,
   validateMMDDRange,
+  calculateTirSubmission,
+  calculateTirReview,
+  calculateNextAuditDate,
 } from './trustee-upcoming-report-dates';
 import V from './validators';
 import { VALID } from './validation';
@@ -248,6 +251,92 @@ describe('display-format validators', () => {
       expect(V.optional(validateMMDDYYYY)('13/45/2026')).toMatchObject({
         reasons: ['Must be a valid date mm/dd/yyyy.'],
       });
+    });
+  });
+});
+
+describe('calculation helpers', () => {
+  describe('calculateTirSubmission', () => {
+    test('adds 30 days to a standard quarter-end', () => {
+      expect(calculateTirSubmission('1900-03-31')).toBe('1900-04-30');
+    });
+
+    test('adds 30 days to June 30', () => {
+      expect(calculateTirSubmission('1900-06-30')).toBe('1900-07-30');
+    });
+
+    test('adds 30 days to September 30', () => {
+      expect(calculateTirSubmission('1900-09-30')).toBe('1900-10-30');
+    });
+
+    test('adds 30 days to December 31, wrapping to next month', () => {
+      expect(calculateTirSubmission('1900-12-31')).toBe('1900-01-30');
+    });
+
+    test('adds 30 days crossing a month boundary', () => {
+      expect(calculateTirSubmission('1900-01-15')).toBe('1900-02-14');
+    });
+  });
+
+  describe('calculateTirReview', () => {
+    test('adds 60 days to April 30', () => {
+      expect(calculateTirReview('1900-04-30')).toBe('1900-06-29');
+    });
+
+    test('adds 60 days to July 30', () => {
+      expect(calculateTirReview('1900-07-30')).toBe('1900-09-28');
+    });
+
+    test('adds 60 days to October 30', () => {
+      expect(calculateTirReview('1900-10-30')).toBe('1900-12-29');
+    });
+
+    test('adds 60 days wrapping past year end', () => {
+      expect(calculateTirReview('1900-11-30')).toBe('1900-01-29');
+    });
+  });
+
+  describe('calculateNextAuditDate', () => {
+    test('returns null when both inputs are undefined', () => {
+      expect(calculateNextAuditDate(undefined, undefined, 3)).toBeNull();
+    });
+
+    test('uses fieldExam when audit is undefined', () => {
+      expect(calculateNextAuditDate('2025-03-31', undefined, 3)).toBe('2028-03-01');
+    });
+
+    test('uses audit when fieldExam is undefined', () => {
+      expect(calculateNextAuditDate(undefined, '2025-06-30', 3)).toBe('2028-06-01');
+    });
+
+    test('uses the most recent date when both are provided', () => {
+      expect(calculateNextAuditDate('2023-03-31', '2025-06-30', 3)).toBe('2028-06-01');
+    });
+
+    test('uses fieldExam when it is more recent than audit', () => {
+      expect(calculateNextAuditDate('2025-09-30', '2024-12-31', 3)).toBe('2028-09-01');
+    });
+
+    test('aligns to next quarter end when result is mid-quarter', () => {
+      // 2025-04-15 + 3 years = 2028-04-15, which aligns to 2028-06-30
+      expect(calculateNextAuditDate('2025-04-15', undefined, 3)).toBe('2028-06-01');
+    });
+
+    test('calculates 6-year independent audit date', () => {
+      expect(calculateNextAuditDate('2025-03-31', undefined, 6)).toBe('2031-03-01');
+    });
+
+    test('calculates 6-year date using most recent of both', () => {
+      expect(calculateNextAuditDate('2023-03-31', '2025-06-30', 6)).toBe('2031-06-01');
+    });
+
+    test('aligns December date to December 31 quarter end', () => {
+      expect(calculateNextAuditDate('2025-12-31', undefined, 3)).toBe('2028-12-01');
+    });
+
+    test('aligns mid-December date to December 31 quarter end', () => {
+      // 2025-10-15 + 3 years = 2028-10-15, aligns to 2028-12-31
+      expect(calculateNextAuditDate('2025-10-15', undefined, 3)).toBe('2028-12-01');
     });
   });
 });

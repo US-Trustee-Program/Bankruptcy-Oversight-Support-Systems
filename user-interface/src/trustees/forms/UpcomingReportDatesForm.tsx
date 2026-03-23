@@ -1,9 +1,13 @@
 import './EditUpcomingReportDates.scss';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { InputRef } from '@/lib/type-declarations/input-fields';
 import {
   TrusteeUpcomingReportDatesInput,
   validateTrusteeUpcomingReportDates,
+  calculateTirSubmission,
+  calculateTirReview,
+  calculateNextAuditDate,
 } from '@common/cams/trustee-upcoming-report-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -35,6 +39,8 @@ type FormState = {
   tirReviewPeriodEnd: string;
   tirSubmission: string;
   tirReview: string;
+  nextFieldExam: string;
+  nextIndependentAuditRequired: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -47,6 +53,8 @@ const EMPTY_FORM: FormState = {
   tirReviewPeriodEnd: '',
   tirSubmission: '',
   tirReview: '',
+  nextFieldExam: '',
+  nextIndependentAuditRequired: '',
 };
 
 export default function UpcomingReportDatesForm() {
@@ -56,6 +64,11 @@ export default function UpcomingReportDatesForm() {
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
+
+  const tirSubmissionRef = useRef<InputRef>(null);
+  const tirReviewRef = useRef<InputRef>(null);
+  const nextFieldExamRef = useRef<InputRef>(null);
+  const nextIndependentAuditRequiredRef = useRef<InputRef>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -87,6 +100,8 @@ export default function UpcomingReportDatesForm() {
             tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
             tirSubmission: data.tirSubmission ?? '',
             tirReview: data.tirReview ?? '',
+            nextFieldExam: data.nextFieldExam ?? '',
+            nextIndependentAuditRequired: data.nextIndependentAuditRequired ?? '',
           });
         }
       })
@@ -100,14 +115,43 @@ export default function UpcomingReportDatesForm() {
 
   function handleChange(field: keyof FormState) {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
+      const value = ev.target.value;
+      if (field === 'fieldExam' || field === 'audit') {
+        const fe = field === 'fieldExam' ? value : form.fieldExam;
+        const au = field === 'audit' ? value : form.audit;
+        const next = calculateNextAuditDate(fe || undefined, au || undefined, 3) ?? '';
+        const nextRequired = calculateNextAuditDate(fe || undefined, au || undefined, 6) ?? '';
+        nextFieldExamRef.current?.setValue(next);
+        nextIndependentAuditRequiredRef.current?.setValue(nextRequired);
+        setForm((prev) => ({
+          ...prev,
+          [field]: value,
+          nextFieldExam: next,
+          nextIndependentAuditRequired: nextRequired,
+        }));
+      } else {
+        setForm((prev) => ({ ...prev, [field]: value }));
+      }
     };
   }
 
   function handleMonthDayChange(field: keyof FormState) {
     return (value: string) => {
       setSubmitted(false);
-      setForm((prev) => ({ ...prev, [field]: value }));
+      if (field === 'tirReviewPeriodEnd') {
+        const submission = value ? calculateTirSubmission(value) : form.tirSubmission;
+        const review = value ? calculateTirReview(submission) : form.tirReview;
+        tirSubmissionRef.current?.setValue(submission);
+        tirReviewRef.current?.setValue(review);
+        setForm((prev) => ({
+          ...prev,
+          tirReviewPeriodEnd: value,
+          tirSubmission: submission,
+          tirReview: review,
+        }));
+      } else {
+        setForm((prev) => ({ ...prev, [field]: value }));
+      }
       if (field in errors) {
         setErrors((prev) => ({ ...prev, [field]: '' }));
       }
@@ -138,6 +182,10 @@ export default function UpcomingReportDatesForm() {
       tirReviewPeriodEnd: form.tirReviewPeriodEnd ? toSentinelDate(form.tirReviewPeriodEnd) : null,
       tirSubmission: form.tirSubmission ? toSentinelDate(form.tirSubmission) : null,
       tirReview: form.tirReview ? toSentinelDate(form.tirReview) : null,
+      nextFieldExam: form.nextFieldExam ? toMonthYearDate(form.nextFieldExam) : null,
+      nextIndependentAuditRequired: form.nextIndependentAuditRequired
+        ? toMonthYearDate(form.nextIndependentAuditRequired)
+        : null,
     };
 
     const result = validateTrusteeUpcomingReportDates(isoInput);
@@ -219,6 +267,7 @@ export default function UpcomingReportDatesForm() {
         submitted={submitted}
       />
       <DatePicker
+        ref={tirSubmissionRef}
         id="tir-submission"
         label="TIR Submission"
         min={MMDD_MIN}
@@ -227,11 +276,28 @@ export default function UpcomingReportDatesForm() {
         disableMax
       />
       <DatePicker
+        ref={tirReviewRef}
         id="tir-review"
         label="TIR Review"
         min={MMDD_MIN}
         value={form.tirReview}
         onChange={handleChange('tirReview')}
+        disableMax
+      />
+      <DatePicker
+        ref={nextFieldExamRef}
+        id="next-field-exam"
+        label="Next Field Exam / Independent Audit"
+        value={form.nextFieldExam}
+        onChange={handleChange('nextFieldExam')}
+        disableMax
+      />
+      <DatePicker
+        ref={nextIndependentAuditRequiredRef}
+        id="next-independent-audit-required"
+        label="Next Independent Audit Required"
+        value={form.nextIndependentAuditRequired}
+        onChange={handleChange('nextIndependentAuditRequired')}
         disableMax
       />
       <div className="usa-button-group">

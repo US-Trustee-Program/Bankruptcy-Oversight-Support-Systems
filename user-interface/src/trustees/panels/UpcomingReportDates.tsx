@@ -65,6 +65,10 @@ export default function UpcomingReportDates(props: Readonly<UpcomingReportDatesP
       : NO_DATE;
   const tirSubmission = data?.tirSubmission ? isoToMMDD(data.tirSubmission) : NO_DATE;
   const tirReview = data?.tirReview ? isoToMMDD(data.tirReview) : NO_DATE;
+  const nextFieldExam = data?.nextFieldExam ? isoToMMYYYY(data.nextFieldExam) : NO_DATE;
+  const nextIndependentAuditRequired = data?.nextIndependentAuditRequired
+    ? isoToMMYYYY(data.nextIndependentAuditRequired)
+    : NO_DATE;
 
   if (isLoading) {
     return <LoadingSpinner id="upcoming-report-dates-loading" />;
@@ -111,6 +115,16 @@ export default function UpcomingReportDates(props: Readonly<UpcomingReportDatesP
             </li>
             <li data-testid="tir-review-row">
               <span className="upcoming-report-dates-label">TIR Review:</span> {tirReview}
+            </li>
+            <li data-testid="next-field-exam-row">
+              <span className="upcoming-report-dates-label">
+                Next Field Exam / Independent Audit:
+              </span>{' '}
+              {nextFieldExam}
+            </li>
+            <li data-testid="next-independent-audit-required-row">
+              <span className="upcoming-report-dates-label">Next Independent Audit Required:</span>{' '}
+              {nextIndependentAuditRequired}
             </li>
           </ul>
         </div>

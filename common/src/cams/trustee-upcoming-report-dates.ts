@@ -66,6 +66,8 @@ export type TrusteeUpcomingReportDates = Auditable &
     tirReviewPeriodEnd?: string;
     tirSubmission?: string;
     tirReview?: string;
+    nextFieldExam?: string;
+    nextIndependentAuditRequired?: string;
   };
 
 export type TrusteeUpcomingReportDatesInput = {
@@ -80,6 +82,8 @@ export type TrusteeUpcomingReportDatesInput = {
   tirReviewPeriodEnd: string | null;
   tirSubmission: string | null;
   tirReview: string | null;
+  nextFieldExam: string | null;
+  nextIndependentAuditRequired: string | null;
 };
 
 export type TrusteeUpcomingReportDatesHistory = AbstractTrusteeHistory<
@@ -99,7 +103,9 @@ type DateField =
   | 'tirReviewPeriodStart'
   | 'tirReviewPeriodEnd'
   | 'tirSubmission'
-  | 'tirReview';
+  | 'tirReview'
+  | 'nextFieldExam'
+  | 'nextIndependentAuditRequired';
 
 export const DATE_FIELDS: DateField[] = [
   'fieldExam',
@@ -111,6 +117,8 @@ export const DATE_FIELDS: DateField[] = [
   'tirReviewPeriodEnd',
   'tirSubmission',
   'tirReview',
+  'nextFieldExam',
+  'nextIndependentAuditRequired',
 ];
 
 export function isoToMMDDYYYY(iso: string): string {
@@ -188,4 +196,58 @@ export function validateMMDDRange(value: unknown): ValidatorResult {
   const [start, end] = value.split(' - ');
   if (!validateMMDD(start).valid || !validateMMDD(end).valid) return error;
   return VALID;
+}
+
+function addDaysToSentinel(sentinel: string, days: number): string {
+  const [, month, day] = sentinel.split('-').map(Number);
+  // Use year 2000 for arithmetic to correctly handle month/day boundaries
+  const date = new Date(2000, month - 1, day);
+  date.setDate(date.getDate() + days);
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  return `1900-${mm}-${dd}`;
+}
+
+export function calculateTirSubmission(tirReviewPeriodEnd: string): string {
+  return addDaysToSentinel(tirReviewPeriodEnd, 30);
+}
+
+export function calculateTirReview(tirSubmission: string): string {
+  return addDaysToSentinel(tirSubmission, 60);
+}
+
+function alignToQuarterEnd(date: Date): Date {
+  const quarterEnds = [
+    { month: 2, day: 31 }, // March 31 (0-indexed month)
+    { month: 5, day: 30 }, // June 30
+    { month: 8, day: 30 }, // September 30
+    { month: 11, day: 31 }, // December 31
+  ];
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+
+  for (const qe of quarterEnds) {
+    if (month < qe.month || (month === qe.month && day <= qe.day)) {
+      return new Date(year, qe.month, qe.day);
+    }
+  }
+  // Past December 31 — advance to March 31 of next year
+  return new Date(year + 1, 2, 31);
+}
+
+export function calculateNextAuditDate(
+  fieldExam: string | undefined,
+  audit: string | undefined,
+  yearsToAdd: number,
+): string | null {
+  const candidates = [fieldExam, audit].filter((d): d is string => !!d);
+  if (candidates.length === 0) return null;
+
+  const mostRecent = candidates.reduce((a, b) => (a > b ? a : b));
+  const [year, month, day] = mostRecent.split('-').map(Number);
+  const date = new Date(year + yearsToAdd, month - 1, day);
+  const aligned = alignToQuarterEnd(date);
+  const mm = String(aligned.getMonth() + 1).padStart(2, '0');
+  return `${aligned.getFullYear()}-${mm}-01`;
 }
