@@ -1,5 +1,6 @@
 import './AppointmentCard.scss';
 import UpcomingReportDates from './UpcomingReportDates';
+import PastReportDates from './PastReportDates';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { formatDate } from '@/lib/utils/datetime';
@@ -120,11 +121,18 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
           </div>
         </div>
         {displayChpt7PanelUpcomingReportDates && isPanelChapter7 && canManage && (
-          <UpcomingReportDates
-            trusteeId={props.appointment.trusteeId}
-            appointmentId={props.appointment.id}
-            appointmentHeading={appointmentHeading}
-          />
+          <>
+            <UpcomingReportDates
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+            />
+            <PastReportDates
+              trusteeId={props.appointment.trusteeId}
+              appointmentId={props.appointment.id}
+              appointmentHeading={appointmentHeading}
+            />
+          </>
         )}
       </div>
     </div>

@@ -7,7 +7,6 @@ import {
   validateTrusteeUpcomingReportDates,
   calculateTirSubmission,
   calculateTirReview,
-  calculateNextAuditDate,
 } from '@common/cams/trustee-upcoming-report-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -67,8 +66,6 @@ export default function UpcomingReportDatesForm() {
 
   const tirSubmissionRef = useRef<InputRef>(null);
   const tirReviewRef = useRef<InputRef>(null);
-  const nextFieldExamRef = useRef<InputRef>(null);
-  const nextIndependentAuditRequiredRef = useRef<InputRef>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -116,22 +113,7 @@ export default function UpcomingReportDatesForm() {
   function handleChange(field: keyof FormState) {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
       const value = ev.target.value;
-      if (field === 'fieldExam' || field === 'audit') {
-        const fe = field === 'fieldExam' ? value : form.fieldExam;
-        const au = field === 'audit' ? value : form.audit;
-        const next = calculateNextAuditDate(fe || undefined, au || undefined, 3) ?? '';
-        const nextRequired = calculateNextAuditDate(fe || undefined, au || undefined, 6) ?? '';
-        nextFieldExamRef.current?.setValue(next);
-        nextIndependentAuditRequiredRef.current?.setValue(nextRequired);
-        setForm((prev) => ({
-          ...prev,
-          [field]: value,
-          nextFieldExam: next,
-          nextIndependentAuditRequired: nextRequired,
-        }));
-      } else {
-        setForm((prev) => ({ ...prev, [field]: value }));
-      }
+      setForm((prev) => ({ ...prev, [field]: value }));
     };
   }
 
@@ -170,7 +152,7 @@ export default function UpcomingReportDatesForm() {
       trusteeId: trusteeId!,
       appointmentId: appointmentId!,
       fieldExam: form.fieldExam || null,
-      audit: form.audit ? toMonthYearDate(form.audit) : null,
+      audit: form.audit || null,
       tprReviewPeriodStart: form.tprReviewPeriodStart
         ? toSentinelDate(form.tprReviewPeriodStart)
         : null,
@@ -182,10 +164,8 @@ export default function UpcomingReportDatesForm() {
       tirReviewPeriodEnd: form.tirReviewPeriodEnd ? toSentinelDate(form.tirReviewPeriodEnd) : null,
       tirSubmission: form.tirSubmission ? toSentinelDate(form.tirSubmission) : null,
       tirReview: form.tirReview ? toSentinelDate(form.tirReview) : null,
-      nextFieldExam: form.nextFieldExam ? toMonthYearDate(form.nextFieldExam) : null,
-      nextIndependentAuditRequired: form.nextIndependentAuditRequired
-        ? toMonthYearDate(form.nextIndependentAuditRequired)
-        : null,
+      nextFieldExam: form.nextFieldExam || null,
+      nextIndependentAuditRequired: form.nextIndependentAuditRequired || null,
     };
 
     const result = validateTrusteeUpcomingReportDates(isoInput);
@@ -222,15 +202,15 @@ export default function UpcomingReportDatesForm() {
       <DatePicker
         id="field-exam"
         label="Field Exam"
-        value={form.fieldExam}
-        onChange={handleChange('fieldExam')}
+        value={form.nextFieldExam}
+        onChange={handleChange('nextFieldExam')}
         disableMax
       />
       <DatePicker
         id="audit"
         label="Audit"
-        value={form.audit}
-        onChange={handleChange('audit')}
+        value={form.nextIndependentAuditRequired}
+        onChange={handleChange('nextIndependentAuditRequired')}
         disableMax
       />
       <MonthDayRangeSelector
@@ -282,22 +262,6 @@ export default function UpcomingReportDatesForm() {
         min={MMDD_MIN}
         value={form.tirReview}
         onChange={handleChange('tirReview')}
-        disableMax
-      />
-      <DatePicker
-        ref={nextFieldExamRef}
-        id="next-field-exam"
-        label="Next Field Exam / Independent Audit"
-        value={form.nextFieldExam}
-        onChange={handleChange('nextFieldExam')}
-        disableMax
-      />
-      <DatePicker
-        ref={nextIndependentAuditRequiredRef}
-        id="next-independent-audit-required"
-        label="Next Independent Audit Required"
-        value={form.nextIndependentAuditRequired}
-        onChange={handleChange('nextIndependentAuditRequired')}
         disableMax
       />
       <div className="usa-button-group">

@@ -25,6 +25,7 @@ import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
 import UpcomingReportDatesForm from './forms/UpcomingReportDatesForm';
+import PastReportDatesForm from './forms/PastReportDatesForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
@@ -243,6 +244,12 @@ export default function TrusteeDetailScreen() {
       disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES],
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
       content: <UpcomingReportDatesForm />,
+    },
+    {
+      path: 'appointments/:appointmentId/past-report-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES],
+      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      content: <PastReportDatesForm />,
     },
     {
       path: 'assigned-staff',
