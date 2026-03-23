@@ -3,10 +3,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import TrusteeMatchRejectionModal, {
   TrusteeMatchRejectionModalImperative,
 } from './TrusteeMatchRejectionModal';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-
 const modalId = 'test-order-id';
-const caseId = '081-22-11111';
 
 describe('TrusteeMatchRejectionModal', () => {
   const modalRef = React.createRef<TrusteeMatchRejectionModalImperative>();
@@ -16,7 +13,6 @@ describe('TrusteeMatchRejectionModal', () => {
       <TrusteeMatchRejectionModal
         ref={modalRef}
         id={modalId}
-        caseId={caseId}
         onConfirm={onConfirm}
         onCancel={onCancel}
       />,
@@ -28,16 +24,14 @@ describe('TrusteeMatchRejectionModal', () => {
     vi.restoreAllMocks();
   });
 
-  test('shows heading and case number after show() is called', async () => {
+  test('shows heading after show() is called', async () => {
     renderWithProps();
     act(() => modalRef.current?.show());
 
     await waitFor(() => {
       expect(document.querySelector('.usa-modal__heading')).toHaveTextContent(
-        'Reject trustee match?',
+        'Reject Trustee Confirmation Task',
       );
-      const content = document.querySelector('.usa-modal__main');
-      expect(content?.textContent).toContain(getCaseNumber(caseId));
     });
   });
 
@@ -50,19 +44,19 @@ describe('TrusteeMatchRejectionModal', () => {
     });
   });
 
-  test('calls onConfirm with undefined when Reject is clicked with no reason', async () => {
-    const { onConfirm } = renderWithProps();
+  test('submit button is disabled until a reason is entered', async () => {
+    renderWithProps();
     act(() => modalRef.current?.show());
 
     const submitButton = screen.getByTestId(
       `button-trustee-rejection-modal-${modalId}-submit-button`,
     );
-    await waitFor(() => expect(submitButton).toBeEnabled());
-    fireEvent.click(submitButton);
+    await waitFor(() => expect(submitButton).toBeDisabled());
 
-    await waitFor(() => {
-      expect(onConfirm).toHaveBeenCalledWith(undefined);
-    });
+    const reasonInput = screen.getByTestId(`rejection-reason-input-${modalId}`);
+    fireEvent.change(reasonInput, { target: { value: 'some reason' } });
+
+    await waitFor(() => expect(submitButton).toBeEnabled());
   });
 
   test('calls onConfirm with reason text when Reject is clicked after entering a reason', async () => {
