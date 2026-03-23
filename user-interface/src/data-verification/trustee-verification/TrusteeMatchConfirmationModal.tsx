@@ -43,7 +43,10 @@ function TrusteeMatchConfirmationModal_(
     submitButton: {
       label: 'Confirm Appointment',
       onClick: () => {
-        if (candidate) onConfirm(candidate);
+        if (candidate) {
+          onConfirm(candidate);
+          hide();
+        }
       },
     },
     cancelButton: {

@@ -99,13 +99,122 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         order,
       );
     } finally {
+      rejectionModalRef.current?.hide();
       setIsProcessing(false);
     }
   }
 
+  function openConfirmation(candidate: CandidateScore) {
+    confirmationModalRef.current?.show(candidate);
+  }
+
+  function openRejection() {
+    rejectionModalRef.current?.show();
+  }
+
+  type TrusteeCandidateRowProps = {
+    candidate: CandidateScore;
+    showScore?: boolean;
+    onApprove?: (candidate: CandidateScore) => void;
+    onRejectPreselection?: () => void;
+    isProcessing?: boolean;
+    nameTestId?: string;
+    approveTestId?: string;
+  };
+
+  function TrusteeCandidateRow({
+    candidate,
+    showScore = false,
+    onApprove,
+    onRejectPreselection,
+    isProcessing,
+    nameTestId,
+    approveTestId,
+  }: TrusteeCandidateRowProps) {
+    const rowAddressLines = candidate.address
+      ? [
+          candidate.address.address1,
+          candidate.address.address2,
+          candidate.address.address3,
+          `${candidate.address.city}, ${candidate.address.state} ${candidate.address.zipCode}`,
+        ].filter(Boolean)
+      : [];
+
+    return (
+      <div className="trustee-data-row grid-row grid-gap-lg">
+        <div
+          className="trustee-data-cell grid-col-2"
+          data-cell="Name"
+          {...(nameTestId ? { 'data-testid': nameTestId } : {})}
+        >
+          {candidate.trusteeName}
+        </div>
+        {showScore && (
+          <div className="trustee-data-cell grid-col-1" data-cell="Score">
+            {candidate.totalScore}
+          </div>
+        )}
+        <div className="trustee-data-cell grid-col-2" data-cell="Address">
+          {rowAddressLines.map((line, i, arr) => (
+            <span key={i}>
+              {line}
+              {i < arr.length - 1 && <br />}
+            </span>
+          ))}
+        </div>
+        <div className="trustee-data-cell grid-col-1" data-cell="Phone">
+          {candidate.phone
+            ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
+            : ''}
+        </div>
+        <div className="trustee-data-cell grid-col-2" data-cell="Email">
+          {candidate.email ?? ''}
+        </div>
+        <div
+          className={`trustee-data-cell ${showScore ? 'grid-col-2' : 'grid-col-3'}`}
+          data-cell="Trustee Appt."
+        >
+          {candidate.appointments?.map((appt, i, arr) => (
+            <span key={i}>
+              {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
+              {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
+              {i < arr.length - 1 && <br />}
+            </span>
+          ))}
+        </div>
+        <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
+          {onApprove && (
+            <button
+              type="button"
+              data-testid={approveTestId ?? `approve-candidate-${candidate.trusteeId}`}
+              onClick={() => onApprove(candidate)}
+              disabled={isProcessing}
+              className="match-trustee-link"
+            >
+              <Icon name="check" />
+              Match Trustee
+            </button>
+          )}
+          {onRejectPreselection && (
+            <button
+              type="button"
+              data-testid="reject-preselection-button"
+              onClick={onRejectPreselection}
+              disabled={isProcessing}
+              className="match-trustee-link"
+            >
+              <Icon name="close" />
+              Reject
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   type CandidateTableProps = {
     candidate: TrusteeMatchVerification['matchCandidates'][number];
-    onApprove?: () => void;
+    onApprove?: (candidate: CandidateScore) => void;
     onRejectPreselection?: () => void;
     isProcessing?: boolean;
   };
@@ -126,139 +235,14 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
           <div className="trustee-data-cell grid-col-2">Action</div>
         </div>
-        <div className="trustee-data-row grid-row grid-gap-lg">
-          <div
-            className="trustee-data-cell grid-col-2"
-            data-cell="Name"
-            data-testid="candidate-name"
-          >
-            {candidate.trusteeName}
-          </div>
-          <div className="trustee-data-cell grid-col-2" data-cell="Address">
-            {candidate.address &&
-              [
-                candidate.address.address1,
-                candidate.address.address2,
-                candidate.address.address3,
-                `${candidate.address.city}, ${candidate.address.state} ${candidate.address.zipCode}`,
-              ]
-                .filter(Boolean)
-                .map((line, i, arr) => (
-                  <span key={i}>
-                    {line}
-                    {i < arr.length - 1 && <br />}
-                  </span>
-                ))}
-          </div>
-          <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-            {candidate.phone
-              ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
-              : ''}
-          </div>
-          <div className="trustee-data-cell grid-col-2" data-cell="Email">
-            {candidate.email ?? ''}
-          </div>
-          <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
-            {candidate.appointments?.map((appt, i, arr) => (
-              <span key={i}>
-                {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
-                {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
-                {i < arr.length - 1 && <br />}
-              </span>
-            ))}
-          </div>
-          <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
-            {onApprove && (
-              <button
-                type="button"
-                data-testid="approve-button"
-                onClick={onApprove}
-                disabled={isProcessing}
-                className="match-trustee-link"
-              >
-                <Icon name="check" />
-                Match Trustee
-              </button>
-            )}
-            {onRejectPreselection && (
-              <button
-                type="button"
-                data-testid="reject-preselection-button"
-                onClick={onRejectPreselection}
-                disabled={isProcessing}
-                className="match-trustee-link"
-              >
-                <Icon name="close" />
-                Reject
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  type AllCandidateRowProps = {
-    candidate: CandidateScore;
-    onApprove: (candidate: CandidateScore) => void;
-    isProcessing: boolean;
-  };
-
-  function AllCandidateRow({ candidate, onApprove, isProcessing }: AllCandidateRowProps) {
-    const rowAddressLines = candidate.address
-      ? [
-          candidate.address.address1,
-          candidate.address.address2,
-          candidate.address.address3,
-          `${candidate.address.city}, ${candidate.address.state} ${candidate.address.zipCode}`,
-        ].filter(Boolean)
-      : [];
-
-    return (
-      <div className="trustee-data-row grid-row grid-gap-lg">
-        <div className="trustee-data-cell grid-col-2" data-cell="Name">
-          {candidate.trusteeName}
-        </div>
-        <div className="trustee-data-cell grid-col-1" data-cell="Score">
-          {candidate.totalScore}
-        </div>
-        <div className="trustee-data-cell grid-col-2" data-cell="Address">
-          {rowAddressLines.map((line, i, arr) => (
-            <span key={i}>
-              {line}
-              {i < arr.length - 1 && <br />}
-            </span>
-          ))}
-        </div>
-        <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-          {candidate.phone
-            ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
-            : ''}
-        </div>
-        <div className="trustee-data-cell grid-col-2" data-cell="Email">
-          {candidate.email ?? ''}
-        </div>
-        <div className="trustee-data-cell grid-col-2" data-cell="Trustee Appt.">
-          {candidate.appointments?.map((appt, i, arr) => (
-            <span key={i}>
-              {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
-              {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
-              {i < arr.length - 1 && <br />}
-            </span>
-          ))}
-        </div>
-        <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
-          <button
-            type="button"
-            data-testid={`approve-candidate-${candidate.trusteeId}`}
-            onClick={() => onApprove(candidate)}
-            disabled={isProcessing}
-            className="match-trustee-link"
-          >
-            <Icon name="check" />
-            Match Trustee
-          </button>
-        </div>
+        <TrusteeCandidateRow
+          candidate={candidate}
+          onApprove={onApprove}
+          onRejectPreselection={onRejectPreselection}
+          isProcessing={isProcessing}
+          nameTestId="candidate-name"
+          approveTestId="approve-button"
+        />
       </div>
     );
   }
@@ -375,7 +359,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 <div className="trustee-match-candidate-section" data-testid="candidate-info">
                   <CandidateTable
                     candidate={preselected}
-                    onApprove={() => confirmationModalRef.current?.show(preselected!)}
+                    onApprove={openConfirmation}
                     onRejectPreselection={() => setPreSelectionCleared(true)}
                     isProcessing={isProcessing}
                   />
@@ -397,11 +381,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                       <div className="trustee-data-cell grid-col-2">Trustee Appointment</div>
                       <div className="trustee-data-cell grid-col-2">Action</div>
                     </div>
-                    {order.matchCandidates.map((candidate: CandidateScore, i) => (
-                      <AllCandidateRow
-                        key={i}
+                    {order.matchCandidates.map((candidate: CandidateScore) => (
+                      <TrusteeCandidateRow
+                        // eslint-disable-next-line react/prop-types
+                        key={candidate.trusteeId}
                         candidate={candidate}
-                        onApprove={(c) => confirmationModalRef.current?.show(c)}
+                        showScore
+                        onApprove={openConfirmation}
                         isProcessing={isProcessing}
                       />
                     ))}
@@ -409,7 +395,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   <button
                     type="button"
                     data-testid="reject-button"
-                    onClick={() => rejectionModalRef.current?.show()}
+                    onClick={openRejection}
                     disabled={isProcessing}
                     className="usa-button usa-button--secondary"
                   >
