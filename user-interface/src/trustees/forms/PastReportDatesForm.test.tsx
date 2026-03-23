@@ -57,6 +57,7 @@ describe('PastReportDatesForm', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockClear();
     mockUseNavigate.mockReturnValue(mockNavigate);
     userEvent = TestingUtilities.setupUserEvent();
   });
