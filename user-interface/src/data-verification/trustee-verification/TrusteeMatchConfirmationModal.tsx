@@ -63,7 +63,12 @@ function TrusteeMatchConfirmationModal_(
         candidate.address.address1,
         candidate.address.address2,
         candidate.address.address3,
-        `${candidate.address.city}, ${candidate.address.state} ${candidate.address.zipCode}`,
+        [
+          candidate.address.city,
+          [candidate.address.state, candidate.address.zipCode].filter(Boolean).join(' '),
+        ]
+          .filter(Boolean)
+          .join(', '),
       ].filter(Boolean)
     : [];
 

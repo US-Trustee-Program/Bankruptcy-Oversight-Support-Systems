@@ -19,16 +19,10 @@ function TrusteeMatchRejectionModal_(
 ) {
   const { id, onConfirm, onCancel } = props;
   const modalRef = useRef<ModalRefType>(null);
-  const reasonRef = useRef<HTMLTextAreaElement>(null);
-  const [hasReason, setHasReason] = useState(false);
-
-  function clearReason() {
-    if (reasonRef.current) reasonRef.current.value = '';
-    setHasReason(false);
-  }
+  const [reason, setReason] = useState('');
 
   function show() {
-    clearReason();
+    setReason('');
     modalRef.current?.show({});
   }
 
@@ -44,18 +38,17 @@ function TrusteeMatchRejectionModal_(
     submitButton: {
       label: 'Reject Trustee Confirmation Task',
       onClick: () => {
-        const reason = reasonRef.current?.value ?? '';
         hide();
         onConfirm(reason);
       },
       className: 'usa-button--secondary',
-      disabled: !hasReason,
+      disabled: reason.trim().length === 0,
     },
     cancelButton: {
       label: 'Cancel',
       onClick: () => {
         if (onCancel) onCancel();
-        clearReason();
+        setReason('');
         hide();
       },
     },
@@ -68,7 +61,7 @@ function TrusteeMatchRejectionModal_(
       className="confirm-modal trustee-rejection-modal"
       heading="Reject Trustee Confirmation Task"
       data-testid={`trustee-rejection-modal-${id}`}
-      onClose={clearReason}
+      onClose={() => setReason('')}
       content={
         <>
           <p>Are you sure you want to reject this task to confirm a trustee?</p>
@@ -83,9 +76,9 @@ function TrusteeMatchRejectionModal_(
               <textarea
                 id={`rejection-reason-${id}`}
                 data-testid={`rejection-reason-input-${id}`}
-                ref={reasonRef}
+                value={reason}
                 className="rejection-reason-input usa-textarea"
-                onChange={(e) => setHasReason(e.target.value.trim().length > 0)}
+                onChange={(e) => setReason(e.target.value)}
               ></textarea>
             </div>
           </div>
