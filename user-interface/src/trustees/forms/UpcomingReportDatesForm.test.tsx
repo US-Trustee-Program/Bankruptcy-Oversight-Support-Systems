@@ -39,6 +39,8 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
   tirReview: '1900-11-01',
+  nextFieldExam: '2029-08-01',
+  nextIndependentAuditRequired: '2032-08-01',
 };
 
 function renderComponent() {
@@ -59,7 +61,7 @@ describe('EditUpcomingReportDates', () => {
     vi.clearAllMocks();
   });
 
-  test('renders all 9 labeled inputs', async () => {
+  test('renders all 11 labeled inputs', async () => {
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
 
     renderComponent();
@@ -74,6 +76,8 @@ describe('EditUpcomingReportDates', () => {
     expect(screen.getByTestId('tpr-due')).toBeInTheDocument();
     expect(screen.getByTestId('tir-submission')).toBeInTheDocument();
     expect(screen.getByTestId('tir-review')).toBeInTheDocument();
+    expect(screen.getByTestId('next-field-exam')).toBeInTheDocument();
+    expect(screen.getByTestId('next-independent-audit-required')).toBeInTheDocument();
 
     // MonthDayRangeSelector fields
     expect(screen.getByText('TPR Review Period')).toBeInTheDocument();
@@ -105,6 +109,8 @@ describe('EditUpcomingReportDates', () => {
     expect(document.getElementById('tir-review-period-end-day')).toHaveValue('30');
     expect(screen.getByTestId('tir-submission')).toHaveValue('1900-10-15');
     expect(screen.getByTestId('tir-review')).toHaveValue('1900-11-01');
+    expect(screen.getByTestId('next-field-exam')).toHaveValue('2029-08-01');
+    expect(screen.getByTestId('next-independent-audit-required')).toHaveValue('2032-08-01');
   });
 
   test('shows empty inputs when API returns null', async () => {
@@ -187,6 +193,41 @@ describe('EditUpcomingReportDates', () => {
       expect.objectContaining({ fieldExam: '2026-06-15' }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  test('auto-calculates tirSubmission and tirReview when TIR review period end changes', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    await userEvent.selectOptions(document.getElementById('tir-review-period-end-month')!, '03');
+    await userEvent.selectOptions(document.getElementById('tir-review-period-end-day')!, '31');
+
+    await waitFor(() => {
+      // 1900-03-31 + 30 days = 1900-04-30
+      expect(screen.getByTestId('tir-submission')).toHaveValue('1900-04-30');
+      // 1900-04-30 + 60 days = 1900-06-29
+      expect(screen.getByTestId('tir-review')).toHaveValue('1900-06-29');
+    });
+  });
+
+  test('auto-calculates nextFieldExam and nextIndependentAuditRequired when fieldExam changes', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('field-exam'), { target: { value: '2025-03-31' } });
+
+    await waitFor(() => {
+      // 2025-03-31 + 3 years = 2028-03-31 → 2028-03-01
+      expect(screen.getByTestId('next-field-exam')).toHaveValue('2028-03-01');
+      // 2025-03-31 + 6 years = 2031-03-31 → 2031-03-01
+      expect(screen.getByTestId('next-independent-audit-required')).toHaveValue('2031-03-01');
+    });
   });
 
   test('Cancel navigates without calling PUT', async () => {

@@ -42,6 +42,8 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
   tirReview: '1900-11-01',
+  nextFieldExam: '2029-08-01',
+  nextIndependentAuditRequired: '2032-08-01',
 };
 
 function renderComponent(props?: Partial<UpcomingReportDatesProps>) {
@@ -71,7 +73,7 @@ describe('UpcomingReportDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(7);
+    expect(noDateElements.length).toBe(9);
   });
 
   test('renders all 7 field labels', async () => {
@@ -90,6 +92,8 @@ describe('UpcomingReportDates', () => {
     expect(screen.getByText('TIR Review Period:')).toBeInTheDocument();
     expect(screen.getByText('TIR Submission:')).toBeInTheDocument();
     expect(screen.getByText('TIR Review:')).toBeInTheDocument();
+    expect(screen.getByText('Next Field Exam / Independent Audit:')).toBeInTheDocument();
+    expect(screen.getByText('Next Independent Audit Required:')).toBeInTheDocument();
   });
 
   test('renders correctly formatted values when API returns populated document', async () => {
@@ -108,6 +112,8 @@ describe('UpcomingReportDates', () => {
     expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('07/01 - 06/30');
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('10/15');
     expect(screen.getByTestId('tir-review-row')).toHaveTextContent('11/01');
+    expect(screen.getByTestId('next-field-exam-row')).toHaveTextContent('08/2029');
+    expect(screen.getByTestId('next-independent-audit-required-row')).toHaveTextContent('08/2032');
   });
 
   test('shows "No date added" for TPR Review Period when only start is defined', async () => {
