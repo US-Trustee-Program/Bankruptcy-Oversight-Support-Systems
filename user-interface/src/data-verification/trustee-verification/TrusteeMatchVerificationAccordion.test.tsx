@@ -179,7 +179,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
     await waitFor(() => {
       expect(onOrderUpdate).toHaveBeenCalledWith(
-        { message: 'Trustee match confirmed.', type: UswdsAlertStyle.Success, timeOut: 8 },
+        {
+          message: 'Trustee Jane Smith appointed to case 22-11111.',
+          type: UswdsAlertStyle.Success,
+          timeOut: 8,
+        },
         { ...sampleOrderWithCandidates, status: 'approved', resolvedTrusteeId: 'trustee-1' },
       );
     });
@@ -447,96 +451,30 @@ describe('TrusteeMatchVerificationAccordion', () => {
   });
 
   describe('Slice 3 — reject flow', () => {
-    const orderWithTwoCandidates: TrusteeMatchVerification = {
-      ...sampleOrderWithCandidates,
-      matchCandidates: [
-        {
-          trusteeId: 'trustee-1',
-          trusteeName: 'Jane Smith',
-          totalScore: 95,
-          addressScore: 90,
-          districtDivisionScore: 100,
-          chapterScore: 95,
-        },
-        {
-          trusteeId: 'trustee-2',
-          trusteeName: 'Bob Jones',
-          totalScore: 70,
-          addressScore: 65,
-          districtDivisionScore: 80,
-          chapterScore: 65,
-        },
-      ],
-    };
-
-    test('renders reject-preselection-button alongside approve-button for pending order with candidate', () => {
+    test('renders reject-button alongside approve-button for pending order with candidate', () => {
       renderWithProps({ order: sampleOrderWithCandidates });
 
       expect(screen.getByTestId('approve-button')).toBeInTheDocument();
-      expect(screen.getByTestId('reject-preselection-button')).toBeInTheDocument();
+      expect(screen.getByTestId('reject-button')).toBeInTheDocument();
     });
 
-    test('reject-preselection-button does not appear for non-pending orders (Branch B)', () => {
+    test('reject-button does not appear for non-pending orders (Branch B)', () => {
       renderWithProps({ order: { ...sampleOrderWithCandidates, status: 'rejected' } });
 
-      expect(screen.queryByTestId('reject-preselection-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
     });
 
-    test('clicking reject-preselection-button shows all-candidates table and reject button', async () => {
-      renderWithProps({ order: orderWithTwoCandidates });
-
-      fireEvent.click(screen.getByTestId('reject-preselection-button'));
-
-      await waitFor(() => {
-        expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
-        expect(screen.getByTestId('reject-button')).toBeInTheDocument();
-        expect(screen.getByTestId(`approve-candidate-trustee-1`)).toBeInTheDocument();
-        expect(screen.getByTestId(`approve-candidate-trustee-2`)).toBeInTheDocument();
-      });
-    });
-
-    test('clicking Match Trustee on a non-preselected candidate calls approve with that trusteeId', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
-      const onOrderUpdate = vi.fn();
-      renderWithProps({ order: orderWithTwoCandidates, onOrderUpdate });
-
-      fireEvent.click(screen.getByTestId('reject-preselection-button'));
-      await screen.findByTestId('approve-candidate-trustee-2');
-      fireEvent.click(screen.getByTestId('approve-candidate-trustee-2'));
-      const modalSubmit = document.getElementById(
-        `trustee-confirmation-modal-${orderWithTwoCandidates.id}-submit-button`,
-      );
-      fireEvent.click(modalSubmit!);
-
-      await waitFor(() => {
-        expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
-          orderWithTwoCandidates.id,
-          'trustee-2',
-        );
-        expect(onOrderUpdate).toHaveBeenCalledWith(
-          expect.objectContaining({ type: UswdsAlertStyle.Success }),
-          expect.objectContaining({ status: 'approved', resolvedTrusteeId: 'trustee-2' }),
-        );
-      });
-    });
-
-    test('submitting reject with no reason calls patchTrusteeVerificationOrderRejection with undefined', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
+    test('clicking reject-button opens the rejection modal', async () => {
       renderWithProps({ order: sampleOrderWithCandidates });
 
-      fireEvent.click(screen.getByTestId('reject-preselection-button'));
-      fireEvent.click(await screen.findByTestId('reject-button'));
-      // click the modal's submit button
-      const modalSubmit = document.getElementById(
-        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-      );
-      fireEvent.click(modalSubmit!);
+      fireEvent.click(screen.getByTestId('reject-button'));
 
       await waitFor(() => {
-        expect(Api2.patchTrusteeVerificationOrderRejection).toHaveBeenCalledWith(
-          sampleOrderWithCandidates.id,
-          undefined,
-        );
+        expect(
+          document.getElementById(
+            `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+          ),
+        ).toBeInTheDocument();
       });
     });
 
@@ -544,8 +482,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
       renderWithProps({ order: sampleOrderWithCandidates });
 
-      fireEvent.click(screen.getByTestId('reject-preselection-button'));
-      fireEvent.click(await screen.findByTestId('reject-button'));
+      fireEvent.click(screen.getByTestId('reject-button'));
       fireEvent.change(
         screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
         { target: { value: 'Not the right person' } },
@@ -568,8 +505,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const onOrderUpdate = vi.fn();
       renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
 
-      fireEvent.click(screen.getByTestId('reject-preselection-button'));
-      fireEvent.click(await screen.findByTestId('reject-button'));
+      fireEvent.click(screen.getByTestId('reject-button'));
+      fireEvent.change(
+        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
+        { target: { value: 'Reject reason' } },
+      );
       const modalSubmit = document.getElementById(
         `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
       );
@@ -590,8 +530,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const onOrderUpdate = vi.fn();
       renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
 
-      fireEvent.click(screen.getByTestId('reject-preselection-button'));
-      fireEvent.click(await screen.findByTestId('reject-button'));
+      fireEvent.click(screen.getByTestId('reject-button'));
+      fireEvent.change(
+        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
+        { target: { value: 'Reject reason' } },
+      );
       const modalSubmit = document.getElementById(
         `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
       );

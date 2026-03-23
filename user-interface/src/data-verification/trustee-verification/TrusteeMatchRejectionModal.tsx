@@ -1,12 +1,10 @@
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import './TrusteeMatchRejectionModal.scss';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-
 interface TrusteeMatchRejectionModalProps {
   id: string;
-  caseId: string;
-  onConfirm: (reason?: string) => void;
+  onConfirm: (reason: string) => void;
   onCancel?: () => void;
 }
 
@@ -19,12 +17,14 @@ function TrusteeMatchRejectionModal_(
   props: TrusteeMatchRejectionModalProps,
   ref: React.Ref<TrusteeMatchRejectionModalImperative>,
 ) {
-  const { id, caseId, onConfirm, onCancel } = props;
+  const { id, onConfirm, onCancel } = props;
   const modalRef = useRef<ModalRefType>(null);
   const reasonRef = useRef<HTMLTextAreaElement>(null);
+  const [hasReason, setHasReason] = useState(false);
 
   function clearReason() {
     if (reasonRef.current) reasonRef.current.value = '';
+    setHasReason(false);
   }
 
   function show() {
@@ -42,16 +42,17 @@ function TrusteeMatchRejectionModal_(
     modalId: `trustee-rejection-modal-${id}`,
     modalRef,
     submitButton: {
-      label: 'Reject',
+      label: 'Reject Trustee Confirmation Task',
       onClick: () => {
-        const reason = reasonRef.current?.value || undefined;
+        const reason = reasonRef.current?.value ?? '';
         hide();
         onConfirm(reason);
       },
       className: 'usa-button--secondary',
+      disabled: !hasReason,
     },
     cancelButton: {
-      label: 'Go back',
+      label: 'Cancel',
       onClick: () => {
         if (onCancel) onCancel();
         clearReason();
@@ -64,16 +65,19 @@ function TrusteeMatchRejectionModal_(
     <Modal
       ref={modalRef}
       modalId={`trustee-rejection-modal-${id}`}
-      className="confirm-modal"
-      heading="Reject trustee match?"
+      className="confirm-modal trustee-rejection-modal"
+      heading="Reject Trustee Confirmation Task"
       data-testid={`trustee-rejection-modal-${id}`}
       onClose={clearReason}
       content={
         <>
-          This will reject the trustee match for case <strong>{getCaseNumber(caseId)}</strong>.
+          <p>Are you sure you want to reject this task to confirm a trustee?</p>
           <div>
             <label htmlFor={`rejection-reason-${id}`} className="usa-label">
-              Reason for rejection (optional)
+              Reason for rejection{' '}
+              <abbr title="required" className="usa-hint--required">
+                *
+              </abbr>
             </label>
             <div>
               <textarea
@@ -81,6 +85,7 @@ function TrusteeMatchRejectionModal_(
                 data-testid={`rejection-reason-input-${id}`}
                 ref={reasonRef}
                 className="rejection-reason-input usa-textarea"
+                onChange={(e) => setHasReason(e.target.value.trim().length > 0)}
               ></textarea>
             </div>
           </div>
