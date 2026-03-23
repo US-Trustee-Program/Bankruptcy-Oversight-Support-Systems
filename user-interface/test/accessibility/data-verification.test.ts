@@ -83,9 +83,10 @@ test.describe('Data Verification', () => {
     accessibilityScanResults = await createAxeBuilder(page).analyze();
     expect(accessibilityScanResults.violations).toEqual([]);
 
-    // Add type filter to narrow to consolidation orders
+    // Narrow type filter to consolidation orders only (deselect transfer and trustee-match)
     await page.locator('#task-type-filter .input-container').click();
-    await page.locator('[id="option-consolidation"]').click();
+    await page.locator('[id="option-transfer"]').click();
+    await page.locator('[id="option-trustee-match"]').click();
     await page.keyboard.press('Escape');
 
     // Continue accordion navigation - fourth accordion

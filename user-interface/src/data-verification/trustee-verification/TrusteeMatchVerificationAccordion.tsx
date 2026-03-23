@@ -84,6 +84,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         order,
       );
     } finally {
+      confirmationModalRef.current?.hide();
       setIsProcessing(false);
     }
   }
@@ -119,20 +120,14 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     candidate: CandidateScore;
     showScore?: boolean;
     onApprove?: (candidate: CandidateScore) => void;
-    onRejectPreselection?: () => void;
     isProcessing?: boolean;
-    nameTestId?: string;
-    approveTestId?: string;
   };
 
   function TrusteeCandidateRow({
     candidate,
     showScore = false,
     onApprove,
-    onRejectPreselection,
     isProcessing,
-    nameTestId,
-    approveTestId,
   }: TrusteeCandidateRowProps) {
     const rowAddressLines = candidate.address
       ? [
@@ -148,7 +143,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         <div
           className="trustee-data-cell grid-col-2"
           data-cell="Name"
-          {...(nameTestId ? { 'data-testid': nameTestId } : {})}
+          data-testid={`candidate-name-${candidate.trusteeId}`}
         >
           {candidate.trusteeName}
         </div>
@@ -189,25 +184,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           {onApprove && (
             <button
               type="button"
-              data-testid={approveTestId ?? `approve-candidate-${candidate.trusteeId}`}
+              data-testid={`approve-candidate-${candidate.trusteeId}`}
               onClick={() => onApprove(candidate)}
               disabled={isProcessing}
               className="match-trustee-link"
             >
               <Icon name="check" />
               Match Trustee
-            </button>
-          )}
-          {onRejectPreselection && (
-            <button
-              type="button"
-              data-testid="reject-preselection-button"
-              onClick={onRejectPreselection}
-              disabled={isProcessing}
-              className="match-trustee-link"
-            >
-              <Icon name="close" />
-              Reject
             </button>
           )}
         </div>
@@ -219,20 +202,14 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     candidates: CandidateScore[];
     showScore?: boolean;
     onApprove?: (candidate: CandidateScore) => void;
-    onRejectPreselection?: () => void;
     isProcessing?: boolean;
-    nameTestId?: string;
-    approveTestId?: string;
   };
 
   function CandidateTable({
     candidates,
     showScore = false,
     onApprove,
-    onRejectPreselection,
     isProcessing,
-    nameTestId,
-    approveTestId,
   }: CandidateTableProps) {
     return (
       <div className="trustee-data-grid trustee-candidates-grid">
@@ -253,10 +230,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             candidate={candidate}
             showScore={showScore}
             onApprove={onApprove}
-            onRejectPreselection={onRejectPreselection}
             isProcessing={isProcessing}
-            nameTestId={nameTestId}
-            approveTestId={approveTestId}
           />
         ))}
       </div>
@@ -377,8 +351,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     candidates={[preselected]}
                     onApprove={openConfirmation}
                     isProcessing={isProcessing}
-                    nameTestId="candidate-name"
-                    approveTestId="approve-button"
                   />
                   <Link to="/trustee/search" className="search-trustee-link">
                     <Icon name="search" />
