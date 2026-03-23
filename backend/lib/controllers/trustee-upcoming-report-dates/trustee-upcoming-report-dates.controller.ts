@@ -26,9 +26,7 @@ export class TrusteeUpcomingReportDatesController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<
-    CamsHttpResponseInit | CamsHttpResponseInit<{ data: TrusteeUpcomingReportDates | null }>
-  > {
+  ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<TrusteeUpcomingReportDates>> {
     try {
       if (!context.featureFlags['display-chpt7-panel-upcoming-report-dates']) {
         throw new NotFoundError(MODULE_NAME);
