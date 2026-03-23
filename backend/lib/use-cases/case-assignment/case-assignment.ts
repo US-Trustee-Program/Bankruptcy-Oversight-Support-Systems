@@ -72,8 +72,6 @@ export class CaseAssignmentUseCase {
   ): Promise<string[]> {
     const casesRepo = factory.getCasesRepository(context);
     const assignmentRepo = factory.getAssignmentRepository(context);
-    context.logger.info(MODULE_NAME, 'New assignments:', newAssignees);
-
     const bCase = await casesRepo.getSyncedCase(caseId);
     const officesGateway = factory.getOfficesGateway(context);
     const offices = await officesGateway.getOffices(context);
