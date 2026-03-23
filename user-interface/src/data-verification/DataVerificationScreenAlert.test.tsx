@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import * as transferOrderAccordionModule from './TransferOrderAccordion';
 import * as consolidationOrderAccordionModule from './consolidation/ConsolidationOrderAccordion';
+import * as trusteeMatchVerificationAccordionModule from './trustee-verification/TrusteeMatchVerificationAccordion';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { BrowserRouter } from 'react-router-dom';
@@ -11,6 +12,7 @@ import testingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import Api2 from '@/lib/models/api2';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 
 describe('Review Orders screen - Alert', () => {
   const user = testingUtilities.setUserWithRoles([CamsRole.DataVerifier]);
@@ -183,6 +185,79 @@ describe('Review Orders screen - Alert', () => {
       expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(
         mockAlertMessage,
       );
+    });
+  });
+
+  test('should display success alert and update order status when trustee match is approved', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    sessionStorage.setItem(
+      'cams:filter:data-verification:type',
+      JSON.stringify([{ value: 'trustee-match', label: 'Trustee Mismatch' }]),
+    );
+
+    const pendingVerification: TrusteeMatchVerification = {
+      id: 'tmv-001',
+      documentType: 'TRUSTEE_MATCH_VERIFICATION',
+      orderType: 'trustee-match',
+      caseId: '081-22-11111',
+      courtId: '0881',
+      status: 'pending',
+      mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+      dxtrTrustee: { fullName: 'John Doe' },
+      matchCandidates: [
+        {
+          trusteeId: 'trustee-1',
+          trusteeName: 'Jane Smith',
+          totalScore: 95,
+          addressScore: 90,
+          districtDivisionScore: 100,
+          chapterScore: 95,
+        },
+      ],
+      createdOn: '2026-01-15T10:00:00.000Z',
+      updatedOn: '2026-01-15T10:00:00.000Z',
+      updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+      createdBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    };
+    const approvedVerification: TrusteeMatchVerification = {
+      ...pendingVerification,
+      status: 'approved',
+      resolvedTrusteeId: 'trustee-1',
+    };
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
+      data: [pendingVerification],
+    });
+
+    let renderedOrder: TrusteeMatchVerification | undefined;
+    vi.spyOn(
+      trusteeMatchVerificationAccordionModule,
+      'TrusteeMatchVerificationAccordion',
+    ).mockImplementation((props) => {
+      renderedOrder = props.order;
+      React.useEffect(() => {
+        props.onOrderUpdate(
+          { message: 'Trustee match confirmed.', type: UswdsAlertStyle.Success, timeOut: 8 },
+          approvedVerification,
+        );
+      }, [props.onOrderUpdate]);
+      return <></>;
+    });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const alertContainer = screen.getByTestId('alert-container-data-verification-alert');
+      expect(alertContainer).toHaveClass('visible');
+      expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(
+        'Trustee match confirmed.',
+      );
+      expect(renderedOrder?.status).toBe('approved');
     });
   });
 });

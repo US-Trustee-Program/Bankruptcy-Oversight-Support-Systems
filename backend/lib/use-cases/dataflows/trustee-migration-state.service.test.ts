@@ -4,6 +4,7 @@ import {
   updateMigrationState,
   completeMigration,
   failMigration,
+  resetMigrationState,
   TrusteeMigrationState,
 } from './trustee-migration-state.service';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -255,6 +256,40 @@ describe('trustee-migration-state.service', () => {
           lastUpdatedAt: expect.any(String),
         }),
       );
+    });
+  });
+
+  describe('resetMigrationState', () => {
+    test('should reset migration state to fresh start', async () => {
+      mockRepository.upsert.mockResolvedValue(undefined);
+
+      const result = await resetMigrationState(context);
+
+      expect(result.error).toBeUndefined();
+      expect(result.data).toBeUndefined();
+      expect(mockRepository.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'TRUSTEE_MIGRATION_STATE',
+          lastTrusteeId: null,
+          processedCount: 0,
+          appointmentsProcessedCount: 0,
+          errors: 0,
+          status: 'IN_PROGRESS',
+          divisionMappingVersion: '1.0.0',
+          startedAt: expect.any(String),
+          lastUpdatedAt: expect.any(String),
+        }),
+      );
+    });
+
+    test('should handle repository errors during reset', async () => {
+      mockRepository.upsert.mockRejectedValue(new Error('Database error'));
+
+      const result = await resetMigrationState(context);
+
+      expect(result.data).toBeUndefined();
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to reset migration state');
     });
   });
 });

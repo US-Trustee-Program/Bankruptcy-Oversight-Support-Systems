@@ -1,1 +1,11 @@
 TRUSTEE_ID	STATUS	DISTRICT	SERVING_STATE	CHAPTER	ACTION	OVERRIDE_STATUS	OVERRIDE_DISTRICT	OVERRIDE_STATE	OVERRIDE_CHAPTER	OVERRIDE_COURT_ID	NOTES
+1154	3	/Northern	Florida, Georgia	13	MAP	3	Northern	Georgia	13	113E	Ch13 valid only for Northern Georgia per SME
+4119	NP	/Eastern/	Maryland, Virginia, West Virginia	7	MAP	NP	NULL	Maryland	7	0416	Ch7 valid for Maryland per SME (off panel)
+4119	NP	/Eastern/	Maryland, Virginia, West Virginia	7	MAP	NP	Eastern	Virginia	7	0422	Ch7 valid for Eastern Virginia per SME (off panel)
+4119	NP	/Eastern/	Maryland, Virginia, West Virginia	7	MAP	NP	Northern	West Virginia	7	0549	Ch7 valid for Northern West Virginia per SME (off panel) - PENDING SME CONFIRMATION
+4119	NP	/Eastern/	Maryland, Virginia, West Virginia	7	MAP	NP	Southern	West Virginia	7	0550	Ch7 valid for Southern West Virginia per SME (off panel) - PENDING SME CONFIRMATION
+8661	9	Northern	Kentucky	11	SKIP	NULL	NULL	NULL	NULL	NULL	Inactive trustee - Ch11 not valid per SME
+9318	9	Eastern	Florida	11	SKIP	NULL	NULL	NULL	NULL	NULL	Inactive trustee - Ch11 not valid per SME
+15979	9	Southern/Central	Indiana	11	SKIP	NULL	NULL	NULL	NULL	NULL	Inactive trustee - Ch11 not valid per SME
+15979	O	Southern/Central	Indiana	7	SKIP	NULL	NULL	NULL	NULL	NULL	Inactive trustee - Ch7 not valid per SME
+27411	E	Northern	Virginia	7	MAP	E	Eastern	Virginia	7	0422	Elected trustee - Ch7 valid for Eastern Virginia per SME

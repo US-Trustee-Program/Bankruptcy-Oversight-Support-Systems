@@ -1,4 +1,5 @@
 import './TrusteeMatchVerificationAccordion.scss';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import Icon from '@/lib/components/uswds/Icon';
@@ -8,6 +9,8 @@ import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Api2 from '@/lib/models/api2';
 
 export interface TrusteeMatchVerificationAccordionProps {
   order: TrusteeMatchVerification;
@@ -16,10 +19,12 @@ export interface TrusteeMatchVerificationAccordionProps {
   fieldHeaders: string[];
   courts?: CourtDivisionDetails[];
   hidden?: boolean;
+  onOrderUpdate: (alertDetails: AlertDetails, order: TrusteeMatchVerification) => void;
 }
 
 export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificationAccordionProps) {
-  const { order, hidden, statusType, orderType, fieldHeaders, courts = [] } = props;
+  const { order, hidden, statusType, orderType, fieldHeaders, courts = [], onOrderUpdate } = props;
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const courtName = courts.find((c) => c.courtId === order.courtId)?.courtName ?? order.courtId;
 
@@ -31,7 +36,121 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     legacy?.cityStateZipCountry,
   ].filter(Boolean) as string[];
 
-  const strongestMatch = order.matchCandidates.length > 0 ? order.matchCandidates[0] : null;
+  const preselected =
+    order.matchCandidates.length > 0
+      ? order.matchCandidates.reduce((best, c) => (c.totalScore > best.totalScore ? c : best))
+      : undefined;
+
+  type ViewMode =
+    | 'resolved'
+    | 'pending-with-candidate'
+    | 'readonly-with-candidate'
+    | 'no-candidates';
+  let viewMode: ViewMode;
+  if (order.status === 'approved') {
+    viewMode = 'resolved';
+  } else if (preselected && order.status === 'pending') {
+    viewMode = 'pending-with-candidate';
+  } else if (preselected) {
+    viewMode = 'readonly-with-candidate';
+  } else {
+    viewMode = 'no-candidates';
+  }
+
+  async function handleApprove() {
+    setIsProcessing(true);
+    try {
+      await Api2.patchTrusteeVerificationOrderApproval(order.id, preselected!.trusteeId);
+      onOrderUpdate(
+        { message: 'Trustee match confirmed.', type: UswdsAlertStyle.Success, timeOut: 8 },
+        { ...order, status: 'approved', resolvedTrusteeId: preselected!.trusteeId },
+      );
+    } catch {
+      onOrderUpdate(
+        { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+        order,
+      );
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  type CandidateTableProps = {
+    candidate: TrusteeMatchVerification['matchCandidates'][number];
+    onApprove?: () => void;
+    isProcessing?: boolean;
+  };
+
+  function CandidateTable({ candidate, onApprove, isProcessing }: CandidateTableProps) {
+    return (
+      <div className="trustee-data-grid trustee-candidates-grid">
+        <div className="trustee-data-header grid-row grid-gap-lg">
+          <div className="trustee-data-cell grid-col-2">Name</div>
+          <div className="trustee-data-cell grid-col-2">Address</div>
+          <div className="trustee-data-cell grid-col-1">Phone</div>
+          <div className="trustee-data-cell grid-col-2">Email</div>
+          <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
+          <div className="trustee-data-cell grid-col-2">Action</div>
+        </div>
+        <div className="trustee-data-row grid-row grid-gap-lg">
+          <div
+            className="trustee-data-cell grid-col-2"
+            data-cell="Name"
+            data-testid="candidate-name"
+          >
+            {candidate.trusteeName}
+          </div>
+          <div className="trustee-data-cell grid-col-2" data-cell="Address">
+            {candidate.address &&
+              [
+                candidate.address.address1,
+                candidate.address.address2,
+                candidate.address.address3,
+                `${candidate.address.city}, ${candidate.address.state} ${candidate.address.zipCode}`,
+              ]
+                .filter(Boolean)
+                .map((line, i, arr) => (
+                  <span key={i}>
+                    {line}
+                    {i < arr.length - 1 && <br />}
+                  </span>
+                ))}
+          </div>
+          <div className="trustee-data-cell grid-col-1" data-cell="Phone">
+            {candidate.phone
+              ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
+              : ''}
+          </div>
+          <div className="trustee-data-cell grid-col-2" data-cell="Email">
+            {candidate.email ?? ''}
+          </div>
+          <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
+            {candidate.appointments?.map((appt, i, arr) => (
+              <span key={i}>
+                {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
+                {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
+                {i < arr.length - 1 && <br />}
+              </span>
+            ))}
+          </div>
+          <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
+            {onApprove && (
+              <button
+                type="button"
+                data-testid="approve-button"
+                onClick={onApprove}
+                disabled={isProcessing}
+                className="match-trustee-link"
+              >
+                <Icon name="check" />
+                Match Trustee
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Accordion key={order.id} id={`order-list-${order.id}`} hidden={hidden}>
@@ -81,116 +200,97 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         className="accordion-content trustee-match-content"
         data-testid={`accordion-content-${order.id}`}
       >
-        <p className="problem-statement">
-          Trustee is inactive in CAMS but was appointed to case:{' '}
-          <Link to={`/case-detail/${order.caseId}`} className="case-link">
-            <Icon name="launch" />
-            {getCaseNumber(order.caseId)}
-          </Link>
-        </p>
-
-        <h3>Court Information</h3>
-        <div className="trustee-data-grid trustee-info-grid">
-          <div className="trustee-data-header grid-row grid-gap-lg">
-            <div className="trustee-data-cell grid-col-2">Name</div>
-            <div className="trustee-data-cell grid-col-2">Address</div>
-            <div className="trustee-data-cell grid-col-1">Phone</div>
-            <div className="trustee-data-cell grid-col-2">Email</div>
-            <div className="trustee-data-cell grid-col-3 no-border"></div>
-            <div className="trustee-data-cell grid-col-2 no-border"></div>
-          </div>
-          <div className="trustee-data-row grid-row grid-gap-lg">
-            <div className="trustee-data-cell grid-col-2" data-cell="Name">
-              {order.dxtrTrustee.fullName}
-            </div>
-            <div className="trustee-data-cell grid-col-2" data-cell="Address">
-              {addressLines.map((line, i) => (
-                <span key={i}>
-                  {line}
-                  {i < addressLines.length - 1 && <br />}
-                </span>
-              ))}
-            </div>
-            <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-              {legacy?.phone ?? ''}
-            </div>
-            <div className="trustee-data-cell grid-col-2" data-cell="Email">
-              {legacy?.email ?? ''}
-            </div>
-            <div className="trustee-data-cell grid-col-3 no-border"></div>
-            <div className="trustee-data-cell grid-col-2 no-border"></div>
-          </div>
-        </div>
-
-        <h3>CAMS Strongest Match</h3>
-        {strongestMatch ? (
+        {viewMode === 'resolved' ? (
+          <p className="resolved-statement" data-testid="resolved-statement">
+            Trustee{' '}
+            {order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
+              ?.trusteeName ?? order.resolvedTrusteeId}{' '}
+            was appointed to case:{' '}
+            <Link to={`/case-detail/${order.caseId}`} className="case-link">
+              <Icon name="launch" />
+              {getCaseNumber(order.caseId)}
+            </Link>
+          </p>
+        ) : (
           <>
-            <div className="trustee-data-grid trustee-candidates-grid">
+            <p className="problem-statement">
+              Trustee is inactive in CAMS but was appointed to case:{' '}
+              <Link to={`/case-detail/${order.caseId}`} className="case-link">
+                <Icon name="launch" />
+                {getCaseNumber(order.caseId)}
+              </Link>
+            </p>
+
+            <h3>Court Information</h3>
+            <div className="trustee-data-grid trustee-info-grid" data-testid="dxtr-trustee-info">
               <div className="trustee-data-header grid-row grid-gap-lg">
                 <div className="trustee-data-cell grid-col-2">Name</div>
                 <div className="trustee-data-cell grid-col-2">Address</div>
                 <div className="trustee-data-cell grid-col-1">Phone</div>
                 <div className="trustee-data-cell grid-col-2">Email</div>
-                <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
-                <div className="trustee-data-cell grid-col-2">Action</div>
+                <div className="trustee-data-cell grid-col-3 no-border"></div>
+                <div className="trustee-data-cell grid-col-2 no-border"></div>
               </div>
               <div className="trustee-data-row grid-row grid-gap-lg">
-                <div className="trustee-data-cell grid-col-2" data-cell="Name">
-                  {strongestMatch.trusteeName}
+                <div
+                  className="trustee-data-cell grid-col-2"
+                  data-cell="Name"
+                  data-testid="dxtr-trustee-name"
+                >
+                  {order.dxtrTrustee.fullName}
                 </div>
                 <div className="trustee-data-cell grid-col-2" data-cell="Address">
-                  {strongestMatch.address &&
-                    [
-                      strongestMatch.address.address1,
-                      strongestMatch.address.address2,
-                      strongestMatch.address.address3,
-                      `${strongestMatch.address.city}, ${strongestMatch.address.state} ${strongestMatch.address.zipCode}`,
-                    ]
-                      .filter(Boolean)
-                      .map((line, i, arr) => (
-                        <span key={i}>
-                          {line}
-                          {i < arr.length - 1 && <br />}
-                        </span>
-                      ))}
-                </div>
-                <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-                  {strongestMatch.phone
-                    ? `${strongestMatch.phone.number}${strongestMatch.phone.extension ? ` x${strongestMatch.phone.extension}` : ''}`
-                    : ''}
-                </div>
-                <div className="trustee-data-cell grid-col-2" data-cell="Email">
-                  {strongestMatch.email ?? ''}
-                </div>
-                <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
-                  {strongestMatch.appointments?.map((appt, i, arr) => (
+                  {addressLines.map((line, i) => (
                     <span key={i}>
-                      {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
-                      {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
-                      {i < arr.length - 1 && <br />}
+                      {line}
+                      {i < addressLines.length - 1 && <br />}
                     </span>
                   ))}
                 </div>
-                <div className="trustee-data-cell grid-col-2" data-cell="Action">
-                  <Link to="#" className="match-trustee-link">
-                    <Icon name="check" />
-                    Match Trustee
-                  </Link>
+                <div className="trustee-data-cell grid-col-1" data-cell="Phone">
+                  {legacy?.phone ?? ''}
                 </div>
+                <div className="trustee-data-cell grid-col-2" data-cell="Email">
+                  {legacy?.email ?? ''}
+                </div>
+                <div className="trustee-data-cell grid-col-3 no-border"></div>
+                <div className="trustee-data-cell grid-col-2 no-border"></div>
               </div>
             </div>
-            <Link to="/trustee/search" className="search-trustee-link">
-              <Icon name="search" />
-              Search for a different trustee.
-            </Link>
+
+            <h3>CAMS Strongest Match</h3>
+            {viewMode === 'pending-with-candidate' && preselected && (
+              <div className="trustee-match-candidate-section" data-testid="candidate-info">
+                <CandidateTable
+                  candidate={preselected}
+                  onApprove={handleApprove}
+                  isProcessing={isProcessing}
+                />
+                <Link to="/trustee/search" className="search-trustee-link">
+                  <Icon name="search" />
+                  Search for a different trustee
+                </Link>
+              </div>
+            )}
+            {viewMode === 'readonly-with-candidate' && preselected && (
+              <>
+                <CandidateTable candidate={preselected} />
+                <Link to="/trustee/search" className="search-trustee-link">
+                  <Icon name="search" />
+                  Search for a different trustee.
+                </Link>
+              </>
+            )}
+            {viewMode === 'no-candidates' && (
+              <p className="no-candidates-message">
+                There are no suggested matches in CAMS.{' '}
+                <Link to="/trustee/search" className="search-trustee-link">
+                  <Icon name="search" />
+                  Search for a trustee
+                </Link>
+              </p>
+            )}
           </>
-        ) : (
-          <p className="no-candidates-message">
-            There are no suggested matches in CAMS.{' '}
-            <Link to="/trustee/search" className="search-trustee-link">
-              Search for a trustee.
-            </Link>
-          </p>
         )}
       </section>
     </Accordion>

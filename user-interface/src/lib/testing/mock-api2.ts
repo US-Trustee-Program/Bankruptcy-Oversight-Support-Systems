@@ -2388,6 +2388,13 @@ async function getTrusteeMatchVerifications(): Promise<ResponseBody<TrusteeMatch
   return get<TrusteeMatchVerification[]>(`/trustee-match-verification`);
 }
 
+async function patchTrusteeVerificationOrderApproval(
+  _id: string,
+  _resolvedTrusteeId: string,
+): Promise<void> {
+  return;
+}
+
 async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSummary[]>> {
   return get<CaseSummary[]>(`/orders-suggestions/${caseId}/`);
 }
@@ -2847,6 +2854,7 @@ const MockApi2 = {
   getOffices,
   getOrders,
   getTrusteeMatchVerifications,
+  patchTrusteeVerificationOrderApproval,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,
