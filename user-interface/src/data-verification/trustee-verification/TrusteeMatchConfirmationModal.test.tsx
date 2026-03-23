@@ -66,7 +66,7 @@ describe('TrusteeMatchConfirmationModal', () => {
 
     await waitFor(() => {
       expect(document.querySelector('.usa-modal__heading')).toHaveTextContent('Confirm Trustee');
-      expect(screen.getByText('Jane Smith', { hidden: true })).toBeInTheDocument();
+      expect(screen.getByText('Jane Smith')).toBeInTheDocument();
     });
   });
 
@@ -137,7 +137,7 @@ describe('TrusteeMatchConfirmationModal', () => {
     act(() => modalRef.current?.show(minimalCandidate));
 
     await waitFor(() => {
-      expect(screen.getByText('Bob Jones', { hidden: true })).toBeInTheDocument();
+      expect(screen.getByText('Bob Jones')).toBeInTheDocument();
     });
   });
 });
