@@ -195,5 +195,103 @@ describe('TrusteeUpcomingReportDatesController', () => {
         status: 400,
       });
     });
+
+    test('PUT with tprReviewPeriodStart set but tprReviewPeriodEnd null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tprReviewPeriodStart: '1900-03-01', tprReviewPeriodEnd: null }),
+      });
+
+      const controller = new TrusteeUpcomingReportDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tprReviewPeriodEnd set but tprReviewPeriodStart null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tprReviewPeriodStart: null, tprReviewPeriodEnd: '1900-06-30' }),
+      });
+
+      const controller = new TrusteeUpcomingReportDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tirReviewPeriodStart set but tirReviewPeriodEnd null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tirReviewPeriodStart: '1900-03-01', tirReviewPeriodEnd: null }),
+      });
+
+      const controller = new TrusteeUpcomingReportDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with tirReviewPeriodEnd set but tirReviewPeriodStart null returns 400', async () => {
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tirReviewPeriodStart: null, tirReviewPeriodEnd: '1900-06-30' }),
+      });
+
+      const controller = new TrusteeUpcomingReportDatesController(context);
+
+      await expect(controller.handleRequest(context)).rejects.toMatchObject({
+        status: 400,
+      });
+    });
+
+    test('PUT with both tpr review period fields set returns 200', async () => {
+      vi.spyOn(
+        TrusteeUpcomingReportDatesUseCase.prototype,
+        'upsertUpcomingReportDates',
+      ).mockResolvedValue(undefined);
+
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({
+          tprReviewPeriodStart: '1900-03-01',
+          tprReviewPeriodEnd: '1900-06-30',
+        }),
+      });
+
+      const controller = new TrusteeUpcomingReportDatesController(context);
+      const response = await controller.handleRequest(context);
+
+      expect(response.statusCode).toBe(HttpStatusCodes.OK);
+    });
+
+    test('PUT with both tir review period fields set returns 200', async () => {
+      vi.spyOn(
+        TrusteeUpcomingReportDatesUseCase.prototype,
+        'upsertUpcomingReportDates',
+      ).mockResolvedValue(undefined);
+
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({
+          tirReviewPeriodStart: '1900-03-01',
+          tirReviewPeriodEnd: '1900-06-30',
+        }),
+      });
+
+      const controller = new TrusteeUpcomingReportDatesController(context);
+      const response = await controller.handleRequest(context);
+
+      expect(response.statusCode).toBe(HttpStatusCodes.OK);
+    });
   });
 });

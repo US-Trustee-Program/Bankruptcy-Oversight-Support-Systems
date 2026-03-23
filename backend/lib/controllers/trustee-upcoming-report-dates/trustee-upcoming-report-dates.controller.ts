@@ -10,6 +10,7 @@ import {
   DATE_FIELDS,
   TrusteeUpcomingReportDates,
   TrusteeUpcomingReportDatesInput,
+  validateTrusteeUpcomingReportDates,
 } from '@common/cams/trustee-upcoming-report-dates';
 import Validators from '@common/cams/validators';
 import { NotFoundError } from '../../common-errors/not-found-error';
@@ -55,6 +56,14 @@ export class TrusteeUpcomingReportDatesController implements CamsController {
             message: `Invalid ISO date in field(s): ${invalidFields.join(', ')}`,
           });
         }
+        const validationResult = validateTrusteeUpcomingReportDates(input);
+        if (!validationResult.valid) {
+          const messages = Object.values(validationResult.reasonMap ?? {})
+            .flatMap((r) => r.reasons)
+            .join(' ');
+          throw new BadRequestError(MODULE_NAME, { message: messages });
+        }
+
         await useCase.upsertUpcomingReportDates(
           trusteeId,
           appointmentId,
