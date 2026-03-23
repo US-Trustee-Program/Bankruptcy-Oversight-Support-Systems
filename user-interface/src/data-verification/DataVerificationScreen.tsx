@@ -98,6 +98,17 @@ export default function DataVerificationScreen() {
     alertRef.current?.show();
   }
 
+  function handleTrusteeMatchVerificationUpdate(
+    alertDetails: AlertDetails,
+    updatedOrder: TrusteeMatchVerification,
+  ) {
+    setOrderList((prev) =>
+      prev.map((order) => (order.id === updatedOrder.id ? updatedOrder : order)),
+    );
+    setReviewOrderAlert(alertDetails);
+    alertRef.current?.show();
+  }
+
   function handleTypeFilter(selections: ComboOption[]) {
     setTypeSelections(selections);
   }
@@ -229,6 +240,7 @@ export default function DataVerificationScreen() {
             fieldHeaders={accordionFieldHeaders}
             courts={courts}
             hidden={isHidden}
+            onOrderUpdate={handleTrusteeMatchVerificationUpdate}
           ></TrusteeMatchVerificationAccordion>
         );
       } else {
@@ -321,6 +333,18 @@ export default function DataVerificationScreen() {
                     pluralLabel="statuses"
                   />
                 </div>
+                {orderList.length === 0 && (
+                  <Alert
+                    id="no-pending-orders"
+                    type={UswdsAlertStyle.Info}
+                    title="No data verification tasks found"
+                    message="There are no data verification tasks."
+                    show={true}
+                    inline={true}
+                    className="measure-6"
+                    slim={true}
+                  ></Alert>
+                )}
                 {pendingItemCount === 0 && visibleItemCount > 0 && (
                   <Alert
                     id="no-pending-orders"

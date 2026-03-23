@@ -143,6 +143,27 @@ describe('Review Orders screen', () => {
     expect(consolidationOption).toBeInTheDocument();
   });
 
+  test('should show "no tasks" alert when order list is empty', async () => {
+    setupFeatureFlags();
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const spinner = document.querySelector('.loading-spinner');
+      expect(spinner).not.toBeInTheDocument();
+    });
+
+    await waitFor(() => {
+      const alert = screen.getByTestId('alert-no-pending-orders');
+      expect(alert).toBeInTheDocument();
+    });
+  });
+
   test('should show "all cases reviewed" alert when order list does not contain pending orders', async () => {
     setupFeatureFlags();
     const ordersResponse = {

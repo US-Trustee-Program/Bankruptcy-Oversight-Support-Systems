@@ -94,7 +94,8 @@ export type Trustee = TrusteeData &
     legacy?: LegacyAddress & {
       phone?: string;
       email?: string;
-      truId?: string;
+      truIds?: string[];
+      addresses?: LegacyAddress[];
     };
   };
 
@@ -102,7 +103,8 @@ export type Trustee = TrusteeData &
 export type TrusteeInput = TrusteeCore &
   NullableOptionalFields<TrusteeOptionalFields> & {
     legacy?: {
-      truId?: string;
+      truIds?: string[];
+      addresses?: LegacyAddress[];
     };
   };
 

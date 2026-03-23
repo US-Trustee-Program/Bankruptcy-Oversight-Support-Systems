@@ -30,8 +30,8 @@ export default async function handler(
 }
 
 app.http('trustee-match-verification', {
-  methods: ['GET'],
+  methods: ['GET', 'PATCH'],
   authLevel: 'anonymous',
   handler,
-  route: 'trustee-match-verification',
+  route: 'trustee-match-verification/{id?}',
 });

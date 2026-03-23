@@ -18,5 +18,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'phonetic-search-enabled': true,
   'show-debtor-name-column': true,
   'display-chpt7-panel-upcoming-report-dates': true,
-  'trustee-verification-enabled': false,
+  'trustee-verification-enabled': true,
 };

@@ -62,6 +62,7 @@ import {
 } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 import { Identifiable } from '@common/cams/document';
+import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 
 export type ReplaceResult = {
   id: string;
@@ -308,6 +309,11 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   listTrustees(): Promise<Trustee[]>;
   findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null>;
   findTrusteesByName(name: string): Promise<Trustee[]>;
+  findTrusteeByNameAndState(
+    firstName: string,
+    lastName: string,
+    state: string,
+  ): Promise<Trustee | null>;
   updateTrustee(
     id: string,
     input: Partial<TrusteeInput>,
@@ -321,6 +327,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
     id: string,
     updates: Partial<TrusteeOversightAssignment>,
   ): Promise<TrusteeOversightAssignment>;
+  deleteAll(): Promise<number>;
 }
 
 export interface TrusteeAppointmentsRepository extends Releasable {
@@ -342,6 +349,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   findByCaseId(caseId: string): Promise<CaseAppointment[]>;
   delete(id: string): Promise<void>;
+  deleteAll(): Promise<number>;
 }
 
 export interface TrusteeAssistantsRepository extends Releasable {
@@ -499,11 +507,25 @@ export interface TrusteeUpcomingReportDatesRepository
 
 export interface TrusteeMatchVerificationRepository extends Releasable {
   getVerification(caseId: string): Promise<TrusteeMatchVerification | null>;
+  findById(id: string): Promise<TrusteeMatchVerification>;
   upsertVerification(doc: TrusteeMatchVerification): Promise<void>;
   search(predicate?: { status?: OrderStatus[] }): Promise<TrusteeMatchVerification[]>;
+  update(id: string, updates: Partial<TrusteeMatchVerification>): Promise<TrusteeMatchVerification>;
 }
 
 export interface UserGroupsRepository extends Releasable {
   upsertUserGroupsBatch(context: ApplicationContext, userGroups: UserGroup[]): Promise<void>;
   getUserGroupsByNames(context: ApplicationContext, groupNames: string[]): Promise<UserGroup[]>;
+}
+
+export interface TrusteeProfessionalIdsRepository extends Releasable {
+  createProfessionalId(
+    camsTrusteeId: string,
+    acmsProfessionalId: string,
+    user: CamsUserReference,
+  ): Promise<TrusteeProfessionalId>;
+  findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]>;
+  findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;
+  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<void>;
+  deleteAll(): Promise<number>;
 }

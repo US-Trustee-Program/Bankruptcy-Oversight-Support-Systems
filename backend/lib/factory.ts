@@ -31,6 +31,7 @@ import {
   TrusteeAssistantsRepository,
   TrusteeNotesMetricsState,
   TrusteeNotesRepository,
+  TrusteeProfessionalIdsRepository,
   TrusteesRepository,
   UserGroupsRepository,
   UserSessionCacheRepository,
@@ -78,6 +79,7 @@ import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/tr
 import { TrusteeAssistantsMongoRepository } from './adapters/gateways/mongo/trustee-assistants.mongo.repository';
 import { TrusteeMatchVerificationMongoRepository } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
 import { TrusteeUpcomingReportDatesMongoRepository } from './adapters/gateways/mongo/trustee-upcoming-report-dates.mongo.repository';
+import { TrusteeProfessionalIdsMongoRepository } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
 import {
@@ -485,6 +487,17 @@ const getApiToDataflowsGateway = (context: ApplicationContext): ApiToDataflowsGa
   return new ApiToDataflowsGatewayImpl(context);
 };
 
+const getTrusteeProfessionalIdsRepository = (
+  context: ApplicationContext,
+): TrusteeProfessionalIdsRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = TrusteeProfessionalIdsMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
 const factory = {
   getAcmsGateway,
   getAtsGateway,
@@ -520,6 +533,7 @@ const factory = {
   getTrusteeNotesRepository,
   getTrusteeUpcomingReportDatesRepository,
   getTrusteeMatchVerificationRepository,
+  getTrusteeProfessionalIdsRepository,
   getListsGateway,
   getUserGroupsRepository,
   getApiToDataflowsGateway,

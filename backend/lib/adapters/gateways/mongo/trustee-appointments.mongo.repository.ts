@@ -256,4 +256,16 @@ export class TrusteeAppointmentsMongoRepository
       });
     }
   }
+
+  async deleteAll(): Promise<number> {
+    try {
+      const doc = using<TrusteeAppointmentDocument>();
+      const query = doc('documentType').equals('TRUSTEE_APPOINTMENT');
+      return await this.getAdapter<TrusteeAppointmentDocument>().deleteMany(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to delete all trustee appointments.',
+      });
+    }
+  }
 }

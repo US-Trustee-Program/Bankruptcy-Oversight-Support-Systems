@@ -309,6 +309,156 @@ describe('TrusteesMongoRepository', () => {
     });
   });
 
+  describe('findTrusteeByNameAndState', () => {
+    test('should return trustee when found by name and state', async () => {
+      const mockTrustee = {
+        id: 'trustee-123',
+        trusteeId: 'trustee-123',
+        name: 'John Doe',
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US',
+          },
+        },
+        documentType: 'TRUSTEE',
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUser,
+      };
+
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(mockTrustee as TrusteeDocument);
+
+      const result = await repository.findTrusteeByNameAndState('John', 'Doe', 'NY');
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'REGEX',
+            leftOperand: { name: 'name' },
+            rightOperand: /\bJohn\b.*\bDoe\b/i,
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'public.address.state' },
+            rightOperand: 'NY',
+          },
+        ],
+      });
+      expect(result).toEqual(mockTrustee);
+    });
+
+    test('should normalize name components before querying', async () => {
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(null);
+
+      await repository.findTrusteeByNameAndState('  John  ', '  Doe  ', 'ny');
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'REGEX',
+            leftOperand: { name: 'name' },
+            rightOperand: /\bJohn\b.*\bDoe\b/i,
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'public.address.state' },
+            rightOperand: 'NY',
+          },
+        ],
+      });
+    });
+
+    test('should handle multiple spaces in names', async () => {
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(null);
+
+      await repository.findTrusteeByNameAndState('John   Michael', 'Doe   Smith', 'NY');
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'REGEX',
+            leftOperand: { name: 'name' },
+            rightOperand: /\bJohn Michael\b.*\bDoe Smith\b/i,
+          },
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'public.address.state' },
+            rightOperand: 'NY',
+          },
+        ],
+      });
+    });
+
+    test('should return null when no trustee is found', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new NotFoundError('TEST'),
+      );
+
+      const result = await repository.findTrusteeByNameAndState('Jane', 'Smith', 'CA');
+
+      expect(result).toBeNull();
+    });
+
+    test('should propagate non-NotFoundError exceptions', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
+
+      await expect(repository.findTrusteeByNameAndState('John', 'Doe', 'NY')).rejects.toThrow();
+    });
+
+    test('should escape special regex characters in names', async () => {
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(null);
+
+      await repository.findTrusteeByNameAndState("O'Brien", 'Smith-Jones', 'NY');
+
+      // The regex should escape special characters
+      expect(mockAdapter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          conjunction: 'AND',
+          values: expect.arrayContaining([
+            expect.objectContaining({
+              condition: 'REGEX',
+              leftOperand: { name: 'name' },
+              rightOperand: expect.any(RegExp),
+            }),
+          ]),
+        }),
+      );
+    });
+  });
+
   describe('getTrustee', () => {
     test('should successfully retrieve a trustee by ID', async () => {
       const id = 'trustee-123';
@@ -961,6 +1111,39 @@ describe('TrusteesMongoRepository', () => {
 
       expect(actual.message).toMatch(/Oversight assignment/);
       expect(mockUpdateAdapter).toHaveBeenCalledWith(expect.any(Object), expect.any(Object));
+    });
+  });
+
+  describe('deleteAll', () => {
+    test('should delete all trustees successfully', async () => {
+      const deletedCount = 42;
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockResolvedValue(deletedCount);
+
+      const result = await repository.deleteAll();
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'TRUSTEE',
+      });
+      expect(result).toBe(deletedCount);
+    });
+
+    test('should handle database errors when deleting all trustees', async () => {
+      const error = new Error('Database connection failed');
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
+        .mockRejectedValue(error);
+
+      await expect(repository.deleteAll()).rejects.toThrow('Failed to delete all trustees.');
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        condition: 'EQUALS',
+        leftOperand: { name: 'documentType' },
+        rightOperand: 'TRUSTEE',
+      });
     });
   });
 
