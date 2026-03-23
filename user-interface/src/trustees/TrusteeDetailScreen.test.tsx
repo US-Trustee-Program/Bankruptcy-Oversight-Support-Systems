@@ -7,6 +7,8 @@ import { ContactInformation } from '@common/cams/contact';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES } from '@/lib/hooks/UseFeatureFlags';
 
 const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
@@ -82,6 +84,9 @@ describe('TrusteeDetailScreen', () => {
     mockOnEditInternalProfile.mockClear();
 
     vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]: true,
+    });
   });
 
   afterEach(() => {
@@ -522,6 +527,38 @@ describe('TrusteeDetailScreen', () => {
 
       await waitFor(() => {
         expect(screen.getByRole('heading', { level: 2, name: 'Trustee' })).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('upcoming-report-dates/edit route', () => {
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+    });
+
+    test('should render UpcomingReportDatesForm when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is enabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]: true,
+      });
+      vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+
+      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-report-dates/edit']);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+      });
+    });
+
+    test('should redirect home when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]: false,
+      });
+
+      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-report-dates/edit']);
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/my-cases');
       });
     });
   });

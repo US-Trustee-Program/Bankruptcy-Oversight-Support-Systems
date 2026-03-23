@@ -55,6 +55,10 @@ import {
   BankruptcySoftwareListItem,
 } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
+import {
+  TrusteeUpcomingReportDates,
+  TrusteeUpcomingReportDatesInput,
+} from '@common/cams/trustee-upcoming-report-dates';
 
 export const API_CACHE_NAMESPACE = 'api:';
 
@@ -538,6 +542,23 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
   return api().get<TrusteeOversightAssignment[]>(`/trustees/${trusteeId}/oversight-assignments`);
 }
 
+async function getUpcomingReportDates(trusteeId: string, appointmentId: string) {
+  return api().get<TrusteeUpcomingReportDates | null>(
+    `/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-report-dates`,
+  );
+}
+
+async function putUpcomingReportDates(
+  trusteeId: string,
+  appointmentId: string,
+  input: TrusteeUpcomingReportDatesInput,
+) {
+  return api().put(
+    `/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-report-dates`,
+    input,
+  );
+}
+
 async function createTrusteeOversightAssignment(
   trusteeId: string,
   userId: string,
@@ -561,6 +582,8 @@ export const _Api2 = {
   createTrusteeAssistant,
   updateTrusteeAssistant,
   deleteTrusteeAssistant,
+  getUpcomingReportDates,
+  putUpcomingReportDates,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   postTrustee,

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import AppointmentCard, { AppointmentCardProps } from './AppointmentCard';
@@ -7,6 +7,9 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import userEvent from '@testing-library/user-event';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
+import Api2 from '@/lib/models/api2';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 
@@ -25,6 +28,11 @@ describe('AppointmentCard', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     vi.clearAllMocks();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
   const mockAppointment: TrusteeAppointment = {
     id: 'appointment-001',
@@ -270,5 +278,57 @@ describe('AppointmentCard', () => {
 
     const editButton = screen.queryByRole('button', { name: /edit trustee appointment/i });
     expect(editButton).not.toBeInTheDocument();
+  });
+
+  test('renders UpcomingReportDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
+    renderWithProps({
+      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upcoming-report-dates-card')).toBeInTheDocument();
+    });
+  });
+
+  test('does not render UpcomingReportDates for non-panel appointment', async () => {
+    renderWithProps({
+      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'converted-case' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByTestId('upcoming-report-dates-card')).not.toBeInTheDocument();
+  });
+
+  test('does not render UpcomingReportDates for non-Ch7 appointment', async () => {
+    renderWithProps({
+      appointment: { ...mockAppointment, chapter: '13', appointmentType: 'panel' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByTestId('upcoming-report-dates-card')).not.toBeInTheDocument();
+  });
+
+  test('does not render UpcomingReportDates for non-TrusteeAdmin user', async () => {
+    TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
+
+    renderWithProps({
+      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByTestId('upcoming-report-dates-card')).not.toBeInTheDocument();
+  });
+
+  test('does not render UpcomingReportDates when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', async () => {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]: false,
+    });
+
+    renderWithProps({
+      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByTestId('upcoming-report-dates-card')).not.toBeInTheDocument();
   });
 });

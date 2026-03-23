@@ -38,6 +38,7 @@ import {
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
+import { TrusteeUpcomingReportDates } from '@common/cams/trustee-upcoming-report-dates';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
@@ -2758,6 +2759,21 @@ async function postCaseReload(_caseId: string) {
   return;
 }
 
+async function getUpcomingReportDates(
+  _trusteeId: string,
+  _appointmentId: string,
+): Promise<ResponseBody<TrusteeUpcomingReportDates | null>> {
+  return { data: null };
+}
+
+async function putUpcomingReportDates(
+  _trusteeId: string,
+  _appointmentId: string,
+  _input: unknown,
+): Promise<ResponseBody<null>> {
+  return { data: null };
+}
+
 async function getTrusteeOversightAssignments(
   trusteeId: string,
 ): Promise<ResponseBody<TrusteeOversightAssignment[]>> {
@@ -2856,6 +2872,8 @@ const MockApi2 = {
   deleteBank,
   postBank,
   getBanks,
+  getUpcomingReportDates,
+  putUpcomingReportDates,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   getOversightStaff,

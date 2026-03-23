@@ -21,6 +21,7 @@ import {
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
   TrusteeAssistantsRepository,
+  TrusteeUpcomingReportDatesRepository,
   UpdateResult,
   UserGroupsRepository,
   UserSessionCacheRepository,
@@ -51,6 +52,7 @@ export class MockMongoRepository
     TrusteeAppointmentsRepository,
     TrusteeAssistantsRepository,
     TrusteeMatchVerificationRepository,
+    TrusteeUpcomingReportDatesRepository,
     ListsRepository,
     UserGroupsRepository
 {
@@ -400,5 +402,13 @@ export class MockMongoRepository
 
   upsertVerification(..._ignore: any[]): Promise<void> {
     throw new Error('Method not implemented.');
+  }
+
+  getByAppointmentId(..._ignore: any[]): Promise<any> {
+    return Promise.resolve(null);
+  }
+
+  createHistory(..._ignore: any[]): Promise<void> {
+    return Promise.resolve();
   }
 }

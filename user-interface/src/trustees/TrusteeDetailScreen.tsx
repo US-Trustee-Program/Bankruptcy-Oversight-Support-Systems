@@ -14,6 +14,7 @@ import TrusteeDetailAuditHistory from './panels/TrusteeDetailAuditHistory';
 import TrusteeDetailNavigation, { mapTrusteeDetailNavState } from './TrusteeDetailNavigation';
 import TrusteeOtherInfoForm from './forms/TrusteeOtherInfoForm';
 import NotFound from '@/lib/components/NotFound';
+import { GoHome } from '@/lib/components/GoHome';
 import TrusteeAssignedStaff from './panels/TrusteeAssignedStaff';
 import TrusteeAppointments from './panels/TrusteeAppointments';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -23,8 +24,12 @@ import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
 import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
+import UpcomingReportDatesForm from './forms/UpcomingReportDatesForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
+import useFeatureFlags, {
+  DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES,
+} from '@/lib/hooks/UseFeatureFlags';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
   trustee: Trustee | null;
@@ -57,7 +62,7 @@ export default function TrusteeDetailScreen() {
   const [softwareOptions, setSoftwareOptions] = useState<ComboOption[]>([]);
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
-
+  const featureFlags = useFeatureFlags();
   function openEditPublicProfile() {
     navigate(`/trustees/${trusteeId}/contact/edit/public`);
   }
@@ -234,6 +239,12 @@ export default function TrusteeDetailScreen() {
       content: <EditTrusteeAppointment />,
     },
     {
+      path: 'appointments/:appointmentId/upcoming-report-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES],
+      subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
+      content: <UpcomingReportDatesForm />,
+    },
+    {
       path: 'assigned-staff',
       subHeading: 'Trustee',
       content: (
@@ -282,14 +293,18 @@ export default function TrusteeDetailScreen() {
       <DocumentTitle name="Trustee Detail" />
 
       <Routes>
-        {routeConfigs.map(({ path, subHeading, content }) => (
+        {routeConfigs.map(({ path, subHeading, content, disabled }) => (
           <Route
             key={path}
             path={path}
             element={
-              <TrusteeHeader trustee={trustee} isLoading={isLoading} subHeading={subHeading}>
-                {content}
-              </TrusteeHeader>
+              disabled ? (
+                <GoHome />
+              ) : (
+                <TrusteeHeader trustee={trustee} isLoading={isLoading} subHeading={subHeading}>
+                  {content}
+                </TrusteeHeader>
+              )
             }
           />
         ))}

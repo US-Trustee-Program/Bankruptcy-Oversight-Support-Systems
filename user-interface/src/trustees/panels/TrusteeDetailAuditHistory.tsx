@@ -18,6 +18,15 @@ import {
   getAppointmentDetails,
   ZoomInfo,
 } from '@common/cams/trustees';
+import {
+  TrusteeUpcomingReportDatesHistory,
+  TrusteeUpcomingReportDates,
+  isoToMMDDYYYY,
+  isoToMMYYYY,
+  isoToMMDD,
+  isoRangeToMMDD,
+} from '@common/cams/trustee-upcoming-report-dates';
+import React from 'react';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
 import { CamsRole } from '@common/cams/roles';
@@ -345,6 +354,97 @@ function ShowTrusteeAssistantHistory(props: ShowTrusteeAssistantHistoryProps) {
   );
 }
 
+type ReportDateFieldConfig = {
+  key: keyof TrusteeUpcomingReportDates;
+  label: string;
+  format: (data: Partial<TrusteeUpcomingReportDates>) => string;
+};
+
+const REPORT_DATE_FIELD_CONFIG: ReportDateFieldConfig[] = [
+  {
+    key: 'fieldExam',
+    label: 'Field Exam',
+    format: (d) => (d.fieldExam ? isoToMMDDYYYY(d.fieldExam) : '(none)'),
+  },
+  { key: 'audit', label: 'Audit', format: (d) => (d.audit ? isoToMMYYYY(d.audit) : '(none)') },
+  {
+    key: 'tprReviewPeriodStart',
+    label: 'TPR Review Period',
+    format: (d) =>
+      d.tprReviewPeriodStart && d.tprReviewPeriodEnd
+        ? isoRangeToMMDD(d.tprReviewPeriodStart, d.tprReviewPeriodEnd)
+        : '(none)',
+  },
+  { key: 'tprDue', label: 'TPR Due', format: (d) => (d.tprDue ? isoToMMYYYY(d.tprDue) : '(none)') },
+  {
+    key: 'tirReviewPeriodStart',
+    label: 'TIR Review Period',
+    format: (d) =>
+      d.tirReviewPeriodStart && d.tirReviewPeriodEnd
+        ? isoRangeToMMDD(d.tirReviewPeriodStart, d.tirReviewPeriodEnd)
+        : '(none)',
+  },
+  {
+    key: 'tirSubmission',
+    label: 'TIR Submission',
+    format: (d) => (d.tirSubmission ? isoToMMDD(d.tirSubmission) : '(none)'),
+  },
+  {
+    key: 'tirReview',
+    label: 'TIR Review',
+    format: (d) => (d.tirReview ? isoToMMDD(d.tirReview) : '(none)'),
+  },
+];
+
+function UpcomingReportDateFields({
+  data,
+}: Readonly<{ data: Partial<TrusteeUpcomingReportDates> | undefined }>) {
+  if (!data) return <>(none)</>;
+
+  const fields = REPORT_DATE_FIELD_CONFIG.filter(({ key }) => key in data).map(
+    ({ label, format }) => ({ label, value: format(data) }),
+  );
+
+  if (fields.length === 0) return <>(none)</>;
+
+  return (
+    <dl>
+      {fields.map(({ label, value }) => (
+        <React.Fragment key={label}>
+          <dt>{label}:</dt>
+          <dd>{value}</dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
+}
+
+type ShowTrusteeUpcomingReportDatesHistoryProps = Readonly<{
+  history: TrusteeUpcomingReportDatesHistory;
+  idx: number;
+}>;
+
+function ShowTrusteeUpcomingReportDatesHistory(props: ShowTrusteeUpcomingReportDatesHistoryProps) {
+  const { history, idx } = props;
+  return (
+    <tr>
+      <td data-testid={`change-type-upcoming-report-dates-${idx}`}>Upcoming Report Dates</td>
+      <td data-testid={`previous-upcoming-report-dates-${idx}`}>
+        <UpcomingReportDateFields data={history.before} />
+      </td>
+      <td data-testid={`new-upcoming-report-dates-${idx}`}>
+        <UpcomingReportDateFields data={history.after} />
+      </td>
+      <td data-testid={`changed-by-${idx}`}>
+        {history.updatedBy && <>{history.updatedBy.name}</>}
+      </td>
+      <td data-testid={`change-date-${idx}`}>
+        <span className="text-no-wrap">{formatDate(history.updatedOn)}</span>
+      </td>
+    </tr>
+  );
+}
+
 function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[] }>) {
   const { trusteeHistory } = props;
   return (
@@ -393,6 +493,14 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
           case 'AUDIT_ASSISTANT':
             return (
               <ShowTrusteeAssistantHistory
+                key={`${history.trusteeId || history.id}-${idx}`}
+                history={history}
+                idx={idx}
+              />
+            );
+          case 'AUDIT_UPCOMING_REPORT_DATES':
+            return (
+              <ShowTrusteeUpcomingReportDatesHistory
                 key={`${history.trusteeId || history.id}-${idx}`}
                 history={history}
                 idx={idx}

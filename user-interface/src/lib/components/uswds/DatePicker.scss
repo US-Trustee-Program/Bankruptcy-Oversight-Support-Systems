@@ -16,6 +16,12 @@
       display: none;
     }
 
+    // Hide the browser's built-in mm/dd/yyyy placeholder text when empty —
+    // the hint is displayed above the input instead.
+    input[type='date'][value='']:not(:focus):not(:invalid)::-webkit-datetime-edit {
+      color: transparent;
+    }
+
     // Custom calendar button styling
     .calendar-picker-button {
       position: absolute;

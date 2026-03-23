@@ -146,6 +146,22 @@ describe('DatePicker additional coverage tests', () => {
     expect(label).toHaveTextContent(labelText);
   });
 
+  test('should render default mm/dd/yyyy hint when no hint prop is provided', () => {
+    renderWithProps();
+
+    const hint = document.querySelector('.usa-hint');
+    expect(hint).toBeInTheDocument();
+    expect(hint).toHaveTextContent('mm/dd/yyyy');
+  });
+
+  test('should render custom hint text when hint prop is provided', () => {
+    renderWithProps({ hint: 'mm/yyyy' });
+
+    const hint = document.querySelector('.usa-hint');
+    expect(hint).toBeInTheDocument();
+    expect(hint).toHaveTextContent('mm/yyyy');
+  });
+
   test('should handle min and max attributes', () => {
     const min = '2024-01-01';
     const max = '2024-12-31';
@@ -175,7 +191,7 @@ describe('DatePicker additional coverage tests', () => {
     renderWithProps({ 'aria-describedby': 'custom-description', 'aria-live': 'polite' });
 
     const inputEl = screen.getByTestId(DEFAULT_ID);
-    expect(inputEl).toHaveAttribute('aria-describedby', 'custom-description');
+    expect(inputEl).toHaveAttribute('aria-describedby', `${DEFAULT_ID}-hint custom-description`);
     expect(inputEl).toHaveAttribute('aria-live', 'polite');
   });
 
