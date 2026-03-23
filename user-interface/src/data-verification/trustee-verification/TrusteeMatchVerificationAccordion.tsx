@@ -32,7 +32,6 @@ export interface TrusteeMatchVerificationAccordionProps {
 export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificationAccordionProps) {
   const { order, hidden, statusType, orderType, fieldHeaders, courts = [], onOrderUpdate } = props;
   const [isProcessing, setIsProcessing] = useState(false);
-  const [preSelectionCleared, setPreSelectionCleared] = useState(false);
   const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
 
@@ -72,7 +71,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     try {
       await Api2.patchTrusteeVerificationOrderApproval(order.id, candidate.trusteeId);
       onOrderUpdate(
-        { message: 'Trustee match confirmed.', type: UswdsAlertStyle.Success, timeOut: 8 },
+        {
+          message: `Trustee ${candidate.trusteeName} appointed to case ${getCaseNumber(order.caseId)}.`,
+          type: UswdsAlertStyle.Success,
+          timeOut: 8,
+        },
         { ...order, status: 'approved', resolvedTrusteeId: candidate.trusteeId },
       );
     } catch {
@@ -85,7 +88,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     }
   }
 
-  async function handleReject(reason?: string) {
+  async function handleReject(reason: string) {
     setIsProcessing(true);
     try {
       await Api2.patchTrusteeVerificationOrderRejection(order.id, reason);
@@ -368,12 +371,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               </div>
 
               <h3>CAMS Strongest Match</h3>
-              {viewMode === 'pending-with-candidate' && preselected && !preSelectionCleared && (
+              {viewMode === 'pending-with-candidate' && preselected && (
                 <div className="trustee-match-candidate-section" data-testid="candidate-info">
                   <CandidateTable
                     candidates={[preselected]}
                     onApprove={openConfirmation}
-                    onRejectPreselection={() => setPreSelectionCleared(true)}
                     isProcessing={isProcessing}
                     nameTestId="candidate-name"
                     approveTestId="approve-button"
@@ -384,24 +386,18 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   </Link>
                 </div>
               )}
-              {viewMode === 'pending-with-candidate' && preSelectionCleared && (
-                <>
-                  <CandidateTable
-                    candidates={order.matchCandidates as CandidateScore[]}
-                    showScore
-                    onApprove={openConfirmation}
-                    isProcessing={isProcessing}
-                  />
-                  <button
-                    type="button"
-                    data-testid="reject-button"
-                    onClick={openRejection}
-                    disabled={isProcessing}
-                    className="usa-button usa-button--secondary"
-                  >
-                    Reject
-                  </button>
-                </>
+
+              {viewMode === 'pending-with-candidate' && (
+                <button
+                  type="button"
+                  data-testid="reject-button"
+                  onClick={openRejection}
+                  disabled={isProcessing}
+                  className="reject-task-link"
+                >
+                  <Icon name="delete" />
+                  Reject Task
+                </button>
               )}
               {viewMode === 'readonly-with-candidate' && preselected && (
                 <>
@@ -425,12 +421,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           )}
         </section>
       </Accordion>
-      <TrusteeMatchRejectionModal
-        ref={rejectionModalRef}
-        id={order.id}
-        caseId={order.caseId}
-        onConfirm={handleReject}
-      />
+      <TrusteeMatchRejectionModal ref={rejectionModalRef} id={order.id} onConfirm={handleReject} />
       <TrusteeMatchConfirmationModal
         ref={confirmationModalRef}
         id={order.id}

@@ -291,7 +291,7 @@ export default function DataVerificationScreen() {
             ></Stop>
           )}
           {isOrderListLoading && showDataVerification && (
-            <LoadingSpinner caption="Loading data verification tasks..." />
+            <LoadingSpinner caption="Loading Data Verification tasks..." />
           )}
           {!isOrderListLoading && showDataVerification && (
             <>
@@ -333,7 +333,7 @@ export default function DataVerificationScreen() {
                     pluralLabel="statuses"
                   />
                 </div>
-                {orderList.length === 0 && (
+                {(orderList.length === 0 || (pendingItemCount === 0 && visibleItemCount > 0)) && (
                   <Alert
                     id="no-pending-orders"
                     type={UswdsAlertStyle.Info}
@@ -341,19 +341,7 @@ export default function DataVerificationScreen() {
                     message="There are no data verification tasks."
                     show={true}
                     inline={true}
-                    className="measure-6"
-                    slim={true}
-                  ></Alert>
-                )}
-                {pendingItemCount === 0 && visibleItemCount > 0 && (
-                  <Alert
-                    id="no-pending-orders"
-                    type={UswdsAlertStyle.Info}
-                    title="No data verification tasks found"
-                    message="There are no data verification tasks."
-                    show={true}
-                    inline={true}
-                    className="measure-6"
+                    className="measure-6 margin-left-0"
                     slim={true}
                   ></Alert>
                 )}
@@ -362,10 +350,10 @@ export default function DataVerificationScreen() {
                     id="too-many-filters"
                     type={UswdsAlertStyle.Info}
                     title="No data verification tasks found"
-                    message="Please modify your search criteria to see events."
+                    message="Please modify your search criteria to see tasks."
                     show={true}
                     inline={true}
-                    className="measure-6"
+                    className="measure-6 margin-left-0"
                   ></Alert>
                 )}
                 {visibleItemCount > 0 && (
