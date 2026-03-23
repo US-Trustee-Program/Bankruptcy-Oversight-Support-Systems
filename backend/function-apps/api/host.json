@@ -18,8 +18,9 @@
       "Host.Concurrency": "Warning",
       "Host.Triggers.Queue": "Warning",
       "Microsoft.Azure.WebJobs.Host.Queues": "Warning",
-      "Azure.Core": "Warning",
-      "Azure.Identity": "Warning",
+      "Azure.Core": "Error",
+      "Azure.Core.1": "Error",
+      "Azure.Identity": "Error",
       "Function": "Information",
       "Worker": "Information"
     }
