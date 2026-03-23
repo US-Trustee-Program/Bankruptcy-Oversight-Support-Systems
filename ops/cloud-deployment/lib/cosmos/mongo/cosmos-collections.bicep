@@ -439,10 +439,10 @@ resource archivedCasesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbD
 
 resource trusteeProfessionalIdsCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
   parent: database
-  name: 'trustee-professionalids'
+  name: 'trustee-professional-ids'
   properties: {
     resource: {
-      id: 'trustee-professionalids'
+      id: 'trustee-professional-ids'
       shardKey: {
         camsTrusteeId: 'Hash'
       }
@@ -460,9 +460,6 @@ resource trusteeProfessionalIdsCollection 'Microsoft.DocumentDB/databaseAccounts
         {
           key: {
             keys: ['acmsProfessionalId']
-          }
-          options: {
-            unique: true
           }
         }
       ]

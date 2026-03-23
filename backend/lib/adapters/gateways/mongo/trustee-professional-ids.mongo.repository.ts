@@ -9,7 +9,7 @@ import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
 
 const MODULE_NAME = 'TRUSTEE-PROFESSIONAL-IDS-MONGO-REPOSITORY';
-const COLLECTION_NAME = 'trustee-professionalids';
+const COLLECTION_NAME = 'trustee-professional-ids';
 
 const { using } = QueryBuilder;
 
@@ -57,6 +57,14 @@ export class TrusteeProfessionalIdsMongoRepository
     acmsProfessionalId: string,
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId> {
+    // Check for duplicates
+    const existing = await this.findByAcmsProfessionalId(acmsProfessionalId);
+    if (existing.length > 0) {
+      throw getCamsErrorWithStack(new Error('Duplicate'), MODULE_NAME, {
+        message: `ACMS Professional ID ${acmsProfessionalId} already mapped to trustee ${existing[0].camsTrusteeId}`,
+      });
+    }
+
     const document = createAuditRecord<Creatable<TrusteeProfessionalIdDocument>>(
       {
         documentType: 'TRUSTEE_PROFESSIONAL_ID',
