@@ -213,36 +213,49 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   type CandidateTableProps = {
-    candidate: TrusteeMatchVerification['matchCandidates'][number];
+    candidates: CandidateScore[];
+    showScore?: boolean;
     onApprove?: (candidate: CandidateScore) => void;
     onRejectPreselection?: () => void;
     isProcessing?: boolean;
+    nameTestId?: string;
+    approveTestId?: string;
   };
 
   function CandidateTable({
-    candidate,
+    candidates,
+    showScore = false,
     onApprove,
     onRejectPreselection,
     isProcessing,
+    nameTestId,
+    approveTestId,
   }: CandidateTableProps) {
     return (
       <div className="trustee-data-grid trustee-candidates-grid">
         <div className="trustee-data-header grid-row grid-gap-lg">
           <div className="trustee-data-cell grid-col-2">Name</div>
+          {showScore && <div className="trustee-data-cell grid-col-1">Score</div>}
           <div className="trustee-data-cell grid-col-2">Address</div>
           <div className="trustee-data-cell grid-col-1">Phone</div>
           <div className="trustee-data-cell grid-col-2">Email</div>
-          <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
+          <div className={`trustee-data-cell ${showScore ? 'grid-col-2' : 'grid-col-3'}`}>
+            Trustee Appointment
+          </div>
           <div className="trustee-data-cell grid-col-2">Action</div>
         </div>
-        <TrusteeCandidateRow
-          candidate={candidate}
-          onApprove={onApprove}
-          onRejectPreselection={onRejectPreselection}
-          isProcessing={isProcessing}
-          nameTestId="candidate-name"
-          approveTestId="approve-button"
-        />
+        {candidates.map((candidate) => (
+          <TrusteeCandidateRow
+            key={candidate.trusteeId}
+            candidate={candidate}
+            showScore={showScore}
+            onApprove={onApprove}
+            onRejectPreselection={onRejectPreselection}
+            isProcessing={isProcessing}
+            nameTestId={nameTestId}
+            approveTestId={approveTestId}
+          />
+        ))}
       </div>
     );
   }
@@ -358,10 +371,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               {viewMode === 'pending-with-candidate' && preselected && !preSelectionCleared && (
                 <div className="trustee-match-candidate-section" data-testid="candidate-info">
                   <CandidateTable
-                    candidate={preselected}
+                    candidates={[preselected]}
                     onApprove={openConfirmation}
                     onRejectPreselection={() => setPreSelectionCleared(true)}
                     isProcessing={isProcessing}
+                    nameTestId="candidate-name"
+                    approveTestId="approve-button"
                   />
                   <Link to="/trustee/search" className="search-trustee-link">
                     <Icon name="search" />
@@ -371,27 +386,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               )}
               {viewMode === 'pending-with-candidate' && preSelectionCleared && (
                 <>
-                  <div className="trustee-data-grid trustee-candidates-grid">
-                    <div className="trustee-data-header grid-row grid-gap-lg">
-                      <div className="trustee-data-cell grid-col-2">Name</div>
-                      <div className="trustee-data-cell grid-col-1">Score</div>
-                      <div className="trustee-data-cell grid-col-2">Address</div>
-                      <div className="trustee-data-cell grid-col-1">Phone</div>
-                      <div className="trustee-data-cell grid-col-2">Email</div>
-                      <div className="trustee-data-cell grid-col-2">Trustee Appointment</div>
-                      <div className="trustee-data-cell grid-col-2">Action</div>
-                    </div>
-                    {order.matchCandidates.map((candidate: CandidateScore) => (
-                      <TrusteeCandidateRow
-                        // eslint-disable-next-line react/prop-types
-                        key={candidate.trusteeId}
-                        candidate={candidate}
-                        showScore
-                        onApprove={openConfirmation}
-                        isProcessing={isProcessing}
-                      />
-                    ))}
-                  </div>
+                  <CandidateTable
+                    candidates={order.matchCandidates as CandidateScore[]}
+                    showScore
+                    onApprove={openConfirmation}
+                    isProcessing={isProcessing}
+                  />
                   <button
                     type="button"
                     data-testid="reject-button"
@@ -405,7 +405,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               )}
               {viewMode === 'readonly-with-candidate' && preselected && (
                 <>
-                  <CandidateTable candidate={preselected} />
+                  <CandidateTable candidates={[preselected]} />
                   <Link to="/trustee/search" className="search-trustee-link">
                     <Icon name="search" />
                     Search for a different trustee.

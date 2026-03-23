@@ -44,7 +44,9 @@ function TrusteeMatchRejectionModal_(
     submitButton: {
       label: 'Reject',
       onClick: () => {
-        onConfirm(reasonRef.current?.value || undefined);
+        const reason = reasonRef.current?.value || undefined;
+        hide();
+        onConfirm(reason);
       },
       className: 'usa-button--secondary',
     },

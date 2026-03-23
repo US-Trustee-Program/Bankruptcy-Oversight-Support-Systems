@@ -690,6 +690,11 @@ describe('Review Orders screen', () => {
       },
     );
 
+    sessionStorage.setItem(
+      'cams:filter:data-verification:type',
+      JSON.stringify([{ value: 'trustee-match', label: 'Trustee Mismatch' }]),
+    );
+
     render(
       <BrowserRouter>
         <DataVerificationScreen />
