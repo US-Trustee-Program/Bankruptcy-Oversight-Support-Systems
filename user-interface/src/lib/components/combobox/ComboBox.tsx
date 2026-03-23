@@ -48,6 +48,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   overflowStrategy?: 'ellipsis';
   errorMessage?: string;
   hideClearAllButton?: boolean;
+  placeholder?: string;
 }
 
 function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -69,6 +70,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     overflowStrategy,
     errorMessage,
     hideClearAllButton,
+    placeholder,
     ...otherProps
   } = props;
 
@@ -171,7 +173,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function getSelectedLabel() {
     if (selectedMap.size === 0) {
-      return '';
+      return placeholder ?? '';
     } else if (selectedMap.size === 1) {
       return [...selectedMap.values()][0].selectedLabel ?? [...selectedMap.values()][0].label;
     } else {
