@@ -84,8 +84,30 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     const camsTrusteeId = 'trustee-123';
     const acmsProfessionalId = 'NY-00063';
 
+    test('should throw error when acmsProfessionalId already exists', async () => {
+      const existingMapping: TrusteeProfessionalIdDocument = {
+        ...sampleProfessionalId,
+        id: 'existing-prof-id',
+        camsTrusteeId: 'different-trustee-456',
+        acmsProfessionalId,
+      };
+
+      // Mock findByAcmsProfessionalId to return existing mapping
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([existingMapping]);
+
+      await expect(
+        repository.createProfessionalId(camsTrusteeId, acmsProfessionalId, mockUser),
+      ).rejects.toThrow(
+        `ACMS Professional ID ${acmsProfessionalId} already mapped to trustee ${existingMapping.camsTrusteeId}`,
+      );
+    });
+
     test('should create a new professional ID mapping successfully', async () => {
       const mockId = 'new-prof-id';
+
+      // Mock findByAcmsProfessionalId to return empty array (no duplicates)
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
       const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockResolvedValue(mockId);
@@ -114,6 +136,10 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
     test('should handle database errors during creation', async () => {
       const error = new Error('Database connection failed');
+
+      // Mock findByAcmsProfessionalId to return empty array (no duplicates)
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
       const mockAdapter = vi
         .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
         .mockRejectedValue(error);
@@ -353,10 +379,12 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       const trusteeId = 'harvey-barr';
 
       // Create first ACMS ID mapping
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]); // No duplicates
       vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('prof-id-1');
       const result1 = await repository.createProfessionalId(trusteeId, 'NY-00063', mockUser);
 
       // Create second ACMS ID mapping
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]); // No duplicates
       vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('prof-id-2');
       const result2 = await repository.createProfessionalId(trusteeId, 'UT-05321', mockUser);
 
@@ -392,6 +420,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
       // Create mappings for each CAMS trustee ID
       for (let i = 0; i < trusteeIds.length; i++) {
+        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]); // No duplicates
         vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(
           `prof-id-${i + 1}`,
         );
@@ -421,6 +450,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       const acmsId = 'NY-00063';
 
       // Create a mapping
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]); // No duplicates
       vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('prof-id-1');
       await repository.createProfessionalId(trusteeId, acmsId, mockUser);
 
