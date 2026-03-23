@@ -19,16 +19,18 @@ export type DatePickerProps = JSX.IntrinsicElements['input'] & {
   onChange?: (ev: React.ChangeEvent<HTMLInputElement>) => void;
   onBlur?: (ev: React.FocusEvent<HTMLInputElement>) => void;
   label?: string;
+  hint?: string;
   disabled?: boolean;
   name?: string;
   value?: string;
   required?: boolean;
+  disableMax?: boolean;
   customErrorMessage?: string;
   validators?: ValidatorFunction[];
 };
 
 function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
-  const { id, label } = props;
+  const { id, label, hint = 'mm/dd/yyyy' } = props;
 
   const inputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -43,8 +45,10 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
 
   // Helper functions to compute min/max with defaults
   const getMin = () => (typeof props.min === 'string' ? props.min : undefined) ?? DEFAULT_MIN_DATE;
-  const getMax = () =>
-    (typeof props.max === 'string' ? props.max : undefined) ?? DateHelper.getTodaysIsoDate();
+  const getMax = () => {
+    if (props.disableMax) return undefined;
+    return (typeof props.max === 'string' ? props.max : undefined) ?? DateHelper.getTodaysIsoDate();
+  };
 
   // Centralized validation helper
   function validateDateValue(value: string | null): string[] {
@@ -212,6 +216,10 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
   const getAriaDescribedBy = () => {
     const ids: string[] = [];
 
+    if (hint) {
+      ids.push(`${id}-hint`);
+    }
+
     if (dateValue) {
       ids.push(`${id}-current-value`);
     }
@@ -265,6 +273,9 @@ function DatePicker_(props: DatePickerProps, ref: React.Ref<InputRef>) {
       <label className="usa-label" id={id + '-label'} htmlFor={id}>
         {label || ''}
       </label>
+      <span id={`${id}-hint`} className="usa-hint">
+        {hint}
+      </span>
       <div className="usa-date-picker">
         <input
           type="date"

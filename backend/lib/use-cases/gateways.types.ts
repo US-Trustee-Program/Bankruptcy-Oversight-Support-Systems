@@ -48,6 +48,10 @@ import {
   TrusteeAppointmentInput,
 } from '@common/cams/trustee-appointments';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import {
+  TrusteeUpcomingReportDates,
+  TrusteeUpcomingReportDatesHistory,
+} from '@common/cams/trustee-upcoming-report-dates';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Auditable } from '@common/cams/auditable';
 import {
@@ -490,6 +494,15 @@ export interface ObservabilityGateway {
     completion: TraceCompletion,
     metrics?: { name: string; value: number }[],
   ): void;
+}
+
+export interface TrusteeUpcomingReportDatesRepository
+  extends
+    Reads<TrusteeUpcomingReportDates | null>,
+    Upserts<TrusteeUpcomingReportDates>,
+    Releasable {
+  getByAppointmentId(appointmentId: string): Promise<TrusteeUpcomingReportDates | null>;
+  createHistory(history: Creatable<TrusteeUpcomingReportDatesHistory>): Promise<void>;
 }
 
 export interface TrusteeMatchVerificationRepository extends Releasable {

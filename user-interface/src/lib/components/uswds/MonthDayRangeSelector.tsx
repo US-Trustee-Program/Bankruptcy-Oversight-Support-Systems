@@ -1,0 +1,108 @@
+import { useState, useEffect } from 'react';
+import MonthDaySelector from './MonthDaySelector';
+import Icon from './Icon';
+import Button, { UswdsButtonStyle } from './Button';
+
+type MonthDayRangeSelectorProps = {
+  id: string;
+  label: string;
+  startValue: string;
+  endValue: string;
+  onStartChange: (value: string) => void;
+  onEndChange: (value: string) => void;
+  onValidationChange?: (isValid: boolean) => void;
+  externalError?: string;
+  submitted?: boolean;
+};
+
+const PARTIAL_DATE_ERROR = 'Must be a valid date mm/dd.';
+
+function isPartialMonthDay(value: string): boolean {
+  if (!value) return false;
+  const parts = value.split('-');
+  return parts.length === 3 && (!parts[1] || !parts[2]);
+}
+
+export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps) {
+  const {
+    id,
+    label,
+    startValue,
+    endValue,
+    onStartChange,
+    onEndChange,
+    onValidationChange,
+    externalError,
+    submitted,
+  } = props;
+
+  const [internalError, setInternalError] = useState('');
+
+  // Validate whenever values change
+  useEffect(() => {
+    // Check for partial dates
+    if (isPartialMonthDay(startValue) || isPartialMonthDay(endValue)) {
+      setInternalError(PARTIAL_DATE_ERROR);
+      onValidationChange?.(false);
+      return;
+    }
+
+    // All validations pass
+    setInternalError('');
+    onValidationChange?.(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startValue, endValue]);
+
+  // External errors take precedence over internal errors; internal errors only show after submission
+  const displayError = externalError || (submitted ? internalError : '');
+  const hasError = !!displayError;
+
+  const hasValue = !!(startValue || endValue);
+
+  function handleClear() {
+    onStartChange('');
+    onEndChange('');
+  }
+
+  return (
+    <div className="review-period-group">
+      <div className="review-period-header">
+        <label className="usa-label" htmlFor={`${id}-start-month`}>
+          {label}
+        </label>
+        {hasValue && (
+          <Button
+            id={`${id}-clear`}
+            uswdsStyle={UswdsButtonStyle.Unstyled}
+            onClick={handleClear}
+            aria-label={`Clear ${label}`}
+          >
+            Clear
+          </Button>
+        )}
+      </div>
+      <div className="review-period-row">
+        <MonthDaySelector
+          id={`${id}-start`}
+          value={startValue}
+          onChange={onStartChange}
+          hasError={hasError}
+        />
+        <span className="review-period-separator" aria-hidden="true">
+          <Icon name="remove" />
+        </span>
+        <MonthDaySelector
+          id={`${id}-end`}
+          value={endValue}
+          onChange={onEndChange}
+          hasError={hasError}
+        />
+      </div>
+      {hasError && (
+        <div className="date-error usa-input__error-message" aria-live="polite">
+          {displayError}
+        </div>
+      )}
+    </div>
+  );
+}
