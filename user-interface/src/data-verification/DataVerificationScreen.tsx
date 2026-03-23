@@ -44,7 +44,11 @@ export default function DataVerificationScreen() {
   );
   const [statusSelections, setStatusSelections] = useSessionState<ComboOption[]>(
     'cams:filter:data-verification:status',
-    [],
+    [
+      { value: 'pending', label: 'Pending Review' },
+      { value: 'approved', label: 'Verified' },
+      { value: 'rejected', label: 'Rejected' },
+    ],
   );
   const typeFilter = typeSelections.map((s) => s.value as OrderType);
   const statusFilter = statusSelections.map((s) => s.value as OrderStatus);
@@ -116,6 +120,25 @@ export default function DataVerificationScreen() {
   function handleStatusFilter(selections: ComboOption[]) {
     setStatusSelections(selections);
   }
+
+  useEffect(() => {
+    if (typeSelections.length > 0) return;
+    const defaults: ComboOption[] = [
+      ...(featureFlags[TRANSFER_ORDERS_ENABLED] ? [{ value: 'transfer', label: 'Transfer' }] : []),
+      ...(featureFlags[CONSOLIDATIONS_ENABLED]
+        ? [{ value: 'consolidation', label: 'Consolidation' }]
+        : []),
+      ...(featureFlags[TRUSTEE_VERIFICATION_ENABLED]
+        ? [{ value: 'trustee-match', label: 'Trustee Mismatch' }]
+        : []),
+    ];
+    if (defaults.length > 0) setTypeSelections(defaults);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    featureFlags[TRANSFER_ORDERS_ENABLED],
+    featureFlags[CONSOLIDATIONS_ENABLED],
+    featureFlags[TRUSTEE_VERIFICATION_ENABLED],
+  ]);
 
   useEffect(() => {
     if (!showDataVerification) return;
@@ -291,7 +314,7 @@ export default function DataVerificationScreen() {
             ></Stop>
           )}
           {isOrderListLoading && showDataVerification && (
-            <LoadingSpinner caption="Loading data verification tasks..." />
+            <LoadingSpinner caption="Loading Data Verification tasks..." />
           )}
           {!isOrderListLoading && showDataVerification && (
             <>
@@ -317,6 +340,8 @@ export default function DataVerificationScreen() {
                     onUpdateSelection={handleTypeFilter}
                     singularLabel="type"
                     pluralLabel="types"
+                    hideClearAllButton
+                    placeholder="- Select one or more -"
                   />
                   <ComboBox
                     id="task-status-filter"
@@ -331,9 +356,11 @@ export default function DataVerificationScreen() {
                     onUpdateSelection={handleStatusFilter}
                     singularLabel="status"
                     pluralLabel="statuses"
+                    hideClearAllButton
+                    placeholder="- Select one or more -"
                   />
                 </div>
-                {orderList.length === 0 && (
+                {(orderList.length === 0 || (pendingItemCount === 0 && visibleItemCount > 0)) && (
                   <Alert
                     id="no-pending-orders"
                     type={UswdsAlertStyle.Info}
@@ -341,19 +368,7 @@ export default function DataVerificationScreen() {
                     message="There are no data verification tasks."
                     show={true}
                     inline={true}
-                    className="measure-6"
-                    slim={true}
-                  ></Alert>
-                )}
-                {pendingItemCount === 0 && visibleItemCount > 0 && (
-                  <Alert
-                    id="no-pending-orders"
-                    type={UswdsAlertStyle.Info}
-                    title="No data verification tasks found"
-                    message="There are no data verification tasks."
-                    show={true}
-                    inline={true}
-                    className="measure-6"
+                    className="measure-6 margin-left-0"
                     slim={true}
                   ></Alert>
                 )}
@@ -362,10 +377,10 @@ export default function DataVerificationScreen() {
                     id="too-many-filters"
                     type={UswdsAlertStyle.Info}
                     title="No data verification tasks found"
-                    message="Please modify your search criteria to see events."
+                    message="Please modify your search criteria to see tasks."
                     show={true}
                     inline={true}
-                    className="measure-6"
+                    className="measure-6 margin-left-0"
                   ></Alert>
                 )}
                 {visibleItemCount > 0 && (

@@ -2395,6 +2395,13 @@ async function patchTrusteeVerificationOrderApproval(
   return;
 }
 
+async function patchTrusteeVerificationOrderRejection(
+  _id: string,
+  _reason?: string,
+): Promise<void> {
+  return;
+}
+
 async function getOrderSuggestions(caseId: string): Promise<ResponseBody<CaseSummary[]>> {
   return get<CaseSummary[]>(`/orders-suggestions/${caseId}/`);
 }
@@ -2855,6 +2862,7 @@ const MockApi2 = {
   getOrders,
   getTrusteeMatchVerifications,
   patchTrusteeVerificationOrderApproval,
+  patchTrusteeVerificationOrderRejection,
   getOrderSuggestions,
   getPrivilegedIdentityUsers,
   getPrivilegedIdentityUser,

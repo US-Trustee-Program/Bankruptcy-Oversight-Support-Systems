@@ -115,8 +115,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
     const candidateInfo = screen.getByTestId('candidate-info');
     expect(candidateInfo).toBeInTheDocument();
-    expect(screen.getByTestId('candidate-name').textContent).toContain('Jane Smith');
-    expect(screen.getByTestId('approve-button')).toBeInTheDocument();
+    expect(screen.getByTestId('candidate-name-trustee-1').textContent).toContain('Jane Smith');
+    expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: /Search for a trustee/, hidden: true }),
     ).not.toBeInTheDocument();
@@ -145,14 +145,18 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
 
-    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('approve-candidate-trustee-1')).not.toBeInTheDocument();
   });
 
   test('clicking Match Trustee calls patchTrusteeVerificationOrderApproval with correct args', async () => {
     vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
     renderWithProps({ order: sampleOrderWithCandidates });
 
-    fireEvent.click(screen.getByTestId('approve-button'));
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
 
     await waitFor(() => {
       expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
@@ -167,11 +171,19 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const onOrderUpdate = vi.fn();
     renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
 
-    fireEvent.click(screen.getByTestId('approve-button'));
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
 
     await waitFor(() => {
       expect(onOrderUpdate).toHaveBeenCalledWith(
-        { message: 'Trustee match confirmed.', type: UswdsAlertStyle.Success, timeOut: 8 },
+        {
+          message: 'Trustee Jane Smith appointed to case 22-11111.',
+          type: UswdsAlertStyle.Success,
+          timeOut: 8,
+        },
         { ...sampleOrderWithCandidates, status: 'approved', resolvedTrusteeId: 'trustee-1' },
       );
     });
@@ -184,7 +196,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const onOrderUpdate = vi.fn();
     renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
 
-    fireEvent.click(screen.getByTestId('approve-button'));
+    fireEvent.click(screen.getByTestId('approve-candidate-trustee-1'));
+    const modalSubmit = document.getElementById(
+      `trustee-confirmation-modal-${sampleOrderWithCandidates.id}-submit-button`,
+    );
+    fireEvent.click(modalSubmit!);
 
     await waitFor(() => {
       expect(onOrderUpdate).toHaveBeenCalledWith(
@@ -348,7 +364,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
 
     // Branch B renders a Link (not a button) and no approve-button
-    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('approve-candidate-trustee-1')).not.toBeInTheDocument();
     expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
 
     // Highest-scoring candidate is selected
@@ -378,7 +394,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       },
     });
 
-    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('approve-candidate-trustee-1')).not.toBeInTheDocument();
     const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
     expect(content.textContent).toContain('Bare Candidate');
   });
@@ -432,5 +448,104 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
     expect(content.textContent).toContain('555-9999');
     expect(content.textContent).not.toContain('x555');
+  });
+
+  describe('Slice 3 — reject flow', () => {
+    test('renders reject-button alongside approve-button for pending order with candidate', () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
+      expect(screen.getByTestId('reject-button')).toBeInTheDocument();
+    });
+
+    test('reject-button does not appear for non-pending orders (Branch B)', () => {
+      renderWithProps({ order: { ...sampleOrderWithCandidates, status: 'rejected' } });
+
+      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
+    });
+
+    test('clicking reject-button opens the rejection modal', async () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      fireEvent.click(screen.getByTestId('reject-button'));
+
+      await waitFor(() => {
+        expect(
+          document.getElementById(
+            `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+          ),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('submitting reject with a reason calls patchTrusteeVerificationOrderRejection with reason', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      fireEvent.click(screen.getByTestId('reject-button'));
+      fireEvent.change(
+        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
+        { target: { value: 'Not the right person' } },
+      );
+      const modalSubmit = document.getElementById(
+        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(Api2.patchTrusteeVerificationOrderRejection).toHaveBeenCalledWith(
+          sampleOrderWithCandidates.id,
+          'Not the right person',
+        );
+      });
+    });
+
+    test('on reject success calls onOrderUpdate with Warning alert and rejected status', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+
+      fireEvent.click(screen.getByTestId('reject-button'));
+      fireEvent.change(
+        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
+        { target: { value: 'Reject reason' } },
+      );
+      const modalSubmit = document.getElementById(
+        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          { message: 'Trustee match rejected.', type: UswdsAlertStyle.Warning, timeOut: 8 },
+          expect.objectContaining({ status: 'rejected' }),
+        );
+      });
+    });
+
+    test('on reject failure calls onOrderUpdate with error alert and original order', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockRejectedValue(
+        new Error('Network error'),
+      );
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+
+      fireEvent.click(screen.getByTestId('reject-button'));
+      fireEvent.change(
+        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
+        { target: { value: 'Reject reason' } },
+      );
+      const modalSubmit = document.getElementById(
+        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          { message: 'Failed to reject trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+          sampleOrderWithCandidates,
+        );
+      });
+    });
   });
 });
