@@ -8,7 +8,7 @@ import {
 } from '../../common-errors/server-config-error';
 import { CamsSession } from '@common/cams/session';
 import { isNotFoundError } from '../../common-errors/not-found-error';
-import UsersHelpers from '../users/users.helpers';
+import UsersGroupManagement from '../users/usersGroupManagement';
 import { CamsUserReference } from '@common/cams/users';
 import { CamsJwt } from '@common/cams/jwt';
 import { delay } from '@common/delay';
@@ -75,33 +75,71 @@ export class UserSessionUseCase {
 
   async lookup(context: ApplicationContext, token: string): Promise<CamsSession> {
     try {
-      // Check for a cached session to return.
       const storedSession = await this.lookupSession(context, token);
       if (storedSession) {
         return storedSession;
       }
 
-      // Otherwise get the user information from the identity provider.
-      const { user: camsUserReference, jwt } = await this.getUserFromIdentityProvider(
+      const { user: camsUserReference, jwt: verifiedJwt } = await this.getUserFromIdentityProvider(
         context,
         token,
       );
 
-      // Check for missing JWT and throw UnauthorizedError if not present.
-      if (!jwt) {
+      if (!verifiedJwt) {
         throw new UnauthorizedError('Missing JWT from identity provider');
       }
 
-      // Augment the user session with additional roles if applicable.
-      const user = await UsersHelpers.getPrivilegedIdentityUser(context, camsUserReference.id);
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: Retrieved user from IDP: ${camsUserReference.name} (${camsUserReference.id}). JWT contains ${verifiedJwt.claims.groups?.length || 0} groups.`,
+        {
+          userId: camsUserReference.id,
+          userName: camsUserReference.name,
+          userEmail: camsUserReference.email,
+          jwtGroupCount: verifiedJwt.claims.groups?.length || 0,
+          jwtGroups: verifiedJwt.claims.groups || [],
+        },
+      );
 
-      // Cache and return a new session.
+      const offices = await UsersGroupManagement.getOfficesFromGroupNames(
+        context,
+        verifiedJwt.claims.groups || [],
+      );
+      const roles = UsersGroupManagement.getRolesFromGroupNames(verifiedJwt.claims.groups || []);
+
+      // Augment the user session with additional roles if applicable.
+      const user = await UsersGroupManagement.getPrivilegedIdentityUser(
+        context,
+        camsUserReference.id,
+        {
+          idpUser: {
+            id: camsUserReference.id,
+            name: camsUserReference.name,
+            email: camsUserReference.email,
+            offices,
+            roles,
+          },
+        },
+      );
+
+      context.logger.info(
+        MODULE_NAME,
+        `CAMS-710 DIAGNOSTIC: Creating session for user ${user.name} (${user.id}) with ${user.offices?.length || 0} offices and ${user.roles?.length || 0} roles.`,
+        {
+          userId: user.id,
+          userName: user.name,
+          officeCount: user.offices?.length || 0,
+          roleCount: user.roles?.length || 0,
+          offices: user.offices?.map((o) => o.idpGroupName) || [],
+        },
+      );
+
       const newSession = {
         user,
         accessToken: token,
         provider: context.config.authConfig.provider,
-        expires: jwt.claims.exp,
-        issuer: jwt.claims.iss,
+        expires: verifiedJwt.claims.exp,
+        issuer: verifiedJwt.claims.iss,
       };
       await this.writeSession(context, newSession);
       return newSession;

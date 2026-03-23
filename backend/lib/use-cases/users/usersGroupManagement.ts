@@ -10,7 +10,7 @@ type PrivilegedIdentityHelperOptions = {
   pimUser?: PrivilegedIdentityUser;
 };
 
-const MODULE_NAME = 'USERS-HELPERS';
+const MODULE_NAME = 'USERS-GROUP-MANAGEMENT';
 
 async function getPrivilegedIdentityUser(
   context: ApplicationContext,
@@ -75,13 +75,31 @@ async function getOfficesFromGroupNames(
 ): Promise<UstpOfficeDetails[]> {
   const officesGateway = factory.getOfficesGateway(context);
   const ustpOffices = await officesGateway.getOffices(context);
-  return ustpOffices.filter((office) => idpGroups.includes(office.idpGroupName));
+
+  context.logger.info(
+    MODULE_NAME,
+    `CAMS-710 DIAGNOSTIC: Retrieved ${ustpOffices.length} offices from gateway. User has ${idpGroups.length} AD groups.`,
+    { idpGroups, officeCount: ustpOffices.length },
+  );
+
+  const matchedOffices = ustpOffices.filter((office) => idpGroups.includes(office.idpGroupName));
+
+  context.logger.info(
+    MODULE_NAME,
+    `CAMS-710 DIAGNOSTIC: Matched ${matchedOffices.length} offices for user.`,
+    {
+      matchedOffices: matchedOffices.map((o) => o.idpGroupName),
+      unmatchedGroups: idpGroups.filter((g) => !ustpOffices.find((o) => o.idpGroupName === g)),
+    },
+  );
+
+  return matchedOffices;
 }
 
-const UsersHelpers = {
+const UsersGroupManagement = {
   getPrivilegedIdentityUser,
   getRolesFromGroupNames,
   getOfficesFromGroupNames,
 };
 
-export default UsersHelpers;
+export default UsersGroupManagement;

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import UsersHelpers from './users.helpers';
+import UsersGroupManagement from './usersGroupManagement';
 import { CamsUser, PrivilegedIdentityUser } from '@common/cams/users';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
@@ -11,7 +11,7 @@ import { NotFoundError } from '../../common-errors/not-found-error';
 import { UnknownError } from '../../common-errors/unknown-error';
 import MockUserGroupGateway from '../../testing/mock-gateways/mock-user-group-gateway';
 
-describe('UsersHelpers tests', () => {
+describe('UsersGroupManagement tests', () => {
   let context: ApplicationContext;
   const today = new Date().toISOString();
   const expiredDate = MockData.someDateBeforeThisDate(today);
@@ -38,7 +38,7 @@ describe('UsersHelpers tests', () => {
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new Error('this should not be called'));
 
-    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id);
     expect(user).toEqual(idpUser);
     expect(pimSpy).not.toHaveBeenCalled();
   });
@@ -54,7 +54,7 @@ describe('UsersHelpers tests', () => {
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new Error('this should not be called'));
 
-    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id);
     expect(user).toEqual(idpUser);
     expect(pimSpy).not.toHaveBeenCalled();
   });
@@ -70,7 +70,7 @@ describe('UsersHelpers tests', () => {
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new NotFoundError('test-module'));
 
-    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id);
     expect(user).toEqual(idpUser);
     expect(pimSpy).toHaveBeenCalled();
   });
@@ -86,7 +86,7 @@ describe('UsersHelpers tests', () => {
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockRejectedValue(new UnknownError('test-module'));
 
-    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id);
     expect(user).toEqual(idpUser);
     expect(pimSpy).toHaveBeenCalled();
   });
@@ -111,7 +111,7 @@ describe('UsersHelpers tests', () => {
       .spyOn(MockMongoRepository.prototype, 'getPrivilegedIdentityUser')
       .mockResolvedValue(elevation);
 
-    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id);
     expect(user).toEqual(idpUser);
     expect(pimSpy).toHaveBeenCalled();
   });
@@ -139,7 +139,7 @@ describe('UsersHelpers tests', () => {
       offices: [manhattanOffice, wilmingtonOffice],
     };
 
-    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id);
     expect(user).toEqual(expected);
   });
 
@@ -151,7 +151,7 @@ describe('UsersHelpers tests', () => {
       new NotFoundError('test-module'),
     );
 
-    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id);
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id);
     expect(user).toEqual(idpUser);
   });
 
@@ -180,7 +180,9 @@ describe('UsersHelpers tests', () => {
       offices: [manhattanOffice, wilmingtonOffice],
     };
 
-    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id, { idpUser });
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id, {
+      idpUser,
+    });
     expect(user).toEqual(expected);
     expect(idpSpy).not.toHaveBeenCalled();
     expect(pimSpy).toHaveBeenCalled();
@@ -211,7 +213,9 @@ describe('UsersHelpers tests', () => {
       offices: [manhattanOffice, wilmingtonOffice],
     };
 
-    const user = await UsersHelpers.getPrivilegedIdentityUser(context, idpUser.id, { pimUser });
+    const user = await UsersGroupManagement.getPrivilegedIdentityUser(context, idpUser.id, {
+      pimUser,
+    });
     expect(idpSpy).toHaveBeenCalled();
     expect(pimSpy).not.toHaveBeenCalled();
     expect(user).toEqual(expected);
