@@ -366,6 +366,38 @@ describe('_Api2 functions', async () => {
     expect(patchSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}`, trusteeInput, {});
   });
 
+  test('should call api.patch with approve action when calling patchTrusteeVerificationOrderApproval', () => {
+    const patchSpy = vi.spyOn(api.default, 'patch').mockResolvedValue(undefined);
+    const id = 'verification-order-id';
+    const resolvedTrusteeId = 'trustee-1';
+    api2.default.patchTrusteeVerificationOrderApproval(id, resolvedTrusteeId);
+    expect(patchSpy).toHaveBeenCalledWith(`/trustee-match-verification/${id}`, {
+      action: 'approve',
+      resolvedTrusteeId,
+    });
+  });
+
+  test('should call api.patch with reject action and reason when calling patchTrusteeVerificationOrderRejection', () => {
+    const patchSpy = vi.spyOn(api.default, 'patch').mockResolvedValue(undefined);
+    const id = 'verification-order-id';
+    const reason = 'Not the right person';
+    api2.default.patchTrusteeVerificationOrderRejection(id, reason);
+    expect(patchSpy).toHaveBeenCalledWith(`/trustee-match-verification/${id}`, {
+      action: 'reject',
+      reason,
+    });
+  });
+
+  test('should call api.patch with reject action and undefined reason when calling patchTrusteeVerificationOrderRejection without reason', () => {
+    const patchSpy = vi.spyOn(api.default, 'patch').mockResolvedValue(undefined);
+    const id = 'verification-order-id';
+    api2.default.patchTrusteeVerificationOrderRejection(id);
+    expect(patchSpy).toHaveBeenCalledWith(`/trustee-match-verification/${id}`, {
+      action: 'reject',
+      reason: undefined,
+    });
+  });
+
   test('should call api.get function when calling getTrustees', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [{ id: 'trustee-id' }] });
     api2.default.getTrustees();

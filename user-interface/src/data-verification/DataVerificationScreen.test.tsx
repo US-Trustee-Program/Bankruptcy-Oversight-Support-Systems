@@ -18,6 +18,7 @@ import { CamsRole } from '@common/cams/roles';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
 import * as courtUtils from '@/lib/utils/court-utils';
 import * as transferOrderAccordionModule from './TransferOrderAccordion';
+import * as trusteeVerificationAccordionModule from './trustee-verification/TrusteeMatchVerificationAccordion';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CourtDivisionDetails } from '@common/cams/courts';
 
@@ -657,5 +658,50 @@ describe('Review Orders screen', () => {
         expect(heading).not.toBeVisible();
       });
     }
+  });
+
+  test('should show alert when trustee verification onOrderUpdate is called', async () => {
+    setupFeatureFlags({ 'trustee-verification-enabled': true });
+    const mockAlertMessage = 'Trustee match confirmed.';
+
+    vi.spyOn(Api2, 'getOrders').mockResolvedValue({ data: [] });
+    vi.spyOn(Api2, 'getTrusteeMatchVerifications').mockResolvedValue({
+      data: [sampleVerificationOrder],
+    });
+
+    const updatedOrder: TrusteeMatchVerification = {
+      ...sampleVerificationOrder,
+      status: 'approved',
+    };
+
+    vi.spyOn(
+      trusteeVerificationAccordionModule,
+      'TrusteeMatchVerificationAccordion',
+    ).mockImplementation(
+      (props: trusteeVerificationAccordionModule.TrusteeMatchVerificationAccordionProps) => {
+        const { onOrderUpdate } = props;
+        React.useEffect(() => {
+          onOrderUpdate(
+            { message: mockAlertMessage, type: UswdsAlertStyle.Success, timeOut: 8 },
+            updatedOrder,
+          );
+        }, [onOrderUpdate]);
+        return <></>;
+      },
+    );
+
+    render(
+      <BrowserRouter>
+        <DataVerificationScreen />
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      const alertContainer = screen.getByTestId('alert-container-data-verification-alert');
+      expect(alertContainer).toHaveClass('visible');
+      expect(screen.getByTestId('alert-data-verification-alert')).toHaveTextContent(
+        mockAlertMessage,
+      );
+    });
   });
 });
