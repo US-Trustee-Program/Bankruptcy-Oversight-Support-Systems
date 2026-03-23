@@ -9,10 +9,10 @@
     "coverage": "vitest run --coverage",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "testx": "vitest run",
     "test:show-logs": "ENABLE_CONSOLE_LOGGING=true npm run test",
     "test:ui": "vitest --ui",
     "test:watch": "vitest watch",
+    "testx": "vitest run",
     "tsc": "npx tsc --noEmit"
   },
   "author": "",
