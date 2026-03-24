@@ -1,0 +1,125 @@
+name: Pull Request Validation
+
+on:
+  pull_request:
+    branches:
+      - main-copy-for-testing  # Testing branch (change to 'main' after validation)
+    types:
+      - ready_for_review  # When PR moved from draft to ready
+      - labeled           # When any label is added
+      - synchronize       # When new commits pushed (gated by label check)
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '**/*.md'
+
+concurrency:
+  group: pr-e2e-staging-slot
+  cancel-in-progress: false  # Queue PRs, don't cancel
+
+jobs:
+  # Fast checks run on every trigger
+  setup:
+    name: Setup
+    uses: ./.github/workflows/reusable-build-info.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      environment: 'Develop'  # Always use Develop for PRs
+
+  accessibility-test:
+    uses: ./.github/workflows/reusable-accessibility.yml
+    with:
+      path: user-interface
+      node-version: ${{ vars.NODE_VERSION }}
+
+  unit-test-frontend:
+    uses: ./.github/workflows/reusable-unit-test.yml
+    with:
+      path: user-interface
+      node-version: ${{ vars.NODE_VERSION }}
+
+  unit-test-backend:
+    uses: ./.github/workflows/reusable-unit-test.yml
+    with:
+      path: backend
+      node-version: ${{ vars.NODE_VERSION }}
+
+  unit-test-common:
+    uses: ./.github/workflows/reusable-unit-test.yml
+    with:
+      path: common
+      node-version: ${{ vars.NODE_VERSION }}
+
+  knip:
+    uses: ./.github/workflows/reusable-knip.yml
+    with:
+      node-version: ${{ vars.NODE_VERSION }}
+
+  security-scan:
+    name: Security
+    uses: ./.github/workflows/sub-security-scan.yml
+    secrets: inherit # pragma: allowlist secret
+
+  build:
+    name: Build
+    needs: [setup]
+    uses: ./.github/workflows/sub-build.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+
+  # E2E deployment and tests only run when explicitly requested
+  deploy-pr-code:
+    name: Deploy PR to Staging Slot
+    needs:
+      [
+        setup,
+        build,
+        accessibility-test,
+        unit-test-frontend,
+        unit-test-backend,
+        unit-test-common,
+        security-scan,
+        knip,
+      ]
+    # Only deploy if: (1) PR has run-e2e-tests label, OR (2) event is ready_for_review
+    if: |
+      github.event.action == 'ready_for_review' ||
+      contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')
+    uses: ./.github/workflows/sub-deploy-code-slot.yml
+    with:
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      environmentHash: ${{ needs.setup.outputs.environmentHash }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+      initialDeployment: 'false'  # Never initial deployment for PRs
+    secrets: inherit # pragma: allowlist secret
+
+  execute-pr-e2e:
+    name: E2E Tests
+    needs: [setup, deploy-pr-code]
+    uses: ./.github/workflows/reusable-e2e.yml
+    with:
+      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
+      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
+      slotName: ${{ needs.setup.outputs.slotName }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      stackName: ${{ needs.setup.outputs.stackName }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
+      branchHashId: ${{ needs.setup.outputs.environmentHash }}
+    secrets: inherit # pragma: allowlist secret
