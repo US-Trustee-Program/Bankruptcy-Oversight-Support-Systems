@@ -1,11 +1,11 @@
-import { CaseSummary } from './cases';
+import { CaseBasics } from './cases';
 import { ConsolidationType } from './orders';
 import { Auditable } from './auditable';
 
 type EventBase = {
   caseId: string;
   orderDate: string;
-  otherCase: CaseSummary; // What happens if/when this is stale?? Store less than CaseSummary???
+  otherCase: CaseBasics;
   // verificationDate: string; // TODO: Need this????
 };
 
