@@ -49,8 +49,8 @@ export default function PastReportDates(props: Readonly<PastReportDatesProps>) {
     });
   }
 
-  const fieldExam = data?.fieldExam ? isoToMMDDYYYY(data.fieldExam) : NO_DATE;
-  const audit = data?.audit ? isoToMMDDYYYY(data.audit) : NO_DATE;
+  const fieldExam = data?.pastFieldExam ? isoToMMDDYYYY(data.pastFieldExam) : NO_DATE;
+  const audit = data?.pastAudit ? isoToMMDDYYYY(data.pastAudit) : NO_DATE;
 
   if (isLoading) {
     return <LoadingSpinner id="past-report-dates-loading" />;

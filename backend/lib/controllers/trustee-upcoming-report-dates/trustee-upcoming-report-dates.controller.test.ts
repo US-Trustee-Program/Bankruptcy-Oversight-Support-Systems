@@ -137,8 +137,8 @@ describe('TrusteeUpcomingReportDatesController', () => {
       return {
         trusteeId: 'trustee-001',
         appointmentId: 'appointment-001',
-        fieldExam: '2026-06-15',
-        audit: null,
+        pastFieldExam: '2026-06-15',
+        pastAudit: null,
         tprReviewPeriodStart: null,
         tprReviewPeriodEnd: null,
         tprDue: null,
@@ -175,7 +175,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ fieldExam: '06/15/2026' }),
+        body: buildValidInput({ pastFieldExam: '06/15/2026' }),
       });
 
       const controller = new TrusteeUpcomingReportDatesController(context);

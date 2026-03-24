@@ -57,8 +57,8 @@ export type TrusteeUpcomingReportDates = Auditable &
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES';
     trusteeId: string;
     appointmentId: string;
-    fieldExam?: string;
-    audit?: string;
+    pastFieldExam?: string;
+    pastAudit?: string;
     tprReviewPeriodStart?: string;
     tprReviewPeriodEnd?: string;
     tprDue?: string;
@@ -74,8 +74,8 @@ export type TrusteeUpcomingReportDates = Auditable &
 export type TrusteeUpcomingReportDatesInput = {
   trusteeId: string;
   appointmentId: string;
-  fieldExam: string | null;
-  audit: string | null;
+  pastFieldExam: string | null;
+  pastAudit: string | null;
   tprReviewPeriodStart: string | null;
   tprReviewPeriodEnd: string | null;
   tprDue: string | null;
@@ -97,8 +97,8 @@ export type TrusteeUpcomingReportDatesHistory = AbstractTrusteeHistory<
 };
 
 type DateField =
-  | 'fieldExam'
-  | 'audit'
+  | 'pastFieldExam'
+  | 'pastAudit'
   | 'tprReviewPeriodStart'
   | 'tprReviewPeriodEnd'
   | 'tprDue'
@@ -110,8 +110,8 @@ type DateField =
   | 'upcomingIndependentAuditRequired';
 
 export const DATE_FIELDS: DateField[] = [
-  'fieldExam',
-  'audit',
+  'pastFieldExam',
+  'pastAudit',
   'tprReviewPeriodStart',
   'tprReviewPeriodEnd',
   'tprDue',

@@ -30,8 +30,8 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   createdOn: '2026-01-01T00:00:00.000Z',
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
-  fieldExam: '2026-06-15',
-  audit: '2026-08-01',
+  pastFieldExam: '2026-06-15',
+  pastAudit: '2026-08-01',
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '1900-09-15',
@@ -233,7 +233,7 @@ describe('EditUpcomingReportDates', () => {
     });
   });
 
-  test('save preserves non-displayed fields (fieldExam, audit) from API response', async () => {
+  test('save preserves non-displayed fields (pastFieldExam, pastAudit) from API response', async () => {
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
 
@@ -248,8 +248,8 @@ describe('EditUpcomingReportDates', () => {
         'trustee-001',
         'appointment-001',
         expect.objectContaining({
-          fieldExam: '2026-06-15',
-          audit: '2026-08-01',
+          pastFieldExam: '2026-06-15',
+          pastAudit: '2026-08-01',
         }),
       ),
     );

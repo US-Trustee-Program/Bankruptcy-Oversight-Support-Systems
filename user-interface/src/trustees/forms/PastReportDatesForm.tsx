@@ -17,8 +17,8 @@ function toSentinelDate(isoDate: string): string {
 }
 
 type FullFormState = {
-  fieldExam: string;
-  audit: string;
+  pastFieldExam: string;
+  pastAudit: string;
   tprReviewPeriodStart: string;
   tprReviewPeriodEnd: string;
   tprDue: string;
@@ -32,8 +32,8 @@ type FullFormState = {
 };
 
 const EMPTY_FORM: FullFormState = {
-  fieldExam: '',
-  audit: '',
+  pastFieldExam: '',
+  pastAudit: '',
   tprReviewPeriodStart: '',
   tprReviewPeriodEnd: '',
   tprDue: '',
@@ -64,8 +64,8 @@ export default function PastReportDatesForm() {
         const data = response.data;
         if (data) {
           setForm({
-            fieldExam: data.fieldExam ?? '',
-            audit: data.audit ?? '',
+            pastFieldExam: data.pastFieldExam ?? '',
+            pastAudit: data.pastAudit ?? '',
             tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
             tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
             tprDue: data.tprDue ?? '',
@@ -87,11 +87,11 @@ export default function PastReportDatesForm() {
       });
   }, [trusteeId, appointmentId]);
 
-  function handleChange(field: 'fieldExam' | 'audit') {
+  function handleChange(field: 'pastFieldExam' | 'pastAudit') {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
       const value = ev.target.value;
-      const fe = field === 'fieldExam' ? value : form.fieldExam;
-      const au = field === 'audit' ? value : form.audit;
+      const fe = field === 'pastFieldExam' ? value : form.pastFieldExam;
+      const au = field === 'pastAudit' ? value : form.pastAudit;
       const next = calculateNextAuditDate(fe || undefined, au || undefined, 3) ?? '';
       const nextRequired = calculateNextAuditDate(fe || undefined, au || undefined, 6) ?? '';
       setForm((prev) => ({
@@ -109,8 +109,8 @@ export default function PastReportDatesForm() {
     const isoInput: TrusteeUpcomingReportDatesInput = {
       trusteeId: trusteeId!,
       appointmentId: appointmentId!,
-      fieldExam: form.fieldExam || null,
-      audit: form.audit || null,
+      pastFieldExam: form.pastFieldExam || null,
+      pastAudit: form.pastAudit || null,
       tprReviewPeriodStart: form.tprReviewPeriodStart
         ? toSentinelDate(form.tprReviewPeriodStart)
         : null,
@@ -151,15 +151,15 @@ export default function PastReportDatesForm() {
       <DatePicker
         id="past-field-exam"
         label="Field Exam"
-        value={form.fieldExam}
-        onChange={handleChange('fieldExam')}
+        value={form.pastFieldExam}
+        onChange={handleChange('pastFieldExam')}
         disableMax
       />
       <DatePicker
         id="past-audit"
         label="Audit"
-        value={form.audit}
-        onChange={handleChange('audit')}
+        value={form.pastAudit}
+        onChange={handleChange('pastAudit')}
         disableMax
       />
       <div className="usa-button-group">
