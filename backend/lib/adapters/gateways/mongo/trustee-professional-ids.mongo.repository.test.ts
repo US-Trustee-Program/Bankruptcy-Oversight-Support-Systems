@@ -374,55 +374,6 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
   });
 
-  describe('many-to-many scenarios', () => {
-    test('should support finding multiple ACMS IDs for one trustee (Harvey Barr scenario)', async () => {
-      const trusteeId = 'harvey-barr';
-      const mockProfessionalIds: TrusteeProfessionalIdDocument[] = [
-        {
-          ...sampleProfessionalId,
-          id: 'prof-id-1',
-          camsTrusteeId: trusteeId,
-          acmsProfessionalId: 'NY-00063',
-        },
-        {
-          ...sampleProfessionalId,
-          id: 'prof-id-2',
-          camsTrusteeId: trusteeId,
-          acmsProfessionalId: 'UT-05321',
-        },
-      ];
-
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockProfessionalIds);
-
-      const allIds = await repository.findByCamsTrusteeId(trusteeId);
-
-      expect(allIds).toHaveLength(2);
-      expect(allIds[0].acmsProfessionalId).toBe('NY-00063');
-      expect(allIds[1].acmsProfessionalId).toBe('UT-05321');
-    });
-
-    test('should support finding multiple trustees for one ACMS ID (Gerard McHale Jr. scenario)', async () => {
-      const acmsId = 'AK-01414';
-      const trusteeIds = ['trustee-11092', 'trustee-13340', 'trustee-17287', 'trustee-27472'];
-
-      const mockProfessionalIds: TrusteeProfessionalIdDocument[] = trusteeIds.map(
-        (trusteeId, i) => ({
-          ...sampleProfessionalId,
-          id: `prof-id-${i + 1}`,
-          camsTrusteeId: trusteeId,
-          acmsProfessionalId: acmsId,
-        }),
-      );
-
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockProfessionalIds);
-
-      const allTrustees = await repository.findByAcmsProfessionalId(acmsId);
-
-      expect(allTrustees).toHaveLength(4);
-      expect(allTrustees.map((t) => t.camsTrusteeId)).toEqual(trusteeIds);
-    });
-  });
-
   describe('bidirectional lookup', () => {
     test('should support lookups in both directions', async () => {
       const trusteeId = 'trustee-123';

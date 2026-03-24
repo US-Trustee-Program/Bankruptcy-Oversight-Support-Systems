@@ -61,6 +61,7 @@ export class TrusteeProfessionalIdsMongoRepository
       // Check if this exact mapping already exists (idempotent)
       const doc = using<TrusteeProfessionalIdDocument>();
       const query = and(
+        doc('documentType').equals('TRUSTEE_PROFESSIONAL_ID'),
         doc('camsTrusteeId').equals(camsTrusteeId),
         doc('acmsProfessionalId').equals(acmsProfessionalId),
       );
