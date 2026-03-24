@@ -3,6 +3,7 @@ import factory from '../../factory';
 import { TrusteeUpcomingReportDatesRepository } from '../gateways.types';
 import {
   DATE_FIELDS,
+  TEXT_FIELDS,
   TrusteeUpcomingReportDates,
   TrusteeUpcomingReportDatesHistory,
   TrusteeUpcomingReportDatesInput,
@@ -11,11 +12,12 @@ import { createAuditRecord } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
 
+// TODO: rename this, it is not just date fields anymore
 function buildDateFields(
   input: TrusteeUpcomingReportDatesInput,
 ): Partial<TrusteeUpcomingReportDates> {
   const fields: Partial<TrusteeUpcomingReportDates> = {};
-  for (const field of DATE_FIELDS) {
+  for (const field of [...DATE_FIELDS, ...TEXT_FIELDS]) {
     if (input[field] !== null) {
       (fields as Record<string, string>)[field] = input[field]!;
     }
@@ -23,13 +25,15 @@ function buildDateFields(
   return fields;
 }
 
+// TODO: make TPR due mm/yyyy
+// TODO: rename, not just dateFields
 function diffDateFields(
   existing: TrusteeUpcomingReportDates | null,
   input: TrusteeUpcomingReportDatesInput,
 ): { before: Partial<TrusteeUpcomingReportDates>; after: Partial<TrusteeUpcomingReportDates> } {
   const before: Partial<TrusteeUpcomingReportDates> = {};
   const after: Partial<TrusteeUpcomingReportDates> = {};
-  for (const field of DATE_FIELDS) {
+  for (const field of [...DATE_FIELDS, ...TEXT_FIELDS]) {
     const existingValue = (existing?.[field] as string | undefined) ?? null;
     const incomingValue = input[field] ?? null;
     if (existingValue !== incomingValue) {

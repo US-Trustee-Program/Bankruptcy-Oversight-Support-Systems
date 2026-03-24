@@ -34,6 +34,7 @@ type FormState = {
   tprReviewPeriodStart: string;
   tprReviewPeriodEnd: string;
   tprDue: string;
+  tprDueYearParity: string;
   tirReviewPeriodStart: string;
   tirReviewPeriodEnd: string;
   tirSubmission: string;
@@ -48,6 +49,7 @@ const EMPTY_FORM: FormState = {
   tprReviewPeriodStart: '',
   tprReviewPeriodEnd: '',
   tprDue: '',
+  tprDueYearParity: '',
   tirReviewPeriodStart: '',
   tirReviewPeriodEnd: '',
   tirSubmission: '',
@@ -93,6 +95,7 @@ export default function UpcomingReportDatesForm() {
             tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
             tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
             tprDue: data.tprDue ?? '',
+            tprDueYearParity: data.tprDueYearParity ?? '',
             tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
             tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
             tirSubmission: data.tirSubmission ?? '',
@@ -158,6 +161,7 @@ export default function UpcomingReportDatesForm() {
         : null,
       tprReviewPeriodEnd: form.tprReviewPeriodEnd ? toSentinelDate(form.tprReviewPeriodEnd) : null,
       tprDue: form.tprDue ? toMonthYearDate(form.tprDue) : null,
+      tprDueYearParity: form.tprDueYearParity || null,
       tirReviewPeriodStart: form.tirReviewPeriodStart
         ? toSentinelDate(form.tirReviewPeriodStart)
         : null,
@@ -233,6 +237,22 @@ export default function UpcomingReportDatesForm() {
         onChange={handleChange('tprDue')}
         disableMax
       />
+      <div className="usa-form-group">
+        <label className="usa-label" htmlFor="tpr-due-year-qualifier">
+          Year Qualifier
+        </label>
+        <select
+          className="usa-select"
+          id="tpr-due-year-qualifier"
+          data-testid="tpr-due-year-qualifier"
+          value={form.tprDueYearParity}
+          onChange={(e) => setForm((prev) => ({ ...prev, tprDueYearParity: e.target.value }))}
+        >
+          <option value="">- Select -</option>
+          <option value="EVEN">EVEN</option>
+          <option value="ODD">ODD</option>
+        </select>
+      </div>
       <MonthDayRangeSelector
         id="tir-review-period"
         label="TIR Review Period"

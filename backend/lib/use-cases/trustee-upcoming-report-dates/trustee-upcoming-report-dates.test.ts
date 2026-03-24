@@ -35,10 +35,13 @@ function buildMockInput(
     tprReviewPeriodStart: null,
     tprReviewPeriodEnd: null,
     tprDue: null,
+    tprDueYearParity: null,
     tirReviewPeriodStart: null,
     tirReviewPeriodEnd: null,
     tirSubmission: null,
     tirReview: null,
+    nextFieldExam: null,
+    nextIndependentAuditRequired: null,
     ...overrides,
   };
 }
