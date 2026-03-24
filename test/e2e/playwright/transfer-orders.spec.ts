@@ -30,11 +30,7 @@ test.describe('Transfer Orders', () => {
     });
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
 
-    // Select pending status filter to make orders visible in the accordion
-    await page.locator('#task-status-filter .input-container').click();
-    await page.locator('[id="option-pending"]').click();
-    await page.keyboard.press('Escape');
-
+    // All status filters are selected by default, so pending orders are already visible
     await expect(page.getByTestId('accordion-group')).toBeVisible();
 
     const orderResponse = await orderResponsePromise;
