@@ -80,12 +80,35 @@ jobs:
       slotName: ${{ needs.setup.outputs.slotName }}
 
   # E2E deployment and tests only run when explicitly requested
+  build-frontend-deployment:
+    name: Build Frontend for Deployment
+    needs: [setup]
+    # Only build deployment frontend if we're going to deploy
+    if: |
+      github.event.action == 'ready_for_review' ||
+      contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')
+    uses: ./.github/workflows/reusable-build-frontend.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      camsServerHostname: ${{ needs.setup.outputs.apiFunctionName }}.azurewebsites.us
+      camsStagingHostname: ${{ needs.setup.outputs.apiFunctionName }}-${{ needs.setup.outputs.slotName }}.azurewebsites.us
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      isDeployment: true
+
   deploy-pr-code:
     name: Deploy PR to Staging Slot
     needs:
       [
         setup,
         build,
+        build-frontend-deployment,
         accessibility-test,
         unit-test-frontend,
         unit-test-backend,
