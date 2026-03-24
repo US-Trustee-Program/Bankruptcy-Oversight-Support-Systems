@@ -516,13 +516,40 @@ export interface UserGroupsRepository extends Releasable {
 }
 
 export interface TrusteeProfessionalIdsRepository extends Releasable {
+  /**
+   * Create a new trustee-to-ACMS-professional-ID mapping.
+   * Idempotent - if mapping already exists, returns existing document.
+   */
   createProfessionalId(
     camsTrusteeId: string,
     acmsProfessionalId: string,
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId>;
+
+  /**
+   * Find all ACMS professional IDs for a given CAMS trustee.
+   * Returns empty array if no mappings exist.
+   */
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]>;
+
+  /**
+   * Find all CAMS trustees mapped to a given ACMS professional ID.
+   * Returns empty array if no mappings exist.
+   * Used for disambiguation when multiple trustees share same ACMS ID.
+   */
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;
-  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<void>;
+
+  /**
+   * Delete all mappings for a given CAMS trustee.
+   * Used when deleting a trustee or during migration cleanup.
+   * Returns the number of deleted documents.
+   */
+  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
+
+  /**
+   * Delete all professional ID mappings.
+   * Used for clean-slate migrations with deleteAll flag.
+   * Returns the number of deleted documents.
+   */
   deleteAll(): Promise<number>;
 }
