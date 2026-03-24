@@ -14,6 +14,7 @@ import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
+import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 
 // ISO date with sentinel year 1900 for month/day-only fields
 const MMDD_MIN = '1900-01-01';
@@ -229,32 +230,36 @@ export default function UpcomingReportDatesForm() {
         externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
         submitted={submitted}
       />
-      <div className="usa-form-group">
-        <DatePicker
-          id="tpr-due"
-          label="TPR Due"
-          min={MMDD_MIN}
-          value={form.tprDue}
-          onChange={handleChange('tprDue')}
-          disableMax
-        />
-        {errors.tprDue && <span className="usa-error-message">{errors.tprDue}</span>}
-        <label className="usa-label" htmlFor="tpr-due-year-type">
-          Year Type
-        </label>
-        <select
-          className="usa-select"
-          id="tpr-due-year-type"
-          data-testid="tpr-due-year-type"
-          value={form.tprDueYearType}
-          onChange={(e) => setForm((prev) => ({ ...prev, tprDueYearType: e.target.value }))}
-        >
-          <option value="">- Select -</option>
-          <option value="EVEN">EVEN</option>
-          <option value="ODD">ODD</option>
-        </select>
-        {errors.tprDueYearType && (
-          <span className="usa-error-message">{errors.tprDueYearType}</span>
+      <div className="tpr-due-group">
+        <div className="tpr-due-group__header">
+          <label className="usa-label" htmlFor="tpr-due-month">
+            TPR Due
+          </label>
+        </div>
+        <div className="tpr-due-group__row">
+          <MonthDaySelector
+            id="tpr-due"
+            value={form.tprDue}
+            onChange={handleMonthDayChange('tprDue')}
+            hasError={!!(errors.tprDue || errors.tprDueYearType)}
+          />
+          <div className="month-day-selector__column">
+            <span className="usa-hint">Year Type</span>
+            <select
+              className="usa-select"
+              id="tpr-due-year-type"
+              data-testid="tpr-due-year-type"
+              value={form.tprDueYearType}
+              onChange={(e) => setForm((prev) => ({ ...prev, tprDueYearType: e.target.value }))}
+            >
+              <option value="">- Select -</option>
+              <option value="EVEN">EVEN</option>
+              <option value="ODD">ODD</option>
+            </select>
+          </div>
+        </div>
+        {(errors.tprDue || errors.tprDueYearType) && (
+          <span className="usa-error-message">{errors.tprDue || errors.tprDueYearType}</span>
         )}
       </div>
       <MonthDayRangeSelector
