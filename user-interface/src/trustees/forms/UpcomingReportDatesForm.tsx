@@ -29,7 +29,7 @@ type FormState = {
   tprReviewPeriodStart: string;
   tprReviewPeriodEnd: string;
   tprDue: string;
-  tprDueYearParity: string;
+  tprDueYearType: string;
   tirReviewPeriodStart: string;
   tirReviewPeriodEnd: string;
   tirSubmission: string;
@@ -44,7 +44,7 @@ const EMPTY_FORM: FormState = {
   tprReviewPeriodStart: '',
   tprReviewPeriodEnd: '',
   tprDue: '',
-  tprDueYearParity: '',
+  tprDueYearType: '',
   tirReviewPeriodStart: '',
   tirReviewPeriodEnd: '',
   tirSubmission: '',
@@ -71,6 +71,8 @@ export default function UpcomingReportDatesForm() {
   const [errors, setErrors] = useState({
     tprReviewPeriodStart: '',
     tprReviewPeriodEnd: '',
+    tprDue: '',
+    tprDueYearType: '',
     tirReviewPeriodStart: '',
     tirReviewPeriodEnd: '',
   });
@@ -90,7 +92,7 @@ export default function UpcomingReportDatesForm() {
             tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
             tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
             tprDue: data.tprDue ?? '',
-            tprDueYearParity: data.tprDueYearParity ?? '',
+            tprDueYearType: data.tprDueYearType ?? '',
             tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
             tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
             tirSubmission: data.tirSubmission ?? '',
@@ -156,7 +158,7 @@ export default function UpcomingReportDatesForm() {
         : null,
       tprReviewPeriodEnd: form.tprReviewPeriodEnd ? toSentinelDate(form.tprReviewPeriodEnd) : null,
       tprDue: form.tprDue ? toSentinelDate(form.tprDue) : null,
-      tprDueYearParity: form.tprDueYearParity || null,
+      tprDueYearType: form.tprDueYearType || null,
       tirReviewPeriodStart: form.tirReviewPeriodStart
         ? toSentinelDate(form.tirReviewPeriodStart)
         : null,
@@ -171,6 +173,8 @@ export default function UpcomingReportDatesForm() {
     setErrors({
       tprReviewPeriodStart: result.reasonMap?.tprReviewPeriodStart?.reasons?.[0] ?? '',
       tprReviewPeriodEnd: result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0] ?? '',
+      tprDue: result.reasonMap?.tprDue?.reasons?.[0] ?? '',
+      tprDueYearType: result.reasonMap?.tprDueYearType?.reasons?.[0] ?? '',
       tirReviewPeriodStart: result.reasonMap?.tirReviewPeriodStart?.reasons?.[0] ?? '',
       tirReviewPeriodEnd: result.reasonMap?.tirReviewPeriodEnd?.reasons?.[0] ?? '',
     });
@@ -225,29 +229,33 @@ export default function UpcomingReportDatesForm() {
         externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
         submitted={submitted}
       />
-      <DatePicker
-        id="tpr-due"
-        label="TPR Due"
-        min={MMDD_MIN}
-        value={form.tprDue}
-        onChange={handleChange('tprDue')}
-        disableMax
-      />
       <div className="usa-form-group">
-        <label className="usa-label" htmlFor="tpr-due-year-qualifier">
-          Year Qualifier
+        <DatePicker
+          id="tpr-due"
+          label="TPR Due"
+          min={MMDD_MIN}
+          value={form.tprDue}
+          onChange={handleChange('tprDue')}
+          disableMax
+        />
+        {errors.tprDue && <span className="usa-error-message">{errors.tprDue}</span>}
+        <label className="usa-label" htmlFor="tpr-due-year-type">
+          Year Type
         </label>
         <select
           className="usa-select"
-          id="tpr-due-year-qualifier"
-          data-testid="tpr-due-year-qualifier"
-          value={form.tprDueYearParity}
-          onChange={(e) => setForm((prev) => ({ ...prev, tprDueYearParity: e.target.value }))}
+          id="tpr-due-year-type"
+          data-testid="tpr-due-year-type"
+          value={form.tprDueYearType}
+          onChange={(e) => setForm((prev) => ({ ...prev, tprDueYearType: e.target.value }))}
         >
           <option value="">- Select -</option>
           <option value="EVEN">EVEN</option>
           <option value="ODD">ODD</option>
         </select>
+        {errors.tprDueYearType && (
+          <span className="usa-error-message">{errors.tprDueYearType}</span>
+        )}
       </div>
       <MonthDayRangeSelector
         id="tir-review-period"

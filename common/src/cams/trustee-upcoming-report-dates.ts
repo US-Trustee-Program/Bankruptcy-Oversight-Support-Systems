@@ -43,6 +43,7 @@ const trusteeUpcomingReportDatesSpec: ValidationSpec<TrusteeUpcomingReportDatesI
       'TIR Review Period Start',
       'TIR Review Period End',
     ),
+    requirePair('tprDue', 'tprDueYearType', 'TPR Due', 'TPR Due Year Type'),
   ],
 };
 
@@ -62,7 +63,7 @@ export type TrusteeUpcomingReportDates = Auditable &
     tprReviewPeriodStart?: string;
     tprReviewPeriodEnd?: string;
     tprDue?: string;
-    tprDueYearParity?: 'EVEN' | 'ODD';
+    tprDueYearType?: 'EVEN' | 'ODD';
     tirReviewPeriodStart?: string;
     tirReviewPeriodEnd?: string;
     tirSubmission?: string;
@@ -79,7 +80,7 @@ export type TrusteeUpcomingReportDatesInput = {
   tprReviewPeriodStart: string | null;
   tprReviewPeriodEnd: string | null;
   tprDue: string | null;
-  tprDueYearParity: string | null;
+  tprDueYearType: string | null;
   tirReviewPeriodStart: string | null;
   tirReviewPeriodEnd: string | null;
   tirSubmission: string | null;
@@ -123,9 +124,9 @@ export const DATE_FIELDS: DateField[] = [
   'upcomingIndependentAuditRequired',
 ];
 
-type TextField = 'tprDueYearParity';
+type TextField = 'tprDueYearType';
 
-export const TEXT_FIELDS: TextField[] = ['tprDueYearParity'];
+export const TEXT_FIELDS: TextField[] = ['tprDueYearType'];
 
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');

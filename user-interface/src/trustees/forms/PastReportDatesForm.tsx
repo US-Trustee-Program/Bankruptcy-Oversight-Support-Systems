@@ -22,7 +22,7 @@ type FullFormState = {
   tprReviewPeriodStart: string;
   tprReviewPeriodEnd: string;
   tprDue: string;
-  tprDueYearParity: string;
+  tprDueYearType: string;
   tirReviewPeriodStart: string;
   tirReviewPeriodEnd: string;
   tirSubmission: string;
@@ -37,7 +37,7 @@ const EMPTY_FORM: FullFormState = {
   tprReviewPeriodStart: '',
   tprReviewPeriodEnd: '',
   tprDue: '',
-  tprDueYearParity: '',
+  tprDueYearType: '',
   tirReviewPeriodStart: '',
   tirReviewPeriodEnd: '',
   tirSubmission: '',
@@ -69,7 +69,7 @@ export default function PastReportDatesForm() {
             tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
             tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
             tprDue: data.tprDue ?? '',
-            tprDueYearParity: data.tprDueYearParity ?? '',
+            tprDueYearType: data.tprDueYearType ?? '',
             tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
             tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
             tirSubmission: data.tirSubmission ?? '',
@@ -116,7 +116,7 @@ export default function PastReportDatesForm() {
         : null,
       tprReviewPeriodEnd: form.tprReviewPeriodEnd ? toSentinelDate(form.tprReviewPeriodEnd) : null,
       tprDue: form.tprDue ? toSentinelDate(form.tprDue) : null,
-      tprDueYearParity: form.tprDueYearParity || null,
+      tprDueYearType: form.tprDueYearType || null,
       tirReviewPeriodStart: form.tirReviewPeriodStart
         ? toSentinelDate(form.tirReviewPeriodStart)
         : null,

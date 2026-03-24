@@ -35,7 +35,7 @@ function buildMockInput(
     tprReviewPeriodStart: null,
     tprReviewPeriodEnd: null,
     tprDue: null,
-    tprDueYearParity: null,
+    tprDueYearType: null,
     tirReviewPeriodStart: null,
     tirReviewPeriodEnd: null,
     tirSubmission: null,
