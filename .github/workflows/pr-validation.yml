@@ -25,6 +25,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       environment: 'Develop'  # Always use Develop for PRs
+      branchNameOverride: ${{ github.base_ref }}  # Use target branch for resource naming
 
   accessibility-test:
     uses: ./.github/workflows/reusable-accessibility.yml
