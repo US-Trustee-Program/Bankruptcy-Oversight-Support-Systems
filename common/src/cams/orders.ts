@@ -1,5 +1,5 @@
 import { CaseAssignment } from './assignments';
-import { CaseDocketEntry, CaseSummary } from './cases';
+import { CaseBasics, CaseDocketEntry, CaseSummary } from './cases';
 import { Consolidation } from './events';
 import { CamsDocument } from './document';
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
@@ -25,7 +25,7 @@ export function isConsolidationOrderRejection(
 
 export type ConsolidationOrderActionApproval = {
   consolidationId: string;
-  leadCase?: CaseSummary;
+  leadCase?: CaseBasics;
   approvedCases: Array<string>;
   consolidationType: ConsolidationType;
 };
@@ -51,7 +51,7 @@ export type TransferOrder = CaseSummary & {
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
   docketSuggestedCaseNumber?: string;
-  newCase?: CaseSummary;
+  newCase?: CaseBasics;
   reason?: string;
 };
 
@@ -92,7 +92,7 @@ export type ConsolidationOrder = CamsDocument & {
   courtDivisionCode: string;
   jobId: number;
   leadCaseIdHint?: string;
-  leadCase?: CaseSummary;
+  leadCase?: CaseBasics;
   memberCases: Array<ConsolidationOrderCase>;
   reason?: string;
 };
@@ -159,7 +159,7 @@ type TransferOrderActionApproval = {
   id: string;
   caseId: string;
   orderType: 'transfer';
-  newCase: Partial<CaseSummary>;
+  newCase: Partial<CaseBasics>;
   status: 'approved';
 };
 
@@ -178,7 +178,7 @@ export type RawOrderSync = {
 };
 
 export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
-  newCase?: Partial<CaseSummary>;
+  newCase?: Partial<CaseBasics>;
 };
 
 export function generateConsolidationId(

@@ -17,7 +17,7 @@ import {
   TransferOrderAction,
 } from '@common/cams/orders';
 import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from '@common/cams/events';
-import { CaseSummary } from '@common/cams/cases';
+import { CaseBasics, CaseSummary } from '@common/cams/cases';
 import { CamsError } from '../../common-errors/cams-error';
 import DateHelper from '@common/date-helper';
 import {
@@ -57,7 +57,7 @@ type HandleConsolidationParams = {
   provisionalOrderId: string;
   includedCases: string[];
   consolidationType?: ConsolidationType;
-  leadCase?: CaseSummary;
+  leadCase?: CaseBasics;
   reason?: string;
 };
 
@@ -285,10 +285,10 @@ export class OrdersUseCase {
 
   private async buildHistory(
     context: ApplicationContext,
-    bCase: CaseSummary,
+    bCase: CaseBasics,
     status: OrderStatus,
-    memberCases: CaseSummary[],
-    leadCase?: CaseSummary,
+    memberCases: CaseBasics[],
+    leadCase?: CaseBasics,
   ): Promise<CaseHistory> {
     const after: ConsolidationOrderSummary = {
       status,
