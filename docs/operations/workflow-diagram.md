@@ -108,6 +108,7 @@ flowchart LR
     reusable_build_frontend_yml["reusable-build-frontend.yml"]
     reusable_build_frontend_yml_build_frontend["build-frontend"]
     sub_build_yml_backend["backend"]
+    pr_validation_yml_build_frontend_deployment["Build Frontend for Deployment"]
     pr_validation_yml_deploy_pr_code["Deploy PR to Staging Slot"]
     sub_deploy_code_slot_yml["sub-deploy-code-slot.yml"]
     sub_deploy_code_slot_yml_deploy_code["Slot Code Deployment"]
@@ -161,6 +162,8 @@ flowchart LR
     sub_build_yml_build_frontend_predeployment --> reusable_build_frontend_yml
     sub_build_yml --> sub_build_yml_backend
     pr_validation_yml_build --> sub_build_yml
+    pr_validation_yml --> pr_validation_yml_build_frontend_deployment
+    pr_validation_yml_build_frontend_deployment --> reusable_build_frontend_yml
     pr_validation_yml --> pr_validation_yml_deploy_pr_code
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_code
     sub_deploy_code_yml --> sub_deploy_code_yml_deploy_webapp
@@ -221,6 +224,7 @@ flowchart LR
     class reusable_build_frontend_yml reusable
     class reusable_build_frontend_yml_build_frontend job
     class sub_build_yml_backend job
+    class pr_validation_yml_build_frontend_deployment job
     class pr_validation_yml_deploy_pr_code job
     class sub_deploy_code_slot_yml reusable
     class sub_deploy_code_slot_yml_deploy_code job
@@ -1417,7 +1421,7 @@ flowchart LR
   - Jobs: 3
 - **Pull Request Validation** (`pr-validation.yml`)
   - Triggers: pull_request
-  - Jobs: 10
+  - Jobs: 11
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
   - Jobs: 10
