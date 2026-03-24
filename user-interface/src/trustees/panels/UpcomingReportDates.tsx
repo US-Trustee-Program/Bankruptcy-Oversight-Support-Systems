@@ -61,6 +61,7 @@ export default function UpcomingReportDates(props: Readonly<UpcomingReportDatesP
       ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
       : NO_DATE;
   const tprDue = data?.tprDue ? isoToMMYYYY(data.tprDue) : NO_DATE;
+  const tprDueYearParity = data?.tprDueYearParity ?? NO_DATE;
   const tirReviewPeriod =
     data?.tirReviewPeriodStart && data?.tirReviewPeriodEnd
       ? isoRangeToMMDD(data.tirReviewPeriodStart, data.tirReviewPeriodEnd)
@@ -103,6 +104,10 @@ export default function UpcomingReportDates(props: Readonly<UpcomingReportDatesP
             </li>
             <li data-testid="tpr-due-row">
               <span className="upcoming-report-dates-label">TPR Due:</span> {tprDue}
+            </li>
+            <li data-testid="tpr-due-year-qualifier-row">
+              <span className="upcoming-report-dates-label">Year Qualifier:</span>{' '}
+              {tprDueYearParity}
             </li>
             <li data-testid="tir-review-period-row">
               <span className="upcoming-report-dates-label">TIR Review Period:</span>{' '}

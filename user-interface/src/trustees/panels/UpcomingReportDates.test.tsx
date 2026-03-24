@@ -38,6 +38,7 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '2026-09-01',
+  tprDueYearParity: 'EVEN',
   tirReviewPeriodStart: '1900-07-01',
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
@@ -73,7 +74,7 @@ describe('UpcomingReportDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(7);
+    expect(noDateElements.length).toBe(8);
   });
 
   test('renders all field labels', async () => {
@@ -89,6 +90,7 @@ describe('UpcomingReportDates', () => {
     expect(screen.getByText('Audit:')).toBeInTheDocument();
     expect(screen.getByText('TPR Review Period:')).toBeInTheDocument();
     expect(screen.getByText('TPR Due:')).toBeInTheDocument();
+    expect(screen.getByText('Year Qualifier:')).toBeInTheDocument();
     expect(screen.getByText('TIR Review Period:')).toBeInTheDocument();
     expect(screen.getByText('TIR Submission:')).toBeInTheDocument();
     expect(screen.getByText('TIR Review:')).toBeInTheDocument();
@@ -109,6 +111,7 @@ describe('UpcomingReportDates', () => {
     expect(screen.getByTestId('audit-row')).toHaveTextContent('08/01/2032');
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
     expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/2026');
+    expect(screen.getByTestId('tpr-due-year-qualifier-row')).toHaveTextContent('EVEN');
     expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('07/01 - 06/30');
     expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('10/15');
     expect(screen.getByTestId('tir-review-row')).toHaveTextContent('11/01');
@@ -205,7 +208,7 @@ describe('UpcomingReportDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(7);
+    expect(noDateElements.length).toBe(8);
   });
 
   test('Edit button navigates to edit route', async () => {

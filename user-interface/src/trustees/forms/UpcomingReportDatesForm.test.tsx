@@ -35,6 +35,7 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '2026-09-01',
+  tprDueYearParity: 'ODD',
   tirReviewPeriodStart: '1900-07-01',
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
@@ -77,6 +78,9 @@ describe('EditUpcomingReportDates', () => {
     expect(screen.getByTestId('tir-submission')).toBeInTheDocument();
     expect(screen.getByTestId('tir-review')).toBeInTheDocument();
 
+    // Year Qualifier dropdown
+    expect(screen.getByTestId('tpr-due-year-qualifier')).toBeInTheDocument();
+
     // MonthDayRangeSelector fields
     expect(screen.getByText('TPR Review Period')).toBeInTheDocument();
     expect(document.getElementById('tpr-review-period-start-month')).toBeInTheDocument();
@@ -101,6 +105,7 @@ describe('EditUpcomingReportDates', () => {
     expect(document.getElementById('tpr-review-period-end-month')).toHaveValue('03');
     expect(document.getElementById('tpr-review-period-end-day')).toHaveValue('31');
     expect(screen.getByTestId('tpr-due')).toHaveValue('2026-09-01');
+    expect(screen.getByTestId('tpr-due-year-qualifier')).toHaveValue('ODD');
     expect(document.getElementById('tir-review-period-start-month')).toHaveValue('07');
     expect(document.getElementById('tir-review-period-start-day')).toHaveValue('01');
     expect(document.getElementById('tir-review-period-end-month')).toHaveValue('06');
@@ -189,6 +194,25 @@ describe('EditUpcomingReportDates', () => {
       expect.objectContaining({ nextFieldExam: '2029-08-15' }),
     );
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+  });
+
+  test('saves selected Year Qualifier in PUT payload', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('tpr-due-year-qualifier')).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-qualifier'), 'EVEN');
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+
+    await waitFor(() => expect(putSpy).toHaveBeenCalled());
+    expect(putSpy).toHaveBeenCalledWith(
+      'trustee-001',
+      'appointment-001',
+      expect.objectContaining({ tprDueYearParity: 'EVEN' }),
+    );
   });
 
   test('auto-calculates tirSubmission and tirReview when TIR review period end changes', async () => {
