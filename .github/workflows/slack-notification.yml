@@ -16,7 +16,7 @@ jobs:
         run: |
           head_sha="${{ github.event.workflow_run.head_sha }}"
           short_hash=$(echo "$head_sha" | cut -c1-7)
-          message="🚨 *Continuous Deployment* workflow failed."
+          message="🚨 *Continuous Deployment* workflow failed. <!subteam^S04HMRKEX6K|@doj-ustp-cms>"
           full_message=$(printf "%s\n• *Branch:* %s\n• *Commit:* <%s|%s>\n• *Run:* <%s|View Workflow>" \
             "$message" \
             "${{ github.event.workflow_run.head_branch }}" \
