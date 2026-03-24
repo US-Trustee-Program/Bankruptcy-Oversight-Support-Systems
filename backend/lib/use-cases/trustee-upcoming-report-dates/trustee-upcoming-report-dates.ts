@@ -12,10 +12,7 @@ import { createAuditRecord } from '@common/cams/auditable';
 import { CamsUserReference } from '@common/cams/users';
 import { Creatable } from '@common/cams/creatable';
 
-// TODO: rename this, it is not just date fields anymore
-function buildDateFields(
-  input: TrusteeUpcomingReportDatesInput,
-): Partial<TrusteeUpcomingReportDates> {
+function buildFields(input: TrusteeUpcomingReportDatesInput): Partial<TrusteeUpcomingReportDates> {
   const fields: Partial<TrusteeUpcomingReportDates> = {};
   for (const field of [...DATE_FIELDS, ...TEXT_FIELDS]) {
     if (input[field] !== null) {
@@ -25,9 +22,7 @@ function buildDateFields(
   return fields;
 }
 
-// TODO: make TPR due mm/yyyy
-// TODO: rename, not just dateFields
-function diffDateFields(
+function diffFields(
   existing: TrusteeUpcomingReportDates | null,
   input: TrusteeUpcomingReportDatesInput,
 ): { before: Partial<TrusteeUpcomingReportDates>; after: Partial<TrusteeUpcomingReportDates> } {
@@ -76,7 +71,7 @@ export class TrusteeUpcomingReportDatesUseCase {
           documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
           trusteeId,
           appointmentId,
-          ...buildDateFields(input),
+          ...buildFields(input),
         },
         user,
       ),
@@ -85,7 +80,7 @@ export class TrusteeUpcomingReportDatesUseCase {
 
     await this.repository.upsert(newDoc);
 
-    const { before, after } = diffDateFields(existing, input);
+    const { before, after } = diffFields(existing, input);
 
     if (Object.keys(before).length > 0 || Object.keys(after).length > 0) {
       const history = createAuditRecord<Creatable<TrusteeUpcomingReportDatesHistory>>(
