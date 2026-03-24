@@ -35,7 +35,7 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '1900-09-15',
-  tprDueYearParity: 'ODD',
+  tprDueYearType: 'ODD',
   tirReviewPeriodStart: '1900-07-01',
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
@@ -79,7 +79,7 @@ describe('EditUpcomingReportDates', () => {
     expect(screen.getByTestId('tir-review')).toBeInTheDocument();
 
     // Year Qualifier dropdown
-    expect(screen.getByTestId('tpr-due-year-qualifier')).toBeInTheDocument();
+    expect(screen.getByTestId('tpr-due-year-type')).toBeInTheDocument();
 
     // MonthDayRangeSelector fields
     expect(screen.getByText('TPR Review Period')).toBeInTheDocument();
@@ -105,7 +105,7 @@ describe('EditUpcomingReportDates', () => {
     expect(document.getElementById('tpr-review-period-end-month')).toHaveValue('03');
     expect(document.getElementById('tpr-review-period-end-day')).toHaveValue('31');
     expect(screen.getByTestId('tpr-due')).toHaveValue('1900-09-15');
-    expect(screen.getByTestId('tpr-due-year-qualifier')).toHaveValue('ODD');
+    expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('ODD');
     expect(document.getElementById('tir-review-period-start-month')).toHaveValue('07');
     expect(document.getElementById('tir-review-period-start-day')).toHaveValue('01');
     expect(document.getElementById('tir-review-period-end-month')).toHaveValue('06');
@@ -196,22 +196,23 @@ describe('EditUpcomingReportDates', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
-  test('saves selected Year Qualifier in PUT payload', async () => {
+  test('saves selected Year Type in PUT payload', async () => {
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
     const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('tpr-due-year-qualifier')).toBeInTheDocument();
+    expect(await screen.findByTestId('tpr-due-year-type')).toBeInTheDocument();
 
-    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-qualifier'), 'EVEN');
+    fireEvent.change(screen.getByTestId('tpr-due'), { target: { value: '1900-09-15' } });
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
     await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
 
     await waitFor(() => expect(putSpy).toHaveBeenCalled());
     expect(putSpy).toHaveBeenCalledWith(
       'trustee-001',
       'appointment-001',
-      expect.objectContaining({ tprDueYearParity: 'EVEN' }),
+      expect.objectContaining({ tprDue: '1900-09-15', tprDueYearType: 'EVEN' }),
     );
   });
 

@@ -142,7 +142,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
         tprReviewPeriodStart: null,
         tprReviewPeriodEnd: null,
         tprDue: null,
-        tprDueYearParity: null,
+        tprDueYearType: null,
         tirReviewPeriodStart: null,
         tirReviewPeriodEnd: null,
         tirSubmission: null,
@@ -255,7 +255,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
       });
     });
 
-    test('PUT with tprDueYearParity set to EVEN returns 200', async () => {
+    test('PUT with tprDue and tprDueYearType both set returns 200', async () => {
       vi.spyOn(
         TrusteeUpcomingReportDatesUseCase.prototype,
         'upsertUpcomingReportDates',
@@ -264,7 +264,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ tprDueYearParity: 'EVEN' }),
+        body: buildValidInput({ tprDue: '1900-09-15', tprDueYearType: 'EVEN' }),
       });
 
       const controller = new TrusteeUpcomingReportDatesController(context);
