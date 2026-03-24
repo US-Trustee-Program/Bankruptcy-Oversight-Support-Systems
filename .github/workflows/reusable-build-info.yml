@@ -99,7 +99,9 @@ jobs:
           echo "Resource group appended with the following: ${resourceGroupSuffix}"
 
           # Stack name used downstream to label build artifacts and Azure resources
-          stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ inputs.environment }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} ${{ github.ref_name }})
+          # Use branchNameOverride if provided (for PR validation), otherwise use current branch
+          branchName="${{ inputs.branchNameOverride || github.ref_name }}"
+          stackName=$(ops/scripts/pipeline/generate-stackname.sh ${{ inputs.environment }} ${{ vars.APP_NAME }} ${{ vars.DEV_SUFFIX }} "${branchName}")
           echo "Stack Name: $stackName"
           webappName="${stackName}-webapp"
           echo "Webapp Name: $webappName"
