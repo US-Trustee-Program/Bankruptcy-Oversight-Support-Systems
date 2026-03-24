@@ -40,6 +40,8 @@ describe('Migrate Trustees Use Case', () => {
   let mockAppointmentsRepo: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockRuntimeStateRepo: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockProfessionalIdsRepo: any;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -71,10 +73,17 @@ describe('Migrate Trustees Use Case', () => {
       upsert: vi.fn(),
     };
 
+    mockProfessionalIdsRepo = {
+      deleteAll: vi.fn(),
+    };
+
     vi.spyOn(factory, 'getAtsGateway').mockReturnValue(mockAtsGateway);
     vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(mockTrusteesRepo);
     vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(mockAppointmentsRepo);
     vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(mockRuntimeStateRepo);
+    vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+      mockProfessionalIdsRepo,
+    );
 
     // NOTE: We let the cleansing pipeline run for real so it can properly classify
     // valid vs invalid data. Tests will use real representative ATS data.
@@ -755,12 +764,14 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('deleteAllTrusteesAndAppointments', () => {
-    test('should delete all trustees and appointments successfully', async () => {
+    test('should delete all trustees, appointments, and professional IDs successfully', async () => {
       const deletedTrustees = 42;
       const deletedAppointments = 156;
+      const deletedProfessionalIds = 17;
 
       mockTrusteesRepo.deleteAll.mockResolvedValue(deletedTrustees);
       mockAppointmentsRepo.deleteAll.mockResolvedValue(deletedAppointments);
+      mockProfessionalIdsRepo.deleteAll.mockResolvedValue(deletedProfessionalIds);
 
       const result = await deleteAllTrusteesAndAppointments(context);
 
@@ -768,8 +779,10 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data).toBeDefined();
       expect(result.data?.deletedTrustees).toBe(deletedTrustees);
       expect(result.data?.deletedAppointments).toBe(deletedAppointments);
+      expect(result.data?.deletedProfessionalIds).toBe(deletedProfessionalIds);
       expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
       expect(mockAppointmentsRepo.deleteAll).toHaveBeenCalledTimes(1);
+      expect(mockProfessionalIdsRepo.deleteAll).toHaveBeenCalledTimes(1);
     });
 
     test('should handle error when deleting trustees fails', async () => {
@@ -783,6 +796,7 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data).toBeUndefined();
       expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
       expect(mockAppointmentsRepo.deleteAll).not.toHaveBeenCalled();
+      expect(mockProfessionalIdsRepo.deleteAll).not.toHaveBeenCalled();
     });
 
     test('should handle error when deleting appointments fails', async () => {
@@ -799,6 +813,26 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data).toBeUndefined();
       expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
       expect(mockAppointmentsRepo.deleteAll).toHaveBeenCalledTimes(1);
+      expect(mockProfessionalIdsRepo.deleteAll).not.toHaveBeenCalled();
+    });
+
+    test('should handle error when deleting professional IDs fails', async () => {
+      const deletedTrustees = 42;
+      const deletedAppointments = 156;
+      const error = new Error('Database error while deleting professional IDs');
+
+      mockTrusteesRepo.deleteAll.mockResolvedValue(deletedTrustees);
+      mockAppointmentsRepo.deleteAll.mockResolvedValue(deletedAppointments);
+      mockProfessionalIdsRepo.deleteAll.mockRejectedValue(error);
+
+      const result = await deleteAllTrusteesAndAppointments(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to delete all trustees and appointments');
+      expect(result.data).toBeUndefined();
+      expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
+      expect(mockAppointmentsRepo.deleteAll).toHaveBeenCalledTimes(1);
+      expect(mockProfessionalIdsRepo.deleteAll).toHaveBeenCalledTimes(1);
     });
   });
 });

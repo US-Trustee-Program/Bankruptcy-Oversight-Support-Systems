@@ -19,15 +19,19 @@ import {
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
   TrusteeMatchVerificationRepository,
+  TrusteeNotesRepository,
   TrusteesRepository,
   TrusteeAssistantsRepository,
   TrusteeUpcomingKeyDatesRepository,
+  TrusteeProfessionalIdsRepository,
   UpdateResult,
   UserGroupsRepository,
   UserSessionCacheRepository,
   UsersRepository,
 } from '../../use-cases/gateways.types';
 import { Trustee, TrusteeHistory } from '@common/cams/trustees';
+import { TrusteeNote } from '@common/cams/trustee-notes';
+import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import {
   BankList,
   BankListItem,
@@ -52,10 +56,13 @@ export class MockMongoRepository
     TrusteeAppointmentsRepository,
     TrusteeAssistantsRepository,
     TrusteeMatchVerificationRepository,
+    TrusteeNotesRepository,
+    TrusteeProfessionalIdsRepository,
     TrusteeUpcomingKeyDatesRepository,
     ListsRepository,
     UserGroupsRepository
 {
+  private professionalIds = new Map<string, TrusteeProfessionalId>();
   release() {
     return;
   }
@@ -185,6 +192,10 @@ export class MockMongoRepository
   }
 
   archiveCaseNote(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
+  getNotesSince(..._ignore): Promise<TrusteeNote[]> {
     throw new Error('Method not implemented.');
   }
 
@@ -372,6 +383,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findTrusteeByNameAndState(..._ignore): Promise<Trustee | null> {
+    throw new Error('Method not implemented.');
+  }
+
   deleteSyncedCases(): Promise<void> {
     throw new Error('Method not implemented.');
   }
@@ -412,7 +427,54 @@ export class MockMongoRepository
     return Promise.resolve();
   }
 
+  createProfessionalId(
+    camsTrusteeId: string,
+    acmsProfessionalId: string,
+    user: CamsUserReference,
+  ): Promise<TrusteeProfessionalId> {
+    const key = `${camsTrusteeId}:${acmsProfessionalId}`;
+    const existing = this.professionalIds.get(key);
+    if (existing) return Promise.resolve(existing);
+    const mapping: TrusteeProfessionalId = {
+      documentType: 'TRUSTEE_PROFESSIONAL_ID',
+      id: crypto.randomUUID(),
+      camsTrusteeId,
+      acmsProfessionalId,
+      updatedBy: user,
+      updatedOn: new Date().toISOString(),
+    };
+    this.professionalIds.set(key, mapping);
+    return Promise.resolve(mapping);
+  }
+
+  findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]> {
+    return Promise.resolve(
+      Array.from(this.professionalIds.values()).filter((m) => m.camsTrusteeId === camsTrusteeId),
+    );
+  }
+
+  findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]> {
+    return Promise.resolve(
+      Array.from(this.professionalIds.values()).filter(
+        (m) => m.acmsProfessionalId === acmsProfessionalId,
+      ),
+    );
+  }
+
+  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number> {
+    let count = 0;
+    for (const [key, mapping] of this.professionalIds) {
+      if (mapping.camsTrusteeId === camsTrusteeId) {
+        this.professionalIds.delete(key);
+        count++;
+      }
+    }
+    return Promise.resolve(count);
+  }
+
   deleteAll(): Promise<number> {
-    return Promise.resolve(0);
+    const count = this.professionalIds.size;
+    this.professionalIds.clear();
+    return Promise.resolve(count);
   }
 }
