@@ -11,7 +11,7 @@ import { Creatable } from '@common/cams/creatable';
 const MODULE_NAME = 'TRUSTEE-PROFESSIONAL-IDS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustee-professional-ids';
 
-const { using } = QueryBuilder;
+const { and, using } = QueryBuilder;
 
 export type TrusteeProfessionalIdDocument = TrusteeProfessionalId & {
   documentType: 'TRUSTEE_PROFESSIONAL_ID';
@@ -57,26 +57,33 @@ export class TrusteeProfessionalIdsMongoRepository
     acmsProfessionalId: string,
     user: CamsUserReference,
   ): Promise<TrusteeProfessionalId> {
-    // Check for duplicates
-    const existing = await this.findByAcmsProfessionalId(acmsProfessionalId);
-    if (existing.length > 0) {
-      throw getCamsErrorWithStack(new Error('Duplicate'), MODULE_NAME, {
-        message: `ACMS Professional ID ${acmsProfessionalId} already mapped to trustee ${existing[0].camsTrusteeId}`,
-      });
-    }
-
-    const document = createAuditRecord<Creatable<TrusteeProfessionalIdDocument>>(
-      {
-        documentType: 'TRUSTEE_PROFESSIONAL_ID',
-        camsTrusteeId,
-        acmsProfessionalId,
-      },
-      user,
-    );
-
     try {
+      // Check if this exact mapping already exists (idempotent)
+      const doc = using<TrusteeProfessionalIdDocument>();
+      const query = and(
+        doc('camsTrusteeId').equals(camsTrusteeId),
+        doc('acmsProfessionalId').equals(acmsProfessionalId),
+      );
+
+      const existing = await this.getAdapter<TrusteeProfessionalIdDocument>().find(query);
+
+      if (existing.length > 0) {
+        return existing[0];
+      }
+
+      // Create new mapping
+      const document = createAuditRecord<Creatable<TrusteeProfessionalIdDocument>>(
+        {
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          camsTrusteeId,
+          acmsProfessionalId,
+        },
+        user,
+      );
+
       const id =
         await this.getAdapter<Creatable<TrusteeProfessionalIdDocument>>().insertOne(document);
+
       return { id, ...document };
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
@@ -109,11 +116,13 @@ export class TrusteeProfessionalIdsMongoRepository
     }
   }
 
-  async deleteByCamsTrusteeId(camsTrusteeId: string): Promise<void> {
+  async deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number> {
     try {
       const doc = using<TrusteeProfessionalIdDocument>();
       const query = doc('camsTrusteeId').equals(camsTrusteeId);
-      await this.getAdapter<TrusteeProfessionalIdDocument>().deleteMany(query);
+      const deletedCount = await this.getAdapter<TrusteeProfessionalIdDocument>().deleteMany(query);
+
+      return deletedCount;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to delete professional IDs for trustee ${camsTrusteeId}.`,

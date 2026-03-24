@@ -411,4 +411,8 @@ export class MockMongoRepository
   createHistory(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
   }
+
+  deleteAll(): Promise<number> {
+    return Promise.resolve(0);
+  }
 }
