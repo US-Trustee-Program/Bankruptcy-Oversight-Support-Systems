@@ -30,8 +30,8 @@ function buildMockInput(
   return {
     trusteeId: 'trustee-001',
     appointmentId: 'appointment-001',
-    fieldExam: null,
-    audit: null,
+    pastFieldExam: null,
+    pastAudit: null,
     tprReviewPeriodStart: null,
     tprReviewPeriodEnd: null,
     tprDue: null,
@@ -84,7 +84,7 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
 
       const context = await createMockApplicationContext();
       const useCase = new TrusteeUpcomingReportDatesUseCase(context);
-      const input = buildMockInput({ fieldExam: '2026-06-15' });
+      const input = buildMockInput({ pastFieldExam: '2026-06-15' });
 
       await useCase.upsertUpcomingReportDates(
         'trustee-001',
@@ -93,17 +93,19 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
         SYSTEM_USER_REFERENCE,
       );
 
-      expect(upsertSpy).toHaveBeenCalledWith(expect.objectContaining({ fieldExam: '2026-06-15' }));
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ pastFieldExam: '2026-06-15' }),
+      );
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
           documentType: 'AUDIT_UPCOMING_REPORT_DATES',
-          after: expect.objectContaining({ fieldExam: '2026-06-15' }),
+          after: expect.objectContaining({ pastFieldExam: '2026-06-15' }),
         }),
       );
     });
 
     test('existing doc, one field changed: creates history with only changed field', async () => {
-      const existing = buildMockDocument({ fieldExam: '2026-01-15' });
+      const existing = buildMockDocument({ pastFieldExam: '2026-01-15' });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(undefined);
       const createHistorySpy = vi
@@ -112,7 +114,7 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
 
       const context = await createMockApplicationContext();
       const useCase = new TrusteeUpcomingReportDatesUseCase(context);
-      const input = buildMockInput({ fieldExam: '2026-06-15' });
+      const input = buildMockInput({ pastFieldExam: '2026-06-15' });
 
       await useCase.upsertUpcomingReportDates(
         'trustee-001',
@@ -123,14 +125,14 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
 
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          before: { fieldExam: '2026-01-15' },
-          after: { fieldExam: '2026-06-15' },
+          before: { pastFieldExam: '2026-01-15' },
+          after: { pastFieldExam: '2026-06-15' },
         }),
       );
     });
 
     test('existing doc, no fields changed: does not create history', async () => {
-      const existing = buildMockDocument({ fieldExam: '2026-06-15' });
+      const existing = buildMockDocument({ pastFieldExam: '2026-06-15' });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(undefined);
       const createHistorySpy = vi
@@ -139,7 +141,7 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
 
       const context = await createMockApplicationContext();
       const useCase = new TrusteeUpcomingReportDatesUseCase(context);
-      const input = buildMockInput({ fieldExam: '2026-06-15' });
+      const input = buildMockInput({ pastFieldExam: '2026-06-15' });
 
       await useCase.upsertUpcomingReportDates(
         'trustee-001',
@@ -152,7 +154,7 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
     });
 
     test('existing doc, field cleared (set to null): creates history showing old value → absent', async () => {
-      const existing = buildMockDocument({ fieldExam: '2026-06-15' });
+      const existing = buildMockDocument({ pastFieldExam: '2026-06-15' });
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
       vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(undefined);
       const createHistorySpy = vi
@@ -161,7 +163,7 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
 
       const context = await createMockApplicationContext();
       const useCase = new TrusteeUpcomingReportDatesUseCase(context);
-      const input = buildMockInput({ fieldExam: null });
+      const input = buildMockInput({ pastFieldExam: null });
 
       await useCase.upsertUpcomingReportDates(
         'trustee-001',
@@ -172,7 +174,7 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
 
       expect(createHistorySpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          before: { fieldExam: '2026-06-15' },
+          before: { pastFieldExam: '2026-06-15' },
           after: {},
         }),
       );

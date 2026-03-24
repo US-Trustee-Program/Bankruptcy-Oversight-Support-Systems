@@ -30,7 +30,7 @@ function buildMockDocument(
     createdOn: '2026-01-01T00:00:00.000Z',
     updatedBy: SYSTEM_USER_REFERENCE,
     updatedOn: '2026-01-01T00:00:00.000Z',
-    fieldExam: '2026-03-15',
+    pastFieldExam: '2026-03-15',
     ...overrides,
   };
 }
@@ -146,8 +146,8 @@ describe('TrusteeUpcomingReportDatesMongoRepository', () => {
         documentType: 'AUDIT_UPCOMING_REPORT_DATES',
         trusteeId: 'trustee-001',
         appointmentId: 'appointment-001',
-        before: { fieldExam: '2026-01-15' },
-        after: { fieldExam: '2026-03-15' },
+        before: { pastFieldExam: '2026-01-15' },
+        after: { pastFieldExam: '2026-03-15' },
         createdBy: SYSTEM_USER_REFERENCE,
         createdOn: '2026-01-01T00:00:00.000Z',
         updatedBy: SYSTEM_USER_REFERENCE,

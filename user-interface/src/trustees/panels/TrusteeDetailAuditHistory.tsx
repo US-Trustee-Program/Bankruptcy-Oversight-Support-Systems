@@ -362,11 +362,15 @@ type ReportDateFieldConfig = {
 
 const REPORT_DATE_FIELD_CONFIG: ReportDateFieldConfig[] = [
   {
-    key: 'fieldExam',
+    key: 'pastFieldExam',
     label: 'Field Exam',
-    format: (d) => (d.fieldExam ? isoToMMDDYYYY(d.fieldExam) : '(none)'),
+    format: (d) => (d.pastFieldExam ? isoToMMDDYYYY(d.pastFieldExam) : '(none)'),
   },
-  { key: 'audit', label: 'Audit', format: (d) => (d.audit ? isoToMMYYYY(d.audit) : '(none)') },
+  {
+    key: 'pastAudit',
+    label: 'Audit',
+    format: (d) => (d.pastAudit ? isoToMMYYYY(d.pastAudit) : '(none)'),
+  },
   {
     key: 'tprReviewPeriodStart',
     label: 'TPR Review Period',

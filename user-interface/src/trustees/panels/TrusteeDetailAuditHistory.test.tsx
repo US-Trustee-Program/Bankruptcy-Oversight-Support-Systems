@@ -33,8 +33,8 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
   test('renders a row for AUDIT_UPCOMING_REPORT_DATES with change type "Upcoming Report Dates"', async () => {
     const history: TrusteeUpcomingReportDatesHistory = {
       ...baseHistory,
-      before: { fieldExam: '2026-05-01' },
-      after: { fieldExam: '2026-06-15' },
+      before: { pastFieldExam: '2026-05-01' },
+      after: { pastFieldExam: '2026-06-15' },
     };
 
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
@@ -50,11 +50,11 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     );
   });
 
-  test('shows only changed fields in Previous and New columns — fieldExam', async () => {
+  test('shows only changed fields in Previous and New columns — pastFieldExam', async () => {
     const history: TrusteeUpcomingReportDatesHistory = {
       ...baseHistory,
-      before: { fieldExam: '2026-05-01' },
-      after: { fieldExam: '2026-06-15' },
+      before: { pastFieldExam: '2026-05-01' },
+      after: { pastFieldExam: '2026-06-15' },
     };
 
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
@@ -74,8 +74,8 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
   test('does not show unrelated fields when only one field changed', async () => {
     const history: TrusteeUpcomingReportDatesHistory = {
       ...baseHistory,
-      before: { fieldExam: '2026-05-01' },
-      after: { fieldExam: '2026-06-15' },
+      before: { pastFieldExam: '2026-05-01' },
+      after: { pastFieldExam: '2026-06-15' },
     };
 
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
@@ -92,11 +92,11 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     );
   });
 
-  test('formats audit field as MM/YYYY', async () => {
+  test('formats pastAudit field as MM/YYYY', async () => {
     const history: TrusteeUpcomingReportDatesHistory = {
       ...baseHistory,
-      before: { audit: '2025-08-01' },
-      after: { audit: '2026-08-01' },
+      before: { pastAudit: '2025-08-01' },
+      after: { pastAudit: '2026-08-01' },
     };
 
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
@@ -165,7 +165,7 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     const history: TrusteeUpcomingReportDatesHistory = {
       ...baseHistory,
       before: undefined,
-      after: { fieldExam: '2026-06-15' },
+      after: { pastFieldExam: '2026-06-15' },
     };
 
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
@@ -183,8 +183,8 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
   test('shows (none) for a cleared field value', async () => {
     const history: TrusteeUpcomingReportDatesHistory = {
       ...baseHistory,
-      before: { fieldExam: '2026-05-01' },
-      after: { fieldExam: undefined },
+      before: { pastFieldExam: '2026-05-01' },
+      after: { pastFieldExam: undefined },
     };
 
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });
@@ -202,8 +202,8 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
   test('shows changed-by name and formatted date', async () => {
     const history: TrusteeUpcomingReportDatesHistory = {
       ...baseHistory,
-      before: { fieldExam: '2026-05-01' },
-      after: { fieldExam: '2026-06-15' },
+      before: { pastFieldExam: '2026-05-01' },
+      after: { pastFieldExam: '2026-06-15' },
     };
 
     vi.spyOn(Api2, 'getTrusteeHistory').mockResolvedValue({ data: [history] });

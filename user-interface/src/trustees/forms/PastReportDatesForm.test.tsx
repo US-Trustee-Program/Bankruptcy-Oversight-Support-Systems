@@ -30,8 +30,8 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   createdOn: '2026-01-01T00:00:00.000Z',
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
-  fieldExam: '2024-02-21',
-  audit: '2023-08-01',
+  pastFieldExam: '2024-02-21',
+  pastAudit: '2023-08-01',
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '1900-09-15',
@@ -124,8 +124,8 @@ describe('PastReportDatesForm', () => {
         'trustee-001',
         'appointment-001',
         expect.objectContaining({
-          fieldExam: '2024-02-21',
-          audit: '2023-08-01',
+          pastFieldExam: '2024-02-21',
+          pastAudit: '2023-08-01',
           tprReviewPeriodStart: '1900-04-01',
           tprReviewPeriodEnd: '1900-03-31',
           tprDue: '1900-09-15',
@@ -140,7 +140,7 @@ describe('PastReportDatesForm', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
-  test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when fieldExam changes', async () => {
+  test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when pastFieldExam changes', async () => {
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
     const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
 
@@ -165,7 +165,7 @@ describe('PastReportDatesForm', () => {
     );
   });
 
-  test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when audit changes', async () => {
+  test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when pastAudit changes', async () => {
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
     const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
 

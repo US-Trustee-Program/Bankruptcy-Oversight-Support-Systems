@@ -24,8 +24,8 @@ function toSentinelDate(isoDate: string): string {
 }
 
 type FormState = {
-  fieldExam: string;
-  audit: string;
+  pastFieldExam: string;
+  pastAudit: string;
   tprReviewPeriodStart: string;
   tprReviewPeriodEnd: string;
   tprDue: string;
@@ -39,8 +39,8 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
-  fieldExam: '',
-  audit: '',
+  pastFieldExam: '',
+  pastAudit: '',
   tprReviewPeriodStart: '',
   tprReviewPeriodEnd: '',
   tprDue: '',
@@ -85,8 +85,8 @@ export default function UpcomingReportDatesForm() {
         const data = response.data;
         if (data) {
           setForm({
-            fieldExam: data.fieldExam ?? '',
-            audit: data.audit ?? '',
+            pastFieldExam: data.pastFieldExam ?? '',
+            pastAudit: data.pastAudit ?? '',
             tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
             tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
             tprDue: data.tprDue ?? '',
@@ -149,8 +149,8 @@ export default function UpcomingReportDatesForm() {
     const isoInput: TrusteeUpcomingReportDatesInput = {
       trusteeId: trusteeId!,
       appointmentId: appointmentId!,
-      fieldExam: form.fieldExam || null,
-      audit: form.audit || null,
+      pastFieldExam: form.pastFieldExam || null,
+      pastAudit: form.pastAudit || null,
       tprReviewPeriodStart: form.tprReviewPeriodStart
         ? toSentinelDate(form.tprReviewPeriodStart)
         : null,
