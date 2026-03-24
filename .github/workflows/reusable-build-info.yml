@@ -6,6 +6,10 @@ on:
       environment:
         required: true
         type: string
+      branchNameOverride:
+        required: false
+        type: string
+        description: 'Override branch name for resource naming (use for PR validation)'
     outputs:
       stackName:
         description: 'Application name'
@@ -67,7 +71,10 @@ jobs:
         id: check-env
         if: ${{ inputs.environment != 'Main-Gov' }} # Generate deterministic hash to append to resource group names
         run: |
-          hash=$(echo -n ${{ github.ref_name }} | openssl sha256 | awk '{print $2}')
+          # Use branchNameOverride if provided (for PR validation), otherwise use current branch
+          branchName="${{ inputs.branchNameOverride || github.ref_name }}"
+          echo "Using branch name for hash: ${branchName}"
+          hash=$(echo -n "${branchName}" | openssl sha256 | awk '{print $2}')
           shortHash="${hash:0:6}"
           echo "environmentHash=${shortHash}" >> $GITHUB_OUTPUT
           echo "resourceGroupSuffix=-${shortHash}" >> $GITHUB_OUTPUT
