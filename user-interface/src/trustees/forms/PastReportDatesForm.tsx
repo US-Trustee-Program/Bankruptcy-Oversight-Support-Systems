@@ -27,8 +27,8 @@ type FullFormState = {
   tirReviewPeriodEnd: string;
   tirSubmission: string;
   tirReview: string;
-  nextFieldExam: string;
-  nextIndependentAuditRequired: string;
+  upcomingFieldExam: string;
+  upcomingIndependentAuditRequired: string;
 };
 
 const EMPTY_FORM: FullFormState = {
@@ -42,8 +42,8 @@ const EMPTY_FORM: FullFormState = {
   tirReviewPeriodEnd: '',
   tirSubmission: '',
   tirReview: '',
-  nextFieldExam: '',
-  nextIndependentAuditRequired: '',
+  upcomingFieldExam: '',
+  upcomingIndependentAuditRequired: '',
 };
 
 export default function PastReportDatesForm() {
@@ -74,8 +74,8 @@ export default function PastReportDatesForm() {
             tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
             tirSubmission: data.tirSubmission ?? '',
             tirReview: data.tirReview ?? '',
-            nextFieldExam: data.nextFieldExam ?? '',
-            nextIndependentAuditRequired: data.nextIndependentAuditRequired ?? '',
+            upcomingFieldExam: data.upcomingFieldExam ?? '',
+            upcomingIndependentAuditRequired: data.upcomingIndependentAuditRequired ?? '',
           });
         }
       })
@@ -97,8 +97,8 @@ export default function PastReportDatesForm() {
       setForm((prev) => ({
         ...prev,
         [field]: value,
-        nextFieldExam: next,
-        nextIndependentAuditRequired: nextRequired,
+        upcomingFieldExam: next,
+        upcomingIndependentAuditRequired: nextRequired,
       }));
     };
   }
@@ -123,8 +123,8 @@ export default function PastReportDatesForm() {
       tirReviewPeriodEnd: form.tirReviewPeriodEnd ? toSentinelDate(form.tirReviewPeriodEnd) : null,
       tirSubmission: form.tirSubmission ? toSentinelDate(form.tirSubmission) : null,
       tirReview: form.tirReview ? toSentinelDate(form.tirReview) : null,
-      nextFieldExam: form.nextFieldExam || null,
-      nextIndependentAuditRequired: form.nextIndependentAuditRequired || null,
+      upcomingFieldExam: form.upcomingFieldExam || null,
+      upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
     };
 
     try {
