@@ -45,6 +45,50 @@ $input-max-width: 20.75rem;
     }
   }
 
+  .tpr-due-group {
+    max-width: $input-max-width;
+
+    .tpr-due-group__header {
+      display: flex;
+      align-items: baseline;
+      margin-top: 1.5rem;
+
+      .usa-label {
+        margin-top: 0;
+      }
+    }
+
+    .tpr-due-group__row {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+
+      .usa-form-group {
+        max-width: none;
+        flex: 1;
+        min-width: 0;
+        margin-top: 0;
+      }
+
+      .month-day-selector__column {
+        flex: 2;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+
+        select {
+          margin-top: 0;
+          width: 100%;
+        }
+
+        .usa-hint {
+          padding-bottom: 0.5rem;
+        }
+      }
+    }
+  }
+
   .usa-button-group {
     padding-top: 2.5rem;
     gap: 1rem;

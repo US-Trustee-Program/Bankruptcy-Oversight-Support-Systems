@@ -74,7 +74,8 @@ describe('EditUpcomingReportDates', () => {
     // DatePicker fields (Field Exam and Audit are the renamed "next" fields)
     expect(screen.getByTestId('field-exam')).toBeInTheDocument();
     expect(screen.getByTestId('audit')).toBeInTheDocument();
-    expect(screen.getByTestId('tpr-due')).toBeInTheDocument();
+    expect(document.getElementById('tpr-due-month')).toBeInTheDocument();
+    expect(document.getElementById('tpr-due-day')).toBeInTheDocument();
     expect(screen.getByTestId('tir-submission')).toBeInTheDocument();
     expect(screen.getByTestId('tir-review')).toBeInTheDocument();
 
@@ -104,7 +105,8 @@ describe('EditUpcomingReportDates', () => {
     expect(document.getElementById('tpr-review-period-start-day')).toHaveValue('01');
     expect(document.getElementById('tpr-review-period-end-month')).toHaveValue('03');
     expect(document.getElementById('tpr-review-period-end-day')).toHaveValue('31');
-    expect(screen.getByTestId('tpr-due')).toHaveValue('1900-09-15');
+    expect(document.getElementById('tpr-due-month')).toHaveValue('09');
+    expect(document.getElementById('tpr-due-day')).toHaveValue('15');
     expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('ODD');
     expect(document.getElementById('tir-review-period-start-month')).toHaveValue('07');
     expect(document.getElementById('tir-review-period-start-day')).toHaveValue('01');
@@ -204,7 +206,8 @@ describe('EditUpcomingReportDates', () => {
 
     expect(await screen.findByTestId('tpr-due-year-type')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByTestId('tpr-due'), { target: { value: '1900-09-15' } });
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+    await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
     await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
 
