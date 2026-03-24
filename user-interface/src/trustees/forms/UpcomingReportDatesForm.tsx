@@ -34,8 +34,8 @@ type FormState = {
   tirReviewPeriodEnd: string;
   tirSubmission: string;
   tirReview: string;
-  nextFieldExam: string;
-  nextIndependentAuditRequired: string;
+  upcomingFieldExam: string;
+  upcomingIndependentAuditRequired: string;
 };
 
 const EMPTY_FORM: FormState = {
@@ -49,8 +49,8 @@ const EMPTY_FORM: FormState = {
   tirReviewPeriodEnd: '',
   tirSubmission: '',
   tirReview: '',
-  nextFieldExam: '',
-  nextIndependentAuditRequired: '',
+  upcomingFieldExam: '',
+  upcomingIndependentAuditRequired: '',
 };
 
 export default function UpcomingReportDatesForm() {
@@ -95,8 +95,8 @@ export default function UpcomingReportDatesForm() {
             tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
             tirSubmission: data.tirSubmission ?? '',
             tirReview: data.tirReview ?? '',
-            nextFieldExam: data.nextFieldExam ?? '',
-            nextIndependentAuditRequired: data.nextIndependentAuditRequired ?? '',
+            upcomingFieldExam: data.upcomingFieldExam ?? '',
+            upcomingIndependentAuditRequired: data.upcomingIndependentAuditRequired ?? '',
           });
         }
       })
@@ -163,8 +163,8 @@ export default function UpcomingReportDatesForm() {
       tirReviewPeriodEnd: form.tirReviewPeriodEnd ? toSentinelDate(form.tirReviewPeriodEnd) : null,
       tirSubmission: form.tirSubmission ? toSentinelDate(form.tirSubmission) : null,
       tirReview: form.tirReview ? toSentinelDate(form.tirReview) : null,
-      nextFieldExam: form.nextFieldExam || null,
-      nextIndependentAuditRequired: form.nextIndependentAuditRequired || null,
+      upcomingFieldExam: form.upcomingFieldExam || null,
+      upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
     };
 
     const result = validateTrusteeUpcomingReportDates(isoInput);
@@ -201,15 +201,15 @@ export default function UpcomingReportDatesForm() {
       <DatePicker
         id="field-exam"
         label="Field Exam"
-        value={form.nextFieldExam}
-        onChange={handleChange('nextFieldExam')}
+        value={form.upcomingFieldExam}
+        onChange={handleChange('upcomingFieldExam')}
         disableMax
       />
       <DatePicker
         id="audit"
         label="Audit"
-        value={form.nextIndependentAuditRequired}
-        onChange={handleChange('nextIndependentAuditRequired')}
+        value={form.upcomingIndependentAuditRequired}
+        onChange={handleChange('upcomingIndependentAuditRequired')}
         disableMax
       />
       <MonthDayRangeSelector

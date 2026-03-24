@@ -40,8 +40,8 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
   tirReview: '1900-11-01',
-  nextFieldExam: '2029-08-01',
-  nextIndependentAuditRequired: '2032-08-01',
+  upcomingFieldExam: '2029-08-01',
+  upcomingIndependentAuditRequired: '2032-08-01',
 };
 
 function renderComponent() {
@@ -140,7 +140,7 @@ describe('PastReportDatesForm', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
-  test('auto-calculates nextFieldExam and nextIndependentAuditRequired when fieldExam changes', async () => {
+  test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when fieldExam changes', async () => {
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
     const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
 
@@ -158,14 +158,14 @@ describe('PastReportDatesForm', () => {
         'trustee-001',
         'appointment-001',
         expect.objectContaining({
-          nextFieldExam: '2028-03-01',
-          nextIndependentAuditRequired: '2031-03-01',
+          upcomingFieldExam: '2028-03-01',
+          upcomingIndependentAuditRequired: '2031-03-01',
         }),
       ),
     );
   });
 
-  test('auto-calculates nextFieldExam and nextIndependentAuditRequired when audit changes', async () => {
+  test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when audit changes', async () => {
     vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
     const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
 
@@ -183,8 +183,8 @@ describe('PastReportDatesForm', () => {
         'trustee-001',
         'appointment-001',
         expect.objectContaining({
-          nextFieldExam: '2027-06-01',
-          nextIndependentAuditRequired: '2030-06-01',
+          upcomingFieldExam: '2027-06-01',
+          upcomingIndependentAuditRequired: '2030-06-01',
         }),
       ),
     );

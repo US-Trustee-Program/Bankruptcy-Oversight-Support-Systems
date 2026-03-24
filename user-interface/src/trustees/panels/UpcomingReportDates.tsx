@@ -51,9 +51,9 @@ export default function UpcomingReportDates(props: Readonly<UpcomingReportDatesP
     });
   }
 
-  const fieldExam = data?.nextFieldExam ? isoToMMDDYYYY(data.nextFieldExam) : NO_DATE;
-  const audit = data?.nextIndependentAuditRequired
-    ? isoToMMDDYYYY(data.nextIndependentAuditRequired)
+  const fieldExam = data?.upcomingFieldExam ? isoToMMDDYYYY(data.upcomingFieldExam) : NO_DATE;
+  const audit = data?.upcomingIndependentAuditRequired
+    ? isoToMMDDYYYY(data.upcomingIndependentAuditRequired)
     : NO_DATE;
   const tprReviewPeriod =
     data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd

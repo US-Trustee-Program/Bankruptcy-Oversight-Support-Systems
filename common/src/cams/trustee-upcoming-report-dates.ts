@@ -67,8 +67,8 @@ export type TrusteeUpcomingReportDates = Auditable &
     tirReviewPeriodEnd?: string;
     tirSubmission?: string;
     tirReview?: string;
-    nextFieldExam?: string;
-    nextIndependentAuditRequired?: string;
+    upcomingFieldExam?: string;
+    upcomingIndependentAuditRequired?: string;
   };
 
 export type TrusteeUpcomingReportDatesInput = {
@@ -84,8 +84,8 @@ export type TrusteeUpcomingReportDatesInput = {
   tirReviewPeriodEnd: string | null;
   tirSubmission: string | null;
   tirReview: string | null;
-  nextFieldExam: string | null;
-  nextIndependentAuditRequired: string | null;
+  upcomingFieldExam: string | null;
+  upcomingIndependentAuditRequired: string | null;
 };
 
 export type TrusteeUpcomingReportDatesHistory = AbstractTrusteeHistory<
@@ -106,8 +106,8 @@ type DateField =
   | 'tirReviewPeriodEnd'
   | 'tirSubmission'
   | 'tirReview'
-  | 'nextFieldExam'
-  | 'nextIndependentAuditRequired';
+  | 'upcomingFieldExam'
+  | 'upcomingIndependentAuditRequired';
 
 export const DATE_FIELDS: DateField[] = [
   'fieldExam',
@@ -119,8 +119,8 @@ export const DATE_FIELDS: DateField[] = [
   'tirReviewPeriodEnd',
   'tirSubmission',
   'tirReview',
-  'nextFieldExam',
-  'nextIndependentAuditRequired',
+  'upcomingFieldExam',
+  'upcomingIndependentAuditRequired',
 ];
 
 type TextField = 'tprDueYearParity';

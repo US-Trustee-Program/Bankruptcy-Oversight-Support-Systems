@@ -43,8 +43,8 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
   tirReview: '1900-11-01',
-  nextFieldExam: '2029-08-01',
-  nextIndependentAuditRequired: '2032-08-01',
+  upcomingFieldExam: '2029-08-01',
+  upcomingIndependentAuditRequired: '2032-08-01',
 };
 
 function renderComponent(props?: Partial<UpcomingReportDatesProps>) {

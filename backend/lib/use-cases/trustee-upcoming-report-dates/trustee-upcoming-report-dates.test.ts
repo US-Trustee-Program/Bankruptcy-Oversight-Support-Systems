@@ -40,8 +40,8 @@ function buildMockInput(
     tirReviewPeriodEnd: null,
     tirSubmission: null,
     tirReview: null,
-    nextFieldExam: null,
-    nextIndependentAuditRequired: null,
+    upcomingFieldExam: null,
+    upcomingIndependentAuditRequired: null,
     ...overrides,
   };
 }
