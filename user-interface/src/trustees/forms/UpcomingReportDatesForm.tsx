@@ -23,11 +23,6 @@ function toSentinelDate(isoDate: string): string {
   return `1900-${month}-${day}`;
 }
 
-function toMonthYearDate(isoDate: string): string {
-  const [year, month] = isoDate.split('-');
-  return `${year}-${month}-01`;
-}
-
 type FormState = {
   fieldExam: string;
   audit: string;
@@ -160,7 +155,7 @@ export default function UpcomingReportDatesForm() {
         ? toSentinelDate(form.tprReviewPeriodStart)
         : null,
       tprReviewPeriodEnd: form.tprReviewPeriodEnd ? toSentinelDate(form.tprReviewPeriodEnd) : null,
-      tprDue: form.tprDue ? toMonthYearDate(form.tprDue) : null,
+      tprDue: form.tprDue ? toSentinelDate(form.tprDue) : null,
       tprDueYearParity: form.tprDueYearParity || null,
       tirReviewPeriodStart: form.tirReviewPeriodStart
         ? toSentinelDate(form.tirReviewPeriodStart)
@@ -233,6 +228,7 @@ export default function UpcomingReportDatesForm() {
       <DatePicker
         id="tpr-due"
         label="TPR Due"
+        min={MMDD_MIN}
         value={form.tprDue}
         onChange={handleChange('tprDue')}
         disableMax

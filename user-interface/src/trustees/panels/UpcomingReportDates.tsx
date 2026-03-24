@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import {
   TrusteeUpcomingReportDates,
   isoToMMDDYYYY,
-  isoToMMYYYY,
   isoToMMDD,
   isoRangeToMMDD,
 } from '@common/cams/trustee-upcoming-report-dates';
@@ -60,7 +59,7 @@ export default function UpcomingReportDates(props: Readonly<UpcomingReportDatesP
     data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
       ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
       : NO_DATE;
-  const tprDue = data?.tprDue ? isoToMMYYYY(data.tprDue) : NO_DATE;
+  const tprDue = data?.tprDue ? isoToMMDD(data.tprDue) : NO_DATE;
   const tprDueYearParity = data?.tprDueYearParity ?? NO_DATE;
   const tirReviewPeriod =
     data?.tirReviewPeriodStart && data?.tirReviewPeriodEnd

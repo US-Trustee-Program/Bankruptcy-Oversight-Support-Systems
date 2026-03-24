@@ -34,7 +34,7 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   audit: '2026-08-01',
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
-  tprDue: '2026-09-01',
+  tprDue: '1900-09-15',
   tprDueYearParity: 'ODD',
   tirReviewPeriodStart: '1900-07-01',
   tirReviewPeriodEnd: '1900-06-30',
@@ -104,7 +104,7 @@ describe('EditUpcomingReportDates', () => {
     expect(document.getElementById('tpr-review-period-start-day')).toHaveValue('01');
     expect(document.getElementById('tpr-review-period-end-month')).toHaveValue('03');
     expect(document.getElementById('tpr-review-period-end-day')).toHaveValue('31');
-    expect(screen.getByTestId('tpr-due')).toHaveValue('2026-09-01');
+    expect(screen.getByTestId('tpr-due')).toHaveValue('1900-09-15');
     expect(screen.getByTestId('tpr-due-year-qualifier')).toHaveValue('ODD');
     expect(document.getElementById('tir-review-period-start-month')).toHaveValue('07');
     expect(document.getElementById('tir-review-period-start-day')).toHaveValue('01');
