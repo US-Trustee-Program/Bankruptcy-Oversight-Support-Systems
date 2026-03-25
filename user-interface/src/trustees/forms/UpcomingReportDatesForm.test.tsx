@@ -272,4 +272,137 @@ describe('EditUpcomingReportDates', () => {
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
+
+  test('displays TPR Due error when both review period and TPR Due have validation errors', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    // Set TPR Review Period start without end (causes validation error)
+    await userEvent.selectOptions(document.getElementById('tpr-review-period-start-month')!, '04');
+    await userEvent.selectOptions(document.getElementById('tpr-review-period-start-day')!, '01');
+
+    // Set TPR Due date without Year Type (causes validation error)
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+    await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+
+    // Both errors should be displayed
+    expect(screen.getByText('TPR Review Period End is required.')).toBeInTheDocument();
+    expect(screen.getByText('TPR Due Year Type is required.')).toBeInTheDocument();
+    expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  test('highlights only Month/Day fields when TPR Due date has error', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    // Set Year Type without TPR Due date (causes validation error on tprDue)
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+
+    // TPR Due date fields should have error class
+    expect(document.getElementById('tpr-due-month')).toHaveClass('usa-input--error');
+    expect(document.getElementById('tpr-due-day')).toHaveClass('usa-input--error');
+
+    // Year Type should NOT have error class
+    expect(screen.getByTestId('tpr-due-year-type')).not.toHaveClass('usa-input--error');
+
+    expect(screen.getByText('TPR Due is required.')).toBeInTheDocument();
+    expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  test('highlights only Year Type field when it has error', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    // Set TPR Due date without Year Type (causes validation error on tprDueYearType)
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+    await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+
+    // Year Type should have error class
+    expect(screen.getByTestId('tpr-due-year-type')).toHaveClass('usa-input--error');
+
+    // TPR Due date fields should NOT have error class
+    expect(document.getElementById('tpr-due-month')).not.toHaveClass('usa-input--error');
+    expect(document.getElementById('tpr-due-day')).not.toHaveClass('usa-input--error');
+
+    expect(screen.getByText('TPR Due Year Type is required.')).toBeInTheDocument();
+    expect(putSpy).not.toHaveBeenCalled();
+  });
+
+  test('clears Year Type error when user selects a value', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    // Set TPR Due date without Year Type and trigger validation error
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+    await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+
+    expect(screen.getByText('TPR Due Year Type is required.')).toBeInTheDocument();
+    expect(screen.getByTestId('tpr-due-year-type')).toHaveClass('usa-input--error');
+
+    // Select Year Type - should clear error
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+
+    expect(screen.queryByText('TPR Due Year Type is required.')).not.toBeInTheDocument();
+    expect(screen.getByTestId('tpr-due-year-type')).not.toHaveClass('usa-input--error');
+  });
+
+  test('clears TPR Due date error when user selects date values', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    // Set Year Type without TPR Due date and trigger validation error
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+
+    expect(screen.getByText('TPR Due is required.')).toBeInTheDocument();
+    expect(document.getElementById('tpr-due-month')).toHaveClass('usa-input--error');
+
+    // Select Month - should clear error
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+
+    expect(screen.queryByText('TPR Due is required.')).not.toBeInTheDocument();
+    expect(document.getElementById('tpr-due-month')).not.toHaveClass('usa-input--error');
+  });
+
+  test('TPR Due day field is disabled until month is selected', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    // Day should be disabled when month is not selected
+    expect(document.getElementById('tpr-due-day')).toBeDisabled();
+
+    // Select month - day should become enabled
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+    expect(document.getElementById('tpr-due-day')).not.toBeDisabled();
+
+    // Clear month - day should become disabled again
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '');
+    expect(document.getElementById('tpr-due-day')).toBeDisabled();
+  });
 });
