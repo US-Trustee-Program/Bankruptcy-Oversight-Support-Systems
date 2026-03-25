@@ -1,7 +1,6 @@
 import './MonthDaySelector.scss';
 import './forms.scss';
 import React, { useEffect, useState } from 'react';
-import { validateMonthDay } from '@common/cams/trustee-upcoming-key-dates';
 
 type MonthDaySelectorProps = {
   id: string;
@@ -11,10 +10,8 @@ type MonthDaySelectorProps = {
   onChange?: (value: string) => void;
   disabled?: boolean;
   required?: boolean;
-  customErrorMessage?: string;
   hasError?: boolean;
   className?: string;
-  submitted?: boolean; // NEW: trigger error display after submission attempt
 };
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
@@ -61,21 +58,11 @@ function parseValue(value?: string): { month: string; day: string } {
 }
 
 export default function MonthDaySelector(props: MonthDaySelectorProps) {
-  const {
-    id,
-    label,
-    disabled,
-    required,
-    customErrorMessage,
-    hasError: hasErrorProp,
-    className,
-    submitted,
-  } = props;
+  const { id, label, disabled, required, hasError, className } = props;
 
   const parsed = parseValue(props.value);
   const [month, setMonth] = useState(parsed.month);
   const [day, setDay] = useState(parsed.day);
-  const [internalError, setInternalError] = useState('');
 
   const maxDays = getDaysInMonth(month);
   const DAYS = generateDays(maxDays);
@@ -86,23 +73,6 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
     setMonth(m);
     setDay(d);
   }, [props.value]);
-
-  // Validate whenever month or day changes
-  useEffect(() => {
-    // Check if either month or day is set but not both (incomplete date)
-    if ((month && !day) || (!month && day)) {
-      const result = validateMonthDay(month && day ? `1900-${month}-${day}` : '1900--');
-      setInternalError(result.reasons?.[0] || '');
-    } else {
-      setInternalError('');
-    }
-  }, [month, day]);
-
-  // External/custom errors take precedence
-  // Internal errors only show after submission AND when hasErrorProp is not set
-  // (if hasErrorProp is set, parent component is managing error display)
-  const displayError = customErrorMessage || (!hasErrorProp && submitted && internalError);
-  const hasError = !!displayError || !!hasErrorProp;
 
   function handleMonthChange(ev: React.ChangeEvent<HTMLSelectElement>) {
     const newMonth = ev.target.value;
@@ -189,11 +159,6 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
           </select>
         </div>
       </div>
-      {displayError && (
-        <div id={`${id}-error`} className="date-error usa-input__error-message" aria-live="polite">
-          {displayError}
-        </div>
-      )}
     </div>
   );
 }

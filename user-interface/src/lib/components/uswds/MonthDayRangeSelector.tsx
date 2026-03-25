@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FocusEvent } from 'react';
 import MonthDaySelector from './MonthDaySelector';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
@@ -30,6 +30,8 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
   } = props;
 
   const [internalError, setInternalError] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   // Validate whenever values change using common library validator
   useEffect(() => {
@@ -40,9 +42,21 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startValue, endValue]);
 
-  // External errors take precedence over internal errors; internal errors only show after submission
-  const displayError = externalError || (submitted ? internalError : '');
-  const hasError = !!displayError;
+  function handleFocus() {
+    setIsFocused(true);
+    setHasInteracted(true);
+  }
+
+  function handleBlur(e: FocusEvent<HTMLDivElement>) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsFocused(false);
+    }
+  }
+
+  // Show errors after submission OR after the user has interacted and left all 4 dropdowns
+  const shouldShowInternalError = submitted || (!isFocused && hasInteracted);
+  const displayError = externalError || (shouldShowInternalError ? internalError : '');
+  const hasError = !!displayError && !isFocused;
 
   const hasValue = !!(startValue || endValue);
 
@@ -68,13 +82,12 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
           </Button>
         )}
       </div>
-      <div className="review-period-row">
+      <div className="review-period-row" onFocus={handleFocus} onBlur={handleBlur}>
         <MonthDaySelector
           id={`${id}-start`}
           value={startValue}
           onChange={onStartChange}
           hasError={hasError}
-          submitted={submitted}
         />
         <span className="review-period-separator" aria-hidden="true">
           <Icon name="remove" />
@@ -84,7 +97,6 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
           value={endValue}
           onChange={onEndChange}
           hasError={hasError}
-          submitted={submitted}
         />
       </div>
       {hasError && (
