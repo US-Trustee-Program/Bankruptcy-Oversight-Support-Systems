@@ -13,6 +13,8 @@ services:
       - .env
     environment:
       - NODE_ENV=development
+      - DOTENV_CONFIG_SILENT=true
+      - DOTENV_QUIET=true
       - COSMOS_DATABASE_NAME=${COSMOS_DATABASE_NAME}
       - MONGO_CONNECTION_STRING=${MONGO_CONNECTION_STRING}
       - DATABASE_MOCK=${DATABASE_MOCK}
@@ -38,6 +40,8 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - DOTENV_CONFIG_SILENT=true
+      - DOTENV_QUIET=true
       - CAMS_PA11Y=false
       - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
       - CAMS_LOGIN_PROVIDER_URL=https://ustaxcourt-dev.oktapreview.com
@@ -63,6 +67,8 @@ services:
     # This allows Okta callbacks to work (Okta whitelist requires http://localhost:3000)
     network_mode: host
     environment:
+      - DOTENV_CONFIG_SILENT=true
+      - DOTENV_QUIET=true
       - TARGET_HOST=http://localhost:3000
       - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
       - OKTA_USER_NAME=${OKTA_USER_NAME}

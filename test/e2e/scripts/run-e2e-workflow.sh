@@ -5,6 +5,10 @@
 
 set -e
 
+# Suppress dotenv hints/tips
+export DOTENV_CONFIG_SILENT=true
+export DOTENV_QUIET=true
+
 echo "🚀 Starting Complete E2E Testing Workflow"
 echo "=========================================="
 echo ""
@@ -175,16 +179,30 @@ echo ""
 if [ "$TESTS_PASSED" = true ]; then
     echo -e "${GREEN}✅ E2E testing workflow completed successfully!${NC}"
     echo ""
-    echo "Opening HTML report in browser..."
-    echo ""
-    npm run report
-    exit 0
 else
     echo -e "${RED}❌ E2E testing workflow completed with failures${NC}"
     echo ""
+fi
+
+# Open HTML report in browser
+if [ -f "playwright-report/index.html" ]; then
     echo "Opening HTML report in browser..."
     echo ""
-    npm run report
-    # Exit with 0 to suppress npm error (failures already reported above)
-    exit 0
+    # Use open command on macOS to open the HTML file directly
+    if command -v open >/dev/null 2>&1; then
+        open playwright-report/index.html
+        echo "✅ Report opened in default browser"
+        echo ""
+        echo "Alternatively, serve the report with: npm run report"
+    else
+        echo -e "${YELLOW}⚠️  Could not open report automatically${NC}"
+        echo "   View report with: npm run report"
+        echo "   Or open: $(pwd)/playwright-report/index.html"
+    fi
+else
+    echo -e "${YELLOW}No HTML report generated${NC}"
+    echo ""
 fi
+
+# Always exit 0 to avoid npm error messages
+exit 0

@@ -5,7 +5,7 @@
   "main": "playwright.config.ts",
   "scripts": {
     "clean": "rm -rf node_modules & rm -rf test-results & rm -rf playwright-report",
-    "headless": "CI=true playwright test",
+    "headless": "PW_TEST_HTML_REPORT_OPEN=never playwright test",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "load-data": "tsx --env-file=.env ./scripts/load-cosmos-data.ts",
