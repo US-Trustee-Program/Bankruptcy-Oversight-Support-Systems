@@ -9,6 +9,11 @@ $input-max-width: 20.75rem;
     max-width: calc($input-max-width / 2 - 16px);
   }
 
+  .tir-date-group .usa-error-message {
+    font-weight: normal;
+    padding-top: 0.5rem;
+  }
+
   .review-period-group, .tpr-due-group {
     max-width: $input-max-width;
 

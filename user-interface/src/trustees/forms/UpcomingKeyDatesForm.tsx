@@ -77,6 +77,10 @@ export default function UpcomingKeyDatesForm() {
   });
   const [tprDueRowFocused, setTprDueRowFocused] = useState(false);
   const [tprDueRowHasInteracted, setTprDueRowHasInteracted] = useState(false);
+  const [tirSubmissionFocused, setTirSubmissionFocused] = useState(false);
+  const [tirSubmissionHasInteracted, setTirSubmissionHasInteracted] = useState(false);
+  const [tirReviewFocused, setTirReviewFocused] = useState(false);
+  const [tirReviewHasInteracted, setTirReviewHasInteracted] = useState(false);
 
   function handleTprDueRowFocus() {
     setTprDueRowFocused(true);
@@ -89,12 +93,41 @@ export default function UpcomingKeyDatesForm() {
     }
   }
 
-  const tprDueIncompleteError = (() => {
-    if (!form.tprDue) return '';
-    const [, month, day] = form.tprDue.split('-');
+  function getIncompleteMonthDayError(value: string): string {
+    if (!value) return '';
+    const [, month, day] = value.split('-');
     return (month && !day) || (!month && day) ? validateMonthDay('1900--').reasons?.[0] || '' : '';
+  }
+
+  //TODO: Migrate this to the ValidationSpec instead
+  const tprDueBlurError = (() => {
+    if (!tprDueRowHasInteracted || tprDueRowFocused) return '';
+    const hasYearType = !!form.tprDueYearType;
+    if (!form.tprDue && !hasYearType) return '';
+    // Priority 1: incomplete date
+    const incompleteError = getIncompleteMonthDayError(form.tprDue);
+    if (incompleteError) return incompleteError;
+    // Priority 2: complete date but no year type
+    const [, month, day] = (form.tprDue || '').split('-');
+    if (month && day && !hasYearType) return 'TPR Due Year Type is required.';
+    // Priority 3: year type set but no date
+    if (!form.tprDue && hasYearType) return validateMonthDay('1900--').reasons?.[0] || '';
+    return '';
   })();
-  const tprDueBlurError = !tprDueRowFocused && tprDueRowHasInteracted ? tprDueIncompleteError : '';
+
+  const tprDueDateComplete = (() => {
+    const [, m, d] = (form.tprDue || '').split('-');
+    return !!(m && d);
+  })();
+  const tprDueYearTypeBlurError =
+    !tprDueRowFocused && tprDueRowHasInteracted && tprDueDateComplete && !form.tprDueYearType;
+
+  const tirSubmissionBlurError =
+    !tirSubmissionFocused && tirSubmissionHasInteracted
+      ? getIncompleteMonthDayError(form.tirSubmission)
+      : '';
+  const tirReviewBlurError =
+    !tirReviewFocused && tirReviewHasInteracted ? getIncompleteMonthDayError(form.tirReview) : '';
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -287,7 +320,7 @@ export default function UpcomingKeyDatesForm() {
               <div className="year-type-selector__column">
                 <span className="usa-hint">Year Type</span>
                 <select
-                  className={`usa-select${errors.tprDueYearType ? ' usa-input--error' : ''}`}
+                  className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
                   id="tpr-due-year-type"
                   data-testid="tpr-due-year-type"
                   value={form.tprDueYearType}
@@ -321,18 +354,46 @@ export default function UpcomingKeyDatesForm() {
         externalError={errors.tirReviewPeriodStart || errors.tirReviewPeriodEnd}
         submitted={submitted}
       />
-      <MonthDaySelector
-        id="tir-submission"
-        label="TIR Submission"
-        value={form.tirSubmission}
-        onChange={handleMonthDayChange('tirSubmission')}
-      />
-      <MonthDaySelector
-        id="tir-review"
-        label="TIR Review"
-        value={form.tirReview}
-        onChange={handleMonthDayChange('tirReview')}
-      />
+      <div className="tir-date-group">
+        <MonthDaySelector
+          id="tir-submission"
+          label="TIR Submission"
+          value={form.tirSubmission}
+          onChange={handleMonthDayChange('tirSubmission')}
+          hasError={!!tirSubmissionBlurError}
+          onFocus={() => {
+            setTirSubmissionFocused(true);
+            setTirSubmissionHasInteracted(true);
+          }}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setTirSubmissionFocused(false);
+            }
+          }}
+        />
+        {tirSubmissionBlurError && (
+          <span className="usa-error-message">{tirSubmissionBlurError}</span>
+        )}
+      </div>
+      <div className="tir-date-group">
+        <MonthDaySelector
+          id="tir-review"
+          label="TIR Review"
+          value={form.tirReview}
+          onChange={handleMonthDayChange('tirReview')}
+          hasError={!!tirReviewBlurError}
+          onFocus={() => {
+            setTirReviewFocused(true);
+            setTirReviewHasInteracted(true);
+          }}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setTirReviewFocused(false);
+            }
+          }}
+        />
+        {tirReviewBlurError && <span className="usa-error-message">{tirReviewBlurError}</span>}
+      </div>
       <div className="usa-button-group">
         <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaving}>
           {isSaving ? 'Saving...' : 'Save'}
