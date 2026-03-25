@@ -248,20 +248,28 @@ export default class CaseManagement {
     const casesRepo = factory.getCasesRepository(context);
     try {
       const caseDetails = await this.casesGateway.getCaseDetail(context, caseId);
-      caseDetails.transfers = await casesRepo.getTransfers(caseId);
-      caseDetails.consolidation = await casesRepo.getConsolidation(caseId);
-      caseDetails.assignments = await this.getCaseAssignments(context, caseDetails);
+
+      const [transfers, consolidation, assignments, syncedCase] = await Promise.allSettled([
+        casesRepo.getTransfers(caseId),
+        casesRepo.getConsolidation(caseId),
+        this.getCaseAssignments(context, caseDetails),
+        casesRepo.getSyncedCase(caseId),
+      ]);
+
+      caseDetails.transfers = transfers.status === 'fulfilled' ? transfers.value : [];
+      caseDetails.consolidation = consolidation.status === 'fulfilled' ? consolidation.value : [];
+      caseDetails.assignments = assignments.status === 'fulfilled' ? assignments.value : [];
       caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
       caseDetails.officeCode = buildOfficeCode(caseDetails.regionId, caseDetails.courtDivisionCode);
 
-      try {
-        const syncedCase = await casesRepo.getSyncedCase(caseId);
-        if (syncedCase?.trusteeId) {
-          caseDetails.trusteeId = syncedCase.trusteeId;
-        }
-      } catch (error) {
-        // SyncedCase may not exist; trusteeId will simply not be present
-        context.logger.debug(MODULE_NAME, `Could not retrieve SyncedCase for ${caseId}`, error);
+      if (syncedCase.status === 'fulfilled' && syncedCase.value?.trusteeId) {
+        caseDetails.trusteeId = syncedCase.value.trusteeId;
+      } else if (syncedCase.status === 'rejected') {
+        context.logger.debug(
+          MODULE_NAME,
+          `Could not retrieve SyncedCase for ${caseId}`,
+          syncedCase.reason,
+        );
       }
 
       const _actions = getAction<CaseDetail>(context, caseDetails);
