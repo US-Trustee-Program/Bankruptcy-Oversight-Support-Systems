@@ -1,7 +1,6 @@
 import './EditUpcomingKeyDates.scss';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { InputRef } from '@/lib/type-declarations/input-fields';
 import {
   TrusteeUpcomingKeyDatesInput,
   validateTrusteeUpcomingKeyDates,
@@ -15,9 +14,6 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
-
-// ISO date with sentinel year 1900 for month/day-only fields
-const MMDD_MIN = '1900-01-01';
 
 function toSentinelDate(isoDate: string): string {
   const [, month, day] = isoDate.split('-');
@@ -61,9 +57,6 @@ export default function UpcomingKeyDatesForm() {
   }>();
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
-
-  const tirSubmissionRef = useRef<InputRef>(null);
-  const tirReviewRef = useRef<InputRef>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -124,8 +117,6 @@ export default function UpcomingKeyDatesForm() {
       if (field === 'tirReviewPeriodEnd') {
         const submission = value ? calculateTirSubmission(value) : form.tirSubmission;
         const review = value ? calculateTirReview(submission) : form.tirReview;
-        tirSubmissionRef.current?.setValue(submission);
-        tirReviewRef.current?.setValue(review);
         setForm((prev) => ({
           ...prev,
           tirReviewPeriodEnd: value,
@@ -304,23 +295,17 @@ export default function UpcomingKeyDatesForm() {
         externalError={errors.tirReviewPeriodStart || errors.tirReviewPeriodEnd}
         submitted={submitted}
       />
-      <DatePicker
-        ref={tirSubmissionRef}
+      <MonthDaySelector
         id="tir-submission"
         label="TIR Submission"
-        min={MMDD_MIN}
         value={form.tirSubmission}
-        onChange={handleChange('tirSubmission')}
-        disableMax
+        onChange={handleMonthDayChange('tirSubmission')}
       />
-      <DatePicker
-        ref={tirReviewRef}
+      <MonthDaySelector
         id="tir-review"
         label="TIR Review"
-        min={MMDD_MIN}
         value={form.tirReview}
-        onChange={handleChange('tirReview')}
-        disableMax
+        onChange={handleMonthDayChange('tirReview')}
       />
       <div className="usa-button-group">
         <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaving}>

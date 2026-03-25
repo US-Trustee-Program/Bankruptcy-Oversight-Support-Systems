@@ -76,8 +76,8 @@ describe('EditUpcomingKeyDates', () => {
     expect(screen.getByTestId('audit')).toBeInTheDocument();
     expect(document.getElementById('tpr-due-month')).toBeInTheDocument();
     expect(document.getElementById('tpr-due-day')).toBeInTheDocument();
-    expect(screen.getByTestId('tir-submission')).toBeInTheDocument();
-    expect(screen.getByTestId('tir-review')).toBeInTheDocument();
+    expect(document.getElementById('tir-submission-month')).toBeInTheDocument();
+    expect(document.getElementById('tir-review-month')).toBeInTheDocument();
 
     // Year Qualifier dropdown
     expect(screen.getByTestId('tpr-due-year-type')).toBeInTheDocument();
@@ -112,8 +112,10 @@ describe('EditUpcomingKeyDates', () => {
     expect(document.getElementById('tir-review-period-start-day')).toHaveValue('01');
     expect(document.getElementById('tir-review-period-end-month')).toHaveValue('06');
     expect(document.getElementById('tir-review-period-end-day')).toHaveValue('30');
-    expect(screen.getByTestId('tir-submission')).toHaveValue('1900-10-15');
-    expect(screen.getByTestId('tir-review')).toHaveValue('1900-11-01');
+    expect(document.getElementById('tir-submission-month')).toHaveValue('10');
+    expect(document.getElementById('tir-submission-day')).toHaveValue('15');
+    expect(document.getElementById('tir-review-month')).toHaveValue('11');
+    expect(document.getElementById('tir-review-day')).toHaveValue('01');
   });
 
   test('shows empty inputs when API returns null', async () => {
@@ -231,9 +233,11 @@ describe('EditUpcomingKeyDates', () => {
 
     await waitFor(() => {
       // 1900-03-31 + 30 days = 1900-04-30
-      expect(screen.getByTestId('tir-submission')).toHaveValue('1900-04-30');
+      expect(document.getElementById('tir-submission-month')).toHaveValue('04');
+      expect(document.getElementById('tir-submission-day')).toHaveValue('30');
       // 1900-04-30 + 60 days = 1900-06-29
-      expect(screen.getByTestId('tir-review')).toHaveValue('1900-06-29');
+      expect(document.getElementById('tir-review-month')).toHaveValue('06');
+      expect(document.getElementById('tir-review-day')).toHaveValue('29');
     });
   });
 
