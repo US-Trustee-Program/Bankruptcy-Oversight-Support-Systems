@@ -16,7 +16,6 @@ export const DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES = 'display-chpt7-panel-upcom
 export const TRUSTEE_VERIFICATION_ENABLED = 'trustee-verification-enabled';
 
 export default function useFeatureFlags(): FeatureFlagSet {
-  return testFeatureFlags;
   const config = getFeatureFlagConfiguration();
   if (getAppConfiguration().useFakeApi) {
     return testFeatureFlags;
