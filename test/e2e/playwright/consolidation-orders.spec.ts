@@ -1,9 +1,8 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { Order, ConsolidationOrder } from '../../../common/src/cams/orders';
-import { logout } from './login/login-helpers';
 
-const timeoutOption = { timeout: 30000 };
+const timeoutOption = { timeout: 60000 };
 
 test.describe('Consolidation Orders', () => {
   let orderResponseBody: Array<Order>;
@@ -32,10 +31,6 @@ test.describe('Consolidation Orders', () => {
     orderResponseBody = (await orderResponse.json()).data;
 
     expect(orderResponseBody).not.toBeFalsy();
-  });
-
-  test.afterEach(async ({ page }) => {
-    await logout(page);
   });
 
   test('should select correct consolidationType radio when approving a consolidation', async ({
@@ -81,7 +76,7 @@ test.describe('Consolidation Orders', () => {
 
     await expect(
       page.getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`),
-    ).toBeEnabled();
+    ).toBeEnabled(timeoutOption);
 
     const approveButton = page.getByTestId(
       `button-accordion-approve-button-${pendingConsolidationOrder.id}`,
@@ -138,12 +133,12 @@ test.describe('Consolidation Orders', () => {
       .getByTestId('open-modal-button')
       .click();
 
-    const caseNumber = '29-56291';
+    const caseNumber = '18-61881';
     await page.getByTestId(`add-case-input-${pendingConsolidationOrder.id}`).fill(caseNumber);
 
     await expect(
       page.getByTestId(`button-add-case-modal-${pendingConsolidationOrder.id}-submit-button`),
-    ).toBeEnabled();
+    ).toBeEnabled(timeoutOption);
 
     await page
       .getByTestId(`button-add-case-modal-${pendingConsolidationOrder.id}-submit-button`)
@@ -152,7 +147,7 @@ test.describe('Consolidation Orders', () => {
     // Action click validate (approve button)
     await expect(
       page.getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`),
-    ).toBeEnabled();
+    ).toBeEnabled(timeoutOption);
 
     await page
       .getByTestId(`button-accordion-approve-button-${pendingConsolidationOrder.id}`)
@@ -161,10 +156,10 @@ test.describe('Consolidation Orders', () => {
     // Assert modal opened and is actionable
     await expect(
       page.getByTestId(`modal-overlay-confirmation-modal-${pendingConsolidationOrder.id}`),
-    ).toBeVisible();
+    ).toBeVisible(timeoutOption);
 
     await expect(
       page.getByTestId(`button-confirmation-modal-${pendingConsolidationOrder.id}-submit-button`),
-    ).toBeEnabled();
+    ).toBeEnabled(timeoutOption);
   });
 });

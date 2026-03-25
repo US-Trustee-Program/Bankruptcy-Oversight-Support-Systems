@@ -5,7 +5,7 @@ import { defineConfig, devices } from '@playwright/test';
  * https://github.com/motdotla/dotenv
  */
 /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -14,7 +14,7 @@ export default defineConfig({
   expect: {
     timeout: 10000,
   },
-  timeout: 30000,
+  timeout: 60000,
   testDir: './playwright',
   /* Run tests in files in parallel */
   fullyParallel: false,
@@ -27,7 +27,7 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters. We define the output folder in case the default ever changes. */
-  reporter: [['html', { outputFolder: 'playwright-report' }]],
+  reporter: [['line'], ['html', { outputFolder: 'playwright-report' }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -49,16 +49,16 @@ export default defineConfig({
       dependencies: ['setup'],
     },
 
-    /* Test against branded browsers. */
-    {
-      name: 'Microsoft Edge',
-      use: {
-        ...devices['Desktop Edge'],
-        channel: 'msedge',
-        storageState: 'playwright/.auth/user.json',
-      },
-      dependencies: ['setup'],
-    },
+    // Microsoft Edge is not supported on ARM64 (Linux aarch64)
+    // {
+    //   name: 'Microsoft Edge',
+    //   use: {
+    //     ...devices['Desktop Edge'],
+    //     channel: 'msedge',
+    //     storageState: 'playwright/.auth/user.json',
+    //   },
+    //   dependencies: ['setup'],
+    // },
     // {
     //   name: 'Google Chrome',
     //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },

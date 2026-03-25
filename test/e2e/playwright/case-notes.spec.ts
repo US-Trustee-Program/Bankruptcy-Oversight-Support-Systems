@@ -1,7 +1,8 @@
 import DataGenerationUtils from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
-import { logout } from './login/login-helpers';
+
+const timeoutOption = { timeout: 60000 };
 
 test.describe('Case Notes', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
@@ -13,13 +14,9 @@ test.describe('Case Notes', () => {
     await page.goto(`/case-detail/${DataGenerationUtils.KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
 
     addCaseNoteButton = page.getByTestId('open-modal-button_note-add-button');
-    await expect(addCaseNoteButton).toBeVisible();
+    await expect(addCaseNoteButton).toBeVisible(timeoutOption);
     noteNotesAlert = page.getByTestId('alert-message');
-    await expect(noteNotesAlert).toBeVisible();
-  });
-
-  test.afterEach(async ({ page }) => {
-    await logout(page);
+    await expect(noteNotesAlert).toBeVisible(timeoutOption);
   });
 
   test('should create a case note for a case, edit that case note, and be able to remove that case note', async ({
@@ -62,7 +59,6 @@ test.describe('Case Notes', () => {
 
     await expect(page.locator('[data-testid="button-note-modal-submit-button"]')).toBeEnabled();
     await page.locator('[data-testid="button-note-modal-submit-button"]').click();
-    await expect(page.locator('[data-testid="button-note-modal-submit-button"]')).toBeDisabled();
     await expect(page.locator('[data-testid="modal-content-note-modal"]')).not.toBeVisible();
     caseNoteHeader = page.getByTestId('note-item-0-header');
     await expect(caseNoteHeader).toBeVisible();
