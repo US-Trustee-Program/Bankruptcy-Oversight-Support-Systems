@@ -1,0 +1,23 @@
+# Dependencies-only base image (cached, rarely changes)
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+# Install system dependencies once (cached layer)
+RUN apt-get update && \
+    apt-get install -y curl libicu72 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Azure Functions Core Tools globally (cached layer)
+RUN npm install -g azure-functions-core-tools@4 --unsafe-perm true
+
+# Copy only package files for dependency installation (cached layer)
+COPY package*.json ./
+COPY common/package*.json ./common/
+COPY backend/package*.json ./backend/
+COPY user-interface/package*.json ./user-interface/
+COPY test/e2e/package*.json ./test/e2e/
+
+# Install all dependencies (cached layer - only rebuilds when package*.json changes)
+RUN npm ci

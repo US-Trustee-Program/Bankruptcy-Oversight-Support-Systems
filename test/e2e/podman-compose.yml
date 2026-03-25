@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  # Backend API service
+  backend:
+    build:
+      context: ../../
+      dockerfile: test/e2e/Dockerfile.backend
+    container_name: cams-backend-e2e
+    ports:
+      - "7071:7071"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - COSMOS_DATABASE_NAME=${COSMOS_DATABASE_NAME}
+      - MONGO_CONNECTION_STRING=${MONGO_CONNECTION_STRING}
+      - DATABASE_MOCK=${DATABASE_MOCK}
+      - MSSQL_HOST=${MSSQL_HOST}
+      - MSSQL_DATABASE=${MSSQL_DATABASE}
+      - MSSQL_DATABASE_DXTR=${MSSQL_DATABASE_DXTR}
+      - MSSQL_USER=${MSSQL_USER}
+      - MSSQL_PASS=${MSSQL_PASS}
+      - MSSQL_ENCRYPT=${MSSQL_ENCRYPT}
+      - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
+      - SLOT_NAME=${SLOT_NAME}
+    networks:
+      - cams-e2e
+    healthcheck:
+      disable: true
+
+  # Frontend UI service
+  frontend:
+    build:
+      context: ../../
+      dockerfile: test/e2e/Dockerfile.frontend
+    container_name: cams-frontend-e2e
+    ports:
+      - "3000:3000"
+    environment:
+      - CAMS_PA11Y=false
+      - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
+      - CAMS_LOGIN_PROVIDER_URL=https://ustaxcourt-dev.oktapreview.com
+      - CAMS_LOGIN_CLIENT_ID=0oa7jcgbw3bJbtnT02p7
+      - CAMS_LOGIN_PROVIDER_PARAMS={"okta":{"server":"https://ustaxcourt-dev.oktapreview.com","clientId":"0oa7jcgbw3bJbtnT02p7","callbackPath":"/login-callback"}}
+      - CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING=
+      - CAMS_API_BASE_URL=http://backend:7071
+      - SLOT_NAME=${SLOT_NAME}
+    depends_on:
+      - backend
+    networks:
+      - cams-e2e
+    healthcheck:
+      disable: true
+
+  # Playwright test runner
+  playwright:
+    build:
+      context: ../../
+      dockerfile: test/e2e/Dockerfile.playwright
+    container_name: cams-playwright-e2e
+    # Use host network mode so Playwright can access services via localhost
+    # This allows Okta callbacks to work (Okta whitelist requires http://localhost:3000)
+    network_mode: host
+    environment:
+      - TARGET_HOST=http://localhost:3000
+      - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
+      - OKTA_USER_NAME=${OKTA_USER_NAME}
+      - OKTA_PASSWORD=${OKTA_PASSWORD}
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - ./test-results:/app/test/e2e/test-results
+      - ./playwright-report:/app/test/e2e/playwright-report
+    command: ["npm", "run", "headless"]
+    working_dir: /app/test/e2e
+
+networks:
+  cams-e2e:
+    driver: bridge
