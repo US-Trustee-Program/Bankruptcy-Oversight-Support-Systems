@@ -406,6 +406,110 @@ describe('EditUpcomingKeyDates', () => {
     expect(document.getElementById('tpr-due-day')).toBeDisabled();
   });
 
+  describe('TPR Due clear button', () => {
+    test('is not visible when tprDue and tprDueYearType are both empty', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+      expect(screen.queryByTestId('button-tpr-due-clear')).not.toBeInTheDocument();
+    });
+
+    test('appears when tprDue has a value', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+      await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+      await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+
+      expect(screen.getByTestId('button-tpr-due-clear')).toBeInTheDocument();
+    });
+
+    test('appears when tprDueYearType has a value', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+      await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+
+      expect(screen.getByTestId('button-tpr-due-clear')).toBeInTheDocument();
+    });
+
+    test('appears when pre-populated from API', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-tpr-due-clear')).toBeInTheDocument();
+      });
+    });
+
+    test('clears both tprDue and tprDueYearType and hides itself when clicked', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-tpr-due-clear')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-tpr-due-clear'));
+
+      expect(document.getElementById('tpr-due-month')).toHaveValue('');
+      expect(document.getElementById('tpr-due-day')).toHaveValue('');
+      expect(screen.getByTestId('tpr-due-year-type')).toHaveValue('');
+      expect(screen.queryByTestId('button-tpr-due-clear')).not.toBeInTheDocument();
+    });
+
+    test('clears validation errors when clicked', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+      // Trigger a validation error by setting only date without year type
+      await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+      await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      expect(screen.getByText('TPR Due Year Type is required.')).toBeInTheDocument();
+
+      await userEvent.click(screen.getByTestId('button-tpr-due-clear'));
+
+      expect(screen.queryByText('TPR Due Year Type is required.')).not.toBeInTheDocument();
+    });
+
+    test('saves null for both tprDue and tprDueYearType after clearing', async () => {
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('button-tpr-due-clear')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByTestId('button-tpr-due-clear'));
+      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+      await waitFor(() => expect(putSpy).toHaveBeenCalled());
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ tprDue: null, tprDueYearType: null }),
+      );
+    });
+  });
+
   test('does not allow saving with only TPR Due month selected (incomplete date)', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
