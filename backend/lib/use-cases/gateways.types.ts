@@ -6,7 +6,6 @@ import {
   Order,
   OrderStatus,
   RawOrderSync,
-  TransferOrder,
   TransferOrderAction,
 } from '@common/cams/orders';
 import { ConsolidationTo, ConsolidationFrom, TransferFrom, TransferTo } from '@common/cams/events';
@@ -162,7 +161,7 @@ export interface TrusteeNotesRepository<T = TrusteeNote>
   archiveTrusteeNote(archiveNote: Partial<TrusteeNote>): Promise<UpdateResult>;
 }
 
-export interface OrdersRepository<T = TransferOrder | ConsolidationOrder>
+export interface OrdersRepository<T = Order>
   extends
     Searches<OrdersSearchPredicate, T>,
     CreatesMany<T, T[]>,
