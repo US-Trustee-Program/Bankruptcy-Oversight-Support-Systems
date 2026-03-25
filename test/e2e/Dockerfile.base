@@ -1,0 +1,17 @@
+# Base image with source code and dependencies for E2E testing
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+# Copy all source code and package files
+COPY package*.json ./
+COPY common/ ./common/
+COPY backend/ ./backend/
+COPY user-interface/ ./user-interface/
+COPY test/e2e/ ./test/e2e/
+
+# Install all dependencies using workspace root
+RUN npm ci
+
+# Build common (needed by both backend and frontend)
+RUN npm run build:common

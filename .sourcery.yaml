@@ -1,3 +1,6 @@
+ignore:
+  - test/e2e/fixtures/**
+
 rules:
   - id: no-it-tests
     description: "Do not use 'it' in tests. Use 'test' instead."

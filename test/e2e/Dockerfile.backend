@@ -1,0 +1,20 @@
+# Backend API Dockerfile for E2E Testing
+# Start from cached deps image
+FROM localhost/e2e_deps:latest
+
+WORKDIR /app
+
+# Copy source code (this layer changes frequently)
+COPY common/ ./common/
+COPY backend/ ./backend/
+
+# Build common and backend
+RUN npm run build:common && \
+    npm run build --workspace=backend
+
+WORKDIR /app/backend/function-apps/api
+
+EXPOSE 7071
+
+# Start Azure Functions
+CMD ["func", "start", "--javascript", "--port", "7071", "--host", "0.0.0.0"]

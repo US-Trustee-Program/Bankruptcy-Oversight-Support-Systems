@@ -1,0 +1,2207 @@
+{
+  "synthesizedAt": "2026-03-26T21:28:24.333Z",
+  "collections": {
+    "cases": [
+      {
+        "_id": "69c3f5c941ed9491bbd211ed",
+        "id": "03b95bbb-b232-406f-8926-8baf24f6b306",
+        "consolidation": [],
+        "courtDivisionCode": "091",
+        "caseId": "091-69-12345",
+        "caseNumber": "69-12345",
+        "caseTitle": null,
+        "dateFiled": "2023-08-17",
+        "dxtrId": "234567",
+        "chapter": "15",
+        "courtId": "0209",
+        "courtName": "Western District of New York",
+        "courtDivisionName": "Buffalo",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "TV",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "jointDebtor": null,
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "trustee": null,
+        "debtorAttorney": null,
+        "jointDebtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "createdOn": "2026-03-25T14:48:41.134Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2026-03-25T14:48:41.134Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "69c3f5c941ed9491bbd211ee",
+        "id": "1848f833-8313-4068-b780-50e7f9f765b6",
+        "consolidation": [],
+        "courtDivisionCode": "081",
+        "caseId": "081-65-67641",
+        "caseNumber": "65-67641",
+        "caseTitle": null,
+        "dateFiled": "2023-04-11",
+        "dxtrId": "315951",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "jointDebtor": null,
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "closedDate": "2023-09-19",
+        "trustee": null,
+        "debtorAttorney": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "phone": null,
+          "email": null,
+          "office": null
+        },
+        "jointDebtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "createdOn": "2026-03-25T14:48:41.197Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2026-03-25T14:48:41.197Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "69c3f5c741ed9491bbd211e8",
+        "id": "71f6f637-0fde-442b-ba03-0b8f0ff110e0",
+        "consolidation": [],
+        "courtDivisionCode": "081",
+        "caseId": "081-18-61881",
+        "caseNumber": "18-61881",
+        "caseTitle": null,
+        "dateFiled": "2022-11-15",
+        "dxtrId": "314256",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "jointDebtor": null,
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "closedDate": "2022-12-02",
+        "transferDate": "2019-11-19",
+        "trustee": null,
+        "debtorAttorney": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "phone": null,
+          "email": null,
+          "office": null
+        },
+        "jointDebtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "createdOn": "2026-03-25T14:48:39.889Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "updatedOn": "2026-03-25T14:48:39.889Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "9b62a6bbbbed48439d4bbbfd",
+        "id": "2e187c8e-f17f-48d2-bf07-b2beb72752b9",
+        "courtDivisionCode": "081",
+        "caseId": "081-91-06221",
+        "caseNumber": "91-06221",
+        "caseTitle": null,
+        "dateFiled": "2023-10-12",
+        "dxtrId": "318205",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.332Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "d67cca50e3604f56803d7eff",
+        "id": "d3c11352-c106-483e-a188-9ce095048714",
+        "courtDivisionCode": "081",
+        "caseId": "081-51-51841",
+        "caseNumber": "51-51841",
+        "caseTitle": null,
+        "dateFiled": "2023-09-27",
+        "dxtrId": "318035",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "fa672cdd973a4609a2db1d3a",
+        "id": "e0c89463-5bdb-4d90-8aec-7acb1f640e41",
+        "courtDivisionCode": "081",
+        "caseId": "081-56-78971",
+        "caseNumber": "56-78971",
+        "caseTitle": null,
+        "dateFiled": "2023-09-19",
+        "dxtrId": "317937",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "7b81f74b3e974c87ab49b304",
+        "id": "d21cfdac-1926-4aab-89b0-0ff57283fc57",
+        "courtDivisionCode": "081",
+        "caseId": "081-94-55601",
+        "caseNumber": "94-55601",
+        "caseTitle": null,
+        "dateFiled": "2023-09-11",
+        "dxtrId": "317865",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "4a84d2bd3a7e4ecba6b2013a",
+        "id": "464748ab-ea97-4c43-9514-132c249a75bd",
+        "courtDivisionCode": "081",
+        "caseId": "081-73-31081",
+        "caseNumber": "73-31081",
+        "caseTitle": null,
+        "dateFiled": "2023-08-17",
+        "dxtrId": "317587",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "2837c60930254cd2a7c887d0",
+        "id": "0bb8a98c-a955-4429-a8b1-36713285201f",
+        "courtDivisionCode": "081",
+        "caseId": "081-24-47791",
+        "caseNumber": "24-47791",
+        "caseTitle": null,
+        "dateFiled": "2023-08-17",
+        "dxtrId": "317588",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "3af33385bb354e448c2fb2f5",
+        "id": "9932cec9-71ba-4e5a-b13b-66d86915c0be",
+        "courtDivisionCode": "081",
+        "caseId": "081-32-46421",
+        "caseNumber": "32-46421",
+        "caseTitle": null,
+        "dateFiled": "2023-05-23",
+        "dxtrId": "316506",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "c3120b0114dc4382b49cc5d6",
+        "id": "4376ffe6-3273-40ee-a901-188264d36687",
+        "courtDivisionCode": "081",
+        "caseId": "081-49-90171",
+        "caseNumber": "49-90171",
+        "caseTitle": null,
+        "dateFiled": "2023-04-11",
+        "dxtrId": "315957",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "82a50596d89a4b3dbc938ee0",
+        "id": "b53d7f6d-2d82-4787-9322-9efa7baf14dd",
+        "courtDivisionCode": "081",
+        "caseId": "081-33-88951",
+        "caseNumber": "33-88951",
+        "caseTitle": null,
+        "dateFiled": "2023-04-11",
+        "dxtrId": "315958",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "e16c2f0aed66492ca4532bde",
+        "id": "559bb868-926d-462a-8dd9-c69aa2005533",
+        "courtDivisionCode": "081",
+        "caseId": "081-94-40931",
+        "caseNumber": "94-40931",
+        "caseTitle": null,
+        "dateFiled": "2023-04-11",
+        "dxtrId": "315954",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "9d7fe787b9bf45eb8163273c",
+        "id": "1f41a18b-99df-4a22-8f5f-54a827e173ed",
+        "courtDivisionCode": "081",
+        "caseId": "081-29-96121",
+        "caseNumber": "29-96121",
+        "caseTitle": null,
+        "dateFiled": "2023-04-11",
+        "dxtrId": "315955",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "b465cccbfe7e4429803987fe",
+        "id": "540e9432-c616-4d46-beaa-40730a7c7cd5",
+        "courtDivisionCode": "081",
+        "caseId": "081-43-45611",
+        "caseNumber": "43-45611",
+        "caseTitle": null,
+        "dateFiled": "2023-04-11",
+        "dxtrId": "315956",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "1d09e1acc4dc47ab86a920f8",
+        "id": "5c3c997c-ef86-44de-a48c-bf323ed3e548",
+        "courtDivisionCode": "081",
+        "caseId": "081-57-17261",
+        "caseNumber": "57-17261",
+        "caseTitle": null,
+        "dateFiled": "2023-04-11",
+        "dxtrId": "315949",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "5be67729a5224d42a23eebf6",
+        "id": "b8e4c522-045d-492a-a5a9-70061368052e",
+        "courtDivisionCode": "081",
+        "caseId": "081-86-76881",
+        "caseNumber": "86-76881",
+        "caseTitle": null,
+        "dateFiled": "2023-04-11",
+        "dxtrId": "315952",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "93053cbce79242b58a821e59",
+        "id": "62de70c1-7aed-42ed-8177-fd38457a2152",
+        "courtDivisionCode": "081",
+        "caseId": "081-64-00281",
+        "caseNumber": "64-00281",
+        "caseTitle": null,
+        "dateFiled": "2023-02-08",
+        "dxtrId": "315134",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "5505b0fd9bf345689d2c0742",
+        "id": "14db5d1a-9973-4649-8b5b-86e90567f079",
+        "courtDivisionCode": "081",
+        "caseId": "081-20-47521",
+        "caseNumber": "20-47521",
+        "caseTitle": null,
+        "dateFiled": "2023-02-08",
+        "dxtrId": "315135",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "b6c3abe473e24654a3ffe4a2",
+        "id": "dff9d85d-3b26-450e-a3df-78a3ed647a39",
+        "courtDivisionCode": "081",
+        "caseId": "081-82-07091",
+        "caseNumber": "82-07091",
+        "caseTitle": null,
+        "dateFiled": "2023-02-08",
+        "dxtrId": "315136",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "fe145621deb64c37a9466add",
+        "id": "70c1ee9c-45c7-4d02-994c-a9365445db5c",
+        "courtDivisionCode": "081",
+        "caseId": "081-50-48231",
+        "caseNumber": "50-48231",
+        "caseTitle": null,
+        "dateFiled": "2023-02-06",
+        "dxtrId": "315101",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "b0ba552c09f64967bb8e40d2",
+        "id": "9f26f0f1-9fa0-46ef-8e27-ec83776a91d2",
+        "courtDivisionCode": "081",
+        "caseId": "081-19-08131",
+        "caseNumber": "19-08131",
+        "caseTitle": null,
+        "dateFiled": "2023-02-06",
+        "dxtrId": "315102",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": null,
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "debtorAttorney": null,
+        "documentType": "SYNCED_CASE",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      }
+    ],
+    "consolidations": [
+      {
+        "_id": "69c3f5c935071a9817e23ce8",
+        "id": "8a307863-fd0a-4908-8d97-669d8cb38c1e",
+        "consolidationId": "370/pending",
+        "orderType": "consolidation",
+        "orderDate": "2028-12-08",
+        "status": "pending",
+        "courtDivisionCode": "081",
+        "courtName": "Southern District of New York",
+        "jobId": 370,
+        "memberCases": [
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Eau Claire",
+            "officeCode": "1",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "MD",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "WI",
+            "dxtrId": "318205",
+            "caseId": "081-91-06221",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-10-12",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2027-05-17",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2026-01-25",
+                "summaryText": "Utpote considero sodalitas tondeo caecus.",
+                "fullText": "Asper ustilo cotidie varius voro curtus. Bene iusto cauda voluntarius compello. Tunc theatrum asperiores vae infit aureus adnuo utilis causa.",
+                "documents": []
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "91-06221",
+            "judgeName": "Kimberly X. Willis",
+            "partyName": "Marsh",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Delaware",
+            "officeCode": "1",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "WL",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "DE",
+            "dxtrId": "318035",
+            "caseId": "081-51-51841",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-09-27",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2027-08-06",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2024-12-05",
+                "summaryText": "Tibi venia deludo delicate quas careo beneficium ratione fuga.",
+                "fullText": "Tabgo amplexus ducimus. Vomito crapula tredecim assumenda unus vilis depromo vehemens admitto calcar. Absque vis arto talis.",
+                "documents": []
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": "999-99-76265",
+            "caseNumber": "51-51841",
+            "judgeName": "Tanya X. Duncan",
+            "partyName": "Lyons",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Newark",
+            "officeCode": "2",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "NE",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "NJ",
+            "dxtrId": "317937",
+            "caseId": "081-56-78971",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-09-19",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2027-02-11",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2025-12-01",
+                "summaryText": "Stabilis asperiores colo ustilo viscus.",
+                "fullText": "Desipio tergeo tactus surgo colo. Dedico architecto sophismata tam ara. Calcar ascisco deleo aliquid.",
+                "documents": []
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": "999-99-54380",
+            "caseNumber": "56-78971",
+            "judgeName": "Craig  Ramsey",
+            "partyName": "Jenkins",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Yuma",
+            "officeCode": "0",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "PX",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "AZ",
+            "dxtrId": "317865",
+            "caseId": "081-94-55601",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-09-11",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2026-03-23",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2024-07-27",
+                "summaryText": "Vir crebro creber benevolentia sursum crudelis.",
+                "fullText": "Coerceo viridis terror. Despecto avarus aspicio aer attonbitus bene. Adulatio vilitas custodia.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 602275,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 808515,
+                    "fileLabel": "1"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "94-55601",
+            "judgeName": "Kimberly X. Willis",
+            "partyName": "Mckay",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Tyler",
+            "officeCode": "6",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "TY",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "TX",
+            "dxtrId": "317587",
+            "caseId": "081-73-31081",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-08-17",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2026-05-04",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2026-07-14",
+                "summaryText": "Adopto bis adduco fugiat officiis vigor bellum blandior tam.",
+                "fullText": "Substantia confugo est cervus aspicio. Aperio tum cornu advenio earum ullus culpa volva theologus caveo. Sumptus comes at officia tui.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 684074,
+                    "fileLabel": "0"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": "999-99-18698",
+            "caseNumber": "73-31081",
+            "judgeName": "Tanya X. Duncan",
+            "partyName": "Munoz",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Canton",
+            "officeCode": "6",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "CL",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "OH",
+            "dxtrId": "317588",
+            "caseId": "081-24-47791",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-08-17",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2026-12-16",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2025-04-24",
+                "summaryText": "Campana usitas vilitas demo vitium pauper clarus labore denego demergo.",
+                "fullText": "Cumque quo adflicto. Cras decumbo solutio delicate tamquam comparo aedificium culpa aliquam. Approbo tripudio a.",
+                "documents": []
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "24-47791",
+            "judgeName": "Tanya X. Duncan",
+            "partyName": "Doyle",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Pikeville",
+            "officeCode": "7",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "LX",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "KY",
+            "dxtrId": "316506",
+            "caseId": "081-32-46421",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-05-23",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2028-01-28",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2025-04-19",
+                "summaryText": "Eaque fuga vorago.",
+                "fullText": "Surgo deprecator claudeo tricesimus unus amet bos torrens arbor voluptatem. Uredo conor callide nihil cogo aggero vetus aetas. Deputo tolero comedo calco vinitor tristis debeo vester.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 70463,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 14541,
+                    "fileLabel": "1"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "32-46421",
+            "judgeName": "Steven  Meyer",
+            "partyName": "Jordan",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Joplin",
+            "officeCode": "3",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "KC",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "MO",
+            "dxtrId": "315957",
+            "caseId": "081-49-90171",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-04-11",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2024-09-08",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2026-03-24",
+                "summaryText": "Desipio cunctatio aestas minus.",
+                "fullText": "Vulariter bonus adiuvo comptus thalassinus callide urbanus sapiente aut. Aperte adulatio admoneo thalassinus carmen decerno. Amiculum vobis caste titulus possimus.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 305952,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 988017,
+                    "fileLabel": "1"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "49-90171",
+            "judgeName": "Stephanie X Esparza",
+            "partyName": "Ruiz",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Fort Lauderdale",
+            "officeCode": "0",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "MM",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "FL",
+            "dxtrId": "315958",
+            "caseId": "081-33-88951",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-04-11",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2028-12-08",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2024-01-05",
+                "summaryText": "Campana vehemens surgo tardus sortitus amplitudo acies tabula cena quae.",
+                "fullText": "Fugiat angulus approbo corrigo reiciendis cattus. Compello optio stabilis ut demoror acer. Spectaculum vaco vesica supellex tolero ullam aliqua.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 626309,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 466933,
+                    "fileLabel": "1"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-2.pdf",
+                    "fileSize": 723620,
+                    "fileLabel": "2"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "33-88951",
+            "judgeName": "Stephanie X Esparza",
+            "partyName": "Knox",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Paris",
+            "officeCode": "3",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "TY",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "TX",
+            "dxtrId": "315954",
+            "caseId": "081-94-40931",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-04-11",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2025-12-19",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2025-03-11",
+                "summaryText": "Culpa consuasor arbitro theologus veniam aspernatur accusator.",
+                "fullText": "Bene apto verto combibo verto cribro. Spiritus currus voco maxime tantum velum coniuratio subvenio. Anser valde acceptus turbo.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 813491,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 760340,
+                    "fileLabel": "1"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-2.pdf",
+                    "fileSize": 96992,
+                    "fileLabel": "2"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "94-40931",
+            "judgeName": "Stephanie X Esparza",
+            "partyName": "Lawrence",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Gulfport-1 Divisional Office",
+            "officeCode": "1",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "JA",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "MS",
+            "dxtrId": "315955",
+            "caseId": "081-29-96121",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-04-11",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2026-10-29",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2025-11-12",
+                "summaryText": "Deprecator repudiandae arbitro absum acies virgo tersus.",
+                "fullText": "Incidunt suscipit itaque thesaurus charisma cupressus crux. Non clamo iure veniam cetera aiunt delectatio contra bos. Virtus sono viscus non turba decet convoco theatrum tres comprehendo.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 647605,
+                    "fileLabel": "0"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "29-96121",
+            "judgeName": "Stephanie X Esparza",
+            "partyName": "Taylor",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Thomasville",
+            "officeCode": "6",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "MC",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "GA",
+            "dxtrId": "315956",
+            "caseId": "081-43-45611",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-04-11",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2028-09-19",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2024-11-19",
+                "summaryText": "Consequatur triduana corrumpo timor.",
+                "fullText": "Sit occaecati ullam amet vado catena atrox aptus. Audeo sunt baiulus aperte contabesco. Stipes terga verecundia.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 870522,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 617234,
+                    "fileLabel": "1"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-2.pdf",
+                    "fileSize": 181359,
+                    "fileLabel": "2"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-3.pdf",
+                    "fileSize": 597137,
+                    "fileLabel": "3"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "43-45611",
+            "judgeName": "Stephanie X Esparza",
+            "partyName": "Graham",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Northern Mariana Islands",
+            "officeCode": "1",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "HI",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "MP",
+            "dxtrId": "315949",
+            "caseId": "081-57-17261",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-04-11",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2025-10-26",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2026-09-19",
+                "summaryText": "Crebro sto studio.",
+                "fullText": "Adsum approbo apparatus nobis aptus spargo. Demulceo veritatis vinum. Campana crudelis tripudio cado verto.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 279408,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 853917,
+                    "fileLabel": "1"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-2.pdf",
+                    "fileSize": 410998,
+                    "fileLabel": "2"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "57-17261",
+            "judgeName": "Stephanie X Esparza",
+            "partyName": "Jacobs",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Sherman",
+            "officeCode": "4",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "TY",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "TX",
+            "dxtrId": "315951",
+            "caseId": "081-65-67641",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-04-11",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2026-11-21",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2024-11-26",
+                "summaryText": "Circumvenio compello vinco vorago repellendus aduro iste comis blanditiis contego.",
+                "fullText": "Voluptate solio callide cetera quis curiositas. Autus vulgaris voluptate alo acerbitas conspergo arcus clamo. Defetiscor adeptio sequi vehemens denique facilis cognatus thymum tergum.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 524998,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 987191,
+                    "fileLabel": "1"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "65-67641",
+            "judgeName": "Stephanie X Esparza",
+            "partyName": "Cummings",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Superior",
+            "officeCode": "6",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "MD",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "WI",
+            "dxtrId": "315952",
+            "caseId": "081-86-76881",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-04-11",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2026-04-16",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2025-07-26",
+                "summaryText": "Tenuis totidem itaque valens sperno.",
+                "fullText": "Consuasor viriliter colo sol approbo solitudo conduco curiositas defero caterva. Averto voluptatem ulterius nesciunt texo turpis caput triduana vitium peccatus. Campana delectatio villa vetus sit aureus termes.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 702544,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 358296,
+                    "fileLabel": "1"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-2.pdf",
+                    "fileSize": 244481,
+                    "fileLabel": "2"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-3.pdf",
+                    "fileSize": 641949,
+                    "fileLabel": "3"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": "999-99-29553",
+            "caseNumber": "86-76881",
+            "judgeName": "Stephanie X Esparza",
+            "partyName": "Aguilar",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Macon",
+            "officeCode": "5",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "MC",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "GA",
+            "dxtrId": "315134",
+            "caseId": "081-64-00281",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-02-08",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2028-07-20",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2026-02-06",
+                "summaryText": "Astrum vacuus spoliatio amiculum ex possimus vulnero dedecor strenuus voro.",
+                "fullText": "Cohibeo agnitio iusto. Theologus creber vomica triumphus unde verbera. Omnis amor peccatus artificiose voluptatibus vetus canis sursum amet absorbeo.",
+                "documents": []
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": "999-99-73452",
+            "caseNumber": "64-00281",
+            "judgeName": "Kimberly X. Willis",
+            "partyName": "Butler",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Milwaukee",
+            "officeCode": "2",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "MI",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "WI",
+            "dxtrId": "315135",
+            "caseId": "081-20-47521",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-02-08",
+            "debtorTypeCode": "JC",
+            "debtorTypeLabel": "Joint Consumer",
+            "orderDate": "2028-02-25",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2025-01-08",
+                "summaryText": "Tutis vitae coepi tui charisma ultio.",
+                "fullText": "Vivo defetiscor ars. Cibo benevolentia nemo sustineo unus. Pecto cotidie ago spes vinculum censura coepi tibi vallum.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 414943,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 638122,
+                    "fileLabel": "1"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-2.pdf",
+                    "fileSize": 845163,
+                    "fileLabel": "2"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "20-47521",
+            "judgeName": "Kimberly X. Willis",
+            "partyName": "Payne",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "St. George",
+            "officeCode": "4",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "SK",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "UT",
+            "dxtrId": "315136",
+            "caseId": "081-82-07091",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-02-08",
+            "debtorTypeCode": "JC",
+            "debtorTypeLabel": "Joint Consumer",
+            "orderDate": "2028-07-23",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2026-07-30",
+                "summaryText": "Video tibi bardus calco delinquo.",
+                "fullText": "Aqua surculus adimpleo aptus verecundia cogo tremo degusto reprehenderit deputo. Tamquam thymbra coniuratio curo vallum aegre. Viriliter crapula pauci terror summisse cognatus acsi altus aliquid.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 62911,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 910800,
+                    "fileLabel": "1"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-2.pdf",
+                    "fileSize": 298476,
+                    "fileLabel": "2"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-3.pdf",
+                    "fileSize": 910499,
+                    "fileLabel": "3"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "82-07091",
+            "judgeName": "Kimberly X. Willis",
+            "partyName": "Norris",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Honolulu",
+            "officeCode": "1",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "HI",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "HI",
+            "dxtrId": "315101",
+            "caseId": "081-50-48231",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-02-06",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2027-08-11",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2025-02-28",
+                "summaryText": "Acervus attero ex suspendo somnus verbum nihil.",
+                "fullText": "Taedium curvo pauci bos cornu assentator. Tantillus tutamen coaegresco. Summopere terebro adversus votum toties stipes audacia textus.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 779515,
+                    "fileLabel": "0"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-1.pdf",
+                    "fileSize": 264403,
+                    "fileLabel": "1"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-2.pdf",
+                    "fileSize": 488977,
+                    "fileLabel": "2"
+                  },
+                  {
+                    "fileUri": "001-24-00001-1-3.pdf",
+                    "fileSize": 4942,
+                    "fileLabel": "3"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "50-48231",
+            "judgeName": "Craig  Ramsey",
+            "partyName": "Smith",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          },
+          {
+            "debtor": {
+              "name": null,
+              "address1": null,
+              "address2": null,
+              "address3": null,
+              "cityStateZipCountry": null,
+              "taxId": null,
+              "ssn": null,
+              "additionalIdentifiers": null
+            },
+            "officeName": "Burlington",
+            "officeCode": "2",
+            "courtId": "0208",
+            "courtName": "Southern District of New York",
+            "courtDivisionCode": "081",
+            "courtDivisionName": "Manhattan",
+            "groupDesignator": "AL",
+            "regionId": "02",
+            "regionName": "NEW YORK",
+            "state": "NY",
+            "dxtrId": "315102",
+            "caseId": "081-19-08131",
+            "chapter": "15",
+            "caseTitle": null,
+            "dateFiled": "2023-02-06",
+            "debtorTypeCode": "IB",
+            "debtorTypeLabel": "Individual Business",
+            "orderDate": "2028-07-20",
+            "docketEntries": [
+              {
+                "sequenceNumber": 1,
+                "documentNumber": 1,
+                "dateFiled": "2024-12-29",
+                "summaryText": "Voveo coniecto sol abundans neque audeo tres tam sperno.",
+                "fullText": "Expedita aestivus abduco comis facilis ustulo repudiandae demonstro vindico eveniet. Comitatus officia ait supplanto adulatio cornu repellendus ambitus nobis crastinus. Vito modi antiquus spes aegrotatio acies supellex molestias.",
+                "documents": [
+                  {
+                    "fileUri": "001-24-00001-1-0.pdf",
+                    "fileSize": 484734,
+                    "fileLabel": "0"
+                  }
+                ]
+              }
+            ],
+            "jobId": 370,
+            "leadCaseIdHint": null,
+            "caseNumber": "19-08131",
+            "judgeName": "Craig  Ramsey",
+            "partyName": "Smith",
+            "jointDebtorName": "",
+            "petitionCode": "VP",
+            "petitionLabel": "Voluntary"
+          }
+        ],
+        "caseTitle": null
+      }
+    ],
+    "orders": [
+      {
+        "_id": "69c3f5c935071a9817e23ceb",
+        "id": "554f4f4a-b965-4585-b888-2b59cbb259aa",
+        "courtDivisionCode": "081",
+        "caseId": "081-65-67641",
+        "caseNumber": "65-67641",
+        "caseTitle": null,
+        "dateFiled": "2023-04-11",
+        "dxtrId": "315951",
+        "chapter": "15",
+        "courtId": "0208",
+        "courtName": "Southern District of New York",
+        "courtDivisionName": "Manhattan",
+        "judgeName": "Stephanie X Esparza",
+        "regionId": "02",
+        "regionName": "NEW YORK",
+        "petitionCode": "VP",
+        "debtorTypeCode": "IB",
+        "debtor": {
+          "name": null,
+          "address1": null,
+          "address2": null,
+          "address3": null,
+          "cityStateZipCountry": null,
+          "taxId": null,
+          "ssn": null,
+          "additionalIdentifiers": null
+        },
+        "jointDebtor": null,
+        "debtorTypeLabel": "Individual Business",
+        "petitionLabel": "Voluntary",
+        "orderDate": "2026-03-25T14:48:41.441Z",
+        "orderType": "transfer",
+        "status": "pending",
+        "docketSuggestedCaseNumber": "69-12345",
+        "docketEntries": [],
+        "newCase": {
+          "courtDivisionCode": "091",
+          "caseId": "091-69-12345",
+          "caseNumber": "69-12345",
+          "caseTitle": null,
+          "dateFiled": "2023-08-17",
+          "dxtrId": "234567",
+          "chapter": "15",
+          "courtId": "0209",
+          "courtName": "Western District of New York",
+          "courtDivisionName": "Buffalo",
+          "judgeName": "Stephanie X Esparza",
+          "regionId": "02",
+          "regionName": "NEW YORK",
+          "petitionCode": "TV",
+          "debtorTypeCode": "IB",
+          "debtor": {
+            "name": null,
+            "address1": null,
+            "address2": null,
+            "address3": null,
+            "cityStateZipCountry": null,
+            "taxId": null,
+            "ssn": null,
+            "additionalIdentifiers": null
+          },
+          "jointDebtor": null,
+          "debtorTypeLabel": "Individual Business",
+          "petitionLabel": "Voluntary"
+        }
+      }
+    ],
+    "trustees": [
+      {
+        "_id": "000000000000000000000001",
+        "id": "test-trustee-0",
+        "trusteeId": "aaaabbbb-cccc-dddd-eeee-ffff00000001",
+        "documentType": "TRUSTEE",
+        "name": null,
+        "professional": {
+          "firstName": null,
+          "lastName": null,
+          "office": null,
+          "phone": null,
+          "email": null
+        },
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      }
+    ],
+    "user-groups": [
+      {
+        "_id": "000000000000000000000010",
+        "id": "group-attorneys",
+        "groupName": "USTP CAMS Trial Attorney",
+        "users": [
+          {
+            "id": "attorney-1",
+            "name": "Weis, Brandon"
+          },
+          {
+            "id": "attorney-2",
+            "name": "Smith, Jane"
+          },
+          {
+            "id": "attorney-3",
+            "name": "Johnson, Bob"
+          }
+        ]
+      },
+      {
+        "_id": "000000000000000000000011",
+        "id": "group-auditors",
+        "groupName": "USTP CAMS Auditor",
+        "users": [
+          {
+            "id": "auditor-1",
+            "name": "Williams, Sarah"
+          },
+          {
+            "id": "auditor-2",
+            "name": "Brown, Michael"
+          },
+          {
+            "id": "auditor-3",
+            "name": "Davis, Emily"
+          }
+        ]
+      }
+    ]
+  }
+}

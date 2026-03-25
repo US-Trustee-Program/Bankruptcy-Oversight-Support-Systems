@@ -45,42 +45,30 @@ class CasesDxtrGateway implements CasesInterface {
       ...caseSummary,
     };
 
-    const transactionDates = await this.queryTransactionDates(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-    );
+    // All four post-summary queries are independent — fetch in parallel
+    const [transactionDates, trustee, debtorAttorney, jointDebtorAttorney] = await Promise.all([
+      this.queryTransactionDates(applicationContext, bCase.dxtrId, bCase.courtId),
+      this.queryTrustee(applicationContext, bCase.dxtrId, bCase.courtId),
+      this.queryDebtorAttorney(applicationContext, bCase.dxtrId, bCase.courtId, 'db'),
+      this.queryDebtorAttorney(applicationContext, bCase.dxtrId, bCase.courtId, 'jd'),
+    ]);
 
     if (transactionDates.closedDates.length > 0) {
       bCase.closedDate = getMonthDayYearStringFromDate(transactionDates.closedDates[0]);
     }
-
     if (transactionDates.dismissedDates.length > 0) {
       bCase.dismissedDate = getMonthDayYearStringFromDate(transactionDates.dismissedDates[0]);
     }
-
     if (transactionDates.reopenedDates.length > 0) {
       bCase.reopenedDate = getMonthDayYearStringFromDate(transactionDates.reopenedDates[0]);
     }
-
     if (transactionDates.transferDates.length > 0) {
       bCase.transferDate = getMonthDayYearStringFromDate(transactionDates.transferDates[0]);
     }
 
-    bCase.trustee = await this.queryTrustee(applicationContext, bCase.dxtrId, bCase.courtId);
-
-    bCase.debtorAttorney = await this.queryDebtorAttorney(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-      'db',
-    );
-    bCase.jointDebtorAttorney = await this.queryDebtorAttorney(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-      'jd',
-    );
+    bCase.trustee = trustee;
+    bCase.debtorAttorney = debtorAttorney;
+    bCase.jointDebtorAttorney = jointDebtorAttorney;
 
     return bCase;
   }
@@ -140,7 +128,7 @@ class CasesDxtrGateway implements CasesInterface {
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
-        FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
+        CONVERT(VARCHAR(10), cs.CS_DATE_FILED, 23) as dateFiled,
         cs.CS_CASEID as dxtrId,
         cs.CS_CHAPTER as chapter,
         cs.COURT_ID as courtId,
@@ -317,7 +305,7 @@ class CasesDxtrGateway implements CasesInterface {
       ];
 
       const txDateQuery =
-        "SELECT FORMAT(TX_DATE, 'yyyy-MM-dd') AS TX_DATE FROM AO_TX WHERE TX_ID=@midTxId";
+        'SELECT CONVERT(VARCHAR(10), TX_DATE, 23) AS TX_DATE FROM AO_TX WHERE TX_ID=@midTxId';
       const { results } = await executeQuery(
         context,
         context.config.dxtrDbConfig,
@@ -359,7 +347,7 @@ class CasesDxtrGateway implements CasesInterface {
       cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
       cs.CASE_ID as caseNumber,
       cs.CS_SHORT_TITLE as caseTitle,
-      FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
+      CONVERT(VARCHAR(10), cs.CS_DATE_FILED, 23) as dateFiled,
       cs.CS_CASEID as dxtrId,
       cs.CS_CHAPTER as chapter,
       cs.COURT_ID as courtId,
@@ -519,19 +507,14 @@ class CasesDxtrGateway implements CasesInterface {
         message: `Case summary not found for case ID: ${caseId}.`,
       });
     }
+    // Debtor and joint debtor are independent — fetch in parallel
+    const [debtor, jointDebtor] = await Promise.all([
+      this.queryDebtorParty(applicationContext, bCase.dxtrId, bCase.courtId, 'db'),
+      this.queryDebtorParty(applicationContext, bCase.dxtrId, bCase.courtId, 'jd'),
+    ]);
     // Debtor is required and should always exist for a valid case
-    bCase.debtor = (await this.queryDebtorParty(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-      'db',
-    ))!;
-    bCase.jointDebtor = await this.queryDebtorParty(
-      applicationContext,
-      bCase.dxtrId,
-      bCase.courtId,
-      'jd',
-    );
+    bCase.debtor = debtor!;
+    bCase.jointDebtor = jointDebtor;
     bCase.debtorTypeLabel = getDebtorTypeLabel(bCase.debtorTypeCode);
     bCase.petitionLabel = getPetitionInfo(bCase.petitionCode).petitionLabel;
     return bCase;
@@ -697,7 +680,7 @@ class CasesDxtrGateway implements CasesInterface {
         cs_div.CS_DIV_ACMS+'-'+cs.CASE_ID as caseId,
         cs.CASE_ID as caseNumber,
         cs.CS_SHORT_TITLE as caseTitle,
-        FORMAT(cs.CS_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
+        CONVERT(VARCHAR(10), cs.CS_DATE_FILED, 23) as dateFiled,
         cs.CS_CASEID as dxtrId,
         cs.CS_CHAPTER as chapter,
         cs.COURT_ID as courtId,

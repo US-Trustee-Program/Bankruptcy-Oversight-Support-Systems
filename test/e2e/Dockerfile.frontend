@@ -1,0 +1,29 @@
+# Frontend UI Dockerfile for E2E Testing
+# Start from cached deps image
+FROM localhost/e2e_deps:latest
+
+WORKDIR /app
+
+# Copy source code (this layer changes frequently)
+COPY common/ ./common/
+COPY user-interface/ ./user-interface/
+
+# Build common and frontend
+RUN npm run build:common
+
+WORKDIR /app/user-interface
+
+# Set environment variables for build
+ENV NODE_ENV=production
+ENV CAMS_PA11Y=false
+ENV CAMS_LOGIN_PROVIDER=okta
+ENV CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING=""
+
+# Build frontend
+RUN npm run build && \
+    ls -la build || (echo "ERROR: build directory not created" && exit 1)
+
+EXPOSE 3000
+
+# Start vite preview server
+CMD ["npx", "vite", "preview", "--port", "3000", "--strict-port", "--host", "0.0.0.0"]

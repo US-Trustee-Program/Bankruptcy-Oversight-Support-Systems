@@ -1,8 +1,71 @@
 # End-2-End Tests
 
-## .env file
+## Option 1: Containerized Testing with Podman
 
-To run E2E tests on the CAMS app from your local machine, you will require a .env file within the test/e2e/ directory with the following contents:
+Run E2E tests using the containerized Podman environment. This approach:
+- ✅ Requires no local backend/frontend setup
+- ✅ Provides consistent environment across all developers
+- ✅ Handles service orchestration automatically
+- ✅ Opens test report in browser automatically
+
+### Quick Start
+
+```bash
+cd test/e2e
+
+# First time: Install Podman (if not already installed)
+npm run podman:install
+
+# First time: Build dependency cache
+npm run podman:rebuild-deps
+
+# Run complete E2E workflow
+npm run e2e
+```
+
+The workflow will:
+1. Build/start backend and frontend containers
+2. Wait for services to be healthy
+3. Run all E2E tests
+4. Display test summary
+5. Open HTML report in browser
+6. Clean up containers
+
+See [test/e2e/README.md](../../test/e2e/README.md) for complete Podman documentation.
+
+### .env file for Containerized Testing
+
+Create `test/e2e/.env` with:
+
+```bash
+TARGET_HOST=http://localhost:3000
+CAMS_LOGIN_PROVIDER=okta
+OKTA_USER_NAME=<your-okta-username>
+OKTA_PASSWORD=<your-okta-password>
+
+# Database configuration (use e2e database)
+COSMOS_DATABASE_NAME=cams-e2e
+MONGO_CONNECTION_STRING=<cosmos-connection-string>
+DATABASE_MOCK=false
+
+# SQL Server configuration
+MSSQL_HOST=<sql-server-host>
+MSSQL_DATABASE_DXTR=<database-name>
+MSSQL_USER=<sql-username>
+MSSQL_PASS=<sql-password>
+MSSQL_ENCRYPT=true
+MSSQL_TRUST_UNSIGNED_CERT=true
+
+SLOT_NAME=local
+```
+
+## Option 2: Local Testing (Non-Containerized)
+
+Run tests against locally-hosted services:
+
+### .env file
+
+Create `test/e2e/.env` with:
 
 - `authFile="playwright/.auth/user.json"`
 - `TARGET_HOST=http://localhost:3000`
@@ -10,13 +73,14 @@ To run E2E tests on the CAMS app from your local machine, you will require a .en
 - `OKTA_USER_NAME=<if provider is okta>`
 - `OKTA_PASSWORD=<if provider is okta>`
 
-## Installation
+### Installation
 
-In order to run playwright locally you will need to install playwright with the project dependencies. That can be done from your terminal within the test/e2e/ directory:
+Install Playwright with browser dependencies:
 
-`npx playwright install --with-deps`
-
-## Running E2E Tests
+```bash
+cd test/e2e
+npx playwright install --with-deps
+```
 
 ### Setup for running against locally hosted application
 
