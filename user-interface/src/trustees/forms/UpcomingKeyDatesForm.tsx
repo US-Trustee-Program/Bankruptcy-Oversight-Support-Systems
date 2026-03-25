@@ -1,9 +1,10 @@
 import './EditUpcomingKeyDates.scss';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FocusEvent } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDatesInput,
   validateTrusteeUpcomingKeyDates,
+  validateMonthDay,
   calculateTirSubmission,
   calculateTirReview,
 } from '@common/cams/trustee-upcoming-key-dates';
@@ -74,6 +75,26 @@ export default function UpcomingKeyDatesForm() {
     tprReviewPeriod: true,
     tirReviewPeriod: true,
   });
+  const [tprDueRowFocused, setTprDueRowFocused] = useState(false);
+  const [tprDueRowHasInteracted, setTprDueRowHasInteracted] = useState(false);
+
+  function handleTprDueRowFocus() {
+    setTprDueRowFocused(true);
+    setTprDueRowHasInteracted(true);
+  }
+
+  function handleTprDueRowBlur(e: FocusEvent<HTMLDivElement>) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setTprDueRowFocused(false);
+    }
+  }
+
+  const tprDueIncompleteError = (() => {
+    if (!form.tprDue) return '';
+    const [, month, day] = form.tprDue.split('-');
+    return (month && !day) || (!month && day) ? validateMonthDay('1900--').reasons?.[0] || '' : '';
+  })();
+  const tprDueBlurError = !tprDueRowFocused && tprDueRowHasInteracted ? tprDueIncompleteError : '';
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
@@ -250,13 +271,16 @@ export default function UpcomingKeyDatesForm() {
             </Button>
           )}
         </div>
-        <div className="tpr-due-group__row">
+        <div
+          className="tpr-due-group__row"
+          onFocus={handleTprDueRowFocus}
+          onBlur={handleTprDueRowBlur}
+        >
           <MonthDaySelector
             id="tpr-due"
             value={form.tprDue}
             onChange={handleMonthDayChange('tprDue')}
-            hasError={!!errors.tprDue}
-            submitted={submitted}
+            hasError={!!errors.tprDue || !!tprDueBlurError}
           />
           <div className="usa-form-group year-type-selector">
             <div className="year-type-selector__inputs">
@@ -278,8 +302,10 @@ export default function UpcomingKeyDatesForm() {
             </div>
           </div>
         </div>
-        {(errors.tprDue || errors.tprDueYearType) && (
-          <span className="usa-error-message">{errors.tprDue || errors.tprDueYearType}</span>
+        {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
+          <span className="usa-error-message">
+            {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
+          </span>
         )}
       </div>
       <MonthDayRangeSelector
