@@ -167,6 +167,25 @@ export function validateTrusteeUpcomingKeyDates(
   return validateObject(trusteeUpcomingKeyDatesSpec, input);
 }
 
+/**
+ * Validates the tprDue / tprDueYearType pair for blur-time feedback.
+ * Returns the first applicable error message, or '' if valid.
+ */
+export function validateTprDuePair(
+  tprDue: string | null | undefined,
+  tprDueYearType: string | null | undefined,
+): string {
+  if (!tprDue && !tprDueYearType) return '';
+  // Priority 1: incomplete date
+  const dateResult = validateMonthDay(tprDue);
+  if (!dateResult.valid) return dateResult.reasons?.[0] ?? '';
+  // Priority 2: complete date but no year type
+  if (tprDue && !tprDueYearType) return 'TPR Due Year Type is required.';
+  // Priority 3: year type set but no date
+  if (!tprDue && tprDueYearType) return validateMonthDay('1900--').reasons?.[0] ?? '';
+  return '';
+}
+
 export type TrusteeUpcomingKeyDates = Auditable &
   Identifiable & {
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES';
