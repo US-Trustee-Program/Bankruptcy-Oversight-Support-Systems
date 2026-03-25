@@ -76,20 +76,15 @@ async function getOfficesFromGroupNames(
   const officesGateway = factory.getOfficesGateway(context);
   const ustpOffices = await officesGateway.getOffices(context);
 
-  context.logger.info(
-    MODULE_NAME,
-    `CAMS-710 DIAGNOSTIC: Retrieved ${ustpOffices.length} offices from gateway. User has ${idpGroups.length} AD groups.`,
-    { idpGroups, officeCount: ustpOffices.length },
-  );
-
   const matchedOffices = ustpOffices.filter((office) => idpGroups.includes(office.idpGroupName));
 
-  context.logger.info(
+  context.logger.debug(
     MODULE_NAME,
-    `CAMS-710 DIAGNOSTIC: Matched ${matchedOffices.length} offices for user.`,
+    `Matched ${matchedOffices.length} offices from ${idpGroups.length} AD groups (${ustpOffices.length} offices available).`,
     {
-      matchedOffices: matchedOffices.map((o) => o.idpGroupName),
-      unmatchedGroups: idpGroups.filter((g) => !ustpOffices.find((o) => o.idpGroupName === g)),
+      groupCount: idpGroups.length,
+      matchedCount: matchedOffices.length,
+      availableOffices: ustpOffices.length,
     },
   );
 
