@@ -135,7 +135,10 @@ export default function UpcomingReportDatesForm() {
       } else {
         setForm((prev) => ({ ...prev, [field]: value }));
       }
-      if (field in errors) {
+      // Clear errors for the field and related pair fields
+      if (field === 'tprDue') {
+        setErrors((prev) => ({ ...prev, tprDue: '', tprDueYearType: '' }));
+      } else if (field in errors) {
         setErrors((prev) => ({ ...prev, [field]: '' }));
       }
     };
@@ -144,7 +147,8 @@ export default function UpcomingReportDatesForm() {
   function handleYearTypeChange(ev: React.ChangeEvent<HTMLSelectElement>) {
     setSubmitted(false);
     setForm((prev) => ({ ...prev, tprDueYearType: ev.target.value }));
-    setErrors((prev) => ({ ...prev, tprDueYearType: '' }));
+    // Clear both TPR Due errors when Year Type changes
+    setErrors((prev) => ({ ...prev, tprDue: '', tprDueYearType: '' }));
   }
 
   async function handleSave() {
@@ -247,6 +251,7 @@ export default function UpcomingReportDatesForm() {
             value={form.tprDue}
             onChange={handleMonthDayChange('tprDue')}
             hasError={!!errors.tprDue}
+            submitted={submitted}
           />
           <div className="usa-form-group year-type-selector">
             <div className="year-type-selector__inputs">
@@ -268,9 +273,8 @@ export default function UpcomingReportDatesForm() {
             </div>
           </div>
         </div>
-        {errors.tprDue && <span className="usa-error-message">{errors.tprDue}</span>}
-        {errors.tprDueYearType && (
-          <span className="usa-error-message">{errors.tprDueYearType}</span>
+        {(errors.tprDue || errors.tprDueYearType) && (
+          <span className="usa-error-message">{errors.tprDue || errors.tprDueYearType}</span>
         )}
       </div>
       <MonthDayRangeSelector

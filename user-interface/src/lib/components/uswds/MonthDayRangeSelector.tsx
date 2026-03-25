@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import MonthDaySelector from './MonthDaySelector';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
+import { validateMonthDayRange } from '@common/cams/trustee-upcoming-report-dates';
 
 type MonthDayRangeSelectorProps = {
   id: string;
@@ -14,14 +15,6 @@ type MonthDayRangeSelectorProps = {
   externalError?: string;
   submitted?: boolean;
 };
-
-const PARTIAL_DATE_ERROR = 'Must be a valid date mm/dd.';
-
-function isPartialMonthDay(value: string): boolean {
-  if (!value) return false;
-  const parts = value.split('-');
-  return parts.length === 3 && (!parts[1] || !parts[2]);
-}
 
 export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps) {
   const {
@@ -38,18 +31,12 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
 
   const [internalError, setInternalError] = useState('');
 
-  // Validate whenever values change
+  // Validate whenever values change using common library validator
   useEffect(() => {
-    // Check for partial dates
-    if (isPartialMonthDay(startValue) || isPartialMonthDay(endValue)) {
-      setInternalError(PARTIAL_DATE_ERROR);
-      onValidationChange?.(false);
-      return;
-    }
-
-    // All validations pass
-    setInternalError('');
-    onValidationChange?.(true);
+    const result = validateMonthDayRange(startValue, endValue);
+    const errorMessage = result.valid ? '' : result.reasons?.[0] || '';
+    setInternalError(errorMessage);
+    onValidationChange?.(result.valid ?? true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startValue, endValue]);
 
@@ -87,6 +74,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
           value={startValue}
           onChange={onStartChange}
           hasError={hasError}
+          submitted={submitted}
         />
         <span className="review-period-separator" aria-hidden="true">
           <Icon name="remove" />
@@ -96,6 +84,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
           value={endValue}
           onChange={onEndChange}
           hasError={hasError}
+          submitted={submitted}
         />
       </div>
       {hasError && (
