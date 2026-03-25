@@ -8,16 +8,14 @@ import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/compon
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { ConsolidationOrderAccordion } from './consolidation/ConsolidationOrderAccordion';
+import { ConsolidationOrder, Order, OrderStatus, TransferOrder } from '@common/cams/orders';
 import {
-  ConsolidationOrder,
-  Order,
-  OrderStatus,
-  OrderType,
-  TransferOrder,
+  DataVerificationItem,
+  DataVerificationItemType,
   isConsolidationOrder,
   isTransferOrder,
   isTrusteeMatchVerification,
-} from '@common/cams/orders';
+} from '@common/cams/data-verification';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import useFeatureFlags, {
   CONSOLIDATIONS_ENABLED,
@@ -50,11 +48,11 @@ export default function DataVerificationScreen() {
       { value: 'rejected', label: 'Rejected' },
     ],
   );
-  const typeFilter = typeSelections.map((s) => s.value as OrderType);
+  const typeFilter = typeSelections.map((s) => s.value as DataVerificationItemType);
   const statusFilter = statusSelections.map((s) => s.value as OrderStatus);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [courts, setCourts] = useState<Array<CourtDivisionDetails>>([]);
-  const [orderList, setOrderList] = useState<Array<Order>>([]);
+  const [orderList, setOrderList] = useState<Array<DataVerificationItem>>([]);
   const [isOrderListLoading, setIsOrderListLoading] = useState(true);
   const alertRef = useRef<AlertRefType>(null);
   const [reviewOrderAlert, setReviewOrderAlert] = useState<AlertDetails>({
@@ -94,7 +92,7 @@ export default function DataVerificationScreen() {
     // update the orders list
     if (deletedOrder && orders) {
       const newOrderList = orderList.filter((o) => o.id !== deletedOrder.id);
-      newOrderList.push(...(orders as Order[]));
+      newOrderList.push(...orders);
       setOrderList(newOrderList);
     }
     // display alert
