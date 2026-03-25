@@ -43,7 +43,6 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
     try {
       const oktaGroups = await this.oktaHumble.listGroups(request);
 
-      // Log at gateway boundary (API boundary) - use INFO level for production observability
       context.logger.info(
         MODULE_NAME,
         `Okta Groups API returned ${oktaGroups.length} groups for query "${request.query}"`,
@@ -86,7 +85,6 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
       };
       const oktaGroups = await this.oktaHumble.listGroups(request);
 
-      // Log at gateway boundary - use DEBUG since this is single-group query (not boundary crossing query)
       context.logger.debug(
         MODULE_NAME,
         `Okta Groups API returned ${oktaGroups.length} group(s) for query "${request.query}"`,
