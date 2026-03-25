@@ -10,6 +10,77 @@ import {
   validateObject,
 } from './validation';
 
+// ============================================================================
+// Granular validation functions - Single source of truth for all validation
+// Used by both frontend components and top-level form validation
+// ============================================================================
+
+/**
+ * Validates a single month/day field (sentinel date format: 1900-MM-DD)
+ * Returns error if date is incomplete or invalid
+ * @param value - ISO date string in format "1900-MM-DD" or null/empty
+ * @returns ValidatorResult with error message if invalid
+ */
+export function validateMonthDay(value: string | null | undefined): ValidatorResult {
+  if (!value || value === '') return VALID;
+
+  // Check if it's a valid ISO date
+  if (!isValidISODate(value)) {
+    return { reasons: ['Must be a valid date mm/dd.'] };
+  }
+
+  return VALID;
+}
+
+/**
+ * Validates a month/day range (start and end must both be present or both absent)
+ * Priority: incomplete date error > pair validation error
+ * @returns Single error message (not per-field) to display on the range component
+ */
+export function validateMonthDayRange(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): ValidatorResult {
+  // Check for incomplete dates first (higher priority)
+  const startResult = validateMonthDay(start);
+  if (!startResult.valid) return startResult;
+
+  const endResult = validateMonthDay(end);
+  if (!endResult.valid) return endResult;
+
+  // Check pair requirement (both or neither)
+  const hasStart = !!start;
+  const hasEnd = !!end;
+
+  if (hasStart && !hasEnd) {
+    return { reasons: ['End date is required.'] };
+  }
+  if (hasEnd && !hasStart) {
+    return { reasons: ['Start date is required.'] };
+  }
+
+  return VALID;
+}
+
+/**
+ * Validates a full date field (YYYY-MM-DD format)
+ * @param value - ISO date string or null/empty
+ * @returns ValidatorResult with error message if invalid
+ */
+export function validateFullDate(value: string | null | undefined): ValidatorResult {
+  if (!value || value === '') return VALID;
+
+  if (!isValidISODate(value)) {
+    return { reasons: ['Must be a valid date mm/dd/yyyy.'] };
+  }
+
+  return VALID;
+}
+
+// ============================================================================
+// Internal validation functions for top-level form validation
+// ============================================================================
+
 function requirePair(
   startField: keyof TrusteeUpcomingReportDatesInput,
   endField: keyof TrusteeUpcomingReportDatesInput,
@@ -29,8 +100,51 @@ function requirePair(
   };
 }
 
+function validateDateFields(): ValidatorFunction {
+  return (obj: unknown): ValidatorResult => {
+    const input = obj as TrusteeUpcomingReportDatesInput;
+    const reasonMap: ValidatorReasonMap = {};
+
+    // Validate sentinel date fields (MM/DD format)
+    const sentinelFields: DateField[] = [
+      'tprReviewPeriodStart',
+      'tprReviewPeriodEnd',
+      'tprDue',
+      'tirReviewPeriodStart',
+      'tirReviewPeriodEnd',
+      'tirSubmission',
+      'tirReview',
+    ];
+
+    sentinelFields.forEach((field) => {
+      const result = validateMonthDay(input[field]);
+      if (!result.valid) {
+        reasonMap[field] = result;
+      }
+    });
+
+    // Validate full date fields (MM/DD/YYYY format)
+    const fullDateFields: DateField[] = [
+      'pastFieldExam',
+      'pastAudit',
+      'upcomingFieldExam',
+      'upcomingIndependentAuditRequired',
+    ];
+
+    fullDateFields.forEach((field) => {
+      const result = validateFullDate(input[field]);
+      if (!result.valid) {
+        reasonMap[field] = result;
+      }
+    });
+
+    return Object.keys(reasonMap).length > 0 ? { reasonMap } : VALID;
+  };
+}
+
 const trusteeUpcomingReportDatesSpec: ValidationSpec<TrusteeUpcomingReportDatesInput> = {
   $: [
+    validateDateFields(),
     requirePair(
       'tprReviewPeriodStart',
       'tprReviewPeriodEnd',

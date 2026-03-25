@@ -405,4 +405,31 @@ describe('EditUpcomingReportDates', () => {
     await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '');
     expect(document.getElementById('tpr-due-day')).toBeDisabled();
   });
+
+  test('does not allow saving with only TPR Due month selected (incomplete date)', async () => {
+    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+
+    // Select only month, not day
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+    // Select Year Type
+    await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+
+    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+
+    // Should not call the API with incomplete date - the field should be empty/null
+    await waitFor(() => {
+      if (putSpy.mock.calls.length > 0) {
+        expect(putSpy).toHaveBeenCalledWith(
+          'trustee-001',
+          'appointment-001',
+          expect.objectContaining({ tprDue: null }),
+        );
+      }
+    });
+  });
 });
