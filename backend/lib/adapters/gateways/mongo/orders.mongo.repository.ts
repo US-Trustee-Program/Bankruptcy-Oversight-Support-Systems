@@ -1,5 +1,5 @@
 import { OrdersSearchPredicate } from '@common/api/search';
-import { ConsolidationOrder, Order, TransferOrder, TransferOrderAction } from '@common/cams/orders';
+import { Order, TransferOrder, TransferOrderAction } from '@common/cams/orders';
 import { ApplicationContext } from '../../types/basic';
 import { OrdersRepository } from '../../../use-cases/gateways.types';
 import QueryBuilder, { Query } from '../../../query/query-builder';
@@ -41,7 +41,7 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
     OrdersMongoRepository.dropInstance();
   }
 
-  async search(predicate: OrdersSearchPredicate): Promise<(TransferOrder | ConsolidationOrder)[]> {
+  async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
     try {
       const doc = using<Order>();
       const query: Query<Order> = predicate

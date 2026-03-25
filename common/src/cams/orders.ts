@@ -3,7 +3,7 @@ import { CaseDocketEntry, CaseSummary } from './cases';
 import { Consolidation } from './events';
 import { CamsDocument } from './document';
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
-export type OrderType = 'transfer' | 'consolidation' | 'trustee-match';
+export type OrderType = 'transfer' | 'consolidation';
 export type ConsolidationType = 'administrative' | 'substantive';
 
 export type ConsolidationOrderActionRejection = {
@@ -137,11 +137,13 @@ export type RawConsolidationOrder = ConsolidationOrderCase & {
 
 export type Order = TransferOrder | ConsolidationOrder;
 
-export function isTransferOrder(order: { orderType: string }): order is TransferOrder {
+export type HasOrderType = { orderType: OrderType };
+
+export function isTransferOrder(order: HasOrderType): order is TransferOrder {
   return order.orderType === 'transfer';
 }
 
-export function isConsolidationOrder(order: { orderType: string }): order is ConsolidationOrder {
+export function isConsolidationOrder(order: HasOrderType): order is ConsolidationOrder {
   return order.orderType === 'consolidation';
 }
 

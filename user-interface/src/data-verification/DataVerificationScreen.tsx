@@ -8,16 +8,14 @@ import Alert, { AlertDetails, AlertRefType, UswdsAlertStyle } from '@/lib/compon
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import { orderType, orderStatusType } from '@/lib/utils/labels';
 import { ConsolidationOrderAccordion } from './consolidation/ConsolidationOrderAccordion';
+import { ConsolidationOrder, Order, OrderStatus, TransferOrder } from '@common/cams/orders';
 import {
-  ConsolidationOrder,
-  Order,
-  OrderStatus,
-  OrderType,
-  TransferOrder,
+  DataVerificationItem,
+  DataVerificationItemType,
   isConsolidationOrder,
   isTransferOrder,
-} from '@common/cams/orders';
-import { DataVerificationItem, isTrusteeMatchVerification } from '@common/cams/data-verification';
+  isTrusteeMatchVerification,
+} from '@common/cams/data-verification';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import useFeatureFlags, {
   CONSOLIDATIONS_ENABLED,
@@ -50,7 +48,7 @@ export default function DataVerificationScreen() {
       { value: 'rejected', label: 'Rejected' },
     ],
   );
-  const typeFilter = typeSelections.map((s) => s.value as OrderType);
+  const typeFilter = typeSelections.map((s) => s.value as DataVerificationItemType);
   const statusFilter = statusSelections.map((s) => s.value as OrderStatus);
   const [regionsMap, setRegionsMap] = useState<Map<string, string>>(new Map());
   const [courts, setCourts] = useState<Array<CourtDivisionDetails>>([]);
