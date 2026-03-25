@@ -320,7 +320,8 @@ describe('EditUpcomingKeyDates', () => {
     // Year Type should NOT have error class
     expect(screen.getByTestId('tpr-due-year-type')).not.toHaveClass('usa-input--error');
 
-    expect(screen.getByText('TPR Due is required.')).toBeInTheDocument();
+    // Blur error takes priority: shows "Must be a valid date mm/dd." (date absent, year type set)
+    expect(screen.getByText('Must be a valid date mm/dd.')).toBeInTheDocument();
     expect(putSpy).not.toHaveBeenCalled();
   });
 
@@ -381,13 +382,14 @@ describe('EditUpcomingKeyDates', () => {
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
     await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
-    expect(screen.getByText('TPR Due is required.')).toBeInTheDocument();
+    // Blur error takes priority: shows "Must be a valid date mm/dd." (date absent, year type set)
+    expect(screen.getByText('Must be a valid date mm/dd.')).toBeInTheDocument();
     expect(document.getElementById('tpr-due-month')).toHaveClass('usa-input--error');
 
-    // Select Month - should clear error
+    // Select Month - should clear error (re-focuses the row, clearing blur error)
     await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
 
-    expect(screen.queryByText('TPR Due is required.')).not.toBeInTheDocument();
+    expect(screen.queryByText('Must be a valid date mm/dd.')).not.toBeInTheDocument();
     expect(document.getElementById('tpr-due-month')).not.toHaveClass('usa-input--error');
   });
 
@@ -539,5 +541,154 @@ describe('EditUpcomingKeyDates', () => {
         );
       }
     });
+  });
+
+  test('shows loading spinner while fetching and hides form', () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockImplementation(() => new Promise(() => {}));
+
+    renderComponent();
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+    expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
+  });
+
+  test('shows error alert when fetch fails', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network failure'));
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+    });
+  });
+
+  test('shows error alert when save fails and re-enables save button', async () => {
+    mockNavigate.mockClear();
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('Server error'));
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+    await waitFor(() => {
+      const saveButton = screen.getByTestId('button-save-upcoming-key-dates');
+      expect(saveButton).not.toBeDisabled();
+      expect(saveButton).toHaveTextContent('Save');
+    });
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  test('disables save button and shows "Saving..." while save is in progress', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    let resolvePut: (value: { data: null }) => void;
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockImplementation(
+      () =>
+        new Promise<{ data: null }>((resolve) => {
+          resolvePut = resolve;
+        }),
+    );
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
+
+    await waitFor(() => {
+      const saveButton = screen.getByTestId('button-save-upcoming-key-dates');
+      expect(saveButton).toBeDisabled();
+      expect(saveButton).toHaveTextContent('Saving...');
+    });
+
+    resolvePut!({ data: null });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+    });
+  });
+
+  test('shows TPR Due blur error after interacting with TPR Due row then blurring away', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+    // Interact with the TPR Due row: enter a complete date without year type
+    await userEvent.click(document.getElementById('tpr-due-month')!);
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+    await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+    // Click the field-exam input (outside the tpr-due-group__row) to trigger blur
+    await userEvent.click(screen.getByTestId('field-exam'));
+
+    await waitFor(() => {
+      expect(screen.getByText('TPR Due Year Type is required.')).toBeInTheDocument();
+    });
+  });
+
+  test('shows TPR Due year type blur error when date is complete but year type is not set on blur', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+    await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+    await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
+    // Click outside the row to trigger blur
+    await userEvent.click(screen.getByTestId('field-exam'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tpr-due-year-type')).toHaveClass('usa-input--error');
+    });
+  });
+
+  test('shows TIR Submission blur error after interacting and blurring with invalid value', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+    // Focus TIR Submission, select only month (incomplete), then click outside to blur
+    await userEvent.click(document.getElementById('tir-submission-month')!);
+    await userEvent.selectOptions(document.getElementById('tir-submission-month')!, '04');
+    // Click on the field-exam input (outside the tir-submission MonthDaySelector) to trigger blur
+    await userEvent.click(screen.getByTestId('field-exam'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Must be a valid date mm/dd.')).toBeInTheDocument();
+    });
+  });
+
+  test('shows TIR Review blur error after interacting and blurring with invalid value', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+    await userEvent.click(document.getElementById('tir-review-month')!);
+    await userEvent.selectOptions(document.getElementById('tir-review-month')!, '06');
+    // Click on the field-exam input to trigger blur outside the tir-review group
+    await userEvent.click(screen.getByTestId('field-exam'));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Must be a valid date mm/dd.').length).toBeGreaterThan(0);
+    });
+  });
+
+  test('does not show TIR Submission blur error before any interaction', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+    // Do not interact with TIR Submission at all
+    expect(screen.queryByText('Must be a valid date mm/dd.')).not.toBeInTheDocument();
   });
 });

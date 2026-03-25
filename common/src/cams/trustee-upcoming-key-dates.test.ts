@@ -14,6 +14,10 @@ import {
   calculateTirSubmission,
   calculateTirReview,
   calculateNextAuditDate,
+  validateMonthDay,
+  validateMonthDayRange,
+  validateTrusteeUpcomingKeyDates,
+  validateTprDuePair,
 } from './trustee-upcoming-key-dates';
 import V from './validators';
 import { VALID } from './validation';
@@ -338,5 +342,237 @@ describe('calculation helpers', () => {
       // 2025-10-15 + 3 years = 2028-10-15, aligns to 2028-12-31
       expect(calculateNextAuditDate('2025-10-15', undefined, 3)).toBe('2028-12-01');
     });
+  });
+});
+
+describe('validateMonthDay', () => {
+  test('returns VALID for empty string', () => {
+    expect(validateMonthDay('')).toEqual(VALID);
+  });
+
+  test('returns VALID for null', () => {
+    expect(validateMonthDay(null)).toEqual(VALID);
+  });
+
+  test('returns VALID for undefined', () => {
+    expect(validateMonthDay(undefined)).toEqual(VALID);
+  });
+
+  test('returns VALID for a valid sentinel date', () => {
+    expect(validateMonthDay('1900-04-30')).toEqual(VALID);
+  });
+
+  test('returns error for an invalid sentinel date (Feb 30)', () => {
+    expect(validateMonthDay('1900-02-30')).toMatchObject({
+      reasons: ['Must be a valid date mm/dd.'],
+    });
+  });
+
+  test('returns error for a partial sentinel date (month only)', () => {
+    expect(validateMonthDay('1900-04-')).toMatchObject({
+      reasons: ['Must be a valid date mm/dd.'],
+    });
+  });
+
+  test('returns error for a completely invalid string', () => {
+    expect(validateMonthDay('not-a-date')).toMatchObject({
+      reasons: ['Must be a valid date mm/dd.'],
+    });
+  });
+});
+
+describe('validateMonthDayRange', () => {
+  test('returns VALID when both start and end are empty', () => {
+    expect(validateMonthDayRange('', '')).toEqual(VALID);
+  });
+
+  test('returns VALID when both start and end are null', () => {
+    expect(validateMonthDayRange(null, null)).toEqual(VALID);
+  });
+
+  test('returns VALID when both start and end are valid dates', () => {
+    expect(validateMonthDayRange('1900-04-01', '1900-03-31')).toEqual(VALID);
+  });
+
+  test('returns error for invalid start date', () => {
+    expect(validateMonthDayRange('1900-04-', '1900-03-31')).toMatchObject({
+      reasons: ['Must be a valid date mm/dd.'],
+    });
+  });
+
+  test('returns error for invalid end date', () => {
+    expect(validateMonthDayRange('1900-04-01', '1900-13-45')).toMatchObject({
+      reasons: ['Must be a valid date mm/dd.'],
+    });
+  });
+
+  test('returns error when start is set but end is absent', () => {
+    expect(validateMonthDayRange('1900-04-01', '')).toMatchObject({
+      reasons: ['End date is required.'],
+    });
+  });
+
+  test('returns error when end is set but start is absent', () => {
+    expect(validateMonthDayRange('', '1900-03-31')).toMatchObject({
+      reasons: ['Start date is required.'],
+    });
+  });
+
+  test('invalid start date takes priority over pair validation', () => {
+    // Start is invalid AND end is absent — should get the date error, not pair error
+    expect(validateMonthDayRange('1900-04-', '')).toMatchObject({
+      reasons: ['Must be a valid date mm/dd.'],
+    });
+  });
+});
+
+describe('validateTrusteeUpcomingKeyDates', () => {
+  function baseInput() {
+    return {
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      pastFieldExam: null,
+      pastAudit: null,
+      tprReviewPeriodStart: null,
+      tprReviewPeriodEnd: null,
+      tprDue: null,
+      tprDueYearType: null,
+      tirReviewPeriodStart: null,
+      tirReviewPeriodEnd: null,
+      tirSubmission: null,
+      tirReview: null,
+      upcomingFieldExam: null,
+      upcomingIndependentAuditRequired: null,
+    };
+  }
+
+  test('returns VALID when all fields are null', () => {
+    expect(validateTrusteeUpcomingKeyDates(baseInput())).toEqual(VALID);
+  });
+
+  test('returns VALID when all fields are populated with valid values', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        pastFieldExam: '2026-03-31',
+        pastAudit: '2025-06-30',
+        tprReviewPeriodStart: '1900-04-01',
+        tprReviewPeriodEnd: '1900-03-31',
+        tprDue: '1900-09-15',
+        tprDueYearType: 'EVEN',
+        tirReviewPeriodStart: '1900-07-01',
+        tirReviewPeriodEnd: '1900-06-30',
+        tirSubmission: '1900-10-15',
+        tirReview: '1900-11-01',
+        upcomingFieldExam: '2029-08-01',
+        upcomingIndependentAuditRequired: '2032-08-01',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when tprReviewPeriodStart is set but tprReviewPeriodEnd is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprReviewPeriodStart: '1900-04-01',
+      tprReviewPeriodEnd: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0]).toBe(
+      'TPR Review Period End is required.',
+    );
+  });
+
+  test('returns error when tprReviewPeriodEnd is set but tprReviewPeriodStart is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprReviewPeriodStart: null,
+      tprReviewPeriodEnd: '1900-03-31',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprReviewPeriodStart?.reasons?.[0]).toBe(
+      'TPR Review Period Start is required.',
+    );
+  });
+
+  test('returns error when tirReviewPeriodStart is set but tirReviewPeriodEnd is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirReviewPeriodStart: '1900-07-01',
+      tirReviewPeriodEnd: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirReviewPeriodEnd?.reasons?.[0]).toBe(
+      'TIR Review Period End is required.',
+    );
+  });
+
+  test('returns error when tprDue is set but tprDueYearType is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprDue: '1900-09-15',
+      tprDueYearType: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprDueYearType?.reasons?.[0]).toBe('TPR Due Year Type is required.');
+  });
+
+  test('returns error when tprDueYearType is set but tprDue is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprDue: null,
+      tprDueYearType: 'EVEN',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprDue?.reasons?.[0]).toBe('TPR Due is required.');
+  });
+
+  test('returns error when a sentinel date field contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tprDue: '1900-02-30',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tprDue?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
+  });
+
+  test('returns error when a full date field contains an invalid ISO date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      pastFieldExam: '2026-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.pastFieldExam?.reasons?.[0]).toBe('Must be a valid date mm/dd/yyyy.');
+  });
+});
+
+describe('validateTprDuePair', () => {
+  test('returns empty string when both are empty', () => {
+    expect(validateTprDuePair('', '')).toBe('');
+  });
+
+  test('returns empty string when both are null', () => {
+    expect(validateTprDuePair(null, null)).toBe('');
+  });
+
+  test('returns empty string when both are undefined', () => {
+    expect(validateTprDuePair(undefined, undefined)).toBe('');
+  });
+
+  test('returns empty string when both tprDue and tprDueYearType are valid', () => {
+    expect(validateTprDuePair('1900-09-15', 'EVEN')).toBe('');
+  });
+
+  test('returns date error when tprDue is an invalid partial date', () => {
+    expect(validateTprDuePair('1900-04-', 'EVEN')).toBe('Must be a valid date mm/dd.');
+  });
+
+  test('returns "TPR Due Year Type is required." when tprDue is set but tprDueYearType is absent', () => {
+    expect(validateTprDuePair('1900-09-15', '')).toBe('TPR Due Year Type is required.');
+    expect(validateTprDuePair('1900-09-15', null)).toBe('TPR Due Year Type is required.');
+  });
+
+  test('returns date error when tprDueYearType is set but tprDue is absent', () => {
+    const result = validateTprDuePair('', 'EVEN');
+    expect(result).toBe('Must be a valid date mm/dd.');
   });
 });
