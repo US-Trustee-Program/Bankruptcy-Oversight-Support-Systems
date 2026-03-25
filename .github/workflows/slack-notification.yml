@@ -10,13 +10,72 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'failure' && github.event.workflow_run.head_branch == 'main' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+
       - name: Send Slack notification
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_USER_MAPPING: ${{ secrets.SLACK_USER_MAPPING }}
         run: |
           head_sha="${{ github.event.workflow_run.head_sha }}"
           short_hash=$(echo "$head_sha" | cut -c1-7)
-          message="🚨 *Continuous Deployment* workflow failed."
+
+          # Collect all unique emails and usernames
+          declare -A slack_ids_seen
+          mentions=""
+
+          # Check if this is a merge commit (has 2 parents)
+          parent_count=$(git rev-list --parents -n 1 "$head_sha" | wc -w)
+          parent_count=$((parent_count - 1))
+
+          if [ "$parent_count" -eq 2 ]; then
+            # This is a merge commit - get all commits from the PR
+            commits=$(git log --format='%H' "$head_sha^1".."$head_sha^2")
+          else
+            # Single commit - just process this one
+            commits="$head_sha"
+          fi
+
+          # Process each commit
+          for commit in $commits; do
+            # Extract author email and username
+            author_email=$(git log -1 --format='%ae' "$commit")
+            author_username=$(git log -1 --format='%an' "$commit")
+
+            # Look up author's Slack ID
+            slack_id=$(echo "$SLACK_USER_MAPPING" | jq -r --arg email "$author_email" --arg username "$author_username" \
+              '.[] | select(.email == $email or .github == $username) | .slack // empty' | head -1)
+
+            if [ -n "$slack_id" ] && [ -z "${slack_ids_seen[$slack_id]}" ]; then
+              slack_ids_seen[$slack_id]=1
+              mentions="$mentions <@$slack_id>"
+            fi
+
+            # Extract co-author emails from commit message
+            co_author_emails=$(git log -1 --format='%B' "$commit" | grep -i "^Co-authored-by:" | sed -E 's/.*<(.+)>/\1/')
+
+            for email in $co_author_emails; do
+              slack_id=$(echo "$SLACK_USER_MAPPING" | jq -r --arg email "$email" \
+                '.[] | select(.email == $email) | .slack // empty')
+
+              if [ -n "$slack_id" ] && [ -z "${slack_ids_seen[$slack_id]}" ]; then
+                slack_ids_seen[$slack_id]=1
+                mentions="$mentions <@$slack_id>"
+              fi
+            done
+          done
+
+          # Build the message with mentions
+          if [ -n "$mentions" ]; then
+            message="🚨 *Continuous Deployment* workflow failed.$mentions"
+          else
+            message="🚨 *Continuous Deployment* workflow failed."
+          fi
+
           full_message=$(printf "%s\n• *Branch:* %s\n• *Commit:* <%s|%s>\n• *Run:* <%s|View Workflow>" \
             "$message" \
             "${{ github.event.workflow_run.head_branch }}" \
