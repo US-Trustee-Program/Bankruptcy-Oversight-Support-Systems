@@ -67,7 +67,7 @@ export function validateMonthDayRange(
  * @param value - ISO date string or null/empty
  * @returns ValidatorResult with error message if invalid
  */
-export function validateFullDate(value: string | null | undefined): ValidatorResult {
+function validateFullDate(value: string | null | undefined): ValidatorResult {
   if (!value || value === '') return VALID;
 
   if (!isValidISODate(value)) {
@@ -82,13 +82,13 @@ export function validateFullDate(value: string | null | undefined): ValidatorRes
 // ============================================================================
 
 function requirePair(
-  startField: keyof TrusteeUpcomingReportDatesInput,
-  endField: keyof TrusteeUpcomingReportDatesInput,
+  startField: keyof TrusteeUpcomingKeyDatesInput,
+  endField: keyof TrusteeUpcomingKeyDatesInput,
   startLabel: string,
   endLabel: string,
 ): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
-    const input = obj as TrusteeUpcomingReportDatesInput;
+    const input = obj as TrusteeUpcomingKeyDatesInput;
     const reasonMap: ValidatorReasonMap = {};
     if (input[startField] !== null && input[endField] === null) {
       reasonMap[endField as string] = { reasons: [`${endLabel} is required.`] };
@@ -102,7 +102,7 @@ function requirePair(
 
 function validateDateFields(): ValidatorFunction {
   return (obj: unknown): ValidatorResult => {
-    const input = obj as TrusteeUpcomingReportDatesInput;
+    const input = obj as TrusteeUpcomingKeyDatesInput;
     const reasonMap: ValidatorReasonMap = {};
 
     // Validate sentinel date fields (MM/DD format)
@@ -142,7 +142,7 @@ function validateDateFields(): ValidatorFunction {
   };
 }
 
-const trusteeUpcomingReportDatesSpec: ValidationSpec<TrusteeUpcomingReportDatesInput> = {
+const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> = {
   $: [
     validateDateFields(),
     requirePair(
@@ -161,13 +161,13 @@ const trusteeUpcomingReportDatesSpec: ValidationSpec<TrusteeUpcomingReportDatesI
   ],
 };
 
-export function validateTrusteeUpcomingReportDates(
-  input: TrusteeUpcomingReportDatesInput,
+export function validateTrusteeUpcomingKeyDates(
+  input: TrusteeUpcomingKeyDatesInput,
 ): ValidatorResult {
-  return validateObject(trusteeUpcomingReportDatesSpec, input);
+  return validateObject(trusteeUpcomingKeyDatesSpec, input);
 }
 
-export type TrusteeUpcomingReportDates = Auditable &
+export type TrusteeUpcomingKeyDates = Auditable &
   Identifiable & {
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES';
     trusteeId: string;
@@ -186,7 +186,7 @@ export type TrusteeUpcomingReportDates = Auditable &
     upcomingIndependentAuditRequired?: string;
   };
 
-export type TrusteeUpcomingReportDatesInput = {
+export type TrusteeUpcomingKeyDatesInput = {
   trusteeId: string;
   appointmentId: string;
   pastFieldExam: string | null;
@@ -203,9 +203,9 @@ export type TrusteeUpcomingReportDatesInput = {
   upcomingIndependentAuditRequired: string | null;
 };
 
-export type TrusteeUpcomingReportDatesHistory = AbstractTrusteeHistory<
-  Partial<TrusteeUpcomingReportDates>,
-  Partial<TrusteeUpcomingReportDates>
+export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
+  Partial<TrusteeUpcomingKeyDates>,
+  Partial<TrusteeUpcomingKeyDates>
 > & {
   documentType: 'AUDIT_UPCOMING_REPORT_DATES';
   appointmentId: string;

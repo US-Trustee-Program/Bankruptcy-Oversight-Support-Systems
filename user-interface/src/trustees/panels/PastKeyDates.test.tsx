@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import PastReportDates, { PastReportDatesProps } from './PastReportDates';
+import PastKeyDates, { PastKeyDatesProps } from './PastKeyDates';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import { TrusteeUpcomingReportDates } from '@common/cams/trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -18,13 +18,13 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const defaultProps: PastReportDatesProps = {
+const defaultProps: PastKeyDatesProps = {
   trusteeId: 'trustee-001',
   appointmentId: 'appointment-001',
   appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 7 Panel',
 };
 
-const populatedDocument: TrusteeUpcomingReportDates = {
+const populatedDocument: TrusteeUpcomingKeyDates = {
   id: 'doc-001',
   documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
   trusteeId: 'trustee-001',
@@ -46,15 +46,15 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   upcomingIndependentAuditRequired: '2032-08-01',
 };
 
-function renderComponent(props?: Partial<PastReportDatesProps>) {
+function renderComponent(props?: Partial<PastKeyDatesProps>) {
   return render(
     <BrowserRouter>
-      <PastReportDates {...defaultProps} {...props} />
+      <PastKeyDates {...defaultProps} {...props} />
     </BrowserRouter>,
   );
 }
 
-describe('PastReportDates', () => {
+describe('PastKeyDates', () => {
   const mockNavigate = vi.fn();
 
   beforeEach(() => {
@@ -64,12 +64,12 @@ describe('PastReportDates', () => {
   });
 
   test('renders "No date added" for all fields when API returns null', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
     });
 
     const noDateElements = screen.getAllByText('No date added');
@@ -77,12 +77,12 @@ describe('PastReportDates', () => {
   });
 
   test('renders Field Exam and Audit labels', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Field Exam:')).toBeInTheDocument();
@@ -90,12 +90,12 @@ describe('PastReportDates', () => {
   });
 
   test('renders correctly formatted values when API returns populated document', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
     });
 
     expect(screen.getByTestId('past-field-exam-row')).toHaveTextContent('02/21/2024');
@@ -103,49 +103,47 @@ describe('PastReportDates', () => {
   });
 
   test('Edit button is visible for TrusteeAdmin users', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: /edit past report dates/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
   });
 
   test('Edit button is not visible for non-TrusteeAdmin users', async () => {
     TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
     });
 
-    expect(
-      screen.queryByRole('button', { name: /edit past report dates/i }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /edit past key dates/i })).not.toBeInTheDocument();
   });
 
   test('shows loading spinner while fetching', () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockImplementation(() => new Promise(() => {}));
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockImplementation(() => new Promise(() => {}));
 
     renderComponent();
 
     expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByTestId('past-report-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('past-key-dates-card')).not.toBeInTheDocument();
   });
 
   test('renders "No date added" for all fields when API call fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockRejectedValue(new Error('Network failure'));
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network failure'));
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('past-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
     });
 
     const noDateElements = screen.getAllByText('No date added');
@@ -153,35 +151,35 @@ describe('PastReportDates', () => {
   });
 
   test('Edit button navigates to edit route', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /edit past report dates/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
     });
 
-    screen.getByRole('button', { name: /edit past report dates/i }).click();
+    screen.getByRole('button', { name: /edit past key dates/i }).click();
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-report-dates/edit`,
+      `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
       { state: { subHeading: defaultProps.appointmentHeading } },
     );
   });
 
   test('Edit button navigates with empty subHeading when appointmentHeading is undefined', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent({ appointmentHeading: undefined });
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /edit past report dates/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /edit past key dates/i })).toBeInTheDocument();
     });
 
-    screen.getByRole('button', { name: /edit past report dates/i }).click();
+    screen.getByRole('button', { name: /edit past key dates/i }).click();
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-report-dates/edit`,
+      `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/past-key-dates/edit`,
       { state: { subHeading: '' } },
     );
   });

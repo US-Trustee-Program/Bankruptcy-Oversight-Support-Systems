@@ -32,7 +32,7 @@ import './trustee-match-verification/trustee-match-verification.function';
 import './trustee-assignments/trustee-assignments.function';
 import './trustee-history/trustee-history.function';
 import './trustee-notes/trustee-notes.function';
-import './trustee-upcoming-report-dates/trustee-upcoming-report-dates.function';
+import './trustee-upcoming-key-dates/trustee-upcoming-key-dates.function';
 import './trustees/trustees.function';
 
 // All functions are now registered via their app.http() calls

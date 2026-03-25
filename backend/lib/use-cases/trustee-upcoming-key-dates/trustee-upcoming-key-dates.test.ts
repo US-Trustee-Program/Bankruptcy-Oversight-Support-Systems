@@ -1,16 +1,16 @@
 import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
-import { TrusteeUpcomingReportDatesUseCase } from './trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDatesUseCase } from './trustee-upcoming-key-dates';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import {
-  TrusteeUpcomingReportDates,
-  TrusteeUpcomingReportDatesInput,
-} from '@common/cams/trustee-upcoming-report-dates';
+  TrusteeUpcomingKeyDates,
+  TrusteeUpcomingKeyDatesInput,
+} from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 function buildMockDocument(
-  overrides: Partial<TrusteeUpcomingReportDates> = {},
-): TrusteeUpcomingReportDates {
+  overrides: Partial<TrusteeUpcomingKeyDates> = {},
+): TrusteeUpcomingKeyDates {
   return {
     id: 'test-id-001',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -25,8 +25,8 @@ function buildMockDocument(
 }
 
 function buildMockInput(
-  overrides: Partial<TrusteeUpcomingReportDatesInput> = {},
-): TrusteeUpcomingReportDatesInput {
+  overrides: Partial<TrusteeUpcomingKeyDatesInput> = {},
+): TrusteeUpcomingKeyDatesInput {
   return {
     trusteeId: 'trustee-001',
     appointmentId: 'appointment-001',
@@ -46,33 +46,33 @@ function buildMockInput(
   };
 }
 
-describe('TrusteeUpcomingReportDatesUseCase', () => {
+describe('TrusteeUpcomingKeyDatesUseCase', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test('getUpcomingReportDates returns document when found', async () => {
+  test('getUpcomingKeyDates returns document when found', async () => {
     const mockDoc = buildMockDocument();
     vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(mockDoc);
 
     const context = await createMockApplicationContext();
-    const useCase = new TrusteeUpcomingReportDatesUseCase(context);
-    const result = await useCase.getUpcomingReportDates(mockDoc.appointmentId);
+    const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+    const result = await useCase.getUpcomingKeyDates(mockDoc.appointmentId);
 
     expect(result).toEqual(mockDoc);
   });
 
-  test('getUpcomingReportDates returns null when no document exists', async () => {
+  test('getUpcomingKeyDates returns null when no document exists', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
 
     const context = await createMockApplicationContext();
-    const useCase = new TrusteeUpcomingReportDatesUseCase(context);
-    const result = await useCase.getUpcomingReportDates('appointment-not-found');
+    const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+    const result = await useCase.getUpcomingKeyDates('appointment-not-found');
 
     expect(result).toBeNull();
   });
 
-  describe('upsertUpcomingReportDates', () => {
+  describe('upsertUpcomingKeyDates', () => {
     test('new appointment: creates history with all new fields', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
       const upsertSpy = vi
@@ -83,10 +83,10 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
         .mockResolvedValue(undefined);
 
       const context = await createMockApplicationContext();
-      const useCase = new TrusteeUpcomingReportDatesUseCase(context);
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
       const input = buildMockInput({ pastFieldExam: '2026-06-15' });
 
-      await useCase.upsertUpcomingReportDates(
+      await useCase.upsertUpcomingKeyDates(
         'trustee-001',
         'appointment-001',
         input,
@@ -113,10 +113,10 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
         .mockResolvedValue(undefined);
 
       const context = await createMockApplicationContext();
-      const useCase = new TrusteeUpcomingReportDatesUseCase(context);
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
       const input = buildMockInput({ pastFieldExam: '2026-06-15' });
 
-      await useCase.upsertUpcomingReportDates(
+      await useCase.upsertUpcomingKeyDates(
         'trustee-001',
         'appointment-001',
         input,
@@ -140,10 +140,10 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
         .mockResolvedValue(undefined);
 
       const context = await createMockApplicationContext();
-      const useCase = new TrusteeUpcomingReportDatesUseCase(context);
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
       const input = buildMockInput({ pastFieldExam: '2026-06-15' });
 
-      await useCase.upsertUpcomingReportDates(
+      await useCase.upsertUpcomingKeyDates(
         'trustee-001',
         'appointment-001',
         input,
@@ -162,10 +162,10 @@ describe('TrusteeUpcomingReportDatesUseCase', () => {
         .mockResolvedValue(undefined);
 
       const context = await createMockApplicationContext();
-      const useCase = new TrusteeUpcomingReportDatesUseCase(context);
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
       const input = buildMockInput({ pastFieldExam: null });
 
-      await useCase.upsertUpcomingReportDates(
+      await useCase.upsertUpcomingKeyDates(
         'trustee-001',
         'appointment-001',
         input,

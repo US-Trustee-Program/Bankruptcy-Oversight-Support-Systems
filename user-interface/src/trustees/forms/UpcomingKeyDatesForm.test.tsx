@@ -1,10 +1,10 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import UpcomingReportDatesForm from './UpcomingReportDatesForm';
+import UpcomingKeyDatesForm from './UpcomingKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-import { TrusteeUpcomingReportDates } from '@common/cams/trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -21,7 +21,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const populatedDocument: TrusteeUpcomingReportDates = {
+const populatedDocument: TrusteeUpcomingKeyDates = {
   id: 'doc-001',
   documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
   trusteeId: 'trustee-001',
@@ -47,12 +47,12 @@ const populatedDocument: TrusteeUpcomingReportDates = {
 function renderComponent() {
   return render(
     <BrowserRouter>
-      <UpcomingReportDatesForm />
+      <UpcomingKeyDatesForm />
     </BrowserRouter>,
   );
 }
 
-describe('EditUpcomingReportDates', () => {
+describe('EditUpcomingKeyDates', () => {
   const mockNavigate = vi.fn();
   let userEvent: CamsUserEvent;
 
@@ -63,12 +63,12 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('renders all 9 labeled inputs', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
     });
 
     // DatePicker fields (Field Exam and Audit are the renamed "next" fields)
@@ -92,7 +92,7 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('pre-populates form from API response', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
@@ -117,7 +117,7 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('shows empty inputs when API returns null', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
@@ -127,47 +127,47 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('shows error and blocks save when review period start is set without end', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     await userEvent.selectOptions(document.getElementById('tpr-review-period-start-month')!, '04');
     await userEvent.selectOptions(document.getElementById('tpr-review-period-start-day')!, '01');
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     expect(screen.getByText('TPR Review Period End is required.')).toBeInTheDocument();
     expect(putSpy).not.toHaveBeenCalled();
   });
 
   test('shows error and blocks save when review period end is set without start', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     await userEvent.selectOptions(document.getElementById('tir-review-period-end-month')!, '06');
     await userEvent.selectOptions(document.getElementById('tir-review-period-end-day')!, '30');
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     expect(screen.getByText('TIR Review Period Start is required.')).toBeInTheDocument();
     expect(putSpy).not.toHaveBeenCalled();
   });
 
   test('clearing a field saves null and navigates to appointments', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByTestId('field-exam')).toHaveValue('2029-08-01'));
 
     await userEvent.clear(screen.getByTestId('field-exam'));
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     await waitFor(() => expect(putSpy).toHaveBeenCalled());
     expect(putSpy).toHaveBeenCalledWith(
@@ -178,16 +178,16 @@ describe('EditUpcomingReportDates', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
-  test('valid save calls putUpcomingReportDates with correct ISO body and navigates', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+  test('valid save calls putUpcomingKeyDates with correct ISO body and navigates', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     expect(await screen.findByTestId('field-exam')).toBeInTheDocument();
 
     fireEvent.change(screen.getByTestId('field-exam'), { target: { value: '2029-08-15' } });
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     await waitFor(() => expect(putSpy).toHaveBeenCalled());
     expect(putSpy).toHaveBeenCalledWith(
@@ -199,8 +199,8 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('saves selected Year Type in PUT payload', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
@@ -209,7 +209,7 @@ describe('EditUpcomingReportDates', () => {
     await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
     await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     await waitFor(() => expect(putSpy).toHaveBeenCalled());
     expect(putSpy).toHaveBeenCalledWith(
@@ -220,11 +220,11 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('auto-calculates tirSubmission and tirReview when TIR review period end changes', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     await userEvent.selectOptions(document.getElementById('tir-review-period-end-month')!, '03');
     await userEvent.selectOptions(document.getElementById('tir-review-period-end-day')!, '31');
@@ -238,14 +238,14 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('save preserves non-displayed fields (pastFieldExam, pastAudit) from API response', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByTestId('field-exam')).toHaveValue('2029-08-01'));
 
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     await waitFor(() =>
       expect(putSpy).toHaveBeenCalledWith(
@@ -260,26 +260,26 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('Cancel navigates without calling PUT', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTestId('button-cancel-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-cancel-upcoming-key-dates'));
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
   test('displays TPR Due error when both review period and TPR Due have validation errors', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     // Set TPR Review Period start without end (causes validation error)
     await userEvent.selectOptions(document.getElementById('tpr-review-period-start-month')!, '04');
@@ -289,7 +289,7 @@ describe('EditUpcomingReportDates', () => {
     await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
     await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
 
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     // Both errors should be displayed
     expect(screen.getByText('TPR Review Period End is required.')).toBeInTheDocument();
@@ -298,16 +298,16 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('highlights only Month/Day fields when TPR Due date has error', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     // Set Year Type without TPR Due date (causes validation error on tprDue)
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     // TPR Due date fields should have error class
     expect(document.getElementById('tpr-due-month')).toHaveClass('usa-input--error');
@@ -321,17 +321,17 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('highlights only Year Type field when it has error', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     // Set TPR Due date without Year Type (causes validation error on tprDueYearType)
     await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
     await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     // Year Type should have error class
     expect(screen.getByTestId('tpr-due-year-type')).toHaveClass('usa-input--error');
@@ -345,16 +345,16 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('clears Year Type error when user selects a value', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     // Set TPR Due date without Year Type and trigger validation error
     await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
     await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     expect(screen.getByText('TPR Due Year Type is required.')).toBeInTheDocument();
     expect(screen.getByTestId('tpr-due-year-type')).toHaveClass('usa-input--error');
@@ -367,15 +367,15 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('clears TPR Due date error when user selects date values', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     // Set Year Type without TPR Due date and trigger validation error
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     expect(screen.getByText('TPR Due is required.')).toBeInTheDocument();
     expect(document.getElementById('tpr-due-month')).toHaveClass('usa-input--error');
@@ -388,11 +388,11 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('TPR Due day field is disabled until month is selected', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     // Day should be disabled when month is not selected
     expect(document.getElementById('tpr-due-day')).toBeDisabled();
@@ -407,19 +407,19 @@ describe('EditUpcomingReportDates', () => {
   });
 
   test('does not allow saving with only TPR Due month selected (incomplete date)', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
-    expect(await screen.findByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+    expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
 
     // Select only month, not day
     await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
     // Select Year Type
     await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
 
-    await userEvent.click(screen.getByTestId('button-save-upcoming-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
     // Should not call the API with incomplete date - the field should be empty/null
     await waitFor(() => {

@@ -19,13 +19,13 @@ import {
   ZoomInfo,
 } from '@common/cams/trustees';
 import {
-  TrusteeUpcomingReportDatesHistory,
-  TrusteeUpcomingReportDates,
+  TrusteeUpcomingKeyDatesHistory,
+  TrusteeUpcomingKeyDates,
   isoToMMDDYYYY,
   isoToMMYYYY,
   isoToMMDD,
   isoRangeToMMDD,
-} from '@common/cams/trustee-upcoming-report-dates';
+} from '@common/cams/trustee-upcoming-key-dates';
 import React from 'react';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import { Auditable } from '@common/cams/auditable';
@@ -355,9 +355,9 @@ function ShowTrusteeAssistantHistory(props: ShowTrusteeAssistantHistoryProps) {
 }
 
 type ReportDateFieldConfig = {
-  key: keyof TrusteeUpcomingReportDates;
+  key: keyof TrusteeUpcomingKeyDates;
   label: string;
-  format: (data: Partial<TrusteeUpcomingReportDates>) => string;
+  format: (data: Partial<TrusteeUpcomingKeyDates>) => string;
 };
 
 const REPORT_DATE_FIELD_CONFIG: ReportDateFieldConfig[] = [
@@ -400,9 +400,9 @@ const REPORT_DATE_FIELD_CONFIG: ReportDateFieldConfig[] = [
   },
 ];
 
-function UpcomingReportDateFields({
+function UpcomingKeyDateFields({
   data,
-}: Readonly<{ data: Partial<TrusteeUpcomingReportDates> | undefined }>) {
+}: Readonly<{ data: Partial<TrusteeUpcomingKeyDates> | undefined }>) {
   if (!data) return <>(none)</>;
 
   const fields = REPORT_DATE_FIELD_CONFIG.filter(({ key }) => key in data).map(
@@ -423,21 +423,21 @@ function UpcomingReportDateFields({
   );
 }
 
-type ShowTrusteeUpcomingReportDatesHistoryProps = Readonly<{
-  history: TrusteeUpcomingReportDatesHistory;
+type ShowTrusteeUpcomingKeyDatesHistoryProps = Readonly<{
+  history: TrusteeUpcomingKeyDatesHistory;
   idx: number;
 }>;
 
-function ShowTrusteeUpcomingReportDatesHistory(props: ShowTrusteeUpcomingReportDatesHistoryProps) {
+function ShowTrusteeUpcomingKeyDatesHistory(props: ShowTrusteeUpcomingKeyDatesHistoryProps) {
   const { history, idx } = props;
   return (
     <tr>
-      <td data-testid={`change-type-upcoming-report-dates-${idx}`}>Upcoming Report Dates</td>
-      <td data-testid={`previous-upcoming-report-dates-${idx}`}>
-        <UpcomingReportDateFields data={history.before} />
+      <td data-testid={`change-type-upcoming-key-dates-${idx}`}>Upcoming Key Dates</td>
+      <td data-testid={`previous-upcoming-key-dates-${idx}`}>
+        <UpcomingKeyDateFields data={history.before} />
       </td>
-      <td data-testid={`new-upcoming-report-dates-${idx}`}>
-        <UpcomingReportDateFields data={history.after} />
+      <td data-testid={`new-upcoming-key-dates-${idx}`}>
+        <UpcomingKeyDateFields data={history.after} />
       </td>
       <td data-testid={`changed-by-${idx}`}>
         {history.updatedBy && <>{history.updatedBy.name}</>}
@@ -504,7 +504,7 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
             );
           case 'AUDIT_UPCOMING_REPORT_DATES':
             return (
-              <ShowTrusteeUpcomingReportDatesHistory
+              <ShowTrusteeUpcomingKeyDatesHistory
                 key={`${history.trusteeId || history.id}-${idx}`}
                 history={history}
                 idx={idx}

@@ -24,12 +24,12 @@ import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
 import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
 import TrusteeAppointmentForm from './forms/TrusteeAppointmentForm';
 import EditTrusteeAppointment from './forms/EditTrusteeAppointment';
-import UpcomingReportDatesForm from './forms/UpcomingReportDatesForm';
-import PastReportDatesForm from './forms/PastReportDatesForm';
+import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
+import PastKeyDatesForm from './forms/PastKeyDatesForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
-  DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES,
+  DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
@@ -240,16 +240,16 @@ export default function TrusteeDetailScreen() {
       content: <EditTrusteeAppointment />,
     },
     {
-      path: 'appointments/:appointmentId/upcoming-report-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES],
+      path: 'appointments/:appointmentId/upcoming-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES],
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
-      content: <UpcomingReportDatesForm />,
+      content: <UpcomingKeyDatesForm />,
     },
     {
-      path: 'appointments/:appointmentId/past-report-dates/edit',
-      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES],
+      path: 'appointments/:appointmentId/past-key-dates/edit',
+      disabled: !featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES],
       subHeading: (location.state as { subHeading?: string } | null)?.subHeading ?? '',
-      content: <PastReportDatesForm />,
+      content: <PastKeyDatesForm />,
     },
     {
       path: 'assigned-staff',

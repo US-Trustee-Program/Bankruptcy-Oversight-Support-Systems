@@ -1,6 +1,6 @@
 import './AppointmentCard.scss';
-import UpcomingReportDates from './UpcomingReportDates';
-import PastReportDates from './PastReportDates';
+import UpcomingKeyDates from './UpcomingKeyDates';
+import PastKeyDates from './PastKeyDates';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { formatDate } from '@/lib/utils/datetime';
@@ -10,7 +10,7 @@ import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import useFeatureFlags, {
-  DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES,
+  DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 
 export interface AppointmentCardProps {
@@ -37,8 +37,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   const featureFlags = useFeatureFlags();
-  const displayChpt7PanelUpcomingReportDates =
-    featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES] === true;
+  const displayChpt7PanelUpcomingKeyDates =
+    featureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES] === true;
   const { chapter, appointmentType } = props.appointment;
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
@@ -120,14 +120,14 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
             </div>
           </div>
         </div>
-        {displayChpt7PanelUpcomingReportDates && isPanelChapter7 && canManage && (
+        {displayChpt7PanelUpcomingKeyDates && isPanelChapter7 && canManage && (
           <>
-            <UpcomingReportDates
+            <UpcomingKeyDates
               trusteeId={props.appointment.trusteeId}
               appointmentId={props.appointment.id}
               appointmentHeading={appointmentHeading}
             />
-            <PastReportDates
+            <PastKeyDates
               trusteeId={props.appointment.trusteeId}
               appointmentId={props.appointment.id}
               appointmentHeading={appointmentHeading}
