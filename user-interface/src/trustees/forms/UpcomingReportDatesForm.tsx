@@ -141,13 +141,14 @@ export default function UpcomingReportDatesForm() {
     };
   }
 
+  function handleYearTypeChange(ev: React.ChangeEvent<HTMLSelectElement>) {
+    setSubmitted(false);
+    setForm((prev) => ({ ...prev, tprDueYearType: ev.target.value }));
+    setErrors((prev) => ({ ...prev, tprDueYearType: '' }));
+  }
+
   async function handleSave() {
     setSubmitted(true);
-
-    // Check validation state from MonthDayRangeSelectors
-    if (!validationState.tprReviewPeriod || !validationState.tirReviewPeriod) {
-      return; // Errors are already shown by the components
-    }
 
     const isoInput: TrusteeUpcomingReportDatesInput = {
       trusteeId: trusteeId!,
@@ -179,7 +180,11 @@ export default function UpcomingReportDatesForm() {
       tirReviewPeriodStart: result.reasonMap?.tirReviewPeriodStart?.reasons?.[0] ?? '',
       tirReviewPeriodEnd: result.reasonMap?.tirReviewPeriodEnd?.reasons?.[0] ?? '',
     });
-    if (!result.valid) return;
+
+    // Check both range validation and field validation
+    if (!validationState.tprReviewPeriod || !validationState.tirReviewPeriod || !result.valid) {
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -241,18 +246,19 @@ export default function UpcomingReportDatesForm() {
             id="tpr-due"
             value={form.tprDue}
             onChange={handleMonthDayChange('tprDue')}
-            hasError={!!(errors.tprDue || errors.tprDueYearType)}
+            hasError={!!errors.tprDue}
           />
           <div className="usa-form-group year-type-selector">
             <div className="year-type-selector__inputs">
               <div className="year-type-selector__column">
                 <span className="usa-hint">Year Type</span>
                 <select
-                  className="usa-select"
+                  className={`usa-select${errors.tprDueYearType ? ' usa-input--error' : ''}`}
                   id="tpr-due-year-type"
                   data-testid="tpr-due-year-type"
                   value={form.tprDueYearType}
-                  onChange={(e) => setForm((prev) => ({ ...prev, tprDueYearType: e.target.value }))}
+                  onChange={handleYearTypeChange}
+                  aria-invalid={errors.tprDueYearType ? 'true' : undefined}
                 >
                   <option value="">- Select -</option>
                   <option value="EVEN">EVEN</option>
@@ -262,8 +268,9 @@ export default function UpcomingReportDatesForm() {
             </div>
           </div>
         </div>
-        {(errors.tprDue || errors.tprDueYearType) && (
-          <span className="usa-error-message">{errors.tprDue || errors.tprDueYearType}</span>
+        {errors.tprDue && <span className="usa-error-message">{errors.tprDue}</span>}
+        {errors.tprDueYearType && (
+          <span className="usa-error-message">{errors.tprDueYearType}</span>
         )}
       </div>
       <MonthDayRangeSelector
