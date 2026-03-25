@@ -5,6 +5,10 @@ $input-max-width: 20.75rem;
     max-width: $input-max-width;
   }
 
+  .month-day-selector {
+    max-width: calc($input-max-width / 2 - 16px);
+  }
+
   .review-period-group, .tpr-due-group {
     max-width: $input-max-width;
 
