@@ -243,19 +243,23 @@ export default function UpcomingReportDatesForm() {
             onChange={handleMonthDayChange('tprDue')}
             hasError={!!(errors.tprDue || errors.tprDueYearType)}
           />
-          <div className="month-day-selector__column">
-            <span className="usa-hint">Year Type</span>
-            <select
-              className="usa-select"
-              id="tpr-due-year-type"
-              data-testid="tpr-due-year-type"
-              value={form.tprDueYearType}
-              onChange={(e) => setForm((prev) => ({ ...prev, tprDueYearType: e.target.value }))}
-            >
-              <option value="">- Select -</option>
-              <option value="EVEN">EVEN</option>
-              <option value="ODD">ODD</option>
-            </select>
+          <div className="usa-form-group year-type-selector">
+            <div className="year-type-selector__inputs">
+              <div className="year-type-selector__column">
+                <span className="usa-hint">Year Type</span>
+                <select
+                  className="usa-select"
+                  id="tpr-due-year-type"
+                  data-testid="tpr-due-year-type"
+                  value={form.tprDueYearType}
+                  onChange={(e) => setForm((prev) => ({ ...prev, tprDueYearType: e.target.value }))}
+                >
+                  <option value="">- Select -</option>
+                  <option value="EVEN">EVEN</option>
+                  <option value="ODD">ODD</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
         {(errors.tprDue || errors.tprDueYearType) && (
