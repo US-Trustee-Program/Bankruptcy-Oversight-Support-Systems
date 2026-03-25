@@ -4,20 +4,20 @@ import HttpStatusCodes from '@common/api/http-status-codes';
 import { CamsController } from '../controller';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
-import { TrusteeUpcomingReportDatesUseCase } from '../../use-cases/trustee-upcoming-report-dates/trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDatesUseCase } from '../../use-cases/trustee-upcoming-key-dates/trustee-upcoming-key-dates';
 import { BadRequestError } from '../../common-errors/bad-request';
 import {
   DATE_FIELDS,
-  TrusteeUpcomingReportDates,
-  TrusteeUpcomingReportDatesInput,
-  validateTrusteeUpcomingReportDates,
-} from '@common/cams/trustee-upcoming-report-dates';
+  TrusteeUpcomingKeyDates,
+  TrusteeUpcomingKeyDatesInput,
+  validateTrusteeUpcomingKeyDates,
+} from '@common/cams/trustee-upcoming-key-dates';
 import Validators from '@common/cams/validators';
 import { NotFoundError } from '../../common-errors/not-found-error';
 
-const MODULE_NAME = 'TRUSTEE-UPCOMING-REPORT-DATES-CONTROLLER';
+const MODULE_NAME = 'TRUSTEE-UPCOMING-KEY-DATES-CONTROLLER';
 
-export class TrusteeUpcomingReportDatesController implements CamsController {
+export class TrusteeUpcomingKeyDatesController implements CamsController {
   private readonly applicationContext: ApplicationContext;
 
   constructor(context: ApplicationContext) {
@@ -26,9 +26,9 @@ export class TrusteeUpcomingReportDatesController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<TrusteeUpcomingReportDates>> {
+  ): Promise<CamsHttpResponseInit | CamsHttpResponseInit<TrusteeUpcomingKeyDates>> {
     try {
-      if (!context.featureFlags['display-chpt7-panel-upcoming-report-dates']) {
+      if (!context.featureFlags['display-chpt7-panel-upcoming-key-dates']) {
         throw new NotFoundError(MODULE_NAME);
       }
       const { trusteeId, appointmentId } = context.request.params;
@@ -42,10 +42,10 @@ export class TrusteeUpcomingReportDatesController implements CamsController {
         });
       }
 
-      const useCase = new TrusteeUpcomingReportDatesUseCase(context);
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
 
       if (context.request.method === 'PUT') {
-        const input = context.request.body as TrusteeUpcomingReportDatesInput;
+        const input = context.request.body as TrusteeUpcomingKeyDatesInput;
         const invalidFields = DATE_FIELDS.filter(
           (field) => input[field] !== null && !Validators.isValidDate(input[field]).valid,
         );
@@ -54,7 +54,7 @@ export class TrusteeUpcomingReportDatesController implements CamsController {
             message: `Invalid ISO date in field(s): ${invalidFields.join(', ')}`,
           });
         }
-        const validationResult = validateTrusteeUpcomingReportDates(input);
+        const validationResult = validateTrusteeUpcomingKeyDates(input);
         if (!validationResult.valid) {
           const messages = Object.values(validationResult.reasonMap ?? {})
             .flatMap((r) => r.reasons)
@@ -62,16 +62,11 @@ export class TrusteeUpcomingReportDatesController implements CamsController {
           throw new BadRequestError(MODULE_NAME, { message: messages });
         }
 
-        await useCase.upsertUpcomingReportDates(
-          trusteeId,
-          appointmentId,
-          input,
-          context.session.user,
-        );
+        await useCase.upsertUpcomingKeyDates(trusteeId, appointmentId, input, context.session.user);
         return httpSuccess({ statusCode: HttpStatusCodes.OK });
       }
 
-      const result = await useCase.getUpcomingReportDates(appointmentId);
+      const result = await useCase.getUpcomingKeyDates(appointmentId);
 
       return httpSuccess({
         body: { data: result },

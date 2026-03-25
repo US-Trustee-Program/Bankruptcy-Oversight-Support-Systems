@@ -1,10 +1,7 @@
-import './PastReportDates.scss';
+import './PastKeyDates.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  TrusteeUpcomingReportDates,
-  isoToMMDDYYYY,
-} from '@common/cams/trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -12,7 +9,7 @@ import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 
-export interface PastReportDatesProps {
+export interface PastKeyDatesProps {
   trusteeId: string;
   appointmentId: string;
   appointmentHeading?: string;
@@ -20,22 +17,22 @@ export interface PastReportDatesProps {
 
 const NO_DATE = 'No date added';
 
-export default function PastReportDates(props: Readonly<PastReportDatesProps>) {
+export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
   const { trusteeId, appointmentId, appointmentHeading } = props;
   const navigate = useNavigate();
   const session = LocalStorage.getSession();
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [data, setData] = useState<TrusteeUpcomingReportDates | null>(null);
+  const [data, setData] = useState<TrusteeUpcomingKeyDates | null>(null);
 
   useEffect(() => {
-    Api2.getUpcomingReportDates(trusteeId, appointmentId)
+    Api2.getUpcomingKeyDates(trusteeId, appointmentId)
       .then((response) => {
         setData(response.data);
       })
       .catch((error) => {
-        console.error('Could not load past report dates', error);
+        console.error('Could not load past key dates', error);
         setData(null);
       })
       .finally(() => {
@@ -44,7 +41,7 @@ export default function PastReportDates(props: Readonly<PastReportDatesProps>) {
   }, [trusteeId, appointmentId]);
 
   function openEdit() {
-    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/past-report-dates/edit`, {
+    navigate(`/trustees/${trusteeId}/appointments/${appointmentId}/past-key-dates/edit`, {
       state: { subHeading: appointmentHeading ?? '' },
     });
   }
@@ -53,33 +50,33 @@ export default function PastReportDates(props: Readonly<PastReportDatesProps>) {
   const audit = data?.pastAudit ? isoToMMDDYYYY(data.pastAudit) : NO_DATE;
 
   if (isLoading) {
-    return <LoadingSpinner id="past-report-dates-loading" />;
+    return <LoadingSpinner id="past-key-dates-loading" />;
   }
 
   return (
-    <div className="past-report-dates-card usa-card" data-testid="past-report-dates-card">
+    <div className="past-key-dates-card usa-card" data-testid="past-key-dates-card">
       <div className="usa-card__container">
         <div className="usa-card__body">
-          <div className="past-report-dates-header">
-            <h4>Past Report Dates</h4>
+          <div className="past-key-dates-header">
+            <h4>Past Key Dates</h4>
             {canManage && (
               <Button
-                id="edit-past-report-dates"
+                id="edit-past-key-dates"
                 uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit past report dates"
-                title="Edit past report dates"
+                aria-label="Edit past key dates"
+                title="Edit past key dates"
                 onClick={openEdit}
               >
                 <IconLabel icon="edit" label="Edit" />
               </Button>
             )}
           </div>
-          <ul className="past-report-dates-list" data-testid="past-report-dates-list">
+          <ul className="past-key-dates-list" data-testid="past-key-dates-list">
             <li data-testid="past-field-exam-row">
-              <span className="past-report-dates-label">Field Exam:</span> {fieldExam}
+              <span className="past-key-dates-label">Field Exam:</span> {fieldExam}
             </li>
             <li data-testid="past-audit-row">
-              <span className="past-report-dates-label">Audit:</span> {audit}
+              <span className="past-key-dates-label">Audit:</span> {audit}
             </li>
           </ul>
         </div>

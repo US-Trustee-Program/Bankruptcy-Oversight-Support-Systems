@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import TrusteeDetailAuditHistory from './TrusteeDetailAuditHistory';
 import Api2 from '@/lib/models/api2';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
-import { TrusteeUpcomingReportDatesHistory } from '@common/cams/trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDatesHistory } from '@common/cams/trustee-upcoming-key-dates';
 
 function renderComponent(trusteeId = 'trustee-001') {
   return render(
@@ -14,7 +14,7 @@ function renderComponent(trusteeId = 'trustee-001') {
   );
 }
 
-const baseHistory: Omit<TrusteeUpcomingReportDatesHistory, 'before' | 'after'> = {
+const baseHistory: Omit<TrusteeUpcomingKeyDatesHistory, 'before' | 'after'> = {
   id: 'history-001',
   documentType: 'AUDIT_UPCOMING_REPORT_DATES',
   trusteeId: 'trustee-001',
@@ -30,8 +30,8 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     vi.clearAllMocks();
   });
 
-  test('renders a row for AUDIT_UPCOMING_REPORT_DATES with change type "Upcoming Report Dates"', async () => {
-    const history: TrusteeUpcomingReportDatesHistory = {
+  test('renders a row for AUDIT_UPCOMING_REPORT_DATES with change type "Upcoming Key Dates"', async () => {
+    const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
       before: { pastFieldExam: '2026-05-01' },
       after: { pastFieldExam: '2026-06-15' },
@@ -42,16 +42,16 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('change-type-upcoming-report-dates-0')).toBeInTheDocument();
+      expect(screen.getByTestId('change-type-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('change-type-upcoming-report-dates-0')).toHaveTextContent(
-      'Upcoming Report Dates',
+    expect(screen.getByTestId('change-type-upcoming-key-dates-0')).toHaveTextContent(
+      'Upcoming Key Dates',
     );
   });
 
   test('shows only changed fields in Previous and New columns — pastFieldExam', async () => {
-    const history: TrusteeUpcomingReportDatesHistory = {
+    const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
       before: { pastFieldExam: '2026-05-01' },
       after: { pastFieldExam: '2026-06-15' },
@@ -62,17 +62,17 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('previous-upcoming-report-dates-0')).toBeInTheDocument();
+      expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent('Field Exam:');
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent('05/01/2026');
-    expect(screen.getByTestId('new-upcoming-report-dates-0')).toHaveTextContent('Field Exam:');
-    expect(screen.getByTestId('new-upcoming-report-dates-0')).toHaveTextContent('06/15/2026');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('Field Exam:');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('05/01/2026');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('Field Exam:');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('06/15/2026');
   });
 
   test('does not show unrelated fields when only one field changed', async () => {
-    const history: TrusteeUpcomingReportDatesHistory = {
+    const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
       before: { pastFieldExam: '2026-05-01' },
       after: { pastFieldExam: '2026-06-15' },
@@ -83,17 +83,17 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('previous-upcoming-report-dates-0')).toBeInTheDocument();
+      expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).not.toHaveTextContent('Audit');
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).not.toHaveTextContent(
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).not.toHaveTextContent('Audit');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).not.toHaveTextContent(
       'TPR Review Period',
     );
   });
 
   test('formats pastAudit field as MM/YYYY', async () => {
-    const history: TrusteeUpcomingReportDatesHistory = {
+    const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
       before: { pastAudit: '2025-08-01' },
       after: { pastAudit: '2026-08-01' },
@@ -104,15 +104,15 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('previous-upcoming-report-dates-0')).toBeInTheDocument();
+      expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent('08/2025');
-    expect(screen.getByTestId('new-upcoming-report-dates-0')).toHaveTextContent('08/2026');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('08/2025');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('08/2026');
   });
 
   test('formats TPR Review Period range field as MM/DD - MM/DD', async () => {
-    const history: TrusteeUpcomingReportDatesHistory = {
+    const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
       before: { tprReviewPeriodStart: '1900-04-01', tprReviewPeriodEnd: '1900-03-31' },
       after: { tprReviewPeriodStart: '1900-05-01', tprReviewPeriodEnd: '1900-04-30' },
@@ -123,20 +123,18 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('previous-upcoming-report-dates-0')).toBeInTheDocument();
+      expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent(
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent(
       'TPR Review Period:',
     );
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent(
-      '04/01 - 03/31',
-    );
-    expect(screen.getByTestId('new-upcoming-report-dates-0')).toHaveTextContent('05/01 - 04/30');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('04/01 - 03/31');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('05/01 - 04/30');
   });
 
   test('formats TIR Submission and TIR Review fields as MM/DD', async () => {
-    const history: TrusteeUpcomingReportDatesHistory = {
+    const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
       before: { tirSubmission: '1900-10-15', tirReview: '1900-11-01' },
       after: { tirSubmission: '1900-11-15', tirReview: '1900-12-01' },
@@ -147,22 +145,22 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('previous-upcoming-report-dates-0')).toBeInTheDocument();
+      expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent(
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent(
       'TIR Submission:',
     );
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent('10/15');
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent('TIR Review:');
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent('11/01');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('10/15');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('TIR Review:');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('11/01');
 
-    expect(screen.getByTestId('new-upcoming-report-dates-0')).toHaveTextContent('11/15');
-    expect(screen.getByTestId('new-upcoming-report-dates-0')).toHaveTextContent('12/01');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('11/15');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('12/01');
   });
 
   test('shows (none) when before is undefined', async () => {
-    const history: TrusteeUpcomingReportDatesHistory = {
+    const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
       before: undefined,
       after: { pastFieldExam: '2026-06-15' },
@@ -173,15 +171,15 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('previous-upcoming-report-dates-0')).toBeInTheDocument();
+      expect(screen.getByTestId('previous-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent('(none)');
-    expect(screen.getByTestId('new-upcoming-report-dates-0')).toHaveTextContent('06/15/2026');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('(none)');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('06/15/2026');
   });
 
   test('shows (none) for a cleared field value', async () => {
-    const history: TrusteeUpcomingReportDatesHistory = {
+    const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
       before: { pastFieldExam: '2026-05-01' },
       after: { pastFieldExam: undefined },
@@ -192,15 +190,15 @@ describe('TrusteeDetailAuditHistory — AUDIT_UPCOMING_REPORT_DATES', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('new-upcoming-report-dates-0')).toBeInTheDocument();
+      expect(screen.getByTestId('new-upcoming-key-dates-0')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('previous-upcoming-report-dates-0')).toHaveTextContent('05/01/2026');
-    expect(screen.getByTestId('new-upcoming-report-dates-0')).toHaveTextContent('(none)');
+    expect(screen.getByTestId('previous-upcoming-key-dates-0')).toHaveTextContent('05/01/2026');
+    expect(screen.getByTestId('new-upcoming-key-dates-0')).toHaveTextContent('(none)');
   });
 
   test('shows changed-by name and formatted date', async () => {
-    const history: TrusteeUpcomingReportDatesHistory = {
+    const history: TrusteeUpcomingKeyDatesHistory = {
       ...baseHistory,
       before: { pastFieldExam: '2026-05-01' },
       after: { pastFieldExam: '2026-06-15' },

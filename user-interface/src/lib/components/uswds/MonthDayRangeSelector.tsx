@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import MonthDaySelector from './MonthDaySelector';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
-import { validateMonthDayRange } from '@common/cams/trustee-upcoming-report-dates';
+import { validateMonthDayRange } from '@common/cams/trustee-upcoming-key-dates';
 
 type MonthDayRangeSelectorProps = {
   id: string;

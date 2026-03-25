@@ -1,4 +1,4 @@
-.upcoming-report-dates-card {
+.upcoming-key-dates-card {
   max-width: 21.5rem;
   margin-bottom: 1.56rem;
 
@@ -7,7 +7,7 @@
     padding-right: 1.64rem;
     padding-bottom: 1.27rem;
 
-    .upcoming-report-dates-header {
+    .upcoming-key-dates-header {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
@@ -18,7 +18,7 @@
       }
     }
 
-    .upcoming-report-dates-list {
+    .upcoming-key-dates-list {
       list-style: none;
       padding: 0;
       margin: 0;
@@ -31,7 +31,7 @@
           margin-bottom: 0;
         }
 
-        .upcoming-report-dates-label {
+        .upcoming-key-dates-label {
           font-family: "Source Sans Pro", sans-serif;
           font-weight: 600;
         }

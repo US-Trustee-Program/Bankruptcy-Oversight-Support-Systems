@@ -1,10 +1,10 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import PastReportDatesForm from './PastReportDatesForm';
+import PastKeyDatesForm from './PastKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-import { TrusteeUpcomingReportDates } from '@common/cams/trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -21,7 +21,7 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const populatedDocument: TrusteeUpcomingReportDates = {
+const populatedDocument: TrusteeUpcomingKeyDates = {
   id: 'doc-001',
   documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
   trusteeId: 'trustee-001',
@@ -47,12 +47,12 @@ const populatedDocument: TrusteeUpcomingReportDates = {
 function renderComponent() {
   return render(
     <BrowserRouter>
-      <PastReportDatesForm />
+      <PastKeyDatesForm />
     </BrowserRouter>,
   );
 }
 
-describe('PastReportDatesForm', () => {
+describe('PastKeyDatesForm', () => {
   const mockNavigate = vi.fn();
   let userEvent: CamsUserEvent;
 
@@ -64,12 +64,12 @@ describe('PastReportDatesForm', () => {
   });
 
   test('renders Field Exam and Audit inputs', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-past-report-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
     });
 
     expect(screen.getByTestId('past-field-exam')).toBeInTheDocument();
@@ -77,7 +77,7 @@ describe('PastReportDatesForm', () => {
   });
 
   test('pre-populates form from API response', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
@@ -89,7 +89,7 @@ describe('PastReportDatesForm', () => {
   });
 
   test('shows empty inputs when API returns null', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
@@ -101,23 +101,23 @@ describe('PastReportDatesForm', () => {
   });
 
   test('shows loading spinner while fetching', () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockImplementation(() => new Promise(() => {}));
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockImplementation(() => new Promise(() => {}));
 
     renderComponent();
 
     expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByTestId('edit-past-report-dates')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edit-past-key-dates')).not.toBeInTheDocument();
   });
 
   test('save calls PUT with full payload preserving all fields and navigates', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => expect(screen.getByTestId('past-field-exam')).toHaveValue('2024-02-21'));
 
-    await userEvent.click(screen.getByTestId('button-save-past-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
 
     await waitFor(() =>
       expect(putSpy).toHaveBeenCalledWith(
@@ -141,17 +141,17 @@ describe('PastReportDatesForm', () => {
   });
 
   test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when pastFieldExam changes', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-past-report-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByTestId('past-field-exam'), { target: { value: '2025-03-31' } });
-    await userEvent.click(screen.getByTestId('button-save-past-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
 
     await waitFor(() =>
       expect(putSpy).toHaveBeenCalledWith(
@@ -166,17 +166,17 @@ describe('PastReportDatesForm', () => {
   });
 
   test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when pastAudit changes', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-past-report-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
     });
 
     fireEvent.change(screen.getByTestId('past-audit'), { target: { value: '2024-06-15' } });
-    await userEvent.click(screen.getByTestId('button-save-past-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
 
     await waitFor(() =>
       expect(putSpy).toHaveBeenCalledWith(
@@ -191,29 +191,29 @@ describe('PastReportDatesForm', () => {
   });
 
   test('shows error alert when fetch fails', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockRejectedValue(new Error('Network failure'));
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network failure'));
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-past-report-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
     });
   });
 
   test('shows error alert when save fails and re-enables save button', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    vi.spyOn(Api2, 'putUpcomingReportDates').mockRejectedValue(new Error('Server error'));
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockRejectedValue(new Error('Server error'));
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-past-report-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByTestId('button-save-past-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
 
     await waitFor(() => {
-      const saveButton = screen.getByTestId('button-save-past-report-dates');
+      const saveButton = screen.getByTestId('button-save-past-key-dates');
       expect(saveButton).not.toBeDisabled();
       expect(saveButton).toHaveTextContent('Save');
     });
@@ -221,9 +221,9 @@ describe('PastReportDatesForm', () => {
   });
 
   test('disables save button and shows Saving text while save is in progress', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
     let resolvePut: (value: { data: null }) => void;
-    vi.spyOn(Api2, 'putUpcomingReportDates').mockImplementation(
+    vi.spyOn(Api2, 'putUpcomingKeyDates').mockImplementation(
       () =>
         new Promise<{ data: null }>((resolve) => {
           resolvePut = resolve;
@@ -233,13 +233,13 @@ describe('PastReportDatesForm', () => {
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-past-report-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByTestId('button-save-past-report-dates'));
+    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
 
     await waitFor(() => {
-      const saveButton = screen.getByTestId('button-save-past-report-dates');
+      const saveButton = screen.getByTestId('button-save-past-key-dates');
       expect(saveButton).toBeDisabled();
       expect(saveButton).toHaveTextContent('Saving...');
     });
@@ -252,16 +252,16 @@ describe('PastReportDatesForm', () => {
   });
 
   test('Cancel navigates without calling PUT', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('edit-past-report-dates')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
     });
 
-    await userEvent.click(screen.getByTestId('button-cancel-past-report-dates'));
+    await userEvent.click(screen.getByTestId('button-cancel-past-key-dates'));
 
     expect(putSpy).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');

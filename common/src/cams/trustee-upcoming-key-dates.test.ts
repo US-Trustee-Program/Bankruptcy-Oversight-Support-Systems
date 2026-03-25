@@ -14,11 +14,11 @@ import {
   calculateTirSubmission,
   calculateTirReview,
   calculateNextAuditDate,
-} from './trustee-upcoming-report-dates';
+} from './trustee-upcoming-key-dates';
 import V from './validators';
 import { VALID } from './validation';
 
-describe('trustee-upcoming-report-dates date conversion helpers', () => {
+describe('trustee-upcoming-key-dates date conversion helpers', () => {
   describe('isoToMMDDYYYY', () => {
     test('converts standard date', () => {
       expect(isoToMMDDYYYY('2026-02-21')).toBe('02/21/2026');

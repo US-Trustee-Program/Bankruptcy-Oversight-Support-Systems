@@ -1,9 +1,9 @@
 import { app, InvocationContext, HttpRequest, HttpResponseInit } from '@azure/functions';
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
-import { TrusteeUpcomingReportDatesController } from '../../../lib/controllers/trustee-upcoming-report-dates/trustee-upcoming-report-dates.controller';
+import { TrusteeUpcomingKeyDatesController } from '../../../lib/controllers/trustee-upcoming-key-dates/trustee-upcoming-key-dates.controller';
 
-const MODULE_NAME = 'TRUSTEE-UPCOMING-REPORT-DATES-FUNCTION';
+const MODULE_NAME = 'TRUSTEE-UPCOMING-KEY-DATES-FUNCTION';
 
 export default async function handler(
   request: HttpRequest,
@@ -18,7 +18,7 @@ export default async function handler(
       logger,
     });
 
-    const controller = new TrusteeUpcomingReportDatesController(context);
+    const controller = new TrusteeUpcomingKeyDatesController(context);
     const controllerResponse = await controller.handleRequest(context);
     return toAzureSuccess(controllerResponse);
   } catch (error) {
@@ -26,9 +26,9 @@ export default async function handler(
   }
 }
 
-app.http('trustee-upcoming-report-dates', {
+app.http('trustee-upcoming-key-dates', {
   methods: ['GET', 'PUT'],
   authLevel: 'anonymous',
   handler,
-  route: 'trustees/{trusteeId}/appointments/{appointmentId}/upcoming-report-dates',
+  route: 'trustees/{trusteeId}/appointments/{appointmentId}/upcoming-key-dates',
 });

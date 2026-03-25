@@ -1,7 +1,7 @@
 import './MonthDaySelector.scss';
 import './forms.scss';
 import React, { useEffect, useState } from 'react';
-import { validateMonthDay } from '@common/cams/trustee-upcoming-report-dates';
+import { validateMonthDay } from '@common/cams/trustee-upcoming-key-dates';
 
 type MonthDaySelectorProps = {
   id: string;

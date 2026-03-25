@@ -1,6 +1,6 @@
 import { vi } from 'vitest';
-import handler from './trustee-upcoming-report-dates.function';
-import { TrusteeUpcomingReportDatesController } from '../../../lib/controllers/trustee-upcoming-report-dates/trustee-upcoming-report-dates.controller';
+import handler from './trustee-upcoming-key-dates.function';
+import { TrusteeUpcomingKeyDatesController } from '../../../lib/controllers/trustee-upcoming-key-dates/trustee-upcoming-key-dates.controller';
 import ContextCreator from '../../azure/application-context-creator';
 import { InvocationContext } from '@azure/functions';
 import {
@@ -11,7 +11,7 @@ import {
 import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 
-describe('TrusteeUpcomingReportDates Function Tests', () => {
+describe('TrusteeUpcomingKeyDates Function Tests', () => {
   const context = new InvocationContext({
     logHandler: () => {},
     invocationId: 'id',
@@ -25,7 +25,7 @@ describe('TrusteeUpcomingReportDates Function Tests', () => {
       meta: { self: request.url },
       data: null,
     });
-    vi.spyOn(TrusteeUpcomingReportDatesController.prototype, 'handleRequest').mockResolvedValue(
+    vi.spyOn(TrusteeUpcomingKeyDatesController.prototype, 'handleRequest').mockResolvedValue(
       camsHttpResponse,
     );
 
@@ -38,9 +38,7 @@ describe('TrusteeUpcomingReportDates Function Tests', () => {
     vi.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
     const error = new Error('Some unknown error');
     const { azureHttpResponse } = buildTestResponseError(error);
-    vi.spyOn(TrusteeUpcomingReportDatesController.prototype, 'handleRequest').mockRejectedValue(
-      error,
-    );
+    vi.spyOn(TrusteeUpcomingKeyDatesController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);
@@ -51,9 +49,7 @@ describe('TrusteeUpcomingReportDates Function Tests', () => {
     vi.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
     const error = new UnknownError('MOCK_MODULE');
     const { azureHttpResponse } = buildTestResponseError(error);
-    vi.spyOn(TrusteeUpcomingReportDatesController.prototype, 'handleRequest').mockRejectedValue(
-      error,
-    );
+    vi.spyOn(TrusteeUpcomingKeyDatesController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
     expect(response).toEqual(azureHttpResponse);

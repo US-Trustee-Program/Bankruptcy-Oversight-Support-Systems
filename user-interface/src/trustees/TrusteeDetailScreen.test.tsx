@@ -8,7 +8,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES } from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 
 const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
@@ -85,7 +85,7 @@ describe('TrusteeDetailScreen', () => {
 
     vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]: true,
+      [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
     });
   });
 
@@ -531,31 +531,31 @@ describe('TrusteeDetailScreen', () => {
     });
   });
 
-  describe('upcoming-report-dates/edit route', () => {
+  describe('upcoming-key-dates/edit route', () => {
     beforeEach(() => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
     });
 
-    test('should render UpcomingReportDatesForm when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is enabled', async () => {
+    test('should render UpcomingKeyDatesForm when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is enabled', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]: true,
+        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
       });
-      vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+      vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
-      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-report-dates/edit']);
+      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
 
       await waitFor(() => {
-        expect(screen.getByTestId('edit-upcoming-report-dates')).toBeInTheDocument();
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
     });
 
     test('should redirect home when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]: false,
+        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: false,
       });
 
-      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-report-dates/edit']);
+      renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/my-cases');

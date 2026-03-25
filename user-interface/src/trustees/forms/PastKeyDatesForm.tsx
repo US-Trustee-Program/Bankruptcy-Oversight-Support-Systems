@@ -1,10 +1,10 @@
-import './EditUpcomingReportDates.scss';
+import './EditUpcomingKeyDates.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  TrusteeUpcomingReportDatesInput,
+  TrusteeUpcomingKeyDatesInput,
   calculateNextAuditDate,
-} from '@common/cams/trustee-upcoming-report-dates';
+} from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -46,7 +46,7 @@ const EMPTY_FORM: FullFormState = {
   upcomingIndependentAuditRequired: '',
 };
 
-export default function PastReportDatesForm() {
+export default function PastKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
@@ -59,7 +59,7 @@ export default function PastReportDatesForm() {
   const [form, setForm] = useState<FullFormState>(EMPTY_FORM);
 
   useEffect(() => {
-    Api2.getUpcomingReportDates(trusteeId!, appointmentId!)
+    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
       .then((response) => {
         const data = response.data;
         if (data) {
@@ -80,7 +80,7 @@ export default function PastReportDatesForm() {
         }
       })
       .catch((err) => {
-        globalAlert?.error(`Failed to load past report dates: ${(err as Error).message}`);
+        globalAlert?.error(`Failed to load past key dates: ${(err as Error).message}`);
       })
       .finally(() => {
         setIsLoading(false);
@@ -106,7 +106,7 @@ export default function PastReportDatesForm() {
   async function handleSave() {
     setIsSaving(true);
 
-    const isoInput: TrusteeUpcomingReportDatesInput = {
+    const isoInput: TrusteeUpcomingKeyDatesInput = {
       trusteeId: trusteeId!,
       appointmentId: appointmentId!,
       pastFieldExam: form.pastFieldExam || null,
@@ -128,10 +128,10 @@ export default function PastReportDatesForm() {
     };
 
     try {
-      await Api2.putUpcomingReportDates(trusteeId!, appointmentId!, isoInput);
+      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, isoInput);
       navigate(`/trustees/${trusteeId}/appointments`);
     } catch (err) {
-      globalAlert?.error(`Failed to save past report dates: ${(err as Error).message}`);
+      globalAlert?.error(`Failed to save past key dates: ${(err as Error).message}`);
     } finally {
       setIsSaving(false);
     }
@@ -142,12 +142,12 @@ export default function PastReportDatesForm() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner id="edit-past-report-dates-loading" />;
+    return <LoadingSpinner id="edit-past-key-dates-loading" />;
   }
 
   return (
-    <div className="edit-upcoming-report-dates" data-testid="edit-past-report-dates">
-      <h3>Edit Past Report Dates</h3>
+    <div className="edit-upcoming-key-dates" data-testid="edit-past-key-dates">
+      <h3>Edit Past Key Dates</h3>
       <DatePicker
         id="past-field-exam"
         label="Field Exam"
@@ -163,11 +163,11 @@ export default function PastReportDatesForm() {
         disableMax
       />
       <div className="usa-button-group">
-        <Button id="save-past-report-dates" onClick={handleSave} disabled={isSaving}>
+        <Button id="save-past-key-dates" onClick={handleSave} disabled={isSaving}>
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
         <Button
-          id="cancel-past-report-dates"
+          id="cancel-past-key-dates"
           uswdsStyle={UswdsButtonStyle.Unstyled}
           onClick={handleCancel}
         >

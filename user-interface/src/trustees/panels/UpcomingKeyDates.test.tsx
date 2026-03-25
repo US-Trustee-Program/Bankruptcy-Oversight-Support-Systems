@@ -1,11 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import UpcomingReportDates, { UpcomingReportDatesProps } from './UpcomingReportDates';
+import UpcomingKeyDates, { UpcomingKeyDatesProps } from './UpcomingKeyDates';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
-import { TrusteeUpcomingReportDates } from '@common/cams/trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -18,13 +18,13 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const defaultProps: UpcomingReportDatesProps = {
+const defaultProps: UpcomingKeyDatesProps = {
   trusteeId: 'trustee-001',
   appointmentId: 'appointment-001',
   appointmentHeading: 'Southern District of New York (Manhattan) - Chapter 7 Panel',
 };
 
-const populatedDocument: TrusteeUpcomingReportDates = {
+const populatedDocument: TrusteeUpcomingKeyDates = {
   id: 'doc-001',
   documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
   trusteeId: 'trustee-001',
@@ -47,15 +47,15 @@ const populatedDocument: TrusteeUpcomingReportDates = {
   upcomingIndependentAuditRequired: '2032-08-01',
 };
 
-function renderComponent(props?: Partial<UpcomingReportDatesProps>) {
+function renderComponent(props?: Partial<UpcomingKeyDatesProps>) {
   return render(
     <BrowserRouter>
-      <UpcomingReportDates {...defaultProps} {...props} />
+      <UpcomingKeyDates {...defaultProps} {...props} />
     </BrowserRouter>,
   );
 }
 
-describe('UpcomingReportDates', () => {
+describe('UpcomingKeyDates', () => {
   const mockNavigate = vi.fn();
 
   beforeEach(() => {
@@ -65,12 +65,12 @@ describe('UpcomingReportDates', () => {
   });
 
   test('renders "No date added" for all fields when API returns null', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
     const noDateElements = screen.getAllByText('No date added');
@@ -78,12 +78,12 @@ describe('UpcomingReportDates', () => {
   });
 
   test('renders all field labels', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
     expect(screen.getByText('Field Exam:')).toBeInTheDocument();
@@ -98,12 +98,12 @@ describe('UpcomingReportDates', () => {
   });
 
   test('renders correctly formatted values when API returns populated document', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
     expect(screen.getByTestId('field-exam-row')).toHaveTextContent('08/01/2029');
@@ -116,15 +116,15 @@ describe('UpcomingReportDates', () => {
   });
 
   test('Field Exam and Audit rows appear before TPR rows', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: populatedDocument });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-report-dates-list')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-list')).toBeInTheDocument();
     });
 
-    const list = screen.getByTestId('upcoming-report-dates-list');
+    const list = screen.getByTestId('upcoming-key-dates-list');
     const items = list.querySelectorAll('li');
     expect(items[0]).toHaveAttribute('data-testid', 'field-exam-row');
     expect(items[1]).toHaveAttribute('data-testid', 'audit-row');
@@ -132,7 +132,7 @@ describe('UpcomingReportDates', () => {
   });
 
   test('shows "No date added" for TPR Review Period when only start is defined', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
       data: { ...populatedDocument, tprReviewPeriodEnd: undefined },
     });
 
@@ -146,7 +146,7 @@ describe('UpcomingReportDates', () => {
   });
 
   test('shows "No date added" for TIR Review Period when only start is defined', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
       data: { ...populatedDocument, tirReviewPeriodEnd: undefined },
     });
 
@@ -160,49 +160,49 @@ describe('UpcomingReportDates', () => {
   });
 
   test('Edit button is visible for TrusteeAdmin users', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: /edit upcoming report dates/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit upcoming key dates/i })).toBeInTheDocument();
   });
 
   test('Edit button is not visible for non-TrusteeAdmin users', async () => {
     TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
     expect(
-      screen.queryByRole('button', { name: /edit upcoming report dates/i }),
+      screen.queryByRole('button', { name: /edit upcoming key dates/i }),
     ).not.toBeInTheDocument();
   });
 
   test('shows loading spinner while fetching', () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockImplementation(() => new Promise(() => {}));
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockImplementation(() => new Promise(() => {}));
 
     renderComponent();
 
     expect(screen.getByRole('status')).toBeInTheDocument();
-    expect(screen.queryByTestId('upcoming-report-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
   test('renders "No date added" for all fields when API call fails', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockRejectedValue(new Error('Network error'));
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockRejectedValue(new Error('Network error'));
 
     renderComponent();
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
     const noDateElements = screen.getAllByText('No date added');
@@ -210,20 +210,18 @@ describe('UpcomingReportDates', () => {
   });
 
   test('Edit button navigates to edit route', async () => {
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
 
     await waitFor(() => {
-      expect(
-        screen.getByRole('button', { name: /edit upcoming report dates/i }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /edit upcoming key dates/i })).toBeInTheDocument();
     });
 
-    screen.getByRole('button', { name: /edit upcoming report dates/i }).click();
+    screen.getByRole('button', { name: /edit upcoming key dates/i }).click();
 
     expect(mockNavigate).toHaveBeenCalledWith(
-      `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/upcoming-report-dates/edit`,
+      `/trustees/${defaultProps.trusteeId}/appointments/${defaultProps.appointmentId}/upcoming-key-dates/edit`,
       { state: { subHeading: defaultProps.appointmentHeading } },
     );
   });

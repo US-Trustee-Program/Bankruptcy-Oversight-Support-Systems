@@ -1,13 +1,13 @@
-import './EditUpcomingReportDates.scss';
+import './EditUpcomingKeyDates.scss';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { InputRef } from '@/lib/type-declarations/input-fields';
 import {
-  TrusteeUpcomingReportDatesInput,
-  validateTrusteeUpcomingReportDates,
+  TrusteeUpcomingKeyDatesInput,
+  validateTrusteeUpcomingKeyDates,
   calculateTirSubmission,
   calculateTirReview,
-} from '@common/cams/trustee-upcoming-report-dates';
+} from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -54,7 +54,7 @@ const EMPTY_FORM: FormState = {
   upcomingIndependentAuditRequired: '',
 };
 
-export default function UpcomingReportDatesForm() {
+export default function UpcomingKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
     trusteeId: string;
     appointmentId: string;
@@ -83,7 +83,7 @@ export default function UpcomingReportDatesForm() {
   });
 
   useEffect(() => {
-    Api2.getUpcomingReportDates(trusteeId!, appointmentId!)
+    Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
       .then((response) => {
         const data = response.data;
         if (data) {
@@ -104,7 +104,7 @@ export default function UpcomingReportDatesForm() {
         }
       })
       .catch((err) => {
-        globalAlert?.error(`Failed to load upcoming report dates: ${(err as Error).message}`);
+        globalAlert?.error(`Failed to load upcoming key dates: ${(err as Error).message}`);
       })
       .finally(() => {
         setIsLoading(false);
@@ -154,7 +154,7 @@ export default function UpcomingReportDatesForm() {
   async function handleSave() {
     setSubmitted(true);
 
-    const isoInput: TrusteeUpcomingReportDatesInput = {
+    const isoInput: TrusteeUpcomingKeyDatesInput = {
       trusteeId: trusteeId!,
       appointmentId: appointmentId!,
       pastFieldExam: form.pastFieldExam || null,
@@ -175,7 +175,7 @@ export default function UpcomingReportDatesForm() {
       upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
     };
 
-    const result = validateTrusteeUpcomingReportDates(isoInput);
+    const result = validateTrusteeUpcomingKeyDates(isoInput);
     setErrors({
       tprReviewPeriodStart: result.reasonMap?.tprReviewPeriodStart?.reasons?.[0] ?? '',
       tprReviewPeriodEnd: result.reasonMap?.tprReviewPeriodEnd?.reasons?.[0] ?? '',
@@ -192,10 +192,10 @@ export default function UpcomingReportDatesForm() {
 
     setIsSaving(true);
     try {
-      await Api2.putUpcomingReportDates(trusteeId!, appointmentId!, isoInput);
+      await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, isoInput);
       navigate(`/trustees/${trusteeId}/appointments`);
     } catch (err) {
-      globalAlert?.error(`Failed to save upcoming report dates: ${(err as Error).message}`);
+      globalAlert?.error(`Failed to save upcoming key dates: ${(err as Error).message}`);
     } finally {
       setIsSaving(false);
     }
@@ -206,12 +206,12 @@ export default function UpcomingReportDatesForm() {
   }
 
   if (isLoading) {
-    return <LoadingSpinner id="edit-upcoming-report-dates-loading" />;
+    return <LoadingSpinner id="edit-upcoming-key-dates-loading" />;
   }
 
   return (
-    <div className="edit-upcoming-report-dates" data-testid="edit-upcoming-report-dates">
-      <h3>Edit Upcoming Report Dates</h3>
+    <div className="edit-upcoming-key-dates" data-testid="edit-upcoming-key-dates">
+      <h3>Edit Upcoming Key Dates</h3>
       <DatePicker
         id="field-exam"
         label="Field Exam"
@@ -309,11 +309,11 @@ export default function UpcomingReportDatesForm() {
         disableMax
       />
       <div className="usa-button-group">
-        <Button id="save-upcoming-report-dates" onClick={handleSave} disabled={isSaving}>
+        <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaving}>
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
         <Button
-          id="cancel-upcoming-report-dates"
+          id="cancel-upcoming-key-dates"
           uswdsStyle={UswdsButtonStyle.Unstyled}
           onClick={handleCancel}
         >
