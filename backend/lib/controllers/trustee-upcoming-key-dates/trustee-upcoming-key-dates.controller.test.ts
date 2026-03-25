@@ -33,15 +33,15 @@ describe('TrusteeUpcomingKeyDatesController', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    context.featureFlags['display-chpt7-panel-upcoming-report-dates'] = true;
+    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = true;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test('throws NotFoundError when display-chpt7-panel-upcoming-report-dates flag is disabled', async () => {
-    context.featureFlags['display-chpt7-panel-upcoming-report-dates'] = false;
+  test('throws NotFoundError when display-chpt7-panel-upcoming-key-dates flag is disabled', async () => {
+    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
     context.request = mockCamsHttpRequest({
       method: 'GET',
       params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },

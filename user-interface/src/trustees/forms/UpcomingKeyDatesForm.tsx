@@ -299,7 +299,7 @@ export default function UpcomingKeyDatesForm() {
             id="tpr-due"
             value={form.tprDue}
             onChange={handleMonthDayChange('tprDue')}
-            hasError={!!errors.tprDue || !!tprDueBlurError}
+            hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
           />
           <div className="usa-form-group year-type-selector">
             <div className="year-type-selector__inputs">

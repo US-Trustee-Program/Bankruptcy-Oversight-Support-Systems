@@ -38,7 +38,8 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
     const result = validateMonthDayRange(startValue, endValue);
     const errorMessage = result.valid ? '' : result.reasons?.[0] || '';
     setInternalError(errorMessage);
-    onValidationChange?.(result.valid ?? true);
+    // TODO: is this logic below for valid, correct? used to be (result.valid ?? true) which looks like true or true?
+    onValidationChange?.(result.valid === true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startValue, endValue]);
 
