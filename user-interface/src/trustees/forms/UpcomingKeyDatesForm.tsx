@@ -5,6 +5,7 @@ import {
   TrusteeUpcomingKeyDatesInput,
   validateTrusteeUpcomingKeyDates,
   validateMonthDay,
+  validateTprDuePair,
   calculateTirSubmission,
   calculateTirReview,
 } from '@common/cams/trustee-upcoming-key-dates';
@@ -93,27 +94,10 @@ export default function UpcomingKeyDatesForm() {
     }
   }
 
-  function getIncompleteMonthDayError(value: string): string {
-    if (!value) return '';
-    const [, month, day] = value.split('-');
-    return (month && !day) || (!month && day) ? validateMonthDay('1900--').reasons?.[0] || '' : '';
-  }
-
-  //TODO: Migrate this to the ValidationSpec instead
-  const tprDueBlurError = (() => {
-    if (!tprDueRowHasInteracted || tprDueRowFocused) return '';
-    const hasYearType = !!form.tprDueYearType;
-    if (!form.tprDue && !hasYearType) return '';
-    // Priority 1: incomplete date
-    const incompleteError = getIncompleteMonthDayError(form.tprDue);
-    if (incompleteError) return incompleteError;
-    // Priority 2: complete date but no year type
-    const [, month, day] = (form.tprDue || '').split('-');
-    if (month && day && !hasYearType) return 'TPR Due Year Type is required.';
-    // Priority 3: year type set but no date
-    if (!form.tprDue && hasYearType) return validateMonthDay('1900--').reasons?.[0] || '';
-    return '';
-  })();
+  const tprDueBlurError =
+    tprDueRowHasInteracted && !tprDueRowFocused
+      ? validateTprDuePair(form.tprDue, form.tprDueYearType)
+      : '';
 
   const tprDueDateComplete = (() => {
     const [, m, d] = (form.tprDue || '').split('-');
@@ -124,10 +108,12 @@ export default function UpcomingKeyDatesForm() {
 
   const tirSubmissionBlurError =
     !tirSubmissionFocused && tirSubmissionHasInteracted
-      ? getIncompleteMonthDayError(form.tirSubmission)
+      ? (validateMonthDay(form.tirSubmission).reasons?.[0] ?? '')
       : '';
   const tirReviewBlurError =
-    !tirReviewFocused && tirReviewHasInteracted ? getIncompleteMonthDayError(form.tirReview) : '';
+    !tirReviewFocused && tirReviewHasInteracted
+      ? (validateMonthDay(form.tirReview).reasons?.[0] ?? '')
+      : '';
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
