@@ -1,20 +1,20 @@
 import { vi } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteeUpcomingReportDatesController } from './trustee-upcoming-report-dates.controller';
-import { TrusteeUpcomingReportDatesUseCase } from '../../use-cases/trustee-upcoming-report-dates/trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDatesController } from './trustee-upcoming-key-dates.controller';
+import { TrusteeUpcomingKeyDatesUseCase } from '../../use-cases/trustee-upcoming-key-dates/trustee-upcoming-key-dates';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import {
-  TrusteeUpcomingReportDates,
-  TrusteeUpcomingReportDatesInput,
-} from '@common/cams/trustee-upcoming-report-dates';
+  TrusteeUpcomingKeyDates,
+  TrusteeUpcomingKeyDatesInput,
+} from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { NotFoundError } from '../../common-errors/not-found-error';
 
 function buildMockDocument(
-  overrides: Partial<TrusteeUpcomingReportDates> = {},
-): TrusteeUpcomingReportDates {
+  overrides: Partial<TrusteeUpcomingKeyDates> = {},
+): TrusteeUpcomingKeyDates {
   return {
     id: 'test-id-001',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -28,26 +28,26 @@ function buildMockDocument(
   };
 }
 
-describe('TrusteeUpcomingReportDatesController', () => {
+describe('TrusteeUpcomingKeyDatesController', () => {
   let context: ApplicationContext;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    context.featureFlags['display-chpt7-panel-upcoming-report-dates'] = true;
+    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = true;
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  test('throws NotFoundError when display-chpt7-panel-upcoming-report-dates flag is disabled', async () => {
-    context.featureFlags['display-chpt7-panel-upcoming-report-dates'] = false;
+  test('throws NotFoundError when display-chpt7-panel-upcoming-key-dates flag is disabled', async () => {
+    context.featureFlags['display-chpt7-panel-upcoming-key-dates'] = false;
     context.request = mockCamsHttpRequest({
       method: 'GET',
       params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
     });
 
-    const controller = new TrusteeUpcomingReportDatesController(context);
+    const controller = new TrusteeUpcomingKeyDatesController(context);
 
     await expect(controller.handleRequest(context)).rejects.toThrow(
       new NotFoundError(expect.anything()),
@@ -56,17 +56,16 @@ describe('TrusteeUpcomingReportDatesController', () => {
 
   test('GET returns 200 with document when found', async () => {
     const mockDoc = buildMockDocument();
-    vi.spyOn(
-      TrusteeUpcomingReportDatesUseCase.prototype,
-      'getUpcomingReportDates',
-    ).mockResolvedValue(mockDoc);
+    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+      mockDoc,
+    );
 
     context.request = mockCamsHttpRequest({
       method: 'GET',
       params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
     });
 
-    const controller = new TrusteeUpcomingReportDatesController(context);
+    const controller = new TrusteeUpcomingKeyDatesController(context);
     const response = await controller.handleRequest(context);
 
     expect(response.statusCode).toBe(HttpStatusCodes.OK);
@@ -74,17 +73,16 @@ describe('TrusteeUpcomingReportDatesController', () => {
   });
 
   test('GET returns 200 with null when no document exists', async () => {
-    vi.spyOn(
-      TrusteeUpcomingReportDatesUseCase.prototype,
-      'getUpcomingReportDates',
-    ).mockResolvedValue(null);
+    vi.spyOn(TrusteeUpcomingKeyDatesUseCase.prototype, 'getUpcomingKeyDates').mockResolvedValue(
+      null,
+    );
 
     context.request = mockCamsHttpRequest({
       method: 'GET',
       params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
     });
 
-    const controller = new TrusteeUpcomingReportDatesController(context);
+    const controller = new TrusteeUpcomingKeyDatesController(context);
     const response = await controller.handleRequest(context);
 
     expect(response.statusCode).toBe(HttpStatusCodes.OK);
@@ -97,7 +95,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
       params: { trusteeId: '', appointmentId: 'appointment-001' },
     });
 
-    const controller = new TrusteeUpcomingReportDatesController(context);
+    const controller = new TrusteeUpcomingKeyDatesController(context);
 
     await expect(controller.handleRequest(context)).rejects.toMatchObject({
       status: 400,
@@ -110,7 +108,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
       params: { trusteeId: 'trustee-001', appointmentId: '' },
     });
 
-    const controller = new TrusteeUpcomingReportDatesController(context);
+    const controller = new TrusteeUpcomingKeyDatesController(context);
 
     await expect(controller.handleRequest(context)).rejects.toMatchObject({
       status: 400,
@@ -123,7 +121,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
       params: { trusteeId: '', appointmentId: '' },
     });
 
-    const controller = new TrusteeUpcomingReportDatesController(context);
+    const controller = new TrusteeUpcomingKeyDatesController(context);
 
     await expect(controller.handleRequest(context)).rejects.toMatchObject({
       status: 400,
@@ -132,28 +130,31 @@ describe('TrusteeUpcomingReportDatesController', () => {
 
   describe('PUT', () => {
     function buildValidInput(
-      overrides: Partial<TrusteeUpcomingReportDatesInput> = {},
-    ): TrusteeUpcomingReportDatesInput {
+      overrides: Partial<TrusteeUpcomingKeyDatesInput> = {},
+    ): TrusteeUpcomingKeyDatesInput {
       return {
         trusteeId: 'trustee-001',
         appointmentId: 'appointment-001',
-        fieldExam: '2026-06-15',
-        audit: null,
+        pastFieldExam: '2026-06-15',
+        pastAudit: null,
         tprReviewPeriodStart: null,
         tprReviewPeriodEnd: null,
         tprDue: null,
+        tprDueYearType: null,
         tirReviewPeriodStart: null,
         tirReviewPeriodEnd: null,
         tirSubmission: null,
         tirReview: null,
+        upcomingFieldExam: null,
+        upcomingIndependentAuditRequired: null,
         ...overrides,
       };
     }
 
     test('PUT with valid ISO body returns 200', async () => {
       vi.spyOn(
-        TrusteeUpcomingReportDatesUseCase.prototype,
-        'upsertUpcomingReportDates',
+        TrusteeUpcomingKeyDatesUseCase.prototype,
+        'upsertUpcomingKeyDates',
       ).mockResolvedValue(undefined);
 
       context.request = mockCamsHttpRequest({
@@ -162,7 +163,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
         body: buildValidInput(),
       });
 
-      const controller = new TrusteeUpcomingReportDatesController(context);
+      const controller = new TrusteeUpcomingKeyDatesController(context);
       const response = await controller.handleRequest(context);
 
       expect(response.statusCode).toBe(HttpStatusCodes.OK);
@@ -172,10 +173,10 @@ describe('TrusteeUpcomingReportDatesController', () => {
       context.request = mockCamsHttpRequest({
         method: 'PUT',
         params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
-        body: buildValidInput({ fieldExam: '06/15/2026' }),
+        body: buildValidInput({ pastFieldExam: '06/15/2026' }),
       });
 
-      const controller = new TrusteeUpcomingReportDatesController(context);
+      const controller = new TrusteeUpcomingKeyDatesController(context);
 
       await expect(controller.handleRequest(context)).rejects.toMatchObject({
         status: 400,
@@ -189,7 +190,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
         body: buildValidInput(),
       });
 
-      const controller = new TrusteeUpcomingReportDatesController(context);
+      const controller = new TrusteeUpcomingKeyDatesController(context);
 
       await expect(controller.handleRequest(context)).rejects.toMatchObject({
         status: 400,
@@ -203,7 +204,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
         body: buildValidInput({ tprReviewPeriodStart: '1900-03-01', tprReviewPeriodEnd: null }),
       });
 
-      const controller = new TrusteeUpcomingReportDatesController(context);
+      const controller = new TrusteeUpcomingKeyDatesController(context);
 
       await expect(controller.handleRequest(context)).rejects.toMatchObject({
         status: 400,
@@ -217,7 +218,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
         body: buildValidInput({ tprReviewPeriodStart: null, tprReviewPeriodEnd: '1900-06-30' }),
       });
 
-      const controller = new TrusteeUpcomingReportDatesController(context);
+      const controller = new TrusteeUpcomingKeyDatesController(context);
 
       await expect(controller.handleRequest(context)).rejects.toMatchObject({
         status: 400,
@@ -231,7 +232,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
         body: buildValidInput({ tirReviewPeriodStart: '1900-03-01', tirReviewPeriodEnd: null }),
       });
 
-      const controller = new TrusteeUpcomingReportDatesController(context);
+      const controller = new TrusteeUpcomingKeyDatesController(context);
 
       await expect(controller.handleRequest(context)).rejects.toMatchObject({
         status: 400,
@@ -245,17 +246,35 @@ describe('TrusteeUpcomingReportDatesController', () => {
         body: buildValidInput({ tirReviewPeriodStart: null, tirReviewPeriodEnd: '1900-06-30' }),
       });
 
-      const controller = new TrusteeUpcomingReportDatesController(context);
+      const controller = new TrusteeUpcomingKeyDatesController(context);
 
       await expect(controller.handleRequest(context)).rejects.toMatchObject({
         status: 400,
       });
     });
 
+    test('PUT with tprDue and tprDueYearType both set returns 200', async () => {
+      vi.spyOn(
+        TrusteeUpcomingKeyDatesUseCase.prototype,
+        'upsertUpcomingKeyDates',
+      ).mockResolvedValue(undefined);
+
+      context.request = mockCamsHttpRequest({
+        method: 'PUT',
+        params: { trusteeId: 'trustee-001', appointmentId: 'appointment-001' },
+        body: buildValidInput({ tprDue: '1900-09-15', tprDueYearType: 'EVEN' }),
+      });
+
+      const controller = new TrusteeUpcomingKeyDatesController(context);
+      const response = await controller.handleRequest(context);
+
+      expect(response.statusCode).toBe(HttpStatusCodes.OK);
+    });
+
     test('PUT with both tpr review period fields set returns 200', async () => {
       vi.spyOn(
-        TrusteeUpcomingReportDatesUseCase.prototype,
-        'upsertUpcomingReportDates',
+        TrusteeUpcomingKeyDatesUseCase.prototype,
+        'upsertUpcomingKeyDates',
       ).mockResolvedValue(undefined);
 
       context.request = mockCamsHttpRequest({
@@ -267,7 +286,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
         }),
       });
 
-      const controller = new TrusteeUpcomingReportDatesController(context);
+      const controller = new TrusteeUpcomingKeyDatesController(context);
       const response = await controller.handleRequest(context);
 
       expect(response.statusCode).toBe(HttpStatusCodes.OK);
@@ -275,8 +294,8 @@ describe('TrusteeUpcomingReportDatesController', () => {
 
     test('PUT with both tir review period fields set returns 200', async () => {
       vi.spyOn(
-        TrusteeUpcomingReportDatesUseCase.prototype,
-        'upsertUpcomingReportDates',
+        TrusteeUpcomingKeyDatesUseCase.prototype,
+        'upsertUpcomingKeyDates',
       ).mockResolvedValue(undefined);
 
       context.request = mockCamsHttpRequest({
@@ -288,7 +307,7 @@ describe('TrusteeUpcomingReportDatesController', () => {
         }),
       });
 
-      const controller = new TrusteeUpcomingReportDatesController(context);
+      const controller = new TrusteeUpcomingKeyDatesController(context);
       const response = await controller.handleRequest(context);
 
       expect(response.statusCode).toBe(HttpStatusCodes.OK);

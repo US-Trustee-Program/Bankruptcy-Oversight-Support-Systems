@@ -21,7 +21,7 @@ import {
   TrusteeMatchVerificationRepository,
   TrusteesRepository,
   TrusteeAssistantsRepository,
-  TrusteeUpcomingReportDatesRepository,
+  TrusteeUpcomingKeyDatesRepository,
   UpdateResult,
   UserGroupsRepository,
   UserSessionCacheRepository,
@@ -52,7 +52,7 @@ export class MockMongoRepository
     TrusteeAppointmentsRepository,
     TrusteeAssistantsRepository,
     TrusteeMatchVerificationRepository,
-    TrusteeUpcomingReportDatesRepository,
+    TrusteeUpcomingKeyDatesRepository,
     ListsRepository,
     UserGroupsRepository
 {

@@ -9,7 +9,7 @@ import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';
 import Api2 from '@/lib/models/api2';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES } from '@/lib/hooks/UseFeatureFlags';
+import { DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
 
@@ -28,7 +28,7 @@ describe('AppointmentCard', () => {
     mockUseNavigate.mockReturnValue(mockNavigate);
     vi.clearAllMocks();
     TestingUtilities.setUserWithRoles([CamsRole.TrusteeAdmin]);
-    vi.spyOn(Api2, 'getUpcomingReportDates').mockResolvedValue({ data: null });
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
   });
 
   afterEach(() => {
@@ -280,35 +280,45 @@ describe('AppointmentCard', () => {
     expect(editButton).not.toBeInTheDocument();
   });
 
-  test('renders UpcomingReportDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
+  test('renders UpcomingKeyDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
     renderWithProps({
       appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('upcoming-report-dates-card')).toBeInTheDocument();
+      expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
   });
 
-  test('does not render UpcomingReportDates for non-panel appointment', async () => {
+  test('renders PastKeyDates card for panel Ch7 appointment with TrusteeAdmin role', async () => {
+    renderWithProps({
+      appointment: { ...mockAppointment, chapter: '7', appointmentType: 'panel' },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+    });
+  });
+
+  test('does not render UpcomingKeyDates for non-panel appointment', async () => {
     renderWithProps({
       appointment: { ...mockAppointment, chapter: '7', appointmentType: 'converted-case' },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.queryByTestId('upcoming-report-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
-  test('does not render UpcomingReportDates for non-Ch7 appointment', async () => {
+  test('does not render UpcomingKeyDates for non-Ch7 appointment', async () => {
     renderWithProps({
       appointment: { ...mockAppointment, chapter: '13', appointmentType: 'panel' },
     });
 
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.queryByTestId('upcoming-report-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
-  test('does not render UpcomingReportDates for non-TrusteeAdmin user', async () => {
+  test('does not render UpcomingKeyDates for non-TrusteeAdmin user', async () => {
     TestingUtilities.setUserWithRoles([CamsRole.CaseAssignmentManager]);
 
     renderWithProps({
@@ -316,12 +326,12 @@ describe('AppointmentCard', () => {
     });
 
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.queryByTestId('upcoming-report-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 
-  test('does not render UpcomingReportDates when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', async () => {
+  test('does not render UpcomingKeyDates when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', async () => {
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]: false,
+      [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: false,
     });
 
     renderWithProps({
@@ -329,6 +339,6 @@ describe('AppointmentCard', () => {
     });
 
     await new Promise((resolve) => setTimeout(resolve, 50));
-    expect(screen.queryByTestId('upcoming-report-dates-card')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('upcoming-key-dates-card')).not.toBeInTheDocument();
   });
 });
