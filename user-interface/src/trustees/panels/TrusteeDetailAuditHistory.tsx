@@ -360,33 +360,43 @@ type ReportDateFieldConfig = {
   format: (data: Partial<TrusteeUpcomingKeyDates>) => string;
 };
 
+function formatOptionalMMDDYYYY(value: string | undefined): string {
+  return value ? isoToMMDDYYYY(value) : '(none)';
+}
+
+function formatOptionalMMYYYY(value: string | undefined): string {
+  return value ? isoToMMYYYY(value) : '(none)';
+}
+
+function formatOptionalDateRange(start: string | undefined, end: string | undefined): string {
+  return start && end ? isoRangeToMMDD(start, end) : '(none)';
+}
+
 const REPORT_DATE_FIELD_CONFIG: ReportDateFieldConfig[] = [
   {
     key: 'pastFieldExam',
     label: 'Field Exam',
-    format: (d) => (d.pastFieldExam ? isoToMMDDYYYY(d.pastFieldExam) : '(none)'),
+    format: (d) => formatOptionalMMDDYYYY(d.pastFieldExam),
   },
   {
     key: 'pastAudit',
     label: 'Audit',
-    format: (d) => (d.pastAudit ? isoToMMYYYY(d.pastAudit) : '(none)'),
+    format: (d) => formatOptionalMMYYYY(d.pastAudit),
   },
   {
     key: 'tprReviewPeriodStart',
     label: 'TPR Review Period',
-    format: (d) =>
-      d.tprReviewPeriodStart && d.tprReviewPeriodEnd
-        ? isoRangeToMMDD(d.tprReviewPeriodStart, d.tprReviewPeriodEnd)
-        : '(none)',
+    format: (d) => formatOptionalDateRange(d.tprReviewPeriodStart, d.tprReviewPeriodEnd),
   },
-  { key: 'tprDue', label: 'TPR Due', format: (d) => (d.tprDue ? isoToMMYYYY(d.tprDue) : '(none)') },
+  {
+    key: 'tprDue',
+    label: 'TPR Due',
+    format: (d) => formatOptionalMMYYYY(d.tprDue),
+  },
   {
     key: 'tirReviewPeriodStart',
     label: 'TIR Review Period',
-    format: (d) =>
-      d.tirReviewPeriodStart && d.tirReviewPeriodEnd
-        ? isoRangeToMMDD(d.tirReviewPeriodStart, d.tirReviewPeriodEnd)
-        : '(none)',
+    format: (d) => formatOptionalDateRange(d.tirReviewPeriodStart, d.tirReviewPeriodEnd),
   },
   {
     key: 'tirSubmission',

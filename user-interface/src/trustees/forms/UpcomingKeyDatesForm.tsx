@@ -8,6 +8,7 @@ import {
   validateTprDuePair,
   calculateTirSubmission,
   calculateTirReview,
+  isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -16,11 +17,6 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector';
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
-
-function toSentinelDate(isoDate: string): string {
-  const [, month, day] = isoDate.split('-');
-  return `1900-${month}-${day}`;
-}
 
 type FormState = {
   pastFieldExam: string;
@@ -151,17 +147,33 @@ export default function UpcomingKeyDatesForm() {
     };
   }
 
+  function computeTirDates(
+    tirReviewPeriodEnd: string,
+    currentSubmission: string,
+    currentReview: string,
+  ) {
+    if (!tirReviewPeriodEnd) {
+      return { tirSubmission: currentSubmission, tirReview: currentReview };
+    }
+    const submission = calculateTirSubmission(tirReviewPeriodEnd);
+    const review = calculateTirReview(submission);
+    return { tirSubmission: submission, tirReview: review };
+  }
+
   function handleMonthDayChange(field: keyof FormState) {
     return (value: string) => {
       setSubmitted(false);
       if (field === 'tirReviewPeriodEnd') {
-        const submission = value ? calculateTirSubmission(value) : form.tirSubmission;
-        const review = value ? calculateTirReview(submission) : form.tirReview;
+        const { tirSubmission, tirReview } = computeTirDates(
+          value,
+          form.tirSubmission,
+          form.tirReview,
+        );
         setForm((prev) => ({
           ...prev,
           tirReviewPeriodEnd: value,
-          tirSubmission: submission,
-          tirReview: review,
+          tirSubmission,
+          tirReview,
         }));
       } else {
         setForm((prev) => ({ ...prev, [field]: value }));
@@ -191,17 +203,17 @@ export default function UpcomingKeyDatesForm() {
       pastFieldExam: form.pastFieldExam || null,
       pastAudit: form.pastAudit || null,
       tprReviewPeriodStart: form.tprReviewPeriodStart
-        ? toSentinelDate(form.tprReviewPeriodStart)
+        ? isoToSentinel(form.tprReviewPeriodStart)
         : null,
-      tprReviewPeriodEnd: form.tprReviewPeriodEnd ? toSentinelDate(form.tprReviewPeriodEnd) : null,
-      tprDue: form.tprDue ? toSentinelDate(form.tprDue) : null,
+      tprReviewPeriodEnd: form.tprReviewPeriodEnd ? isoToSentinel(form.tprReviewPeriodEnd) : null,
+      tprDue: form.tprDue ? isoToSentinel(form.tprDue) : null,
       tprDueYearType: form.tprDueYearType || null,
       tirReviewPeriodStart: form.tirReviewPeriodStart
-        ? toSentinelDate(form.tirReviewPeriodStart)
+        ? isoToSentinel(form.tirReviewPeriodStart)
         : null,
-      tirReviewPeriodEnd: form.tirReviewPeriodEnd ? toSentinelDate(form.tirReviewPeriodEnd) : null,
-      tirSubmission: form.tirSubmission ? toSentinelDate(form.tirSubmission) : null,
-      tirReview: form.tirReview ? toSentinelDate(form.tirReview) : null,
+      tirReviewPeriodEnd: form.tirReviewPeriodEnd ? isoToSentinel(form.tirReviewPeriodEnd) : null,
+      tirSubmission: form.tirSubmission ? isoToSentinel(form.tirSubmission) : null,
+      tirReview: form.tirReview ? isoToSentinel(form.tirReview) : null,
       upcomingFieldExam: form.upcomingFieldExam || null,
       upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
     };

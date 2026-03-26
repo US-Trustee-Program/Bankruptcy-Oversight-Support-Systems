@@ -5,17 +5,13 @@ import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   calculateNextAuditDate,
+  isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
-
-function toSentinelDate(isoDate: string): string {
-  const [, month, day] = isoDate.split('-');
-  return `1900-${month}-${day}`;
-}
 
 type PastKeyDatesFormState = {
   pastFieldExam: string;
@@ -51,21 +47,21 @@ function buildUpcomingKeyDatesInput(
     pastFieldExam: form.pastFieldExam || null,
     pastAudit: form.pastAudit || null,
     tprReviewPeriodStart: original?.tprReviewPeriodStart
-      ? toSentinelDate(original.tprReviewPeriodStart)
+      ? isoToSentinel(original.tprReviewPeriodStart)
       : null,
     tprReviewPeriodEnd: original?.tprReviewPeriodEnd
-      ? toSentinelDate(original.tprReviewPeriodEnd)
+      ? isoToSentinel(original.tprReviewPeriodEnd)
       : null,
-    tprDue: original?.tprDue ? toSentinelDate(original.tprDue) : null,
+    tprDue: original?.tprDue ? isoToSentinel(original.tprDue) : null,
     tprDueYearType: original?.tprDueYearType ?? null,
     tirReviewPeriodStart: original?.tirReviewPeriodStart
-      ? toSentinelDate(original.tirReviewPeriodStart)
+      ? isoToSentinel(original.tirReviewPeriodStart)
       : null,
     tirReviewPeriodEnd: original?.tirReviewPeriodEnd
-      ? toSentinelDate(original.tirReviewPeriodEnd)
+      ? isoToSentinel(original.tirReviewPeriodEnd)
       : null,
-    tirSubmission: original?.tirSubmission ? toSentinelDate(original.tirSubmission) : null,
-    tirReview: original?.tirReview ? toSentinelDate(original.tirReview) : null,
+    tirSubmission: original?.tirSubmission ? isoToSentinel(original.tirSubmission) : null,
+    tirReview: original?.tirReview ? isoToSentinel(original.tirReview) : null,
     upcomingFieldExam: form.upcomingFieldExam || null,
     upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
   };
@@ -163,11 +159,17 @@ export default function PastKeyDatesForm() {
         disableMax
       />
       <div className="usa-button-group">
-        <Button id="save-past-key-dates" onClick={handleSave} disabled={isSaving}>
+        <Button
+          id="save-past-key-dates"
+          data-testid="button-save-past-key-dates"
+          onClick={handleSave}
+          disabled={isSaving}
+        >
           {isSaving ? 'Saving...' : 'Save'}
         </Button>
         <Button
           id="cancel-past-key-dates"
+          data-testid="button-cancel-past-key-dates"
           uswdsStyle={UswdsButtonStyle.Unstyled}
           onClick={handleCancel}
         >

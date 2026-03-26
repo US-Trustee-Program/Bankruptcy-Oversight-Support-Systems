@@ -67,14 +67,14 @@ describe('TrusteeUpcomingKeyDatesMongoRepository', () => {
       expect(findOneSpy).toHaveBeenCalledWith(expectedQuery);
     });
 
-    test('returns null when findOne throws (document not found)', async () => {
+    test('throws CamsError when findOne fails', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
-        new Error('Not found'),
+        new Error('Database connection failed'),
       );
 
-      const result = await repo.getByAppointmentId('nonexistent-appointment');
-
-      expect(result).toBeNull();
+      await expect(repo.getByAppointmentId('nonexistent-appointment')).rejects.toThrow(
+        'Unable to fetch upcoming key dates for appointment nonexistent-appointment.',
+      );
     });
   });
 
