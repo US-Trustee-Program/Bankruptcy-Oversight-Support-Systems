@@ -89,18 +89,6 @@ export class UserSessionUseCase {
         throw new UnauthorizedError('Missing JWT from identity provider');
       }
 
-      context.logger.info(
-        MODULE_NAME,
-        `CAMS-710 DIAGNOSTIC: Retrieved user from IDP: ${camsUserReference.name} (${camsUserReference.id}). JWT contains ${verifiedJwt.claims.groups?.length || 0} groups.`,
-        {
-          userId: camsUserReference.id,
-          userName: camsUserReference.name,
-          userEmail: camsUserReference.email,
-          jwtGroupCount: verifiedJwt.claims.groups?.length || 0,
-          jwtGroups: verifiedJwt.claims.groups || [],
-        },
-      );
-
       const offices = await UsersGroupManagement.getOfficesFromGroupNames(
         context,
         verifiedJwt.claims.groups || [],
@@ -122,15 +110,14 @@ export class UserSessionUseCase {
         },
       );
 
-      context.logger.info(
+      context.logger.debug(
         MODULE_NAME,
-        `CAMS-710 DIAGNOSTIC: Creating session for user ${user.name} (${user.id}) with ${user.offices?.length || 0} offices and ${user.roles?.length || 0} roles.`,
+        `Creating session for ${user.name} with ${verifiedJwt.claims.groups?.length || 0} JWT groups, ${user.offices?.length || 0} offices, ${user.roles?.length || 0} roles.`,
         {
           userId: user.id,
-          userName: user.name,
+          jwtGroupCount: verifiedJwt.claims.groups?.length || 0,
           officeCount: user.offices?.length || 0,
           roleCount: user.roles?.length || 0,
-          offices: user.offices?.map((o) => o.idpGroupName) || [],
         },
       );
 

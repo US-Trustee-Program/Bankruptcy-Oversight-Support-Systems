@@ -42,7 +42,17 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
     };
     try {
       const oktaGroups = await this.oktaHumble.listGroups(request);
-      context.logger.info(MODULE_NAME, `Retrieved ${oktaGroups.length} groups.`);
+
+      context.logger.info(
+        MODULE_NAME,
+        `Okta Groups API returned ${oktaGroups.length} groups for query "${request.query}"`,
+        {
+          query: request.query,
+          groupCount: oktaGroups.length,
+          groupNames: oktaGroups.map((g) => g.name),
+        },
+      );
+
       return oktaGroups;
     } catch (originalError) {
       const message = 'Failed to retrieve groups.';
@@ -74,6 +84,16 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
         limit: MAX_PAGE_SIZE,
       };
       const oktaGroups = await this.oktaHumble.listGroups(request);
+
+      context.logger.debug(
+        MODULE_NAME,
+        `Okta Groups API returned ${oktaGroups.length} group(s) for query "${request.query}"`,
+        {
+          query: request.query,
+          groupCount: oktaGroups.length,
+        },
+      );
+
       if (oktaGroups.length !== 1) {
         throw new UnknownError(MODULE_NAME, {
           message: `Found ${oktaGroups.length} groups matching ${groupName}, expected 1.`,
@@ -85,9 +105,9 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
         name: oktaGroups[0].name,
       };
       camsUserGroup.users = await this.getUserGroupUsers(context, camsUserGroup);
-      context.logger.info(
+      context.logger.debug(
         MODULE_NAME,
-        `Retrieved ${groupName} group with ${camsUserGroup.users.length} users.`,
+        `Retrieved group "${groupName}" with ${camsUserGroup.users.length} users.`,
       );
       return camsUserGroup;
     } catch (originalError) {
@@ -124,7 +144,10 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
         limit: MAX_PAGE_SIZE,
       };
       const oktaUsers = await this.oktaHumble.listGroupUsers(request);
-      context.logger.info(MODULE_NAME, `Retrieved ${oktaUsers.length} users.`);
+      context.logger.debug(
+        MODULE_NAME,
+        `Retrieved ${oktaUsers.length} users for group ${group.name}.`,
+      );
       return oktaUsers;
     } catch (originalError) {
       const message = 'Failed to retrieve users.';
@@ -146,26 +169,17 @@ class OktaUserGroupGateway implements UserGroupGateway, Initializer<UserGroupGat
       for (const oktaGroup of groups) {
         groupNames.push(oktaGroup.name);
       }
-
-      context.logger.info(
-        MODULE_NAME,
-        `CAMS-710 DIAGNOSTIC: Retrieved ${groupNames.length} groups from Okta for user ${user.name} (${id}).`,
-        { userId: id, userName: user.name, groupCount: groupNames.length, groupNames },
-      );
-
       const offices = await UsersGroupManagement.getOfficesFromGroupNames(context, groupNames);
       const roles = UsersGroupManagement.getRolesFromGroupNames(groupNames);
 
-      context.logger.info(
+      context.logger.debug(
         MODULE_NAME,
-        `CAMS-710 DIAGNOSTIC: Constructed user with ${offices.length} offices and ${roles.length} roles.`,
+        `Retrieved user ${user.name} with ${groupNames.length} groups, ${offices.length} offices, ${roles.length} roles.`,
         {
           userId: id,
-          userName: user.name,
+          groupCount: groupNames.length,
           officeCount: offices.length,
           roleCount: roles.length,
-          offices: offices.map((o) => o.idpGroupName),
-          roles,
         },
       );
 
