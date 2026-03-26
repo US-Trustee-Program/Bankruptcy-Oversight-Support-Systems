@@ -2,6 +2,7 @@ import './EditUpcomingKeyDates.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
+  TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
   calculateNextAuditDate,
 } from '@common/cams/trustee-upcoming-key-dates';
@@ -16,35 +17,59 @@ function toSentinelDate(isoDate: string): string {
   return `1900-${month}-${day}`;
 }
 
-type FullFormState = {
+type PastKeyDatesFormState = {
   pastFieldExam: string;
   pastAudit: string;
-  tprReviewPeriodStart: string;
-  tprReviewPeriodEnd: string;
-  tprDue: string;
-  tprDueYearType: string;
-  tirReviewPeriodStart: string;
-  tirReviewPeriodEnd: string;
-  tirSubmission: string;
-  tirReview: string;
   upcomingFieldExam: string;
   upcomingIndependentAuditRequired: string;
 };
 
-const EMPTY_FORM: FullFormState = {
+const EMPTY_FORM: PastKeyDatesFormState = {
   pastFieldExam: '',
   pastAudit: '',
-  tprReviewPeriodStart: '',
-  tprReviewPeriodEnd: '',
-  tprDue: '',
-  tprDueYearType: '',
-  tirReviewPeriodStart: '',
-  tirReviewPeriodEnd: '',
-  tirSubmission: '',
-  tirReview: '',
   upcomingFieldExam: '',
   upcomingIndependentAuditRequired: '',
 };
+
+function computeNextDates(pastFieldExam: string, pastAudit: string) {
+  return {
+    upcomingFieldExam:
+      calculateNextAuditDate(pastFieldExam || undefined, pastAudit || undefined, 3) ?? '',
+    upcomingIndependentAuditRequired:
+      calculateNextAuditDate(pastFieldExam || undefined, pastAudit || undefined, 6) ?? '',
+  };
+}
+
+function buildUpcomingKeyDatesInput(
+  ids: { trusteeId: string; appointmentId: string },
+  original: TrusteeUpcomingKeyDates | null,
+  form: PastKeyDatesFormState,
+): TrusteeUpcomingKeyDatesInput {
+  return {
+    trusteeId: ids.trusteeId,
+    appointmentId: ids.appointmentId,
+    pastFieldExam: form.pastFieldExam || null,
+    pastAudit: form.pastAudit || null,
+    tprReviewPeriodStart: original?.tprReviewPeriodStart
+      ? toSentinelDate(original.tprReviewPeriodStart)
+      : null,
+    tprReviewPeriodEnd: original?.tprReviewPeriodEnd
+      ? toSentinelDate(original.tprReviewPeriodEnd)
+      : null,
+    tprDue: original?.tprDue ? toSentinelDate(original.tprDue) : null,
+    tprDueYearType: original?.tprDueYearType ?? null,
+    tirReviewPeriodStart: original?.tirReviewPeriodStart
+      ? toSentinelDate(original.tirReviewPeriodStart)
+      : null,
+    tirReviewPeriodEnd: original?.tirReviewPeriodEnd
+      ? toSentinelDate(original.tirReviewPeriodEnd)
+      : null,
+    tirSubmission: original?.tirSubmission ? toSentinelDate(original.tirSubmission) : null,
+    tirReview: original?.tirReview ? toSentinelDate(original.tirReview) : null,
+    upcomingFieldExam: form.upcomingFieldExam || null,
+    upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
+  };
+}
 
 export default function PastKeyDatesForm() {
   const { trusteeId, appointmentId } = useParams<{
@@ -56,24 +81,18 @@ export default function PastKeyDatesForm() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState<FullFormState>(EMPTY_FORM);
+  const [form, setForm] = useState<PastKeyDatesFormState>(EMPTY_FORM);
+  const [original, setOriginal] = useState<TrusteeUpcomingKeyDates | null>(null);
 
   useEffect(() => {
     Api2.getUpcomingKeyDates(trusteeId!, appointmentId!)
       .then((response) => {
         const data = response.data;
         if (data) {
+          setOriginal(data);
           setForm({
             pastFieldExam: data.pastFieldExam ?? '',
             pastAudit: data.pastAudit ?? '',
-            tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
-            tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
-            tprDue: data.tprDue ?? '',
-            tprDueYearType: data.tprDueYearType ?? '',
-            tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
-            tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
-            tirSubmission: data.tirSubmission ?? '',
-            tirReview: data.tirReview ?? '',
             upcomingFieldExam: data.upcomingFieldExam ?? '',
             upcomingIndependentAuditRequired: data.upcomingIndependentAuditRequired ?? '',
           });
@@ -90,42 +109,23 @@ export default function PastKeyDatesForm() {
   function handleChange(field: 'pastFieldExam' | 'pastAudit') {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
       const value = ev.target.value;
-      const fe = field === 'pastFieldExam' ? value : form.pastFieldExam;
-      const au = field === 'pastAudit' ? value : form.pastAudit;
-      const next = calculateNextAuditDate(fe || undefined, au || undefined, 3) ?? '';
-      const nextRequired = calculateNextAuditDate(fe || undefined, au || undefined, 6) ?? '';
+      const pastFieldExam = field === 'pastFieldExam' ? value : form.pastFieldExam;
+      const pastAudit = field === 'pastAudit' ? value : form.pastAudit;
       setForm((prev) => ({
         ...prev,
         [field]: value,
-        upcomingFieldExam: next,
-        upcomingIndependentAuditRequired: nextRequired,
+        ...computeNextDates(pastFieldExam, pastAudit),
       }));
     };
   }
 
   async function handleSave() {
     setIsSaving(true);
-
-    const isoInput: TrusteeUpcomingKeyDatesInput = {
-      trusteeId: trusteeId!,
-      appointmentId: appointmentId!,
-      pastFieldExam: form.pastFieldExam || null,
-      pastAudit: form.pastAudit || null,
-      tprReviewPeriodStart: form.tprReviewPeriodStart
-        ? toSentinelDate(form.tprReviewPeriodStart)
-        : null,
-      tprReviewPeriodEnd: form.tprReviewPeriodEnd ? toSentinelDate(form.tprReviewPeriodEnd) : null,
-      tprDue: form.tprDue ? toSentinelDate(form.tprDue) : null,
-      tprDueYearType: form.tprDueYearType || null,
-      tirReviewPeriodStart: form.tirReviewPeriodStart
-        ? toSentinelDate(form.tirReviewPeriodStart)
-        : null,
-      tirReviewPeriodEnd: form.tirReviewPeriodEnd ? toSentinelDate(form.tirReviewPeriodEnd) : null,
-      tirSubmission: form.tirSubmission ? toSentinelDate(form.tirSubmission) : null,
-      tirReview: form.tirReview ? toSentinelDate(form.tirReview) : null,
-      upcomingFieldExam: form.upcomingFieldExam || null,
-      upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
-    };
+    const isoInput = buildUpcomingKeyDatesInput(
+      { trusteeId: trusteeId!, appointmentId: appointmentId! },
+      original,
+      form,
+    );
 
     try {
       await Api2.putUpcomingKeyDates(trusteeId!, appointmentId!, isoInput);
