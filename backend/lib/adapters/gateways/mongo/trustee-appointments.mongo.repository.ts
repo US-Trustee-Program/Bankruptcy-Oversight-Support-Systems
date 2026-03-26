@@ -245,6 +245,21 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
+  async listAllChapter7Appointments(): Promise<TrusteeAppointment[]> {
+    try {
+      const doc = using<TrusteeAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE_APPOINTMENT'),
+        doc('chapter').equals('7'),
+      );
+      return await this.getAdapter<TrusteeAppointmentDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve all Chapter 7 appointments.',
+      });
+    }
+  }
+
   async delete(id: string): Promise<void> {
     try {
       const doc = using<CaseAppointmentDocument>();
