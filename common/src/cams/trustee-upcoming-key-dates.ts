@@ -338,14 +338,16 @@ export function validateMMDDRange(value: unknown): ValidatorResult {
   return VALID;
 }
 
+const SENTINEL_YEAR = 1900;
+const ARITHMETIC_YEAR = 2000; // 1900 was not a leap year; use 2000 for correct day arithmetic
+
 function addDaysToSentinel(sentinel: string, days: number): string {
   const [, month, day] = sentinel.split('-').map(Number);
-  // Use year 2000 for arithmetic to correctly handle month/day boundaries
-  const date = new Date(2000, month - 1, day);
+  const date = new Date(ARITHMETIC_YEAR, month - 1, day);
   date.setDate(date.getDate() + days);
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const dd = String(date.getDate()).padStart(2, '0');
-  return `1900-${mm}-${dd}`;
+  return `${SENTINEL_YEAR}-${mm}-${dd}`;
 }
 
 export function calculateTirSubmission(tirReviewPeriodEnd: string): string {
@@ -376,18 +378,32 @@ function alignToQuarterEnd(date: Date): Date {
   return new Date(year + 1, 2, 31);
 }
 
+function mostRecentIso(dates: (string | undefined)[]): string | null {
+  const candidates = dates.filter((d): d is string => !!d);
+  if (candidates.length === 0) return null;
+  return candidates.reduce((a, b) => (a > b ? a : b));
+}
+
+function addYears(iso: string, years: number): Date {
+  const [year, month, day] = iso.split('-').map(Number);
+  return new Date(year + years, month - 1, day);
+}
+
+function startOfMonthIso(date: Date): string {
+  const yyyy = String(date.getFullYear()).padStart(4, '0');
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  return `${yyyy}-${mm}-01`;
+}
+
 export function calculateNextAuditDate(
   fieldExam: string | undefined,
   audit: string | undefined,
   yearsToAdd: number,
 ): string | null {
-  const candidates = [fieldExam, audit].filter((d): d is string => !!d);
-  if (candidates.length === 0) return null;
+  const mostRecent = mostRecentIso([fieldExam, audit]);
+  if (!mostRecent) return null;
 
-  const mostRecent = candidates.reduce((a, b) => (a > b ? a : b));
-  const [year, month, day] = mostRecent.split('-').map(Number);
-  const date = new Date(year + yearsToAdd, month - 1, day);
-  const aligned = alignToQuarterEnd(date);
-  const mm = String(aligned.getMonth() + 1).padStart(2, '0');
-  return `${aligned.getFullYear()}-${mm}-01`;
+  const dateWithOffset = addYears(mostRecent, yearsToAdd);
+  const aligned = alignToQuarterEnd(dateWithOffset);
+  return startOfMonthIso(aligned);
 }
