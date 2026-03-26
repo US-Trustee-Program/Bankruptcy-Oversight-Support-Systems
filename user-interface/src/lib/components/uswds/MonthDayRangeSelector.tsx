@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type FocusEvent } from 'react';
 import MonthDaySelector from './MonthDaySelector';
 import Icon from './Icon';
 import Button, { UswdsButtonStyle } from './Button';
+import { validateMonthDayRange } from '@common/cams/trustee-upcoming-key-dates';
 
 type MonthDayRangeSelectorProps = {
   id: string;
@@ -14,14 +15,6 @@ type MonthDayRangeSelectorProps = {
   externalError?: string;
   submitted?: boolean;
 };
-
-const PARTIAL_DATE_ERROR = 'Must be a valid date mm/dd.';
-
-function isPartialMonthDay(value: string): boolean {
-  if (!value) return false;
-  const parts = value.split('-');
-  return parts.length === 3 && (!parts[1] || !parts[2]);
-}
 
 export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps) {
   const {
@@ -37,25 +30,33 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
   } = props;
 
   const [internalError, setInternalError] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
-  // Validate whenever values change
+  // Validate whenever values change using common library validator
   useEffect(() => {
-    // Check for partial dates
-    if (isPartialMonthDay(startValue) || isPartialMonthDay(endValue)) {
-      setInternalError(PARTIAL_DATE_ERROR);
-      onValidationChange?.(false);
-      return;
-    }
-
-    // All validations pass
-    setInternalError('');
-    onValidationChange?.(true);
+    const result = validateMonthDayRange(startValue, endValue);
+    const errorMessage = result.valid ? '' : result.reasons?.[0] || '';
+    setInternalError(errorMessage);
+    onValidationChange?.(result.valid === true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startValue, endValue]);
 
-  // External errors take precedence over internal errors; internal errors only show after submission
-  const displayError = externalError || (submitted ? internalError : '');
-  const hasError = !!displayError;
+  function handleFocus() {
+    setIsFocused(true);
+    setHasInteracted(true);
+  }
+
+  function handleBlur(e: FocusEvent<HTMLDivElement>) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsFocused(false);
+    }
+  }
+
+  // Show errors after submission OR after the user has interacted and left all 4 dropdowns
+  const shouldShowInternalError = submitted || (!isFocused && hasInteracted);
+  const displayError = externalError || (shouldShowInternalError ? internalError : '');
+  const hasError = !!displayError && !isFocused;
 
   const hasValue = !!(startValue || endValue);
 
@@ -67,7 +68,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
   return (
     <div className="review-period-group">
       <div className="review-period-header">
-        <label className="usa-label" htmlFor={`${id}-start-month`}>
+        <label className="usa-label" htmlFor={`${id}-start-month`} data-testid={`${id}-label`}>
           {label}
         </label>
         {hasValue && (
@@ -81,7 +82,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
           </Button>
         )}
       </div>
-      <div className="review-period-row">
+      <div className="review-period-row" onFocus={handleFocus} onBlur={handleBlur}>
         <MonthDaySelector
           id={`${id}-start`}
           value={startValue}
@@ -99,7 +100,11 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
         />
       </div>
       {hasError && (
-        <div className="date-error usa-input__error-message" aria-live="polite">
+        <div
+          className="date-error usa-input__error-message"
+          aria-live="polite"
+          data-testid={`${id}-error`}
+        >
           {displayError}
         </div>
       )}

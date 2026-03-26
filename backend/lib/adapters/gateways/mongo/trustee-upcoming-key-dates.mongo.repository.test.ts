@@ -5,22 +5,22 @@ import {
   getTheThrownError,
 } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
-import { TrusteeUpcomingReportDatesMongoRepository } from './trustee-upcoming-report-dates.mongo.repository';
+import { TrusteeUpcomingKeyDatesMongoRepository } from './trustee-upcoming-key-dates.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import QueryBuilder from '../../../query/query-builder';
 import {
-  TrusteeUpcomingReportDates,
-  TrusteeUpcomingReportDatesHistory,
-} from '@common/cams/trustee-upcoming-report-dates';
+  TrusteeUpcomingKeyDates,
+  TrusteeUpcomingKeyDatesHistory,
+} from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { Creatable } from '@common/cams/creatable';
 
 const { and, using } = QueryBuilder;
-const doc = using<TrusteeUpcomingReportDates>();
+const doc = using<TrusteeUpcomingKeyDates>();
 
 function buildMockDocument(
-  overrides: Partial<TrusteeUpcomingReportDates> = {},
-): TrusteeUpcomingReportDates {
+  overrides: Partial<TrusteeUpcomingKeyDates> = {},
+): TrusteeUpcomingKeyDates {
   return {
     id: 'test-id-001',
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES',
@@ -30,18 +30,18 @@ function buildMockDocument(
     createdOn: '2026-01-01T00:00:00.000Z',
     updatedBy: SYSTEM_USER_REFERENCE,
     updatedOn: '2026-01-01T00:00:00.000Z',
-    fieldExam: '2026-03-15',
+    pastFieldExam: '2026-03-15',
     ...overrides,
   };
 }
 
-describe('TrusteeUpcomingReportDatesMongoRepository', () => {
+describe('TrusteeUpcomingKeyDatesMongoRepository', () => {
   let context: ApplicationContext;
-  let repo: TrusteeUpcomingReportDatesMongoRepository;
+  let repo: TrusteeUpcomingKeyDatesMongoRepository;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repo = TrusteeUpcomingReportDatesMongoRepository.getInstance(context);
+    repo = TrusteeUpcomingKeyDatesMongoRepository.getInstance(context);
   });
 
   afterEach(async () => {
@@ -67,14 +67,14 @@ describe('TrusteeUpcomingReportDatesMongoRepository', () => {
       expect(findOneSpy).toHaveBeenCalledWith(expectedQuery);
     });
 
-    test('returns null when findOne throws (document not found)', async () => {
+    test('throws CamsError when findOne fails', async () => {
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
-        new Error('Not found'),
+        new Error('Database connection failed'),
       );
 
-      const result = await repo.getByAppointmentId('nonexistent-appointment');
-
-      expect(result).toBeNull();
+      await expect(repo.getByAppointmentId('nonexistent-appointment')).rejects.toThrow(
+        'Unable to fetch upcoming key dates for appointment nonexistent-appointment.',
+      );
     });
   });
 
@@ -142,12 +142,12 @@ describe('TrusteeUpcomingReportDatesMongoRepository', () => {
 
   describe('createHistory', () => {
     test('calls insertOne with useProvidedId: true', async () => {
-      const history: Creatable<TrusteeUpcomingReportDatesHistory> = {
+      const history: Creatable<TrusteeUpcomingKeyDatesHistory> = {
         documentType: 'AUDIT_UPCOMING_REPORT_DATES',
         trusteeId: 'trustee-001',
         appointmentId: 'appointment-001',
-        before: { fieldExam: '2026-01-15' },
-        after: { fieldExam: '2026-03-15' },
+        before: { pastFieldExam: '2026-01-15' },
+        after: { pastFieldExam: '2026-03-15' },
         createdBy: SYSTEM_USER_REFERENCE,
         createdOn: '2026-01-01T00:00:00.000Z',
         updatedBy: SYSTEM_USER_REFERENCE,
@@ -163,7 +163,7 @@ describe('TrusteeUpcomingReportDatesMongoRepository', () => {
     });
 
     test('throws CamsError when insertOne fails', async () => {
-      const history: Creatable<TrusteeUpcomingReportDatesHistory> = {
+      const history: Creatable<TrusteeUpcomingKeyDatesHistory> = {
         documentType: 'AUDIT_UPCOMING_REPORT_DATES',
         trusteeId: 'trustee-001',
         appointmentId: 'appointment-001',
@@ -191,33 +191,33 @@ describe('TrusteeUpcomingReportDatesMongoRepository', () => {
 
   describe('singleton lifecycle', () => {
     test('getInstance returns same instance and increments referenceCount', async () => {
-      while (TrusteeUpcomingReportDatesMongoRepository['referenceCount'] > 0) {
-        TrusteeUpcomingReportDatesMongoRepository.dropInstance();
+      while (TrusteeUpcomingKeyDatesMongoRepository['referenceCount'] > 0) {
+        TrusteeUpcomingKeyDatesMongoRepository.dropInstance();
       }
       const context1 = await createMockApplicationContext();
-      const repo1 = TrusteeUpcomingReportDatesMongoRepository.getInstance(context1);
+      const repo1 = TrusteeUpcomingKeyDatesMongoRepository.getInstance(context1);
       expect(repo1).toBeDefined();
-      expect(TrusteeUpcomingReportDatesMongoRepository['referenceCount']).toBe(1);
+      expect(TrusteeUpcomingKeyDatesMongoRepository['referenceCount']).toBe(1);
 
       const context2 = await createMockApplicationContext();
-      const repo2 = TrusteeUpcomingReportDatesMongoRepository.getInstance(context2);
+      const repo2 = TrusteeUpcomingKeyDatesMongoRepository.getInstance(context2);
       expect(repo2).toBe(repo1);
-      expect(TrusteeUpcomingReportDatesMongoRepository['referenceCount']).toBe(2);
+      expect(TrusteeUpcomingKeyDatesMongoRepository['referenceCount']).toBe(2);
 
       const closeSpy = vi.spyOn(repo1['client'], 'close').mockResolvedValue();
-      TrusteeUpcomingReportDatesMongoRepository.dropInstance();
-      expect(TrusteeUpcomingReportDatesMongoRepository['referenceCount']).toBe(1);
+      TrusteeUpcomingKeyDatesMongoRepository.dropInstance();
+      expect(TrusteeUpcomingKeyDatesMongoRepository['referenceCount']).toBe(1);
       expect(closeSpy).not.toHaveBeenCalled();
 
-      TrusteeUpcomingReportDatesMongoRepository.dropInstance();
-      expect(TrusteeUpcomingReportDatesMongoRepository['referenceCount']).toBe(0);
+      TrusteeUpcomingKeyDatesMongoRepository.dropInstance();
+      expect(TrusteeUpcomingKeyDatesMongoRepository['referenceCount']).toBe(0);
       await Promise.resolve();
       expect(closeSpy).toHaveBeenCalled();
-      expect(TrusteeUpcomingReportDatesMongoRepository['instance']).toBeNull();
+      expect(TrusteeUpcomingKeyDatesMongoRepository['instance']).toBeNull();
     });
 
     test('release calls dropInstance', async () => {
-      const dropSpy = vi.spyOn(TrusteeUpcomingReportDatesMongoRepository, 'dropInstance');
+      const dropSpy = vi.spyOn(TrusteeUpcomingKeyDatesMongoRepository, 'dropInstance');
       repo.release();
       expect(dropSpy).toHaveBeenCalled();
       dropSpy.mockRestore();
@@ -225,4 +225,4 @@ describe('TrusteeUpcomingReportDatesMongoRepository', () => {
   });
 });
 
-const MODULE_NAME = 'TRUSTEE-UPCOMING-REPORT-DATES-MONGO-REPOSITORY';
+const MODULE_NAME = 'TRUSTEE-UPCOMING-KEY-DATES-MONGO-REPOSITORY';

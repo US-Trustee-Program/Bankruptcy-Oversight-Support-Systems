@@ -78,7 +78,7 @@ import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mong
 import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
 import { TrusteeAssistantsMongoRepository } from './adapters/gateways/mongo/trustee-assistants.mongo.repository';
 import { TrusteeMatchVerificationMongoRepository } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
-import { TrusteeUpcomingReportDatesMongoRepository } from './adapters/gateways/mongo/trustee-upcoming-report-dates.mongo.repository';
+import { TrusteeUpcomingKeyDatesMongoRepository } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
 import { TrusteeProfessionalIdsMongoRepository } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
@@ -89,7 +89,7 @@ import {
 import {
   ApiToDataflowsGateway,
   TrusteeMatchVerificationRepository,
-  TrusteeUpcomingReportDatesRepository,
+  TrusteeUpcomingKeyDatesRepository,
 } from './use-cases/gateways.types';
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 
@@ -461,13 +461,13 @@ const getListsGateway = (context: ApplicationContext): ListsRepository => {
   return repo;
 };
 
-const getTrusteeUpcomingReportDatesRepository = (
+const getTrusteeUpcomingKeyDatesRepository = (
   context: ApplicationContext,
-): TrusteeUpcomingReportDatesRepository => {
+): TrusteeUpcomingKeyDatesRepository => {
   if (context.config.get('dbMock')) {
     return new MockMongoRepository();
   }
-  const repo = TrusteeUpcomingReportDatesMongoRepository.getInstance(context);
+  const repo = TrusteeUpcomingKeyDatesMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -531,7 +531,7 @@ const factory = {
   getTrusteeAppointmentsRepository,
   getTrusteeAssistantsRepository,
   getTrusteeNotesRepository,
-  getTrusteeUpcomingReportDatesRepository,
+  getTrusteeUpcomingKeyDatesRepository,
   getTrusteeMatchVerificationRepository,
   getTrusteeProfessionalIdsRepository,
   getListsGateway,

@@ -56,9 +56,9 @@ import {
 } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 import {
-  TrusteeUpcomingReportDates,
-  TrusteeUpcomingReportDatesInput,
-} from '@common/cams/trustee-upcoming-report-dates';
+  TrusteeUpcomingKeyDates,
+  TrusteeUpcomingKeyDatesInput,
+} from '@common/cams/trustee-upcoming-key-dates';
 
 export const API_CACHE_NAMESPACE = 'api:';
 
@@ -546,19 +546,19 @@ async function getTrusteeOversightAssignments(trusteeId: string) {
   return api().get<TrusteeOversightAssignment[]>(`/trustees/${trusteeId}/oversight-assignments`);
 }
 
-async function getUpcomingReportDates(trusteeId: string, appointmentId: string) {
-  return api().get<TrusteeUpcomingReportDates | null>(
-    `/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-report-dates`,
+async function getUpcomingKeyDates(trusteeId: string, appointmentId: string) {
+  return api().get<TrusteeUpcomingKeyDates | null>(
+    `/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates`,
   );
 }
 
-async function putUpcomingReportDates(
+async function putUpcomingKeyDates(
   trusteeId: string,
   appointmentId: string,
-  input: TrusteeUpcomingReportDatesInput,
+  input: TrusteeUpcomingKeyDatesInput,
 ) {
   return api().put(
-    `/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-report-dates`,
+    `/trustees/${trusteeId}/appointments/${appointmentId}/upcoming-key-dates`,
     input,
   );
 }
@@ -586,8 +586,8 @@ export const _Api2 = {
   createTrusteeAssistant,
   updateTrusteeAssistant,
   deleteTrusteeAssistant,
-  getUpcomingReportDates,
-  putUpcomingReportDates,
+  getUpcomingKeyDates,
+  putUpcomingKeyDates,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   postTrustee,

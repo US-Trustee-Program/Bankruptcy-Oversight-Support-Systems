@@ -1,7 +1,7 @@
 import * as sdk from 'launchdarkly-react-client-sdk';
 import { FeatureFlagSet, testFeatureFlags } from '@common/feature-flags';
 import * as config from '../../configuration/featureFlagConfiguration';
-import useFeatureFlags, { DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES } from './UseFeatureFlags';
+import useFeatureFlags, { DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES } from './UseFeatureFlags';
 import { mockConfiguration } from '../testing/mock-configuration';
 
 const BOGUS_CLIENT_ID = 'bogus-client-id';
@@ -65,6 +65,6 @@ describe('useFeatureFlag hook', () => {
   });
 
   test('testFeatureFlags includes DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES as true', () => {
-    expect(testFeatureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES]).toBe(true);
+    expect(testFeatureFlags[DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]).toBe(true);
   });
 });

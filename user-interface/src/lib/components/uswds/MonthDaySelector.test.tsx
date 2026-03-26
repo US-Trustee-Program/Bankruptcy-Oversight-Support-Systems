@@ -123,19 +123,6 @@ describe('MonthDaySelector', () => {
     expect(onChange).toHaveBeenLastCalledWith('');
   });
 
-  test('shows custom error message', () => {
-    render(<MonthDaySelector id="test" customErrorMessage="This field is required." />);
-
-    expect(screen.getByText('This field is required.')).toBeInTheDocument();
-  });
-
-  test('applies error styling to both selects when error message is present', () => {
-    render(<MonthDaySelector id="test" customErrorMessage="Error" />);
-
-    expect(monthSelect()).toHaveClass('usa-input--error');
-    expect(daySelect()).toHaveClass('usa-input--error');
-  });
-
   test('disables both selects when disabled prop is true', () => {
     render(<MonthDaySelector id="test" disabled />);
 

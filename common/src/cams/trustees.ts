@@ -7,7 +7,7 @@ import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
 import { TrusteeAssistant } from './trustee-assistants';
 import { AbstractTrusteeHistory } from './trustee-history-base';
-import { TrusteeUpcomingReportDatesHistory } from './trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDatesHistory } from './trustee-upcoming-key-dates';
 
 export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
@@ -189,4 +189,4 @@ export type TrusteeHistory =
   | TrusteeZoomInfoHistory
   | TrusteeOversightHistory
   | TrusteeAppointmentHistory
-  | TrusteeUpcomingReportDatesHistory;
+  | TrusteeUpcomingKeyDatesHistory;
