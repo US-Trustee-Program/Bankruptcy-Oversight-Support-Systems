@@ -462,36 +462,6 @@ describe('EditUpcomingKeyDates', () => {
     });
 
     describe('TPR Due', () => {
-      test('displays errors for both TPR Review Period and TPR Due when both are invalid', async () => {
-        vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-        const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-        renderComponent();
-
-        expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
-
-        // Set TPR Review Period start without end (causes validation error)
-        await userEvent.selectOptions(
-          document.getElementById('tpr-review-period-start-month')!,
-          '04',
-        );
-        await userEvent.selectOptions(
-          document.getElementById('tpr-review-period-start-day')!,
-          '01',
-        );
-
-        // Set TPR Due date without Year Type (causes validation error)
-        await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
-        await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
-
-        await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
-
-        // Both errors should be displayed
-        expect(screen.getByTestId('tpr-review-period-error')).toBeInTheDocument();
-        expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
-        expect(putSpy).not.toHaveBeenCalled();
-      });
-
       test('highlights only Month/Day fields when TPR Due date has error', async () => {
         vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
         const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
@@ -512,8 +482,32 @@ describe('EditUpcomingKeyDates', () => {
         expect(screen.getByTestId('tpr-due-year-type')).not.toHaveClass('usa-input--error');
 
         // Blur error takes priority: shows "Must be a valid date mm/dd." (date absent, year type set)
-        expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
+        expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
+          'Must be a valid date mm/dd.',
+        );
         expect(putSpy).not.toHaveBeenCalled();
+      });
+
+      test('shows only invalid date error when month is selected but day and year type are empty', async () => {
+        vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+        renderComponent();
+
+        expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+        // Select only month — day and year type remain empty
+        await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+        // Blur away to trigger the blur error
+        await userEvent.click(screen.getByTestId('field-exam'));
+
+        await waitFor(() => {
+          expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
+            'Must be a valid date mm/dd.',
+          );
+        });
+
+        // Year Type should NOT have an error class — incomplete date takes priority
+        expect(screen.getByTestId('tpr-due-year-type')).not.toHaveClass('usa-input--error');
       });
 
       test('highlights only Year Type field when it has error', async () => {
@@ -536,7 +530,9 @@ describe('EditUpcomingKeyDates', () => {
         expect(document.getElementById('tpr-due-month')).not.toHaveClass('usa-input--error');
         expect(document.getElementById('tpr-due-day')).not.toHaveClass('usa-input--error');
 
-        expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
+        expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
+          'TPR Due Year Type is required.',
+        );
         expect(putSpy).not.toHaveBeenCalled();
       });
 
@@ -552,7 +548,9 @@ describe('EditUpcomingKeyDates', () => {
         await userEvent.selectOptions(document.getElementById('tpr-due-day')!, '15');
         await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
-        expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
+        expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
+          'TPR Due Year Type is required.',
+        );
         expect(screen.getByTestId('tpr-due-year-type')).toHaveClass('usa-input--error');
 
         // Select Year Type - should clear error
@@ -574,7 +572,9 @@ describe('EditUpcomingKeyDates', () => {
         await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
         // Blur error takes priority: shows "Must be a valid date mm/dd." (date absent, year type set)
-        expect(screen.getByTestId('tpr-due-error')).toBeInTheDocument();
+        expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
+          'Must be a valid date mm/dd.',
+        );
         expect(document.getElementById('tpr-due-month')).toHaveClass('usa-input--error');
 
         // Select Month - should clear error (re-focuses the row, clearing blur error)
@@ -649,6 +649,43 @@ describe('EditUpcomingKeyDates', () => {
         });
       });
 
+      test('hides error while month selector is focused then shows invalid date error after blur', async () => {
+        vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+        renderComponent();
+
+        expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+        // Select year type then blur away — error appears (date is required)
+        await userEvent.selectOptions(screen.getByTestId('tpr-due-year-type'), 'EVEN');
+        await userEvent.click(screen.getByTestId('field-exam'));
+
+        await waitFor(() => {
+          expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
+            'Must be a valid date mm/dd.',
+          );
+        });
+
+        // Focus back on month selector — row is focused, error disappears
+        await userEvent.click(document.getElementById('tpr-due-month')!);
+
+        expect(screen.queryByTestId('tpr-due-error')).not.toBeInTheDocument();
+
+        // Select only month (no day) — still focused, no error
+        await userEvent.selectOptions(document.getElementById('tpr-due-month')!, '09');
+
+        expect(screen.queryByTestId('tpr-due-error')).not.toBeInTheDocument();
+
+        // Blur away — incomplete date error appears
+        await userEvent.click(screen.getByTestId('field-exam'));
+
+        await waitFor(() => {
+          expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
+            'Must be a valid date mm/dd.',
+          );
+        });
+      });
+
       test('shows Year Type blur error when date is complete but Year Type is not set on blur', async () => {
         vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -663,6 +700,9 @@ describe('EditUpcomingKeyDates', () => {
 
         await waitFor(() => {
           expect(screen.getByTestId('tpr-due-year-type')).toHaveClass('usa-input--error');
+          expect(screen.getByTestId('tpr-due-error')).toHaveTextContent(
+            'TPR Due Year Type is required.',
+          );
         });
       });
 
@@ -772,6 +812,25 @@ describe('EditUpcomingKeyDates', () => {
     });
 
     describe('TIR Submission', () => {
+      test('auto-populates when TIR Review Period end date is filled', async () => {
+        vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+        renderComponent();
+
+        expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+        await userEvent.selectOptions(
+          document.getElementById('tir-review-period-end-month')!,
+          '03',
+        );
+        await userEvent.selectOptions(document.getElementById('tir-review-period-end-day')!, '31');
+
+        await waitFor(() => {
+          expect(document.getElementById('tir-submission-month')).not.toHaveValue('');
+          expect(document.getElementById('tir-submission-day')).not.toHaveValue('');
+        });
+      });
+
       test('shows blur error after interacting and blurring with invalid value', async () => {
         vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -803,6 +862,25 @@ describe('EditUpcomingKeyDates', () => {
     });
 
     describe('TIR Review', () => {
+      test('auto-populates when TIR Review Period end date is filled', async () => {
+        vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+        renderComponent();
+
+        expect(await screen.findByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
+
+        await userEvent.selectOptions(
+          document.getElementById('tir-review-period-end-month')!,
+          '03',
+        );
+        await userEvent.selectOptions(document.getElementById('tir-review-period-end-day')!, '31');
+
+        await waitFor(() => {
+          expect(document.getElementById('tir-review-month')).not.toHaveValue('');
+          expect(document.getElementById('tir-review-day')).not.toHaveValue('');
+        });
+      });
+
       test('shows blur error after interacting and blurring with invalid value', async () => {
         vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
