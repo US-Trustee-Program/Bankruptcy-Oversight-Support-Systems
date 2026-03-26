@@ -1,4 +1,5 @@
-import { ConsolidationType, OrderType } from '@common/cams/orders';
+import { ConsolidationType } from '@common/cams/orders';
+import { DataVerificationItemType } from '@common/cams/data-verification';
 
 export const orderStatusType = new Map([
   ['pending', 'Pending Review'],
@@ -6,7 +7,7 @@ export const orderStatusType = new Map([
   ['rejected', 'Rejected'],
 ]);
 
-export const orderType = new Map<OrderType, string>([
+export const orderType = new Map<DataVerificationItemType, string>([
   ['transfer', 'Transfer'],
   ['consolidation', 'Consolidation'],
   ['trustee-match', 'Trustee Mismatch'],
