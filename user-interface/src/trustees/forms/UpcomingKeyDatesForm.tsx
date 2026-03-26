@@ -322,7 +322,7 @@ export default function UpcomingKeyDatesForm() {
           </div>
         </div>
         {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
-          <span className="usa-error-message">
+          <span className="usa-error-message" data-testid="tpr-due-error">
             {tprDueBlurError || errors.tprDue || errors.tprDueYearType}
           </span>
         )}
@@ -358,7 +358,9 @@ export default function UpcomingKeyDatesForm() {
           }}
         />
         {tirSubmissionBlurError && (
-          <span className="usa-error-message">{tirSubmissionBlurError}</span>
+          <span className="usa-error-message" data-testid="tir-submission-error">
+            {tirSubmissionBlurError}
+          </span>
         )}
       </div>
       <div className="tir-date-group">
@@ -378,7 +380,11 @@ export default function UpcomingKeyDatesForm() {
             }
           }}
         />
-        {tirReviewBlurError && <span className="usa-error-message">{tirReviewBlurError}</span>}
+        {tirReviewBlurError && (
+          <span className="usa-error-message" data-testid="tir-review-error">
+            {tirReviewBlurError}
+          </span>
+        )}
       </div>
       <div className="usa-button-group">
         <Button id="save-upcoming-key-dates" onClick={handleSave} disabled={isSaving}>
