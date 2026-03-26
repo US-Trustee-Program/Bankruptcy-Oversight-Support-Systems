@@ -90,6 +90,15 @@ export class TrusteeUpcomingKeyDatesMongoRepository
     }
   }
 
+  async listAll(): Promise<TrusteeUpcomingKeyDates[]> {
+    try {
+      const query = doc('documentType').equals('TRUSTEE_UPCOMING_REPORT_DATES');
+      return await this.getAdapter<TrusteeUpcomingKeyDates>().find(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to list all upcoming key dates.');
+    }
+  }
+
   async createHistory(history: Creatable<TrusteeUpcomingKeyDatesHistory>): Promise<void> {
     try {
       await this.getAdapter<Creatable<TrusteeUpcomingKeyDatesHistory>>().insertOne(history, {
