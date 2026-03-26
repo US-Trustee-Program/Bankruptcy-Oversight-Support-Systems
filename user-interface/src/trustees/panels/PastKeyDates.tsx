@@ -46,8 +46,12 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
     });
   }
 
-  const fieldExam = data?.pastFieldExam ? isoToMMDDYYYY(data.pastFieldExam) : NO_DATE;
-  const audit = data?.pastAudit ? isoToMMDDYYYY(data.pastAudit) : NO_DATE;
+  function formatDateOrDefault(isoDate: string | undefined): string {
+    return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
+  }
+
+  const fieldExam = formatDateOrDefault(data?.pastFieldExam);
+  const audit = formatDateOrDefault(data?.pastAudit);
 
   if (isLoading) {
     return <LoadingSpinner id="past-key-dates-loading" />;

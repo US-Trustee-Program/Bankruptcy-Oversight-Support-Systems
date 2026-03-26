@@ -295,6 +295,18 @@ export function mmddToISO(str: string): string {
   return `1900-${month}-${day}`;
 }
 
+export function isoToSentinel(isoDate: string): string {
+  if (!isoDate) {
+    return '';
+  }
+  const parts = isoDate.split('-');
+  if (parts.length !== 3) {
+    return '';
+  }
+  const [, month, day] = parts;
+  return `1900-${month}-${day}`;
+}
+
 function isValidISODate(iso: string): boolean {
   const date = new Date(iso);
   return !isNaN(date.getTime()) && date.toISOString().split('T')[0] === iso;

@@ -57,8 +57,12 @@ export class TrusteeUpcomingKeyDatesMongoRepository
     );
     try {
       return await this.getAdapter<TrusteeUpcomingKeyDates>().findOne(query);
-    } catch {
-      return null;
+    } catch (originalError) {
+      throw getCamsError(
+        originalError,
+        MODULE_NAME,
+        `Unable to fetch upcoming key dates for appointment ${appointmentId}.`,
+      );
     }
   }
 
