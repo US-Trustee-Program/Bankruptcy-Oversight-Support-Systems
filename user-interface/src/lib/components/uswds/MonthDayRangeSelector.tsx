@@ -69,7 +69,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
   return (
     <div className="review-period-group">
       <div className="review-period-header">
-        <label className="usa-label" htmlFor={`${id}-start-month`}>
+        <label className="usa-label" htmlFor={`${id}-start-month`} data-testid={`${id}-label`}>
           {label}
         </label>
         {hasValue && (
@@ -101,7 +101,11 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
         />
       </div>
       {hasError && (
-        <div className="date-error usa-input__error-message" aria-live="polite">
+        <div
+          className="date-error usa-input__error-message"
+          aria-live="polite"
+          data-testid={`${id}-error`}
+        >
           {displayError}
         </div>
       )}
