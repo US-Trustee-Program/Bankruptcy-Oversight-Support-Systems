@@ -62,7 +62,6 @@ export type TrusteeAppointmentSyncEvent = {
 export const TrusteeAppointmentSyncErrorCode = {
   NoTrusteeMatch: 'NO_TRUSTEE_MATCH',
   MultipleTrusteesMatch: 'MULTIPLE_TRUSTEES_MATCH',
-  CaseNotFound: 'CASE_NOT_FOUND',
   ImperfectMatch: 'IMPERFECT_MATCH',
   HighConfidenceMatch: 'HIGH_CONFIDENCE_MATCH',
 } as const;

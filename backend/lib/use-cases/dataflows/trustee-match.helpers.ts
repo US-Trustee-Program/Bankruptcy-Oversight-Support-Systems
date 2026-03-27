@@ -259,16 +259,6 @@ export async function resolveTrusteeWithFuzzyMatching(
   const casesRepo = factory.getCasesRepository(context);
   const syncedCase = await casesRepo.getSyncedCase(event.caseId);
 
-  if (!syncedCase) {
-    throw new CamsError(MODULE_NAME, {
-      message: `Case ${event.caseId} not found during fuzzy matching.`,
-      data: {
-        mismatchReason: 'CASE_NOT_FOUND',
-        matchCandidates: [],
-      },
-    });
-  }
-
   // Score all candidates - fetch data in parallel to avoid N+1 queries
   const trusteesRepo = factory.getTrusteesRepository(context);
   const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
