@@ -330,6 +330,22 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   deleteAll(): Promise<number>;
 }
 
+export type TrusteeDueDateMetricsAggregation = {
+  totalChapter7Appointments: number;
+  completeCount: number;
+  partialCount: number;
+  noneCount: number;
+  tprReviewPeriodCount: number;
+  pastFieldExamCount: number;
+  pastIndependentAuditCount: number;
+  tirReviewPeriodCount: number;
+  tprDueDateCount: number;
+  upcomingFieldExamCount: number;
+  upcomingIndependentAuditRequiredCount: number;
+  tirSubmissionCount: number;
+  tirReviewDueDateCount: number;
+};
+
 export interface TrusteeAppointmentsRepository extends Releasable {
   read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
@@ -348,7 +364,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   findByCaseId(caseId: string): Promise<CaseAppointment[]>;
-  listAllChapter7Appointments(): Promise<TrusteeAppointment[]>;
+  getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
 }
@@ -500,7 +516,6 @@ export interface ObservabilityGateway {
 export interface TrusteeUpcomingKeyDatesRepository
   extends Reads<TrusteeUpcomingKeyDates | null>, Upserts<TrusteeUpcomingKeyDates>, Releasable {
   getByAppointmentId(appointmentId: string): Promise<TrusteeUpcomingKeyDates | null>;
-  listAll(): Promise<TrusteeUpcomingKeyDates[]>;
   createHistory(history: Creatable<TrusteeUpcomingKeyDatesHistory>): Promise<void>;
 }
 

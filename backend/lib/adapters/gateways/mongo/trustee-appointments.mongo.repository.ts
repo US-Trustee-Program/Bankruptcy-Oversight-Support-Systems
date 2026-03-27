@@ -1,7 +1,10 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { TrusteeAppointmentsRepository } from '../../../use-cases/gateways.types';
+import {
+  TrusteeAppointmentsRepository,
+  TrusteeDueDateMetricsAggregation,
+} from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
 import {
@@ -245,17 +248,230 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
-  async listAllChapter7Appointments(): Promise<TrusteeAppointment[]> {
+  async getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation> {
     try {
-      const doc = using<TrusteeAppointmentDocument>();
-      const query = and(
-        doc('documentType').equals('TRUSTEE_APPOINTMENT'),
-        doc('chapter').equals('7'),
-      );
-      return await this.getAdapter<TrusteeAppointmentDocument>().find(query);
+      const pipeline = [
+        // Stage 1: Filter to Chapter 7 appointments only
+        {
+          $match: {
+            documentType: 'TRUSTEE_APPOINTMENT',
+            chapter: '7',
+          },
+        },
+
+        // Stage 2: Left join with key dates from trustees collection
+        {
+          $lookup: {
+            from: 'trustees',
+            let: { appointmentId: '$id' },
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $and: [
+                      { $eq: ['$documentType', 'TRUSTEE_UPCOMING_REPORT_DATES'] },
+                      { $eq: ['$appointmentId', '$$appointmentId'] },
+                    ],
+                  },
+                },
+              },
+            ],
+            as: 'keyDates',
+          },
+        },
+
+        // Stage 3: Extract first (should be only) key dates doc
+        {
+          $addFields: {
+            keyDoc: { $arrayElemAt: ['$keyDates', 0] },
+          },
+        },
+
+        // Stage 4: Count how many field groups are populated (0-9)
+        {
+          $addFields: {
+            fieldCount: {
+              $sum: [
+                // tprReviewPeriod requires BOTH start AND end
+                {
+                  $cond: [
+                    {
+                      $and: [
+                        { $ifNull: ['$keyDoc.tprReviewPeriodStart', false] },
+                        { $ifNull: ['$keyDoc.tprReviewPeriodEnd', false] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+                // pastFieldExam
+                { $cond: [{ $ifNull: ['$keyDoc.pastFieldExam', false] }, 1, 0] },
+                // pastAudit
+                { $cond: [{ $ifNull: ['$keyDoc.pastAudit', false] }, 1, 0] },
+                // tirReviewPeriod requires BOTH start AND end
+                {
+                  $cond: [
+                    {
+                      $and: [
+                        { $ifNull: ['$keyDoc.tirReviewPeriodStart', false] },
+                        { $ifNull: ['$keyDoc.tirReviewPeriodEnd', false] },
+                      ],
+                    },
+                    1,
+                    0,
+                  ],
+                },
+                // tprDue
+                { $cond: [{ $ifNull: ['$keyDoc.tprDue', false] }, 1, 0] },
+                // upcomingFieldExam
+                { $cond: [{ $ifNull: ['$keyDoc.upcomingFieldExam', false] }, 1, 0] },
+                // upcomingIndependentAuditRequired
+                { $cond: [{ $ifNull: ['$keyDoc.upcomingIndependentAuditRequired', false] }, 1, 0] },
+                // tirSubmission
+                { $cond: [{ $ifNull: ['$keyDoc.tirSubmission', false] }, 1, 0] },
+                // tirReview
+                { $cond: [{ $ifNull: ['$keyDoc.tirReview', false] }, 1, 0] },
+              ],
+            },
+          },
+        },
+
+        // Stage 5: Classify completeness: complete (9), partial (1-8), none (0)
+        {
+          $addFields: {
+            completeness: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ['$fieldCount', 9] }, then: 'complete' },
+                  { case: { $gt: ['$fieldCount', 0] }, then: 'partial' },
+                ],
+                default: 'none',
+              },
+            },
+          },
+        },
+
+        // Stage 6: Group and count everything
+        {
+          $group: {
+            _id: null,
+            totalChapter7Appointments: { $sum: 1 },
+            completeCount: {
+              $sum: { $cond: [{ $eq: ['$completeness', 'complete'] }, 1, 0] },
+            },
+            partialCount: {
+              $sum: { $cond: [{ $eq: ['$completeness', 'partial'] }, 1, 0] },
+            },
+            noneCount: {
+              $sum: { $cond: [{ $eq: ['$completeness', 'none'] }, 1, 0] },
+            },
+            // Per-field counts
+            tprReviewPeriodCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ifNull: ['$keyDoc.tprReviewPeriodStart', false] },
+                      { $ifNull: ['$keyDoc.tprReviewPeriodEnd', false] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            pastFieldExamCount: {
+              $sum: { $cond: [{ $ifNull: ['$keyDoc.pastFieldExam', false] }, 1, 0] },
+            },
+            pastIndependentAuditCount: {
+              $sum: { $cond: [{ $ifNull: ['$keyDoc.pastAudit', false] }, 1, 0] },
+            },
+            tirReviewPeriodCount: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $ifNull: ['$keyDoc.tirReviewPeriodStart', false] },
+                      { $ifNull: ['$keyDoc.tirReviewPeriodEnd', false] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+            tprDueDateCount: {
+              $sum: { $cond: [{ $ifNull: ['$keyDoc.tprDue', false] }, 1, 0] },
+            },
+            upcomingFieldExamCount: {
+              $sum: { $cond: [{ $ifNull: ['$keyDoc.upcomingFieldExam', false] }, 1, 0] },
+            },
+            upcomingIndependentAuditRequiredCount: {
+              $sum: {
+                $cond: [{ $ifNull: ['$keyDoc.upcomingIndependentAuditRequired', false] }, 1, 0],
+              },
+            },
+            tirSubmissionCount: {
+              $sum: { $cond: [{ $ifNull: ['$keyDoc.tirSubmission', false] }, 1, 0] },
+            },
+            tirReviewDueDateCount: {
+              $sum: { $cond: [{ $ifNull: ['$keyDoc.tirReview', false] }, 1, 0] },
+            },
+          },
+        },
+
+        // Stage 7: Remove _id and keep only the metrics
+        {
+          $project: {
+            _id: 0,
+            totalChapter7Appointments: 1,
+            completeCount: 1,
+            partialCount: 1,
+            noneCount: 1,
+            tprReviewPeriodCount: 1,
+            pastFieldExamCount: 1,
+            pastIndependentAuditCount: 1,
+            tirReviewPeriodCount: 1,
+            tprDueDateCount: 1,
+            upcomingFieldExamCount: 1,
+            upcomingIndependentAuditRequiredCount: 1,
+            tirSubmissionCount: 1,
+            tirReviewDueDateCount: 1,
+          },
+        },
+      ];
+
+      const collection = this.client.database(this.databaseName).collection(this.collectionName);
+      const cursor = await collection.aggregate(pipeline);
+      const results = [];
+      for await (const result of cursor) {
+        results.push(result);
+      }
+
+      // Handle empty result (no Chapter 7 appointments)
+      if (results.length === 0) {
+        return {
+          totalChapter7Appointments: 0,
+          completeCount: 0,
+          partialCount: 0,
+          noneCount: 0,
+          tprReviewPeriodCount: 0,
+          pastFieldExamCount: 0,
+          pastIndependentAuditCount: 0,
+          tirReviewPeriodCount: 0,
+          tprDueDateCount: 0,
+          upcomingFieldExamCount: 0,
+          upcomingIndependentAuditRequiredCount: 0,
+          tirSubmissionCount: 0,
+          tirReviewDueDateCount: 0,
+        };
+      }
+
+      return results[0] as TrusteeDueDateMetricsAggregation;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: 'Failed to retrieve all Chapter 7 appointments.',
+        message: 'Failed to compute Chapter 7 due date metrics aggregation.',
       });
     }
   }
