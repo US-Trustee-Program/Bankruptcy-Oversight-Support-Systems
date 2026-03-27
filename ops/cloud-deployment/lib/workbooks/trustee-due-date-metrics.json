@@ -106,39 +106,6 @@
     {
       "type": 1,
       "content": {
-        "json": "## Total Chapter 7 Appointments Over Time\nTotal number of Chapter 7 trustee appointments tracked in the system."
-      },
-      "name": "total-appointments-title"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-DUE-DATE-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend Total = todouble(customDimensions.totalChapter7Appointments)\n| summarize TotalAppointments = max(Total) by Day = startofday(timestamp)\n| order by Day asc",
-        "size": 0,
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "areachart",
-        "chartSettings": {
-          "xAxis": "Day",
-          "showDataPoints": true,
-          "xSettings": {
-            "numberFormatSettings": {
-              "unit": 27,
-              "options": {
-                "style": "decimal",
-                "useGrouping": true
-              }
-            }
-          }
-        }
-      },
-      "name": "total-appointments-chart"
-    },
-    {
-      "type": 1,
-      "content": {
         "json": "## Manual Entry Field Completion Over Time\nPercentage of Chapter 7 appointments with each manually-entered key date field populated."
       },
       "name": "manual-fields-title"
