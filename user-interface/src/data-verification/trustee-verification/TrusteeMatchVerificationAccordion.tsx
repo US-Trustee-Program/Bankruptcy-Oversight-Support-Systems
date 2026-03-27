@@ -10,6 +10,7 @@ import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseIdParts } from '@common/cams/cases';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api2 from '@/lib/models/api2';
 import TrusteeMatchRejectionModal, {
@@ -35,7 +36,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
 
-  const courtName = courts.find((c) => c.courtId === order.courtId)?.courtName ?? order.courtId;
+  const { divisionCode } = getCaseIdParts(order.caseId);
+  const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
+  const courtName = courtDetails?.courtName ?? order.courtId;
 
   const { legacy } = order.dxtrTrustee;
   const addressLines = [
@@ -174,7 +177,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         >
           {candidate.appointments?.map((appt, i, arr) => (
             <span key={i}>
-              {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
+              {appt.courtName}
+              {appt.courtDivisionName ? ` (${appt.courtDivisionName})` : ''}: Chap{' '}
               {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
               {i < arr.length - 1 && <br />}
             </span>
