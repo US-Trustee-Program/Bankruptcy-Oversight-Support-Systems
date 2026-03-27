@@ -70,7 +70,7 @@
   "overrides": {
     "semver": "7.7.4",
     "@babel/runtime": "7.28.6",
-    "node-forge": ">=1.4.0",
-    "path-to-regexp": ">=8.4.0"
+    "node-forge": "1.4.0",
+    "path-to-regexp": "8.4.0"
   }
 }
