@@ -204,11 +204,6 @@ echo ""
 echo -e "${BLUE}🧪 Step 3: Running E2E tests...${NC}"
 echo ""
 
-# Stream backend logs to a background file so we can surface them on failure
-BACKEND_LOG_FILE=$(mktemp)
-podman logs -f cams-backend-e2e > "$BACKEND_LOG_FILE" 2>&1 &
-BACKEND_LOG_PID=$!
-
 # Run playwright tests in container and stream output directly (no filtering — the
 # line reporter writes useful progress lines that must not be suppressed).
 # Capture to a temp file so we can parse the summary counts afterward.
@@ -220,9 +215,10 @@ set -e
 TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
 rm -f "$TEST_OUTPUT_FILE"
 
-# Stop background backend log streaming
-kill "$BACKEND_LOG_PID" 2>/dev/null || true
-wait "$BACKEND_LOG_PID" 2>/dev/null || true
+# Save full backend logs now (containers still running, before cleanup)
+mkdir -p backend-logs
+BACKEND_LOG_FILE="backend-logs/backend.log"
+podman logs cams-backend-e2e > "$BACKEND_LOG_FILE" 2>&1 || true
 
 # If tests failed, print the last 100 lines of backend logs
 if [ "$TEST_EXIT_CODE" -ne 0 ]; then
@@ -231,7 +227,7 @@ if [ "$TEST_EXIT_CODE" -ne 0 ]; then
     tail -100 "$BACKEND_LOG_FILE"
     echo ""
 fi
-rm -f "$BACKEND_LOG_FILE"
+echo -e "${BLUE}📋 Full backend log saved to: backend-logs/backend.log${NC}"
 
 if [ "$TEST_EXIT_CODE" -eq 0 ]; then
     TESTS_PASSED=true
@@ -264,8 +260,9 @@ fi
 
 echo ""
 echo "📁 Test artifacts location:"
-echo "   - Results: ./test-results/"
-echo "   - Report:  ./playwright-report/"
+echo "   - Results:      ./test-results/"
+echo "   - Backend log:  ./backend-logs/backend.log"
+echo "   - Report:       ./playwright-report/"
 echo ""
 echo "To view detailed report:"
 echo "   npm run report"

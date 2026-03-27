@@ -1,6 +1,7 @@
 node_modules/
 /test-results/
 /playwright-report/
+/backend-logs/
 /blob-report/
 /playwright/.cache/
 /mongodb-data/
