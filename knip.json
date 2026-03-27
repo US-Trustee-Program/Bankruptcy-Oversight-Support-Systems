@@ -28,7 +28,8 @@
         "src/**/*.test.tsx"
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.ts", "!playwright.config.ts"],
-      "ignore": []
+      "ignore": [],
+      "ignoreFiles": ["src/initialize.ts"]
     },
     "common": {
       "entry": ["src/**/*.test.ts"],
@@ -61,6 +62,7 @@
     "popd",
     "playwright",
     "dot",
+    "date",
     "dev-tools/.venv-docs/bin/python",
     "dev-tools/.venv-docs/bin/python3",
     "python3",
