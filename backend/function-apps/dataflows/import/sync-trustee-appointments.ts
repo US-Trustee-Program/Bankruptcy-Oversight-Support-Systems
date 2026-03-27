@@ -145,7 +145,6 @@ async function handlePage(
         highConfidenceMatchCount: String(scenarioDistribution.highConfidenceMatchCount),
         noMatchCount: String(scenarioDistribution.noMatchCount),
         multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
-        caseNotFoundCount: String(scenarioDistribution.caseNotFoundCount),
       },
       additionalMetrics: [
         { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
