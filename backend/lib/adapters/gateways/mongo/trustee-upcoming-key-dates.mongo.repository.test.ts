@@ -4,6 +4,7 @@ import {
   createMockApplicationContext,
   getTheThrownError,
 } from '../../../testing/testing-utilities';
+import { NotFoundError } from '../../../common-errors/not-found-error';
 import { ApplicationContext } from '../../types/basic';
 import { TrusteeUpcomingKeyDatesMongoRepository } from './trustee-upcoming-key-dates.mongo.repository';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
@@ -65,6 +66,16 @@ describe('TrusteeUpcomingKeyDatesMongoRepository', () => {
 
       expect(result).toEqual(mockDoc);
       expect(findOneSpy).toHaveBeenCalledWith(expectedQuery);
+    });
+
+    test('returns null when no document exists for appointment', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(
+        new NotFoundError(MODULE_NAME),
+      );
+
+      const result = await repo.getByAppointmentId('appointment-without-key-dates');
+
+      expect(result).toBeNull();
     });
 
     test('throws CamsError when findOne fails', async () => {
