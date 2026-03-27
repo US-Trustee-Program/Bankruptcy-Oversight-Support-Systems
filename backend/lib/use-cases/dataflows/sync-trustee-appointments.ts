@@ -14,7 +14,6 @@ import { createAuditRecord, SYSTEM_USER_REFERENCE } from '@common/cams/auditable
 import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsError } from '../../common-errors/cams-error';
-import { isNotFoundError, NotFoundError } from '../../common-errors/not-found-error';
 import {
   CasesRepository,
   TrusteeAppointmentsRepository,
@@ -37,7 +36,6 @@ type ScenarioDistribution = {
   highConfidenceMatchCount: number;
   noMatchCount: number;
   multipleMatchCount: number;
-  caseNotFoundCount: number;
 };
 
 type MatchAuditEntry = {
@@ -49,7 +47,6 @@ type MatchAuditEntry = {
     | 'high-confidence'
     | 'no-match'
     | 'multiple-match'
-    | 'case-not-found'
     | 'error';
   matchedTrusteeId: string | null;
   scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null;
@@ -74,10 +71,6 @@ function classifyMatchOutcome(
   const DEFAULT_MESSAGE = { ...event, error };
   const { data } = error;
   if (!data) {
-    if (isNotFoundError(error)) {
-      return { ...event, mismatchReason: TrusteeAppointmentSyncErrorCode.CaseNotFound };
-    }
-
     return DEFAULT_MESSAGE;
   }
 
@@ -260,7 +253,6 @@ async function processAppointments(
     highConfidenceMatchCount: 0,
     noMatchCount: 0,
     multipleMatchCount: 0,
-    caseNotFoundCount: 0,
   };
 
   for (const event of events) {
@@ -277,11 +269,6 @@ async function processAppointments(
       const trusteeId = await matchTrusteeByName(context, event.dxtrTrustee.fullName);
 
       const syncedCase = await casesRepo.getSyncedCase(event.caseId);
-      if (!syncedCase) {
-        throw new NotFoundError(MODULE_NAME, {
-          message: `Case ${event.caseId} not found in synced cases.`,
-        });
-      }
       const trusteeAppointments = await appointmentsRepo.getTrusteeAppointments(trusteeId);
 
       if (
@@ -403,16 +390,6 @@ async function processAppointments(
               event,
               TrusteeAppointmentSyncErrorCode.ImperfectMatch,
               classified.matchCandidates ?? [],
-            );
-            break;
-          case TrusteeAppointmentSyncErrorCode.CaseNotFound:
-            scenarioDistribution.caseNotFoundCount++;
-            audit.matchOutcome = 'case-not-found';
-            await upsertMatchVerification(
-              verificationRepo,
-              event,
-              TrusteeAppointmentSyncErrorCode.CaseNotFound,
-              [],
             );
             break;
         }
