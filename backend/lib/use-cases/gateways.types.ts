@@ -523,6 +523,6 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   ): Promise<TrusteeProfessionalId>;
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]>;
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;
-  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<void>;
+  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }

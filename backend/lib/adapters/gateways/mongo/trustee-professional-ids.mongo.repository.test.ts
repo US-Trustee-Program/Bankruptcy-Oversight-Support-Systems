@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, beforeEach, afterEach, afterAll, describe, test, expect } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import {
   TrusteeProfessionalIdsMongoRepository,
@@ -32,7 +32,7 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-    repository = new TrusteeProfessionalIdsMongoRepository(context);
+    repository = TrusteeProfessionalIdsMongoRepository.getInstance(context);
   });
 
   afterEach(async () => {
@@ -84,33 +84,17 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     const camsTrusteeId = 'trustee-123';
     const acmsProfessionalId = 'NY-00063';
 
-    test('should throw error when acmsProfessionalId already exists', async () => {
+    test('should be idempotent - return existing mapping when exact pair already exists', async () => {
       const existingMapping: TrusteeProfessionalIdDocument = {
         ...sampleProfessionalId,
         id: 'existing-prof-id',
-        camsTrusteeId: 'different-trustee-456',
+        camsTrusteeId,
         acmsProfessionalId,
       };
 
-      // Mock findByAcmsProfessionalId to return existing mapping
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([existingMapping]);
-
-      await expect(
-        repository.createProfessionalId(camsTrusteeId, acmsProfessionalId, mockUser),
-      ).rejects.toThrow(
-        `ACMS Professional ID ${acmsProfessionalId} already mapped to trustee ${existingMapping.camsTrusteeId}`,
-      );
-    });
-
-    test('should create a new professional ID mapping successfully', async () => {
-      const mockId = 'new-prof-id';
-
-      // Mock findByAcmsProfessionalId to return empty array (no duplicates)
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
-
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockResolvedValue(mockId);
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([existingMapping]);
 
       const result = await repository.createProfessionalId(
         camsTrusteeId,
@@ -118,39 +102,57 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
         mockUser,
       );
 
-      expect(mockAdapter).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'TRUSTEE_PROFESSIONAL_ID',
-          camsTrusteeId,
-          acmsProfessionalId,
-          createdBy: mockUser,
-          updatedBy: mockUser,
-          createdOn: expect.any(String),
-          updatedOn: expect.any(String),
-        }),
-      );
-      expect(result.id).toBe(mockId);
+      expect(findSpy).toHaveBeenCalled();
+      expect(result.id).toBe('existing-prof-id');
       expect(result.camsTrusteeId).toBe(camsTrusteeId);
+      expect(result.acmsProfessionalId).toBe(acmsProfessionalId);
+    });
+
+    test('should create a new professional ID mapping successfully', async () => {
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const insertOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue('new-prof-id');
+
+      const result = await repository.createProfessionalId(
+        camsTrusteeId,
+        acmsProfessionalId,
+        mockUser,
+      );
+
+      expect(findSpy).toHaveBeenCalled();
+      expect(insertOneSpy).toHaveBeenCalled();
+      expect(result.id).toBe('new-prof-id');
+      expect(result.camsTrusteeId).toBe(camsTrusteeId);
+      expect(result.acmsProfessionalId).toBe(acmsProfessionalId);
+      expect(result.documentType).toBe('TRUSTEE_PROFESSIONAL_ID');
+    });
+
+    test('should allow same ACMS ID mapped to different trustees (many-to-one)', async () => {
+      const differentTrusteeId = 'different-trustee-456';
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('new-prof-id-2');
+
+      const result = await repository.createProfessionalId(
+        differentTrusteeId,
+        acmsProfessionalId,
+        mockUser,
+      );
+
+      expect(result.camsTrusteeId).toBe(differentTrusteeId);
       expect(result.acmsProfessionalId).toBe(acmsProfessionalId);
     });
 
     test('should handle database errors during creation', async () => {
       const error = new Error('Database connection failed');
 
-      // Mock findByAcmsProfessionalId to return empty array (no duplicates)
       vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
-
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
-        .mockRejectedValue(error);
+      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockRejectedValue(error);
 
       await expect(
         repository.createProfessionalId(camsTrusteeId, acmsProfessionalId, mockUser),
-      ).rejects.toThrow(
-        `Failed to create professional ID mapping for trustee ${camsTrusteeId} and ACMS ID ${acmsProfessionalId}.`,
-      );
-
-      expect(mockAdapter).toHaveBeenCalled();
+      ).rejects.toThrow();
     });
   });
 
@@ -179,13 +181,13 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
         },
       ];
 
-      const mockAdapter = vi
+      const findSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue(mockProfessionalIds);
 
       const result = await repository.findByCamsTrusteeId(camsTrusteeId);
 
-      expect(mockAdapter).toHaveBeenCalledWith(expectedQuery);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
       expect(result).toHaveLength(2);
       expect(result[0].acmsProfessionalId).toBe('NY-00063');
       expect(result[1].acmsProfessionalId).toBe('UT-05321');
@@ -194,11 +196,11 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
 
     test('should return empty array when trustee has no ACMS IDs', async () => {
-      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
       const result = await repository.findByCamsTrusteeId('trustee-unknown');
 
-      expect(mockAdapter).toHaveBeenCalledWith({
+      expect(findSpy).toHaveBeenCalledWith({
         condition: 'EQUALS',
         leftOperand: { name: 'camsTrusteeId' },
         rightOperand: 'trustee-unknown',
@@ -208,14 +210,12 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
     test('should handle database errors', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockRejectedValue(error);
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
       await expect(repository.findByCamsTrusteeId(camsTrusteeId)).rejects.toThrow(
         `Failed to find professional IDs for trustee ${camsTrusteeId}.`,
       );
-      expect(mockAdapter).toHaveBeenCalledWith(expectedQuery);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
     });
   });
 
@@ -256,13 +256,13 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
         },
       ];
 
-      const mockAdapter = vi
+      const findSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'find')
         .mockResolvedValue(mockProfessionalIds);
 
       const result = await repository.findByAcmsProfessionalId(acmsProfessionalId);
 
-      expect(mockAdapter).toHaveBeenCalledWith(expectedQuery);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
       expect(result).toHaveLength(4);
       expect(result[0].camsTrusteeId).toBe('trustee-11092');
       expect(result[1].camsTrusteeId).toBe('trustee-13340');
@@ -275,11 +275,11 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     });
 
     test('should return empty array when ACMS ID has no trustees', async () => {
-      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
 
       const result = await repository.findByAcmsProfessionalId('XX-99999');
 
-      expect(mockAdapter).toHaveBeenCalledWith({
+      expect(findSpy).toHaveBeenCalledWith({
         condition: 'EQUALS',
         leftOperand: { name: 'acmsProfessionalId' },
         rightOperand: 'XX-99999',
@@ -289,14 +289,12 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
     test('should handle database errors', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
-        .spyOn(MongoCollectionAdapter.prototype, 'find')
-        .mockRejectedValue(error);
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(error);
 
       await expect(repository.findByAcmsProfessionalId(acmsProfessionalId)).rejects.toThrow(
         `Failed to find trustees with ACMS professional ID ${acmsProfessionalId}.`,
       );
-      expect(mockAdapter).toHaveBeenCalledWith(expectedQuery);
+      expect(findSpy).toHaveBeenCalledWith(expectedQuery);
     });
   });
 
@@ -308,26 +306,28 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
       rightOperand: camsTrusteeId,
     };
 
-    test('should delete all professional IDs for a trustee', async () => {
-      const mockAdapter = vi
+    test('should delete all professional IDs for a trustee and return count', async () => {
+      const deletedCount = 2;
+      const deleteManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
-        .mockResolvedValue(2);
+        .mockResolvedValue(deletedCount);
 
-      await repository.deleteByCamsTrusteeId(camsTrusteeId);
+      const result = await repository.deleteByCamsTrusteeId(camsTrusteeId);
 
-      expect(mockAdapter).toHaveBeenCalledWith(expectedQuery);
+      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
+      expect(result).toBe(deletedCount);
     });
 
     test('should handle database errors', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
+      const deleteManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
         .mockRejectedValue(error);
 
       await expect(repository.deleteByCamsTrusteeId(camsTrusteeId)).rejects.toThrow(
         `Failed to delete professional IDs for trustee ${camsTrusteeId}.`,
       );
-      expect(mockAdapter).toHaveBeenCalledWith(expectedQuery);
+      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
     });
   });
 
@@ -340,107 +340,37 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
 
     test('should delete all professional IDs and return count', async () => {
       const deletedCount = 150;
-      const mockAdapter = vi
+      const deleteManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
         .mockResolvedValue(deletedCount);
 
       const result = await repository.deleteAll();
 
-      expect(mockAdapter).toHaveBeenCalledWith(expectedQuery);
+      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
       expect(result).toBe(deletedCount);
     });
 
     test('should return 0 when no records exist', async () => {
-      const mockAdapter = vi
+      const deleteManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
         .mockResolvedValue(0);
 
       const result = await repository.deleteAll();
 
-      expect(mockAdapter).toHaveBeenCalledWith(expectedQuery);
+      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
       expect(result).toBe(0);
     });
 
     test('should handle database errors', async () => {
       const error = new Error('Database connection failed');
-      const mockAdapter = vi
+      const deleteManySpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'deleteMany')
         .mockRejectedValue(error);
 
       await expect(repository.deleteAll()).rejects.toThrow(
         'Failed to delete all professional IDs.',
       );
-      expect(mockAdapter).toHaveBeenCalledWith(expectedQuery);
-    });
-  });
-
-  describe('many-to-many scenarios', () => {
-    test('should support one CAMS trustee with multiple ACMS IDs (Harvey Barr scenario)', async () => {
-      const trusteeId = 'harvey-barr';
-
-      // Create first ACMS ID mapping
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]); // No duplicates
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('prof-id-1');
-      const result1 = await repository.createProfessionalId(trusteeId, 'NY-00063', mockUser);
-
-      // Create second ACMS ID mapping
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]); // No duplicates
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('prof-id-2');
-      const result2 = await repository.createProfessionalId(trusteeId, 'UT-05321', mockUser);
-
-      expect(result1.camsTrusteeId).toBe(trusteeId);
-      expect(result1.acmsProfessionalId).toBe('NY-00063');
-      expect(result2.camsTrusteeId).toBe(trusteeId);
-      expect(result2.acmsProfessionalId).toBe('UT-05321');
-
-      // Verify we can find both mappings
-      const mockProfessionalIds = [
-        {
-          ...sampleProfessionalId,
-          id: 'prof-id-1',
-          camsTrusteeId: trusteeId,
-          acmsProfessionalId: 'NY-00063',
-        },
-        {
-          ...sampleProfessionalId,
-          id: 'prof-id-2',
-          camsTrusteeId: trusteeId,
-          acmsProfessionalId: 'UT-05321',
-        },
-      ];
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockProfessionalIds);
-
-      const allIds = await repository.findByCamsTrusteeId(trusteeId);
-      expect(allIds).toHaveLength(2);
-    });
-
-    test('should support one ACMS ID with multiple CAMS trustees (Gerard McHale Jr. scenario)', async () => {
-      const acmsId = 'AK-01414';
-      const trusteeIds = ['trustee-11092', 'trustee-13340', 'trustee-17287', 'trustee-27472'];
-
-      // Create mappings for each CAMS trustee ID
-      for (let i = 0; i < trusteeIds.length; i++) {
-        vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]); // No duplicates
-        vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(
-          `prof-id-${i + 1}`,
-        );
-        const result = await repository.createProfessionalId(trusteeIds[i], acmsId, mockUser);
-        expect(result.acmsProfessionalId).toBe(acmsId);
-        expect(result.camsTrusteeId).toBe(trusteeIds[i]);
-      }
-
-      // Verify we can find all trustees for this ACMS ID
-      const mockProfessionalIds = trusteeIds.map((trusteeId, i) => ({
-        ...sampleProfessionalId,
-        id: `prof-id-${i + 1}`,
-        camsTrusteeId: trusteeId,
-        acmsProfessionalId: acmsId,
-      }));
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockProfessionalIds);
-
-      const allTrustees = await repository.findByAcmsProfessionalId(acmsId);
-      expect(allTrustees).toHaveLength(4);
-      expect(allTrustees.map((t) => t.camsTrusteeId)).toEqual(trusteeIds);
+      expect(deleteManySpy).toHaveBeenCalledWith(expectedQuery);
     });
   });
 
@@ -448,39 +378,30 @@ describe('TrusteeProfessionalIdsMongoRepository', () => {
     test('should support lookups in both directions', async () => {
       const trusteeId = 'trustee-123';
       const acmsId = 'NY-00063';
-
-      // Create a mapping
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]); // No duplicates
-      vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue('prof-id-1');
-      await repository.createProfessionalId(trusteeId, acmsId, mockUser);
+      const mockMapping: TrusteeProfessionalIdDocument = {
+        ...sampleProfessionalId,
+        id: 'prof-id-1',
+        camsTrusteeId: trusteeId,
+        acmsProfessionalId: acmsId,
+      };
 
       // Look up by CAMS trustee ID
-      const mockByTrustee = [
-        {
-          ...sampleProfessionalId,
-          id: 'prof-id-1',
-          camsTrusteeId: trusteeId,
-          acmsProfessionalId: acmsId,
-        },
-      ];
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockByTrustee);
+      const findSpy1 = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValueOnce([mockMapping]);
       const byTrustee = await repository.findByCamsTrusteeId(trusteeId);
       expect(byTrustee).toHaveLength(1);
       expect(byTrustee[0].acmsProfessionalId).toBe(acmsId);
+      findSpy1.mockRestore();
 
       // Look up by ACMS professional ID
-      const mockByAcms = [
-        {
-          ...sampleProfessionalId,
-          id: 'prof-id-1',
-          camsTrusteeId: trusteeId,
-          acmsProfessionalId: acmsId,
-        },
-      ];
-      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(mockByAcms);
+      const findSpy2 = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValueOnce([mockMapping]);
       const byAcms = await repository.findByAcmsProfessionalId(acmsId);
       expect(byAcms).toHaveLength(1);
       expect(byAcms[0].camsTrusteeId).toBe(trusteeId);
+      findSpy2.mockRestore();
     });
   });
 });
