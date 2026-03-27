@@ -1,5 +1,8 @@
 /*
-  Example to execute deployment template:
+  This template is invoked automatically by main.bicep as part of the standard deployment workflow.
+  It no longer needs to be run separately before deploying a new environment.
+
+  For standalone/manual execution:
   az deployment group create -w \
     -g bankruptcy-oversight-support-systems
     --template-file ops/cloud-deployment/ustp-cams-kv-app-config-setup.bicep \
@@ -7,14 +10,15 @@
                  virtualNetworkName=vnet-test \
                  kvResourceGroup=bankruptcy-oversight-support-systems \
                  networkResourceGroup=bankruptcy-oversight-support-systems \
-                 privateEndpointSubnetName=snet-pep-kv-test \
-                 privateEndpointSubnetPrefix=10.20.20.0/28
+                 privateEndpointSubnetId=<subnet-resource-id>
 
-  What needs to happen
-  1. Provision managed identity.
-  2. Provision keyvault and update keyvault access to allow managed identity with "Key Vault Secrets User" to secrets.
-  3. Deploy private DNS zone (privatelink.vaultcore.usgovcloudapi.net) and ensure virtual network of the service using keyvault is linked.
-  4. Setup private endpoint resources in target subnet. Subnet should be in same virtual network as service using keyvault.
+  What this template provisions:
+  1. Managed identity with "Key Vault Secrets User" access to the vault.
+  2. Key Vault with network ACLs (public access disabled).
+  3. Private DNS zone (privatelink.vaultcore.usgovcloudapi.net) linked to the virtual network.
+  4. Private endpoint for the vault in the designated private endpoint subnet.
+
+  Note: Key Vault secrets are provisioned manually and are not part of this template.
 */
 
 @description('Application name will be use to name keyvault prepended by kv-')
