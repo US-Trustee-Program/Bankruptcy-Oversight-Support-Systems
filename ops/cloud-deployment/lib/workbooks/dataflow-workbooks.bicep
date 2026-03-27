@@ -46,3 +46,17 @@ resource trusteeNotesEngagementWorkbook 'Microsoft.Insights/workbooks@2023-06-01
     serializedData: loadTextContent('trustee-notes-engagement.json')
   }
 }
+
+resource trusteeDueDateMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid('trustee-due-date-metrics-workbook', resourceGroup().id)
+  location: location
+  tags: tags
+  kind: 'shared'
+  properties: {
+    displayName: 'Trustee Due Date Metrics'
+    description: 'Tracks the completeness of key date entries for Chapter 7 trustee appointments.'
+    category: 'workbook'
+    sourceId: appInsightsResourceId
+    serializedData: loadTextContent('trustee-due-date-metrics.json')
+  }
+}
