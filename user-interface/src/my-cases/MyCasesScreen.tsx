@@ -24,7 +24,7 @@ import { CaseNumber } from '@/lib/components/CaseNumber';
 import React from 'react';
 import { Cacheable } from '@/lib/utils/local-cache';
 import { formatDateTime } from '@/lib/utils/datetime';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import useFeatureFlags, {
   PHONETIC_SEARCH_ENABLED,
   SHOW_DEBTOR_NAME_COLUMN,

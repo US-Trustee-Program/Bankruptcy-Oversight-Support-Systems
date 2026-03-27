@@ -4,7 +4,7 @@ import TransferConfirmationModal, {
 } from './TransferConfirmationModal';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import React from 'react';
 import { TransferConfirmationModalImperative } from './TransferConfirmationModal';
 

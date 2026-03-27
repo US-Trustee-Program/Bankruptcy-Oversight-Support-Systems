@@ -471,6 +471,22 @@ class CasesDxtrGateway implements CasesInterface {
         conditions.push(`cs_div.CS_DIV_ACMS IN (${divisionCodeVars})`);
       }
     }
+    if (predicate.dxtrId) {
+      params.push({
+        name: 'dxtrId',
+        type: mssql.VarChar,
+        value: predicate.dxtrId,
+      });
+      conditions.push('CS_CASEID = @dxtrId');
+    }
+    if (predicate.courtId) {
+      params.push({
+        name: 'courtId',
+        type: mssql.VarChar,
+        value: predicate.courtId,
+      });
+      conditions.push('COURT_ID = @courtId');
+    }
     const chapters: string[] = [];
     if (predicate.chapters) {
       for (const chapter of predicate.chapters) {

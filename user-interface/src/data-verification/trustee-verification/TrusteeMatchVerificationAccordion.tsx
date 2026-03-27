@@ -9,7 +9,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api2 from '@/lib/models/api2';
 import TrusteeMatchRejectionModal, {

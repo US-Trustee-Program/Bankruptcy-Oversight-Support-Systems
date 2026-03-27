@@ -9,7 +9,7 @@ import {
 } from '@common/cams/events';
 import { ConsolidationType } from '@common/cams/orders';
 import { BrowserRouter } from 'react-router-dom';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseDetail } from '@common/cams/cases';
 

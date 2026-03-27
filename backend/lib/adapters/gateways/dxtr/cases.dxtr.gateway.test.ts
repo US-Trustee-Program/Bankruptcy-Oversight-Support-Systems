@@ -1301,6 +1301,108 @@ describe('Test DXTR Gateway', () => {
         }),
       ).rejects.toThrow(errorMessage);
     });
+
+    test.each([
+      {
+        description: 'should add CS_CASEID condition when dxtrId provided',
+        searchParams: { dxtrId: '12345' },
+        expectedInQuery: ['CS_CASEID = @dxtrId'],
+        expectedParams: [{ name: 'dxtrId', value: '12345' }],
+      },
+      {
+        description: 'should add COURT_ID condition when courtId provided',
+        searchParams: { courtId: 'ABC' },
+        expectedInQuery: ['COURT_ID = @courtId'],
+        expectedParams: [{ name: 'courtId', value: 'ABC' }],
+      },
+      {
+        description: 'should use both dxtrId and courtId together (composite key query)',
+        searchParams: { dxtrId: '12345', courtId: 'ABC' },
+        expectedInQuery: ['CS_CASEID = @dxtrId', 'COURT_ID = @courtId'],
+        expectedParams: [
+          { name: 'dxtrId', value: '12345' },
+          { name: 'courtId', value: 'ABC' },
+        ],
+      },
+      {
+        description: 'should work with dxtrId/courtId and caseNumber together',
+        searchParams: { dxtrId: '12345', courtId: 'ABC', caseNumber: '00-00000' },
+        expectedInQuery: [
+          'CS_CASEID = @dxtrId',
+          'COURT_ID = @courtId',
+          "cs.CASE_ID LIKE @caseNumber+'%'",
+        ],
+        expectedParams: [
+          { name: 'dxtrId', value: '12345' },
+          { name: 'courtId', value: 'ABC' },
+        ],
+      },
+      {
+        description: 'should work with dxtrId/courtId and divisionCodes together',
+        searchParams: { dxtrId: '12345', courtId: 'ABC', divisionCodes: ['999'] },
+        expectedInQuery: [
+          'CS_CASEID = @dxtrId',
+          'COURT_ID = @courtId',
+          'cs_div.CS_DIV_ACMS IN (@divisionCode0)',
+        ],
+        expectedParams: [
+          { name: 'dxtrId', value: '12345' },
+          { name: 'courtId', value: 'ABC' },
+        ],
+      },
+      {
+        description: 'should work with dxtrId/courtId and chapters together',
+        searchParams: { dxtrId: '12345', courtId: 'ABC', chapters: ['15'] },
+        expectedInQuery: ['CS_CASEID = @dxtrId', 'COURT_ID = @courtId', "cs.CS_CHAPTER IN ('15')"],
+        expectedParams: [
+          { name: 'dxtrId', value: '12345' },
+          { name: 'courtId', value: 'ABC' },
+        ],
+      },
+    ])('$description', async ({ searchParams, expectedInQuery, expectedParams }) => {
+      await testCasesDxtrGateway.searchCases(applicationContext, searchParams);
+
+      const callArgs = querySpy.mock.calls[0];
+      const query = callArgs[2] as string;
+      const params = callArgs[3] as DbTableFieldSpec[];
+
+      // Check all expected query strings are present
+      expectedInQuery.forEach((expectedString) => {
+        expect(query).toContain(expectedString);
+      });
+
+      // Check all expected parameters are bound correctly
+      expectedParams.forEach(({ name, value }) => {
+        const param = params.find((p) => p.name === name);
+        expect(param).toBeDefined();
+        expect(param?.value).toBe(value);
+      });
+    });
+
+    test.each([
+      {
+        description: 'regression: should work with caseNumber only',
+        searchParams: { caseNumber: '00-00000' },
+        expectedInQuery: "cs.CASE_ID LIKE @caseNumber+'%'",
+        expectedResult: [testCase],
+      },
+      {
+        description: 'regression: should work with divisionCodes only',
+        searchParams: { divisionCodes: ['999'] },
+        expectedInQuery: 'cs_div.CS_DIV_ACMS IN (@divisionCode0)',
+        expectedResult: [testCase],
+      },
+    ])('$description', async ({ searchParams, expectedInQuery, expectedResult }) => {
+      const actual = await testCasesDxtrGateway.searchCases(applicationContext, searchParams);
+
+      expect(querySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.stringContaining(expectedInQuery),
+        expect.anything(),
+      );
+      expect(actual).toEqual(expectedResult);
+    });
   });
 
   describe('findTransactionIdRangeForDate', () => {
@@ -1478,90 +1580,71 @@ describe('Test DXTR Gateway', () => {
       });
     });
 
-    test('should return cases updated via LAST_UPDATE_DATE (from AO_CS)', async () => {
-      const casesResults = makeQueryResults([
-        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
-        { caseId: '081-21-12345', latestSyncDate: '2025-02-11T09:00:00.000Z' },
-      ]);
-      const emptyResults = makeQueryResults([]);
+    test.each([
+      {
+        description: 'should return cases updated via LAST_UPDATE_DATE (from AO_CS)',
+        casesData: [
+          { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
+          { caseId: '081-21-12345', latestSyncDate: '2025-02-11T09:00:00.000Z' },
+        ],
+        transactionsData: [],
+        expectedCaseIds: ['081-20-10508', '081-21-12345'],
+        expectedLatestCasesSyncDate: '2025-02-11T10:00:00.000Z',
+        expectedLatestTransactionsSyncDate: '2024-01-01',
+      },
+      {
+        description: 'should include cases with terminal transactions from AO_TX',
+        casesData: [],
+        transactionsData: [{ caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' }],
+        expectedCaseIds: ['081-20-10508'],
+        expectedLatestCasesSyncDate: '2024-01-01',
+        expectedLatestTransactionsSyncDate: '2025-02-11T14:00:00.000Z',
+      },
+      {
+        description: 'should deduplicate cases found in both AO_CS and AO_TX queries',
+        casesData: [{ caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' }],
+        transactionsData: [{ caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' }],
+        expectedCaseIds: ['081-20-10508'],
+        expectedLatestCasesSyncDate: '2025-02-11T10:00:00.000Z',
+        expectedLatestTransactionsSyncDate: '2025-02-11T14:00:00.000Z',
+      },
+      {
+        description: 'should return cases from both AO_CS and AO_TX queries',
+        casesData: [{ caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' }],
+        transactionsData: [{ caseId: '081-21-12345', latestSyncDate: '2025-02-11T14:00:00.000Z' }],
+        expectedCaseIds: ['081-20-10508', '081-21-12345'],
+        expectedLatestCasesSyncDate: '2025-02-11T10:00:00.000Z',
+        expectedLatestTransactionsSyncDate: '2025-02-11T14:00:00.000Z',
+      },
+    ])(
+      '$description',
+      async ({
+        casesData,
+        transactionsData,
+        expectedCaseIds,
+        expectedLatestCasesSyncDate,
+        expectedLatestTransactionsSyncDate,
+      }) => {
+        const casesResults = makeQueryResults(casesData);
+        const transactionsResults = makeQueryResults(transactionsData);
 
-      // Cases query returns data, transactions query is empty
-      querySpy.mockResolvedValueOnce(casesResults);
-      querySpy.mockResolvedValueOnce(emptyResults);
+        querySpy.mockResolvedValueOnce(casesResults);
+        querySpy.mockResolvedValueOnce(transactionsResults);
 
-      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
-        applicationContext,
-        '2024-01-01',
-        '2024-01-01',
-      );
+        const result = await testCasesDxtrGateway.getUpdatedCaseIds(
+          applicationContext,
+          '2024-01-01',
+          '2024-01-01',
+        );
 
-      expect(result.caseIds).toEqual(['081-20-10508', '081-21-12345']);
-      expect(result.latestCasesSyncDate).toEqual('2025-02-11T10:00:00.000Z');
-    });
+        expectedCaseIds.forEach((caseId) => {
+          expect(result.caseIds).toContain(caseId);
+        });
 
-    test('should include cases with terminal transactions from AO_TX', async () => {
-      const emptyResults = makeQueryResults([]);
-      const transactionsResults = makeQueryResults([
-        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' },
-      ]);
-
-      // Cases query is empty, transactions query returns data
-      querySpy.mockResolvedValueOnce(emptyResults);
-      querySpy.mockResolvedValueOnce(transactionsResults);
-
-      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
-        applicationContext,
-        '2024-01-01',
-        '2024-01-01',
-      );
-
-      expect(result.caseIds).toContain('081-20-10508');
-      expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T14:00:00.000Z');
-    });
-
-    test('should deduplicate cases found in both AO_CS and AO_TX queries', async () => {
-      // Same case ID returned from both queries
-      const casesResults = makeQueryResults([
-        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
-      ]);
-      const transactionsResults = makeQueryResults([
-        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T14:00:00.000Z' },
-      ]);
-
-      querySpy.mockResolvedValueOnce(casesResults);
-      querySpy.mockResolvedValueOnce(transactionsResults);
-
-      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
-        applicationContext,
-        '2024-01-01',
-        '2024-01-01',
-      );
-
-      expect(result.caseIds).toEqual(['081-20-10508']); // Only once, Set handles deduplication
-      expect(result.latestCasesSyncDate).toEqual('2025-02-11T10:00:00.000Z');
-      expect(result.latestTransactionsSyncDate).toEqual('2025-02-11T14:00:00.000Z');
-    });
-
-    test('should return cases from both AO_CS and AO_TX queries', async () => {
-      const casesResults = makeQueryResults([
-        { caseId: '081-20-10508', latestSyncDate: '2025-02-11T10:00:00.000Z' },
-      ]);
-      const terminalResults = makeQueryResults([
-        { caseId: '081-21-12345', latestSyncDate: '2025-02-11T14:00:00.000Z' },
-      ]);
-
-      querySpy.mockResolvedValueOnce(casesResults);
-      querySpy.mockResolvedValueOnce(terminalResults);
-
-      const result = await testCasesDxtrGateway.getUpdatedCaseIds(
-        applicationContext,
-        '2024-01-01',
-        '2024-01-01',
-      );
-
-      expect(result.caseIds).toContain('081-20-10508');
-      expect(result.caseIds).toContain('081-21-12345');
-    });
+        expect(result.latestCasesSyncDate).toEqual(expectedLatestCasesSyncDate);
+        expect(result.latestTransactionsSyncDate).toEqual(expectedLatestTransactionsSyncDate);
+      },
+    );
   });
 
   describe('getCasesWithTerminalTransactionBlindSpot', () => {
@@ -1730,73 +1813,85 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('queryDebtorParty with additionalIdentifiers tests', () => {
-    test('should add additionalIdentifiers.names to Debtor when name additionalIdentifiers exist', async () => {
-      const debtorQueryResult = makeQueryResults([buildDebtor()]);
-      const aliasQueryResult = makeQueryResults([
-        { aliasType: 'name', value: 'Michael J Smith' },
-        { aliasType: 'name', value: 'John Smith' },
-      ]);
+    test.each([
+      {
+        description:
+          'should add additionalIdentifiers.names to Debtor when name additionalIdentifiers exist',
+        debtorOverrides: {},
+        aliasData: [
+          { aliasType: 'name', value: 'Michael J Smith' },
+          { aliasType: 'name', value: 'John Smith' },
+        ],
+        expectedIdentifiers: {
+          names: ['John Smith', 'Michael J Smith'],
+          ssns: [],
+          taxIds: [],
+        },
+        expectedDebtorSsn: '123-45-6789',
+        expectedDebtorTaxId: '12-3456789',
+      },
+      {
+        description: 'should add additionalIdentifiers.ssns when alias SSNs exist',
+        debtorOverrides: { ssn: '111-11-1111' },
+        aliasData: [
+          { aliasType: 'ssn', value: '222-22-2222' },
+          { aliasType: 'ssn', value: '333-33-3333' },
+        ],
+        expectedIdentifiers: {
+          names: [],
+          ssns: ['222-22-2222', '333-33-3333'],
+          taxIds: [],
+        },
+        expectedDebtorSsn: '111-11-1111',
+        expectedDebtorTaxId: '12-3456789',
+      },
+      {
+        description: 'should add additionalIdentifiers.taxIds when alias tax IDs exist',
+        debtorOverrides: { taxId: '12-3456789' },
+        aliasData: [
+          { aliasType: 'taxId', value: '98-7654321' },
+          { aliasType: 'taxId', value: '11-1111111' },
+        ],
+        expectedIdentifiers: {
+          names: [],
+          ssns: [],
+          taxIds: ['11-1111111', '98-7654321'],
+        },
+        expectedDebtorSsn: '123-45-6789',
+        expectedDebtorTaxId: '12-3456789',
+      },
+    ])(
+      '$description',
+      async ({
+        debtorOverrides,
+        aliasData,
+        expectedIdentifiers,
+        expectedDebtorSsn,
+        expectedDebtorTaxId,
+      }) => {
+        const debtorQueryResult = makeQueryResults([buildDebtor(debtorOverrides)]);
+        const aliasQueryResult = makeQueryResults(aliasData);
 
-      querySpy.mockResolvedValueOnce(debtorQueryResult);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
+        querySpy.mockResolvedValueOnce(debtorQueryResult);
+        querySpy.mockResolvedValueOnce(aliasQueryResult);
 
-      const debtor = await testCasesDxtrGateway.queryDebtorParty(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
+        const debtor = await testCasesDxtrGateway.queryDebtorParty(
+          applicationContext,
+          '12345',
+          'NYSB',
+          'db',
+        );
 
-      expect(debtor).toBeDefined();
-      expect(debtor?.additionalIdentifiers).toBeDefined();
-      expect(debtor?.additionalIdentifiers?.names).toEqual(['John Smith', 'Michael J Smith']);
-    });
+        expect(debtor).toBeDefined();
+        expect(debtor?.additionalIdentifiers).toBeDefined();
 
-    test('should add additionalIdentifiers.ssns when alias SSNs exist', async () => {
-      const debtorQueryResult = makeQueryResults([buildDebtor({ ssn: '111-11-1111' })]);
-      const aliasQueryResult = makeQueryResults([
-        { aliasType: 'ssn', value: '222-22-2222' },
-        { aliasType: 'ssn', value: '333-33-3333' },
-      ]);
-
-      querySpy.mockResolvedValueOnce(debtorQueryResult);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
-
-      const debtor = await testCasesDxtrGateway.queryDebtorParty(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
-
-      expect(debtor).toBeDefined();
-      expect(debtor?.additionalIdentifiers).toBeDefined();
-      expect(debtor?.additionalIdentifiers?.ssns).toEqual(['222-22-2222', '333-33-3333']);
-      expect(debtor?.ssn).toBe('111-11-1111');
-    });
-
-    test('should add additionalIdentifiers.taxIds when alias tax IDs exist', async () => {
-      const debtorQueryResult = makeQueryResults([buildDebtor({ taxId: '12-3456789' })]);
-      const aliasQueryResult = makeQueryResults([
-        { aliasType: 'taxId', value: '98-7654321' },
-        { aliasType: 'taxId', value: '11-1111111' },
-      ]);
-
-      querySpy.mockResolvedValueOnce(debtorQueryResult);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
-
-      const debtor = await testCasesDxtrGateway.queryDebtorParty(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
-
-      expect(debtor).toBeDefined();
-      expect(debtor?.additionalIdentifiers).toBeDefined();
-      expect(debtor?.additionalIdentifiers?.taxIds).toEqual(['11-1111111', '98-7654321']);
-      expect(debtor?.taxId).toBe('12-3456789');
-    });
+        expect(debtor?.additionalIdentifiers?.names).toEqual(expectedIdentifiers.names);
+        expect(debtor?.additionalIdentifiers?.ssns).toEqual(expectedIdentifiers.ssns);
+        expect(debtor?.additionalIdentifiers?.taxIds).toEqual(expectedIdentifiers.taxIds);
+        expect(debtor?.ssn).toBe(expectedDebtorSsn);
+        expect(debtor?.taxId).toBe(expectedDebtorTaxId);
+      },
+    );
 
     test('should handle all three alias types together', async () => {
       const debtorQueryResult = makeQueryResults([

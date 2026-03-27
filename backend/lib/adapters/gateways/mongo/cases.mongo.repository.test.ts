@@ -295,6 +295,7 @@ describe('Cases repository', () => {
           ...and(
             doc('documentType').equals('SYNCED_CASE'),
             doc('chapter').contains(predicate.chapters),
+            doc('status').notEqual('MOVED'),
           ),
         },
         {
@@ -343,6 +344,7 @@ describe('Cases repository', () => {
             doc('documentType').equals('SYNCED_CASE'),
             doc('caseId').contains(predicate.caseIds),
             doc('chapter').contains(predicate.chapters),
+            doc('status').notEqual('MOVED'),
           ),
         },
         {
@@ -395,6 +397,7 @@ describe('Cases repository', () => {
             doc('caseId').contains(predicate.caseIds),
             doc('chapter').contains(predicate.chapters),
             doc('caseId').notContains(predicate.excludedCaseIds),
+            doc('status').notEqual('MOVED'),
           ),
         },
         {
@@ -1098,5 +1101,294 @@ describe('Cases repository', () => {
         module: 'CASES-MONGO-REPOSITORY',
       }),
     ]);
+  });
+
+  describe('markAsMoved', () => {
+    test.each([
+      {
+        description: 'should set status field to MOVED',
+        field: 'status',
+        expectedValue: 'MOVED',
+      },
+      {
+        description: 'should set movedToCaseId field with correct value',
+        field: 'movedToCaseId',
+        expectedValue: '222-22-22222',
+      },
+      {
+        description: 'should set movedOn field with correct timestamp',
+        field: 'movedOn',
+        expectedValue: '2024-01-15',
+      },
+    ])('$description', async ({ field, expectedValue }) => {
+      const updateManySpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateMany')
+        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+
+      await repo.markAsMoved(caseId1, '222-22-22222', '2024-01-15');
+
+      expect(updateManySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          $set: expect.objectContaining({
+            [field]: expectedValue,
+          }),
+        }),
+      );
+    });
+
+    test('should wrap MongoDB adapter errors with CamsError', async () => {
+      expect.assertions(1);
+      await expectAdapterErrorToBeWrapped(
+        'updateMany',
+        () => repo.markAsMoved(caseId1, '222-22-22222', '2024-01-15'),
+        ['Failed to mark case as moved.'],
+      );
+    });
+
+    test('should return void on success', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+        modifiedCount: 1,
+        matchedCount: 1,
+      });
+
+      const result = await repo.markAsMoved(caseId1, '222-22-22222', '2024-01-15');
+
+      expect(result).toBeUndefined();
+    });
+  });
+
+  describe('Excluding MOVED cases from search', () => {
+    // Phase 1: Core searchCases Tests - verify query includes status exclusion
+    test.each([
+      {
+        description: 'basic search should exclude MOVED cases',
+        predicate: {
+          chapters: ['15'],
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: ['status', 'MOVED', 'NOT_EQUALS'],
+      },
+      {
+        description: 'search with chapter filter should exclude MOVED',
+        predicate: {
+          chapters: ['7'],
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: ['chapter', 'status', 'MOVED'],
+      },
+      {
+        description: 'search with caseIds filter should exclude MOVED',
+        predicate: {
+          caseIds: [caseId1, caseId2],
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: ['caseId', 'status', 'MOVED'],
+      },
+      {
+        description: 'search with divisionCodes filter should exclude MOVED',
+        predicate: {
+          divisionCodes: ['081'],
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: ['courtDivisionCode', 'status', 'MOVED'],
+      },
+      {
+        description: 'search with multiple filters should exclude MOVED',
+        predicate: {
+          caseIds: [caseId1],
+          chapters: ['13'],
+          divisionCodes: ['081'],
+          caseNumber: '00-12345',
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: [
+          'caseId',
+          'chapter',
+          'courtDivisionCode',
+          'caseNumber',
+          'status',
+          'MOVED',
+        ],
+      },
+    ])('$description', async ({ predicate, expectedQueryContains }) => {
+      const expectedSyncedCaseArray: SyncedCase[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1, status: 'ACTIVE' } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+      const result = await repo.searchCases(predicate as CasesSearchPredicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+
+      expectedQueryContains.forEach((term) => {
+        expect(queryString).toContain(term);
+      });
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+    });
+
+    test('searchCases returns empty when all results are MOVED', async () => {
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        limit: 25,
+        offset: 0,
+      };
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: [] });
+
+      const result = await repo.searchCases(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      expect(result.data).toEqual([]);
+    });
+
+    // Phase 2: Repository Query Level Tests
+    test('addConditions should add MOVED status exclusion condition', () => {
+      const predicate: CasesSearchPredicate = {
+        chapters: ['15'],
+        limit: 25,
+        offset: 0,
+      };
+
+      const conditions = repo.addConditions(predicate);
+
+      const queryString = JSON.stringify(conditions);
+
+      expect(queryString).toContain('status');
+      expect(queryString).toContain('MOVED');
+      expect(queryString).toContain('NOT_EQUALS');
+    });
+
+    test.each([
+      {
+        description: 'searchCasesWithPhoneticTokens should exclude MOVED cases',
+        predicate: {
+          debtorName: 'John Smith',
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: ['status', 'MOVED'],
+      },
+      {
+        description: 'searchCasesWithPhoneticTokens with filters should exclude MOVED',
+        predicate: {
+          debtorName: 'Jane',
+          chapters: ['11'],
+          divisionCodes: ['081'],
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: ['status', 'MOVED', 'chapter'],
+      },
+    ])('$description', async ({ predicate, expectedQueryContains }) => {
+      const expectedSyncedCaseArray: SyncedCase[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1, status: 'ACTIVE' } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray, metadata: { total: 1 } });
+
+      const result = await repo.searchCasesWithPhoneticTokens(predicate as CasesSearchPredicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+
+      expectedQueryContains.forEach((term) => {
+        expect(queryString).toContain(term);
+      });
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+    });
+
+    // Phase 3: getCaseDetail Tests - verify these methods do NOT filter MOVED
+    test('getSyncedCase should NOT filter MOVED cases', async () => {
+      const movedCase = MockData.getSyncedCase({
+        override: { caseId: caseId1, status: 'MOVED', movedToCaseId: caseId2 },
+      });
+
+      const findOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'findOne')
+        .mockResolvedValue(movedCase);
+
+      const result = await repo.getSyncedCase(caseId1);
+
+      expect(findOneSpy).toHaveBeenCalled();
+      expect(result).toEqual(movedCase);
+      expect(result.status).toBe('MOVED');
+      expect(result.movedToCaseId).toBe(caseId2);
+
+      const query = findOneSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(query);
+
+      // Verify the query does NOT contain status filter
+      expect(queryString).not.toContain('NOT_EQUALS');
+    });
+
+    // Phase 4: Integration/Edge Cases - verify MOVED filter works with complex predicates
+    test.each([
+      {
+        description: 'searchCases with excludeClosedCases should exclude MOVED',
+        predicate: {
+          excludeClosedCases: true,
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: ['closedDate', 'status', 'MOVED'],
+      },
+      {
+        description: 'searchCases with includeOnlyUnassigned should exclude MOVED',
+        predicate: {
+          chapters: ['13'],
+          includeOnlyUnassigned: true,
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: ['status', 'MOVED'],
+      },
+      {
+        description:
+          'searchCases with excludeMemberConsolidations should exclude MOVED and member cases',
+        predicate: {
+          chapters: ['15'],
+          excludeMemberConsolidations: true,
+          excludedCaseIds: ['111-11-11111'],
+          limit: 25,
+          offset: 0,
+        },
+        expectedQueryContains: ['caseId', 'status', 'MOVED'],
+      },
+    ])('$description', async ({ predicate, expectedQueryContains }) => {
+      const expectedSyncedCaseArray: SyncedCase[] = [
+        MockData.getSyncedCase({ override: { caseId: caseId1, status: 'ACTIVE' } }),
+      ];
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: expectedSyncedCaseArray });
+
+      const result = await repo.searchCases(predicate as CasesSearchPredicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      const actualQuery = paginateSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+
+      expectedQueryContains.forEach((term) => {
+        expect(queryString).toContain(term);
+      });
+      expect(result.data).toEqual(expectedSyncedCaseArray);
+    });
   });
 });
