@@ -256,9 +256,39 @@ export default class CaseManagement {
         casesRepo.getSyncedCase(caseId),
       ]);
 
-      caseDetails.transfers = transfers.status === 'fulfilled' ? transfers.value : [];
-      caseDetails.consolidation = consolidation.status === 'fulfilled' ? consolidation.value : [];
-      caseDetails.assignments = assignments.status === 'fulfilled' ? assignments.value : [];
+      if (transfers.status === 'fulfilled') {
+        caseDetails.transfers = transfers.value;
+      } else {
+        context.logger.debug(
+          MODULE_NAME,
+          `Could not retrieve transfers for ${caseId}`,
+          transfers.reason,
+        );
+        caseDetails.transfers = [];
+      }
+
+      if (consolidation.status === 'fulfilled') {
+        caseDetails.consolidation = consolidation.value;
+      } else {
+        context.logger.debug(
+          MODULE_NAME,
+          `Could not retrieve consolidation for ${caseId}`,
+          consolidation.reason,
+        );
+        caseDetails.consolidation = [];
+      }
+
+      if (assignments.status === 'fulfilled') {
+        caseDetails.assignments = assignments.value;
+      } else {
+        context.logger.debug(
+          MODULE_NAME,
+          `Could not retrieve assignments for ${caseId}`,
+          assignments.reason,
+        );
+        caseDetails.assignments = [];
+      }
+
       caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
       caseDetails.officeCode = buildOfficeCode(caseDetails.regionId, caseDetails.courtDivisionCode);
 
