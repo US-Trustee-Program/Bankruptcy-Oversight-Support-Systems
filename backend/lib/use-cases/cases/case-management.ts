@@ -286,7 +286,7 @@ export default class CaseManagement {
           `Could not retrieve assignments for ${caseId}`,
           assignments.reason,
         );
-        caseDetails.assignments = [];
+        throw assignments.reason;
       }
 
       caseDetails.officeName = this.officesGateway.getOfficeName(caseDetails.courtDivisionCode);
