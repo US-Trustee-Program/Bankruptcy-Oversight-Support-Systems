@@ -249,6 +249,23 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
             keys: ['jointDebtor.phoneticTokens']
           }
         }
+        {
+          key: {
+            keys: [
+              'documentType'
+              'dxtrId'
+              'courtId'
+            ]
+          }
+        }
+        {
+          key: {
+            keys: ['status']
+          }
+          options: {
+            sparse: true
+          }
+        }
       ]
     }
   }

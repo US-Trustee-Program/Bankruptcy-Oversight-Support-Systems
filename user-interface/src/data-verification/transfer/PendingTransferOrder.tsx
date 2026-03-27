@@ -11,7 +11,7 @@ import TransferConfirmationModal, {
   TransferConfirmationModalImperative,
 } from './TransferConfirmationModal';
 import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { FromCaseSummary } from './FromCaseSummary';
 import Api2 from '@/lib/models/api2';

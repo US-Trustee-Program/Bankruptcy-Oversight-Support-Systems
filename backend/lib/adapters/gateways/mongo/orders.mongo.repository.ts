@@ -88,6 +88,16 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
     }
   }
 
+  async create(order: Order): Promise<Order> {
+    try {
+      const adapter = this.getAdapter<Order>();
+      const id = await adapter.insertOne(order);
+      return { ...order, id };
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
   async createMany(orders: Order[]): Promise<Order[]> {
     try {
       if (!orders.length) {

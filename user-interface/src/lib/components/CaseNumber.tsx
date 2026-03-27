@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { getCaseNumber } from '../utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 
 import type { JSX } from 'react';
 

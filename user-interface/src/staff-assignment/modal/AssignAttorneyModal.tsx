@@ -1,6 +1,6 @@
 import './AssignAttorneyModal.scss';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import { CaseBasics } from '@common/cams/cases';
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';

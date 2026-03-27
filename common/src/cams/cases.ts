@@ -38,6 +38,9 @@ export type CaseBasics = FlatOfficeDetail & {
   debtorTypeCode?: string;
   debtorTypeLabel?: string;
   assignments?: CaseAssignment[];
+  status?: 'MOVED';
+  movedToCaseId?: string;
+  movedOn?: string;
 };
 
 export type CaseSummary = CaseBasics & {
@@ -228,4 +231,13 @@ export function getCaseIdParts(caseId: string) {
   const divisionCode = parts[0];
   const caseNumber = `${parts[1]}-${parts[2]}`;
   return { divisionCode, caseNumber };
+}
+
+export function getCaseNumber(caseId: string | undefined): string {
+  if (caseId) {
+    const caseData = caseId.split('-');
+    if (caseData.length === 2) return caseId;
+    return `${caseData[1]}-${caseData[2]}`;
+  }
+  return '';
 }

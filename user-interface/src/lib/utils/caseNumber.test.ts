@@ -1,4 +1,5 @@
-import { copyCaseNumber, getCaseNumber } from './caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
+import { copyCaseNumber } from './caseNumber';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { copyStringToClipboard } from './clipBoard';
 

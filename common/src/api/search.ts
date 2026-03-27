@@ -27,6 +27,8 @@ export type CasesSearchPredicate = SearchPredicate & {
   excludeMemberConsolidations?: boolean;
   excludeClosedCases?: boolean;
   includeOnlyUnassigned?: boolean;
+  dxtrId?: string;
+  courtId?: string;
 };
 
 export type OrdersSearchPredicate = {

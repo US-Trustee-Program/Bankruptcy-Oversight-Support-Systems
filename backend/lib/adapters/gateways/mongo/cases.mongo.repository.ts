@@ -100,7 +100,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  private async create<T>(itemToCreate: T): Promise<T> {
+  async create<T extends { caseId: string; documentType: string }>(itemToCreate: T): Promise<T> {
     try {
       const adapter = this.getAdapter<T>();
       const id = await adapter.insertOne(itemToCreate);
@@ -336,6 +336,10 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         ),
       );
     }
+
+    // Exclude MOVED cases universally from case searches
+    conditions.push(doc('status').notEqual('MOVED'));
+
     return conditions;
   }
 
@@ -527,7 +531,35 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  public async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: unknown) {
+  async markAsMoved(caseId: string, movedToCaseId: string, movedOn: string): Promise<void> {
+    const doc = using<SyncedCase>();
+    const query = and(doc('caseId').equals(caseId), doc('documentType').equals('SYNCED_CASE'));
+    try {
+      await this.updateManyByQuery(query, {
+        $set: {
+          status: 'MOVED',
+          movedToCaseId,
+          movedOn,
+        },
+      });
+      this.context.logger.debug(
+        MODULE_NAME,
+        `Marked case ${caseId} as moved to ${movedToCaseId} on ${movedOn}.`,
+      );
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: 'Failed to mark case as moved.',
+        },
+      });
+    }
+  }
+
+  public async updateManyByQuery<T>(
+    query: ConditionOrConjunction<T>,
+    update: { $set?: Partial<T>; $unset?: Partial<Record<keyof T, ''>> },
+  ) {
     try {
       return await this.getAdapter<T>().updateMany(query, update);
     } catch (originalError) {
@@ -602,6 +634,53 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const doc = using<{ id: string }>();
       const query = doc('id').equals(id);
       await this.getAdapter<{ id: string; [key: string]: unknown }>().deleteOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async findDuplicateSyncedCases(): Promise<
+    Array<{ dxtrId: string; courtId: string; caseIds: string[] }>
+  > {
+    try {
+      const adapter = this.getAdapter<SyncedCase>();
+
+      // NOTE: Raw MongoDB aggregation pipeline is used here because QueryPipeline does not
+      // support the $group stage. All inputs to this pipeline are literal constants (no user
+      // data), so there is no injection risk. Track as technical debt: once QueryPipeline
+      // gains $group support, migrate to the typed query builder.
+      const results = await adapter.aggregate<{
+        _id: { dxtrId: string; courtId: string };
+        caseIds: string[];
+        count: number;
+      }>([
+        {
+          $match: {
+            documentType: 'SYNCED_CASE',
+          },
+        },
+        {
+          $group: {
+            _id: {
+              dxtrId: '$dxtrId',
+              courtId: '$courtId',
+            },
+            caseIds: { $push: '$caseId' },
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $match: {
+            count: { $gt: 1 },
+          },
+        },
+      ]);
+
+      return results.map((result) => ({
+        dxtrId: result._id.dxtrId,
+        courtId: result._id.courtId,
+        caseIds: result.caseIds,
+      }));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState, useEffect, useRef } from 'react';
-import { Route, useParams, useLocation, Outlet, Routes } from 'react-router-dom';
+import { Route, useParams, useLocation, Outlet, Routes, Link } from 'react-router-dom';
 import CaseDetailNavigation, { mapNavState, CaseNavState } from './panels/CaseDetailNavigation';
 import { CaseDocketSummaryFacets } from '@/case-detail/panels/CaseDetailCourtDocket';
 import Icon from '@/lib/components/uswds/Icon';
@@ -427,6 +427,23 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
             caseId={caseBasicInfo.caseId}
             caseDetail={caseBasicInfo}
           />
+          {caseBasicInfo.status === 'MOVED' && caseBasicInfo.movedToCaseId && (
+            <div
+              className="usa-alert usa-alert--warning"
+              role="alert"
+              data-testid="case-moved-alert"
+            >
+              <div className="usa-alert__body">
+                <h4 className="usa-alert__heading">Case Division Changed</h4>
+                <p className="usa-alert__text">
+                  This case was moved to a different division.{' '}
+                  <Link to={`/case-detail/${caseBasicInfo.movedToCaseId}`}>
+                    View the current case
+                  </Link>
+                </p>
+              </div>
+            </div>
+          )}
           <div className="grid-row grid-gap-lg">
             <div className="grid-col-2 left-navigation-column">
               <div className="left-navigation-pane-container">
