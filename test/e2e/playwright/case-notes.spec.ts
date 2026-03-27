@@ -55,6 +55,8 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="editor-content"] > div').fill(noteContentEdit);
 
     await expect(page.locator('[data-testid="button-note-modal-submit-button"]')).toBeEnabled();
+    // The save button uses a 300ms throttle; wait to ensure the create cycle's throttle has cleared.
+    await page.waitForTimeout(400);
     await page.locator('[data-testid="button-note-modal-submit-button"]').click();
     await expect(page.locator('[data-testid="modal-content-note-modal"]')).not.toBeVisible(
       timeoutOption,
