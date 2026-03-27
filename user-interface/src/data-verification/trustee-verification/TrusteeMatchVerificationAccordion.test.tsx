@@ -101,6 +101,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const link = screen.getByRole('link', { name: '22-11111', hidden: true });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
+    expect(link).toHaveAttribute('target', '_blank');
 
     const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
     expect(content.textContent).toContain('John Doe');
@@ -144,6 +145,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
+    expect(link).toHaveAttribute('target', '_blank');
 
     expect(screen.queryByTestId('approve-candidate-trustee-1')).not.toBeInTheDocument();
   });
