@@ -9,6 +9,8 @@ import { TrusteeMatchVerification } from '@common/cams/trustee-match-verificatio
 import { TrusteeMatchVerificationUseCase } from '../../use-cases/trustee-match-verification/trustee-match-verification.use-case';
 import HttpStatusCodes from '@common/api/http-status-codes';
 import { CamsRole } from '@common/cams/roles';
+import { CourtsUseCase } from '../../use-cases/courts/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER';
 
@@ -42,6 +44,7 @@ export class TrusteeMatchVerificationController {
 
     const trusteesRepo = factory.getTrusteesRepository(context);
     const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+    const courts = await new CourtsUseCase().getCourts(context);
 
     const enriched = await Promise.all(
       data.map(async (verification) => {
@@ -52,12 +55,20 @@ export class TrusteeMatchVerificationController {
                 trusteesRepo.read(candidate.trusteeId),
                 appointmentsRepo.getTrusteeAppointments(candidate.trusteeId),
               ]);
+              const enrichedAppointments = appointments.map((appt) => {
+                const court = this.findCourt(courts, appt.divisionCode, appt.courtId);
+                return {
+                  ...appt,
+                  courtName: court?.courtName,
+                  courtDivisionName: court?.courtDivisionName,
+                };
+              });
               return {
                 ...candidate,
                 address: trustee.public.address,
                 phone: trustee.public.phone,
                 email: trustee.public.email,
-                appointments,
+                appointments: enrichedAppointments,
               };
             } catch {
               return candidate;
@@ -74,6 +85,18 @@ export class TrusteeMatchVerificationController {
         data: enriched,
       },
     });
+  }
+
+  private findCourt(
+    courts: CourtDivisionDetails[],
+    divisionCode?: string,
+    courtId?: string,
+  ): CourtDivisionDetails | undefined {
+    if (divisionCode) {
+      const byDivision = courts.find((c) => c.courtDivisionCode === divisionCode);
+      if (byDivision) return byDivision;
+    }
+    return courts.find((c) => c.courtId === courtId);
   }
 
   private async handlePatch(context: ApplicationContext): Promise<CamsHttpResponseInit<undefined>> {
