@@ -260,30 +260,31 @@ export class TrusteeAppointmentsMongoRepository
         },
 
         // Stage 2: Left join with key dates from trustees collection
+        // Note: Using simple lookup (no 'let') for Cosmos DB compatibility
         {
           $lookup: {
             from: 'trustees',
-            let: { appointmentId: '$id' },
-            pipeline: [
-              {
-                $match: {
-                  $expr: {
-                    $and: [
-                      { $eq: ['$documentType', 'TRUSTEE_UPCOMING_REPORT_DATES'] },
-                      { $eq: ['$appointmentId', '$$appointmentId'] },
-                    ],
-                  },
-                },
-              },
-            ],
+            localField: 'id',
+            foreignField: 'appointmentId',
             as: 'keyDates',
           },
         },
 
-        // Stage 3: Extract first (should be only) key dates doc
+        // Stage 3: Filter keyDates to only TRUSTEE_UPCOMING_REPORT_DATES and extract first
         {
           $addFields: {
-            keyDoc: { $arrayElemAt: ['$keyDates', 0] },
+            keyDoc: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: '$keyDates',
+                    as: 'kd',
+                    cond: { $eq: ['$$kd.documentType', 'TRUSTEE_UPCOMING_REPORT_DATES'] },
+                  },
+                },
+                0,
+              ],
+            },
           },
         },
 
