@@ -6,7 +6,6 @@ type EventBase = {
   caseId: string;
   orderDate: string;
   otherCase: CaseBasics;
-  // verificationDate: string; // TODO: Need this????
 };
 
 export type TransferFrom = EventBase & {
