@@ -4,13 +4,14 @@ import useFixedPosition from '@/lib/hooks/UseFixedPosition';
 import {
   CaseDetail,
   getCaseConsolidationType,
+  getCaseNumber,
   getLeadCaseLabel,
   getMemberCaseLabel,
   isMemberCase,
   isLeadCase,
   isTransferredCase,
 } from '@common/cams/cases';
-import { copyCaseNumber, getCaseNumber } from '@/lib/utils/caseNumber';
+import { copyCaseNumber } from '@/lib/utils/caseNumber';
 import CopyButton from '@/lib/components/cams/CopyButton';
 import Tag, { UswdsTagStyle } from '@/lib/components/uswds/Tag';
 import { consolidationTypeMap } from '@/lib/utils/labels';

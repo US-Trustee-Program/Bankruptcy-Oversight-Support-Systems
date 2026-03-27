@@ -160,31 +160,31 @@ export class MockMongoRepository
   }
 
   search(..._ignore): Promise<any[]> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve([]);
   }
 
   searchCases(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve({ data: [], pageCount: 1, currentPage: 1 });
   }
 
   searchCasesWithPhoneticTokens(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve({ data: [], pageCount: 1, currentPage: 1 });
   }
 
   create(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve('mock-id');
   }
 
   createMany(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve([]);
   }
 
   read(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve(null);
   }
 
   delete(..._ignore): Promise<void> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve();
   }
 
   getNotesByCaseId(..._ignore): Promise<any[]> {
@@ -248,7 +248,7 @@ export class MockMongoRepository
   }
 
   deleteMany(_ignore: any): Promise<void> {
-    throw new Error('Method not implemented.');
+    return Promise.resolve();
   }
 
   getDistinctAssigneesByOffice(_ignore: any): Promise<CamsUserReference[]> {
@@ -391,8 +391,14 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  findByCaseId(..._ignore): Promise<any[]> {
+  findDuplicateSyncedCases(): Promise<
+    Array<{ dxtrId: string; courtId: string; caseIds: string[] }>
+  > {
     throw new Error('Method not implemented.');
+  }
+
+  findByCaseId(..._ignore): Promise<any[]> {
+    return Promise.resolve([]);
   }
 
   findByCaseIdAndType(..._ignore): Promise<any[]> {
@@ -476,5 +482,9 @@ export class MockMongoRepository
     const count = this.professionalIds.size;
     this.professionalIds.clear();
     return Promise.resolve(count);
+  }
+
+  markAsMoved(..._ignore: any[]): Promise<void> {
+    return Promise.resolve();
   }
 }
