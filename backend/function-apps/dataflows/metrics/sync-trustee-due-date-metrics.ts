@@ -4,8 +4,7 @@ import { TrusteeDueDateMetricsController } from '../../../lib/controllers/truste
 import { toAzureError } from '../../azure/functions';
 import { buildFunctionName } from '../dataflows-common';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
-
-const MODULE_NAME = 'SYNC-TRUSTEE-DUE-DATE-METRICS';
+import ModuleNames from '../module-names';
 
 async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext): Promise<void> {
   const context = await ContextCreator.getApplicationContext({ invocationContext });
@@ -16,7 +15,7 @@ async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext
     completeDataflowTrace(
       context.observability,
       trace,
-      MODULE_NAME,
+      ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS,
       'timerTrigger',
       context.logger,
       {
@@ -49,7 +48,7 @@ async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext
     completeDataflowTrace(
       context.observability,
       trace,
-      MODULE_NAME,
+      ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS,
       'timerTrigger',
       context.logger,
       {
@@ -59,18 +58,18 @@ async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext
         error: error instanceof Error ? error.message : String(error),
       },
     );
-    toAzureError(context.logger, MODULE_NAME, error);
+    toAzureError(context.logger, ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS, error);
   }
 }
 
 function setup() {
-  app.timer(buildFunctionName(MODULE_NAME, 'timerTrigger'), {
+  app.timer(buildFunctionName(ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS, 'timerTrigger'), {
     schedule: '0 0 5 * * *',
     handler: timerTrigger,
   });
 }
 
 export default {
-  MODULE_NAME,
+  MODULE_NAME: ModuleNames.SYNC_TRUSTEE_DUE_DATE_METRICS,
   setup,
 };

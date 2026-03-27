@@ -250,6 +250,9 @@ export class TrusteeAppointmentsMongoRepository
 
   async getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation> {
     try {
+      // Total number of required field groups for completeness calculation
+      const TOTAL_REQUIRED_FIELDS = 9;
+
       const pipeline = [
         // Stage 1: Filter to Chapter 7 appointments only
         {
@@ -288,63 +291,59 @@ export class TrusteeAppointmentsMongoRepository
           },
         },
 
-        // Stage 4: Count how many field groups are populated (0-9)
+        // Stage 4: Create boolean flags for each required field
+        {
+          $addFields: {
+            hasTprReviewPeriod: {
+              $and: [
+                { $ifNull: ['$keyDoc.tprReviewPeriodStart', false] },
+                { $ifNull: ['$keyDoc.tprReviewPeriodEnd', false] },
+              ],
+            },
+            hasPastFieldExam: { $ifNull: ['$keyDoc.pastFieldExam', false] },
+            hasPastAudit: { $ifNull: ['$keyDoc.pastAudit', false] },
+            hasTirReviewPeriod: {
+              $and: [
+                { $ifNull: ['$keyDoc.tirReviewPeriodStart', false] },
+                { $ifNull: ['$keyDoc.tirReviewPeriodEnd', false] },
+              ],
+            },
+            hasTprDue: { $ifNull: ['$keyDoc.tprDue', false] },
+            hasUpcomingFieldExam: { $ifNull: ['$keyDoc.upcomingFieldExam', false] },
+            hasUpcomingIndependentAuditRequired: {
+              $ifNull: ['$keyDoc.upcomingIndependentAuditRequired', false],
+            },
+            hasTirSubmission: { $ifNull: ['$keyDoc.tirSubmission', false] },
+            hasTirReview: { $ifNull: ['$keyDoc.tirReview', false] },
+          },
+        },
+
+        // Stage 5: Sum boolean flags to get total field count
         {
           $addFields: {
             fieldCount: {
               $sum: [
-                // tprReviewPeriod requires BOTH start AND end
-                {
-                  $cond: [
-                    {
-                      $and: [
-                        { $ifNull: ['$keyDoc.tprReviewPeriodStart', false] },
-                        { $ifNull: ['$keyDoc.tprReviewPeriodEnd', false] },
-                      ],
-                    },
-                    1,
-                    0,
-                  ],
-                },
-                // pastFieldExam
-                { $cond: [{ $ifNull: ['$keyDoc.pastFieldExam', false] }, 1, 0] },
-                // pastAudit
-                { $cond: [{ $ifNull: ['$keyDoc.pastAudit', false] }, 1, 0] },
-                // tirReviewPeriod requires BOTH start AND end
-                {
-                  $cond: [
-                    {
-                      $and: [
-                        { $ifNull: ['$keyDoc.tirReviewPeriodStart', false] },
-                        { $ifNull: ['$keyDoc.tirReviewPeriodEnd', false] },
-                      ],
-                    },
-                    1,
-                    0,
-                  ],
-                },
-                // tprDue
-                { $cond: [{ $ifNull: ['$keyDoc.tprDue', false] }, 1, 0] },
-                // upcomingFieldExam
-                { $cond: [{ $ifNull: ['$keyDoc.upcomingFieldExam', false] }, 1, 0] },
-                // upcomingIndependentAuditRequired
-                { $cond: [{ $ifNull: ['$keyDoc.upcomingIndependentAuditRequired', false] }, 1, 0] },
-                // tirSubmission
-                { $cond: [{ $ifNull: ['$keyDoc.tirSubmission', false] }, 1, 0] },
-                // tirReview
-                { $cond: [{ $ifNull: ['$keyDoc.tirReview', false] }, 1, 0] },
+                { $cond: ['$hasTprReviewPeriod', 1, 0] },
+                { $cond: ['$hasPastFieldExam', 1, 0] },
+                { $cond: ['$hasPastAudit', 1, 0] },
+                { $cond: ['$hasTirReviewPeriod', 1, 0] },
+                { $cond: ['$hasTprDue', 1, 0] },
+                { $cond: ['$hasUpcomingFieldExam', 1, 0] },
+                { $cond: ['$hasUpcomingIndependentAuditRequired', 1, 0] },
+                { $cond: ['$hasTirSubmission', 1, 0] },
+                { $cond: ['$hasTirReview', 1, 0] },
               ],
             },
           },
         },
 
-        // Stage 5: Classify completeness: complete (9), partial (1-8), none (0)
+        // Stage 6: Classify completeness based on field count
         {
           $addFields: {
             completeness: {
               $switch: {
                 branches: [
-                  { case: { $eq: ['$fieldCount', 9] }, then: 'complete' },
+                  { case: { $eq: ['$fieldCount', TOTAL_REQUIRED_FIELDS] }, then: 'complete' },
                   { case: { $gt: ['$fieldCount', 0] }, then: 'partial' },
                 ],
                 default: 'none',
@@ -353,7 +352,7 @@ export class TrusteeAppointmentsMongoRepository
           },
         },
 
-        // Stage 6: Group and count everything
+        // Stage 7: Group and count using boolean flags
         {
           $group: {
             _id: null,
@@ -367,62 +366,38 @@ export class TrusteeAppointmentsMongoRepository
             noneCount: {
               $sum: { $cond: [{ $eq: ['$completeness', 'none'] }, 1, 0] },
             },
-            // Per-field counts
+            // Per-field counts using boolean flags
             tprReviewPeriodCount: {
-              $sum: {
-                $cond: [
-                  {
-                    $and: [
-                      { $ifNull: ['$keyDoc.tprReviewPeriodStart', false] },
-                      { $ifNull: ['$keyDoc.tprReviewPeriodEnd', false] },
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
+              $sum: { $cond: ['$hasTprReviewPeriod', 1, 0] },
             },
             pastFieldExamCount: {
-              $sum: { $cond: [{ $ifNull: ['$keyDoc.pastFieldExam', false] }, 1, 0] },
+              $sum: { $cond: ['$hasPastFieldExam', 1, 0] },
             },
             pastIndependentAuditCount: {
-              $sum: { $cond: [{ $ifNull: ['$keyDoc.pastAudit', false] }, 1, 0] },
+              $sum: { $cond: ['$hasPastAudit', 1, 0] },
             },
             tirReviewPeriodCount: {
-              $sum: {
-                $cond: [
-                  {
-                    $and: [
-                      { $ifNull: ['$keyDoc.tirReviewPeriodStart', false] },
-                      { $ifNull: ['$keyDoc.tirReviewPeriodEnd', false] },
-                    ],
-                  },
-                  1,
-                  0,
-                ],
-              },
+              $sum: { $cond: ['$hasTirReviewPeriod', 1, 0] },
             },
             tprDueDateCount: {
-              $sum: { $cond: [{ $ifNull: ['$keyDoc.tprDue', false] }, 1, 0] },
+              $sum: { $cond: ['$hasTprDue', 1, 0] },
             },
             upcomingFieldExamCount: {
-              $sum: { $cond: [{ $ifNull: ['$keyDoc.upcomingFieldExam', false] }, 1, 0] },
+              $sum: { $cond: ['$hasUpcomingFieldExam', 1, 0] },
             },
             upcomingIndependentAuditRequiredCount: {
-              $sum: {
-                $cond: [{ $ifNull: ['$keyDoc.upcomingIndependentAuditRequired', false] }, 1, 0],
-              },
+              $sum: { $cond: ['$hasUpcomingIndependentAuditRequired', 1, 0] },
             },
             tirSubmissionCount: {
-              $sum: { $cond: [{ $ifNull: ['$keyDoc.tirSubmission', false] }, 1, 0] },
+              $sum: { $cond: ['$hasTirSubmission', 1, 0] },
             },
             tirReviewDueDateCount: {
-              $sum: { $cond: [{ $ifNull: ['$keyDoc.tirReview', false] }, 1, 0] },
+              $sum: { $cond: ['$hasTirReview', 1, 0] },
             },
           },
         },
 
-        // Stage 7: Remove _id and keep only the metrics
+        // Stage 8: Remove _id and keep only the metrics
         {
           $project: {
             _id: 0,
