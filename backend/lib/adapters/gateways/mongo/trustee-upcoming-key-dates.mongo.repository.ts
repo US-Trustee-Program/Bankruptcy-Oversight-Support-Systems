@@ -3,6 +3,7 @@ import {
   TrusteeUpcomingKeyDatesHistory,
 } from '@common/cams/trustee-upcoming-key-dates';
 import { getCamsError } from '../../../common-errors/error-utilities';
+import { isNotFoundError } from '../../../common-errors/not-found-error';
 import { Creatable } from '@common/cams/creatable';
 import QueryBuilder from '../../../query/query-builder';
 import { TrusteeUpcomingKeyDatesRepository } from '../../../use-cases/gateways.types';
@@ -58,6 +59,11 @@ export class TrusteeUpcomingKeyDatesMongoRepository
     try {
       return await this.getAdapter<TrusteeUpcomingKeyDates>().findOne(query);
     } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        // No key dates document exists yet for this appointment, which is the normal initial state.
+        // Return null rather than propagating a 404 error.
+        return null;
+      }
       throw getCamsError(
         originalError,
         MODULE_NAME,
