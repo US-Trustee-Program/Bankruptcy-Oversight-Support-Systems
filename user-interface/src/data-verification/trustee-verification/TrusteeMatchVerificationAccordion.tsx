@@ -292,7 +292,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               {order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
                 ?.trusteeName ?? order.resolvedTrusteeId}{' '}
               was appointed to case:{' '}
-              <Link to={`/case-detail/${order.caseId}`} className="case-link">
+              <Link
+                to={`/case-detail/${order.caseId}`}
+                className="case-link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Icon name="launch" />
                 {getCaseNumber(order.caseId)}
               </Link>
@@ -300,14 +305,19 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           ) : (
             <>
               <p className="problem-statement">
-                Trustee is inactive in CAMS but was appointed to case:{' '}
-                <Link to={`/case-detail/${order.caseId}`} className="case-link">
+                Trustee sent from the court does not match a CAMS Trustee for case:{' '}
+                <Link
+                  to={`/case-detail/${order.caseId}`}
+                  className="case-link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Icon name="launch" />
                   {getCaseNumber(order.caseId)}
                 </Link>
               </p>
 
-              <h3>Court Information</h3>
+              <h3>Trustee Information Sent By Court</h3>
               <div className="trustee-data-grid trustee-info-grid" data-testid="dxtr-trustee-info">
                 <div className="trustee-data-header grid-row grid-gap-lg">
                   <div className="trustee-data-cell grid-col-2">Name</div>
