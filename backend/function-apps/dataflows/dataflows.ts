@@ -18,6 +18,7 @@ import SyncOrders from './import/sync-orders';
 import SyncOfficeStaff from './import/sync-office-staff';
 import SyncTrusteeAppointments from './import/sync-trustee-appointments';
 import SyncTrusteeNotesMetrics from './metrics/sync-trustee-notes-metrics';
+import SyncTrusteeDueDateMetrics from './metrics/sync-trustee-due-date-metrics';
 
 const MODULE_NAME = 'DATAFLOWS-SETUP';
 
@@ -92,6 +93,7 @@ dataflows.register(
   SyncOrders,
   SyncTrusteeAppointments,
   SyncTrusteeNotesMetrics,
+  SyncTrusteeDueDateMetrics,
 );
 
 const registeredDataflows = dataflows.list().join(', ').replace(/-/g, '_');

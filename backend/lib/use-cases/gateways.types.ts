@@ -330,6 +330,22 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   deleteAll(): Promise<number>;
 }
 
+export type TrusteeDueDateMetricsAggregation = {
+  totalChapter7Appointments: number;
+  completeCount: number;
+  partialCount: number;
+  noneCount: number;
+  tprReviewPeriodCount: number;
+  pastFieldExamCount: number;
+  pastIndependentAuditCount: number;
+  tirReviewPeriodCount: number;
+  tprDueDateCount: number;
+  upcomingFieldExamCount: number;
+  upcomingIndependentAuditRequiredCount: number;
+  tirSubmissionCount: number;
+  tirReviewDueDateCount: number;
+};
+
 export interface TrusteeAppointmentsRepository extends Releasable {
   read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
@@ -348,6 +364,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   findByCaseId(caseId: string): Promise<CaseAppointment[]>;
+  getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
 }
