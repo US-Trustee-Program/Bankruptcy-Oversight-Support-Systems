@@ -1,0 +1,238 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Trustee Due Date Metrics\n\nTracks the completeness of key date entries for Chapter 7 trustee appointments. Powered by the `SYNC-TRUSTEE-DUE-DATE-METRICS` daily dataflow (runs at 05:00 UTC)."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 2592000000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 1209600000
+                },
+                {
+                  "durationMs": 2419200000
+                },
+                {
+                  "durationMs": 2592000000
+                },
+                {
+                  "durationMs": 5184000000
+                },
+                {
+                  "durationMs": 7776000000
+                }
+              ]
+            },
+            "timeContext": {
+              "durationMs": 86400000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Overall Completeness Over Time\nPercentage of Chapter 7 trustee appointments with all 9 key dates populated (complete), some (partial), or none."
+      },
+      "name": "completeness-title"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-DUE-DATE-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend\n    Complete = todouble(customDimensions.completePercent),\n    Partial = todouble(customDimensions.partialPercent),\n    None = todouble(customDimensions.nonePercent)\n| summarize\n    Complete = max(Complete),\n    Partial = max(Partial),\n    None = max(None)\n    by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 0,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "xSettings": {
+            "numberFormatSettings": {
+              "unit": 27,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          },
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "completeness-chart"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Manual Entry Field Completion Over Time\nPercentage of Chapter 7 appointments with each manually-entered key date field populated."
+      },
+      "name": "manual-fields-title"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-DUE-DATE-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend\n    TprReviewPeriod = todouble(customDimensions.tprReviewPeriodPercent),\n    PastFieldExam = todouble(customDimensions.pastFieldExamPercent),\n    PastIndependentAudit = todouble(customDimensions.pastIndependentAuditPercent),\n    TirReviewPeriod = todouble(customDimensions.tirReviewPeriodPercent)\n| summarize\n    TprReviewPeriod = max(TprReviewPeriod),\n    PastFieldExam = max(PastFieldExam),\n    PastIndependentAudit = max(PastIndependentAudit),\n    TirReviewPeriod = max(TirReviewPeriod)\n    by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 0,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "xSettings": {
+            "numberFormatSettings": {
+              "unit": 27,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          },
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "manual-fields-chart"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Calculated Field Completion Over Time\nPercentage of Chapter 7 appointments with each auto-calculated key date field populated."
+      },
+      "name": "calculated-fields-title"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-DUE-DATE-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend\n    TprDueDate = todouble(customDimensions.tprDueDatePercent),\n    UpcomingFieldExam = todouble(customDimensions.upcomingFieldExamPercent),\n    UpcomingIndependentAuditRequired = todouble(customDimensions.upcomingIndependentAuditRequiredPercent),\n    TirSubmission = todouble(customDimensions.tirSubmissionPercent),\n    TirReviewDueDate = todouble(customDimensions.tirReviewDueDatePercent)\n| summarize\n    TprDueDate = max(TprDueDate),\n    UpcomingFieldExam = max(UpcomingFieldExam),\n    UpcomingIndependentAuditRequired = max(UpcomingIndependentAuditRequired),\n    TirSubmission = max(TirSubmission),\n    TirReviewDueDate = max(TirReviewDueDate)\n    by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 0,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "xSettings": {
+            "numberFormatSettings": {
+              "unit": 27,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          },
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "calculated-fields-chart"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Dataflow Health\nSuccess/failure runs of the daily sync job."
+      },
+      "name": "dataflow-health-title"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-DUE-DATE-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend Success = tobool(customDimensions.success)\n| summarize\n    Successes = countif(Success == true),\n    Failures = countif(Success == false)\n    by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 0,
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "Successes",
+              "color": "green"
+            },
+            {
+              "seriesName": "Failures",
+              "color": "red"
+            }
+          ],
+          "xSettings": {
+            "numberFormatSettings": {
+              "unit": 27,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "dataflow-health-chart"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-1fee48/providers/Microsoft.Insights/components/appi-ustp-cams-dev-1fee48-dataflows"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

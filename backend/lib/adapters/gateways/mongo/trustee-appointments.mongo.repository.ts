@@ -1,7 +1,10 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
-import { TrusteeAppointmentsRepository } from '../../../use-cases/gateways.types';
+import {
+  TrusteeAppointmentsRepository,
+  TrusteeDueDateMetricsAggregation,
+} from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import QueryBuilder from '../../../query/query-builder';
 import {
@@ -241,6 +244,210 @@ export class TrusteeAppointmentsMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to retrieve case appointments for case ${caseId}.`,
+      });
+    }
+  }
+
+  async getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation> {
+    try {
+      // Total number of required field groups for completeness calculation
+      const TOTAL_REQUIRED_FIELDS = 9;
+
+      const pipeline = [
+        // Stage 1: Filter to Chapter 7 appointments only
+        {
+          $match: {
+            documentType: 'TRUSTEE_APPOINTMENT',
+            chapter: '7',
+          },
+        },
+
+        // Stage 2: Left join with key dates from trustees collection
+        // Note: Using simple lookup (no 'let') for Cosmos DB compatibility
+        {
+          $lookup: {
+            from: 'trustees',
+            localField: 'id',
+            foreignField: 'appointmentId',
+            as: 'keyDates',
+          },
+        },
+
+        // Stage 3: Filter keyDates to only TRUSTEE_UPCOMING_REPORT_DATES and extract first
+        {
+          $addFields: {
+            keyDoc: {
+              $arrayElemAt: [
+                {
+                  $filter: {
+                    input: '$keyDates',
+                    as: 'kd',
+                    cond: { $eq: ['$$kd.documentType', 'TRUSTEE_UPCOMING_REPORT_DATES'] },
+                  },
+                },
+                0,
+              ],
+            },
+          },
+        },
+
+        // Stage 4: Create boolean flags for each required field
+        {
+          $addFields: {
+            hasTprReviewPeriod: {
+              $and: [
+                { $ifNull: ['$keyDoc.tprReviewPeriodStart', false] },
+                { $ifNull: ['$keyDoc.tprReviewPeriodEnd', false] },
+              ],
+            },
+            hasPastFieldExam: { $ifNull: ['$keyDoc.pastFieldExam', false] },
+            hasPastAudit: { $ifNull: ['$keyDoc.pastAudit', false] },
+            hasTirReviewPeriod: {
+              $and: [
+                { $ifNull: ['$keyDoc.tirReviewPeriodStart', false] },
+                { $ifNull: ['$keyDoc.tirReviewPeriodEnd', false] },
+              ],
+            },
+            hasTprDue: { $ifNull: ['$keyDoc.tprDue', false] },
+            hasUpcomingFieldExam: { $ifNull: ['$keyDoc.upcomingFieldExam', false] },
+            hasUpcomingIndependentAuditRequired: {
+              $ifNull: ['$keyDoc.upcomingIndependentAuditRequired', false],
+            },
+            hasTirSubmission: { $ifNull: ['$keyDoc.tirSubmission', false] },
+            hasTirReview: { $ifNull: ['$keyDoc.tirReview', false] },
+          },
+        },
+
+        // Stage 5: Sum boolean flags to get total field count
+        {
+          $addFields: {
+            fieldCount: {
+              $sum: [
+                { $cond: ['$hasTprReviewPeriod', 1, 0] },
+                { $cond: ['$hasPastFieldExam', 1, 0] },
+                { $cond: ['$hasPastAudit', 1, 0] },
+                { $cond: ['$hasTirReviewPeriod', 1, 0] },
+                { $cond: ['$hasTprDue', 1, 0] },
+                { $cond: ['$hasUpcomingFieldExam', 1, 0] },
+                { $cond: ['$hasUpcomingIndependentAuditRequired', 1, 0] },
+                { $cond: ['$hasTirSubmission', 1, 0] },
+                { $cond: ['$hasTirReview', 1, 0] },
+              ],
+            },
+          },
+        },
+
+        // Stage 6: Classify completeness based on field count
+        {
+          $addFields: {
+            completeness: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ['$fieldCount', TOTAL_REQUIRED_FIELDS] }, then: 'complete' },
+                  { case: { $gt: ['$fieldCount', 0] }, then: 'partial' },
+                ],
+                default: 'none',
+              },
+            },
+          },
+        },
+
+        // Stage 7: Group and count using boolean flags
+        {
+          $group: {
+            _id: null,
+            totalChapter7Appointments: { $sum: 1 },
+            completeCount: {
+              $sum: { $cond: [{ $eq: ['$completeness', 'complete'] }, 1, 0] },
+            },
+            partialCount: {
+              $sum: { $cond: [{ $eq: ['$completeness', 'partial'] }, 1, 0] },
+            },
+            noneCount: {
+              $sum: { $cond: [{ $eq: ['$completeness', 'none'] }, 1, 0] },
+            },
+            // Per-field counts using boolean flags
+            tprReviewPeriodCount: {
+              $sum: { $cond: ['$hasTprReviewPeriod', 1, 0] },
+            },
+            pastFieldExamCount: {
+              $sum: { $cond: ['$hasPastFieldExam', 1, 0] },
+            },
+            pastIndependentAuditCount: {
+              $sum: { $cond: ['$hasPastAudit', 1, 0] },
+            },
+            tirReviewPeriodCount: {
+              $sum: { $cond: ['$hasTirReviewPeriod', 1, 0] },
+            },
+            tprDueDateCount: {
+              $sum: { $cond: ['$hasTprDue', 1, 0] },
+            },
+            upcomingFieldExamCount: {
+              $sum: { $cond: ['$hasUpcomingFieldExam', 1, 0] },
+            },
+            upcomingIndependentAuditRequiredCount: {
+              $sum: { $cond: ['$hasUpcomingIndependentAuditRequired', 1, 0] },
+            },
+            tirSubmissionCount: {
+              $sum: { $cond: ['$hasTirSubmission', 1, 0] },
+            },
+            tirReviewDueDateCount: {
+              $sum: { $cond: ['$hasTirReview', 1, 0] },
+            },
+          },
+        },
+
+        // Stage 8: Remove _id and keep only the metrics
+        {
+          $project: {
+            _id: 0,
+            totalChapter7Appointments: 1,
+            completeCount: 1,
+            partialCount: 1,
+            noneCount: 1,
+            tprReviewPeriodCount: 1,
+            pastFieldExamCount: 1,
+            pastIndependentAuditCount: 1,
+            tirReviewPeriodCount: 1,
+            tprDueDateCount: 1,
+            upcomingFieldExamCount: 1,
+            upcomingIndependentAuditRequiredCount: 1,
+            tirSubmissionCount: 1,
+            tirReviewDueDateCount: 1,
+          },
+        },
+      ];
+
+      const collection = this.client.database(this.databaseName).collection(this.collectionName);
+      const cursor = await collection.aggregate(pipeline);
+      const results = [];
+      for await (const result of cursor) {
+        results.push(result);
+      }
+
+      // Handle empty result (no Chapter 7 appointments)
+      if (results.length === 0) {
+        return {
+          totalChapter7Appointments: 0,
+          completeCount: 0,
+          partialCount: 0,
+          noneCount: 0,
+          tprReviewPeriodCount: 0,
+          pastFieldExamCount: 0,
+          pastIndependentAuditCount: 0,
+          tirReviewPeriodCount: 0,
+          tprDueDateCount: 0,
+          upcomingFieldExamCount: 0,
+          upcomingIndependentAuditRequiredCount: 0,
+          tirSubmissionCount: 0,
+          tirReviewDueDateCount: 0,
+        };
+      }
+
+      return results[0] as TrusteeDueDateMetricsAggregation;
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to compute Chapter 7 due date metrics aggregation.',
       });
     }
   }
