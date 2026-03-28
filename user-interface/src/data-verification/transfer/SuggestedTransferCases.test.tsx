@@ -3,7 +3,7 @@ import { OrderStatus } from '@common/cams/orders';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { act, render, waitFor, screen, fireEvent } from '@testing-library/react';
 import MockData from '@common/cams/test-utilities/mock-data';
-import { CaseDocketEntry, CaseSummary } from '@common/cams/cases';
+import { CaseBasics, CaseDocketEntry, CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
 import Api2 from '@/lib/models/api2';
@@ -108,7 +108,7 @@ async function fillCaseNotListedForm(
     status: OrderStatus;
     docketEntries: CaseDocketEntry[];
     docketSuggestedCaseNumber?: string;
-    newCase?: CaseSummary;
+    newCase?: CaseBasics;
     reason?: string;
   },
 ) {

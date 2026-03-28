@@ -17,7 +17,7 @@ function getAssociatedCasesMock(caseId: string, consolidationType: Consolidation
   return [
     {
       caseId: '081-93-87181',
-      otherCase: MockData.getCaseSummary({
+      otherCase: MockData.getCaseBasics({
         override: { caseId, caseTitle: 'Mr Joe', courtDivisionCode: '001' },
       }),
       orderDate: '2016-09-28',
@@ -26,21 +26,21 @@ function getAssociatedCasesMock(caseId: string, consolidationType: Consolidation
     } as ConsolidationTo,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
+      otherCase: MockData.getCaseBasics({ override: { courtDivisionCode: '001' } }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_FROM',
       consolidationType,
     } as ConsolidationFrom,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
+      otherCase: MockData.getCaseBasics({ override: { courtDivisionCode: '001' } }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_FROM',
       consolidationType,
     } as ConsolidationFrom,
     {
       caseId,
-      otherCase: MockData.getCaseSummary({ override: { courtDivisionCode: '001' } }),
+      otherCase: MockData.getCaseBasics({ override: { courtDivisionCode: '001' } }),
       orderDate: '2016-09-28',
       documentType: 'CONSOLIDATION_FROM',
       consolidationType,
@@ -193,14 +193,14 @@ describe('associated cases tests', () => {
     const NEW_CASE_ID = '222-24-00001';
     const TRANSFER_FROM: Transfer = {
       caseId: TEST_CASE_ID,
-      otherCase: MockData.getCaseSummary({ override: { caseId: OLD_CASE_ID } }),
+      otherCase: MockData.getCaseBasics({ override: { caseId: OLD_CASE_ID } }),
       orderDate: '01-04-2023',
       documentType: 'TRANSFER_FROM',
     };
 
     const TRANSFER_TO: Transfer = {
       caseId: TEST_CASE_ID,
-      otherCase: MockData.getCaseSummary({ override: { caseId: NEW_CASE_ID } }),
+      otherCase: MockData.getCaseBasics({ override: { caseId: NEW_CASE_ID } }),
       orderDate: '01-12-2024',
       documentType: 'TRANSFER_TO',
     };

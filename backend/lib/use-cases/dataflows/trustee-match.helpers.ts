@@ -232,7 +232,7 @@ export function calculateCandidateScore(
 
   context.logger.info(
     MODULE_NAME,
-    `Scoring candidate ${camsTrustee.trusteeId} ("${camsTrustee.name}"): ` +
+    `Scoring candidate ${camsTrustee.trusteeId}: ` +
       `address=${addressScore}, district=${districtDivisionScore}, chapter=${chapterScore}, total=${totalScore}`,
   );
 
