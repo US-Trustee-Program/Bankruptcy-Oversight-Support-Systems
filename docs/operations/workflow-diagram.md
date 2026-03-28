@@ -77,37 +77,23 @@ flowchart LR
 ### Pull_request Triggered Workflows
 
 Workflows triggered by `pull_request`:
-- **Pull Request Validation** (`pr-validation.yml`)
+- **Pull Request E2E Validation** (`pr-validation.yml`)
 
 ```mermaid
 flowchart LR
     trigger_pull_request(["pull_request"])
-    pr_validation_yml["Pull Request Validation"]
+    pr_validation_yml["Pull Request E2E Validation"]
     pr_validation_yml_setup["Setup"]
     reusable_build_info_yml["reusable-build-info.yml"]
     reusable_build_info_yml_build_info["Run Info"]
-    pr_validation_yml_accessibility_test["accessibility-test"]
-    reusable_accessibility_yml["reusable-accessibility.yml"]
-    reusable_accessibility_yml_playwright_accessibility_test["playwright-accessibility-test"]
-    pr_validation_yml_unit_test_frontend["unit-test-frontend"]
-    reusable_unit_test_yml["reusable-unit-test.yml"]
-    reusable_unit_test_yml_unit_test["Unit test ${{ inputs.path }}"]
-    pr_validation_yml_unit_test_backend["unit-test-backend"]
-    pr_validation_yml_unit_test_common["unit-test-common"]
-    pr_validation_yml_knip["knip"]
-    reusable_knip_yml["reusable-knip.yml"]
-    reusable_knip_yml_knip["Knip"]
-    pr_validation_yml_security_scan["Security"]
-    sub_security_scan_yml["Security"]
-    sub_security_scan_yml_sca_scan["SCA Scan"]
-    sub_security_scan_yml_sast_scan["SAST Scan"]
-    pr_validation_yml_build["Build"]
+    pr_validation_yml_build["Build Backend"]
     sub_build_yml["sub-build.yml"]
     sub_build_yml_see_slot_name["see-slot-name"]
     sub_build_yml_build_frontend_predeployment["Build Frontend Predeployment"]
     reusable_build_frontend_yml["reusable-build-frontend.yml"]
     reusable_build_frontend_yml_build_frontend["build-frontend"]
     sub_build_yml_backend["backend"]
+    pr_validation_yml_build_frontend_deployment["Build Frontend for Deployment"]
     pr_validation_yml_deploy_pr_code["Deploy PR to Staging Slot"]
     sub_deploy_code_slot_yml["sub-deploy-code-slot.yml"]
     sub_deploy_code_slot_yml_deploy_code["Slot Code Deployment"]
@@ -131,29 +117,12 @@ flowchart LR
     sub_deploy_code_slot_yml_swap_dataflows_app_deployment_slot["swap-dataflows-app-deployment-slot"]
     sub_deploy_code_slot_yml_endpoint_test_application_post_swap["endpoint-test-application-post-swap"]
     sub_deploy_code_slot_yml_enable_access["enable-access"]
-    pr_validation_yml_execute_pr_e2e["E2E Tests"]
+    pr_validation_yml_execute_pr_e2e["Run E2E Tests"]
 
     trigger_pull_request --> pr_validation_yml
     pr_validation_yml --> pr_validation_yml_setup
     reusable_build_info_yml --> reusable_build_info_yml_build_info
     pr_validation_yml_setup --> reusable_build_info_yml
-    pr_validation_yml --> pr_validation_yml_accessibility_test
-    reusable_accessibility_yml --> reusable_accessibility_yml_playwright_accessibility_test
-    pr_validation_yml_accessibility_test --> reusable_accessibility_yml
-    pr_validation_yml --> pr_validation_yml_unit_test_frontend
-    reusable_unit_test_yml --> reusable_unit_test_yml_unit_test
-    pr_validation_yml_unit_test_frontend --> reusable_unit_test_yml
-    pr_validation_yml --> pr_validation_yml_unit_test_backend
-    pr_validation_yml_unit_test_backend --> reusable_unit_test_yml
-    pr_validation_yml --> pr_validation_yml_unit_test_common
-    pr_validation_yml_unit_test_common --> reusable_unit_test_yml
-    pr_validation_yml --> pr_validation_yml_knip
-    reusable_knip_yml --> reusable_knip_yml_knip
-    pr_validation_yml_knip --> reusable_knip_yml
-    pr_validation_yml --> pr_validation_yml_security_scan
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan
-    sub_security_scan_yml --> sub_security_scan_yml_sast_scan
-    pr_validation_yml_security_scan --> sub_security_scan_yml
     pr_validation_yml --> pr_validation_yml_build
     sub_build_yml --> sub_build_yml_see_slot_name
     sub_build_yml --> sub_build_yml_build_frontend_predeployment
@@ -161,6 +130,8 @@ flowchart LR
     sub_build_yml_build_frontend_predeployment --> reusable_build_frontend_yml
     sub_build_yml --> sub_build_yml_backend
     pr_validation_yml_build --> sub_build_yml
+    pr_validation_yml --> pr_validation_yml_build_frontend_deployment
+    pr_validation_yml_build_frontend_deployment --> reusable_build_frontend_yml
     pr_validation_yml --> pr_validation_yml_deploy_pr_code
     sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_code
     sub_deploy_code_yml --> sub_deploy_code_yml_deploy_webapp
@@ -199,21 +170,6 @@ flowchart LR
     class pr_validation_yml_setup job
     class reusable_build_info_yml reusable
     class reusable_build_info_yml_build_info job
-    class pr_validation_yml_accessibility_test job
-    class reusable_accessibility_yml reusable
-    class reusable_accessibility_yml_playwright_accessibility_test job
-    class pr_validation_yml_unit_test_frontend job
-    class reusable_unit_test_yml reusable
-    class reusable_unit_test_yml_unit_test job
-    class pr_validation_yml_unit_test_backend job
-    class pr_validation_yml_unit_test_common job
-    class pr_validation_yml_knip job
-    class reusable_knip_yml reusable
-    class reusable_knip_yml_knip job
-    class pr_validation_yml_security_scan job
-    class sub_security_scan_yml mainWorkflow
-    class sub_security_scan_yml_sca_scan job
-    class sub_security_scan_yml_sast_scan job
     class pr_validation_yml_build job
     class sub_build_yml reusable
     class sub_build_yml_see_slot_name job
@@ -221,6 +177,7 @@ flowchart LR
     class reusable_build_frontend_yml reusable
     class reusable_build_frontend_yml_build_frontend job
     class sub_build_yml_backend job
+    class pr_validation_yml_build_frontend_deployment job
     class pr_validation_yml_deploy_pr_code job
     class sub_deploy_code_slot_yml reusable
     class sub_deploy_code_slot_yml_deploy_code job
@@ -1354,7 +1311,7 @@ flowchart LR
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     trigger_pull_request(["pull_request"])
-    pr_validation_yml["Pull Request Validation"]
+    pr_validation_yml["Pull Request E2E Validation"]
     trigger_push(["push"])
     continuous_deployment_yml["Continuous Deployment"]
     trigger_schedule(["schedule"])
@@ -1415,9 +1372,9 @@ flowchart LR
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
   - Triggers: delete, workflow_dispatch
   - Jobs: 3
-- **Pull Request Validation** (`pr-validation.yml`)
+- **Pull Request E2E Validation** (`pr-validation.yml`)
   - Triggers: pull_request
-  - Jobs: 10
+  - Jobs: 5
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
   - Jobs: 10

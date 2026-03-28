@@ -1,4 +1,4 @@
-name: Pull Request Validation
+name: Pull Request E2E Validation
 
 on:
   pull_request:
@@ -6,8 +6,7 @@ on:
       - main-copy-for-testing  # Testing branch (change to 'main' after validation)
     types:
       - ready_for_review  # When PR moved from draft to ready
-      - labeled           # When any label is added
-      - synchronize       # When new commits pushed (gated by label check)
+      - labeled           # When run-e2e-tests label is added
     paths-ignore:
       - 'docs/**'
       - '*.md'
@@ -18,50 +17,20 @@ concurrency:
   cancel-in-progress: false  # Queue PRs, don't cancel
 
 jobs:
-  # Fast checks run on every trigger
   setup:
     name: Setup
+    # Only run if explicitly requested via label or ready_for_review
+    if: |
+      github.event.action == 'ready_for_review' ||
+      contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')
     uses: ./.github/workflows/reusable-build-info.yml
     secrets: inherit # pragma: allowlist secret
     with:
       environment: 'Develop'  # Always use Develop for PRs
-
-  accessibility-test:
-    uses: ./.github/workflows/reusable-accessibility.yml
-    with:
-      path: user-interface
-      node-version: ${{ vars.NODE_VERSION }}
-
-  unit-test-frontend:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: user-interface
-      node-version: ${{ vars.NODE_VERSION }}
-
-  unit-test-backend:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: backend
-      node-version: ${{ vars.NODE_VERSION }}
-
-  unit-test-common:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: common
-      node-version: ${{ vars.NODE_VERSION }}
-
-  knip:
-    uses: ./.github/workflows/reusable-knip.yml
-    with:
-      node-version: ${{ vars.NODE_VERSION }}
-
-  security-scan:
-    name: Security
-    uses: ./.github/workflows/sub-security-scan.yml
-    secrets: inherit # pragma: allowlist secret
+      branchNameOverride: ${{ github.base_ref }}  # Use target branch for resource naming
 
   build:
-    name: Build
+    name: Build Backend
     needs: [setup]
     uses: ./.github/workflows/sub-build.yml
     secrets: inherit # pragma: allowlist secret
@@ -78,24 +47,27 @@ jobs:
       azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
       slotName: ${{ needs.setup.outputs.slotName }}
 
-  # E2E deployment and tests only run when explicitly requested
+  build-frontend-deployment:
+    name: Build Frontend for Deployment
+    needs: [setup]
+    uses: ./.github/workflows/reusable-build-frontend.yml
+    secrets: inherit # pragma: allowlist secret
+    with:
+      nodeVersion: ${{ vars.NODE_VERSION }}
+      camsServerHostname: ${{ needs.setup.outputs.apiFunctionName }}.azurewebsites.us
+      camsStagingHostname: ${{ needs.setup.outputs.apiFunctionName }}-${{ needs.setup.outputs.slotName }}.azurewebsites.us
+      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
+      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
+      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
+      webappName: ${{ needs.setup.outputs.webappName }}
+      environment: ${{ needs.setup.outputs.ghaEnvironment }}
+      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
+      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
+      isDeployment: true
+
   deploy-pr-code:
     name: Deploy PR to Staging Slot
-    needs:
-      [
-        setup,
-        build,
-        accessibility-test,
-        unit-test-frontend,
-        unit-test-backend,
-        unit-test-common,
-        security-scan,
-        knip,
-      ]
-    # Only deploy if: (1) PR has run-e2e-tests label, OR (2) event is ready_for_review
-    if: |
-      github.event.action == 'ready_for_review' ||
-      contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')
+    needs: [setup, build, build-frontend-deployment]
     uses: ./.github/workflows/sub-deploy-code-slot.yml
     with:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
@@ -106,11 +78,11 @@ jobs:
       webappName: ${{ needs.setup.outputs.webappName }}
       environmentHash: ${{ needs.setup.outputs.environmentHash }}
       slotName: ${{ needs.setup.outputs.slotName }}
-      initialDeployment: 'false'  # Never initial deployment for PRs
+      initialDeployment: 'false'
     secrets: inherit # pragma: allowlist secret
 
   execute-pr-e2e:
-    name: E2E Tests
+    name: Run E2E Tests
     needs: [setup, deploy-pr-code]
     uses: ./.github/workflows/reusable-e2e.yml
     with:
