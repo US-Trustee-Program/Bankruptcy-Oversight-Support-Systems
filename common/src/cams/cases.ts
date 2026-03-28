@@ -45,6 +45,56 @@ export type CaseSummary = CaseBasics & {
   jointDebtor?: Debtor;
 };
 
+export function getCaseBasics<T extends CaseBasics>(bCase: T): CaseBasics {
+  const {
+    officeName,
+    officeCode,
+    courtId,
+    courtName,
+    courtDivisionCode,
+    courtDivisionName,
+    groupDesignator,
+    regionId,
+    regionName,
+    state,
+    dxtrId,
+    caseId,
+    caseNumber,
+    chapter,
+    caseTitle,
+    dateFiled,
+    petitionCode,
+    petitionLabel,
+    debtorTypeCode,
+    debtorTypeLabel,
+    assignments,
+  } = bCase;
+  const result: CaseBasics = {
+    officeName,
+    officeCode,
+    courtId,
+    courtName,
+    courtDivisionCode,
+    courtDivisionName,
+    groupDesignator,
+    regionId,
+    regionName,
+    dxtrId,
+    caseId,
+    chapter,
+    caseTitle,
+    dateFiled,
+  };
+  if (state !== undefined) result.state = state;
+  if (caseNumber !== undefined) result.caseNumber = caseNumber;
+  if (petitionCode !== undefined) result.petitionCode = petitionCode;
+  if (petitionLabel !== undefined) result.petitionLabel = petitionLabel;
+  if (debtorTypeCode !== undefined) result.debtorTypeCode = debtorTypeCode;
+  if (debtorTypeLabel !== undefined) result.debtorTypeLabel = debtorTypeLabel;
+  if (assignments !== undefined) result.assignments = assignments;
+  return result;
+}
+
 export type CaseDetail = CaseSummary & {
   closedDate?: string;
   dismissedDate?: string;
