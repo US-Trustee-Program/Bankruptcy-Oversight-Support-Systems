@@ -9,7 +9,7 @@ export const test = base.extend({
     const goto = page.goto.bind(page);
 
     function modifiedGoto(url: string, options: unknown) {
-      if (!url.includes('localhost') && url.length > 0) {
+      if (!url.includes('localhost') && !url.startsWith('/') && url.length > 0) {
         url += (url as string).includes('?') ? '&' : '?'; // checks if query string already exists
         // Use SLOT_NAME environment variable to route traffic to the specified Azure slot environment
         // Note that passing 'self' will target production slot
