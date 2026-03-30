@@ -462,7 +462,17 @@ test('user can add case note', async ({ page }) => {
 
 **Running E2E Tests**:
 
-See `test/e2e/package.json` for available test scripts. Tests are run from the `test/e2e/` directory.
+```bash
+# Option 1: Containerized testing with Podman (no local setup required)
+cd test/e2e
+npm run e2e  # Builds containers, runs tests, opens report
+
+# Option 2: Run against locally hosted services
+cd test/e2e
+npm run headless  # Requires backend/frontend running separately
+```
+
+See [test/e2e/README.md](../../../test/e2e/README.md) and [docs/operations/e2e-tests.md](../../operations/e2e-tests.md) for complete documentation.
 
 **Testing Strategy Summary**
 - **Unit tests**: Individual components, hooks, utilities (fast, many tests)

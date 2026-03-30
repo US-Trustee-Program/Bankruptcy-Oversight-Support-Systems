@@ -1,6 +1,5 @@
 import { expect, Request } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
-import { logout } from './login/login-helpers';
 
 interface Order {
   id: string;
@@ -37,10 +36,6 @@ test.describe('Transfer Orders', () => {
     orderResponseBody = (await orderResponse.json()).data;
 
     expect(orderResponseBody).not.toBeFalsy();
-  });
-
-  test.afterEach(async ({ page }) => {
-    await logout(page);
   });
 
   test('test pending transfer order form', async ({ page }) => {

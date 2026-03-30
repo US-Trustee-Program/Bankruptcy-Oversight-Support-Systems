@@ -10,6 +10,7 @@ import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
 import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseIdParts } from '@common/cams/cases';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api2 from '@/lib/models/api2';
 import TrusteeMatchRejectionModal, {
@@ -35,7 +36,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
 
-  const courtName = courts.find((c) => c.courtId === order.courtId)?.courtName ?? order.courtId;
+  const { divisionCode } = getCaseIdParts(order.caseId);
+  const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
+  const courtName = courtDetails?.courtName ?? order.courtId;
 
   const { legacy } = order.dxtrTrustee;
   const addressLines = [
@@ -174,7 +177,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         >
           {candidate.appointments?.map((appt, i, arr) => (
             <span key={i}>
-              {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
+              {appt.courtName}
+              {appt.courtDivisionName ? ` (${appt.courtDivisionName})` : ''}: Chap{' '}
               {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
               {i < arr.length - 1 && <br />}
             </span>
@@ -292,7 +296,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               {order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
                 ?.trusteeName ?? order.resolvedTrusteeId}{' '}
               was appointed to case:{' '}
-              <Link to={`/case-detail/${order.caseId}`} className="case-link">
+              <Link
+                to={`/case-detail/${order.caseId}`}
+                className="case-link"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 <Icon name="launch" />
                 {getCaseNumber(order.caseId)}
               </Link>
@@ -300,14 +309,19 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           ) : (
             <>
               <p className="problem-statement">
-                Trustee is inactive in CAMS but was appointed to case:{' '}
-                <Link to={`/case-detail/${order.caseId}`} className="case-link">
+                Trustee sent from the court does not match a CAMS Trustee for case:{' '}
+                <Link
+                  to={`/case-detail/${order.caseId}`}
+                  className="case-link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Icon name="launch" />
                   {getCaseNumber(order.caseId)}
                 </Link>
               </p>
 
-              <h3>Court Information</h3>
+              <h3>Trustee Information Sent By Court</h3>
               <div className="trustee-data-grid trustee-info-grid" data-testid="dxtr-trustee-info">
                 <div className="trustee-data-header grid-row grid-gap-lg">
                   <div className="trustee-data-cell grid-col-2">Name</div>

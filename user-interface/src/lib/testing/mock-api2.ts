@@ -38,7 +38,7 @@ import {
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
-import { TrusteeUpcomingReportDates } from '@common/cams/trustee-upcoming-report-dates';
+import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
@@ -541,16 +541,6 @@ const consolidation: Array<ConsolidationTo | ConsolidationFrom> = [
     documentType: 'CONSOLIDATION_TO',
     orderDate: '2026-06-25',
     otherCase: {
-      debtor: {
-        name: 'Dave Wintheiser',
-        address1: '857 Terrell Mall',
-        address2: 'Apt. 752',
-        address3: 'suite 100',
-        cityStateZipCountry: 'Woodbury, UT, 13173, US',
-        phone: '1-234-583-5585',
-        extension: '549450',
-        email: 'Reggie_Skiles46@gmail.com',
-      },
       officeName: 'Columbus',
       officeCode: '4',
       courtId: '113G',
@@ -581,16 +571,6 @@ const consolidation: Array<ConsolidationTo | ConsolidationFrom> = [
     documentType: 'CONSOLIDATION_FROM',
     orderDate: '2026-05-12',
     otherCase: {
-      debtor: {
-        name: 'Brent Kassulke',
-        address1: '124 Leatha Loop',
-        address2: 'Suite 810',
-        address3: 'suite 100',
-        cityStateZipCountry: 'West Anthony, WI, 03510-3711, US',
-        phone: '862.755.2942 x6107',
-        extension: '756198',
-        email: 'Monserrat.Schroeder@hotmail.com',
-      },
       officeName: 'Paducah',
       officeCode: '5',
       courtId: '0644',
@@ -621,16 +601,6 @@ const consolidation: Array<ConsolidationTo | ConsolidationFrom> = [
     documentType: 'CONSOLIDATION_FROM',
     orderDate: '2026-03-05',
     otherCase: {
-      debtor: {
-        name: 'Kristopher Hartmann',
-        address1: '154 Oxford Road',
-        address2: 'Suite 859',
-        address3: 'suite 100',
-        cityStateZipCountry: 'Hayward, NV, 87284, US',
-        phone: '(609) 777-0451 x81084',
-        extension: '948213',
-        email: 'Kirsten28@gmail.com',
-      },
       officeName: 'Las Vegas',
       officeCode: '2',
       courtId: '0978',
@@ -2766,14 +2736,14 @@ async function postCaseReload(_caseId: string) {
   return;
 }
 
-async function getUpcomingReportDates(
+async function getUpcomingKeyDates(
   _trusteeId: string,
   _appointmentId: string,
-): Promise<ResponseBody<TrusteeUpcomingReportDates | null>> {
+): Promise<ResponseBody<TrusteeUpcomingKeyDates | null>> {
   return { data: null };
 }
 
-async function putUpcomingReportDates(
+async function putUpcomingKeyDates(
   _trusteeId: string,
   _appointmentId: string,
   _input: unknown,
@@ -2880,8 +2850,8 @@ const MockApi2 = {
   deleteBank,
   postBank,
   getBanks,
-  getUpcomingReportDates,
-  putUpcomingReportDates,
+  getUpcomingKeyDates,
+  putUpcomingKeyDates,
   getTrusteeOversightAssignments,
   createTrusteeOversightAssignment,
   getOversightStaff,

@@ -1,12 +1,12 @@
 import { CaseAssignment } from './assignments';
 import { Auditable } from './auditable';
-import { CaseSummary } from './cases';
+import { CaseBasics } from './cases';
 import { OrderStatus, TransferOrder } from './orders';
 
 export interface ConsolidationOrderSummary {
   status: OrderStatus;
-  leadCase?: CaseSummary;
-  memberCases: Array<CaseSummary>;
+  leadCase?: CaseBasics;
+  memberCases: Array<CaseBasics>;
   reason?: string;
 }
 

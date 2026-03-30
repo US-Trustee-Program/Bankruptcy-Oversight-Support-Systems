@@ -101,6 +101,7 @@ describe('Case management tests', () => {
     vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue(
       mockConsolidations,
     );
+    vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(undefined);
   });
 
   beforeAll(async () => {

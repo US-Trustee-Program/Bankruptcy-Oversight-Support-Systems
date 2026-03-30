@@ -1,6 +1,6 @@
 import './MonthDaySelector.scss';
 import './forms.scss';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, type FocusEvent } from 'react';
 
 type MonthDaySelectorProps = {
   id: string;
@@ -10,9 +10,10 @@ type MonthDaySelectorProps = {
   onChange?: (value: string) => void;
   disabled?: boolean;
   required?: boolean;
-  customErrorMessage?: string;
   hasError?: boolean;
   className?: string;
+  onFocus?: () => void;
+  onBlur?: (e: FocusEvent<HTMLDivElement>) => void;
 };
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => {
@@ -59,20 +60,11 @@ function parseValue(value?: string): { month: string; day: string } {
 }
 
 export default function MonthDaySelector(props: MonthDaySelectorProps) {
-  const {
-    id,
-    label,
-    disabled,
-    required,
-    customErrorMessage,
-    hasError: hasErrorProp,
-    className,
-  } = props;
+  const { id, label, disabled, required, hasError, className, onFocus, onBlur } = props;
 
   const parsed = parseValue(props.value);
   const [month, setMonth] = useState(parsed.month);
   const [day, setDay] = useState(parsed.day);
-  const hasError = !!customErrorMessage || !!hasErrorProp;
 
   const maxDays = getDaysInMonth(month);
   const DAYS = generateDays(maxDays);
@@ -120,7 +112,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
           {label}
         </label>
       )}
-      <div className="month-day-selector__inputs">
+      <div className="month-day-selector__inputs" onFocus={onFocus} onBlur={onBlur}>
         <div className="month-day-selector__column">
           <span className="usa-hint">Month</span>
           <select
@@ -168,9 +160,6 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
             ))}
           </select>
         </div>
-      </div>
-      <div id={`${id}-error`} className="date-error usa-input__error-message" aria-live="polite">
-        {customErrorMessage}
       </div>
     </div>
   );

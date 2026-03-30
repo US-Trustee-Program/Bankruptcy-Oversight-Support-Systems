@@ -454,12 +454,30 @@ resource trusteeProfessionalIdsCollection 'Microsoft.DocumentDB/databaseAccounts
         }
         {
           key: {
-            keys: ['camsTrusteeId']
+            keys: [
+              'camsTrusteeId'
+              'acmsProfessionalId'
+              'documentType'
+            ]
+          }
+          options: {
+            unique: true
           }
         }
         {
           key: {
-            keys: ['acmsProfessionalId']
+            keys: [
+              'camsTrusteeId'
+              'documentType'
+            ]
+          }
+        }
+        {
+          key: {
+            keys: [
+              'acmsProfessionalId'
+              'documentType'
+            ]
           }
         }
       ]

@@ -1,0 +1,38 @@
+# Playwright Test Runner Dockerfile for E2E Testing
+FROM localhost/e2e_deps:latest AS deps
+FROM localhost/e2e_built:latest AS built
+
+# Use official Playwright image for pre-installed browsers
+FROM mcr.microsoft.com/playwright:v1.56.1-noble
+
+WORKDIR /app
+
+# Copy node_modules from deps (cached — only rebuilds when package*.json changes)
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/common/node_modules ./common/node_modules
+COPY --from=deps /app/backend/node_modules ./backend/node_modules
+COPY --from=deps /app/user-interface/node_modules ./user-interface/node_modules
+COPY --from=deps /app/test/e2e/node_modules ./test/e2e/node_modules
+
+# Copy package files (needed for workspace module resolution)
+COPY package*.json ./
+COPY common/package*.json ./common/
+COPY backend/package*.json ./backend/
+COPY user-interface/package*.json ./user-interface/
+COPY test/e2e/package*.json ./test/e2e/
+
+# Copy common source + dist and backend source from built (no recompile needed)
+# common/src is needed because backend tsconfig resolves @common/* → ../common/src/*
+COPY --from=built /app/common/src ./common/src
+COPY --from=built /app/common/dist ./common/dist
+COPY --from=built /app/backend ./backend
+
+# Copy e2e source (changes frequently — keep as last layer)
+COPY test/e2e/ ./test/e2e/
+
+WORKDIR /app/test/e2e
+
+ENV DOTENV_CONFIG_SILENT=true
+ENV DOTENV_QUIET=true
+
+CMD ["npm", "run", "headless"]
