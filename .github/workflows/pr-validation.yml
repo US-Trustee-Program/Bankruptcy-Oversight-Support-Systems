@@ -3,7 +3,7 @@ name: Pull Request E2E Validation
 on:
   pull_request:
     branches:
-      - main-copy-for-testing  # Testing branch (change to 'main' after validation)
+      - main
     types:
       - ready_for_review  # When PR moved from draft to ready
       - labeled           # When run-e2e-tests label is added
@@ -95,3 +95,17 @@ jobs:
       ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
       branchHashId: ${{ needs.setup.outputs.environmentHash }}
     secrets: inherit # pragma: allowlist secret
+
+  playwright-e2e-test:
+    name: Playwright E2E Tests
+    needs: [execute-pr-e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check E2E test result
+        run: |
+          if [[ "${{ needs.execute-pr-e2e.result }}" != "success" ]]; then
+            echo "E2E tests did not pass (result: ${{ needs.execute-pr-e2e.result }})"
+            exit 1
+          fi
+          echo "E2E tests passed"

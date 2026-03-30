@@ -118,6 +118,7 @@ flowchart LR
     sub_deploy_code_slot_yml_endpoint_test_application_post_swap["endpoint-test-application-post-swap"]
     sub_deploy_code_slot_yml_enable_access["enable-access"]
     pr_validation_yml_execute_pr_e2e["Run E2E Tests"]
+    pr_validation_yml_playwright_e2e_test["Playwright E2E Tests"]
 
     trigger_pull_request --> pr_validation_yml
     pr_validation_yml --> pr_validation_yml_setup
@@ -159,6 +160,7 @@ flowchart LR
     pr_validation_yml_deploy_pr_code --> sub_deploy_code_slot_yml
     pr_validation_yml --> pr_validation_yml_execute_pr_e2e
     pr_validation_yml_execute_pr_e2e --> reusable_e2e_yml
+    pr_validation_yml --> pr_validation_yml_playwright_e2e_test
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -202,6 +204,7 @@ flowchart LR
     class sub_deploy_code_slot_yml_endpoint_test_application_post_swap job
     class sub_deploy_code_slot_yml_enable_access job
     class pr_validation_yml_execute_pr_e2e job
+    class pr_validation_yml_playwright_e2e_test job
 ```
 
 ### Push Triggered Workflows
@@ -1374,7 +1377,7 @@ flowchart LR
   - Jobs: 3
 - **Pull Request E2E Validation** (`pr-validation.yml`)
   - Triggers: pull_request
-  - Jobs: 5
+  - Jobs: 6
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
   - Jobs: 10
