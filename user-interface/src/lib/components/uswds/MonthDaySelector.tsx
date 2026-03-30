@@ -5,6 +5,7 @@ import React, { useEffect, useState, type FocusEvent } from 'react';
 type MonthDaySelectorProps = {
   id: string;
   label?: string;
+  contextLabel?: string;
   // Expected format: "1900-MM-DD", or empty string when no value is set
   value?: string;
   onChange?: (value: string) => void;
@@ -60,7 +61,8 @@ function parseValue(value?: string): { month: string; day: string } {
 }
 
 export default function MonthDaySelector(props: MonthDaySelectorProps) {
-  const { id, label, disabled, required, hasError, className, onFocus, onBlur } = props;
+  const { id, label, contextLabel, disabled, required, hasError, className, onFocus, onBlur } =
+    props;
 
   const parsed = parseValue(props.value);
   const [month, setMonth] = useState(parsed.month);
@@ -123,7 +125,8 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
             onChange={handleMonthChange}
             disabled={disabled}
             required={required}
-            aria-labelledby={`${id}-label`}
+            aria-labelledby={label ? `${id}-label` : undefined}
+            aria-label={!label && contextLabel ? contextLabel : undefined}
             aria-describedby={hasError ? `${id}-error` : undefined}
             aria-invalid={hasError ? 'true' : undefined}
           >
