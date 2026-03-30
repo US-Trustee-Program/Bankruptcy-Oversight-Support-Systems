@@ -85,6 +85,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
       <div className="review-period-row" onFocus={handleFocus} onBlur={handleBlur}>
         <MonthDaySelector
           id={`${id}-start`}
+          contextLabel={`${label} Start`}
           value={startValue}
           onChange={onStartChange}
           hasError={hasError}
@@ -94,6 +95,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
         </span>
         <MonthDaySelector
           id={`${id}-end`}
+          contextLabel={`${label} End`}
           value={endValue}
           onChange={onEndChange}
           hasError={hasError}
