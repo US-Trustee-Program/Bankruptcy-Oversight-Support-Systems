@@ -2,7 +2,7 @@ import './NewTabLink.scss';
 import { Link } from 'react-router-dom';
 import Icon from '@/lib/components/uswds/Icon';
 
-export type NewTabLinkProps = {
+type NewTabLinkProps = {
   to: string;
   label: string;
   className?: string;
