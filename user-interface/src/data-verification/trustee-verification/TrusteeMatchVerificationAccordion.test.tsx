@@ -108,7 +108,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
     const noMatchLink = screen.getByRole('link', { name: /Search for a trustee/, hidden: true });
     expect(noMatchLink).toBeInTheDocument();
-    expect(noMatchLink.closest('p')).toHaveTextContent('There are no suggested matches in CAMS.');
+    expect(noMatchLink.closest('.search-link-container')).toHaveTextContent(
+      'There are no suggested matches in CAMS.',
+    );
   });
 
   test('should render candidate-info section with Confirm Match button for pending order', () => {
@@ -210,6 +212,25 @@ describe('TrusteeMatchVerificationAccordion', () => {
         sampleOrderWithCandidates,
       );
     });
+  });
+
+  test('should render search link with no-other-matches message for readonly order with candidate', () => {
+    renderWithProps({
+      order: {
+        ...sampleOrderWithCandidates,
+        status: 'rejected',
+        resolvedTrusteeId: undefined,
+      },
+    });
+
+    const link = screen.getByRole('link', {
+      name: /Search for a different trustee\./,
+      hidden: true,
+    });
+    expect(link).toBeInTheDocument();
+    expect(link.closest('.search-link-container')).toHaveTextContent(
+      'There are no other suggested matches in CAMS.',
+    );
   });
 
   test('should render "Search for a different trustee." link when match candidates exist', () => {
