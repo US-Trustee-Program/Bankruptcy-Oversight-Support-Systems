@@ -1,0 +1,24 @@
+# Built image: compiles common, backend, and frontend once (cached)
+# Pre-build with: podman build -t localhost/e2e_built:latest -f test/e2e/Dockerfile.built ../../
+FROM localhost/e2e_deps:latest
+
+WORKDIR /app
+
+# Copy all source (after deps layer — only busts when source changes)
+COPY common/ ./common/
+COPY backend/ ./backend/
+COPY user-interface/ ./user-interface/
+
+# Build common (shared by backend and frontend)
+RUN npm run build:common
+
+# Build backend
+RUN npm run build --workspace=backend
+
+# Build frontend (env vars baked in for E2E test environment)
+ENV NODE_ENV=production
+ENV CAMS_PA11Y=false
+ENV CAMS_LOGIN_PROVIDER=okta
+ENV CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING=""
+RUN npm run build --workspace=user-interface && \
+    ls -la user-interface/build || (echo "ERROR: frontend build directory not created" && exit 1)

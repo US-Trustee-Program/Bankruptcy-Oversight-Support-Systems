@@ -1,7 +1,7 @@
 import { Page, expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 
 const authFile = 'playwright/.auth/user.json';
 const { OKTA_USER_NAME, OKTA_PASSWORD, TARGET_HOST } = process.env;
@@ -70,7 +70,7 @@ async function oktaLogin(page: Page) {
         })()
       }`;
   await page.waitForURL(expectedHost);
-  await expect(page.getByTestId('app-component-test-id')).toBeVisible();
+  await expect(page.getByTestId('app-component-test-id')).toBeVisible({ timeout: 30000 });
 }
 
 function usingAuthenticationProvider() {

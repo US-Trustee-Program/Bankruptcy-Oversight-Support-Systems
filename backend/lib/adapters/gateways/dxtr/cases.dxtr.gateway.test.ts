@@ -97,11 +97,12 @@ type CaseDetailQueryMocks = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const setupCaseDetailQuerySequence = (querySpy: any, mocks: CaseDetailQueryMocks) => {
   querySpy.mockImplementationOnce(async () => mocks.caseResults);
+  // debtor and joint debtor parties are fetched in parallel — joint debtor starts before debtor aliases
   querySpy.mockImplementationOnce(async () => mocks.debtorResults);
+  querySpy.mockImplementationOnce(async () => mocks.jointDebtorResults);
   if (mocks.debtorAliasResults) {
     querySpy.mockImplementationOnce(async () => mocks.debtorAliasResults);
   }
-  querySpy.mockImplementationOnce(async () => mocks.jointDebtorResults);
   if (mocks.jointDebtorAliasResults) {
     querySpy.mockImplementationOnce(async () => mocks.jointDebtorAliasResults);
   }
@@ -400,11 +401,11 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockResolvedValueOnce(mockCaseResults);
 
+    // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
     querySpy.mockResolvedValueOnce(mockQueryDebtor);
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
     // debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
-
-    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
     // joint debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
@@ -488,13 +489,12 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockResolvedValueOnce(mockCaseResults);
 
+    // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
     querySpy.mockResolvedValueOnce(mockQueryDebtor);
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
     // debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
-
-    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
-    // joint debtor additionalIdentifiers
-    querySpy.mockResolvedValueOnce(makeQueryResults([]));
+    // joint debtor additionalIdentifiers (not consumed — empty joint debtor has no alias query)
 
     // First for the debtor type.
     querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
@@ -656,11 +656,11 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockResolvedValueOnce(mockCaseResults);
 
+    // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
     querySpy.mockResolvedValueOnce(mockQueryDebtor);
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
     // debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
-
-    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
     // joint debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
@@ -838,11 +838,11 @@ describe('Test DXTR Gateway', () => {
 
     querySpy.mockResolvedValueOnce(mockCaseResults);
 
+    // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
     querySpy.mockResolvedValueOnce(mockQueryParties);
+    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
     // debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
-
-    querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
     // joint debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
@@ -1080,8 +1080,6 @@ describe('Test DXTR Gateway', () => {
         message: '',
       };
       querySpy.mockResolvedValueOnce(mockParties);
-      // debtor additionalIdentifiers
-      querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
       const mockJointDebtor = {
         success: true,
@@ -1090,7 +1088,10 @@ describe('Test DXTR Gateway', () => {
         },
         message: '',
       };
+      // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
       querySpy.mockResolvedValueOnce(mockJointDebtor);
+      // debtor additionalIdentifiers
+      querySpy.mockResolvedValueOnce(makeQueryResults([]));
       // joint debtor additionalIdentifiers
       querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
@@ -1163,7 +1164,12 @@ describe('Test DXTR Gateway', () => {
         },
         message: '',
       };
+      // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
       querySpy.mockResolvedValueOnce(mockJointDebtor);
+      // debtor additionalIdentifiers
+      querySpy.mockResolvedValueOnce(makeQueryResults([]));
+      // joint debtor additionalIdentifiers
+      querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
       // Get suggested case data
       const mockSuggestedCasesResponse = {
@@ -1174,8 +1180,6 @@ describe('Test DXTR Gateway', () => {
         message: '',
       };
       querySpy.mockResolvedValueOnce(mockSuggestedCasesResponse);
-      querySpy.mockResolvedValueOnce(mockParties);
-      querySpy.mockResolvedValueOnce(mockParties);
 
       await expect(
         testCasesDxtrGateway.getSuggestedCases(applicationContext, testCase.caseId),

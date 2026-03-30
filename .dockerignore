@@ -1,0 +1,11 @@
+# Exclude test artifacts from Docker build context (repo root)
+user-interface/test-results/
+user-interface/playwright-report/
+user-interface/coverage/
+test/e2e/test-results/
+test/e2e/playwright-report/
+test/e2e/mongodb-data/
+test/e2e/sqlserver-data/
+test/e2e/fixtures/*-harvested.json
+**/node_modules/
+**/.git/

@@ -112,7 +112,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
     SELECT
       D.DE_SEQNO as sequenceNumber,
       D.DE_DOCUMENT_NUM as documentNumber,
-      FORMAT(D.DE_DATE_FILED, 'yyyy-MM-dd') as dateFiled,
+      CONVERT(VARCHAR(10), D.DE_DATE_FILED, 23) as dateFiled,
       ISNULL(D.DO_SUMMARY_TEXT, 'SUMMARY NOT AVAILABLE') as summaryText,
       ISNULL(D.DT_TEXT, 'TEXT NOT AVAILABLE') as fullText
     FROM [dbo].[AO_DE] AS D

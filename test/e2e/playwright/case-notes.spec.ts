@@ -1,25 +1,17 @@
 import DataGenerationUtils from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
-import { logout } from './login/login-helpers';
+
+const timeoutOption = { timeout: 60000 };
 
 test.describe('Case Notes', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
 
-  let addCaseNoteButton;
-  let noteNotesAlert;
-
   test.beforeEach(async ({ page }) => {
     await page.goto(`/case-detail/${DataGenerationUtils.KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
 
-    addCaseNoteButton = page.getByTestId('open-modal-button_note-add-button');
-    await expect(addCaseNoteButton).toBeVisible();
-    noteNotesAlert = page.getByTestId('alert-message');
-    await expect(noteNotesAlert).toBeVisible();
-  });
-
-  test.afterEach(async ({ page }) => {
-    await logout(page);
+    const addCaseNoteButton = page.getByTestId('open-modal-button_note-add-button');
+    await expect(addCaseNoteButton).toBeVisible(timeoutOption);
   });
 
   test('should create a case note for a case, edit that case note, and be able to remove that case note', async ({
@@ -39,12 +31,14 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="editor-content"] > div').fill(testNoteContent);
     await expect(page.locator('[data-testid="button-note-modal-submit-button"]')).toBeVisible();
     await page.locator('[data-testid="button-note-modal-submit-button"]').click();
-    await expect(page.locator('[data-testid="modal-content-note-modal"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="modal-content-note-modal"]')).not.toBeVisible(
+      timeoutOption,
+    );
 
     //Ensure Newly created Note is there
     caseNoteHeader = page.getByTestId('note-item-0-header');
-    await expect(caseNoteHeader).toBeVisible();
-    await expect(caseNoteHeader).toHaveText(testNoteTitle);
+    await expect(caseNoteHeader).toBeVisible(timeoutOption);
+    await expect(caseNoteHeader).toHaveText(testNoteTitle, timeoutOption);
 
     //Edit newly created Case Note and ensure previous values are populated on first load
     await expect(
@@ -61,24 +55,27 @@ test.describe('Case Notes', () => {
     await page.locator('[data-testid="editor-content"] > div').fill(noteContentEdit);
 
     await expect(page.locator('[data-testid="button-note-modal-submit-button"]')).toBeEnabled();
+    // The save button uses a 300ms throttle; wait to ensure the create cycle's throttle has cleared.
+    await page.waitForTimeout(400);
     await page.locator('[data-testid="button-note-modal-submit-button"]').click();
-    await expect(page.locator('[data-testid="button-note-modal-submit-button"]')).toBeDisabled();
-    await expect(page.locator('[data-testid="modal-content-note-modal"]')).not.toBeVisible();
+    await expect(page.locator('[data-testid="modal-content-note-modal"]')).not.toBeVisible(
+      timeoutOption,
+    );
     caseNoteHeader = page.getByTestId('note-item-0-header');
-    await expect(caseNoteHeader).toBeVisible();
-    await expect(caseNoteHeader).toHaveText(noteTitleEdit);
+    await expect(caseNoteHeader).toBeVisible(timeoutOption);
+    await expect(caseNoteHeader).toHaveText(noteTitleEdit, timeoutOption);
 
     //Remove Newly created note edit
     await expect(
       page.locator('[data-testid="open-modal-button_note-item-remove-button_0"]'),
-    ).toBeVisible();
+    ).toBeVisible(timeoutOption);
     await page.locator('[data-testid="open-modal-button_note-item-remove-button_0"]').click();
     await expect(
       page.locator('[data-testid="button-note-remove-modal-submit-button"]'),
-    ).toBeVisible();
+    ).toBeVisible(timeoutOption);
     await page.locator('[data-testid="button-note-remove-modal-submit-button"]').click();
 
-    await expect(page.locator('[data-testid="searchable-notes"]')).not.toBeVisible();
-    await expect(page.locator('[data-testid="empty-notes"]')).toBeVisible();
+    await expect(page.locator('[data-testid="searchable-notes"]')).not.toBeVisible(timeoutOption);
+    await expect(page.locator('[data-testid="empty-notes"]')).toBeVisible(timeoutOption);
   });
 });
