@@ -33,8 +33,10 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   createdOn: '2026-01-01T00:00:00.000Z',
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
+  pastBackgroundQuestion: '2022-05-10',
   pastFieldExam: '2024-02-21',
   pastAudit: '2023-02-22',
+  pastTprSubmission: '2025-11-03',
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '2026-09-01',
@@ -73,10 +75,10 @@ describe('PastKeyDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(2);
+    expect(noDateElements.length).toBe(4);
   });
 
-  test('renders Field Exam and Audit labels', async () => {
+  test('renders all field labels', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
     renderComponent();
@@ -85,8 +87,10 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
     });
 
+    expect(screen.getByText('Background Question:')).toBeInTheDocument();
     expect(screen.getByText('Field Exam:')).toBeInTheDocument();
     expect(screen.getByText('Audit:')).toBeInTheDocument();
+    expect(screen.getByText('TPR Submission:')).toBeInTheDocument();
   });
 
   test('renders correctly formatted values when API returns populated document', async () => {
@@ -98,8 +102,44 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
     });
 
+    expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('05/10/2022');
     expect(screen.getByTestId('past-field-exam-row')).toHaveTextContent('02/21/2024');
     expect(screen.getByTestId('past-audit-row')).toHaveTextContent('02/22/2023');
+    expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('11/03/2025');
+  });
+
+  test('renders "No date added" for background question and tpr submission when absent', async () => {
+    const docWithoutNewFields: TrusteeUpcomingKeyDates = {
+      ...populatedDocument,
+      pastBackgroundQuestion: undefined,
+      pastTprSubmission: undefined,
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: docWithoutNewFields });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('past-background-question-row')).toHaveTextContent('No date added');
+    expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('No date added');
+  });
+
+  test('renders fields in correct order: background question, field exam, audit, tpr submission', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-key-dates-list')).toBeInTheDocument();
+    });
+
+    const listItems = screen.getByTestId('past-key-dates-list').querySelectorAll('li');
+    expect(listItems[0]).toHaveAttribute('data-testid', 'past-background-question-row');
+    expect(listItems[1]).toHaveAttribute('data-testid', 'past-field-exam-row');
+    expect(listItems[2]).toHaveAttribute('data-testid', 'past-audit-row');
+    expect(listItems[3]).toHaveAttribute('data-testid', 'past-tpr-submission-row');
   });
 
   test('Edit button is visible for TrusteeAdmin users', async () => {
@@ -147,7 +187,7 @@ describe('PastKeyDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(2);
+    expect(noDateElements.length).toBe(4);
   });
 
   test('Edit button navigates to edit route', async () => {

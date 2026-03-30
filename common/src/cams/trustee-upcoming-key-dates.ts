@@ -125,8 +125,10 @@ function validateDateFields(): ValidatorFunction {
 
     // Validate full date fields (MM/DD/YYYY format)
     const fullDateFields: DateField[] = [
+      'pastBackgroundQuestion',
       'pastFieldExam',
       'pastAudit',
+      'pastTprSubmission',
       'upcomingFieldExam',
       'upcomingIndependentAuditRequired',
     ];
@@ -191,8 +193,10 @@ export type TrusteeUpcomingKeyDates = Auditable &
     documentType: 'TRUSTEE_UPCOMING_REPORT_DATES';
     trusteeId: string;
     appointmentId: string;
+    pastBackgroundQuestion?: string;
     pastFieldExam?: string;
     pastAudit?: string;
+    pastTprSubmission?: string;
     tprReviewPeriodStart?: string;
     tprReviewPeriodEnd?: string;
     tprDue?: string;
@@ -208,8 +212,10 @@ export type TrusteeUpcomingKeyDates = Auditable &
 export type TrusteeUpcomingKeyDatesInput = {
   trusteeId: string;
   appointmentId: string;
+  pastBackgroundQuestion: string | null;
   pastFieldExam: string | null;
   pastAudit: string | null;
+  pastTprSubmission: string | null;
   tprReviewPeriodStart: string | null;
   tprReviewPeriodEnd: string | null;
   tprDue: string | null;
@@ -231,8 +237,10 @@ export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
 };
 
 type DateField =
+  | 'pastBackgroundQuestion'
   | 'pastFieldExam'
   | 'pastAudit'
+  | 'pastTprSubmission'
   | 'tprReviewPeriodStart'
   | 'tprReviewPeriodEnd'
   | 'tprDue'
@@ -244,8 +252,10 @@ type DateField =
   | 'upcomingIndependentAuditRequired';
 
 export const DATE_FIELDS: DateField[] = [
+  'pastBackgroundQuestion',
   'pastFieldExam',
   'pastAudit',
+  'pastTprSubmission',
   'tprReviewPeriodStart',
   'tprReviewPeriodEnd',
   'tprDue',
