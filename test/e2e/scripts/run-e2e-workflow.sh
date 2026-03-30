@@ -88,7 +88,16 @@ else
     echo "Using cached deps image (run 'npm run podman:rebuild-deps' to rebuild)"
 fi
 
-# Build service images (uses cached deps, only rebuilds changed source)
+# Check if built image exists (compiles common, backend, frontend once)
+BUILT_EXISTS=$(podman images -q localhost/e2e_built:latest)
+if [ -z "$BUILT_EXISTS" ]; then
+    echo "Building built image (first time - this will be cached)..."
+    podman build -t localhost/e2e_built:latest -f Dockerfile.built ../../
+else
+    echo "Using cached built image (run 'npm run podman:rebuild-built' to rebuild)"
+fi
+
+# Build service images (thin layers on top of built — only CMD/WORKDIR)
 echo "Building service images..."
 podman-compose build backend frontend playwright
 echo ""
