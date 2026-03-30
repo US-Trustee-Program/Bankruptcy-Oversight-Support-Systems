@@ -27,7 +27,7 @@ jobs:
     secrets: inherit # pragma: allowlist secret
     with:
       environment: 'Develop'  # Always use Develop for PRs
-      branchNameOverride: ${{ github.base_ref }}  # Use target branch for resource naming
+      branchNameOverride: ${{ github.head_ref }}  # Use source branch for resource naming
 
   build:
     name: Build Backend
