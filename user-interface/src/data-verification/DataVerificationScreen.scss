@@ -28,6 +28,13 @@
     line-height: 1.3;
   }
 
+  #no-pending-orders,
+  #too-many-filters {
+    &.usa-alert-container {
+      margin-left: 0;
+    }
+  }
+
   .filters {
     display: flex;
     flex-direction: column;

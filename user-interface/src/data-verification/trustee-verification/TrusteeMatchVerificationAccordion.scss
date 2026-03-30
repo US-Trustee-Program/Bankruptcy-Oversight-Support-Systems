@@ -11,17 +11,6 @@
 
   p.problem-statement {
     margin: 1.81rem 0 1.81rem 0;
-
-    .case-link {
-      display: inline-flex;
-      gap: 0.25rem;
-      align-items: center;
-      vertical-align: text-top;
-      svg {
-        width: 1.375rem;
-        height: 1.375rem;
-      }
-    }
   }
 
   .trustee-data-grid {
@@ -58,19 +47,6 @@
 
   .no-candidates-message {
     margin: 0.5rem 0 1rem;
-
-    .search-trustee-link {
-      color: #005ea2;
-      margin-top: 0;
-
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      svg {
-        width: 1.275rem;
-        height: 1.275rem;
-      }
-    }
   }
 
   .match-trustee-link {
@@ -94,14 +70,21 @@
     }
   }
 
-  .search-trustee-link {
-    margin-top: 0.5rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    svg {
-      width: 1.275rem;
-      height: 1.275rem;
+  .search-link-container {
+    .link-message {
+      vertical-align: text-bottom;
+      line-height: 1.59rem;
+      padding-right: 0.5rem;
+    }
+    .search-trustee-link {
+      margin-top: 0.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      svg {
+        width: 1.275rem;
+        height: 1.275rem;
+      }
     }
   }
 

@@ -1,0 +1,11 @@
+.new-tab-link {
+  display: inline-flex;
+  gap: 0.25rem;
+  align-items: center;
+  vertical-align: text-top;
+
+  svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+}

@@ -9,11 +9,14 @@ import {
   insertConsolidationOrders,
   insertTransferOrders,
   insertTrustees,
+  insertTrusteeMatchVerifications,
   insertUserGroups,
   syncCases,
 } from './db-utils';
 import { Trustee } from '@common/cams/trustees';
 import { UserGroup } from '@common/cams/users';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
+import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
 
 const KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER = '65-67641';
 const KNOWN_GOOD_TRANSFER_FROM_CASE_ID = '081-' + KNOWN_GOOD_TRANSFER_FROM_CASE_NUMBER;
@@ -39,6 +42,9 @@ async function seedCosmosE2eDatabase(context: ApplicationContext) {
 
   const userGroups = await generateUserGroups();
   await insertUserGroups(context, userGroups);
+
+  const verifications = generateTrusteeMatchVerifications(dxtrCases.slice(45, 51));
+  await insertTrusteeMatchVerifications(context, verifications);
 }
 
 async function generateTrustees(): Promise<Trustee[]> {
@@ -134,6 +140,102 @@ function createKnownGoodTransferOrder(transferTo: CaseSummary, transferFrom: Cas
     newCase: transferTo,
   };
   return knownGoodTransferOrder;
+}
+
+function generateTrusteeMatchVerifications(cases: CaseBasics[]): TrusteeMatchVerification[] {
+  const auditUser = { id: 'SYSTEM', name: 'SYSTEM' };
+  const isoNow = new Date().toISOString();
+
+  const mismatchReasons: TrusteeAppointmentSyncErrorCode[] = [
+    TrusteeAppointmentSyncErrorCode.ImperfectMatch,
+    TrusteeAppointmentSyncErrorCode.HighConfidenceMatch,
+    TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
+    TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch,
+  ];
+
+  const pendingItems = mismatchReasons.map((mismatchReason, i) => {
+    const bCase = cases[i] ?? cases[0];
+    const candidate = {
+      trusteeId: `e2e-trustee-candidate-${i}`,
+      trusteeName: `E2E Trustee ${i}`,
+      totalScore: 80 - i * 10,
+      addressScore: 75,
+      districtDivisionScore: 90,
+      chapterScore: 80,
+    };
+    return {
+      id: `e2e-trustee-match-verification-${i}`,
+      documentType: 'TRUSTEE_MATCH_VERIFICATION' as const,
+      orderType: 'trustee-match' as const,
+      caseId: bCase.caseId,
+      courtId: bCase.courtId,
+      status: 'pending' as const,
+      mismatchReason,
+      dxtrTrustee: { fullName: `E2E Dxtr Trustee ${i}` },
+      matchCandidates:
+        mismatchReason === TrusteeAppointmentSyncErrorCode.NoTrusteeMatch ? [] : [candidate],
+      updatedOn: isoNow,
+      updatedBy: auditUser,
+      createdOn: isoNow,
+      createdBy: auditUser,
+    };
+  });
+
+  const approvedCase = cases[4] ?? cases[0];
+  const approvedItem: TrusteeMatchVerification = {
+    id: 'e2e-trustee-match-verification-approved',
+    documentType: 'TRUSTEE_MATCH_VERIFICATION' as const,
+    orderType: 'trustee-match' as const,
+    caseId: approvedCase.caseId,
+    courtId: approvedCase.courtId,
+    status: 'approved' as const,
+    mismatchReason: TrusteeAppointmentSyncErrorCode.ImperfectMatch,
+    dxtrTrustee: { fullName: 'E2E Dxtr Trustee Approved' },
+    matchCandidates: [
+      {
+        trusteeId: 'e2e-trustee-candidate-approved',
+        trusteeName: 'E2E Trustee Approved',
+        totalScore: 95,
+        addressScore: 90,
+        districtDivisionScore: 100,
+        chapterScore: 95,
+      },
+    ],
+    resolvedTrusteeId: 'e2e-trustee-candidate-approved',
+    updatedOn: isoNow,
+    updatedBy: auditUser,
+    createdOn: isoNow,
+    createdBy: auditUser,
+  };
+
+  const rejectedCase = cases[5] ?? cases[0];
+  const rejectedItem: TrusteeMatchVerification = {
+    id: 'e2e-trustee-match-verification-rejected',
+    documentType: 'TRUSTEE_MATCH_VERIFICATION' as const,
+    orderType: 'trustee-match' as const,
+    caseId: rejectedCase.caseId,
+    courtId: rejectedCase.courtId,
+    status: 'rejected' as const,
+    mismatchReason: TrusteeAppointmentSyncErrorCode.HighConfidenceMatch,
+    dxtrTrustee: { fullName: 'E2E Dxtr Trustee Rejected' },
+    matchCandidates: [
+      {
+        trusteeId: 'e2e-trustee-candidate-rejected',
+        trusteeName: 'E2E Trustee Rejected',
+        totalScore: 70,
+        addressScore: 65,
+        districtDivisionScore: 80,
+        chapterScore: 70,
+      },
+    ],
+    reason: 'Rejected during e2e test seeding',
+    updatedOn: isoNow,
+    updatedBy: auditUser,
+    createdOn: isoNow,
+    createdBy: auditUser,
+  };
+
+  return [...pendingItems, approvedItem, rejectedItem];
 }
 
 const DataGenerationUtils = {
