@@ -244,14 +244,14 @@ class DxtrOrdersGateway implements OrdersGateway {
         CS.CS_CASEID AS dxtrCaseId,
         CSD.CS_DIV_ACMS + '-' + CS.CASE_ID AS caseId,
         CS.CS_SHORT_TITLE AS caseTitle,
-        FORMAT(CS.CS_DATE_FILED, 'yyyy-MM-dd') AS dateFiled,
+        CONVERT(VARCHAR(10), CS.CS_DATE_FILED, 23) AS dateFiled,
         CSD.CS_DIV_ACMS as courtDivisionCode,
         CS.CS_CHAPTER AS chapter,
         C.COURT_NAME AS courtName,
         O.OFFICE_NAME_DISPLAY AS courtDivisionName,
         G.REGION_ID AS regionId,
         R.REGION_NAME AS regionName,
-        FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate,
+        CONVERT(VARCHAR(10), TX.TX_DATE, 23) AS orderDate,
         TX.JOB_ID AS jobId,
         CASE
           WHEN PATINDEX('%WARN: %', TX.REC) > 0
@@ -328,7 +328,7 @@ class DxtrOrdersGateway implements OrdersGateway {
         O.OFFICE_NAME_DISPLAY AS courtDivisionName,
         G.REGION_ID AS regionId,
         R.REGION_NAME AS regionName,
-        FORMAT(TX.TX_DATE, 'yyyy-MM-dd') AS orderDate
+        CONVERT(VARCHAR(10), TX.TX_DATE, 23) AS orderDate
       FROM (
         SELECT TX2.CS_CASEID, TX2.COURT_ID, MIN(TX2.TX_DATE) AS TX_DATE
         FROM [dbo].[AO_TX] AS TX2
@@ -413,7 +413,7 @@ class DxtrOrdersGateway implements OrdersGateway {
         DE.DE_DOCUMENT_NUM AS documentNumber,
         DE.DO_SUMMARY_TEXT AS summaryText,
         DE.DT_TEXT AS fullText,
-        FORMAT(DE.DE_DATE_FILED, 'yyyy-MM-dd') AS dateFiled,
+        CONVERT(VARCHAR(10), DE.DE_DATE_FILED, 23) AS dateFiled,
         TX.REC AS rawRec
       FROM [dbo].[AO_TX] AS TX
       JOIN [dbo].[AO_DE] AS DE ON TX.CS_CASEID=DE.CS_CASEID AND TX.DE_SEQNO=DE.DE_SEQNO AND TX.COURT_ID=DE.COURT_ID

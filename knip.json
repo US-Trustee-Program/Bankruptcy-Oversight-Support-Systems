@@ -23,13 +23,13 @@
     },
     "user-interface": {
       "entry": [
-        "src/initialize.ts",
         "test/**/*.ts",
         "src/**/*.test.ts",
         "src/**/*.test.tsx"
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.ts", "!playwright.config.ts"],
-      "ignore": []
+      "ignore": [],
+      "ignoreFiles": ["src/initialize.ts"]
     },
     "common": {
       "entry": ["src/**/*.test.ts"],
@@ -58,14 +58,16 @@
     }
   },
   "ignoreBinaries": [
-    "date",
     "pushd",
     "popd",
     "playwright",
     "dot",
+    "date",
     "dev-tools/.venv-docs/bin/python",
     "dev-tools/.venv-docs/bin/python3",
-    "python3"
+    "python3",
+    "podman",
+    "podman-compose"
   ],
   "ignoreDependencies": [
     "@azure/cosmos",
