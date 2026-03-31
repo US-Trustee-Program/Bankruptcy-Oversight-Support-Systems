@@ -2,11 +2,11 @@
 # node_modules come from the image (named volumes override the bind mount at those paths).
 #
 # Frontend: Vite dev server with HMR — changes to user-interface/ are instant.
-# Backend:  Azure Functions — needs `podman-compose -f podman-compose.dev.yml restart backend` after source changes.
+# Backend:  Azure Functions — needs `podman compose -f podman compose.dev.yml restart backend` after source changes.
 #
 # Usage:
-#   podman-compose -f podman-compose.dev.yml up --build
-#   podman-compose -f podman-compose.dev.yml restart backend
+#   podman compose -f podman compose.dev.yml up --build
+#   podman compose -f podman compose.dev.yml restart backend
 
 services:
   frontend:
