@@ -11,7 +11,13 @@ type NewTabLinkProps = {
 export function NewTabLink({ to, label, className }: Readonly<NewTabLinkProps>) {
   const classes = ['new-tab-link', className].filter(Boolean).join(' ');
   return (
-    <Link to={to} className={classes} target="_blank" rel="noopener noreferrer">
+    <Link
+      to={to}
+      className={classes}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`${label} (opens in a new tab)`}
+    >
       <Icon name="launch" />
       {label}
     </Link>
