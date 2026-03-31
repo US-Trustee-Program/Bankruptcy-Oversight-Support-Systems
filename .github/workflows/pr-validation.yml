@@ -51,7 +51,7 @@ jobs:
         run: |
           echo "TARGET_HOST=http://localhost:3000" > .env
           echo "CAMS_LOGIN_PROVIDER=okta" >> .env
-          echo "CAMS_LOGIN_PROVIDER_CONFIG=${{ secrets.CAMS_LOGIN_PROVIDER_CONFIG }}" >> .env
+          echo "CAMS_LOGIN_PROVIDER_CONFIG=issuer=https://integrator-2053366.okta.com/oauth2/default|clientId=0oaxs7u9a4fpATGwF697" >> .env
           echo "OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }}" >> .env
           echo "OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }}" >> .env
           echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
