@@ -3,7 +3,7 @@ FROM localhost/e2e_deps:latest AS deps
 FROM localhost/e2e_built:latest AS built
 
 # Use official Playwright image for pre-installed browsers
-FROM mcr.microsoft.com/playwright:v1.56.1-noble
+FROM mcr.microsoft.com/playwright:v1.58.2-noble
 
 WORKDIR /app
 
