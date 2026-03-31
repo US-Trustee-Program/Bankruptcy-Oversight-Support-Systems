@@ -98,7 +98,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
   test('should render case link, trustee name, and no-match message in content', () => {
     renderWithProps();
 
-    const link = screen.getByRole('link', { name: '22-11111', hidden: true });
+    const link = screen.getByRole('link', { name: /22-11111/, hidden: true });
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', `/case-detail/${sampleOrder.caseId}`);
     expect(link).toHaveAttribute('target', '_blank');
