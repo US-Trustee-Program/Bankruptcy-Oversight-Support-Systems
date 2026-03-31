@@ -108,66 +108,68 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
   }
 
   return (
-    <div className={`usa-form-group month-day-selector ${className ?? ''}`}>
+    <div
+      className={`usa-form-group month-day-selector ${className ?? ''}`}
+      onFocus={onFocus}
+      onBlur={onBlur}
+    >
       {label && (
         <label className="usa-label" id={`${id}-label`}>
           {label}
         </label>
       )}
-      <div className="month-day-selector__inputs" onFocus={onFocus} onBlur={onBlur}>
-        <div className="month-day-selector__column">
-          <label className="usa-hint" htmlFor={`${id}-month`}>
-            Month
-          </label>
-          <select
-            id={`${id}-month`}
-            name={`${id}-month`}
-            className={`usa-select${hasError ? ' usa-input--error' : ''}`}
-            value={month}
-            onChange={handleMonthChange}
-            disabled={disabled}
-            required={required}
-            aria-labelledby={`${id}-label`}
-            aria-label={!label && contextLabel ? `${contextLabel} Month` : undefined}
-            aria-describedby={hasError ? `${id}-error` : undefined}
-            aria-invalid={hasError ? 'true' : undefined}
-          >
-            <option value=""></option>
-            {MONTHS.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <span className="month-day-selector__separator" aria-hidden="true">
-          /
-        </span>
-        <div className="month-day-selector__column">
-          <label className="usa-hint" htmlFor={`${id}-day`}>
-            Day
-          </label>
-          <select
-            id={`${id}-day`}
-            name={`${id}-day`}
-            className={`usa-select${hasError ? ' usa-input--error' : ''}`}
-            value={day}
-            onChange={handleDayChange}
-            disabled={disabled || !month}
-            required={required}
-            aria-labelledby={`${id}-label`}
-            aria-label={!label && contextLabel ? `${contextLabel} Day` : undefined}
-            aria-describedby={hasError ? `${id}-error` : undefined}
-            aria-invalid={hasError ? 'true' : undefined}
-          >
-            <option value=""></option>
-            {DAYS.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-        </div>
+      <div className="month-day-selector__column">
+        <label className="usa-hint" id={`${id}-month-label`} htmlFor={`${id}-month`}>
+          Month
+        </label>
+        <select
+          id={`${id}-month`}
+          name={`${id}-month`}
+          className={`usa-select${hasError ? ' usa-input--error' : ''}`}
+          value={month}
+          onChange={handleMonthChange}
+          disabled={disabled}
+          required={required}
+          aria-labelledby={label ? `${id}-label ${id}-month-label` : `${id}-month-label`}
+          aria-label={!label && contextLabel ? `${contextLabel} Month` : undefined}
+          aria-describedby={hasError ? `${id}-error` : undefined}
+          aria-invalid={hasError ? 'true' : undefined}
+        >
+          <option value=""></option>
+          {MONTHS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <span className="month-day-selector__separator" aria-hidden="true">
+        /
+      </span>
+      <div className="month-day-selector__column">
+        <label className="usa-hint" id={`${id}-day-label`} htmlFor={`${id}-day`}>
+          Day
+        </label>
+        <select
+          id={`${id}-day`}
+          name={`${id}-day`}
+          className={`usa-select${hasError ? ' usa-input--error' : ''}`}
+          value={day}
+          onChange={handleDayChange}
+          disabled={disabled || !month}
+          required={required}
+          aria-labelledby={label ? `${id}-label ${id}-day-label` : `${id}-day-label`}
+          aria-label={!label && contextLabel ? `${contextLabel} Day` : undefined}
+          aria-describedby={hasError ? `${id}-error` : undefined}
+          aria-invalid={hasError ? 'true' : undefined}
+        >
+          <option value=""></option>
+          {DAYS.map((d) => (
+            <option key={d.value} value={d.value}>
+              {d.label}
+            </option>
+          ))}
+        </select>
       </div>
     </div>
   );

@@ -322,23 +322,21 @@ export default function UpcomingKeyDatesForm() {
             hasError={!!errors.tprDue || (!tprDueDateComplete && !!tprDueBlurError)}
           />
           <div className="usa-form-group year-type-selector">
-            <div className="year-type-selector__inputs">
-              <div className="year-type-selector__column">
-                <span className="usa-hint">Year Type</span>
-                <select
-                  className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
-                  id="tpr-due-year-type"
-                  data-testid="tpr-due-year-type"
-                  value={form.tprDueYearType}
-                  onChange={handleYearTypeChange}
-                  aria-invalid={errors.tprDueYearType ? 'true' : undefined}
-                >
-                  <option value="">- Select -</option>
-                  <option value="EVEN">EVEN</option>
-                  <option value="ODD">ODD</option>
-                </select>
-              </div>
-            </div>
+            <label htmlFor="tpr-due-year-type" className="usa-hint">
+              Year Type
+            </label>
+            <select
+              className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
+              id="tpr-due-year-type"
+              data-testid="tpr-due-year-type"
+              value={form.tprDueYearType}
+              onChange={handleYearTypeChange}
+              aria-invalid={errors.tprDueYearType ? 'true' : undefined}
+            >
+              <option value="">- Select -</option>
+              <option value="EVEN">EVEN</option>
+              <option value="ODD">ODD</option>
+            </select>
           </div>
         </div>
         {(tprDueBlurError || errors.tprDue || errors.tprDueYearType) && (
