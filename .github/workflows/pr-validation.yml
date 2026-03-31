@@ -29,83 +29,54 @@ jobs:
       environment: 'Develop'  # Always use Develop for PRs
       branchNameOverride: ${{ github.head_ref }}  # Use source branch for resource naming
 
-  build:
-    name: Build Backend
+  run-e2e-tests:
     needs: [setup]
-    uses: ./.github/workflows/sub-build.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      nodeVersion: ${{ vars.NODE_VERSION }}
-      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
-      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
-      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
-      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-
-  build-frontend-deployment:
-    name: Build Frontend for Deployment
-    needs: [setup]
-    uses: ./.github/workflows/reusable-build-frontend.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      nodeVersion: ${{ vars.NODE_VERSION }}
-      camsServerHostname: ${{ needs.setup.outputs.apiFunctionName }}.azurewebsites.us
-      camsStagingHostname: ${{ needs.setup.outputs.apiFunctionName }}-${{ needs.setup.outputs.slotName }}.azurewebsites.us
-      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
-      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
-      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      isDeployment: true
-
-  deploy-pr-code:
-    name: Deploy PR to Staging Slot
-    needs: [setup, build, build-frontend-deployment]
-    uses: ./.github/workflows/sub-deploy-code-slot.yml
-    with:
-      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
-      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-      initialDeployment: 'false'
-    secrets: inherit # pragma: allowlist secret
-
-  execute-pr-e2e:
-    name: Run E2E Tests
-    needs: [setup, deploy-pr-code]
-    uses: ./.github/workflows/reusable-e2e.yml
-    with:
-      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
-      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      branchHashId: ${{ needs.setup.outputs.environmentHash }}
-    secrets: inherit # pragma: allowlist secret
-
-  playwright-e2e-test:
-    name: Playwright E2E Tests
-    needs: [execute-pr-e2e]
-    if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Check E2E test result
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@1d43b558a22d42588147775b8426d1354032d1f4 # v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up E2E environment
+        working-directory: test/e2e
         run: |
-          if [[ "${{ needs.execute-pr-e2e.result }}" != "success" ]]; then
-            echo "E2E tests did not pass (result: ${{ needs.execute-pr-e2e.result }})"
-            exit 1
-          fi
-          echo "E2E tests passed"
+          cp .env.local.example .env
+          # Replace placeholder with secret
+          sed -i "s/<your-okta-password>/${{ secrets.OKTA_PASSWORD }}/" .env
+          # Override connection string to use localhost (from host network mode)
+          sed -i "s|MONGO_CONNECTION_STRING=.*|MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-e2e-${{ needs.setup.outputs.environmentHash }}| " .env
+          # Use the environment hash for unique resource naming if needed
+          echo "COSMOS_DATABASE_NAME=cams-e2e-${{ needs.setup.outputs.environmentHash }}" >> .env
+          echo "MSSQL_DATABASE_DXTR=CAMS_E2E_${{ needs.setup.outputs.environmentHash }}" >> .env
+
+      - name: Install podman and podman-compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman podman-compose
+
+      - name: Run E2E Tests
+        run: npm run test:e2e -- --reseed
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        if: always()
+        with:
+          name: playwright-report
+          path: test/e2e/playwright-report/
+          retention-days: 30
+
+      - name: Upload Backend Logs
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        if: always()
+        with:
+          name: backend-logs
+          path: test/e2e/backend-logs/
+          retention-days: 7
