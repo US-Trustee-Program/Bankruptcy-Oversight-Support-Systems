@@ -66,27 +66,8 @@ jobs:
       - name: Pull base images from ghcr.io cache
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "${GITHUB_TOKEN}" | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
-          REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
-
-          pull_base_image() {
-            local cached="$1"
-            local upstream="$2"
-            if podman pull "${cached}" 2>/dev/null; then
-              echo "Pulled from cache: ${cached}"
-            else
-              echo "Cache miss — pulling from upstream and repopulating: ${upstream}"
-              podman pull --platform linux/amd64 "${upstream}"
-              podman tag "${upstream}" "${cached}"
-              podman push "${cached}"
-              echo "Upstream pulled and cached: ${cached}"
-            fi
-          }
-
-          pull_base_image "${REGISTRY}/e2e-base-mongo-7.0"                    "mongo:7.0"
-          pull_base_image "${REGISTRY}/e2e-base-azure-sql-edge-latest"         "mcr.microsoft.com/azure-sql-edge:latest"
-          pull_base_image "${REGISTRY}/e2e-base-azure-storage-azurite-latest"  "mcr.microsoft.com/azure-storage/azurite:latest"
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: test/e2e/scripts/pull-base-images.sh
 
       - name: Run E2E Tests
         env:

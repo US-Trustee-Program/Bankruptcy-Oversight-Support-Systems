@@ -84,46 +84,14 @@ trap cleanup EXIT
 # Step 1a: Pull base images from ghcr.io cache (self-healing: repopulates cache if missing)
 echo -e "${BLUE}🔐 Step 1a: Pulling base images from ghcr.io cache...${NC}"
 echo ""
-
-REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
-
-# Use GITHUB_TOKEN if set (CI), otherwise fall back to gh CLI (local dev)
-if [ -z "${GITHUB_TOKEN:-}" ]; then
-    GITHUB_TOKEN=$(gh auth token 2>/dev/null) || true
-    GITHUB_ACTOR=$(gh api user --jq '.login' 2>/dev/null) || true
-fi
-
-# Pull a single image from ghcr.io, falling back to upstream and repopulating the cache if missing
-pull_base_image() {
-    local cached="$1"
-    local upstream="$2"
-    local platform="$3"
-
-    if podman pull "${cached}" 2>/dev/null; then
-        echo -e "  ${GREEN}✓ Pulled from cache: ${cached}${NC}"
-    else
-        echo -e "  ${YELLOW}⚠️  Cache miss — pulling from upstream and repopulating: ${upstream}${NC}"
-        podman pull --platform "${platform}" "${upstream}"
-        podman tag "${upstream}" "${cached}"
-        podman push "${cached}"
-        echo -e "  ${GREEN}✓ Upstream pulled and cached: ${cached}${NC}"
-    fi
-}
-
-if [ -n "${GITHUB_TOKEN:-}" ]; then
-    echo "${GITHUB_TOKEN}" | podman login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
-    pull_base_image "${REGISTRY}/e2e-base-mongo-7.0"                        "mongo:7.0"                                        "linux/$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
-    pull_base_image "${REGISTRY}/e2e-base-azure-sql-edge-latest"             "mcr.microsoft.com/azure-sql-edge:latest"           "linux/$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
-    pull_base_image "${REGISTRY}/e2e-base-azure-storage-azurite-latest"      "mcr.microsoft.com/azure-storage/azurite:latest"    "linux/$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')"
-    echo -e "${GREEN}✅ Base images ready${NC}"
-else
-    echo -e "${YELLOW}⚠️  Not logged in to gh CLI — skipping ghcr.io pull, podman will fetch upstream${NC}"
-fi
+./scripts/pull-base-images.sh
 echo ""
 
 # Step 1: Build deps image (hash-based cache via ghcr.io) and service images
 echo -e "${BLUE}📦 Step 1: Building images and starting services...${NC}"
 echo ""
+
+REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
 
 # Compute a hash of all package*.json files that feed into Dockerfile.deps
 # A change to any package file produces a new hash → cache miss → rebuild
