@@ -56,6 +56,12 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
+# Load environment variables from .env
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
 # Track overall success
 TESTS_PASSED=false
 CLEANUP_NEEDED=false
@@ -172,7 +178,7 @@ if [ "$RESEED_DB" = true ]; then
     if podman-compose run --rm \
       -e MSSQL_HOST=localhost \
       -e MSSQL_USER=sa \
-      -e MSSQL_PASS=YourStrong!Passw0rd \
+      -e MSSQL_PASS="${MSSQL_PASS}" \
       -e MSSQL_DATABASE_DXTR=CAMS_E2E \
       -e MSSQL_ENCRYPT=false \
       -e MSSQL_TRUST_UNSIGNED_CERT=true \
@@ -201,7 +207,7 @@ echo ""
 podman-compose run --rm \
   -e MSSQL_HOST=localhost \
   -e MSSQL_USER=sa \
-  -e MSSQL_PASS=YourStrong\!Passw0rd \
+  -e MSSQL_PASS="${MSSQL_PASS}" \
   -e MSSQL_DATABASE_DXTR=CAMS_E2E \
   -e MSSQL_ENCRYPT=false \
   -e MSSQL_TRUST_UNSIGNED_CERT=true \
