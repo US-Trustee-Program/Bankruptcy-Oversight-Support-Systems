@@ -25,9 +25,46 @@ describe('DivisionChangeCleanupUseCase', () => {
     vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
     vi.spyOn(MockMongoRepository.prototype, 'markAsMoved').mockResolvedValue(undefined);
     vi.spyOn(MockMongoRepository.prototype, 'findDuplicateSyncedCases').mockResolvedValue([]);
+    vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue({
+      caseId: orphanedCaseId,
+      documentType: 'SYNCED_CASE',
+      status: 'ACTIVE',
+    } as never);
   });
 
   describe('cleanupOrphanedCase orchestration', () => {
+    test('should return 0 and skip cleanup when case is already MOVED', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue({
+        caseId: orphanedCaseId,
+        documentType: 'SYNCED_CASE',
+        status: 'MOVED',
+      } as never);
+      const markAsMovedSpy = vi.spyOn(MockMongoRepository.prototype, 'markAsMoved');
+
+      const result = await DivisionChangeCleanupUseCase.cleanupOrphanedCase(
+        context,
+        orphanedCaseId,
+        currentCaseId,
+      );
+
+      expect(result).toBe(0);
+      expect(markAsMovedSpy).not.toHaveBeenCalled();
+    });
+
+    test('should return 0 and skip cleanup when case does not exist', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(null as never);
+      const markAsMovedSpy = vi.spyOn(MockMongoRepository.prototype, 'markAsMoved');
+
+      const result = await DivisionChangeCleanupUseCase.cleanupOrphanedCase(
+        context,
+        orphanedCaseId,
+        currentCaseId,
+      );
+
+      expect(result).toBe(0);
+      expect(markAsMovedSpy).not.toHaveBeenCalled();
+    });
+
     // Test 1: logs start message
     test('should log start message', async () => {
       const loggerSpy = vi.spyOn(context.logger, 'info');

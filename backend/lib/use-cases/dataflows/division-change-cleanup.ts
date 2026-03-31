@@ -4,14 +4,12 @@ import factory from '../../factory';
 import QueryBuilder from '../../query/query-builder';
 import { Order } from '@common/cams/orders';
 import { CaseAssignment } from '@common/cams/assignments';
+import { OrphanedCaseMessage } from '@common/cams/dataflow-events';
+
+export type { OrphanedCaseMessage };
 
 const MODULE_NAME = 'DIVISION-CHANGE-CLEANUP-USE-CASE';
 const { using } = QueryBuilder;
-
-export type OrphanedCaseMessage = {
-  orphanedCaseId: string;
-  currentCaseId: string;
-};
 
 export class DivisionChangeCleanupUseCase {
   static async identifyOrphanedCases(
@@ -88,20 +86,27 @@ export class DivisionChangeCleanupUseCase {
     context: ApplicationContext,
     orphanedCaseId: string,
     currentCaseId: string,
-  ): Promise<void> {
+  ): Promise<number> {
     try {
+      const casesRepo = factory.getCasesRepository(context);
+      const existing = await casesRepo.getSyncedCase(orphanedCaseId);
+      if (!existing || existing.status === 'MOVED') {
+        context.logger.info(MODULE_NAME, `Case ${orphanedCaseId} already cleaned up, skipping`);
+        return 0;
+      }
+
       context.logger.info(MODULE_NAME, `Starting cleanup for ${orphanedCaseId} → ${currentCaseId}`);
 
       await this.updateReferences(context, orphanedCaseId, currentCaseId);
-      await this.moveDocuments(context, orphanedCaseId, currentCaseId);
+      const documentsWritten = await this.moveDocuments(context, orphanedCaseId, currentCaseId);
 
-      const casesRepo = factory.getCasesRepository(context);
       await casesRepo.markAsMoved(orphanedCaseId, currentCaseId, new Date().toISOString());
 
       context.logger.info(
         MODULE_NAME,
         `Cleanup completed for ${orphanedCaseId} → ${currentCaseId}`,
       );
+      return documentsWritten;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, `Failed to clean up ${orphanedCaseId}`);
     }
@@ -141,7 +146,9 @@ export class DivisionChangeCleanupUseCase {
     context: ApplicationContext,
     oldCaseId: string,
     newCaseId: string,
-  ): Promise<void> {
+  ): Promise<number> {
+    let count = 0;
+
     const ordersRepo = factory.getOrdersRepository(context);
     const oldOrders = await ordersRepo.findByCaseId(oldCaseId);
     context.logger.info(
@@ -158,6 +165,7 @@ export class DivisionChangeCleanupUseCase {
       await ordersRepo.create(newOrder as Order);
       context.logger.debug(MODULE_NAME, `Deleting order ${id} from partition ${oldCaseId}`);
       await ordersRepo.delete(id);
+      count++;
     }
 
     const assignmentRepo = factory.getAssignmentRepository(context);
@@ -176,6 +184,7 @@ export class DivisionChangeCleanupUseCase {
       await assignmentRepo.create(newAssignment as CaseAssignment);
       context.logger.debug(MODULE_NAME, `Deleting assignment ${id} from partition ${oldCaseId}`);
       await assignmentRepo.delete(id);
+      count++;
     }
 
     const casesRepo = factory.getCasesRepository(context);
@@ -199,6 +208,9 @@ export class DivisionChangeCleanupUseCase {
       await casesRepo.create(newCase as { caseId: string; documentType: string });
       context.logger.debug(MODULE_NAME, `Deleting case document ${id} from partition ${oldCaseId}`);
       await casesRepo.delete(id);
+      count++;
     }
+
+    return count;
   }
 }

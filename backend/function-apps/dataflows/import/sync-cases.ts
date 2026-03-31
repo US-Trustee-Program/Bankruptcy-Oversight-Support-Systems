@@ -12,6 +12,7 @@ import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import { FIX_QUEUE_NAME } from '../migrations/division-change-cleanup';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
@@ -20,7 +21,6 @@ import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
 
-// Queues
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
   connection: STORAGE_QUEUE_CONNECTION,
@@ -37,7 +37,7 @@ const DLQ = output.storageQueue({
 });
 
 const FIX = output.storageQueue({
-  queueName: 'division-change-cleanup-migration-fix',
+  queueName: FIX_QUEUE_NAME,
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
@@ -177,8 +177,6 @@ function setup() {
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
-
-export { handlePage };
 
 export default {
   MODULE_NAME,

@@ -22,16 +22,18 @@ export type CaseClosedEvent = {
  * Event triggered to reload/sync a case from DXTR.
  * Processed by dataflows to update case data in MongoDB.
  */
+export type OrphanedCaseMessage = {
+  orphanedCaseId: string;
+  currentCaseId: string;
+};
+
 export type CaseSyncEvent = {
   type: 'CASE_CHANGED' | 'MIGRATION';
   caseId: string;
   bCase?: DxtrCase;
   error?: unknown;
   retryCount?: number;
-  divisionChange?: {
-    orphanedCaseId: string;
-    currentCaseId: string;
-  };
+  divisionChange?: OrphanedCaseMessage;
 };
 
 /**

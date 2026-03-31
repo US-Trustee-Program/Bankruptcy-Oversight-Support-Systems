@@ -998,6 +998,7 @@ describe('Cases repository', () => {
       values: [
         { condition: 'EQUALS', leftOperand: { name: 'caseId' }, rightOperand: bCase.caseId },
         { condition: 'EQUALS', leftOperand: { name: 'documentType' }, rightOperand: 'SYNCED_CASE' },
+        { condition: 'NOT_EQUALS', leftOperand: { name: 'status' }, rightOperand: 'MOVED' },
       ],
     });
   });
@@ -1038,6 +1039,7 @@ describe('Cases repository', () => {
       const expectedQuery = and(
         doc('documentType').equals('SYNCED_CASE'),
         doc('updatedOn').lessThan(cutoffDate),
+        doc('status').notEqual('MOVED'),
       );
       const expectedSort = QueryBuilder.orderBy<SyncedCase & { _id: string }>(['_id', 'ASCENDING']);
 
@@ -1054,6 +1056,7 @@ describe('Cases repository', () => {
       const expectedQuery = and(
         doc('documentType').equals('SYNCED_CASE'),
         doc('updatedOn').lessThan(cutoffDate),
+        doc('status').notEqual('MOVED'),
         doc('_id').greaterThan('previous-id'),
       );
       const expectedSort = QueryBuilder.orderBy<SyncedCase & { _id: string }>(['_id', 'ASCENDING']);
@@ -1063,6 +1066,22 @@ describe('Cases repository', () => {
       await repo.getCaseIdsRemainingToSync(cutoffDate, 'previous-id', 100);
 
       expect(findSpy).toHaveBeenCalledWith(expectedQuery, expectedSort, 100);
+    });
+
+    test('should exclude MOVED cases from sync queue', async () => {
+      const cutoffDate = '2025-01-15T00:00:00.000Z';
+
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repo.getCaseIdsRemainingToSync(cutoffDate, null, 100);
+
+      expect(findSpy).toHaveBeenCalled();
+      const actualQuery = findSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+
+      expect(queryString).toContain('status');
+      expect(queryString).toContain('MOVED');
+      expect(queryString).toContain('NOT_EQUALS');
     });
 
     test('should wrap and rethrow adapter errors', async () => {
@@ -1313,28 +1332,21 @@ describe('Cases repository', () => {
       expect(result.data).toEqual(expectedSyncedCaseArray);
     });
 
-    // Phase 3: getCaseDetail Tests - verify these methods do NOT filter MOVED
-    test('getSyncedCase should NOT filter MOVED cases', async () => {
-      const movedCase = MockData.getSyncedCase({
-        override: { caseId: caseId1, status: 'MOVED', movedToCaseId: caseId2 },
-      });
-
+    test('getSyncedCase should exclude MOVED cases', async () => {
       const findOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
-        .mockResolvedValue(movedCase);
+        .mockResolvedValue(null);
 
-      const result = await repo.getSyncedCase(caseId1);
+      await repo.getSyncedCase(caseId1);
 
       expect(findOneSpy).toHaveBeenCalled();
-      expect(result).toEqual(movedCase);
-      expect(result.status).toBe('MOVED');
-      expect(result.movedToCaseId).toBe(caseId2);
 
       const query = findOneSpy.mock.calls[0][0];
       const queryString = JSON.stringify(query);
 
-      // Verify the query does NOT contain status filter
-      expect(queryString).not.toContain('NOT_EQUALS');
+      expect(queryString).toContain('status');
+      expect(queryString).toContain('MOVED');
+      expect(queryString).toContain('NOT_EQUALS');
     });
 
     // Phase 4: Integration/Edge Cases - verify MOVED filter works with complex predicates
@@ -1449,6 +1461,7 @@ describe('Cases repository', () => {
         doc('documentType').equals('SYNCED_CASE'),
         doc('dxtrId').equals(dxtrId),
         doc('courtId').equals(courtId),
+        doc('status').notEqual('MOVED'),
       );
       expect(actualQuery).toEqual(expectedQuery);
     });

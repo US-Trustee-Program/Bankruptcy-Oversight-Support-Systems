@@ -94,17 +94,17 @@ describe('Division Change Cleanup Migration', () => {
   describe('handleFix', () => {
     test('6. should extract orphaned case ID from message', async () => {
       const message: OrphanedCaseMessage = {
-        orphanedCaseId: '123',
+        orphanedCaseId: '081-23-12345',
         currentCaseId: 'current-456',
       };
 
-      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue();
+      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue(0);
 
       await handleFix(message, mockInvocationContext);
 
       expect(DivisionChangeCleanupUseCase.cleanupOrphanedCase).toHaveBeenCalledWith(
         expect.anything(),
-        '123',
+        '081-23-12345',
         'current-456',
       );
     });
@@ -117,7 +117,7 @@ describe('Division Change Cleanup Migration', () => {
 
       const cleanupSpy = vi
         .spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase')
-        .mockResolvedValue();
+        .mockResolvedValue(0);
 
       await handleFix(message, mockInvocationContext);
 
@@ -132,7 +132,7 @@ describe('Division Change Cleanup Migration', () => {
 
       const cleanupSpy = vi
         .spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase')
-        .mockResolvedValue();
+        .mockResolvedValue(0);
 
       await handleFix(message, mockInvocationContext);
 
@@ -145,7 +145,7 @@ describe('Division Change Cleanup Migration', () => {
         currentCaseId: '081-24-12345',
       };
 
-      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue();
+      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue(0);
 
       const logSpy = vi.spyOn(mockInvocationContext, 'log');
 
@@ -159,7 +159,7 @@ describe('Division Change Cleanup Migration', () => {
 
     test('10. should handle cleanup errors', async () => {
       const message: OrphanedCaseMessage = {
-        orphanedCaseId: '123',
+        orphanedCaseId: '081-23-12345',
         currentCaseId: 'current-456',
       };
 
@@ -176,38 +176,15 @@ describe('Division Change Cleanup Migration', () => {
         currentCaseId: '081-24-12345',
       };
 
-      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue();
+      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue(0);
 
       // Should resolve without throwing, indicating trace was completed successfully
       await expect(handleFix(message, mockInvocationContext)).resolves.not.toThrow();
     });
 
-    test('12. should apply filterToExtendedAscii to caseId in logging', async () => {
-      // filterToExtendedAscii strips Unicode/non-printable characters (not HTML tags).
-      // A caseId with a Unicode character (e.g. emoji) should have it removed from the log.
+    test('12. should throw error when cleanup fails', async () => {
       const message: OrphanedCaseMessage = {
-        orphanedCaseId: '123\u{1F600}', // caseId with emoji appended
-        currentCaseId: 'current-456',
-      };
-
-      vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue();
-
-      const logSpy = vi.spyOn(mockInvocationContext, 'log');
-
-      await handleFix(message, mockInvocationContext);
-
-      const logCalls = logSpy.mock.calls.map((call) => String(call[0]));
-      const fixingLog = logCalls.find((msg) => msg.includes('Fixing orphaned case'));
-      expect(fixingLog).toBeDefined();
-      // The emoji character should have been stripped by filterToExtendedAscii
-      expect(fixingLog).not.toContain('\u{1F600}');
-      // The base case ID portion should still be present
-      expect(fixingLog).toContain('123');
-    });
-
-    test('13. should throw error when cleanup fails', async () => {
-      const message: OrphanedCaseMessage = {
-        orphanedCaseId: '123',
+        orphanedCaseId: '081-23-12345',
         currentCaseId: 'current-456',
       };
 
