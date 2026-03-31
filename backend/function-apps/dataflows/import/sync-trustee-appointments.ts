@@ -126,6 +126,8 @@ async function handlePage(
   const totalEvents = events.length;
   const autoMatchRate =
     totalEvents > 0 ? (scenarioDistribution.autoMatchCount / totalEvents) * 100 : 0;
+  const highConfidenceRate =
+    totalEvents > 0 ? (scenarioDistribution.highConfidenceMatchCount / totalEvents) * 100 : 0;
 
   invocationContext.extraOutputs.set(DLQ, dlqMessages);
   completeDataflowTrace(
@@ -145,10 +147,13 @@ async function handlePage(
         highConfidenceMatchCount: String(scenarioDistribution.highConfidenceMatchCount),
         noMatchCount: String(scenarioDistribution.noMatchCount),
         multipleMatchCount: String(scenarioDistribution.multipleMatchCount),
+        reVerificationCount: String(scenarioDistribution.reVerificationCount),
       },
       additionalMetrics: [
         { name: 'TrusteeAutoMatchRate', value: autoMatchRate },
         { name: 'TrusteeTotalEventsProcessed', value: totalEvents },
+        { name: 'TrusteeHighConfidenceMatchRate', value: highConfidenceRate },
+        { name: 'TrusteeReVerificationCount', value: scenarioDistribution.reVerificationCount },
       ],
     },
   );
