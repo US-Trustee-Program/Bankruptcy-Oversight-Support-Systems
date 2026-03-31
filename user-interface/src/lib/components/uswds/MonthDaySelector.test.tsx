@@ -20,6 +20,33 @@ describe('MonthDaySelector', () => {
     expect(screen.getByText('Day')).toBeInTheDocument();
   });
 
+  test('uses dual aria-labelledby referencing group label and sub-label when label is provided', () => {
+    render(<MonthDaySelector id="test" label="Review Period Start" />);
+
+    expect(monthSelect()).toHaveAttribute('aria-labelledby', 'test-label test-month-label');
+    expect(daySelect()).toHaveAttribute('aria-labelledby', 'test-label test-day-label');
+    expect(monthSelect()).not.toHaveAttribute('aria-label');
+    expect(daySelect()).not.toHaveAttribute('aria-label');
+  });
+
+  test('uses aria-label with contextLabel prefix when no label is provided', () => {
+    render(<MonthDaySelector id="test" contextLabel="TPR Due Start" />);
+
+    expect(monthSelect()).toHaveAttribute('aria-label', 'TPR Due Start Month');
+    expect(daySelect()).toHaveAttribute('aria-label', 'TPR Due Start Day');
+    expect(monthSelect()).toHaveAttribute('aria-labelledby', 'test-month-label');
+    expect(daySelect()).toHaveAttribute('aria-labelledby', 'test-day-label');
+  });
+
+  test('falls back to sub-label aria-labelledby when neither label nor contextLabel is provided', () => {
+    render(<MonthDaySelector id="test" />);
+
+    expect(monthSelect()).toHaveAttribute('aria-labelledby', 'test-month-label');
+    expect(daySelect()).toHaveAttribute('aria-labelledby', 'test-day-label');
+    expect(monthSelect()).not.toHaveAttribute('aria-label');
+    expect(daySelect()).not.toHaveAttribute('aria-label');
+  });
+
   test('renders month options as numbers 1 through 12', () => {
     render(<MonthDaySelector id="test" />);
 
