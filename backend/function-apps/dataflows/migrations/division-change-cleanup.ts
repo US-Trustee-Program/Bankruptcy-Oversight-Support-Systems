@@ -2,6 +2,7 @@ import { app, InvocationContext, output } from '@azure/functions';
 import { getCaseNumber } from '@common/cams/cases';
 
 import ApplicationContextCreator from '../../azure/application-context-creator';
+import { getCamsError } from '../../../lib/common-errors/error-utilities';
 import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import {
   DivisionChangeCleanupUseCase,
@@ -51,7 +52,7 @@ async function handleStart(
       documentsWritten: 0,
       documentsFailed: 0,
       success: true,
-      details: { fixMessagesQueued: fixMessages.length },
+      details: { fixMessagesQueued: String(fixMessages.length) },
     });
   } catch (originalError) {
     logger.error(MODULE_NAME, `Start handler failed: ${(originalError as Error).message}`);
@@ -118,7 +119,7 @@ async function handleFixPoison(
   const logger = ApplicationContextCreator.getLogger(invocationContext);
   logger.error(
     MODULE_NAME,
-    `Poison message received on fix queue: ${JSON.stringify(buildQueueError(new Error('Poison message'), MODULE_NAME, HANDLE_FIX))}`,
+    `Poison message received on fix queue: ${JSON.stringify(buildQueueError(getCamsError(new Error('Poison message'), MODULE_NAME), MODULE_NAME, HANDLE_FIX))}`,
   );
   logger.error(MODULE_NAME, `Poison message payload: ${JSON.stringify(message)}`);
 }
