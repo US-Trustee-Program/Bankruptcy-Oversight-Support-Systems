@@ -19,8 +19,10 @@ import MonthDayRangeSelector from '@/lib/components/uswds/MonthDayRangeSelector'
 import MonthDaySelector from '@/lib/components/uswds/MonthDaySelector';
 
 type FormState = {
+  pastBackgroundQuestion: string;
   pastFieldExam: string;
   pastAudit: string;
+  pastTprSubmission: string;
   tprReviewPeriodStart: string;
   tprReviewPeriodEnd: string;
   tprDue: string;
@@ -34,8 +36,10 @@ type FormState = {
 };
 
 const EMPTY_FORM: FormState = {
+  pastBackgroundQuestion: '',
   pastFieldExam: '',
   pastAudit: '',
+  pastTprSubmission: '',
   tprReviewPeriodStart: '',
   tprReviewPeriodEnd: '',
   tprDue: '',
@@ -117,8 +121,10 @@ export default function UpcomingKeyDatesForm() {
         const data = response.data;
         if (data) {
           setForm({
+            pastBackgroundQuestion: data.pastBackgroundQuestion ?? '',
             pastFieldExam: data.pastFieldExam ?? '',
             pastAudit: data.pastAudit ?? '',
+            pastTprSubmission: data.pastTprSubmission ?? '',
             tprReviewPeriodStart: data.tprReviewPeriodStart ?? '',
             tprReviewPeriodEnd: data.tprReviewPeriodEnd ?? '',
             tprDue: data.tprDue ?? '',
@@ -200,8 +206,10 @@ export default function UpcomingKeyDatesForm() {
     const isoInput: TrusteeUpcomingKeyDatesInput = {
       trusteeId: trusteeId!,
       appointmentId: appointmentId!,
+      pastBackgroundQuestion: form.pastBackgroundQuestion || null,
       pastFieldExam: form.pastFieldExam || null,
       pastAudit: form.pastAudit || null,
+      pastTprSubmission: form.pastTprSubmission || null,
       tprReviewPeriodStart: form.tprReviewPeriodStart
         ? isoToSentinel(form.tprReviewPeriodStart)
         : null,
@@ -321,6 +329,7 @@ export default function UpcomingKeyDatesForm() {
                   className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
                   id="tpr-due-year-type"
                   data-testid="tpr-due-year-type"
+                  aria-label="Year Type"
                   value={form.tprDueYearType}
                   onChange={handleYearTypeChange}
                   aria-invalid={errors.tprDueYearType ? 'true' : undefined}
