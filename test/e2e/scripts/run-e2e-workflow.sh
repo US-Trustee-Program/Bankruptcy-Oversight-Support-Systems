@@ -152,9 +152,10 @@ echo ""
 echo -e "${GREEN}✅ Images built${NC}"
 echo ""
 
-# Tear down any containers/networks left from the build step before starting fresh
-echo -e "${BLUE}🧹 Tearing down any containers from the build step...${NC}"
+# Tear down any containers/networks left from a previous run before starting fresh
+echo -e "${BLUE}🧹 Tearing down any containers from a previous run...${NC}"
 podman-compose down 2>/dev/null || true
+podman rm -f cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
 echo ""
 
 # Start all services (azurite must be healthy before backend starts)
