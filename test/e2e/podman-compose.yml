@@ -55,8 +55,8 @@ services:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/1433' 2>/dev/null && echo OK || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 12
-      start_period: 30s
+      retries: 15
+      start_period: 60s
 
   # Backend API service
   backend:

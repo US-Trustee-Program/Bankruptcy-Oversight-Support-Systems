@@ -72,9 +72,13 @@ cleanup() {
     if [ "$CLEANUP_NEEDED" = true ]; then
         echo ""
         echo -e "${BLUE}🧹 Tearing down services...${NC}"
-        # Suppress errors if containers are already stopped
+        # 1. Standard compose shutdown
         podman-compose down 2>/dev/null || true
-        echo -e "${GREEN}✅ Services stopped${NC}"
+
+        # 2. Force remove specific names to prevent "name in use" errors on next run
+        podman rm -f cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
+
+        echo -e "${GREEN}✅ Services stopped and names cleared${NC}"
     fi
 }
 
@@ -114,7 +118,14 @@ echo ""
 
 # Tear down any containers/networks left from the build step before starting fresh
 echo -e "${BLUE}🧹 Tearing down any containers from the build step...${NC}"
+# 1. Standard compose shutdown
 podman-compose down 2>/dev/null || true
+
+# 2. Force removal of specific container names to prevent 125 errors
+podman rm -f cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
+
+# 3. Prune the specific e2e network if it's stuck
+podman network rm e2e_cams-e2e 2>/dev/null || true
 echo ""
 
 # Start all services (azurite must be healthy before backend starts)
