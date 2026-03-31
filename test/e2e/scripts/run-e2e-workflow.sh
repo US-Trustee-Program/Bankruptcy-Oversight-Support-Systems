@@ -227,11 +227,9 @@ if [ "$RESEED_DB" = true ]; then
 
     # Seed MongoDB
     echo "Seeding MongoDB..."
-    # Run seed script from playwright container which has full codebase
-    # Override MONGO_CONNECTION_STRING to use localhost (host network mode)
     if podman-compose run --rm --no-deps \
-      -e MONGO_CONNECTION_STRING="mongodb://localhost:27017/cams-e2e?retrywrites=false" \
-      -e MSSQL_HOST=localhost \
+      --network e2e_cams-e2e \
+      -e MONGO_CONNECTION_STRING="mongodb://mongodb:27017/cams-e2e?retrywrites=false" \
       playwright npm run seed; then
         echo -e "${GREEN}✓ MongoDB seeded${NC}"
     else
@@ -243,7 +241,8 @@ if [ "$RESEED_DB" = true ]; then
     # Seed SQL Server
     echo "Seeding SQL Server..."
     if podman-compose run --rm --no-deps \
-      -e MSSQL_HOST=localhost \
+      --network e2e_cams-e2e \
+      -e MSSQL_HOST=sqlserver \
       -e MSSQL_USER=sa \
       -e MSSQL_PASS="${MSSQL_PASS}" \
       -e MSSQL_DATABASE_DXTR=CAMS_E2E \
@@ -272,7 +271,8 @@ fi
 echo -e "${BLUE}🔥 Step 2.7: Warming up SQL Server plan cache...${NC}"
 echo ""
 podman-compose run --rm --no-deps \
-  -e MSSQL_HOST=localhost \
+  --network e2e_cams-e2e \
+  -e MSSQL_HOST=sqlserver \
   -e MSSQL_USER=sa \
   -e MSSQL_PASS="${MSSQL_PASS}" \
   -e MSSQL_DATABASE_DXTR=CAMS_E2E \
@@ -291,7 +291,7 @@ echo ""
 # Capture to a temp file so we can parse the summary counts afterward.
 TEST_OUTPUT_FILE=$(mktemp)
 set +e
-podman-compose run --rm playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
+podman-compose run --rm --no-deps playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
 TEST_EXIT_CODE=${PIPESTATUS[0]}
 set -e
 TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
