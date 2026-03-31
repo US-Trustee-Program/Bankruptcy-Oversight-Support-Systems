@@ -8,11 +8,8 @@ FROM mcr.microsoft.com/playwright:v1.56.1-noble
 WORKDIR /app
 
 # Copy node_modules from deps (cached — only rebuilds when package*.json changes)
+# npm workspaces hoists all deps to root node_modules
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/common/node_modules ./common/node_modules
-COPY --from=deps /app/backend/node_modules ./backend/node_modules
-COPY --from=deps /app/user-interface/node_modules ./user-interface/node_modules
-COPY --from=deps /app/test/e2e/node_modules ./test/e2e/node_modules
 
 # Copy package files (needed for workspace module resolution)
 COPY package*.json ./
