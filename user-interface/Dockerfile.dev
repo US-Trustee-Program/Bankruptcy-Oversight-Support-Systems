@@ -1,0 +1,15 @@
+# Dev image for user-interface: installs deps into image, source is bind-mounted at runtime
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+# Copy only package files — source will be mounted from the host
+COPY package*.json ./
+COPY common/package*.json ./common/
+COPY backend/package*.json ./backend/
+COPY user-interface/package*.json ./user-interface/
+COPY test/e2e/package*.json ./test/e2e/
+
+RUN npm ci
+
+# CMD is provided by docker-compose.dev.yml

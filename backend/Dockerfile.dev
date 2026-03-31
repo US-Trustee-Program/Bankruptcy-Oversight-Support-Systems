@@ -1,0 +1,24 @@
+# Dev image for backend: installs deps + Azure Functions Core Tools, source is bind-mounted at runtime
+FROM node:20-bookworm-slim
+
+WORKDIR /app
+
+# System dependencies required by Azure Functions
+RUN apt-get update && \
+    apt-get install -y curl libicu72 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Azure Functions Core Tools (global install)
+RUN npm install -g azure-functions-core-tools@4 --unsafe-perm true
+
+# Copy only package files — source will be mounted from the host
+COPY package*.json ./
+COPY common/package*.json ./common/
+COPY backend/package*.json ./backend/
+COPY user-interface/package*.json ./user-interface/
+COPY test/e2e/package*.json ./test/e2e/
+
+RUN npm ci
+
+# CMD is provided by docker-compose.dev.yml
