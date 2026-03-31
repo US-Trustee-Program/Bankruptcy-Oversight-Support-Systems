@@ -12,6 +12,7 @@ export class TrusteeMatchVerificationUseCase {
     id: string,
     reason?: string,
   ): Promise<void> {
+    const trace = context.observability.startTrace(context.invocationId);
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
       const verification = await repo.findById(id);
@@ -20,6 +21,9 @@ export class TrusteeMatchVerificationUseCase {
           message: `Pending verification ${id} not found.`,
         });
       }
+      const resolutionMs = verification.createdOn
+        ? Date.now() - new Date(verification.createdOn).getTime()
+        : 0;
       const now = new Date().toISOString();
       const userRef = getCamsUserReference(context.session.user);
       await repo.update(id, {
@@ -28,7 +32,29 @@ export class TrusteeMatchVerificationUseCase {
         updatedBy: userRef,
         updatedOn: now,
       });
+      context.observability.completeTrace(
+        trace,
+        'TrusteeMatchVerificationResolved',
+        {
+          success: true,
+          properties: {
+            action: 'reject',
+            caseId: verification.caseId,
+            mismatchReason: verification.mismatchReason,
+          },
+          measurements: {
+            resolutionMs,
+            candidateCount: verification.matchCandidates.length,
+          },
+        },
+        [{ name: 'TrusteeVerificationResolutionMs', value: resolutionMs }],
+      );
     } catch (originalError) {
+      context.observability.completeTrace(trace, 'TrusteeMatchVerificationResolved', {
+        success: false,
+        properties: { action: 'reject' },
+        measurements: {},
+      });
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
@@ -38,6 +64,7 @@ export class TrusteeMatchVerificationUseCase {
     id: string,
     resolvedTrusteeId: string,
   ): Promise<void> {
+    const trace = context.observability.startTrace(context.invocationId);
     try {
       const repo = factory.getTrusteeMatchVerificationRepository(context);
       const casesRepo = factory.getCasesRepository(context);
@@ -50,6 +77,17 @@ export class TrusteeMatchVerificationUseCase {
           message: `Pending verification ${id} not found.`,
         });
       }
+
+      const resolutionMs = verification.createdOn
+        ? Date.now() - new Date(verification.createdOn).getTime()
+        : 0;
+      const preselectedTrusteeId =
+        verification.matchCandidates.length > 0
+          ? verification.matchCandidates.reduce((best, c) =>
+              c.totalScore > best.totalScore ? c : best,
+            ).trusteeId
+          : undefined;
+      const wasPreselectedConfirmed = preselectedTrusteeId === resolvedTrusteeId;
 
       const now = new Date().toISOString();
 
@@ -82,7 +120,31 @@ export class TrusteeMatchVerificationUseCase {
         updatedBy: userRef,
         updatedOn: now,
       });
+
+      context.observability.completeTrace(
+        trace,
+        'TrusteeMatchVerificationResolved',
+        {
+          success: true,
+          properties: {
+            action: 'approve',
+            caseId: verification.caseId,
+            mismatchReason: verification.mismatchReason,
+            wasPreselectedConfirmed: String(wasPreselectedConfirmed),
+          },
+          measurements: {
+            resolutionMs,
+            candidateCount: verification.matchCandidates.length,
+          },
+        },
+        [{ name: 'TrusteeVerificationResolutionMs', value: resolutionMs }],
+      );
     } catch (originalError) {
+      context.observability.completeTrace(trace, 'TrusteeMatchVerificationResolved', {
+        success: false,
+        properties: { action: 'approve' },
+        measurements: {},
+      });
       throw getCamsError(originalError, MODULE_NAME);
     }
   }

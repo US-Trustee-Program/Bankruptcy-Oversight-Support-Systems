@@ -5,6 +5,7 @@ import { ConsolidationOrder, TransferOrder } from '@common/cams/orders';
 import { CamsUserReference, UserGroup } from '@common/cams/users';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { Trustee } from '@common/cams/trustees';
+import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 
 /**
  * Deletes all documents from all collections in the MongoDB database for e2e testing.
@@ -72,4 +73,16 @@ export async function insertUserGroups(appContext: ApplicationContext, userGroup
   await userGroupsRepo.upsertUserGroupsBatch(appContext, userGroups);
   console.log('Created User Groups....   ', userGroups);
   userGroupsRepo.release();
+}
+
+export async function insertTrusteeMatchVerifications(
+  appContext: ApplicationContext,
+  verifications: TrusteeMatchVerification[],
+) {
+  const repo = factory.getTrusteeMatchVerificationRepository(appContext);
+  for (const verification of verifications) {
+    await repo.upsertVerification(verification);
+  }
+  console.log('Created Trustee Match Verifications....   ', verifications.length);
+  repo.release();
 }

@@ -2,6 +2,7 @@ import './TrusteeMatchVerificationAccordion.scss';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Accordion } from '@/lib/components/uswds/Accordion';
+import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { CandidateScore } from '@common/cams/dataflow-events';
@@ -19,6 +20,29 @@ import TrusteeMatchRejectionModal, {
 import TrusteeMatchConfirmationModal, {
   TrusteeMatchConfirmationModalImperative,
 } from './TrusteeMatchConfirmationModal';
+
+type TrusteeSearchLinkProps = {
+  linkLabel: string;
+  linkMessage?: string;
+  className?: string;
+};
+
+function TrusteeSearchLink({
+  linkLabel,
+  linkMessage,
+  className,
+}: Readonly<TrusteeSearchLinkProps>) {
+  const classes = ['search-link-container', className].filter(Boolean).join(' ');
+  return (
+    <div className={classes}>
+      {linkMessage && <span className="link-message">{linkMessage}</span>}
+      <Link to="/trustee/search" className="search-trustee-link">
+        <Icon name="search" />
+        {linkLabel}
+      </Link>
+    </div>
+  );
+}
 
 export interface TrusteeMatchVerificationAccordionProps {
   order: TrusteeMatchVerification;
@@ -296,29 +320,16 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               {order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
                 ?.trusteeName ?? order.resolvedTrusteeId}{' '}
               was appointed to case:{' '}
-              <Link
-                to={`/case-detail/${order.caseId}`}
-                className="case-link"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Icon name="launch" />
-                {getCaseNumber(order.caseId)}
-              </Link>
+              <NewTabLink to={`/case-detail/${order.caseId}`} label={getCaseNumber(order.caseId)} />
             </p>
           ) : (
             <>
               <p className="problem-statement">
                 Trustee sent from the court does not match a CAMS Trustee for case:{' '}
-                <Link
+                <NewTabLink
                   to={`/case-detail/${order.caseId}`}
-                  className="case-link"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Icon name="launch" />
-                  {getCaseNumber(order.caseId)}
-                </Link>
+                  label={getCaseNumber(order.caseId)}
+                />
               </p>
 
               <h3>Trustee Information Sent By Court</h3>
@@ -366,10 +377,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     onApprove={openConfirmation}
                     isProcessing={isProcessing}
                   />
-                  <Link to="/trustee/search" className="search-trustee-link">
-                    <Icon name="search" />
-                    Search for a different trustee
-                  </Link>
+                  <TrusteeSearchLink
+                    linkMessage="There are no other suggested matches in CAMS."
+                    linkLabel="Search for a different trustee"
+                  />
                 </div>
               )}
 
@@ -388,20 +399,18 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               {viewMode === 'readonly-with-candidate' && preselected && (
                 <>
                   <CandidateTable candidates={[preselected]} />
-                  <Link to="/trustee/search" className="search-trustee-link">
-                    <Icon name="search" />
-                    Search for a different trustee.
-                  </Link>
+                  <TrusteeSearchLink
+                    linkMessage="There are no other suggested matches in CAMS."
+                    linkLabel="Search for a different trustee."
+                  />
                 </>
               )}
               {viewMode === 'no-candidates' && (
-                <p className="no-candidates-message">
-                  There are no suggested matches in CAMS.{' '}
-                  <Link to="/trustee/search" className="search-trustee-link">
-                    <Icon name="search" />
-                    Search for a trustee
-                  </Link>
-                </p>
+                <TrusteeSearchLink
+                  className="no-candidates-message"
+                  linkMessage="There are no suggested matches in CAMS."
+                  linkLabel="Search for a trustee"
+                />
               )}
             </>
           )}
