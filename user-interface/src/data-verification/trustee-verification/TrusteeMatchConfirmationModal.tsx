@@ -1,8 +1,8 @@
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import './TrusteeMatchConfirmationModal.scss';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import Icon from '@/lib/components/uswds/Icon';
+import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import { CandidateScore } from '@common/cams/dataflow-events';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
@@ -83,33 +83,27 @@ function TrusteeMatchConfirmationModal_(
         candidate ? (
           <>
             <p>Are you sure you want to confirm the appointment of the following trustee?</p>
-            <p>
-              <Link
-                to={`/trustees/${candidate.trusteeId}`}
-                target="_blank"
-                rel="noreferrer"
-                className="case-link"
-              >
-                <Icon name="launch" />
-                {candidate.trusteeName}
-              </Link>
-            </p>
-            {addressLines.map((line, i) => (
-              <p key={i}>{line}</p>
-            ))}
-            {candidate.phone && (
-              <p>
-                {candidate.phone.number}
-                {candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}
-              </p>
-            )}
-            {candidate.email && <p>{candidate.email}</p>}
-            {candidate.appointments?.map((appt, i) => (
-              <p key={i}>
-                {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
-                {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
-              </p>
-            ))}
+            <div className="trustee-contact">
+              <div className="trustee-name">
+                <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
+              </div>
+              {addressLines.map((line, i) => (
+                <div key={i}>{line}</div>
+              ))}
+              {candidate.phone && (
+                <div className="phone">
+                  {candidate.phone.number}
+                  {candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}
+                </div>
+              )}
+              {candidate.email && <div className="email">{candidate.email}</div>}
+              {candidate.appointments?.map((appt, i) => (
+                <div key={i}>
+                  {[appt.courtName, appt.courtDivisionName].filter(Boolean).join(' ')}: Chap{' '}
+                  {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
+                </div>
+              ))}
+            </div>
           </>
         ) : null
       }

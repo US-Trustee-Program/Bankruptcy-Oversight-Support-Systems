@@ -18,7 +18,24 @@ describe('TrusteeMatchVerificationUseCase', () => {
     courtId: '081',
     dxtrTrustee: { fullName: 'John Doe' },
     mismatchReason: 'IMPERFECT_MATCH',
-    matchCandidates: [],
+    matchCandidates: [
+      {
+        trusteeId: 'trustee-a',
+        trusteeName: 'Alice',
+        totalScore: 90,
+        addressScore: 80,
+        districtDivisionScore: 100,
+        chapterScore: 90,
+      },
+      {
+        trusteeId: 'trustee-b',
+        trusteeName: 'Bob',
+        totalScore: 70,
+        addressScore: 60,
+        districtDivisionScore: 80,
+        chapterScore: 70,
+      },
+    ],
     orderType: 'trustee-match',
     status: 'pending',
     createdOn: '2025-01-01T00:00:00.000Z',
@@ -46,9 +63,12 @@ describe('TrusteeMatchVerificationUseCase', () => {
   let mockGetActiveCaseAppointment: ReturnType<typeof vi.fn>;
   let mockCreateCaseAppointment: ReturnType<typeof vi.fn>;
   let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
+  let mockCompleteTrace: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
+    mockCompleteTrace = vi.fn();
+    vi.spyOn(context.observability, 'completeTrace').mockImplementation(mockCompleteTrace);
     useCase = new TrusteeMatchVerificationUseCase();
 
     mockFindById = vi.fn().mockResolvedValue(sampleVerification);
@@ -106,6 +126,56 @@ describe('TrusteeMatchVerificationUseCase', () => {
           updatedBy: expect.objectContaining({ id: expect.any(String) }),
           updatedOn: expect.any(String),
         }),
+      );
+    });
+
+    test('emits TrusteeMatchVerificationResolved telemetry with wasPreselectedConfirmed=true when preselected trustee is approved', async () => {
+      await useCase.approveVerification(context, 'verification-1', 'trustee-a');
+
+      expect(mockCompleteTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        'TrusteeMatchVerificationResolved',
+        expect.objectContaining({
+          success: true,
+          properties: expect.objectContaining({
+            action: 'approve',
+            caseId: 'case-001',
+            mismatchReason: 'IMPERFECT_MATCH',
+            wasPreselectedConfirmed: 'true',
+          }),
+          measurements: expect.objectContaining({
+            resolutionMs: expect.any(Number),
+            candidateCount: 2,
+          }),
+        }),
+        [{ name: 'TrusteeVerificationResolutionMs', value: expect.any(Number) }],
+      );
+    });
+
+    test('emits TrusteeMatchVerificationResolved telemetry with wasPreselectedConfirmed=false when non-preselected trustee is approved', async () => {
+      await useCase.approveVerification(context, 'verification-1', 'trustee-b');
+
+      expect(mockCompleteTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        'TrusteeMatchVerificationResolved',
+        expect.objectContaining({
+          properties: expect.objectContaining({ wasPreselectedConfirmed: 'false' }),
+        }),
+        expect.anything(),
+      );
+    });
+
+    test('emits failed telemetry when approveVerification throws', async () => {
+      mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
+
+      await expect(
+        useCase.approveVerification(context, 'missing-id', 'trustee-new'),
+      ).rejects.toThrow();
+
+      expect(mockCompleteTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        'TrusteeMatchVerificationResolved',
+        expect.objectContaining({ success: false, properties: { action: 'approve' } }),
       );
     });
 
@@ -170,6 +240,40 @@ describe('TrusteeMatchVerificationUseCase', () => {
           updatedBy: expect.objectContaining({ id: expect.any(String) }),
           updatedOn: expect.any(String),
         }),
+      );
+    });
+
+    test('emits TrusteeMatchVerificationResolved telemetry on rejection', async () => {
+      await useCase.rejectVerification(context, 'verification-1', 'Not the right trustee');
+
+      expect(mockCompleteTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        'TrusteeMatchVerificationResolved',
+        expect.objectContaining({
+          success: true,
+          properties: expect.objectContaining({
+            action: 'reject',
+            caseId: 'case-001',
+            mismatchReason: 'IMPERFECT_MATCH',
+          }),
+          measurements: expect.objectContaining({
+            resolutionMs: expect.any(Number),
+            candidateCount: 2,
+          }),
+        }),
+        [{ name: 'TrusteeVerificationResolutionMs', value: expect.any(Number) }],
+      );
+    });
+
+    test('emits failed telemetry when rejectVerification throws', async () => {
+      mockFindById.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
+
+      await expect(useCase.rejectVerification(context, 'missing-id')).rejects.toThrow();
+
+      expect(mockCompleteTrace).toHaveBeenCalledWith(
+        expect.anything(),
+        'TrusteeMatchVerificationResolved',
+        expect.objectContaining({ success: false, properties: { action: 'reject' } }),
       );
     });
 
