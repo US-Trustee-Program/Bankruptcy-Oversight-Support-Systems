@@ -3,7 +3,7 @@ import { DxtrCase, SyncedCase } from '@common/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
-import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import { CaseSyncEvent, OrphanedCaseMessage } from '@common/cams/dataflow-events';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
 import { CasesRepository } from '../gateways.types';
 
@@ -34,50 +34,27 @@ function addPhoneticTokens(bCase: DxtrCase): DxtrCase {
 }
 
 /**
- * Detect and handle division change for a case.
- * Division change occurs when a case with the same dxtrId and courtId
- * already exists but has a different caseId.
+ * Detect a division change for a case. A division change occurs when a case
+ * with the same dxtrId and courtId already exists but has a different caseId.
  *
- * @param context Application context for logging
- * @param event Case sync event to potentially update with division change info
- * @param syncedCase The synced case data to check
  * @param repo Cases repository for querying existing cases
- * @returns Promise<boolean> - true if division change was handled, false otherwise
+ * @param syncedCase The synced case data to check
+ * @returns The orphaned/current case pair if a division change is detected, null otherwise
  */
-async function detectAndHandleDivisionChange(
-  context: ApplicationContext,
-  event: CaseSyncEvent,
-  syncedCase: SyncedCase,
+async function detectDivisionChange(
   repo: CasesRepository,
-): Promise<boolean> {
-  try {
-    const existing = await repo.findSyncedCaseByDxtrId(syncedCase.dxtrId, syncedCase.courtId);
+  syncedCase: SyncedCase,
+): Promise<OrphanedCaseMessage | null> {
+  const existing = await repo.findSyncedCaseByDxtrId(syncedCase.dxtrId, syncedCase.courtId);
 
-    if (existing && existing.caseId !== syncedCase.caseId) {
-      // Division change detected - sync new case
-      await repo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
-
-      event.divisionChange = {
-        orphanedCaseId: existing.caseId,
-        currentCaseId: syncedCase.caseId,
-      };
-
-      context.logger.info(
-        MODULE_NAME,
-        `Division change detected: dxtrId=${syncedCase.dxtrId} courtId=${syncedCase.courtId} orphaned=${existing.caseId} current=${syncedCase.caseId}`,
-      );
-
-      return true; // Division change handled
-    }
-
-    return false; // No division change
-  } catch (detectionError) {
-    context.logger.error(
-      MODULE_NAME,
-      `Division change detection failed for case ${event.caseId} dxtrId=${syncedCase.dxtrId}: ${detectionError}`,
-    );
-    return false; // Detection failed, caller will do normal sync
+  if (!existing || existing.caseId === syncedCase.caseId) {
+    return null;
   }
+
+  return {
+    orphanedCaseId: existing.caseId,
+    currentCaseId: syncedCase.caseId,
+  };
 }
 
 async function exportAndLoad(
@@ -92,16 +69,23 @@ async function exportAndLoad(
       const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
       const syncedCase: SyncedCase = { ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' };
 
-      const divisionChangeHandled = await detectAndHandleDivisionChange(
-        context,
-        event,
-        syncedCase,
-        repo,
-      );
-
-      if (!divisionChangeHandled) {
-        await repo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
+      try {
+        const divisionChange = await detectDivisionChange(repo, syncedCase);
+        if (divisionChange) {
+          event.divisionChange = divisionChange;
+          context.logger.info(
+            MODULE_NAME,
+            `Division change detected: dxtrId=${syncedCase.dxtrId} courtId=${syncedCase.courtId} orphaned=${divisionChange.orphanedCaseId} current=${divisionChange.currentCaseId}`,
+          );
+        }
+      } catch (detectionError) {
+        context.logger.error(
+          MODULE_NAME,
+          `Division change detection failed for case ${event.caseId} dxtrId=${syncedCase.dxtrId}: ${detectionError}`,
+        );
       }
+
+      await repo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
     } catch (originalError) {
       event.error = getCamsError(
         originalError,
