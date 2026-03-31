@@ -116,12 +116,14 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
       )}
       <div className="month-day-selector__inputs" onFocus={onFocus} onBlur={onBlur}>
         <div className="month-day-selector__column">
-          <span
+          <label
             className="usa-hint"
+            id={`${id}-month-label`}
+            htmlFor={`${id}-month`}
             aria-label={contextLabel ? `${contextLabel} Month` : undefined}
           >
             Month
-          </span>
+          </label>
           <select
             id={`${id}-month`}
             name={`${id}-month`}
@@ -130,8 +132,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
             onChange={handleMonthChange}
             disabled={disabled}
             required={required}
-            aria-labelledby={label ? `${id}-label` : undefined}
-            aria-label={!label && contextLabel ? `${contextLabel} Month` : undefined}
+            aria-labelledby={label ? `${id}-label ${id}-month-label` : `${id}-month-label`}
             aria-describedby={hasError ? `${id}-error` : undefined}
             aria-invalid={hasError ? 'true' : undefined}
           >
@@ -147,9 +148,14 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
           /
         </span>
         <div className="month-day-selector__column">
-          <span className="usa-hint" aria-label={contextLabel ? `${contextLabel} Day` : undefined}>
+          <label
+            className="usa-hint"
+            id={`${id}-day-label`}
+            htmlFor={`${id}-day`}
+            aria-label={contextLabel ? `${contextLabel} Day` : undefined}
+          >
             Day
-          </span>
+          </label>
           <select
             id={`${id}-day`}
             name={`${id}-day`}
@@ -158,7 +164,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
             onChange={handleDayChange}
             disabled={disabled || !month}
             required={required}
-            aria-label={contextLabel ? `${contextLabel} Day` : 'Day'}
+            aria-labelledby={label ? `${id}-label ${id}-day-label` : `${id}-day-label`}
             aria-describedby={hasError ? `${id}-error` : undefined}
             aria-invalid={hasError ? 'true' : undefined}
           >
