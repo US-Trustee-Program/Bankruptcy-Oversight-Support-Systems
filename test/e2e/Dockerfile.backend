@@ -3,6 +3,12 @@ FROM localhost/e2e_built:latest
 
 WORKDIR /app/backend/function-apps/api
 
+# Overwrite the dev local.settings.json (which points to real Azure storage) with
+# an E2E version that routes AzureWebJobsStorage to the Azurite container.
+# Azure Functions reads local.settings.json at startup; env vars alone are not
+# sufficient to override it.
+COPY test/e2e/local.settings.e2e.json ./local.settings.json
+
 EXPOSE 7071
 
 CMD ["func", "start", "--javascript", "--port", "7071", "--host", "0.0.0.0"]
