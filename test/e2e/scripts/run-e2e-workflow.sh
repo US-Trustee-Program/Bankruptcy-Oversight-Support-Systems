@@ -126,7 +126,15 @@ podman rm -f cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e
 
 # 3. Prune the specific e2e network if it's stuck
 podman network rm e2e_cams-e2e 2>/dev/null || true
-echo ""
+echo "Finished removing stale containers and network"
+# 2. Verify they are gone
+STALE_CONTAINERS=$(podman ps -aq --filter "name=cams-.*-e2e")
+if [ -n "$STALE_CONTAINERS" ]; then
+    echo -e "${YELLOW}⚠️ Warning: Some containers still exist, attempting deep prune...${NC}"
+    podman rm -v -f "$STALE_CONTAINERS" 2>/dev/null || true
+else
+    echo -e "${GREEN}✅ Environment is clean.${NC}"
+fi
 
 # Start all services (azurite must be healthy before backend starts)
 echo "Starting services..."
@@ -242,7 +250,7 @@ echo ""
 # Capture to a temp file so we can parse the summary counts afterward.
 TEST_OUTPUT_FILE=$(mktemp)
 set +e
-podman-compose run --rm playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
+podman-compose run --rm --no-deps playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
 TEST_EXIT_CODE=${PIPESTATUS[0]}
 set -e
 TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
