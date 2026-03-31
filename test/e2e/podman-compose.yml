@@ -43,6 +43,7 @@ services:
 
   # Backend API service
   backend:
+    image: localhost/e2e_backend:latest
     build:
       context: ../../
       dockerfile: test/e2e/Dockerfile.backend
@@ -78,6 +79,7 @@ services:
 
   # Frontend UI service
   frontend:
+    image: localhost/e2e_frontend:latest
     build:
       context: ../../
       dockerfile: test/e2e/Dockerfile.frontend
@@ -104,6 +106,7 @@ services:
 
   # Playwright test runner
   playwright:
+    image: localhost/e2e_playwright:latest
     build:
       context: ../../
       dockerfile: test/e2e/Dockerfile.playwright

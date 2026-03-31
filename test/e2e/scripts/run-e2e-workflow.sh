@@ -110,14 +110,14 @@ echo ""
 echo -e "${GREEN}✅ Images built${NC}"
 echo ""
 
-# Clean up any containers that were created as a side effect of the build
-echo -e "${BLUE}🧹 Cleaning up any containers from the build step...${NC}"
-podman rm -f cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e cams-playwright-e2e 2>/dev/null || true
+# Tear down any containers/networks left from the build step before starting fresh
+echo -e "${BLUE}🧹 Tearing down any containers from the build step...${NC}"
+podman-compose down 2>/dev/null || true
 echo ""
 
 # Start MongoDB, SQL Server, backend, and frontend services
 echo "Starting MongoDB, SQL Server, backend, and frontend services..."
-podman-compose up -d --force-recreate mongodb sqlserver backend frontend > /dev/null
+podman-compose up -d mongodb sqlserver backend frontend > /dev/null
 CLEANUP_NEEDED=true
 echo ""
 echo -e "${GREEN}✅ Services started${NC}"
