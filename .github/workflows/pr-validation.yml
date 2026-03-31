@@ -17,20 +17,11 @@ concurrency:
   cancel-in-progress: false  # Queue PRs, don't cancel
 
 jobs:
-  setup:
-    name: Setup
+  run-e2e-tests:
     # Only run if explicitly requested via label or ready_for_review
     if: |
       github.event.action == 'ready_for_review' ||
       contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')
-    uses: ./.github/workflows/reusable-build-info.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      environment: 'Develop'  # Always use Develop for PRs
-      branchNameOverride: ${{ github.head_ref }}  # Use source branch for resource naming
-
-  run-e2e-tests:
-    needs: [setup]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -72,6 +63,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y podman podman-compose
+
+      - name: Pull base images from ghcr.io cache
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
+          REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
+          podman pull "${REGISTRY}/e2e-base-mongo-7.0"
+          podman pull "${REGISTRY}/e2e-base-azure-sql-edge-latest"
+          podman pull "${REGISTRY}/e2e-base-azure-storage-azurite-latest"
 
       - name: Run E2E Tests
         run: npm run test:e2e -- --reseed

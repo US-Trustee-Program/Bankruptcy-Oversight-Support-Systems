@@ -83,15 +83,9 @@ Workflows triggered by `pull_request`:
 flowchart LR
     trigger_pull_request(["pull_request"])
     pr_validation_yml["Pull Request E2E Validation"]
-    pr_validation_yml_setup["Setup"]
-    reusable_build_info_yml["reusable-build-info.yml"]
-    reusable_build_info_yml_build_info["Run Info"]
     pr_validation_yml_run_e2e_tests["run-e2e-tests"]
 
     trigger_pull_request --> pr_validation_yml
-    pr_validation_yml --> pr_validation_yml_setup
-    reusable_build_info_yml --> reusable_build_info_yml_build_info
-    pr_validation_yml_setup --> reusable_build_info_yml
     pr_validation_yml --> pr_validation_yml_run_e2e_tests
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
@@ -101,9 +95,6 @@ flowchart LR
 
     class trigger_pull_request trigger
     class pr_validation_yml mainWorkflow
-    class pr_validation_yml_setup job
-    class reusable_build_info_yml reusable
-    class reusable_build_info_yml_build_info job
     class pr_validation_yml_run_e2e_tests job
 ```
 
@@ -1277,7 +1268,7 @@ flowchart LR
   - Jobs: 3
 - **Pull Request E2E Validation** (`pr-validation.yml`)
   - Triggers: pull_request
-  - Jobs: 2
+  - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
   - Jobs: 10

@@ -81,6 +81,19 @@ cleanup() {
 # Register cleanup on exit
 trap cleanup EXIT
 
+# Step 1a: Pull base images from ghcr.io cache (if GITHUB_TOKEN is set)
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+    echo -e "${BLUE}🔐 Step 1a: Pulling base images from ghcr.io cache...${NC}"
+    echo ""
+    echo "${GITHUB_TOKEN}" | podman login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+    REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
+    podman pull "${REGISTRY}/e2e-base-mongo-7.0" || true
+    podman pull "${REGISTRY}/e2e-base-azure-sql-edge-latest" || true
+    podman pull "${REGISTRY}/e2e-base-azure-storage-azurite-latest" || true
+    echo -e "${GREEN}✅ Base images pulled${NC}"
+    echo ""
+fi
+
 # Step 1: Build deps image (cached) and service images
 echo -e "${BLUE}📦 Step 1: Building images and starting services...${NC}"
 echo ""

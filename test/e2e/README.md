@@ -68,9 +68,26 @@ npm run harvest           # Dump e2e MongoDB + pull SQL rows from DXTR → rebui
 npm run harvest:reseed    # Re-seed MongoDB from DXTR first, then harvest (full refresh)
 ```
 
+### Base Image Cache (ghcr.io)
+
+The three upstream base images (MongoDB, Azure SQL Edge, Azurite) are cached in GitHub Container Registry to avoid repeated large downloads in CI. CI pulls from `ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-*`.
+
+All three images are stored as multi-arch manifest lists (amd64 + arm64) so both CI runners (x86-64) and local macOS (arm64) pull the correct architecture automatically.
+
+These images do not update automatically. Refresh them manually when upstream versions change:
+
+```bash
+export GITHUB_TOKEN=<your-token>   # requires write:packages scope
+export GITHUB_ACTOR=<your-github-username>
+npm run podman:cache-images
+```
+
+After pushing refreshed images, update the image tags in `podman-compose.yml` if the upstream version changed (e.g., `mongo:7.0` → `mongo:8.0`).
+
 ### Podman Infrastructure
 
 ```bash
+npm run podman:cache-images   # Push upstream base images to ghcr.io cache (manual refresh)
 npm run podman:install        # Install Podman dependencies (first time only)
 npm run podman:rebuild-deps   # Rebuild deps image (after package.json changes only)
 npm run podman:services       # Start backend + frontend without running tests
@@ -362,7 +379,7 @@ mongodb://localhost:27017/cams-e2e
 
 ### SQL Server
 
-- **Image**: `mcr.microsoft.com/azure-sql-edge` (ARM64 native; SQL Server itself is x86-only)
+- **Image**: `mcr.microsoft.com/azure-sql-edge` (ARM64 native)
 - **Database**: `CAMS_E2E`
 - **Credentials**: `sa` / `YourStrong!Passw0rd`
 

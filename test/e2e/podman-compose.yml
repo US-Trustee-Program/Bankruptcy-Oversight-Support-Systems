@@ -2,8 +2,9 @@ version: '3.8'
 
 services:
   # Azure Storage emulator (required for Azure Functions runtime health)
+  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
   azurite:
-    image: mcr.microsoft.com/azure-storage/azurite:latest
+    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-azure-storage-azurite-latest
     container_name: cams-azurite-e2e
     ports:
       - "10000:10000"
@@ -19,8 +20,9 @@ services:
       start_period: 5s
 
   # MongoDB (compatible with Cosmos DB MongoDB API)
+  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
   mongodb:
-    image: mongo:7.0
+    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-mongo-7.0
     container_name: cams-mongodb-e2e
     ports:
       - "27017:27017"
@@ -38,8 +40,9 @@ services:
       start_period: 10s
 
   # Azure SQL Edge (ARM64-compatible SQL Server for testing)
+  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
   sqlserver:
-    image: mcr.microsoft.com/azure-sql-edge:latest
+    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-azure-sql-edge-latest
     container_name: cams-sqlserver-e2e
     ports:
       - "1433:1433"
