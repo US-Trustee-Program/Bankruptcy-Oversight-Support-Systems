@@ -1237,7 +1237,7 @@ describe('Cases repository', () => {
       },
     ])('$description', async ({ predicate, expectedQueryContains }) => {
       const expectedSyncedCaseArray: SyncedCase[] = [
-        MockData.getSyncedCase({ override: { caseId: caseId1, status: 'ACTIVE' } }),
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
       ];
 
       const paginateSpy = vi
@@ -1313,7 +1313,7 @@ describe('Cases repository', () => {
       },
     ])('$description', async ({ predicate, expectedQueryContains }) => {
       const expectedSyncedCaseArray: SyncedCase[] = [
-        MockData.getSyncedCase({ override: { caseId: caseId1, status: 'ACTIVE' } }),
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
       ];
 
       const paginateSpy = vi
@@ -1384,7 +1384,7 @@ describe('Cases repository', () => {
       },
     ])('$description', async ({ predicate, expectedQueryContains }) => {
       const expectedSyncedCaseArray: SyncedCase[] = [
-        MockData.getSyncedCase({ override: { caseId: caseId1, status: 'ACTIVE' } }),
+        MockData.getSyncedCase({ override: { caseId: caseId1 } }),
       ];
 
       const paginateSpy = vi

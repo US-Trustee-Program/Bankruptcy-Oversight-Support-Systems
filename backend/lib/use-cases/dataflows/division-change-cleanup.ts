@@ -157,7 +157,7 @@ export class DivisionChangeCleanupUseCase {
     );
     for (const order of oldOrders) {
       const { id, ...orderData } = order as Order;
-      const newOrder: Omit<Order, 'id'> = { ...orderData, caseId: newCaseId };
+      const newOrder = { ...orderData, caseId: newCaseId } as Order;
       context.logger.debug(
         MODULE_NAME,
         `Creating order ${order.orderType} in partition ${newCaseId}`,
@@ -188,18 +188,15 @@ export class DivisionChangeCleanupUseCase {
     }
 
     const casesRepo = factory.getCasesRepository(context);
-    const oldCases = await casesRepo.findByCaseId(oldCaseId);
+    type CaseDoc = { id: string; caseId: string; documentType: string; [key: string]: unknown };
+    const oldCases = (await casesRepo.findByCaseId(oldCaseId)) as CaseDoc[];
     const nonSyncedCases = oldCases.filter((doc) => doc.documentType !== 'SYNCED_CASE');
     context.logger.info(
       MODULE_NAME,
       `Moving ${nonSyncedCases.length} case documents from ${oldCaseId} to ${newCaseId}`,
     );
     for (const caseDoc of nonSyncedCases) {
-      const { id, ...caseData } = caseDoc as {
-        id: string;
-        documentType: string;
-        [key: string]: unknown;
-      };
+      const { id, ...caseData } = caseDoc;
       const newCase = { ...caseData, caseId: newCaseId };
       context.logger.debug(
         MODULE_NAME,

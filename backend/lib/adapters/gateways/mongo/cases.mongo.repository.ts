@@ -645,45 +645,20 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     Array<{ dxtrId: string; courtId: string; caseIds: string[] }>
   > {
     try {
-      const adapter = this.getAdapter<SyncedCase>();
+      const doc = using<SyncedCase>();
+      const query = and(doc('documentType').equals('SYNCED_CASE'), doc('status').notEqual('MOVED'));
+      const cases = await this.getAdapter<SyncedCase>().find(query);
 
-      // NOTE: Raw MongoDB aggregation pipeline is used here because QueryPipeline does not
-      // support the $group stage. All inputs to this pipeline are literal constants (no user
-      // data), so there is no injection risk. Track as technical debt: once QueryPipeline
-      // gains $group support, migrate to the typed query builder.
-      const results = await adapter.aggregate<{
-        _id: { dxtrId: string; courtId: string };
-        caseIds: string[];
-        count: number;
-      }>([
-        {
-          $match: {
-            documentType: 'SYNCED_CASE',
-            status: { $ne: 'MOVED' },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              dxtrId: '$dxtrId',
-              courtId: '$courtId',
-            },
-            caseIds: { $push: '$caseId' },
-            count: { $sum: 1 },
-          },
-        },
-        {
-          $match: {
-            count: { $gt: 1 },
-          },
-        },
-      ]);
+      const groups = new Map<string, { dxtrId: string; courtId: string; caseIds: string[] }>();
+      for (const c of cases) {
+        const key = `${c.dxtrId}:${c.courtId}`;
+        if (!groups.has(key)) {
+          groups.set(key, { dxtrId: c.dxtrId, courtId: c.courtId, caseIds: [] });
+        }
+        groups.get(key)!.caseIds.push(c.caseId);
+      }
 
-      return results.map((result) => ({
-        dxtrId: result._id.dxtrId,
-        courtId: result._id.courtId,
-        caseIds: result.caseIds,
-      }));
+      return [...groups.values()].filter((g) => g.caseIds.length > 1);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
