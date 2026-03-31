@@ -25,11 +25,8 @@ services:
       - frontend_root_modules:/app/node_modules
       - frontend_ui_modules:/app/user-interface/node_modules
       - frontend_common_modules:/app/common/node_modules
-    environment:
-      - CAMS_LOGIN_PROVIDER=none
-      - CAMS_API_BASE_URL=http://localhost:7071
-      - CAMS_PA11Y=false
-      - CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING=
+    env_file:
+      - user-interface/.env
     command: sh -c "cd user-interface && node envToConfig.js && npx vite --host 0.0.0.0 --port 5173"
 
   backend:
@@ -47,12 +44,12 @@ services:
       - backend_backend_modules:/app/backend/node_modules
       - backend_common_modules:/app/common/node_modules
     env_file:
-      - .env
+      - backend/.env
     command: >
       sh -c "npm run build:common &&
              cd backend/function-apps/api &&
              npm run build &&
-             cp ../../../.env . 2>/dev/null || true &&
+             cp ../../.env . 2>/dev/null || true &&
              cp ../../../dev-users.json . 2>/dev/null || true &&
              func start --javascript --host 0.0.0.0 --port 7071"
 
