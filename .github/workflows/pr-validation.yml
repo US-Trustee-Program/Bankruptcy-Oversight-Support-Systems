@@ -11,6 +11,12 @@ on:
       - 'docs/**'
       - '*.md'
       - '**/*.md'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch or commit SHA to run E2E tests against'
+        required: true
+        default: 'main'
 
 concurrency:
   group: pr-e2e-staging-slot
@@ -18,14 +24,18 @@ concurrency:
 
 jobs:
   run-e2e-tests:
-    # Only run if explicitly requested via label or ready_for_review
+    # On pull_request: only run if explicitly requested via label or ready_for_review
+    # On workflow_dispatch: always run
     if: |
+      github.event_name == 'workflow_dispatch' ||
       github.event.action == 'ready_for_review' ||
       contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ inputs.ref || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5

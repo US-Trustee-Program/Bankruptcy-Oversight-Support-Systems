@@ -1148,6 +1148,29 @@ flowchart LR
     class reusable_e2e_yml_playwright_e2e_test job
 ```
 
+#### Pull Request E2E Validation
+
+Manual execution of `pr-validation.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    pr_validation_yml["Pull Request E2E Validation"]
+    pr_validation_yml_run_e2e_tests["run-e2e-tests"]
+
+    trigger_workflow_dispatch --> pr_validation_yml
+    pr_validation_yml --> pr_validation_yml_run_e2e_tests
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class pr_validation_yml mainWorkflow
+    class pr_validation_yml_run_e2e_tests job
+```
+
 #### Prune E2E Image Cache
 
 Manual execution of `prune-e2e-image-cache.yml`
@@ -1229,6 +1252,7 @@ flowchart LR
     e2e_test_yml["Stand Alone E2E Test Runs"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    pr_validation_yml["Pull Request E2E Validation"]
     continuous_deployment_yml["Continuous Deployment"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
@@ -1251,6 +1275,7 @@ flowchart LR
     trigger_workflow_dispatch --> e2e_test_yml
     trigger_workflow_dispatch --> azure_remove_branch_yml
     trigger_workflow_dispatch --> prune_e2e_image_cache_yml
+    trigger_workflow_dispatch --> pr_validation_yml
     trigger_workflow_dispatch --> continuous_deployment_yml
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
@@ -1305,7 +1330,7 @@ flowchart LR
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
 - **Pull Request E2E Validation** (`pr-validation.yml`)
-  - Triggers: pull_request
+  - Triggers: pull_request, workflow_dispatch
   - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
