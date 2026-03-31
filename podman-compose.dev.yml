@@ -1,20 +1,18 @@
-version: '3.8'
-
 # Dev compose: source files are bind-mounted from the host so changes are reflected immediately.
 # node_modules come from the image (named volumes override the bind mount at those paths).
 #
 # Frontend: Vite dev server with HMR — changes to user-interface/ are instant.
-# Backend:  Azure Functions — needs `docker compose restart backend` after source changes.
+# Backend:  Azure Functions — needs `podman-compose -f podman-compose.dev.yml restart backend` after source changes.
 #
 # Usage:
-#   docker compose -f docker-compose.dev.yml up --build
-#   docker compose -f docker-compose.dev.yml restart backend
+#   podman-compose -f podman-compose.dev.yml up --build
+#   podman-compose -f podman-compose.dev.yml restart backend
 
 services:
   frontend:
     build:
       context: .
-      dockerfile: user-interface/Dockerfile.dev
+      dockerfile: user-interface/Containerfile.dev
     container_name: cams-frontend-dev
     ports:
       - "3000:5173"
@@ -32,7 +30,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile.dev
+      dockerfile: backend/Containerfile.dev
     container_name: cams-backend-dev
     ports:
       - "7071:7071"

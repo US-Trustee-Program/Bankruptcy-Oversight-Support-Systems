@@ -21,4 +21,4 @@ COPY test/e2e/package*.json ./test/e2e/
 
 RUN npm ci
 
-# CMD is provided by docker-compose.dev.yml
+# CMD is provided by podman-compose.dev.yml
