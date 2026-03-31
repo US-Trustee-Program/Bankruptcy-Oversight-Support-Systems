@@ -80,7 +80,7 @@ describe('Test Assign Attorney Modal Component', () => {
 
     const bCase: CaseBasics = MockData.getCaseBasics({
       override: {
-        caseId: '123',
+        caseId: '081-23-00001',
         caseTitle: 'Test Case',
         dateFiled: '2024-01-01',
       },
@@ -148,7 +148,7 @@ describe('Test Assign Attorney Modal Component', () => {
     });
     const mockCase = MockData.getCaseBasics({
       override: {
-        caseId: '123',
+        caseId: '081-23-00001',
         caseTitle: 'Test Case',
         dateFiled: '2024-01-01',
       },
@@ -196,7 +196,7 @@ describe('Test Assign Attorney Modal Component', () => {
       expect(postSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           attorneyList: expectedAttorneys,
-          caseId: '123',
+          caseId: '081-23-00001',
           role: 'TrialAttorney',
         }),
       );
@@ -228,7 +228,7 @@ describe('Test Assign Attorney Modal Component', () => {
         callback,
         bCase: MockData.getCaseBasics({
           override: {
-            caseId: '123',
+            caseId: '081-23-00001',
             caseTitle: 'Test Case',
             dateFiled: '2024-01-01',
           },
@@ -259,7 +259,7 @@ describe('Test Assign Attorney Modal Component', () => {
         callback,
         bCase: MockData.getCaseBasics({
           override: {
-            caseId: '123',
+            caseId: '081-23-00001',
             caseTitle: 'Test Case',
             dateFiled: '2024-01-01',
           },
@@ -303,7 +303,7 @@ describe('Test Assign Attorney Modal Component', () => {
         callback,
         bCase: MockData.getCaseBasics({
           override: {
-            caseId: '123',
+            caseId: '081-23-00001',
             caseTitle: 'Test Case',
             dateFiled: '2024-01-01',
           },
