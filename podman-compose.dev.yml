@@ -25,6 +25,8 @@ services:
       - frontend_common_modules:/app/common/node_modules
     env_file:
       - user-interface/.env
+    environment:
+      - CHOKIDAR_USEPOLLING=true
     command: sh -c "cd user-interface && node envToConfig.js && npx vite --host 0.0.0.0 --port 5173"
 
   backend:
