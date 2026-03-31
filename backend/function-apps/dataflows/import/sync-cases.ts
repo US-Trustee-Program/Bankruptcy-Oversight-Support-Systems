@@ -36,6 +36,11 @@ const DLQ = output.storageQueue({
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
+const FIX = output.storageQueue({
+  queueName: 'division-change-cleanup-migration-fix',
+  connection: STORAGE_QUEUE_CONNECTION,
+});
+
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
@@ -116,6 +121,16 @@ async function handlePage(events: CaseSyncEvent[], invocationContext: Invocation
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
   const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
 
+  // Queue division changes to FIX
+  const divisionChanges = processedEvents
+    .filter((event) => event.divisionChange !== undefined)
+    .map((event) => event.divisionChange!);
+
+  if (divisionChanges.length > 0) {
+    invocationContext.extraOutputs.set(FIX, divisionChanges);
+    appContext.logger.info(MODULE_NAME, `Queued ${divisionChanges.length} division changes to FIX`);
+  }
+
   const failedEvents = processedEvents.filter((event) => !!event.error);
   invocationContext.extraOutputs.set(DLQ, failedEvents);
   const successCount = processedEvents.length - failedEvents.length;
@@ -145,7 +160,7 @@ function setup() {
   app.storageQueue(HANDLE_PAGE, {
     connection: PAGE.connection,
     queueName: PAGE.queueName,
-    extraOutputs: [DLQ],
+    extraOutputs: [DLQ, FIX],
     handler: handlePage,
   });
 
@@ -162,6 +177,8 @@ function setup() {
     handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
+
+export { handlePage };
 
 export default {
   MODULE_NAME,

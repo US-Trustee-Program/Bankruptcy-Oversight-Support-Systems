@@ -685,4 +685,20 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       throw getCamsError(originalError, MODULE_NAME);
     }
   }
+
+  async findSyncedCaseByDxtrId(dxtrId: string, courtId: string): Promise<SyncedCase | undefined> {
+    try {
+      const doc = using<SyncedCase>();
+      const query = and(
+        doc('documentType').equals('SYNCED_CASE'),
+        doc('dxtrId').equals(dxtrId),
+        doc('courtId').equals(courtId),
+      );
+      const adapter = this.getAdapter<SyncedCase>();
+      const results = await adapter.find(query, undefined, 1);
+      return results[0];
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
 }

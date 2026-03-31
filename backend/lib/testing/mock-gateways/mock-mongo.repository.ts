@@ -4,7 +4,6 @@ import { TransferFrom, TransferTo, ConsolidationTo, ConsolidationFrom } from '@c
 import { CaseHistory } from '@common/cams/history';
 import { CamsUserReference, UserGroup } from '@common/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
-import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 import {
   ArchivedCasesRepository,
   CamsPaginationResponse,
@@ -160,31 +159,35 @@ export class MockMongoRepository
   }
 
   search(..._ignore): Promise<any[]> {
-    return Promise.resolve([]);
+    throw new Error('Method not implemented.');
   }
 
   searchCases(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
-    return Promise.resolve({ data: [], pageCount: 1, currentPage: 1 });
+    throw new Error('Method not implemented.');
   }
 
   searchCasesWithPhoneticTokens(..._ignore): Promise<CamsPaginationResponse<SyncedCase>> {
-    return Promise.resolve({ data: [], pageCount: 1, currentPage: 1 });
+    throw new Error('Method not implemented.');
   }
 
   create(..._ignore): Promise<any> {
-    return Promise.resolve('mock-id');
+    throw new Error('Method not implemented.');
   }
 
   createMany(..._ignore): Promise<any> {
-    return Promise.resolve([]);
+    throw new Error('Method not implemented.');
   }
 
   read(..._ignore): Promise<any> {
-    return Promise.resolve(null);
+    throw new Error('Method not implemented.');
   }
 
   delete(..._ignore): Promise<void> {
-    return Promise.resolve();
+    throw new Error('Method not implemented.');
+  }
+
+  deleteAll(): Promise<any> {
+    throw new Error('Method not implemented.');
   }
 
   getNotesByCaseId(..._ignore): Promise<any[]> {
@@ -247,8 +250,8 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  deleteMany(_ignore: any): Promise<void> {
-    return Promise.resolve();
+  deleteMany(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
   }
 
   getDistinctAssigneesByOffice(_ignore: any): Promise<CamsUserReference[]> {
@@ -323,16 +326,8 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  async getUserGroupsByNames(
-    _context: ApplicationContext,
-    groupNames: string[],
-  ): Promise<UserGroup[]> {
-    // Create mock user groups for the requested group names
-    return groupNames.map((groupName) => ({
-      id: `group-${groupName.replace(/\s+/g, '-').toLowerCase()}`,
-      groupName,
-      users: [MockData.getCamsUserReference(), MockData.getCamsUserReference()],
-    }));
+  async getUserGroupsByNames(..._ignore): Promise<UserGroup[]> {
+    throw new Error('Method not implemented.');
   }
 
   getTrusteeAppointments(_ignore: any): Promise<any[]> {
@@ -397,8 +392,12 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  findSyncedCaseByDxtrId(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
   findByCaseId(..._ignore): Promise<any[]> {
-    return Promise.resolve([]);
+    throw new Error('Method not implemented.');
   }
 
   findByCaseIdAndType(..._ignore): Promise<any[]> {
@@ -425,12 +424,12 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  getByAppointmentId(..._ignore: any[]): Promise<any> {
-    return Promise.resolve(null);
+  getByAppointmentId(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
   }
 
-  createHistory(..._ignore: any[]): Promise<void> {
-    return Promise.resolve();
+  createHistory(..._ignore): Promise<void> {
+    throw new Error('Method not implemented.');
   }
 
   createProfessionalId(
@@ -486,5 +485,9 @@ export class MockMongoRepository
 
   markAsMoved(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
+  }
+
+  findTrusteeByNameAndState(..._ignore): Promise<any> {
+    throw new Error('Method not implemented.');
   }
 }
