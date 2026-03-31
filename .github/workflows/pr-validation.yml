@@ -54,7 +54,6 @@ jobs:
           echo "MSSQL_DATABASE_DXTR=CAMS_E2E" >> .env
           echo "MSSQL_USER=sa" >> .env
           echo "MSSQL_PASS=${{ secrets.MSSQL_PASS }}" >> .env
-          echo "MSSQL_SA_PASSWORD=${{ secrets.MSSQL_PASS }}" >> .env
           echo "MSSQL_ENCRYPT=false" >> .env
           echo "MSSQL_TRUST_UNSIGNED_CERT=true" >> .env
           echo "SLOT_NAME=local" >> .env
@@ -65,12 +64,29 @@ jobs:
           sudo apt-get install -y podman podman-compose
 
       - name: Pull base images from ghcr.io cache
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
+          echo "${GITHUB_TOKEN}" | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
           REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
-          podman pull "${REGISTRY}/e2e-base-mongo-7.0"
-          podman pull "${REGISTRY}/e2e-base-azure-sql-edge-latest"
-          podman pull "${REGISTRY}/e2e-base-azure-storage-azurite-latest"
+
+          pull_base_image() {
+            local cached="$1"
+            local upstream="$2"
+            if podman pull "${cached}" 2>/dev/null; then
+              echo "Pulled from cache: ${cached}"
+            else
+              echo "Cache miss — pulling from upstream and repopulating: ${upstream}"
+              podman pull --platform linux/amd64 "${upstream}"
+              podman tag "${upstream}" "${cached}"
+              podman push "${cached}"
+              echo "Upstream pulled and cached: ${cached}"
+            fi
+          }
+
+          pull_base_image "${REGISTRY}/e2e-base-mongo-7.0"                    "mongo:7.0"
+          pull_base_image "${REGISTRY}/e2e-base-azure-sql-edge-latest"         "mcr.microsoft.com/azure-sql-edge:latest"
+          pull_base_image "${REGISTRY}/e2e-base-azure-storage-azurite-latest"  "mcr.microsoft.com/azure-storage/azurite:latest"
 
       - name: Run E2E Tests
         run: npm run test:e2e -- --reseed
