@@ -55,6 +55,7 @@ export default defineConfig({
     },
   },
   build: {
+    cssMinify: 'esbuild',
     outDir: 'build',
     rollupOptions: {
       external: [
