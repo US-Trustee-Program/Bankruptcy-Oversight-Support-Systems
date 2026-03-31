@@ -329,7 +329,6 @@ export default function UpcomingKeyDatesForm() {
                   className={`usa-select${errors.tprDueYearType || tprDueYearTypeBlurError ? ' usa-input--error' : ''}`}
                   id="tpr-due-year-type"
                   data-testid="tpr-due-year-type"
-                  aria-label="Year Type"
                   value={form.tprDueYearType}
                   onChange={handleYearTypeChange}
                   aria-invalid={errors.tprDueYearType ? 'true' : undefined}
