@@ -62,36 +62,17 @@ $input-max-width: 20.75rem;
     }
 
     .year-type-selector {
-      .year-type-selector__inputs {
-        margin-top: .25rem;
-        display: flex;
-        align-items: flex-end;
-        gap: 0.5rem;
+      margin-top: .25rem;
+      flex: 1;
+      min-width: 0;
+
+      select {
+        margin-top: 0;
         width: 100%;
+      }
 
-        .year-type-selector__column {
-          display: flex;
-          flex-direction: column;
-          flex: 1;
-          min-width: 0;
-
-          select {
-            margin-top: 0;
-            width: 100%;
-          }
-
-          .usa-hint {
-            padding-bottom: .5rem;
-          }
-        }
-
-        .month-day-selector__separator {
-          font-size: 1.25rem;
-          color: #1b1b1b;
-          user-select: none;
-          flex-shrink: 0;
-          padding-bottom: 0.4rem;
-        }
+      .usa-hint {
+        padding-bottom: .5rem;
       }
 
       .date-error {
