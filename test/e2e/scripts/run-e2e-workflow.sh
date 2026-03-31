@@ -105,7 +105,9 @@ fi
 
 # Build service images (thin layers on top of built — only CMD/WORKDIR)
 echo "Building service images..."
-podman-compose build backend frontend playwright
+podman build -t e2e_backend:latest -f Dockerfile.backend ../../
+podman build -t e2e_frontend:latest -f Dockerfile.frontend ../../
+podman build -t e2e_playwright:latest -f Dockerfile.playwright ../../
 echo ""
 echo -e "${GREEN}✅ Images built${NC}"
 echo ""
@@ -115,9 +117,9 @@ echo -e "${BLUE}🧹 Tearing down any containers from the build step...${NC}"
 podman-compose down 2>/dev/null || true
 echo ""
 
-# Start MongoDB, SQL Server, backend, and frontend services
-echo "Starting MongoDB, SQL Server, backend, and frontend services..."
-podman-compose up -d mongodb sqlserver backend frontend > /dev/null
+# Start all services (azurite must be healthy before backend starts)
+echo "Starting services..."
+podman-compose up -d azurite mongodb sqlserver backend frontend > /dev/null
 CLEANUP_NEEDED=true
 echo ""
 echo -e "${GREEN}✅ Services started${NC}"

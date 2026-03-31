@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  # Azure Storage emulator (required for Azure Functions runtime health)
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: cams-azurite-e2e
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    networks:
+      - cams-e2e
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "10000"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
   # MongoDB (compatible with Cosmos DB MongoDB API)
   mongodb:
     image: mongo:7.0
@@ -43,7 +60,6 @@ services:
 
   # Backend API service
   backend:
-    image: localhost/e2e_backend:latest
     build:
       context: ../../
       dockerfile: test/e2e/Dockerfile.backend
@@ -67,7 +83,10 @@ services:
       - MSSQL_ENCRYPT=${MSSQL_ENCRYPT}
       - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
       - SLOT_NAME=${SLOT_NAME}
+      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiqIkEl+pA==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;
     depends_on:
+      azurite:
+        condition: service_healthy
       mongodb:
         condition: service_healthy
       sqlserver:
@@ -79,7 +98,6 @@ services:
 
   # Frontend UI service
   frontend:
-    image: localhost/e2e_frontend:latest
     build:
       context: ../../
       dockerfile: test/e2e/Dockerfile.frontend
@@ -106,7 +124,6 @@ services:
 
   # Playwright test runner
   playwright:
-    image: localhost/e2e_playwright:latest
     build:
       context: ../../
       dockerfile: test/e2e/Dockerfile.playwright
