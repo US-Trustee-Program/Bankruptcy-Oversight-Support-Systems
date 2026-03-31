@@ -5,4 +5,5 @@ WORKDIR /app/user-interface
 
 EXPOSE 3000
 
-CMD ["npx", "vite", "preview", "--port", "3000", "--strict-port", "--host", "0.0.0.0"]
+# Regenerate configuration.json from container env vars at startup, then serve
+CMD ["sh", "-c", "node envToConfig.js && cp public/configuration.json build/configuration.json && npx vite preview --port 3000 --strict-port --host 0.0.0.0"]
