@@ -29,7 +29,7 @@
       ],
       "project": ["src/**/*.{ts,tsx}", "test/**/*.ts", "!playwright.config.ts"],
       "ignore": [],
-      "ignoreFiles": ["src/initialize.ts"]
+      "ignoreFiles": []
     },
     "common": {
       "entry": ["src/**/*.test.ts"],
@@ -62,7 +62,6 @@
     "popd",
     "playwright",
     "dot",
-    "date",
     "dev-tools/.venv-docs/bin/python",
     "dev-tools/.venv-docs/bin/python3",
     "python3",
@@ -100,6 +99,7 @@
     "launchdarkly-react-client-sdk",
     "react-router-dom",
     "common",
-    "globals"
+    "globals",
+    "@babel/runtime"
   ]
 }
