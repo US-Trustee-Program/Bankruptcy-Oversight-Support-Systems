@@ -74,7 +74,9 @@ The three upstream base images (MongoDB, Azure SQL Edge, Azurite) are cached in 
 
 All three images are stored as multi-arch manifest lists (amd64 + arm64) so both CI runners (x86-64) and local macOS (arm64) pull the correct architecture automatically.
 
-These images do not update automatically. Refresh them manually when upstream versions change:
+These images do not update automatically. The E2E workflow script is self-healing: if a cached image is missing, it pulls from upstream and pushes the current platform's architecture to ghcr.io automatically. Over time both `amd64` (CI) and `arm64` (macOS) will be present in the cache as each platform self-heals. Note that self-healing pushes a single-arch image, not a full multi-arch manifest list — use `podman:cache-images` when you need to explicitly refresh both architectures at once (e.g. after an upstream version bump).
+
+Refresh manually when upstream versions change:
 
 ```bash
 npm run podman:cache-images
