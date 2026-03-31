@@ -36,6 +36,7 @@ type ScenarioDistribution = {
   highConfidenceMatchCount: number;
   noMatchCount: number;
   multipleMatchCount: number;
+  reVerificationCount: number;
 };
 
 type MatchAuditEntry = {
@@ -200,10 +201,10 @@ async function upsertMatchVerification(
   event: TrusteeAppointmentSyncEvent,
   mismatchReason: TrusteeAppointmentSyncErrorCode,
   matchCandidates: CandidateScore[],
-): Promise<void> {
+): Promise<boolean> {
   const existing = await verificationRepo.getVerification(event.caseId);
   if (existing && existing.status !== 'pending') {
-    return; // Operator has already approved or rejected — do not overwrite
+    return true; // Already resolved — signals a re-verification for match accuracy tracking
   }
   if (existing) {
     await verificationRepo.upsertVerification({
@@ -229,6 +230,7 @@ async function upsertMatchVerification(
     );
     await verificationRepo.upsertVerification(doc);
   }
+  return false;
 }
 
 /**
@@ -253,6 +255,7 @@ async function processAppointments(
     highConfidenceMatchCount: 0,
     noMatchCount: 0,
     multipleMatchCount: 0,
+    reVerificationCount: 0,
   };
 
   for (const event of events) {
@@ -334,12 +337,13 @@ async function processAppointments(
             `Fuzzy match winner ${winnerId} for case ${event.caseId} saved for verification`,
           );
           scenarioDistribution.highConfidenceMatchCount++;
-          await upsertMatchVerification(
+          const isReVerification = await upsertMatchVerification(
             verificationRepo,
             event,
             TrusteeAppointmentSyncErrorCode.HighConfidenceMatch,
             candidateScores,
           );
+          if (isReVerification) scenarioDistribution.reVerificationCount++;
           const winnerScore = candidateScores.find((c) => c.trusteeId === winnerId);
           audit.matchOutcome = 'high-confidence';
           audit.matchedTrusteeId = winnerId;
@@ -358,12 +362,13 @@ async function processAppointments(
           );
           context.logger.warn(MODULE_NAME, `${enhancedError.message}`, enhancedError.data);
           scenarioDistribution.multipleMatchCount++;
-          await upsertMatchVerification(
+          const isReVerification = await upsertMatchVerification(
             verificationRepo,
             event,
             TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch,
             (enhancedError.data as { matchCandidates?: CandidateScore[] })?.matchCandidates ?? [],
           );
+          if (isReVerification) scenarioDistribution.reVerificationCount++;
           audit.matchOutcome = 'multiple-match';
           continue;
         }
@@ -376,21 +381,27 @@ async function processAppointments(
           case TrusteeAppointmentSyncErrorCode.NoTrusteeMatch:
             scenarioDistribution.noMatchCount++;
             audit.matchOutcome = 'no-match';
-            await upsertMatchVerification(
-              verificationRepo,
-              event,
-              TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
-              [],
-            );
+            if (
+              await upsertMatchVerification(
+                verificationRepo,
+                event,
+                TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
+                [],
+              )
+            )
+              scenarioDistribution.reVerificationCount++;
             break;
           case TrusteeAppointmentSyncErrorCode.ImperfectMatch:
             scenarioDistribution.imperfectMatchCount++;
-            await upsertMatchVerification(
-              verificationRepo,
-              event,
-              TrusteeAppointmentSyncErrorCode.ImperfectMatch,
-              classified.matchCandidates ?? [],
-            );
+            if (
+              await upsertMatchVerification(
+                verificationRepo,
+                event,
+                TrusteeAppointmentSyncErrorCode.ImperfectMatch,
+                classified.matchCandidates ?? [],
+              )
+            )
+              scenarioDistribution.reVerificationCount++;
             break;
         }
       } else {
