@@ -52,10 +52,11 @@ jobs:
           # Replace placeholder with secret
           sed -i "s/<your-okta-password>/${{ secrets.OKTA_PASSWORD }}/" .env
           # Override connection string to use localhost (from host network mode)
-          sed -i "s|MONGO_CONNECTION_STRING=.*|MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-e2e-${{ needs.setup.outputs.environmentHash }}| " .env
+          sed -i "s|MONGO_CONNECTION_STRING=.*|MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-e2e| " .env
           # Use the environment hash for unique resource naming if needed
-          echo "COSMOS_DATABASE_NAME=cams-e2e-${{ needs.setup.outputs.environmentHash }}" >> .env
-          echo "MSSQL_DATABASE_DXTR=CAMS_E2E_${{ needs.setup.outputs.environmentHash }}" >> .env
+          echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
+          echo "MSSQL_DATABASE_DXTR=CAMS_E2E" >> .env
+          echo "MSSQL_SA_PASSWORD=${{ github.sha }}" >> .env
 
       - name: Install podman and podman-compose
         run: |
