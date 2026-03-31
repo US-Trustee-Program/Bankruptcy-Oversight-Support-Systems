@@ -51,9 +51,7 @@ jobs:
         run: |
           echo "TARGET_HOST=http://localhost:3000" > .env
           echo "CAMS_LOGIN_PROVIDER=okta" >> .env
-          echo "CAMS_LOGIN_PROVIDER_URL=${{ secrets.CAMS_LOGIN_PROVIDER_URL }}" >> .env
-          echo "CAMS_LOGIN_CLIENT_ID=${{ secrets.CAMS_LOGIN_CLIENT_ID }}" >> .env
-          echo "CAMS_LOGIN_PROVIDER_PARAMS=${{ secrets.CAMS_LOGIN_PROVIDER_PARAMS }}" >> .env
+          echo "CAMS_LOGIN_PROVIDER_CONFIG=${{ secrets.CAMS_LOGIN_PROVIDER_CONFIG }}" >> .env
           echo "OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }}" >> .env
           echo "OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }}" >> .env
           echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
@@ -67,6 +65,10 @@ jobs:
           echo "MSSQL_ENCRYPT=false" >> .env
           echo "MSSQL_TRUST_UNSIGNED_CERT=true" >> .env
           echo "SLOT_NAME=local" >> .env
+          echo "CAMS_SERVER_HOSTNAME=localhost" >> .env
+          echo "CAMS_SERVER_PORT=7071" >> .env
+          echo "CAMS_SERVER_PROTOCOL=http" >> .env
+          echo "CAMS_BASE_PATH=/api" >> .env
 
       - name: Install podman and podman-compose
         run: |
