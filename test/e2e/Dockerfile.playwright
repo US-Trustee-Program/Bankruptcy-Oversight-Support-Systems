@@ -1,14 +1,13 @@
 # Playwright Test Runner Dockerfile for E2E Testing
+# ARG must be at global scope (before any FROM) to be used in FROM statements
+# Version must be provided via --build-arg PLAYWRIGHT_VERSION=x.y.z
+ARG PLAYWRIGHT_VERSION
+
 FROM localhost/e2e_deps:latest AS deps
 FROM localhost/e2e_built:latest AS built
 
 # Use official Playwright image for pre-installed browsers
-ARG PLAYWRIGHT_VERSION=latest
-
-# Use the argument in the FROM instruction
 FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble
-
-# ... rest of your Dockerfile
 
 WORKDIR /app
 
