@@ -19,8 +19,10 @@ const START = output.storageQueue({
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
+export const FIX_QUEUE_NAME = buildQueueName(MODULE_NAME, 'fix');
+
 const FIX = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'fix'),
+  queueName: FIX_QUEUE_NAME,
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
@@ -49,7 +51,7 @@ async function handleStart(
       documentsWritten: 0,
       documentsFailed: 0,
       success: true,
-      details: { fixMessagesQueued: String(fixMessages.length) },
+      details: { fixMessagesQueued: fixMessages.length },
     });
   } catch (originalError) {
     logger.error(MODULE_NAME, `Start handler failed: ${(originalError as Error).message}`);
@@ -77,13 +79,16 @@ async function handleFix(message: OrphanedCaseMessage, invocationContext: Invoca
       `Fixing orphaned case ${filterToExtendedAscii(orphanedCaseId)} (${caseNumber}) -> ${filterToExtendedAscii(currentCaseId)}`,
     );
 
-    await DivisionChangeCleanupUseCase.cleanupOrphanedCase(context, orphanedCaseId, currentCaseId);
+    const documentsWritten = await DivisionChangeCleanupUseCase.cleanupOrphanedCase(
+      context,
+      orphanedCaseId,
+      currentCaseId,
+    );
 
     logger.info(MODULE_NAME, `Cleanup completed for ${filterToExtendedAscii(orphanedCaseId)}`);
 
-    // documentsWritten is 0 because the use case does not yet return an actual count
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleFix', logger, {
-      documentsWritten: 0,
+      documentsWritten,
       documentsFailed: 0,
       success: true,
       details: {
@@ -93,6 +98,9 @@ async function handleFix(message: OrphanedCaseMessage, invocationContext: Invoca
     });
   } catch (originalError) {
     logger.error(MODULE_NAME, `Fix handler failed: ${(originalError as Error).message}`);
+    invocationContext.extraOutputs.set(DLQ, [
+      buildQueueError(originalError, MODULE_NAME, HANDLE_FIX),
+    ]);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleFix', logger, {
       documentsWritten: 0,
       documentsFailed: 1,

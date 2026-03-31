@@ -518,7 +518,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async getSyncedCase(caseId: string): Promise<SyncedCase> {
     const doc = using<SyncedCase>();
-    const query = and(doc('caseId').equals(caseId), doc('documentType').equals('SYNCED_CASE'));
+    const query = and(
+      doc('caseId').equals(caseId),
+      doc('documentType').equals('SYNCED_CASE'),
+      doc('status').notEqual('MOVED'),
+    );
     try {
       return await this.getAdapter<SyncedCase>().findOne(query);
     } catch (originalError) {
@@ -556,10 +560,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  public async updateManyByQuery<T>(
-    query: ConditionOrConjunction<T>,
-    update: { $set?: Partial<T>; $unset?: Partial<Record<keyof T, ''>> },
-  ) {
+  public async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: unknown) {
     try {
       return await this.getAdapter<T>().updateMany(query, update);
     } catch (originalError) {
@@ -592,6 +593,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const conditions = [
         doc('documentType').equals('SYNCED_CASE'),
         doc('updatedOn').lessThan(cutoffDate),
+        doc('status').notEqual('MOVED'),
       ];
       if (lastId) {
         conditions.push(doc('_id').greaterThan(lastId));
@@ -657,6 +659,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         {
           $match: {
             documentType: 'SYNCED_CASE',
+            status: { $ne: 'MOVED' },
           },
         },
         {
@@ -693,6 +696,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         doc('documentType').equals('SYNCED_CASE'),
         doc('dxtrId').equals(dxtrId),
         doc('courtId').equals(courtId),
+        doc('status').notEqual('MOVED'),
       );
       const adapter = this.getAdapter<SyncedCase>();
       const results = await adapter.find(query, undefined, 1);

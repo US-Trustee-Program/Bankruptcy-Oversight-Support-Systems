@@ -219,5 +219,9 @@ describe('cases common functions tests', () => {
       const actual = getCaseNumber(caseId);
       expect(actual).toBe('01-00001');
     });
+
+    test('should throw for malformed case ID with no hyphens', () => {
+      expect(() => getCaseNumber('invalid')).toThrow('Invalid case ID: invalid');
+    });
   });
 });

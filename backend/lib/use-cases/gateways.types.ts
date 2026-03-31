@@ -132,10 +132,7 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Updates<T, T>,
     Releasable {
   count: (keyRoot: string) => Promise<number>;
-  updateManyByQuery: <U>(
-    query: Query<U>,
-    update: { $set?: Partial<U>; $unset?: Partial<Record<keyof U, ''>> },
-  ) => Promise<UpdateResult>;
+  updateManyByQuery: <U>(query: Query<U>, update: unknown) => Promise<UpdateResult>;
   findByCaseId(caseId: string): Promise<ConsolidationOrder[]>;
 }
 
@@ -255,10 +252,7 @@ export interface CasesRepository extends Releasable {
   getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
   markAsMoved(caseId: string, movedToCaseId: string, movedOn: string): Promise<void>;
-  updateManyByQuery: <T>(
-    query: Query<T>,
-    update: { $set?: Partial<T>; $unset?: Partial<Record<keyof T, ''>> },
-  ) => Promise<UpdateResult>;
+  updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;
   findByCursor: <T>(
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },

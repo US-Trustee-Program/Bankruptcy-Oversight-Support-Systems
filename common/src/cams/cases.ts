@@ -38,9 +38,6 @@ export type CaseBasics = FlatOfficeDetail & {
   debtorTypeCode?: string;
   debtorTypeLabel?: string;
   assignments?: CaseAssignment[];
-  status?: 'MOVED';
-  movedToCaseId?: string;
-  movedOn?: string;
 };
 
 export type CaseSummary = CaseBasics & {
@@ -110,6 +107,9 @@ export type CaseDetail = CaseSummary & {
   judgeName?: string;
   trustee?: LegacyTrustee;
   trusteeId?: string;
+  status?: 'MOVED';
+  movedToCaseId?: string;
+  movedOn?: string;
 };
 
 export type CaseDocketEntryDocument = {
@@ -177,6 +177,9 @@ export type SyncedCase = DxtrCase &
     documentType: 'SYNCED_CASE';
     id?: string;
     trusteeId?: string;
+    status?: 'MOVED';
+    movedToCaseId?: string;
+    movedOn?: string;
   };
 
 export function isCaseClosed<T extends ClosedDismissedReopened>(bCase: T) {
@@ -237,6 +240,7 @@ export function getCaseNumber(caseId: string | undefined): string {
   if (caseId) {
     const caseData = caseId.split('-');
     if (caseData.length === 2) return caseId;
+    if (caseData.length !== 3) throw new Error(`Invalid case ID: ${caseId}`);
     return `${caseData[1]}-${caseData[2]}`;
   }
   return '';
