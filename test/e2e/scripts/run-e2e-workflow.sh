@@ -231,6 +231,14 @@ podman-compose run --rm --no-deps \
 echo -e "${GREEN}✅ SQL Server warmed up${NC}"
 echo ""
 
+# TEMPORARY: Check container states before running tests
+echo -e "${BLUE}🔍 Container states before test run:${NC}"
+podman ps -a --filter "name=cams-" --format "table {{.Names}}\t{{.Status}}"
+echo ""
+echo -e "${BLUE}🔍 SQL Server container logs (last 20 lines):${NC}"
+podman logs cams-sqlserver-e2e 2>&1 | tail -20
+echo ""
+
 # Step 3: Run tests
 echo -e "${BLUE}🧪 Step 3: Running E2E tests...${NC}"
 echo ""
