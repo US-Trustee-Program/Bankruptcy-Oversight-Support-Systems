@@ -2,8 +2,9 @@ import { OfficeAssignee, OfficeAssigneesRepository } from '../../../use-cases/ga
 import { BaseMongoRepository } from './utils/base-mongo-repository';
 import { ApplicationContext } from '../../types/basic';
 import { OfficeAssigneePredicate } from '@common/api/search';
-import QueryBuilder, { using } from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, using } from '../../../query/query-builder';
 import { CamsError } from '../../../common-errors/cams-error';
+import { getCamsError } from '../../../common-errors/error-utilities';
 import { CamsUserReference } from '@common/cams/users';
 import QueryPipeline from '../../../query/query-pipeline';
 
@@ -82,6 +83,14 @@ export class OfficeAssigneeMongoRepository
 
   async deleteMany(predicate: OfficeAssigneePredicate): Promise<void> {
     await this.getAdapter<OfficeAssignee>().deleteMany(this.toQuery(predicate));
+  }
+
+  async updateManyByQuery<T>(query: ConditionOrConjunction<T>, update: unknown) {
+    try {
+      return await this.getAdapter<T>().updateMany(query, update);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
   }
 
   toQuery(predicate: OfficeAssigneePredicate) {

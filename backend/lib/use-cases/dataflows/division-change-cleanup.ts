@@ -138,8 +138,16 @@ export class DivisionChangeCleanupUseCase {
     }
 
     const officeAssigneesRepo = factory.getOfficeAssigneesRepository(context);
-    await officeAssigneesRepo.deleteMany({ caseId: oldCaseId });
-    context.logger.info(MODULE_NAME, `Deleted office-assignees for ${oldCaseId}`);
+    const officeAssigneesDoc = using<{ caseId: string }>();
+    const officeAssigneesQuery = officeAssigneesDoc('caseId').equals(oldCaseId);
+    const officeAssigneesResult = await officeAssigneesRepo.updateManyByQuery(
+      officeAssigneesQuery,
+      { $set: { caseId: newCaseId } },
+    );
+    context.logger.info(
+      MODULE_NAME,
+      `Updated ${officeAssigneesResult.modifiedCount} office-assignee records`,
+    );
   }
 
   private static async moveDocuments(

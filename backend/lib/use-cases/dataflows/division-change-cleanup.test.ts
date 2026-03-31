@@ -219,6 +219,24 @@ describe('DivisionChangeCleanupUseCase', () => {
       expect(error.isCamsError).toBe(true);
       expect(error.message).toContain('Failed to clean up');
     });
+
+    test('should update office-assignee caseId to currentCaseId', async () => {
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateManyByQuery')
+        .mockResolvedValue({ modifiedCount: 2, matchedCount: 2 });
+
+      await DivisionChangeCleanupUseCase.cleanupOrphanedCase(
+        context,
+        orphanedCaseId,
+        currentCaseId,
+      );
+
+      const officeAssigneesCall = updateSpy.mock.calls.find(
+        (call) => JSON.stringify(call[1]) === JSON.stringify({ $set: { caseId: currentCaseId } }),
+      );
+      expect(officeAssigneesCall).toBeDefined();
+      expect(officeAssigneesCall[1]).toEqual({ $set: { caseId: currentCaseId } });
+    });
   });
 
   describe('moveDocuments - orders (behavioral verification)', () => {
