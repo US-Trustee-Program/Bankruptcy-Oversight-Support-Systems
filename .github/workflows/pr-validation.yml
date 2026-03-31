@@ -50,16 +50,20 @@ jobs:
         run: |
           echo "TARGET_HOST=http://localhost:3000" > .env
           echo "CAMS_LOGIN_PROVIDER=okta" >> .env
-          echo "OKTA_USER_NAME=camsdeve2e@flexion.us" >> .env
+          echo "CAMS_LOGIN_PROVIDER_URL=${{ secrets.CAMS_LOGIN_PROVIDER_URL }}" >> .env
+          echo "CAMS_LOGIN_CLIENT_ID=${{ secrets.CAMS_LOGIN_CLIENT_ID }}" >> .env
+          echo "CAMS_LOGIN_PROVIDER_PARAMS=${{ secrets.CAMS_LOGIN_PROVIDER_PARAMS }}" >> .env
+          echo "OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }}" >> .env
           echo "OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }}" >> .env
           echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
-          echo "MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-e2e" >> .env
+          echo "MONGO_CONNECTION_STRING=mongodb://mongodb:27017/cams-e2e?retrywrites=false" >> .env
           echo "DATABASE_MOCK=false" >> .env
-          echo "MSSQL_HOST=localhost" >> .env
+          echo "MSSQL_HOST=sqlserver" >> .env
           echo "MSSQL_DATABASE=" >> .env
           echo "MSSQL_DATABASE_DXTR=CAMS_E2E" >> .env
           echo "MSSQL_USER=sa" >> .env
           echo "MSSQL_PASS=${{ secrets.MSSQL_PASS }}" >> .env
+          echo "MSSQL_SA_PASSWORD=${{ secrets.MSSQL_PASS }}" >> .env
           echo "MSSQL_ENCRYPT=false" >> .env
           echo "MSSQL_TRUST_UNSIGNED_CERT=true" >> .env
           echo "SLOT_NAME=local" >> .env

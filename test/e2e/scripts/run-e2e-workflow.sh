@@ -81,6 +81,11 @@ cleanup() {
 # Register cleanup on exit
 trap cleanup EXIT
 
+# Pre-start cleanup: remove any stale containers from a previous run
+echo -e "${BLUE}🧹 Cleaning up any stale containers from a previous run...${NC}"
+podman rm -f cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e cams-playwright-e2e 2>/dev/null || true
+echo ""
+
 # Step 1: Build deps image (cached) and service images
 echo -e "${BLUE}📦 Step 1: Building images and starting services...${NC}"
 echo ""
