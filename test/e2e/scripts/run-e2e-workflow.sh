@@ -153,6 +153,34 @@ echo ""
 
 MAX_WAIT=120  # 2 minutes for services
 WAIT_COUNT=0
+LOG_INTERVAL=20  # Print verbose status every 20 seconds
+
+# Collect and save logs for all containers
+collect_container_logs() {
+    local log_dir="container-logs"
+    mkdir -p "${log_dir}"
+    for container in cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e; do
+        podman logs "${container}" > "${log_dir}/${container}.log" 2>&1 || true
+    done
+    echo -e "${BLUE}📋 Container logs saved to ${log_dir}/${NC}"
+}
+
+# Print current status of all containers
+print_container_status() {
+    echo ""
+    echo -e "${BLUE}  Container status at ${WAIT_COUNT}s:${NC}"
+    podman ps -a \
+        --filter "name=cams-azurite-e2e" \
+        --filter "name=cams-mongodb-e2e" \
+        --filter "name=cams-sqlserver-e2e" \
+        --filter "name=cams-backend-e2e" \
+        --filter "name=cams-frontend-e2e" \
+        --format "    {{.Names}}\t{{.Status}}\t{{.Health}}" 2>/dev/null || true
+    echo ""
+    echo -e "${BLUE}  Backend log (last 10 lines):${NC}"
+    podman logs --tail 10 cams-backend-e2e 2>&1 | sed 's/^/    /' || true
+    echo ""
+}
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     # Use podman ps directly — podman-compose ps is unreliable outside compose context
@@ -171,14 +199,24 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
         fi
     fi
 
-    echo -n "."
+    # Print verbose status periodically
+    if [ $((WAIT_COUNT % LOG_INTERVAL)) -eq 0 ] && [ $WAIT_COUNT -gt 0 ]; then
+        print_container_status
+    else
+        echo -n "."
+    fi
+
     sleep 2
     WAIT_COUNT=$((WAIT_COUNT + 2))
 done
 
 if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
     echo ""
-    echo -e "${YELLOW}⚠️  Services may not be fully healthy, proceeding anyway...${NC}"
+    echo -e "${YELLOW}⚠️  Services did not become healthy within ${MAX_WAIT}s — collecting diagnostic logs...${NC}"
+    print_container_status
+    collect_container_logs
+    echo ""
+    echo -e "${YELLOW}⚠️  Proceeding anyway — tests will likely fail${NC}"
     echo ""
 fi
 
@@ -259,10 +297,11 @@ set -e
 TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
 rm -f "$TEST_OUTPUT_FILE"
 
-# Save full backend logs now (containers still running, before cleanup)
+# Save all container logs now (containers still running, before cleanup)
+collect_container_logs
 mkdir -p backend-logs
 BACKEND_LOG_FILE="backend-logs/backend.log"
-podman logs cams-backend-e2e > "$BACKEND_LOG_FILE" 2>&1 || true
+cp container-logs/cams-backend-e2e.log "$BACKEND_LOG_FILE" 2>/dev/null || true
 
 # If tests failed, print the last 100 lines of backend logs
 if [ "$TEST_EXIT_CODE" -ne 0 ]; then
@@ -271,7 +310,7 @@ if [ "$TEST_EXIT_CODE" -ne 0 ]; then
     tail -100 "$BACKEND_LOG_FILE"
     echo ""
 fi
-echo -e "${BLUE}📋 Full backend log saved to: backend-logs/backend.log${NC}"
+echo -e "${BLUE}📋 Full container logs saved to: container-logs/${NC}"
 
 if [ "$TEST_EXIT_CODE" -eq 0 ]; then
     TESTS_PASSED=true
@@ -304,9 +343,9 @@ fi
 
 echo ""
 echo "📁 Test artifacts location:"
-echo "   - Results:      ./test-results/"
-echo "   - Backend log:  ./backend-logs/backend.log"
-echo "   - Report:       ./playwright-report/"
+echo "   - Results:        ./test-results/"
+echo "   - Container logs: ./container-logs/"
+echo "   - Report:         ./playwright-report/"
 echo ""
 echo "To view detailed report:"
 echo "   npm run report"
