@@ -307,6 +307,7 @@ export interface OfficeAssigneesRepository
     Searches<OfficeAssigneePredicate, OfficeAssignee>,
     Releasable {
   getDistinctAssigneesByOffice: (officeCode: string) => Promise<CamsUserReference[]>;
+  updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;
 }
 
 export interface TrusteesRepository extends Reads<Trustee>, Releasable {
