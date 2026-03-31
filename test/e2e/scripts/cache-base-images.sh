@@ -26,6 +26,7 @@ MULTIARCH_IMAGES=(
   "mongo:7.0"
   "mcr.microsoft.com/azure-sql-edge:latest"
   "mcr.microsoft.com/azure-storage/azurite:latest"
+  "mcr.microsoft.com/playwright:v1.58.2-noble"
 )
 
 # Derive a cache tag from the source image name (strip registry prefix, replace / and : with -)

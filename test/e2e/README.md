@@ -70,11 +70,13 @@ npm run harvest:reseed    # Re-seed MongoDB from DXTR first, then harvest (full 
 
 ### Base Image Cache (ghcr.io)
 
-The three upstream base images (MongoDB, Azure SQL Edge, Azurite) are cached in GitHub Container Registry to avoid repeated large downloads in CI. CI pulls from `ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-*`.
+Upstream base images and the deps image are cached in GitHub Container Registry to avoid repeated large downloads and builds in CI.
 
-All three images are stored as multi-arch manifest lists (amd64 + arm64) so both CI runners (x86-64) and local macOS (arm64) pull the correct architecture automatically.
+#### Upstream base images (`e2e-base-*`)
 
-These images do not update automatically. The E2E workflow script is self-healing: if a cached image is missing, it pulls from upstream and pushes the current platform's architecture to ghcr.io automatically. Over time both `amd64` (CI) and `arm64` (macOS) will be present in the cache as each platform self-heals. Note that self-healing pushes a single-arch image, not a full multi-arch manifest list — use `podman:cache-images` when you need to explicitly refresh both architectures at once (e.g. after an upstream version bump).
+MongoDB, Azure SQL Edge, Azurite, and the Playwright browser image are cached as multi-arch manifest lists (amd64 + arm64) so both CI runners (x86-64) and local macOS (arm64) pull the correct architecture automatically.
+
+These images do not update automatically. The E2E workflow script is self-healing: if a cached image is missing, it pulls from upstream and pushes the current platform's architecture to ghcr.io automatically. Over time both architectures will be present as each platform self-heals. Note that self-healing pushes a single-arch image, not a full multi-arch manifest list — use `podman:cache-images` when you need to explicitly refresh both architectures at once (e.g. after an upstream version bump).
 
 Refresh manually when upstream versions change:
 
@@ -82,7 +84,13 @@ Refresh manually when upstream versions change:
 npm run podman:cache-images
 ```
 
-Requires `gh auth login` (uses the gh CLI token automatically). The token must have `write:packages` scope — if your current gh session lacks it, re-authenticate with `gh auth login --scopes write:packages`.
+Requires `gh auth login`. The token must have `write:packages` scope — re-authenticate with `gh auth login --scopes write:packages` if needed.
+
+#### Deps image (`e2e-deps:<hash>`)
+
+The deps image (OS packages + Azure Functions Core Tools + `npm ci`) is cached using a content hash of all `package*.json` files. When any package file changes, the hash changes, the cache misses, and the image is rebuilt and pushed automatically on the next run. No manual refresh is needed.
+
+Stale deps image versions are pruned automatically by the `Prune E2E Image Cache` workflow, which runs weekly and deletes versions older than 30 days (keeping at least 1).
 
 After pushing refreshed images, update the image tags in `podman-compose.yml` if the upstream version changed (e.g., `mongo:7.0` → `mongo:8.0`).
 

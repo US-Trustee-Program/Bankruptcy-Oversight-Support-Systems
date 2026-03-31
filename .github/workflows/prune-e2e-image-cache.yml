@@ -1,0 +1,25 @@
+name: Prune E2E Image Cache
+
+on:
+  schedule:
+    - cron: '0 6 * * 0'  # Weekly on Sunday at 06:00 UTC
+  workflow_dispatch:       # Allow manual trigger
+
+jobs:
+  prune:
+    name: Delete e2e-deps images older than 30 days
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Delete stale e2e-deps package versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: bankruptcy-oversight-support-systems/e2e-deps
+          package-type: container
+          min-versions-to-keep: 1
+          delete-only-pre-release-versions: false
+          ignore-versions: ''
+          token: ${{ secrets.GITHUB_TOKEN }}
+          delete-only-untagged-versions: false
+          oldest-version-age-in-days: 30

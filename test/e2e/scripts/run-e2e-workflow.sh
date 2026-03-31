@@ -121,17 +121,30 @@ else
 fi
 echo ""
 
-# Step 1: Build deps image (cached) and service images
+# Step 1: Build deps image (hash-based cache via ghcr.io) and service images
 echo -e "${BLUE}📦 Step 1: Building images and starting services...${NC}"
 echo ""
 
-# Check if deps image exists and is recent
-DEPS_EXISTS=$(podman images -q localhost/e2e_deps:latest)
-if [ -z "$DEPS_EXISTS" ]; then
-    echo "Building deps image (first time - this will be cached)..."
-    podman build -t localhost/e2e_deps:latest -f Dockerfile.deps ../../
+# Compute a hash of all package*.json files that feed into Dockerfile.deps
+# A change to any package file produces a new hash → cache miss → rebuild
+DEPS_HASH=$(cat ../../package*.json ../../common/package*.json ../../backend/package*.json ../../user-interface/package*.json package*.json 2>/dev/null | sha256sum | cut -c1-12)
+DEPS_CACHED_IMAGE="${REGISTRY}/e2e-deps:${DEPS_HASH}"
+
+# Check local image first, then ghcr.io cache, then build from scratch
+DEPS_EXISTS=$(podman images -q localhost/e2e_deps:latest 2>/dev/null)
+if [ -n "$DEPS_EXISTS" ]; then
+    echo "Using local deps image (hash: ${DEPS_HASH})"
+elif [ -n "${GITHUB_TOKEN:-}" ] && podman pull "${DEPS_CACHED_IMAGE}" 2>/dev/null; then
+    echo -e "  ${GREEN}✓ Pulled deps image from cache: ${DEPS_CACHED_IMAGE}${NC}"
+    podman tag "${DEPS_CACHED_IMAGE}" localhost/e2e_deps:latest
 else
-    echo "Using cached deps image (run 'npm run podman:rebuild-deps' to rebuild)"
+    echo "Building deps image (hash: ${DEPS_HASH}) and pushing to ghcr.io cache..."
+    podman build -t localhost/e2e_deps:latest -f Dockerfile.deps ../../
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        podman tag localhost/e2e_deps:latest "${DEPS_CACHED_IMAGE}"
+        podman push "${DEPS_CACHED_IMAGE}"
+        echo -e "  ${GREEN}✓ Deps image cached: ${DEPS_CACHED_IMAGE}${NC}"
+    fi
 fi
 
 # Check if built image exists (compiles common, backend, frontend once)

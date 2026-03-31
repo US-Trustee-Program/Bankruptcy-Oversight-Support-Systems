@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 24
-- **Main Workflows**: 10
+- **Total Workflows**: 25
+- **Main Workflows**: 11
 - **Reusable Workflows**: 14
 
 ## Legend
@@ -509,12 +509,15 @@ flowchart LR
 ### Schedule Triggered Workflows
 
 Workflows triggered by `schedule`:
+- **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
 - **Stand Alone DAST Scan** (`dast-scan.yml`)
 
 ```mermaid
 flowchart LR
     trigger_schedule(["schedule"])
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    prune_e2e_image_cache_yml_prune["Delete e2e-deps images older than 30 days"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     build_azure_cli_image_yml_build_and_push["build-and-push"]
     dast_scan_yml["Stand Alone DAST Scan"]
@@ -525,6 +528,8 @@ flowchart LR
     reusable_dast_yml["reusable-dast.yml"]
     reusable_dast_yml_zap_dast_scan["zap-dast-scan"]
 
+    trigger_schedule --> prune_e2e_image_cache_yml
+    prune_e2e_image_cache_yml --> prune_e2e_image_cache_yml_prune
     trigger_schedule --> build_azure_cli_image_yml
     build_azure_cli_image_yml --> build_azure_cli_image_yml_build_and_push
     trigger_schedule --> dast_scan_yml
@@ -541,6 +546,8 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_schedule trigger
+    class prune_e2e_image_cache_yml mainWorkflow
+    class prune_e2e_image_cache_yml_prune job
     class build_azure_cli_image_yml mainWorkflow
     class build_azure_cli_image_yml_build_and_push job
     class dast_scan_yml mainWorkflow
@@ -1141,6 +1148,29 @@ flowchart LR
     class reusable_e2e_yml_playwright_e2e_test job
 ```
 
+#### Prune E2E Image Cache
+
+Manual execution of `prune-e2e-image-cache.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    prune_e2e_image_cache_yml_prune["Delete e2e-deps images older than 30 days"]
+
+    trigger_workflow_dispatch --> prune_e2e_image_cache_yml
+    prune_e2e_image_cache_yml --> prune_e2e_image_cache_yml_prune
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class prune_e2e_image_cache_yml mainWorkflow
+    class prune_e2e_image_cache_yml_prune job
+```
+
 #### NPM Package Updates
 
 Manual execution of `update-dependencies.yml`
@@ -1198,19 +1228,21 @@ flowchart LR
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
     e2e_test_yml["Stand Alone E2E Test Runs"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
     continuous_deployment_yml["Continuous Deployment"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
     update_dependencies_yml["NPM Package Updates"]
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
+    trigger_schedule(["schedule"])
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
+    dast_scan_yml["Stand Alone DAST Scan"]
     trigger_pull_request(["pull_request"])
     pr_validation_yml["Pull Request E2E Validation"]
     trigger_push(["push"])
     continuous_deployment_yml["Continuous Deployment"]
-    trigger_schedule(["schedule"])
-    build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
-    dast_scan_yml["Stand Alone DAST Scan"]
     trigger_workflow_run(["workflow_run"])
     slack_notification_yml["slack-notification"]
 
@@ -1218,15 +1250,17 @@ flowchart LR
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
     trigger_workflow_dispatch --> e2e_test_yml
     trigger_workflow_dispatch --> azure_remove_branch_yml
+    trigger_workflow_dispatch --> prune_e2e_image_cache_yml
     trigger_workflow_dispatch --> continuous_deployment_yml
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
     trigger_delete --> azure_remove_branch_yml
-    trigger_pull_request --> pr_validation_yml
-    trigger_push --> continuous_deployment_yml
+    trigger_schedule --> prune_e2e_image_cache_yml
     trigger_schedule --> build_azure_cli_image_yml
     trigger_schedule --> dast_scan_yml
+    trigger_pull_request --> pr_validation_yml
+    trigger_push --> continuous_deployment_yml
     trigger_workflow_run --> slack_notification_yml
 
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -1235,14 +1269,15 @@ flowchart LR
     class trigger_workflow_call trigger
     class trigger_workflow_dispatch trigger
     class trigger_delete trigger
+    class trigger_schedule trigger
     class trigger_pull_request trigger
     class trigger_push trigger
-    class trigger_schedule trigger
     class trigger_workflow_run trigger
     class sub_security_scan_yml mainWorkflow
     class deploy_security_scan_storage_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
+    class prune_e2e_image_cache_yml mainWorkflow
     class pr_validation_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
@@ -1266,6 +1301,9 @@ flowchart LR
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
   - Triggers: delete, workflow_dispatch
   - Jobs: 3
+- **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
+  - Triggers: schedule, workflow_dispatch
+  - Jobs: 1
 - **Pull Request E2E Validation** (`pr-validation.yml`)
   - Triggers: pull_request
   - Jobs: 1
