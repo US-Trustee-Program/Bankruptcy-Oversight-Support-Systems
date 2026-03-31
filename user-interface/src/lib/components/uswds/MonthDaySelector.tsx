@@ -116,7 +116,12 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
       )}
       <div className="month-day-selector__inputs" onFocus={onFocus} onBlur={onBlur}>
         <div className="month-day-selector__column">
-          <span className="usa-hint">Month</span>
+          <span
+            className="usa-hint"
+            aria-label={contextLabel ? `${contextLabel} Month` : undefined}
+          >
+            Month
+          </span>
           <select
             id={`${id}-month`}
             name={`${id}-month`}
@@ -126,7 +131,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
             disabled={disabled}
             required={required}
             aria-labelledby={label ? `${id}-label` : undefined}
-            aria-label={!label && contextLabel ? contextLabel : undefined}
+            aria-label={!label && contextLabel ? `${contextLabel} Month` : undefined}
             aria-describedby={hasError ? `${id}-error` : undefined}
             aria-invalid={hasError ? 'true' : undefined}
           >
@@ -142,7 +147,9 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
           /
         </span>
         <div className="month-day-selector__column">
-          <span className="usa-hint">Day</span>
+          <span className="usa-hint" aria-label={contextLabel ? `${contextLabel} Day` : undefined}>
+            Day
+          </span>
           <select
             id={`${id}-day`}
             name={`${id}-day`}
@@ -151,7 +158,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
             onChange={handleDayChange}
             disabled={disabled || !month}
             required={required}
-            aria-label="Day"
+            aria-label={contextLabel ? `${contextLabel} Day` : 'Day'}
             aria-describedby={hasError ? `${id}-error` : undefined}
             aria-invalid={hasError ? 'true' : undefined}
           >
