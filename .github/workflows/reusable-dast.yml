@@ -40,7 +40,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - uses: cloudposse/github-action-secret-outputs@main
+      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
         id: rgApp
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
