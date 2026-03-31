@@ -17,7 +17,7 @@ services:
       dockerfile: user-interface/Dockerfile.dev
     container_name: cams-frontend-dev
     ports:
-      - "5173:5173"
+      - "3000:5173"
     volumes:
       # Bind-mount the entire repo so workspace module resolution works
       - .:/app
@@ -51,6 +51,7 @@ services:
              npm run build &&
              cp ../../.env . 2>/dev/null || true &&
              cp ../../../dev-users.json . 2>/dev/null || true &&
+             printf '{\"IsEncrypted\":false,\"Values\":{\"FUNCTIONS_WORKER_RUNTIME\":\"node\",\"AzureWebJobsStorage\":\"\"},\"ConnectionStrings\":{},\"Host\":{\"CORS\":\"*\"}}' > local.settings.json &&
              func start --javascript --host 0.0.0.0 --port 7071"
 
 volumes:
