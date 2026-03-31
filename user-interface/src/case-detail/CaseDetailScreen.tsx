@@ -427,7 +427,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
             caseId={caseBasicInfo.caseId}
             caseDetail={caseBasicInfo}
           />
-          {caseBasicInfo.status === 'MOVED' && caseBasicInfo.movedToCaseId && (
+          {caseBasicInfo.movedToCaseId && (
             <div
               className="usa-alert usa-alert--warning"
               role="alert"

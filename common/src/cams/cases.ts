@@ -107,7 +107,6 @@ export type CaseDetail = CaseSummary & {
   judgeName?: string;
   trustee?: LegacyTrustee;
   trusteeId?: string;
-  status?: 'MOVED';
   movedToCaseId?: string;
   movedOn?: string;
 };

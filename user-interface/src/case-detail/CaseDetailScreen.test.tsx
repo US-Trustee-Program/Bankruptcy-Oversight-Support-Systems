@@ -554,7 +554,6 @@ describe('Case Detail screen tests', () => {
     test('should render USWDS warning alert when case status is MOVED', async () => {
       const movedCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
-        status: 'MOVED',
         movedToCaseId: '101-23-54321',
         debtor: {
           name: 'Roger Rabbit',
@@ -572,7 +571,6 @@ describe('Case Detail screen tests', () => {
     test('should display Case Division Changed heading in MOVED alert', async () => {
       const movedCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
-        status: 'MOVED',
         movedToCaseId: '101-23-54321',
         debtor: {
           name: 'Roger Rabbit',
@@ -590,7 +588,6 @@ describe('Case Detail screen tests', () => {
     test('should display message explaining case was moved to different division', async () => {
       const movedCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
-        status: 'MOVED',
         movedToCaseId: '101-23-54321',
         debtor: {
           name: 'Roger Rabbit',
@@ -607,7 +604,6 @@ describe('Case Detail screen tests', () => {
     test('should include link to current case in MOVED alert', async () => {
       const movedCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
-        status: 'MOVED',
         movedToCaseId: '101-23-54321',
         debtor: {
           name: 'Roger Rabbit',
@@ -622,10 +618,9 @@ describe('Case Detail screen tests', () => {
       expect(link).toHaveAttribute('href', '/case-detail/101-23-54321');
     });
 
-    test('should not render MOVED alert when case status is undefined', async () => {
+    test('should not render MOVED alert when movedToCaseId is absent', async () => {
       const activeCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
-        status: undefined,
         debtor: {
           name: 'Roger Rabbit',
         },
@@ -638,10 +633,9 @@ describe('Case Detail screen tests', () => {
       expect(alert).not.toBeInTheDocument();
     });
 
-    test('should not render MOVED alert when case status is not MOVED', async () => {
+    test('should not render MOVED alert when movedToCaseId is not set', async () => {
       const activeCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
-        status: 'ACTIVE',
         debtor: {
           name: 'Roger Rabbit',
         },
@@ -657,7 +651,6 @@ describe('Case Detail screen tests', () => {
     test('should render rest of case detail normally when case status is MOVED', async () => {
       const movedCaseDetail: CaseDetail = {
         ...defaultTestCaseDetail,
-        status: 'MOVED',
         movedToCaseId: '101-23-54321',
         debtor: {
           name: 'Roger Rabbit',

@@ -8,7 +8,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 
 describe('StaffAssignmentRowInternal', () => {
-  const caseId = 'testCaseId';
+  const caseId = '081-23-00001';
   const caseAssignments = [
     MockData.getAttorneyAssignment({ id: 'testAssignmentId', caseId, unassignedOn: undefined }),
   ];
