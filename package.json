@@ -41,6 +41,7 @@
     "test:bdd:show-logs": "npm run test:show-logs --workspace=test/bdd",
     "test:bdd:watch": "npm run test:watch --workspace=test/bdd",
     "test:common": "npm run test --workspace=common",
+    "test:e2e": "npm run e2e --workspace=test/e2e",
     "test:user-interface": "npm run test --workspace=user-interface",
     "test:watch": "npm run test:watch --workspaces --if-present",
     "test:watch:backend": "npm run test:watch --workspace=backend",
@@ -53,10 +54,10 @@
     "@types/node": "24.12.0",
     "@typescript-eslint/eslint-plugin": "8.54.0",
     "@typescript-eslint/parser": "8.54.0",
-    "@vitest/eslint-plugin": "1.6.10",
+    "@vitest/eslint-plugin": "1.6.11",
     "eslint": "9.39.4",
     "eslint-config-prettier": "10.1.8",
-    "eslint-plugin-jsonc": "3.1.1",
+    "eslint-plugin-jsonc": "3.1.2",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-react": "7.37.5",
@@ -69,6 +70,8 @@
   },
   "overrides": {
     "semver": "7.7.4",
-    "@babel/runtime": "7.28.6"
+    "@babel/runtime": "7.28.6",
+    "node-forge": "1.4.0",
+    "path-to-regexp": "8.4.0"
   }
 }

@@ -8,6 +8,7 @@ import factory from '../../factory';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { CamsRole } from '@common/cams/roles';
+import { CourtsUseCase } from '../../use-cases/courts/courts';
 
 describe('TrusteeMatchVerificationController', () => {
   let context: ApplicationContext;
@@ -74,6 +75,20 @@ describe('TrusteeMatchVerificationController', () => {
     );
   }
 
+  const mockCourts = [
+    {
+      courtId: '081',
+      courtName: 'Test Court',
+      courtDivisionCode: '081',
+      courtDivisionName: 'Division A',
+      officeName: '',
+      officeCode: '',
+      groupDesignator: '',
+      regionId: '',
+      regionName: '',
+    },
+  ];
+
   function mockEnrichmentRepos() {
     vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
       Object.assign(new MockMongoRepository(), {
@@ -85,6 +100,7 @@ describe('TrusteeMatchVerificationController', () => {
         getTrusteeAppointments: vi.fn().mockResolvedValue(mockAppointments),
       }),
     );
+    vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
   }
 
   beforeEach(async () => {

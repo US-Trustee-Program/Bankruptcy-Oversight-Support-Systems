@@ -232,7 +232,7 @@ export function calculateCandidateScore(
 
   context.logger.info(
     MODULE_NAME,
-    `Scoring candidate ${camsTrustee.trusteeId} ("${camsTrustee.name}"): ` +
+    `Scoring candidate ${camsTrustee.trusteeId}: ` +
       `address=${addressScore}, district=${districtDivisionScore}, chapter=${chapterScore}, total=${totalScore}`,
   );
 
@@ -258,16 +258,6 @@ export async function resolveTrusteeWithFuzzyMatching(
   // Lazy-load case details
   const casesRepo = factory.getCasesRepository(context);
   const syncedCase = await casesRepo.getSyncedCase(event.caseId);
-
-  if (!syncedCase) {
-    throw new CamsError(MODULE_NAME, {
-      message: `Case ${event.caseId} not found during fuzzy matching.`,
-      data: {
-        mismatchReason: 'CASE_NOT_FOUND',
-        matchCandidates: [],
-      },
-    });
-  }
 
   // Score all candidates - fetch data in parallel to avoid N+1 queries
   const trusteesRepo = factory.getTrusteesRepository(context);

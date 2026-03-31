@@ -179,6 +179,23 @@ module network './lib//network/ustp-cams-network.bicep' = {
   }
 }
 
+module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
+  name: '${stackName}-kv-setup-module'
+  params: {
+    stackName: stackName
+    location: location
+    deployDns: deployDns
+    kvResourceGroup: kvAppConfigResourceGroupName
+    kvName: kvAppConfigName
+    networkResourceGroup: networkResourceGroupName
+    virtualNetworkName: virtualNetworkName
+    privateEndpointSubnetId: network.outputs.privateEndpointSubnetId
+    privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
+    privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
+    managedIdentityName: idKeyvaultAppConfiguration
+  }
+}
+
 module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'
     scope: resourceGroup(appResourceGroup)
@@ -211,6 +228,7 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
 module ustpApiFunction 'backend-api-deploy.bicep' = {
     name: '${stackName}-function-module'
     scope: resourceGroup(appResourceGroup)
+    dependsOn: [kvSetup]
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
@@ -255,6 +273,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
 module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
   name: '${stackName}-dataflows-module'
   scope: resourceGroup(appResourceGroup)
+  dependsOn: [kvSetup]
   params: {
     deployAppInsights: deployAppInsights
     analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''

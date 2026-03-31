@@ -49,9 +49,9 @@ import {
 } from '@common/cams/trustee-appointments';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import {
-  TrusteeUpcomingReportDates,
-  TrusteeUpcomingReportDatesHistory,
-} from '@common/cams/trustee-upcoming-report-dates';
+  TrusteeUpcomingKeyDates,
+  TrusteeUpcomingKeyDatesHistory,
+} from '@common/cams/trustee-upcoming-key-dates';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Auditable } from '@common/cams/auditable';
 import {
@@ -330,6 +330,22 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   deleteAll(): Promise<number>;
 }
 
+export type TrusteeDueDateMetricsAggregation = {
+  totalChapter7Appointments: number;
+  completeCount: number;
+  partialCount: number;
+  noneCount: number;
+  tprReviewPeriodCount: number;
+  pastFieldExamCount: number;
+  pastIndependentAuditCount: number;
+  tirReviewPeriodCount: number;
+  tprDueDateCount: number;
+  upcomingFieldExamCount: number;
+  upcomingIndependentAuditRequiredCount: number;
+  tirSubmissionCount: number;
+  tirReviewDueDateCount: number;
+};
+
 export interface TrusteeAppointmentsRepository extends Releasable {
   read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
@@ -348,6 +364,7 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   findByCaseId(caseId: string): Promise<CaseAppointment[]>;
+  getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
 }
@@ -496,13 +513,10 @@ export interface ObservabilityGateway {
   ): void;
 }
 
-export interface TrusteeUpcomingReportDatesRepository
-  extends
-    Reads<TrusteeUpcomingReportDates | null>,
-    Upserts<TrusteeUpcomingReportDates>,
-    Releasable {
-  getByAppointmentId(appointmentId: string): Promise<TrusteeUpcomingReportDates | null>;
-  createHistory(history: Creatable<TrusteeUpcomingReportDatesHistory>): Promise<void>;
+export interface TrusteeUpcomingKeyDatesRepository
+  extends Reads<TrusteeUpcomingKeyDates | null>, Upserts<TrusteeUpcomingKeyDates>, Releasable {
+  getByAppointmentId(appointmentId: string): Promise<TrusteeUpcomingKeyDates | null>;
+  createHistory(history: Creatable<TrusteeUpcomingKeyDatesHistory>): Promise<void>;
 }
 
 export interface TrusteeMatchVerificationRepository extends Releasable {
@@ -526,6 +540,6 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   ): Promise<TrusteeProfessionalId>;
   findByCamsTrusteeId(camsTrusteeId: string): Promise<TrusteeProfessionalId[]>;
   findByAcmsProfessionalId(acmsProfessionalId: string): Promise<TrusteeProfessionalId[]>;
-  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<void>;
+  deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }

@@ -1,0 +1,153 @@
+version: '3.8'
+
+services:
+  # Azure Storage emulator (required for Azure Functions runtime health)
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: cams-azurite-e2e
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    networks:
+      - cams-e2e
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "10000"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  # MongoDB (compatible with Cosmos DB MongoDB API)
+  mongodb:
+    image: mongo:7.0
+    container_name: cams-mongodb-e2e
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=cams-e2e
+    volumes:
+      - ./mongodb-data:/data/db
+    networks:
+      - cams-e2e
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # Azure SQL Edge (ARM64-compatible SQL Server for testing)
+  sqlserver:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: cams-sqlserver-e2e
+    ports:
+      - "1433:1433"
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=${MSSQL_PASS}
+      - MSSQL_PID=Developer
+    volumes:
+      - ./sqlserver-data:/var/opt/mssql
+    networks:
+      - cams-e2e
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/1433' 2>/dev/null && echo OK || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # Backend API service
+  backend:
+    build:
+      context: ../../
+      dockerfile: test/e2e/Dockerfile.backend
+    container_name: cams-backend-e2e
+    ports:
+      - "7071:7071"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=development
+      - DOTENV_CONFIG_SILENT=true
+      - DOTENV_QUIET=true
+      - COSMOS_DATABASE_NAME=${COSMOS_DATABASE_NAME}
+      - MONGO_CONNECTION_STRING=${MONGO_CONNECTION_STRING}
+      - DATABASE_MOCK=${DATABASE_MOCK}
+      - MSSQL_HOST=${MSSQL_HOST}
+      - MSSQL_DATABASE=${MSSQL_DATABASE}
+      - MSSQL_DATABASE_DXTR=${MSSQL_DATABASE_DXTR}
+      - MSSQL_USER=${MSSQL_USER}
+      - MSSQL_PASS=${MSSQL_PASS}
+      - MSSQL_ENCRYPT=${MSSQL_ENCRYPT}
+      - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
+      - SLOT_NAME=${SLOT_NAME}
+      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiqIkEl+pA==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;
+    depends_on:
+      azurite:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+    networks:
+      - cams-e2e
+    healthcheck:
+      disable: true
+
+  # Frontend UI service
+  frontend:
+    build:
+      context: ../../
+      dockerfile: test/e2e/Dockerfile.frontend
+    container_name: cams-frontend-e2e
+    ports:
+      - "3000:3000"
+    environment:
+      - DOTENV_CONFIG_SILENT=true
+      - DOTENV_QUIET=true
+      - CAMS_PA11Y=false
+      - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
+      - CAMS_LOGIN_PROVIDER_CONFIG=${CAMS_LOGIN_PROVIDER_CONFIG}
+      - CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING=
+      - CAMS_SERVER_HOSTNAME=localhost
+      - CAMS_SERVER_PORT=7071
+      - CAMS_SERVER_PROTOCOL=http
+      - CAMS_BASE_PATH=/api
+      - SLOT_NAME=${SLOT_NAME}
+    depends_on:
+      - backend
+    networks:
+      - cams-e2e
+    healthcheck:
+      disable: true
+
+  # Playwright test runner
+  playwright:
+    build:
+      context: ../../
+      dockerfile: test/e2e/Dockerfile.playwright
+    container_name: cams-playwright-e2e
+    # Use host network mode so Playwright can access services via localhost
+    # This allows Okta callbacks to work (Okta whitelist requires http://localhost:3000)
+    network_mode: host
+    environment:
+      - DOTENV_CONFIG_SILENT=true
+      - DOTENV_QUIET=true
+      - TARGET_HOST=http://localhost:3000
+      - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
+      - OKTA_USER_NAME=${OKTA_USER_NAME}
+      - OKTA_PASSWORD=${OKTA_PASSWORD}
+    depends_on:
+      - frontend
+      - backend
+    volumes:
+      - ./test-results:/app/test/e2e/test-results
+      - ./playwright-report:/app/test/e2e/playwright-report
+    command: ["npm", "run", "headless"]
+    working_dir: /app/test/e2e
+
+networks:
+  cams-e2e:
+    driver: bridge

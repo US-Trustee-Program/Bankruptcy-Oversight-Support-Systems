@@ -21,6 +21,8 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { AtsTrusteeRecord } from '../../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { AtsGateway } from '../../use-cases/gateways.types';
+import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
 /**
  * Helper function to wrap a single trustee for the new merged data format.
@@ -32,62 +34,23 @@ function wrapTrusteeForProcessing(atsTrustee: AtsTrusteeRecord) {
 
 describe('Migrate Trustees Use Case', () => {
   let context: ApplicationContext;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockAtsGateway: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockTrusteesRepo: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockAppointmentsRepo: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mockRuntimeStateRepo: any;
+  let atsGateway: AtsGateway;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
-
-    // Mock the factory methods
-    mockAtsGateway = {
-      getTrusteesPage: vi.fn(),
-      getTrusteeAppointments: vi.fn(),
-      getTrusteeCount: vi.fn(),
-    };
-
-    mockTrusteesRepo = {
-      listTrustees: vi.fn().mockResolvedValue([]),
-      findTrusteeByLegacyTruId: vi.fn().mockResolvedValue(null),
-      findTrusteeByNameAndState: vi.fn().mockResolvedValue(null),
-      createTrustee: vi.fn(),
-      updateTrustee: vi.fn(),
-      deleteAll: vi.fn(),
-    };
-
-    mockAppointmentsRepo = {
-      createAppointment: vi.fn(),
-      getTrusteeAppointments: vi.fn().mockResolvedValue([]),
-      deleteAll: vi.fn(),
-    };
-
-    mockRuntimeStateRepo = {
-      read: vi.fn(),
-      upsert: vi.fn(),
-    };
-
-    vi.spyOn(factory, 'getAtsGateway').mockReturnValue(mockAtsGateway);
-    vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(mockTrusteesRepo);
-    vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(mockAppointmentsRepo);
-    vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(mockRuntimeStateRepo);
-
-    // NOTE: We let the cleansing pipeline run for real so it can properly classify
-    // valid vs invalid data. Tests will use real representative ATS data.
+    atsGateway = factory.getAtsGateway(context);
   });
 
   afterEach(() => {
-    vi.clearAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('getOrCreateMigrationState', () => {
     test('should create new state when none exists', async () => {
-      mockRuntimeStateRepo.read.mockRejectedValue(new Error('Not found'));
-      mockRuntimeStateRepo.upsert.mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new Error('Not found'));
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
 
       const result = await getOrCreateMigrationState(context);
 
@@ -95,7 +58,7 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data?.documentType).toBe('TRUSTEE_MIGRATION_STATE');
       expect(result.data?.status).toBe('IN_PROGRESS');
       expect(result.data?.lastTrusteeId).toBeNull();
-      expect(mockRuntimeStateRepo.upsert).toHaveBeenCalled();
+      expect(upsertSpy).toHaveBeenCalled();
     });
 
     test('should return existing state when found', async () => {
@@ -111,17 +74,20 @@ describe('Migrate Trustees Use Case', () => {
         divisionMappingVersion: '1.0.0',
       };
 
-      mockRuntimeStateRepo.read.mockResolvedValue(existingState);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(existingState);
+      const upsertSpy = vi.spyOn(MockMongoRepository.prototype, 'upsert');
 
       const result = await getOrCreateMigrationState(context);
 
       expect(result.data).toEqual(existingState);
-      expect(mockRuntimeStateRepo.upsert).not.toHaveBeenCalled();
+      expect(upsertSpy).not.toHaveBeenCalled();
     });
 
     test('should handle error when creating state fails', async () => {
-      mockRuntimeStateRepo.read.mockRejectedValue(new Error('Not found'));
-      mockRuntimeStateRepo.upsert.mockRejectedValue(new Error('Database write failed'));
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockRejectedValue(new Error('Not found'));
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
+        new Error('Database write failed'),
+      );
 
       const result = await getOrCreateMigrationState(context);
 
@@ -138,7 +104,7 @@ describe('Migrate Trustees Use Case', () => {
         { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith' },
       ];
 
-      mockAtsGateway.getTrusteesPage.mockResolvedValue(mockTrustees);
+      vi.spyOn(atsGateway, 'getTrusteesPage').mockResolvedValue(mockTrustees);
 
       const result = await getPageOfTrustees(context, null, 2);
 
@@ -150,7 +116,7 @@ describe('Migrate Trustees Use Case', () => {
     test('should indicate no more pages when less than page size returned', async () => {
       const mockTrustees: AtsTrusteeRecord[] = [{ ID: 3, FIRST_NAME: 'Bob', LAST_NAME: 'Johnson' }];
 
-      mockAtsGateway.getTrusteesPage.mockResolvedValue(mockTrustees);
+      vi.spyOn(atsGateway, 'getTrusteesPage').mockResolvedValue(mockTrustees);
 
       const result = await getPageOfTrustees(context, 2, 2);
 
@@ -159,7 +125,9 @@ describe('Migrate Trustees Use Case', () => {
     });
 
     test('should handle error when getting page fails', async () => {
-      mockAtsGateway.getTrusteesPage.mockRejectedValue(new Error('Database connection failed'));
+      vi.spyOn(atsGateway, 'getTrusteesPage').mockRejectedValue(
+        new Error('Database connection failed'),
+      );
 
       const result = await getPageOfTrustees(context, null, 10);
 
@@ -182,26 +150,29 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
-        cleanAppointments: mockAppointments,
-        failedAppointments: [],
-        stats: {
-          total: 1,
-          clean: 1,
-          autoRecoverable: 0,
-          problematic: 0,
-          uncleansable: 0,
-        },
-      });
+      const getTrusteeAppointmentsSpy = vi
+        .spyOn(atsGateway, 'getTrusteeAppointments')
+        .mockResolvedValue({
+          cleanAppointments: mockAppointments,
+          failedAppointments: [],
+          stats: {
+            total: 1,
+            clean: 1,
+            autoRecoverable: 0,
+            problematic: 0,
+            uncleansable: 0,
+            skipped: 0,
+          },
+        });
 
       const result = await getTrusteeAppointments(context, 1);
 
       expect(result.data?.cleanAppointments).toEqual(mockAppointments);
-      expect(mockAtsGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, 1);
+      expect(getTrusteeAppointmentsSpy).toHaveBeenCalledWith(context, 1);
     });
 
     test('should handle error when getting appointments fails', async () => {
-      mockAtsGateway.getTrusteeAppointments.mockRejectedValue(new Error('Database error'));
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockRejectedValue(new Error('Database error'));
 
       const result = await getTrusteeAppointments(context, 1);
 
@@ -226,18 +197,21 @@ describe('Migrate Trustees Use Case', () => {
         name: 'John Doe',
       };
 
-      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
-      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      const createTrusteeSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrustee')
+        .mockResolvedValue(createdTrustee);
+      const updateTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'updateTrustee');
 
       const mergedData = wrapTrusteeForProcessing(atsTrustee);
       const result = await upsertTrustee(context, mergedData);
 
       expect(result.data).toEqual(createdTrustee);
-      expect(mockTrusteesRepo.createTrustee).toHaveBeenCalledWith(
+      expect(createTrusteeSpy).toHaveBeenCalledWith(
         expect.objectContaining({ status: 'active' }),
         expect.anything(),
       );
-      expect(mockTrusteesRepo.updateTrustee).not.toHaveBeenCalled();
+      expect(updateTrusteeSpy).not.toHaveBeenCalled();
     });
 
     test('should update existing trustee when found', async () => {
@@ -253,6 +227,11 @@ describe('Migrate Trustees Use Case', () => {
         trusteeId: 'trustee-123',
         name: 'John Doe',
         legacy: { truIds: ['1'] },
+        public: {
+          address: { address1: '', city: '', state: 'NY', zipCode: '', countryCode: 'US' as const },
+        },
+        updatedOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
       };
 
       const updatedTrustee = {
@@ -260,19 +239,24 @@ describe('Migrate Trustees Use Case', () => {
         name: 'John Doe',
       };
 
-      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(existingTrustee);
-      mockTrusteesRepo.updateTrustee.mockResolvedValue(updatedTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(
+        existingTrustee,
+      );
+      const updateTrusteeSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(updatedTrustee);
+      const createTrusteeSpy = vi.spyOn(MockMongoRepository.prototype, 'createTrustee');
 
       const mergedData = wrapTrusteeForProcessing(atsTrustee);
       const result = await upsertTrustee(context, mergedData);
 
       expect(result.data).toEqual(updatedTrustee);
-      expect(mockTrusteesRepo.updateTrustee).toHaveBeenCalledWith(
+      expect(updateTrusteeSpy).toHaveBeenCalledWith(
         'trustee-123',
         expect.objectContaining({ status: 'active' }),
         expect.anything(),
       );
-      expect(mockTrusteesRepo.createTrustee).not.toHaveBeenCalled();
+      expect(createTrusteeSpy).not.toHaveBeenCalled();
     });
 
     test('should handle error when upsert fails', async () => {
@@ -283,7 +267,9 @@ describe('Migrate Trustees Use Case', () => {
         STATE: 'NY',
       };
 
-      mockTrusteesRepo.findTrusteeByNameAndState.mockRejectedValue(new Error('Database error'));
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockRejectedValue(
+        new Error('Database error'),
+      );
 
       const mergedData = wrapTrusteeForProcessing(atsTrustee);
       const result = await upsertTrustee(context, mergedData);
@@ -321,12 +307,15 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockAppointmentsRepo.createAppointment.mockResolvedValue({});
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+      const createAppointmentSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createAppointment')
+        .mockResolvedValue({});
 
       const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
       expect(result.data?.successCount).toBe(1);
-      expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
+      expect(createAppointmentSpy).toHaveBeenCalledTimes(1);
     });
 
     test('should skip duplicate appointments in source data', async () => {
@@ -350,14 +339,17 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockAppointmentsRepo.createAppointment.mockResolvedValue({});
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+      const createAppointmentSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createAppointment')
+        .mockResolvedValue({});
 
       const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
       // Both are successfully processed (one created, one skipped as duplicate)
       expect(result.data?.successCount).toBe(2);
       // Only one was actually created in the repository
-      expect(mockAppointmentsRepo.createAppointment).toHaveBeenCalledTimes(1);
+      expect(createAppointmentSpy).toHaveBeenCalledTimes(1);
     });
 
     test('should skip appointments that already exist in database', async () => {
@@ -372,7 +364,9 @@ describe('Migrate Trustees Use Case', () => {
         effectiveDate: '2023-01-15',
       };
 
-      mockAppointmentsRepo.getTrusteeAppointments.mockResolvedValue([existingAppointment]);
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([
+        existingAppointment,
+      ]);
 
       const cleanAppointments: TrusteeAppointmentInput[] = [
         {
@@ -385,10 +379,12 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
+      const createAppointmentSpy = vi.spyOn(MockMongoRepository.prototype, 'createAppointment');
+
       const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
       expect(result.data?.successCount).toBe(1);
-      expect(mockAppointmentsRepo.createAppointment).not.toHaveBeenCalled();
+      expect(createAppointmentSpy).not.toHaveBeenCalled();
     });
 
     test('should handle error when creating appointments fails', async () => {
@@ -403,7 +399,9 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockAppointmentsRepo.createAppointment.mockRejectedValue(new Error('Database write failed'));
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockRejectedValue(
+        new Error('Database write failed'),
+      );
 
       const result = await createAppointments(context, mockTrustee, cleanAppointments);
 
@@ -440,9 +438,9 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
-      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(createdTrustee);
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
         cleanAppointments,
         failedAppointments: [],
         stats: {
@@ -451,9 +449,11 @@ describe('Migrate Trustees Use Case', () => {
           autoRecoverable: 0,
           problematic: 0,
           uncleansable: 0,
+          skipped: 0,
         },
       });
-      mockAppointmentsRepo.createAppointment.mockResolvedValue({});
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue({});
 
       const mergedData = wrapTrusteeForProcessing(atsTrustee);
       const result = await processTrusteeWithAppointments(context, mergedData);
@@ -478,9 +478,9 @@ describe('Migrate Trustees Use Case', () => {
         name: 'Jane Smith',
       };
 
-      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
-      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(createdTrustee);
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
         cleanAppointments: [],
         failedAppointments: [],
         stats: {
@@ -508,7 +508,7 @@ describe('Migrate Trustees Use Case', () => {
         STATE: 'TX',
       };
 
-      mockTrusteesRepo.findTrusteeByNameAndState.mockRejectedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockRejectedValue(
         new Error('Database connection lost'),
       );
 
@@ -535,9 +535,11 @@ describe('Migrate Trustees Use Case', () => {
         name: 'Alice Williams',
       };
 
-      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
-      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockAtsGateway.getTrusteeAppointments.mockRejectedValue(new Error('ATS connection timeout'));
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(createdTrustee);
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockRejectedValue(
+        new Error('ATS connection timeout'),
+      );
 
       const mergedData = wrapTrusteeForProcessing(atsTrustee);
       const result = await processTrusteeWithAppointments(context, mergedData);
@@ -573,9 +575,9 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
-      mockTrusteesRepo.createTrustee.mockResolvedValue(createdTrustee);
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(createdTrustee);
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
         cleanAppointments,
         failedAppointments: [],
         stats: {
@@ -587,7 +589,7 @@ describe('Migrate Trustees Use Case', () => {
           skipped: 0,
         },
       });
-      mockAppointmentsRepo.createAppointment.mockRejectedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockRejectedValue(
         new Error('Appointment database error'),
       );
 
@@ -608,13 +610,13 @@ describe('Migrate Trustees Use Case', () => {
         { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' },
       ];
 
-      mockTrusteesRepo.findTrusteeByNameAndState.mockResolvedValue(null);
-      mockTrusteesRepo.createTrustee.mockResolvedValue({
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue({
         id: 'new-id',
         trusteeId: 'trustee-123',
         name: 'Test',
       });
-      mockAtsGateway.getTrusteeAppointments.mockResolvedValue({
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
         cleanAppointments: [],
         failedAppointments: [],
         stats: {
@@ -636,16 +638,16 @@ describe('Migrate Trustees Use Case', () => {
 
   describe('getTotalTrusteeCount', () => {
     test('should get total count from ATS', async () => {
-      mockAtsGateway.getTrusteeCount.mockResolvedValue(500);
+      const getTrusteeCountSpy = vi.spyOn(atsGateway, 'getTrusteeCount').mockResolvedValue(500);
 
       const result = await getTotalTrusteeCount(context);
 
       expect(result.data).toBe(500);
-      expect(mockAtsGateway.getTrusteeCount).toHaveBeenCalledWith(context);
+      expect(getTrusteeCountSpy).toHaveBeenCalledWith(context);
     });
 
     test('should handle error when getting count fails', async () => {
-      mockAtsGateway.getTrusteeCount.mockRejectedValue(new Error('Database timeout'));
+      vi.spyOn(atsGateway, 'getTrusteeCount').mockRejectedValue(new Error('Database timeout'));
 
       const result = await getTotalTrusteeCount(context);
 
@@ -669,13 +671,15 @@ describe('Migrate Trustees Use Case', () => {
         divisionMappingVersion: '1.0.0',
       };
 
-      mockRuntimeStateRepo.read.mockResolvedValue(state);
-      mockRuntimeStateRepo.upsert.mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(state);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
 
       const result = await completeMigration(context, state);
 
       expect(result.error).toBeUndefined();
-      expect(mockRuntimeStateRepo.upsert).toHaveBeenCalledWith(
+      expect(upsertSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           status: 'COMPLETED',
         }),
@@ -695,7 +699,7 @@ describe('Migrate Trustees Use Case', () => {
         divisionMappingVersion: '1.0.0',
       };
 
-      mockRuntimeStateRepo.read.mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(null);
 
       const result = await completeMigration(context, state);
 
@@ -716,8 +720,10 @@ describe('Migrate Trustees Use Case', () => {
         divisionMappingVersion: '1.0.0',
       };
 
-      mockRuntimeStateRepo.read.mockResolvedValue(state);
-      mockRuntimeStateRepo.upsert.mockRejectedValue(new Error('Database write error'));
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(state);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockRejectedValue(
+        new Error('Database write error'),
+      );
 
       const result = await completeMigration(context, state);
 
@@ -740,13 +746,15 @@ describe('Migrate Trustees Use Case', () => {
         divisionMappingVersion: '1.0.0',
       };
 
-      mockRuntimeStateRepo.read.mockResolvedValue(state);
-      mockRuntimeStateRepo.upsert.mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(state);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
 
       const result = await failMigration(context, state, 'Test error');
 
       expect(result.error).toBeUndefined();
-      expect(mockRuntimeStateRepo.upsert).toHaveBeenCalledWith(
+      expect(upsertSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           status: 'FAILED',
         }),
@@ -755,12 +763,16 @@ describe('Migrate Trustees Use Case', () => {
   });
 
   describe('deleteAllTrusteesAndAppointments', () => {
-    test('should delete all trustees and appointments successfully', async () => {
+    test('should delete all trustees, appointments, and professional IDs successfully', async () => {
       const deletedTrustees = 42;
       const deletedAppointments = 156;
+      const deletedProfessionalIds = 17;
 
-      mockTrusteesRepo.deleteAll.mockResolvedValue(deletedTrustees);
-      mockAppointmentsRepo.deleteAll.mockResolvedValue(deletedAppointments);
+      const deleteAllSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'deleteAll')
+        .mockResolvedValueOnce(deletedTrustees)
+        .mockResolvedValueOnce(deletedAppointments)
+        .mockResolvedValueOnce(deletedProfessionalIds);
 
       const result = await deleteAllTrusteesAndAppointments(context);
 
@@ -768,37 +780,56 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data).toBeDefined();
       expect(result.data?.deletedTrustees).toBe(deletedTrustees);
       expect(result.data?.deletedAppointments).toBe(deletedAppointments);
-      expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
-      expect(mockAppointmentsRepo.deleteAll).toHaveBeenCalledTimes(1);
+      expect(result.data?.deletedProfessionalIds).toBe(deletedProfessionalIds);
+      expect(deleteAllSpy).toHaveBeenCalledTimes(3);
     });
 
     test('should handle error when deleting trustees fails', async () => {
       const error = new Error('Database error while deleting trustees');
-      mockTrusteesRepo.deleteAll.mockRejectedValue(error);
+      const deleteAllSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'deleteAll')
+        .mockRejectedValue(error);
 
       const result = await deleteAllTrusteesAndAppointments(context);
 
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain('Failed to delete all trustees and appointments');
       expect(result.data).toBeUndefined();
-      expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
-      expect(mockAppointmentsRepo.deleteAll).not.toHaveBeenCalled();
+      expect(deleteAllSpy).toHaveBeenCalledTimes(1);
     });
 
     test('should handle error when deleting appointments fails', async () => {
       const deletedTrustees = 42;
       const error = new Error('Database error while deleting appointments');
-
-      mockTrusteesRepo.deleteAll.mockResolvedValue(deletedTrustees);
-      mockAppointmentsRepo.deleteAll.mockRejectedValue(error);
+      const deleteAllSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'deleteAll')
+        .mockResolvedValueOnce(deletedTrustees)
+        .mockRejectedValueOnce(error);
 
       const result = await deleteAllTrusteesAndAppointments(context);
 
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain('Failed to delete all trustees and appointments');
       expect(result.data).toBeUndefined();
-      expect(mockTrusteesRepo.deleteAll).toHaveBeenCalledTimes(1);
-      expect(mockAppointmentsRepo.deleteAll).toHaveBeenCalledTimes(1);
+      expect(deleteAllSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('should handle error when deleting professional IDs fails', async () => {
+      const deletedTrustees = 42;
+      const deletedAppointments = 156;
+      const error = new Error('Database error while deleting professional IDs');
+      const deleteAllSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'deleteAll')
+        .mockResolvedValueOnce(deletedTrustees)
+        .mockResolvedValueOnce(deletedAppointments)
+        .mockRejectedValueOnce(error);
+
+      const result = await deleteAllTrusteesAndAppointments(context);
+
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to delete all trustees and appointments');
+      expect(result.data).toBeUndefined();
+      expect(deleteAllSpy).toHaveBeenCalledTimes(3);
     });
   });
 });

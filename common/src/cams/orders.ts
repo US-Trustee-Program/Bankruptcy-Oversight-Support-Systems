@@ -1,11 +1,9 @@
 import { CaseAssignment } from './assignments';
-import { CaseDocketEntry, CaseSummary } from './cases';
+import { CaseBasics, CaseDocketEntry, CaseSummary } from './cases';
 import { Consolidation } from './events';
 import { CamsDocument } from './document';
-import { TrusteeMatchVerification } from './trustee-match-verification';
-
 export type OrderStatus = 'pending' | 'approved' | 'rejected';
-export type OrderType = 'transfer' | 'consolidation' | 'trustee-match';
+export type OrderType = 'transfer' | 'consolidation';
 export type ConsolidationType = 'administrative' | 'substantive';
 
 export type ConsolidationOrderActionRejection = {
@@ -27,7 +25,7 @@ export function isConsolidationOrderRejection(
 
 export type ConsolidationOrderActionApproval = {
   consolidationId: string;
-  leadCase?: CaseSummary;
+  leadCase?: CaseBasics;
   approvedCases: Array<string>;
   consolidationType: ConsolidationType;
 };
@@ -53,7 +51,7 @@ export type TransferOrder = CaseSummary & {
   status: OrderStatus;
   docketEntries: CaseDocketEntry[];
   docketSuggestedCaseNumber?: string;
-  newCase?: CaseSummary;
+  newCase?: CaseBasics;
   reason?: string;
 };
 
@@ -94,7 +92,7 @@ export type ConsolidationOrder = CamsDocument & {
   courtDivisionCode: string;
   jobId: number;
   leadCaseIdHint?: string;
-  leadCase?: CaseSummary;
+  leadCase?: CaseBasics;
   memberCases: Array<ConsolidationOrderCase>;
   reason?: string;
 };
@@ -137,18 +135,16 @@ export type RawConsolidationOrder = ConsolidationOrderCase & {
   leadCaseIdHint?: string;
 };
 
-export type Order = TransferOrder | ConsolidationOrder | TrusteeMatchVerification;
+export type Order = TransferOrder | ConsolidationOrder;
 
-export function isTransferOrder(order: Order): order is TransferOrder {
+export type HasOrderType = { orderType: OrderType };
+
+export function isTransferOrder(order: HasOrderType): order is TransferOrder {
   return order.orderType === 'transfer';
 }
 
-export function isConsolidationOrder(order: Order): order is ConsolidationOrder {
+export function isConsolidationOrder(order: HasOrderType): order is ConsolidationOrder {
   return order.orderType === 'consolidation';
-}
-
-export function isTrusteeMatchVerification(order: Order): order is TrusteeMatchVerification {
-  return order.orderType === 'trustee-match';
 }
 
 export type TransferOrderActionRejection = {
@@ -163,7 +159,7 @@ type TransferOrderActionApproval = {
   id: string;
   caseId: string;
   orderType: 'transfer';
-  newCase: Partial<CaseSummary>;
+  newCase: Partial<CaseBasics>;
   status: 'approved';
 };
 
@@ -182,7 +178,7 @@ export type RawOrderSync = {
 };
 
 export type FlexibleTransferOrderAction = Partial<TransferOrderAction> & {
-  newCase?: Partial<CaseSummary>;
+  newCase?: Partial<CaseBasics>;
 };
 
 export function generateConsolidationId(

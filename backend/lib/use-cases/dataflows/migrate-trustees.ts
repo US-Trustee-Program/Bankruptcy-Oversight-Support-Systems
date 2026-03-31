@@ -755,12 +755,17 @@ export async function getTotalTrusteeCount(
  * Used for clean-slate re-migration scenarios.
  * Returns counts of deleted records for verification.
  */
-export async function deleteAllTrusteesAndAppointments(
-  context: ApplicationContext,
-): Promise<MaybeData<{ deletedTrustees: number; deletedAppointments: number }>> {
+export async function deleteAllTrusteesAndAppointments(context: ApplicationContext): Promise<
+  MaybeData<{
+    deletedTrustees: number;
+    deletedAppointments: number;
+    deletedProfessionalIds: number;
+  }>
+> {
   try {
     const trusteesRepo = factory.getTrusteesRepository(context);
     const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+    const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
 
     const deletedTrustees = await trusteesRepo.deleteAll();
     context.logger.info(MODULE_NAME, `Deleted ${deletedTrustees} trustees`);
@@ -768,10 +773,17 @@ export async function deleteAllTrusteesAndAppointments(
     const deletedAppointments = await appointmentsRepo.deleteAll();
     context.logger.info(MODULE_NAME, `Deleted ${deletedAppointments} trustee appointments`);
 
+    const deletedProfessionalIds = await professionalIdsRepo.deleteAll();
+    context.logger.info(
+      MODULE_NAME,
+      `Deleted ${deletedProfessionalIds} trustee professional ID mappings`,
+    );
+
     return {
       data: {
         deletedTrustees,
         deletedAppointments,
+        deletedProfessionalIds,
       },
     };
   } catch (originalError) {

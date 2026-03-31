@@ -86,79 +86,13 @@ flowchart LR
     pr_validation_yml_setup["Setup"]
     reusable_build_info_yml["reusable-build-info.yml"]
     reusable_build_info_yml_build_info["Run Info"]
-    pr_validation_yml_build["Build Backend"]
-    sub_build_yml["sub-build.yml"]
-    sub_build_yml_see_slot_name["see-slot-name"]
-    sub_build_yml_build_frontend_predeployment["Build Frontend Predeployment"]
-    reusable_build_frontend_yml["reusable-build-frontend.yml"]
-    reusable_build_frontend_yml_build_frontend["build-frontend"]
-    sub_build_yml_backend["backend"]
-    pr_validation_yml_build_frontend_deployment["Build Frontend for Deployment"]
-    pr_validation_yml_deploy_pr_code["Deploy PR to Staging Slot"]
-    sub_deploy_code_slot_yml["sub-deploy-code-slot.yml"]
-    sub_deploy_code_slot_yml_deploy_code["Slot Code Deployment"]
-    sub_deploy_code_yml["sub-deploy-code.yml"]
-    sub_deploy_code_yml_deploy_webapp["deploy-webapp"]
-    sub_deploy_code_yml_deploy_api["deploy-api"]
-    sub_deploy_code_yml_deploy_dataflows_app["deploy-dataflows-app"]
-    sub_deploy_code_yml_endpoint_test_application["endpoint-test-application"]
-    reusable_endpoint_test_yml["reusable-endpoint-test.yml"]
-    reusable_endpoint_test_yml_endpoint_test_application["endpoint-test-application"]
-    sub_deploy_code_yml_enable_access["enable-access"]
-    sub_deploy_code_slot_yml_deploy_webapp_slot["deploy-webapp-slot"]
-    sub_deploy_code_slot_yml_deploy_api_slot["deploy-api-slot"]
-    sub_deploy_code_slot_yml_deploy_dataflows_slot["deploy-dataflows-slot"]
-    sub_deploy_code_slot_yml_endpoint_test_application_slot["endpoint-test-application-slot"]
-    sub_deploy_code_slot_yml_execute_e2e_test["execute-e2e-test"]
-    reusable_e2e_yml["reusable-e2e.yml"]
-    reusable_e2e_yml_playwright_e2e_test["playwright-e2e-test"]
-    sub_deploy_code_slot_yml_swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
-    sub_deploy_code_slot_yml_swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
-    sub_deploy_code_slot_yml_swap_dataflows_app_deployment_slot["swap-dataflows-app-deployment-slot"]
-    sub_deploy_code_slot_yml_endpoint_test_application_post_swap["endpoint-test-application-post-swap"]
-    sub_deploy_code_slot_yml_enable_access["enable-access"]
-    pr_validation_yml_execute_pr_e2e["Run E2E Tests"]
+    pr_validation_yml_run_e2e_tests["run-e2e-tests"]
 
     trigger_pull_request --> pr_validation_yml
     pr_validation_yml --> pr_validation_yml_setup
     reusable_build_info_yml --> reusable_build_info_yml_build_info
     pr_validation_yml_setup --> reusable_build_info_yml
-    pr_validation_yml --> pr_validation_yml_build
-    sub_build_yml --> sub_build_yml_see_slot_name
-    sub_build_yml --> sub_build_yml_build_frontend_predeployment
-    reusable_build_frontend_yml --> reusable_build_frontend_yml_build_frontend
-    sub_build_yml_build_frontend_predeployment --> reusable_build_frontend_yml
-    sub_build_yml --> sub_build_yml_backend
-    pr_validation_yml_build --> sub_build_yml
-    pr_validation_yml --> pr_validation_yml_build_frontend_deployment
-    pr_validation_yml_build_frontend_deployment --> reusable_build_frontend_yml
-    pr_validation_yml --> pr_validation_yml_deploy_pr_code
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_code
-    sub_deploy_code_yml --> sub_deploy_code_yml_deploy_webapp
-    sub_deploy_code_yml --> sub_deploy_code_yml_deploy_api
-    sub_deploy_code_yml --> sub_deploy_code_yml_deploy_dataflows_app
-    sub_deploy_code_yml --> sub_deploy_code_yml_endpoint_test_application
-    reusable_endpoint_test_yml --> reusable_endpoint_test_yml_endpoint_test_application
-    sub_deploy_code_yml_endpoint_test_application --> reusable_endpoint_test_yml
-    sub_deploy_code_yml --> sub_deploy_code_yml_enable_access
-    sub_deploy_code_slot_yml_deploy_code --> sub_deploy_code_yml
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_webapp_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_api_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_dataflows_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_endpoint_test_application_slot
-    sub_deploy_code_slot_yml_endpoint_test_application_slot --> reusable_endpoint_test_yml
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_execute_e2e_test
-    reusable_e2e_yml --> reusable_e2e_yml_playwright_e2e_test
-    sub_deploy_code_slot_yml_execute_e2e_test --> reusable_e2e_yml
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_swap_webapp_deployment_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_swap_nodeapi_deployment_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_swap_dataflows_app_deployment_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_endpoint_test_application_post_swap
-    sub_deploy_code_slot_yml_endpoint_test_application_post_swap --> reusable_endpoint_test_yml
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_enable_access
-    pr_validation_yml_deploy_pr_code --> sub_deploy_code_slot_yml
-    pr_validation_yml --> pr_validation_yml_execute_pr_e2e
-    pr_validation_yml_execute_pr_e2e --> reusable_e2e_yml
+    pr_validation_yml --> pr_validation_yml_run_e2e_tests
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -170,38 +104,7 @@ flowchart LR
     class pr_validation_yml_setup job
     class reusable_build_info_yml reusable
     class reusable_build_info_yml_build_info job
-    class pr_validation_yml_build job
-    class sub_build_yml reusable
-    class sub_build_yml_see_slot_name job
-    class sub_build_yml_build_frontend_predeployment job
-    class reusable_build_frontend_yml reusable
-    class reusable_build_frontend_yml_build_frontend job
-    class sub_build_yml_backend job
-    class pr_validation_yml_build_frontend_deployment job
-    class pr_validation_yml_deploy_pr_code job
-    class sub_deploy_code_slot_yml reusable
-    class sub_deploy_code_slot_yml_deploy_code job
-    class sub_deploy_code_yml reusable
-    class sub_deploy_code_yml_deploy_webapp job
-    class sub_deploy_code_yml_deploy_api job
-    class sub_deploy_code_yml_deploy_dataflows_app job
-    class sub_deploy_code_yml_endpoint_test_application job
-    class reusable_endpoint_test_yml reusable
-    class reusable_endpoint_test_yml_endpoint_test_application job
-    class sub_deploy_code_yml_enable_access job
-    class sub_deploy_code_slot_yml_deploy_webapp_slot job
-    class sub_deploy_code_slot_yml_deploy_api_slot job
-    class sub_deploy_code_slot_yml_deploy_dataflows_slot job
-    class sub_deploy_code_slot_yml_endpoint_test_application_slot job
-    class sub_deploy_code_slot_yml_execute_e2e_test job
-    class reusable_e2e_yml reusable
-    class reusable_e2e_yml_playwright_e2e_test job
-    class sub_deploy_code_slot_yml_swap_webapp_deployment_slot job
-    class sub_deploy_code_slot_yml_swap_nodeapi_deployment_slot job
-    class sub_deploy_code_slot_yml_swap_dataflows_app_deployment_slot job
-    class sub_deploy_code_slot_yml_endpoint_test_application_post_swap job
-    class sub_deploy_code_slot_yml_enable_access job
-    class pr_validation_yml_execute_pr_e2e job
+    class pr_validation_yml_run_e2e_tests job
 ```
 
 ### Push Triggered Workflows
@@ -1374,7 +1277,7 @@ flowchart LR
   - Jobs: 3
 - **Pull Request E2E Validation** (`pr-validation.yml`)
   - Triggers: pull_request
-  - Jobs: 5
+  - Jobs: 2
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
   - Jobs: 10
