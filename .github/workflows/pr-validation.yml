@@ -89,6 +89,9 @@ jobs:
           pull_base_image "${REGISTRY}/e2e-base-azure-storage-azurite-latest"  "mcr.microsoft.com/azure-storage/azurite:latest"
 
       - name: Run E2E Tests
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
         run: npm run test:e2e -- --reseed
 
       - name: Upload Playwright Report
