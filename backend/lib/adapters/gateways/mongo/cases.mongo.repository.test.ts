@@ -295,7 +295,7 @@ describe('Cases repository', () => {
           ...and(
             doc('documentType').equals('SYNCED_CASE'),
             doc('chapter').contains(predicate.chapters),
-            doc('status').notEqual('MOVED'),
+            doc('movedToCaseId').notExists(),
           ),
         },
         {
@@ -344,7 +344,7 @@ describe('Cases repository', () => {
             doc('documentType').equals('SYNCED_CASE'),
             doc('caseId').contains(predicate.caseIds),
             doc('chapter').contains(predicate.chapters),
-            doc('status').notEqual('MOVED'),
+            doc('movedToCaseId').notExists(),
           ),
         },
         {
@@ -397,7 +397,7 @@ describe('Cases repository', () => {
             doc('caseId').contains(predicate.caseIds),
             doc('chapter').contains(predicate.chapters),
             doc('caseId').notContains(predicate.excludedCaseIds),
-            doc('status').notEqual('MOVED'),
+            doc('movedToCaseId').notExists(),
           ),
         },
         {
@@ -998,7 +998,7 @@ describe('Cases repository', () => {
       values: [
         { condition: 'EQUALS', leftOperand: { name: 'caseId' }, rightOperand: bCase.caseId },
         { condition: 'EQUALS', leftOperand: { name: 'documentType' }, rightOperand: 'SYNCED_CASE' },
-        { condition: 'NOT_EQUALS', leftOperand: { name: 'status' }, rightOperand: 'MOVED' },
+        { condition: 'EXISTS', leftOperand: { name: 'movedToCaseId' }, rightOperand: false },
       ],
     });
   });
@@ -1039,7 +1039,7 @@ describe('Cases repository', () => {
       const expectedQuery = and(
         doc('documentType').equals('SYNCED_CASE'),
         doc('updatedOn').lessThan(cutoffDate),
-        doc('status').notEqual('MOVED'),
+        doc('movedToCaseId').notExists(),
       );
       const expectedSort = QueryBuilder.orderBy<SyncedCase & { _id: string }>(['_id', 'ASCENDING']);
 
@@ -1056,7 +1056,7 @@ describe('Cases repository', () => {
       const expectedQuery = and(
         doc('documentType').equals('SYNCED_CASE'),
         doc('updatedOn').lessThan(cutoffDate),
-        doc('status').notEqual('MOVED'),
+        doc('movedToCaseId').notExists(),
         doc('_id').greaterThan('previous-id'),
       );
       const expectedSort = QueryBuilder.orderBy<SyncedCase & { _id: string }>(['_id', 'ASCENDING']);
@@ -1079,9 +1079,8 @@ describe('Cases repository', () => {
       const actualQuery = findSpy.mock.calls[0][0];
       const queryString = JSON.stringify(actualQuery);
 
-      expect(queryString).toContain('status');
-      expect(queryString).toContain('MOVED');
-      expect(queryString).toContain('NOT_EQUALS');
+      expect(queryString).toContain('movedToCaseId');
+      expect(queryString).toContain('EXISTS');
     });
 
     test('should wrap and rethrow adapter errors', async () => {
@@ -1124,11 +1123,6 @@ describe('Cases repository', () => {
 
   describe('markAsMoved', () => {
     test.each([
-      {
-        description: 'should set status field to MOVED',
-        field: 'status',
-        expectedValue: 'MOVED',
-      },
       {
         description: 'should set movedToCaseId field with correct value',
         field: 'movedToCaseId',
@@ -1187,7 +1181,7 @@ describe('Cases repository', () => {
           limit: 25,
           offset: 0,
         },
-        expectedQueryContains: ['status', 'MOVED', 'NOT_EQUALS'],
+        expectedQueryContains: ['movedToCaseId', 'EXISTS'],
       },
       {
         description: 'search with chapter filter should exclude MOVED',
@@ -1196,7 +1190,7 @@ describe('Cases repository', () => {
           limit: 25,
           offset: 0,
         },
-        expectedQueryContains: ['chapter', 'status', 'MOVED'],
+        expectedQueryContains: ['chapter', 'movedToCaseId', 'EXISTS'],
       },
       {
         description: 'search with caseIds filter should exclude MOVED',
@@ -1205,7 +1199,7 @@ describe('Cases repository', () => {
           limit: 25,
           offset: 0,
         },
-        expectedQueryContains: ['caseId', 'status', 'MOVED'],
+        expectedQueryContains: ['caseId', 'movedToCaseId', 'EXISTS'],
       },
       {
         description: 'search with divisionCodes filter should exclude MOVED',
@@ -1214,7 +1208,7 @@ describe('Cases repository', () => {
           limit: 25,
           offset: 0,
         },
-        expectedQueryContains: ['courtDivisionCode', 'status', 'MOVED'],
+        expectedQueryContains: ['courtDivisionCode', 'movedToCaseId', 'EXISTS'],
       },
       {
         description: 'search with multiple filters should exclude MOVED',
@@ -1231,8 +1225,8 @@ describe('Cases repository', () => {
           'chapter',
           'courtDivisionCode',
           'caseNumber',
-          'status',
-          'MOVED',
+          'movedToCaseId',
+          'EXISTS',
         ],
       },
     ])('$description', async ({ predicate, expectedQueryContains }) => {
@@ -1274,7 +1268,7 @@ describe('Cases repository', () => {
     });
 
     // Phase 2: Repository Query Level Tests
-    test('addConditions should add MOVED status exclusion condition', () => {
+    test('addConditions should exclude cases with movedToCaseId set', () => {
       const predicate: CasesSearchPredicate = {
         chapters: ['15'],
         limit: 25,
@@ -1285,9 +1279,8 @@ describe('Cases repository', () => {
 
       const queryString = JSON.stringify(conditions);
 
-      expect(queryString).toContain('status');
-      expect(queryString).toContain('MOVED');
-      expect(queryString).toContain('NOT_EQUALS');
+      expect(queryString).toContain('movedToCaseId');
+      expect(queryString).toContain('EXISTS');
     });
 
     test.each([
@@ -1298,7 +1291,7 @@ describe('Cases repository', () => {
           limit: 25,
           offset: 0,
         },
-        expectedQueryContains: ['status', 'MOVED'],
+        expectedQueryContains: ['movedToCaseId', 'EXISTS'],
       },
       {
         description: 'searchCasesWithPhoneticTokens with filters should exclude MOVED',
@@ -1309,7 +1302,7 @@ describe('Cases repository', () => {
           limit: 25,
           offset: 0,
         },
-        expectedQueryContains: ['status', 'MOVED', 'chapter'],
+        expectedQueryContains: ['movedToCaseId', 'EXISTS', 'chapter'],
       },
     ])('$description', async ({ predicate, expectedQueryContains }) => {
       const expectedSyncedCaseArray: SyncedCase[] = [
@@ -1332,7 +1325,7 @@ describe('Cases repository', () => {
       expect(result.data).toEqual(expectedSyncedCaseArray);
     });
 
-    test('getSyncedCase should exclude MOVED cases', async () => {
+    test('getSyncedCase should exclude cases with movedToCaseId set', async () => {
       const findOneSpy = vi
         .spyOn(MongoCollectionAdapter.prototype, 'findOne')
         .mockResolvedValue(null);
@@ -1344,9 +1337,8 @@ describe('Cases repository', () => {
       const query = findOneSpy.mock.calls[0][0];
       const queryString = JSON.stringify(query);
 
-      expect(queryString).toContain('status');
-      expect(queryString).toContain('MOVED');
-      expect(queryString).toContain('NOT_EQUALS');
+      expect(queryString).toContain('movedToCaseId');
+      expect(queryString).toContain('EXISTS');
     });
 
     // Phase 4: Integration/Edge Cases - verify MOVED filter works with complex predicates
@@ -1358,7 +1350,7 @@ describe('Cases repository', () => {
           limit: 25,
           offset: 0,
         },
-        expectedQueryContains: ['closedDate', 'status', 'MOVED'],
+        expectedQueryContains: ['closedDate', 'movedToCaseId', 'EXISTS'],
       },
       {
         description: 'searchCases with includeOnlyUnassigned should exclude MOVED',
@@ -1368,7 +1360,7 @@ describe('Cases repository', () => {
           limit: 25,
           offset: 0,
         },
-        expectedQueryContains: ['status', 'MOVED'],
+        expectedQueryContains: ['movedToCaseId', 'EXISTS'],
       },
       {
         description:
@@ -1380,7 +1372,7 @@ describe('Cases repository', () => {
           limit: 25,
           offset: 0,
         },
-        expectedQueryContains: ['caseId', 'status', 'MOVED'],
+        expectedQueryContains: ['caseId', 'movedToCaseId', 'EXISTS'],
       },
     ])('$description', async ({ predicate, expectedQueryContains }) => {
       const expectedSyncedCaseArray: SyncedCase[] = [
@@ -1461,7 +1453,7 @@ describe('Cases repository', () => {
         doc('documentType').equals('SYNCED_CASE'),
         doc('dxtrId').equals(dxtrId),
         doc('courtId').equals(courtId),
-        doc('status').notEqual('MOVED'),
+        doc('movedToCaseId').notExists(),
       );
       expect(actualQuery).toEqual(expectedQuery);
     });

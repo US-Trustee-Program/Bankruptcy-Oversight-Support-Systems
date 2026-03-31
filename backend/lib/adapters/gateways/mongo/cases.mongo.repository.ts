@@ -338,7 +338,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
 
     // Exclude MOVED cases universally from case searches
-    conditions.push(doc('status').notEqual('MOVED'));
+    conditions.push(doc('movedToCaseId').notExists());
 
     return conditions;
   }
@@ -521,7 +521,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     const query = and(
       doc('caseId').equals(caseId),
       doc('documentType').equals('SYNCED_CASE'),
-      doc('status').notEqual('MOVED'),
+      doc('movedToCaseId').notExists(),
     );
     try {
       return await this.getAdapter<SyncedCase>().findOne(query);
@@ -541,7 +541,6 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     try {
       await this.updateManyByQuery(query, {
         $set: {
-          status: 'MOVED',
           movedToCaseId,
           movedOn,
         },
@@ -593,7 +592,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const conditions = [
         doc('documentType').equals('SYNCED_CASE'),
         doc('updatedOn').lessThan(cutoffDate),
-        doc('status').notEqual('MOVED'),
+        doc('movedToCaseId').notExists(),
       ];
       if (lastId) {
         conditions.push(doc('_id').greaterThan(lastId));
@@ -646,7 +645,10 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   > {
     try {
       const doc = using<SyncedCase>();
-      const query = and(doc('documentType').equals('SYNCED_CASE'), doc('status').notEqual('MOVED'));
+      const query = and(
+        doc('documentType').equals('SYNCED_CASE'),
+        doc('movedToCaseId').notExists(),
+      );
       const cases = await this.getAdapter<SyncedCase>().find(query);
 
       const groups = new Map<string, { dxtrId: string; courtId: string; caseIds: string[] }>();
@@ -671,7 +673,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         doc('documentType').equals('SYNCED_CASE'),
         doc('dxtrId').equals(dxtrId),
         doc('courtId').equals(courtId),
-        doc('status').notEqual('MOVED'),
+        doc('movedToCaseId').notExists(),
       );
       const adapter = this.getAdapter<SyncedCase>();
       const results = await adapter.find(query, undefined, 1);
