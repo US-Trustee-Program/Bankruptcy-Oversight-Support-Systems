@@ -77,10 +77,10 @@ All three images are stored as multi-arch manifest lists (amd64 + arm64) so both
 These images do not update automatically. Refresh them manually when upstream versions change:
 
 ```bash
-export GITHUB_TOKEN=<your-token>   # requires write:packages scope
-export GITHUB_ACTOR=<your-github-username>
 npm run podman:cache-images
 ```
+
+Requires `gh auth login` (uses the gh CLI token automatically). The token must have `write:packages` scope — if your current gh session lacks it, re-authenticate with `gh auth login --scopes write:packages`.
 
 After pushing refreshed images, update the image tags in `podman-compose.yml` if the upstream version changed (e.g., `mongo:7.0` → `mongo:8.0`).
 

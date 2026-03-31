@@ -38,12 +38,16 @@ cache_tag() {
 
 echo "Logging in to ghcr.io..."
 if [ -z "${GITHUB_TOKEN:-}" ]; then
-  echo "GITHUB_TOKEN is not set."
-  echo "  export GITHUB_TOKEN=<token>   # requires write:packages scope"
-  echo "  export GITHUB_ACTOR=<github-username>"
+  GITHUB_TOKEN=$(gh auth token 2>/dev/null) || true
+  GITHUB_ACTOR=$(gh api user --jq '.login' 2>/dev/null) || true
+fi
+if [ -z "${GITHUB_TOKEN:-}" ]; then
+  echo "Could not obtain a GitHub token. Either:"
+  echo "  - Log in with: gh auth login"
+  echo "  - Or set GITHUB_TOKEN manually (requires write:packages scope)"
   exit 1
 fi
-echo "${GITHUB_TOKEN}" | podman login ghcr.io --username "${GITHUB_ACTOR:-$(git config user.name)}" --password-stdin
+echo "${GITHUB_TOKEN}" | podman login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
 echo ""
 
 # Push a multi-arch manifest list for images that have both amd64 and arm64 builds

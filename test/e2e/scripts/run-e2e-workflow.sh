@@ -81,18 +81,25 @@ cleanup() {
 # Register cleanup on exit
 trap cleanup EXIT
 
-# Step 1a: Pull base images from ghcr.io cache (if GITHUB_TOKEN is set)
+# Step 1a: Pull base images from ghcr.io cache
+echo -e "${BLUE}🔐 Step 1a: Pulling base images from ghcr.io cache...${NC}"
+echo ""
+# Use GITHUB_TOKEN if set (CI), otherwise fall back to gh CLI (local dev)
+if [ -z "${GITHUB_TOKEN:-}" ]; then
+    GITHUB_TOKEN=$(gh auth token 2>/dev/null) || true
+    GITHUB_ACTOR=$(gh api user --jq '.login' 2>/dev/null) || true
+fi
 if [ -n "${GITHUB_TOKEN:-}" ]; then
-    echo -e "${BLUE}🔐 Step 1a: Pulling base images from ghcr.io cache...${NC}"
-    echo ""
     echo "${GITHUB_TOKEN}" | podman login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
     REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
     podman pull "${REGISTRY}/e2e-base-mongo-7.0" || true
     podman pull "${REGISTRY}/e2e-base-azure-sql-edge-latest" || true
     podman pull "${REGISTRY}/e2e-base-azure-storage-azurite-latest" || true
     echo -e "${GREEN}✅ Base images pulled${NC}"
-    echo ""
+else
+    echo -e "${YELLOW}⚠️  Not logged in to gh CLI — skipping ghcr.io pull, podman will fetch upstream${NC}"
 fi
+echo ""
 
 # Step 1: Build deps image (cached) and service images
 echo -e "${BLUE}📦 Step 1: Building images and starting services...${NC}"
