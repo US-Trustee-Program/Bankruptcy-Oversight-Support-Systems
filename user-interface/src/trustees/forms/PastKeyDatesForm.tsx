@@ -14,15 +14,19 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 
 type PastKeyDatesFormState = {
+  pastBackgroundQuestion: string;
   pastFieldExam: string;
   pastAudit: string;
+  pastTprSubmission: string;
   upcomingFieldExam: string;
   upcomingIndependentAuditRequired: string;
 };
 
 const EMPTY_FORM: PastKeyDatesFormState = {
+  pastBackgroundQuestion: '',
   pastFieldExam: '',
   pastAudit: '',
+  pastTprSubmission: '',
   upcomingFieldExam: '',
   upcomingIndependentAuditRequired: '',
 };
@@ -44,8 +48,10 @@ function buildUpcomingKeyDatesInput(
   return {
     trusteeId: ids.trusteeId,
     appointmentId: ids.appointmentId,
+    pastBackgroundQuestion: form.pastBackgroundQuestion || null,
     pastFieldExam: form.pastFieldExam || null,
     pastAudit: form.pastAudit || null,
+    pastTprSubmission: form.pastTprSubmission || null,
     tprReviewPeriodStart: original?.tprReviewPeriodStart
       ? isoToSentinel(original.tprReviewPeriodStart)
       : null,
@@ -87,8 +93,10 @@ export default function PastKeyDatesForm() {
         if (data) {
           setOriginal(data);
           setForm({
+            pastBackgroundQuestion: data.pastBackgroundQuestion ?? '',
             pastFieldExam: data.pastFieldExam ?? '',
             pastAudit: data.pastAudit ?? '',
+            pastTprSubmission: data.pastTprSubmission ?? '',
             upcomingFieldExam: data.upcomingFieldExam ?? '',
             upcomingIndependentAuditRequired: data.upcomingIndependentAuditRequired ?? '',
           });
@@ -101,6 +109,12 @@ export default function PastKeyDatesForm() {
         setIsLoading(false);
       });
   }, [trusteeId, appointmentId]);
+
+  function handleSimpleChange(field: 'pastBackgroundQuestion' | 'pastTprSubmission') {
+    return (ev: React.ChangeEvent<HTMLInputElement>) => {
+      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
+    };
+  }
 
   function handleChange(field: 'pastFieldExam' | 'pastAudit') {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
@@ -145,6 +159,13 @@ export default function PastKeyDatesForm() {
     <div className="edit-upcoming-key-dates" data-testid="edit-past-key-dates">
       <h3>Edit Past Key Dates</h3>
       <DatePicker
+        id="past-background-question"
+        label="Background Question"
+        value={form.pastBackgroundQuestion}
+        onChange={handleSimpleChange('pastBackgroundQuestion')}
+        disableMax
+      />
+      <DatePicker
         id="past-field-exam"
         label="Field Exam"
         value={form.pastFieldExam}
@@ -156,6 +177,13 @@ export default function PastKeyDatesForm() {
         label="Audit"
         value={form.pastAudit}
         onChange={handleChange('pastAudit')}
+        disableMax
+      />
+      <DatePicker
+        id="past-tpr-submission"
+        label="TPR Submission"
+        value={form.pastTprSubmission}
+        onChange={handleSimpleChange('pastTprSubmission')}
         disableMax
       />
       <div className="usa-button-group">

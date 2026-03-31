@@ -50,8 +50,10 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
     return isoDate ? isoToMMDDYYYY(isoDate) : NO_DATE;
   }
 
+  const backgroundQuestion = formatDateOrDefault(data?.pastBackgroundQuestion);
   const fieldExam = formatDateOrDefault(data?.pastFieldExam);
   const audit = formatDateOrDefault(data?.pastAudit);
+  const tprSubmission = formatDateOrDefault(data?.pastTprSubmission);
 
   if (isLoading) {
     return <LoadingSpinner id="past-key-dates-loading" />;
@@ -76,11 +78,18 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
             )}
           </div>
           <ul className="past-key-dates-list" data-testid="past-key-dates-list">
+            <li data-testid="past-background-question-row">
+              <span className="past-key-dates-label">Background Question:</span>{' '}
+              {backgroundQuestion}
+            </li>
             <li data-testid="past-field-exam-row">
               <span className="past-key-dates-label">Field Exam:</span> {fieldExam}
             </li>
             <li data-testid="past-audit-row">
               <span className="past-key-dates-label">Audit:</span> {audit}
+            </li>
+            <li data-testid="past-tpr-submission-row">
+              <span className="past-key-dates-label">TPR Submission:</span> {tprSubmission}
             </li>
           </ul>
         </div>

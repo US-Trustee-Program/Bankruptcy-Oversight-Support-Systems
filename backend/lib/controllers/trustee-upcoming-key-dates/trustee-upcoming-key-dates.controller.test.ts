@@ -135,8 +135,10 @@ describe('TrusteeUpcomingKeyDatesController', () => {
       return {
         trusteeId: 'trustee-001',
         appointmentId: 'appointment-001',
+        pastBackgroundQuestion: null,
         pastFieldExam: '2026-06-15',
         pastAudit: null,
+        pastTprSubmission: null,
         tprReviewPeriodStart: null,
         tprReviewPeriodEnd: null,
         tprDue: null,
