@@ -81,11 +81,6 @@ cleanup() {
 # Register cleanup on exit
 trap cleanup EXIT
 
-# Pre-start cleanup: remove any stale containers from a previous run
-echo -e "${BLUE}🧹 Cleaning up any stale containers from a previous run...${NC}"
-podman rm -f cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e cams-playwright-e2e 2>/dev/null || true
-echo ""
-
 # Step 1: Build deps image (cached) and service images
 echo -e "${BLUE}📦 Step 1: Building images and starting services...${NC}"
 echo ""
@@ -115,9 +110,14 @@ echo ""
 echo -e "${GREEN}✅ Images built${NC}"
 echo ""
 
+# Clean up any containers that were created as a side effect of the build
+echo -e "${BLUE}🧹 Cleaning up any containers from the build step...${NC}"
+podman rm -f cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e cams-playwright-e2e 2>/dev/null || true
+echo ""
+
 # Start MongoDB, SQL Server, backend, and frontend services
 echo "Starting MongoDB, SQL Server, backend, and frontend services..."
-podman-compose up -d mongodb sqlserver backend frontend > /dev/null
+podman-compose up -d --force-recreate mongodb sqlserver backend frontend > /dev/null
 CLEANUP_NEEDED=true
 echo ""
 echo -e "${GREEN}✅ Services started${NC}"
@@ -167,7 +167,7 @@ if [ "$RESEED_DB" = true ]; then
     echo "Seeding MongoDB..."
     # Run seed script from playwright container which has full codebase
     # Override MONGO_CONNECTION_STRING to use localhost (host network mode)
-    if podman-compose run --rm \
+    if podman-compose run --rm --no-deps \
       -e MONGO_CONNECTION_STRING="mongodb://localhost:27017/cams-e2e?retrywrites=false" \
       -e MSSQL_HOST=localhost \
       playwright npm run seed; then
@@ -180,7 +180,7 @@ if [ "$RESEED_DB" = true ]; then
 
     # Seed SQL Server
     echo "Seeding SQL Server..."
-    if podman-compose run --rm \
+    if podman-compose run --rm --no-deps \
       -e MSSQL_HOST=localhost \
       -e MSSQL_USER=sa \
       -e MSSQL_PASS="${MSSQL_PASS}" \
@@ -209,7 +209,7 @@ fi
 # and load data pages into the buffer pool before Playwright starts.
 echo -e "${BLUE}🔥 Step 2.7: Warming up SQL Server plan cache...${NC}"
 echo ""
-podman-compose run --rm \
+podman-compose run --rm --no-deps \
   -e MSSQL_HOST=localhost \
   -e MSSQL_USER=sa \
   -e MSSQL_PASS="${MSSQL_PASS}" \
