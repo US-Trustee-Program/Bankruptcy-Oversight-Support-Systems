@@ -6,7 +6,7 @@ services:
   azurite:
     image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-azure-storage-azurite-latest
     container_name: cams-azurite-e2e
-    command: azurite --skipApiVersionCheck --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    command: azurite --skipApiVersionCheck --loose --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
     ports:
       - "10000:10000"
       - "10001:10001"
