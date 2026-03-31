@@ -164,6 +164,11 @@ if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
     echo ""
 fi
 
+# TEMPORARY: Log frontend startup output to verify envToConfig.js ran correctly
+echo -e "${BLUE}🔍 Frontend container logs (last 20 lines):${NC}"
+podman logs cams-frontend-e2e 2>&1 | tail -20
+echo ""
+
 # Step 2.5: Clear and seed databases (optional)
 if [ "$RESEED_DB" = true ]; then
     echo -e "${BLUE}🌱 Clearing and seeding E2E databases...${NC}"
