@@ -260,7 +260,7 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
         }
         {
           key: {
-            keys: ['status']
+            keys: ['movedToCaseId']
           }
           options: {
             sparse: true

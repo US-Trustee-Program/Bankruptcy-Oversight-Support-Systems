@@ -33,12 +33,8 @@ describe('DivisionChangeCleanupUseCase', () => {
   });
 
   describe('cleanupOrphanedCase orchestration', () => {
-    test('should return 0 and skip cleanup when case is already MOVED', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue({
-        caseId: orphanedCaseId,
-        documentType: 'SYNCED_CASE',
-        status: 'MOVED',
-      } as never);
+    test('should return 0 and skip cleanup when case is not found (already moved)', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(null as never);
       const markAsMovedSpy = vi.spyOn(MockMongoRepository.prototype, 'markAsMoved');
 
       const result = await DivisionChangeCleanupUseCase.cleanupOrphanedCase(

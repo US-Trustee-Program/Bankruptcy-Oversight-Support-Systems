@@ -90,7 +90,7 @@ export class DivisionChangeCleanupUseCase {
     try {
       const casesRepo = factory.getCasesRepository(context);
       const existing = await casesRepo.getSyncedCase(orphanedCaseId);
-      if (!existing || existing.status === 'MOVED') {
+      if (!existing) {
         context.logger.info(MODULE_NAME, `Case ${orphanedCaseId} already cleaned up, skipping`);
         return 0;
       }

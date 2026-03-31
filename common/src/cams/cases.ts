@@ -176,7 +176,6 @@ export type SyncedCase = DxtrCase &
     documentType: 'SYNCED_CASE';
     id?: string;
     trusteeId?: string;
-    status?: 'MOVED';
     movedToCaseId?: string;
     movedOn?: string;
   };
