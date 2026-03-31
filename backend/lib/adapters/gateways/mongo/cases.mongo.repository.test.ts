@@ -1391,4 +1391,75 @@ describe('Cases repository', () => {
       expect(result.data).toEqual(expectedSyncedCaseArray);
     });
   });
+
+  describe('findSyncedCaseByDxtrId', () => {
+    test('should return SYNCED_CASE when found by dxtrId and courtId', async () => {
+      const dxtrId = '12345';
+      const courtId = '081';
+      const expectedCase = MockData.getSyncedCase({
+        override: { caseId: caseId1, dxtrId, courtId },
+      });
+
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([expectedCase]);
+
+      const result = await repo.findSyncedCaseByDxtrId(dxtrId, courtId);
+
+      expect(findSpy).toHaveBeenCalled();
+      expect(result).toEqual(expectedCase);
+
+      const actualQuery = findSpy.mock.calls[0][0];
+      const queryString = JSON.stringify(actualQuery);
+      expect(queryString).toContain('documentType');
+      expect(queryString).toContain('SYNCED_CASE');
+      expect(queryString).toContain('dxtrId');
+      expect(queryString).toContain('courtId');
+    });
+
+    test('should return undefined when no SYNCED_CASE exists for dxtrId/courtId', async () => {
+      const dxtrId = 'nonexistent';
+      const courtId = '999';
+
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repo.findSyncedCaseByDxtrId(dxtrId, courtId);
+
+      expect(findSpy).toHaveBeenCalled();
+      expect(result).toBeUndefined();
+    });
+
+    test('should only return SYNCED_CASE documentType (not other case documents)', async () => {
+      const dxtrId = '12345';
+      const courtId = '081';
+      const syncedCase = MockData.getSyncedCase({
+        override: { caseId: caseId1, dxtrId, courtId, documentType: 'SYNCED_CASE' },
+      });
+
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([syncedCase]);
+
+      await repo.findSyncedCaseByDxtrId(dxtrId, courtId);
+
+      expect(findSpy).toHaveBeenCalled();
+      const actualQuery = findSpy.mock.calls[0][0];
+      const doc = using<SyncedCase>();
+      const expectedQuery = and(
+        doc('documentType').equals('SYNCED_CASE'),
+        doc('dxtrId').equals(dxtrId),
+        doc('courtId').equals(courtId),
+      );
+      expect(actualQuery).toEqual(expectedQuery);
+    });
+
+    test('should wrap and rethrow adapter errors', async () => {
+      expect.assertions(1);
+      await expectAdapterErrorToBeWrapped(
+        'find',
+        () => repo.findSyncedCaseByDxtrId('12345', '081'),
+        [],
+      );
+    });
+  });
 });

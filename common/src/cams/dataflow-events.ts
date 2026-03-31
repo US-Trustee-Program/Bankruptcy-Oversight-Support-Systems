@@ -28,6 +28,10 @@ export type CaseSyncEvent = {
   bCase?: DxtrCase;
   error?: unknown;
   retryCount?: number;
+  divisionChange?: {
+    orphanedCaseId: string;
+    currentCaseId: string;
+  };
 };
 
 /**
