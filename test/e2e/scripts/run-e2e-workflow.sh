@@ -111,30 +111,18 @@ fi
 echo "Building service images..."
 podman build -t e2e_backend:latest -f Dockerfile.backend ../../
 podman build -t e2e_frontend:latest -f Dockerfile.frontend ../../
-podman build -t e2e_playwright:latest -f Dockerfile.playwright ../../
+
+# Extract Playwright version from package.json and pass to Dockerfile
+PW_VERSION=$(node -p "require('./package.json').devDependencies['@playwright/test'].replace(/[\^~]/g, '')")
+echo "🔎 Using Playwright version: $PW_VERSION"
+podman build --build-arg PLAYWRIGHT_VERSION="$PW_VERSION" -t e2e_playwright:latest -f Dockerfile.playwright ../../
 echo ""
 echo -e "${GREEN}✅ Images built${NC}"
 echo ""
 
-# Tear down any containers/networks left from the build step before starting fresh
-echo -e "${BLUE}🧹 Tearing down any containers from the build step...${NC}"
-# 1. Standard compose shutdown
+# Clean up any stale containers from previous runs
 podman-compose down 2>/dev/null || true
-
-# 2. Force removal of specific container names to prevent 125 errors
-podman rm -f cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
-
-# 3. Prune the specific e2e network if it's stuck
-podman network rm e2e_cams-e2e 2>/dev/null || true
-echo "Finished removing stale containers and network"
-# 2. Verify they are gone
-STALE_CONTAINERS=$(podman ps -aq --filter "name=cams-.*-e2e")
-if [ -n "$STALE_CONTAINERS" ]; then
-    echo -e "${YELLOW}⚠️ Warning: Some containers still exist, attempting deep prune...${NC}"
-    podman rm -v -f "$STALE_CONTAINERS" 2>/dev/null || true
-else
-    echo -e "${GREEN}✅ Environment is clean.${NC}"
-fi
+echo ""
 
 # Start all services (azurite must be healthy before backend starts)
 echo "Starting services..."
