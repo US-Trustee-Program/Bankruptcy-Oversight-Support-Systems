@@ -109,8 +109,8 @@ fi
 
 # Build service images (thin layers on top of built — only CMD/WORKDIR)
 echo "Building service images..."
-podman build -t e2e_backend:latest -f Dockerfile.backend ../../
-podman build -t e2e_frontend:latest -f Dockerfile.frontend ../../
+podman build --no-cache -t e2e_backend:latest -f Dockerfile.backend ../../
+podman build --no-cache -t e2e_frontend:latest -f Dockerfile.frontend ../../
 
 # Extract Playwright version from package.json and pass to Dockerfile
 PW_VERSION=$(node -p "require('./package.json').devDependencies['@playwright/test'].replace(/[\^~]/g, '')")

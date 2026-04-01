@@ -1,4 +1,5 @@
 # Backend API Dockerfile for E2E Testing
+# Cache bust: removed wait script, using service_healthy dependency instead
 FROM localhost/e2e_built:latest
 
 WORKDIR /app/backend/function-apps/api
