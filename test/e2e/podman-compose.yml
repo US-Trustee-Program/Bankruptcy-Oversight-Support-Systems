@@ -66,8 +66,9 @@ services:
   # Uses host network so AzureWebJobsStorage can use UseDevelopmentStorage=true,
   # which requires 127.0.0.1 and bypasses SharedKey HMAC auth entirely — avoiding
   # a known incompatibility between Azure Functions extension bundle v4 and Azurite.
-  # All other services (MongoDB, SQL Server, Azurite) are reachable via their
-  # published host ports (127.0.0.1).
+  # MSSQL_HOST and MONGO_CONNECTION_STRING come from .env — in CI the workflow patches
+  # these to the bridge gateway IP (e.g. 10.89.0.1) since rootless Podman does not
+  # expose bridge-container published ports via localhost to host-network containers.
   backend:
     build:
       context: ../../
@@ -81,9 +82,9 @@ services:
       - DOTENV_CONFIG_SILENT=true
       - DOTENV_QUIET=true
       - COSMOS_DATABASE_NAME=${COSMOS_DATABASE_NAME}
-      - MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-e2e?retrywrites=false
+      - MONGO_CONNECTION_STRING=${MONGO_CONNECTION_STRING}
       - DATABASE_MOCK=${DATABASE_MOCK}
-      - MSSQL_HOST=localhost
+      - MSSQL_HOST=${MSSQL_HOST}
       - MSSQL_DATABASE=${MSSQL_DATABASE}
       - MSSQL_DATABASE_DXTR=${MSSQL_DATABASE_DXTR}
       - MSSQL_USER=${MSSQL_USER}
@@ -115,9 +116,11 @@ services:
       - DOTENV_QUIET=true
       - CAMS_PA11Y=false
       - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
-      - CAMS_LOGIN_PROVIDER_URL=${CAMS_LOGIN_PROVIDER_URL}
-      - CAMS_LOGIN_CLIENT_ID=${CAMS_LOGIN_CLIENT_ID}
-      - CAMS_LOGIN_PROVIDER_PARAMS=${CAMS_LOGIN_PROVIDER_PARAMS}
+      - CAMS_LOGIN_PROVIDER_CONFIG=${CAMS_LOGIN_PROVIDER_CONFIG}
+      - CAMS_SERVER_HOSTNAME=${CAMS_SERVER_HOSTNAME}
+      - CAMS_SERVER_PORT=${CAMS_SERVER_PORT}
+      - CAMS_SERVER_PROTOCOL=${CAMS_SERVER_PROTOCOL}
+      - CAMS_BASE_PATH=${CAMS_BASE_PATH}
       - CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING=
       - SLOT_NAME=${SLOT_NAME}
     depends_on:

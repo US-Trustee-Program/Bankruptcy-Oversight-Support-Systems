@@ -184,7 +184,7 @@ print_container_status() {
     podman logs --tail 5 cams-frontend-e2e 2>&1 | sed 's/^/    /' || true
     echo ""
     echo -e "${BLUE}  HTTP checks:${NC}"
-    echo "    backend  (7071): $(curl -sf http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
+    echo "    backend  (7071): $(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
     echo "    frontend (3000): $(curl -sf http://localhost:3000 > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
     echo ""
 }
@@ -197,8 +197,10 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     FRONTEND_STATUS=$(podman ps --filter "name=cams-frontend-e2e" --filter "status=running" --format "{{.Names}}" 2>/dev/null | grep -c "." || echo "0")
 
     if [ "$MONGODB_STATUS" = "1" ] && [ "$SQLSERVER_STATUS" = "1" ] && [ "$BACKEND_STATUS" = "1" ] && [ "$FRONTEND_STATUS" = "1" ]; then
-        BACKEND_HTTP=$(curl -sf http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo "ok" || echo "fail")
-        FRONTEND_HTTP=$(curl -sf http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
+        # Use --fail-with-body (-f omitted) so any HTTP response means the host is up.
+        # The /api/healthcheck returns 500 if DB checks fail but the Functions host IS ready.
+        BACKEND_HTTP=$(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo "ok" || echo "fail")
+        FRONTEND_HTTP=$(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
         if [ "$BACKEND_HTTP" = "ok" ] && [ "$FRONTEND_HTTP" = "ok" ]; then
             echo -e "${GREEN}✅ All services are healthy and responding${NC}"
             echo ""
