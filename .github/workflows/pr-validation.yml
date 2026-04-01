@@ -50,10 +50,7 @@ jobs:
         run: |  # pragma: allowlist secret
           echo "TARGET_HOST=http://localhost:3000" > .env
           echo "CAMS_LOGIN_PROVIDER=okta" >> .env
-          echo "CAMS_LOGIN_PROVIDER_URL=${{ secrets.CAMS_LOGIN_PROVIDER_URL }}" >> .env
-          echo "CAMS_LOGIN_CLIENT_ID=${{ secrets.CAMS_LOGIN_CLIENT_ID }}" >> .env
-          echo "CAMS_LOGIN_PROVIDER_PARAMS=${{ secrets.CAMS_LOGIN_PROVIDER_PARAMS }}" >> .env
-          echo "CAMS_LOGIN_PROVIDER_CONFIG=issuer=${{ secrets.CAMS_LOGIN_PROVIDER_URL }}|clientId=${{ secrets.CAMS_LOGIN_CLIENT_ID }}${{ secrets.CAMS_LOGIN_PROVIDER_PARAMS }}" >> .env
+          echo "CAMS_LOGIN_PROVIDER_CONFIG=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}" >> .env
           echo "OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }}" >> .env
           echo "OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }}" >> .env
           echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
