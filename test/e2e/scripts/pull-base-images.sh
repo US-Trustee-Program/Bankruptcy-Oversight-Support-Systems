@@ -31,15 +31,17 @@ fi
 
 echo "${GITHUB_TOKEN}" | podman login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
 
-# Pull from ghcr.io cache; on miss, pull upstream and repopulate
+# Pull from ghcr.io cache; on miss, pull upstream and repopulate.
+# Pass --force as third argument to always repull from upstream and refresh the cache.
 pull_base_image() {
     local cached="$1"
     local upstream="$2"
+    local force="${3:-}"
 
-    if podman pull "${cached}" 2>/dev/null; then
+    if [ -z "${force}" ] && podman pull "${cached}" 2>/dev/null; then
         echo "  ✓ Pulled from cache: ${cached}"
     else
-        echo "  ⚠️  Cache miss — pulling from upstream and repopulating: ${upstream}"
+        echo "  ⚠️  Pulling from upstream and repopulating cache: ${upstream}"
         podman pull --platform "${PLATFORM}" "${upstream}"
         podman tag "${upstream}" "${cached}"
         podman push "${cached}"
@@ -49,6 +51,8 @@ pull_base_image() {
 
 pull_base_image "${REGISTRY}/e2e-base-mongo-7.0"                    "mongo:7.0"
 pull_base_image "${REGISTRY}/e2e-base-azure-sql-edge-latest"         "mcr.microsoft.com/azure-sql-edge:latest"
-pull_base_image "${REGISTRY}/e2e-base-azure-storage-azurite-latest"  "mcr.microsoft.com/azure-storage/azurite:latest"
+# Force-refresh Azurite: the cached image has a SharedKey HMAC incompatibility with
+# Azure Functions extension bundle v4. Always pull upstream until cache is confirmed good.
+pull_base_image "${REGISTRY}/e2e-base-azure-storage-azurite-latest"  "mcr.microsoft.com/azure-storage/azurite:latest"  "--force"
 
 echo "✅ Base images ready"
