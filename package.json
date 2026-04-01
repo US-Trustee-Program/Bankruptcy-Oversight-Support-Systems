@@ -72,6 +72,7 @@
     "semver": "7.7.4",
     "@babel/runtime": "7.29.2",
     "node-forge": "1.4.0",
-    "path-to-regexp": "8.4.0"
+    "path-to-regexp": "8.4.0",
+    "lodash": "npm:cams-lodash-shim@4.17.21"
   }
 }

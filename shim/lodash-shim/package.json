@@ -1,5 +1,5 @@
 {
-  "name": "lodash",
+  "name": "cams-lodash-shim",
   "version": "4.17.21",
   "license": "MIT",
   "description": "Native JS shim replacing lodash to eliminate CVE vulnerabilities. Implements only the 12 functions used by @okta/okta-sdk-nodejs and node-jose.",
