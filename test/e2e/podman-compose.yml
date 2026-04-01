@@ -84,6 +84,8 @@ services:
       - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
       - SLOT_NAME=${SLOT_NAME}
       - AzureWebJobsStorage=${AZURE_WEB_JOBS_STORAGE}
+      - AzureWebJobs_Extensions_Http_Cors_AllowedOrigins=http://localhost:3000
+      - AzureWebJobs_Extensions_Http_Cors_SupportCredentials=true
     depends_on:
       azurite:
         condition: service_healthy
