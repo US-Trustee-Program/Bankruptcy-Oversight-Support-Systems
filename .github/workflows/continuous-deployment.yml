@@ -54,6 +54,12 @@ jobs:
       path: common
       node-version: ${{ vars.NODE_VERSION }}
 
+  unit-test-shim:
+    uses: ./.github/workflows/reusable-unit-test.yml
+    with:
+      path: shim/lodash-shim
+      node-version: ${{ vars.NODE_VERSION }}
+
   knip:
     uses: ./.github/workflows/reusable-knip.yml
     with:
@@ -93,6 +99,7 @@ jobs:
         unit-test-frontend,
         unit-test-backend,
         unit-test-common,
+        unit-test-shim,
         security-scan,
         knip,
       ]

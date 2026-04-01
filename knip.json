@@ -55,6 +55,11 @@
       "entry": ["**/*.ts"],
       "project": ["**/*.ts"],
       "ignore": []
+    },
+    "shim/lodash-shim": {
+      "entry": ["__tests__/**/*.test.js"],
+      "project": ["**/*.js"],
+      "ignore": []
     }
   },
   "ignoreBinaries": [

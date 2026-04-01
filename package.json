@@ -11,7 +11,8 @@
     "dev-tools",
     "test/bdd",
     "test/e2e",
-    "test/uswds"
+    "test/uswds",
+    "shim/lodash-shim"
   ],
   "scripts": {
     "build": "npm run build:backend && npm run build:user-interface",

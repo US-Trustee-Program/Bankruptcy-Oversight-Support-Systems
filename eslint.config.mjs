@@ -2,6 +2,7 @@ import { eslintJsConfig, eslintTsConfig, eslintTestConfig, eslintJsonConfig } fr
 import eslintUiTestConfig from './user-interface/eslint-ui-test.config.mjs';
 import eslintUiConfig from './user-interface/eslint-ui.config.mjs';
 import eslintNodeConfig from './user-interface/eslint-node.config.mjs';
+import globals from 'globals';
 
 const frontendSourceConfig = eslintUiConfig.map((configObject) => ({
   ...configObject,
@@ -38,6 +39,26 @@ const jsonConfig = eslintJsonConfig.map((configObject) => ({
   files: ['**/package.json'],
 }));
 
+const shimConfig = eslintJsConfig.map((configObject) => ({
+  ...configObject,
+  files: ['shim/**/*.js'],
+  languageOptions: {
+    ...configObject.languageOptions,
+    sourceType: 'commonjs',
+    globals: { ...globals.node },
+  },
+}));
+
+const shimTestConfig = eslintJsConfig.map((configObject) => ({
+  ...configObject,
+  files: ['shim/**/*.test.js'],
+  languageOptions: {
+    ...configObject.languageOptions,
+    sourceType: 'commonjs',
+    globals: { ...globals.node, ...globals.vitest },
+  },
+}));
+
 const eslintConfig = [
   {
     ignores: [
@@ -54,6 +75,8 @@ const eslintConfig = [
   ...sourceConfig,
   ...testConfig,
   ...jsConfig,
+  ...shimConfig,
+  ...shimTestConfig,
   ...nodeConfig,
   ...jsonConfig,
 ];

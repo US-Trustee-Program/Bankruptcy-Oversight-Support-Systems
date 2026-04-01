@@ -267,6 +267,7 @@ flowchart LR
     reusable_unit_test_yml_unit_test["Unit test ${{ inputs.path }}"]
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
+    continuous_deployment_yml_unit_test_shim["unit-test-shim"]
     continuous_deployment_yml_knip["knip"]
     reusable_knip_yml["reusable-knip.yml"]
     reusable_knip_yml_knip["Knip"]
@@ -329,6 +330,8 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend --> reusable_unit_test_yml
     continuous_deployment_yml --> continuous_deployment_yml_unit_test_common
     continuous_deployment_yml_unit_test_common --> reusable_unit_test_yml
+    continuous_deployment_yml --> continuous_deployment_yml_unit_test_shim
+    continuous_deployment_yml_unit_test_shim --> reusable_unit_test_yml
     continuous_deployment_yml --> continuous_deployment_yml_knip
     reusable_knip_yml --> reusable_knip_yml_knip
     continuous_deployment_yml_knip --> reusable_knip_yml
@@ -398,6 +401,7 @@ flowchart LR
     class reusable_unit_test_yml_unit_test job
     class continuous_deployment_yml_unit_test_backend job
     class continuous_deployment_yml_unit_test_common job
+    class continuous_deployment_yml_unit_test_shim job
     class continuous_deployment_yml_knip job
     class reusable_knip_yml reusable
     class reusable_knip_yml_knip job
@@ -476,6 +480,9 @@ flowchart LR
         subgraph unit_test_common_subgraph["unit-test-common"]
             unit_test_common_vars["NODE_VERSION"]
         end
+        subgraph unit_test_shim_subgraph["unit-test-shim"]
+            unit_test_shim_vars["NODE_VERSION"]
+        end
         subgraph knip_subgraph["knip"]
             knip_vars["NODE_VERSION"]
         end
@@ -506,6 +513,7 @@ flowchart LR
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
+    Variables_NODE_VERSION -.-> unit_test_shim_subgraph
     accessibility_test_subgraph ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
@@ -517,6 +525,7 @@ flowchart LR
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
     unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
+    unit_test_shim_subgraph ==>|"needs"| deploy_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
@@ -534,6 +543,7 @@ flowchart LR
     class unit_test_backend_subgraph jobSubgraph
     class unit_test_common_subgraph jobSubgraph
     class unit_test_frontend_subgraph jobSubgraph
+    class unit_test_shim_subgraph jobSubgraph
 ```
 
 ##### Deploy code for slot - Job Dependencies
@@ -803,6 +813,7 @@ flowchart LR
     reusable_unit_test_yml_unit_test["Unit test ${{ inputs.path }}"]
     continuous_deployment_yml_unit_test_backend["unit-test-backend"]
     continuous_deployment_yml_unit_test_common["unit-test-common"]
+    continuous_deployment_yml_unit_test_shim["unit-test-shim"]
     continuous_deployment_yml_knip["knip"]
     reusable_knip_yml["reusable-knip.yml"]
     reusable_knip_yml_knip["Knip"]
@@ -865,6 +876,8 @@ flowchart LR
     continuous_deployment_yml_unit_test_backend --> reusable_unit_test_yml
     continuous_deployment_yml --> continuous_deployment_yml_unit_test_common
     continuous_deployment_yml_unit_test_common --> reusable_unit_test_yml
+    continuous_deployment_yml --> continuous_deployment_yml_unit_test_shim
+    continuous_deployment_yml_unit_test_shim --> reusable_unit_test_yml
     continuous_deployment_yml --> continuous_deployment_yml_knip
     reusable_knip_yml --> reusable_knip_yml_knip
     continuous_deployment_yml_knip --> reusable_knip_yml
@@ -934,6 +947,7 @@ flowchart LR
     class reusable_unit_test_yml_unit_test job
     class continuous_deployment_yml_unit_test_backend job
     class continuous_deployment_yml_unit_test_common job
+    class continuous_deployment_yml_unit_test_shim job
     class continuous_deployment_yml_knip job
     class reusable_knip_yml reusable
     class reusable_knip_yml_knip job
@@ -1012,6 +1026,9 @@ flowchart LR
         subgraph unit_test_common_subgraph["unit-test-common"]
             unit_test_common_vars["NODE_VERSION"]
         end
+        subgraph unit_test_shim_subgraph["unit-test-shim"]
+            unit_test_shim_vars["NODE_VERSION"]
+        end
         subgraph knip_subgraph["knip"]
             knip_vars["NODE_VERSION"]
         end
@@ -1042,6 +1059,7 @@ flowchart LR
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
+    Variables_NODE_VERSION -.-> unit_test_shim_subgraph
     accessibility_test_subgraph ==>|"needs"| deploy_subgraph
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
@@ -1053,6 +1071,7 @@ flowchart LR
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
     unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
+    unit_test_shim_subgraph ==>|"needs"| deploy_subgraph
 
     classDef external fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
@@ -1070,6 +1089,7 @@ flowchart LR
     class unit_test_backend_subgraph jobSubgraph
     class unit_test_common_subgraph jobSubgraph
     class unit_test_frontend_subgraph jobSubgraph
+    class unit_test_shim_subgraph jobSubgraph
 ```
 
 ##### Deploy code for slot - Job Dependencies
@@ -1420,7 +1440,7 @@ flowchart LR
   - Jobs: 10
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
-  - Jobs: 10
+  - Jobs: 11
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
