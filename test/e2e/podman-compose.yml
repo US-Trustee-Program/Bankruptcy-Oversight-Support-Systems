@@ -66,9 +66,10 @@ services:
   # Uses host network so AzureWebJobsStorage can use UseDevelopmentStorage=true,
   # which requires 127.0.0.1 and bypasses SharedKey HMAC auth entirely — avoiding
   # a known incompatibility between Azure Functions extension bundle v4 and Azurite.
-  # MSSQL_HOST and MONGO_CONNECTION_STRING come from .env — in CI the workflow patches
-  # these to the bridge gateway IP (e.g. 10.89.0.1) since rootless Podman does not
-  # expose bridge-container published ports via localhost to host-network containers.
+  # MSSQL_HOST and MONGO_CONNECTION_STRING come from .env.
+  # The backend uses host network, so bridge-container published ports are reachable
+  # via localhost (127.0.0.1). The workflow script waits for those ports to be bound
+  # on the host before starting the backend.
   backend:
     build:
       context: ../../

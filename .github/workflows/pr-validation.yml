@@ -57,9 +57,9 @@ jobs:
           echo "OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }}" >> .env
           echo "OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }}" >> .env
           echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
-          echo "MONGO_CONNECTION_STRING=mongodb://mongodb:27017/cams-e2e?retrywrites=false" >> .env
+          echo "MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-e2e?retrywrites=false" >> .env
           echo "DATABASE_MOCK=false" >> .env
-          echo "MSSQL_HOST=sqlserver" >> .env
+          echo "MSSQL_HOST=localhost" >> .env
           echo "MSSQL_DATABASE=" >> .env
           echo "MSSQL_DATABASE_DXTR=CAMS_E2E" >> .env
           echo "MSSQL_USER=sa" >> .env
@@ -76,28 +76,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y podman podman-compose
-
-      - name: Discover bridge gateway IP for host-network containers
-        # The backend runs on host network (needed for Azurite UseDevelopmentStorage=true).
-        # Rootless Podman (slirp4netns/pasta) does NOT expose published bridge-container ports
-        # via localhost from within a host-network container. We must use the bridge gateway IP
-        # (e.g. 10.89.0.1) instead, which is how the host sees the bridge network.
-        # Pre-create the bridge network, discover its gateway, and patch MSSQL_HOST in .env.
-        working-directory: test/e2e
-        run: |
-          podman network create e2e_cams-e2e 2>/dev/null || true
-          BRIDGE_GW=$(podman network inspect e2e_cams-e2e 2>/dev/null | python3 -c "import sys,json; nets=json.load(sys.stdin); print(nets[0]['subnets'][0]['gateway'])" 2>/dev/null || echo "")
-          echo "Bridge gateway IP: ${BRIDGE_GW}"
-          if [ -z "${BRIDGE_GW}" ]; then
-            echo "WARNING: Could not determine bridge gateway IP, falling back to 10.89.0.1"
-            BRIDGE_GW="10.89.0.1"
-          fi
-          # Patch MSSQL_HOST and MONGO_CONNECTION_STRING to use the bridge gateway IP
-          # so the host-network backend container can reach bridge-network services
-          sed -i "s|^MSSQL_HOST=.*|MSSQL_HOST=${BRIDGE_GW}|" .env
-          sed -i "s|^MONGO_CONNECTION_STRING=mongodb://[^/]*/|MONGO_CONNECTION_STRING=mongodb://${BRIDGE_GW}:27017/|" .env
-          echo "Updated .env:"
-          grep -E "MSSQL_HOST|MONGO_CONNECTION_STRING" .env
 
       - name: Pull base images from ghcr.io cache
         env:

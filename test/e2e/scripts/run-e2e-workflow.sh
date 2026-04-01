@@ -133,9 +133,30 @@ podman-compose down 2>/dev/null || true
 podman rm -f cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
 echo ""
 
-# Start all services (azurite must be healthy before backend starts)
-echo "Starting services..."
-podman-compose up -d azurite mongodb sqlserver backend frontend > /dev/null
+# Start databases first and wait for their published ports to be reachable on localhost.
+# The backend runs on host network and connects to published ports via localhost — we must
+# confirm the ports are bound on the host before starting the backend, because the
+# container-internal healthcheck (</dev/tcp/localhost/PORT) can pass before the host-side
+# port binding is ready in rootless Podman.
+echo "Starting database services..."
+podman-compose up -d azurite mongodb sqlserver > /dev/null
+echo "Waiting for database ports to be reachable on localhost..."
+for port in 10000 27017 1433; do
+    waited=0
+    while ! nc -z 127.0.0.1 "$port" 2>/dev/null; do
+        sleep 2
+        waited=$((waited + 2))
+        if [ $waited -ge 60 ]; then
+            echo "WARNING: port $port not reachable after 60s, proceeding anyway"
+            break
+        fi
+    done
+    echo "  port $port: ready"
+done
+
+# Start backend and frontend
+echo "Starting backend and frontend..."
+podman-compose up -d backend frontend > /dev/null
 CLEANUP_NEEDED=true
 echo ""
 echo -e "${GREEN}✅ Services started${NC}"
