@@ -53,11 +53,11 @@ services:
     networks:
       - cams-e2e
     healthcheck:
-      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/1433' 2>/dev/null && echo OK || exit 1"]
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P \"${MSSQL_SA_PASSWORD}\" -Q 'SELECT 1' -b -o /dev/null"]
       interval: 10s
       timeout: 5s
-      retries: 20
-      start_period: 60s
+      retries: 30
+      start_period: 90s
 
   # Backend API service
   backend:
