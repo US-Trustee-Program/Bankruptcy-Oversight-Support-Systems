@@ -24,3 +24,15 @@ ignore:
     - '*':
         reason: 'Mitigated by design - we block the elements that DOMPurify handles poorly'
         expires: 2026-06-06T00:00:00.000Z
+  SNYK-JS-LODASH-15869619:
+    - '*':
+        reason: >-
+          Mitigated by design - lodash replaced entirely with a native JS shim
+          (shim/lodash-shim) containing no lodash source code. The vulnerability
+          does not exist in this codebase.
+  SNYK-JS-LODASH-15869625:
+    - '*':
+        reason: >-
+          Mitigated by design - lodash replaced entirely with a native JS shim
+          (shim/lodash-shim) containing no lodash source code. The vulnerability
+          does not exist in this codebase.
