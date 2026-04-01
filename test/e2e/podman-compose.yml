@@ -104,6 +104,8 @@ services:
     container_name: cams-frontend-e2e
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       - DOTENV_CONFIG_SILENT=true
       - DOTENV_QUIET=true
