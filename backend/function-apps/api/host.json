@@ -1,5 +1,16 @@
 {
   "version": "2.0",
+  "extensions": {
+    "http": {
+      "routePrefix": "api"
+    }
+  },
+  "host": {
+    "cors": {
+      "allowedOrigins": ["http://localhost:3000"],
+      "supportCredentials": true
+    }
+  },
   "logging": {
     "applicationInsights": {
       "enableDependencyTracking": true,
