@@ -56,7 +56,7 @@ jobs:
           echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
           echo "MONGO_CONNECTION_STRING=mongodb://mongodb:27017/cams-e2e?retrywrites=false" >> .env
           echo "DATABASE_MOCK=false" >> .env
-          echo "MSSQL_HOST=sqlserver" >> .env
+          echo "MSSQL_HOST=cams-sqlserver-e2e" >> .env
           echo "MSSQL_DATABASE=" >> .env
           echo "MSSQL_DATABASE_DXTR=CAMS_E2E" >> .env
           echo "MSSQL_USER=sa" >> .env
