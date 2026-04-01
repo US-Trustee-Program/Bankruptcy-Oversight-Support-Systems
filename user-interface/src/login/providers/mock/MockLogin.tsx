@@ -57,6 +57,7 @@ function useStateAndActions() {
 
     const response = await fetch(issuer, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sub: state.selectedRole.sub }),
     });
     const payload = await response.json();

@@ -19,6 +19,7 @@
     "serve": "npm run envToConfig && npm run build && vite preview --port 3000 --strict-port",
     "slotConfig": "node ./envToConfig.js -f configuration-${SLOT_NAME:-staging}.json",
     "start": "npm run envToConfig && vite",
+    "start:host": "CAMS_SERVER_HOSTNAME=$(ipconfig getifaddr en0) CAMS_USE_FAKE_API=true CAMS_LOGIN_PROVIDER=mock node ./envToConfig.js && vite --host",
     "start:a11y": "export CAMS_USE_FAKE_API=true && export CAMS_LOGIN_PROVIDER=none && npm run envToConfig && tsc --noEmit && vite build && vite preview --port 3000 --strict-port",
     "test": "export CAMS_USE_FAKE_API=true && vitest run",
     "test:a11y": "playwright test --reporter=list,html",
