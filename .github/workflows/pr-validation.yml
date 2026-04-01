@@ -17,6 +17,11 @@ on:
         description: 'Branch or commit SHA to run E2E tests against'
         required: true
         default: 'main'
+      force_rebuild_deps:
+        description: 'Force rebuild of e2e_deps image (bypasses ghcr.io cache)'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: pr-e2e-staging-slot

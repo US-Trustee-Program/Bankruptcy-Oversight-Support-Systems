@@ -92,9 +92,21 @@ REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
 DEPS_HASH=$(cat ../../package*.json ../../common/package*.json ../../backend/package*.json ../../user-interface/package*.json package*.json 2>/dev/null | sha256sum | cut -c1-12)
 DEPS_CACHED_IMAGE="${REGISTRY}/e2e-deps:${DEPS_HASH}"
 
-# Check local image first, then ghcr.io cache, then build from scratch
+# TODO: restore to false once the e2e pipeline is stable
+FORCE_REBUILD_DEPS=true
+
+# Check local image first, then ghcr.io cache, then build from scratch.
+# Set FORCE_REBUILD_DEPS=true to skip the cache and rebuild unconditionally.
 DEPS_EXISTS=$(podman images -q localhost/e2e_deps:latest 2>/dev/null)
-if [ -n "$DEPS_EXISTS" ]; then
+if [ "${FORCE_REBUILD_DEPS:-false}" = "true" ]; then
+    echo "Force-rebuilding deps image (FORCE_REBUILD_DEPS=true, hash: ${DEPS_HASH})..."
+    podman build -t localhost/e2e_deps:latest -f Dockerfile.deps ../../
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        podman tag localhost/e2e_deps:latest "${DEPS_CACHED_IMAGE}"
+        podman push "${DEPS_CACHED_IMAGE}"
+        echo -e "  ${GREEN}✓ Deps image rebuilt and cached: ${DEPS_CACHED_IMAGE}${NC}"
+    fi
+elif [ -n "$DEPS_EXISTS" ]; then
     echo "Using local deps image (hash: ${DEPS_HASH})"
 elif [ -n "${GITHUB_TOKEN:-}" ] && podman pull "${DEPS_CACHED_IMAGE}" 2>/dev/null; then
     echo -e "  ${GREEN}✓ Pulled deps image from cache: ${DEPS_CACHED_IMAGE}${NC}"
