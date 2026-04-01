@@ -58,7 +58,9 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 **Tried**: Single `podman-compose up -d azurite mongodb sqlserver backend frontend`. `depends_on: service_healthy` is silently downgraded to `--requires` (existence only) by podman-compose 1.0.6 — the backend starts 5 seconds after Azurite, before Azurite's HTTP port is serving, causing an immediate `IServiceProvider` crash.
 
-**What worked**: Two separate `up` calls — `up -d azurite mongodb sqlserver` then `up -d backend frontend` — with an explicit `curl` wait loop on `http://localhost:10000/devstoreaccount1?comp=list` between them. The second `up` call does not recreate the database containers because they are already running; podman-compose 1.0.6 only recreates stopped containers.
+**Tried**: Two separate `up` calls — `up -d azurite mongodb sqlserver` then `up -d backend frontend` — with an explicit `curl` wait loop between them. The second `up` call recreates Azurite because it is marked `unhealthy` (nc healthcheck fails), restarting the race condition.
+
+**What worked**: Single `up` call for all services. In the health wait loop, detect `cams-backend-e2e` in `exited` state and `podman start cams-backend-e2e` once `curl http://localhost:10000/devstoreaccount1?comp=list` succeeds. By the time the loop detects the crash (~20-30s), Azurite has had enough time to start serving.
 
 ---
 
@@ -68,7 +70,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 **Root cause**: The ghcr.io cached Azurite image (`e2e-base-azure-storage-azurite-latest`) has two problems: (1) `nc` (netcat) is not installed, so the `nc -z localhost 10000` healthcheck always fails, leaving Azurite `unhealthy`; (2) the cached image version has a SharedKey HMAC incompatibility with Azure Functions extension bundle v4, causing the Functions DI container to crash on storage initialization even when Azurite is reachable.
 
-**What worked**: Switch to upstream `mcr.microsoft.com/azure-storage/azurite:latest` directly. The upstream image has `nc`, passes the healthcheck, and its current version is compatible with bundle v4's HMAC headers. Also switched healthcheck to `curl -sf http://localhost:10000/devstoreaccount1?comp=list` for robustness since `curl` is more universally available than `nc`.
+**What worked**: The cached image has neither `nc` nor `curl`. Use a Node.js healthcheck (Node is always present since Azurite is a Node app): `node -e "require('http').get('http://localhost:10000/...',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"`. For the startup gate, poll `podman logs cams-azurite-e2e` for `"Azurite Blob service is successfully listening"` — no tool dependencies, works regardless of what's installed in the image.
 
 ---
 

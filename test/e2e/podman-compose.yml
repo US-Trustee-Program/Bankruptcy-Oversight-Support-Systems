@@ -15,7 +15,7 @@ services:
     networks:
       - cams-e2e
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:10000/devstoreaccount1?comp=list"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:10000/devstoreaccount1?comp=list',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
       interval: 5s
       timeout: 5s
       retries: 12

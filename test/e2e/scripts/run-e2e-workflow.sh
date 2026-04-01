@@ -134,21 +134,23 @@ podman rm -f cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e
 podman network rm e2e_cams-e2e 2>/dev/null || true
 echo ""
 
-# Start databases first and wait for Azurite to be ready before starting the backend.
-# podman-compose 1.0.6 translates depends_on:service_healthy into --requires (existence
-# only) — it does NOT wait for the healthcheck to pass. The backend crashes with
-# "Cannot access a disposed object / IServiceProvider" if it starts before Azurite
-# is serving on port 10000. We gate on the published port from the runner host.
-echo "Starting databases..."
+# Start databases and Azurite first. podman-compose 1.0.6 translates
+# depends_on:service_healthy into --requires (existence only) — it does NOT wait for
+# the healthcheck to pass before starting the backend. We warm up Azurite explicitly
+# before starting the backend so the Functions runtime doesn't crash on storage init.
+echo "Starting databases and Azurite..."
 podman-compose up -d azurite mongodb sqlserver > /dev/null
 CLEANUP_NEEDED=true
 
-echo -n "Waiting for Azurite to be ready..."
+# Warm up Azurite: wait until its log confirms all three services are listening.
+# Azurite prints "Azurite Blob service is successfully listening" when ready.
+# Using podman logs avoids any tool-availability issues inside the container.
+echo -n "Warming up Azurite..."
 AZURITE_WAIT=0
 AZURITE_MAX=60
 while [ $AZURITE_WAIT -lt $AZURITE_MAX ]; do
-    if curl -sf --max-time 2 "http://localhost:10000/devstoreaccount1?comp=list" > /dev/null 2>&1; then
-        echo -e " ${GREEN}ok${NC}"
+    if podman logs cams-azurite-e2e 2>&1 | grep -q "Azurite Blob service is successfully listening"; then
+        echo -e " ${GREEN}ready${NC}"
         break
     fi
     echo -n "."
