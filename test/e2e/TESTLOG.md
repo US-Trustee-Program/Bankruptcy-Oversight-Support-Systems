@@ -60,6 +60,16 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
+## Stale cached Azurite image — `nc` missing, SharedKey HMAC incompatible
+
+**Symptom**: `cams-azurite-e2e` status cycles `starting` → `unhealthy`. Backend crashes immediately with `Cannot access a disposed object. Object name: 'IServiceProvider'`. The playwright `podman-compose run` then fails with "container depends on container not found in input list" because the backend container exited.
+
+**Root cause**: The ghcr.io cached Azurite image (`e2e-base-azure-storage-azurite-latest`) has two problems: (1) `nc` (netcat) is not installed, so the `nc -z localhost 10000` healthcheck always fails, leaving Azurite `unhealthy`; (2) the cached image version has a SharedKey HMAC incompatibility with Azure Functions extension bundle v4, causing the Functions DI container to crash on storage initialization even when Azurite is reachable.
+
+**What worked**: Switch to upstream `mcr.microsoft.com/azure-storage/azurite:latest` directly. The upstream image has `nc`, passes the healthcheck, and its current version is compatible with bundle v4's HMAC headers. Also switched healthcheck to `curl -sf http://localhost:10000/devstoreaccount1?comp=list` for robustness since `curl` is more universally available than `nc`.
+
+---
+
 ## Health wait loop never exits despite services running
 
 **Symptom**: `⚠️ Services did not become healthy within 120s` even though `backend (7071): ok` and `frontend (3000): ok` in HTTP checks.

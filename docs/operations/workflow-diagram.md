@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 25
-- **Main Workflows**: 11
+- **Total Workflows**: 26
+- **Main Workflows**: 12
 - **Reusable Workflows**: 14
 
 ## Legend
@@ -510,6 +510,7 @@ flowchart LR
 
 Workflows triggered by `schedule`:
 - **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
+- **Refresh E2E Base Image Cache** (`refresh-e2e-base-images.yml`)
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
 - **Stand Alone DAST Scan** (`dast-scan.yml`)
 
@@ -518,6 +519,8 @@ flowchart LR
     trigger_schedule(["schedule"])
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
     prune_e2e_image_cache_yml_prune["Delete e2e-deps images older than 30 days"]
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
+    refresh_e2e_base_images_yml_refresh["Re-cache upstream base images to ghcr.io"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     build_azure_cli_image_yml_build_and_push["build-and-push"]
     dast_scan_yml["Stand Alone DAST Scan"]
@@ -530,6 +533,8 @@ flowchart LR
 
     trigger_schedule --> prune_e2e_image_cache_yml
     prune_e2e_image_cache_yml --> prune_e2e_image_cache_yml_prune
+    trigger_schedule --> refresh_e2e_base_images_yml
+    refresh_e2e_base_images_yml --> refresh_e2e_base_images_yml_refresh
     trigger_schedule --> build_azure_cli_image_yml
     build_azure_cli_image_yml --> build_azure_cli_image_yml_build_and_push
     trigger_schedule --> dast_scan_yml
@@ -548,6 +553,8 @@ flowchart LR
     class trigger_schedule trigger
     class prune_e2e_image_cache_yml mainWorkflow
     class prune_e2e_image_cache_yml_prune job
+    class refresh_e2e_base_images_yml mainWorkflow
+    class refresh_e2e_base_images_yml_refresh job
     class build_azure_cli_image_yml mainWorkflow
     class build_azure_cli_image_yml_build_and_push job
     class dast_scan_yml mainWorkflow
@@ -1194,6 +1201,29 @@ flowchart LR
     class prune_e2e_image_cache_yml_prune job
 ```
 
+#### Refresh E2E Base Image Cache
+
+Manual execution of `refresh-e2e-base-images.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
+    refresh_e2e_base_images_yml_refresh["Re-cache upstream base images to ghcr.io"]
+
+    trigger_workflow_dispatch --> refresh_e2e_base_images_yml
+    refresh_e2e_base_images_yml --> refresh_e2e_base_images_yml_refresh
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class refresh_e2e_base_images_yml mainWorkflow
+    class refresh_e2e_base_images_yml_refresh job
+```
+
 #### NPM Package Updates
 
 Manual execution of `update-dependencies.yml`
@@ -1252,6 +1282,7 @@ flowchart LR
     e2e_test_yml["Stand Alone E2E Test Runs"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
     pr_validation_yml["Pull Request E2E Validation"]
     continuous_deployment_yml["Continuous Deployment"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
@@ -1261,6 +1292,7 @@ flowchart LR
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     trigger_schedule(["schedule"])
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
     trigger_pull_request(["pull_request"])
@@ -1275,6 +1307,7 @@ flowchart LR
     trigger_workflow_dispatch --> e2e_test_yml
     trigger_workflow_dispatch --> azure_remove_branch_yml
     trigger_workflow_dispatch --> prune_e2e_image_cache_yml
+    trigger_workflow_dispatch --> refresh_e2e_base_images_yml
     trigger_workflow_dispatch --> pr_validation_yml
     trigger_workflow_dispatch --> continuous_deployment_yml
     trigger_workflow_dispatch --> build_azure_cli_image_yml
@@ -1282,6 +1315,7 @@ flowchart LR
     trigger_workflow_dispatch --> update_dependencies_yml
     trigger_delete --> azure_remove_branch_yml
     trigger_schedule --> prune_e2e_image_cache_yml
+    trigger_schedule --> refresh_e2e_base_images_yml
     trigger_schedule --> build_azure_cli_image_yml
     trigger_schedule --> dast_scan_yml
     trigger_pull_request --> pr_validation_yml
@@ -1303,6 +1337,7 @@ flowchart LR
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
     class prune_e2e_image_cache_yml mainWorkflow
+    class refresh_e2e_base_images_yml mainWorkflow
     class pr_validation_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
@@ -1327,6 +1362,9 @@ flowchart LR
   - Triggers: delete, workflow_dispatch
   - Jobs: 3
 - **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
+  - Triggers: schedule, workflow_dispatch
+  - Jobs: 1
+- **Refresh E2E Base Image Cache** (`refresh-e2e-base-images.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
 - **Pull Request E2E Validation** (`pr-validation.yml`)
