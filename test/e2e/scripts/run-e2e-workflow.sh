@@ -81,12 +81,6 @@ cleanup() {
 # Register cleanup on exit
 trap cleanup EXIT
 
-# Step 1a: Pull base images from ghcr.io cache (self-healing: repopulates cache if missing)
-echo -e "${BLUE}🔐 Step 1a: Pulling base images from ghcr.io cache...${NC}"
-echo ""
-./scripts/pull-base-images.sh
-echo ""
-
 # Step 1: Build deps image (hash-based cache via ghcr.io) and service images
 echo -e "${BLUE}📦 Step 1: Building images and starting services...${NC}"
 echo ""
