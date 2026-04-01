@@ -56,7 +56,9 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 **Tried**: Splitting `podman-compose up` into two calls — `up -d azurite mongodb sqlserver` then `up -d backend frontend` — so we could wait for DB ports before starting the backend. Podman-compose 1.0.6 treats the second `up` as a new invocation and tries to recreate containers from the first call.
 
-**What worked**: Single `podman-compose up -d azurite mongodb sqlserver backend frontend`. The `depends_on: service_healthy` in the compose file gates backend startup correctly.
+**Tried**: Single `podman-compose up -d azurite mongodb sqlserver backend frontend`. `depends_on: service_healthy` is silently downgraded to `--requires` (existence only) by podman-compose 1.0.6 — the backend starts 5 seconds after Azurite, before Azurite's HTTP port is serving, causing an immediate `IServiceProvider` crash.
+
+**What worked**: Two separate `up` calls — `up -d azurite mongodb sqlserver` then `up -d backend frontend` — with an explicit `curl` wait loop on `http://localhost:10000/devstoreaccount1?comp=list` between them. The second `up` call does not recreate the database containers because they are already running; podman-compose 1.0.6 only recreates stopped containers.
 
 ---
 
