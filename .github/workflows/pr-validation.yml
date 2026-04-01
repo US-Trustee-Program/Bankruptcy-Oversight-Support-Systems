@@ -54,9 +54,9 @@ jobs:
           echo "OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }}" >> .env
           echo "OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }}" >> .env
           echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
-          echo "MONGO_CONNECTION_STRING=mongodb://host.containers.internal:27017/cams-e2e?retrywrites=false" >> .env
+          echo "MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-e2e?retrywrites=false" >> .env
           echo "DATABASE_MOCK=false" >> .env
-          echo "MSSQL_HOST=host.containers.internal" >> .env
+          echo "MSSQL_HOST=localhost" >> .env
           echo "MSSQL_DATABASE=" >> .env
           echo "MSSQL_DATABASE_DXTR=CAMS_E2E" >> .env
           echo "MSSQL_USER=sa" >> .env
@@ -65,7 +65,7 @@ jobs:
           echo "MSSQL_ENCRYPT=true" >> .env
           echo "MSSQL_TRUST_UNSIGNED_CERT=true" >> .env
           echo "SLOT_NAME=local" >> .env
-          echo "AZURE_WEB_JOBS_STORAGE=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq+H5SRCQsXW0dFB2JU2mGlEVv9gP7A==;BlobEndpoint=http://host.containers.internal:10000/devstoreaccount1;QueueEndpoint=http://host.containers.internal:10001/devstoreaccount1;TableEndpoint=http://host.containers.internal:10002/devstoreaccount1;" >> .env
+          echo "AZURE_WEB_JOBS_STORAGE=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq+H5SRCQsXW0dFB2JU2mGlEVv9gP7A==;BlobEndpoint=http://localhost:10000/devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;TableEndpoint=http://localhost:10002/devstoreaccount1;" >> .env
 
       - name: Install podman and podman-compose
         run: |

@@ -64,10 +64,7 @@ services:
       context: ../../
       dockerfile: test/e2e/Dockerfile.backend
     container_name: cams-backend-e2e
-    ports:
-      - "7071:7071"
-    extra_hosts:
-      - "host.containers.internal:host-gateway"
+    network_mode: host
     env_file:
       - .env
     environment:
@@ -95,8 +92,6 @@ services:
         condition: service_healthy
       sqlserver:
         condition: service_healthy
-    networks:
-      - cams-e2e
     healthcheck:
       disable: true
 
@@ -106,8 +101,7 @@ services:
       context: ../../
       dockerfile: test/e2e/Dockerfile.frontend
     container_name: cams-frontend-e2e
-    ports:
-      - "3000:3000"
+    network_mode: host
     env_file:
       - .env
     environment:
@@ -124,8 +118,6 @@ services:
       - SLOT_NAME=${SLOT_NAME}
     depends_on:
       - backend
-    networks:
-      - cams-e2e
     healthcheck:
       disable: true
 
