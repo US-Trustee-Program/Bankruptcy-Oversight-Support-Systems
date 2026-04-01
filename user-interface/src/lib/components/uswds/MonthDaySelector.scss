@@ -1,34 +1,37 @@
 .month-day-selector {
-  .month-day-selector__inputs {
-    margin-top: .25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  row-gap: .25rem;
+  column-gap: 0.5rem;
+  width: 100%;
+
+  > label {
+    flex-basis: 100%;
+  }
+
+  .month-day-selector__column {
     display: flex;
-    align-items: flex-end;
-    gap: 0.5rem;
-    width: 100%;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
 
-    .month-day-selector__column {
-      display: flex;
-      flex-direction: column;
-      flex: 1;
-      min-width: 0;
-
-      select {
-        margin-top: 0;
-        width: 100%;
-      }
-
-      .usa-hint {
-        padding-bottom: .5rem;
-      }
+    select {
+      margin-top: 0;
+      width: 100%;
     }
 
-    .month-day-selector__separator {
-      font-size: 1.25rem;
-      color: #1b1b1b;
-      user-select: none;
-      flex-shrink: 0;
-      padding-bottom: 0.4rem;
+    .usa-hint {
+      padding-bottom: .5rem;
     }
+  }
+
+  .month-day-selector__separator {
+    font-size: 1.25rem;
+    color: #1b1b1b;
+    user-select: none;
+    flex-shrink: 0;
+    padding-bottom: 0.4rem;
   }
 
   .date-error {
