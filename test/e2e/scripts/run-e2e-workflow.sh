@@ -130,39 +130,15 @@ echo ""
 # Tear down any containers/networks left from a previous run before starting fresh
 echo -e "${BLUE}🧹 Tearing down any containers from a previous run...${NC}"
 podman-compose down 2>/dev/null || true
-podman rm -f cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
+podman rm -f cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
 podman network rm e2e_cams-e2e 2>/dev/null || true
 echo ""
 
-# Start databases and Azurite first. podman-compose 1.0.6 translates
-# depends_on:service_healthy into --requires (existence only) — it does NOT wait for
-# the healthcheck to pass before starting the backend. We warm up Azurite explicitly
-# before starting the backend so the Functions runtime doesn't crash on storage init.
-echo "Starting databases and Azurite..."
-podman-compose up -d azurite mongodb sqlserver > /dev/null
+# Start all services. Azurite runs inside the backend container so there is no external
+# storage dependency or startup race condition.
+echo "Starting services..."
+podman-compose up -d mongodb sqlserver backend frontend > /dev/null
 CLEANUP_NEEDED=true
-
-# Warm up Azurite: wait until its log confirms all three services are listening.
-# Azurite prints "Azurite Blob service is successfully listening" when ready.
-# Using podman logs avoids any tool-availability issues inside the container.
-echo -n "Warming up Azurite..."
-AZURITE_WAIT=0
-AZURITE_MAX=60
-while [ $AZURITE_WAIT -lt $AZURITE_MAX ]; do
-    if podman logs cams-azurite-e2e 2>&1 | grep -q "Azurite Blob service is successfully listening"; then
-        echo -e " ${GREEN}ready${NC}"
-        break
-    fi
-    echo -n "."
-    sleep 2
-    AZURITE_WAIT=$((AZURITE_WAIT + 2))
-done
-if [ $AZURITE_WAIT -ge $AZURITE_MAX ]; then
-    echo -e " ${YELLOW}⚠️  Azurite not ready after ${AZURITE_MAX}s — proceeding anyway${NC}"
-fi
-
-echo "Starting backend and frontend..."
-podman-compose up -d backend frontend > /dev/null
 echo ""
 echo -e "${GREEN}✅ Services started${NC}"
 echo ""
@@ -179,7 +155,7 @@ LOG_INTERVAL=20  # Print verbose status every 20 seconds
 collect_container_logs() {
     local log_dir="container-logs"
     mkdir -p "${log_dir}"
-    for container in cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e; do
+    for container in cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e; do
         podman logs "${container}" > "${log_dir}/${container}.log" 2>&1 || true
     done
     echo -e "${BLUE}📋 Container logs saved to ${log_dir}/${NC}"

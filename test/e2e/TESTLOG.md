@@ -60,7 +60,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 **Tried**: Two separate `up` calls — `up -d azurite mongodb sqlserver` then `up -d backend frontend` — with an explicit `curl` wait loop between them. The second `up` call recreates Azurite because it is marked `unhealthy` (nc healthcheck fails), restarting the race condition.
 
-**What worked**: Single `up` call for all services. In the health wait loop, detect `cams-backend-e2e` in `exited` state and `podman start cams-backend-e2e` once `curl http://localhost:10000/devstoreaccount1?comp=list` succeeds. By the time the loop detects the crash (~20-30s), Azurite has had enough time to start serving.
+**What worked**: Install Azurite inside the backend container (`npm install -g azurite` in `Dockerfile.backend`) and start it as a background process before `func start`. `AzureWebJobsStorage=UseDevelopmentStorage=true` then works against `127.0.0.1` with no external dependency, no SharedKey HMAC issues, and no startup race condition.
 
 ---
 

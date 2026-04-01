@@ -1,26 +1,6 @@
 version: '3.8'
 
 services:
-  # Azure Storage emulator (required for Azure Functions runtime health)
-  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream.
-  # Healthcheck uses curl (not nc) because nc is not present in this image.
-  azurite:
-    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-azure-storage-azurite-latest
-    container_name: cams-azurite-e2e
-    command: azurite --skipApiVersionCheck --loose --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
-    ports:
-      - "10000:10000"
-      - "10001:10001"
-      - "10002:10002"
-    networks:
-      - cams-e2e
-    healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:10000/devstoreaccount1?comp=list',r=>process.exit(r.statusCode<500?0:1)).on('error',()=>process.exit(1))"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 5s
-
   # MongoDB (compatible with Cosmos DB MongoDB API)
   # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
   mongodb:
@@ -64,11 +44,10 @@ services:
       start_period: 30s
 
   # Backend API service
-  # On the bridge network so it can reach azurite, mongodb, and sqlserver by DNS name.
-  # AzureWebJobsStorage uses the full Azurite connection string with the bridge DNS name
-  # (UseDevelopmentStorage=true only works with 127.0.0.1, not bridge DNS).
-  # Port 7071 is published so the Playwright host-network container can reach the API
-  # at localhost:7071, which matches the CAMS_SERVER_HOSTNAME=localhost UI config.
+  # Azurite runs inside this container (installed in Dockerfile.backend) so
+  # UseDevelopmentStorage=true works via 127.0.0.1 — no external Azurite dependency,
+  # no SharedKey HMAC issues, no startup race condition.
+  # Bridge network gives it mongodb/sqlserver DNS. Port 7071 published for Playwright.
   backend:
     build:
       context: ../../
@@ -93,12 +72,10 @@ services:
       - MSSQL_ENCRYPT=${MSSQL_ENCRYPT}
       - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
       - SLOT_NAME=${SLOT_NAME}
-      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1
+      - AzureWebJobsStorage=UseDevelopmentStorage=true
     networks:
       - cams-e2e
     depends_on:
-      azurite:
-        condition: service_healthy
       mongodb:
         condition: service_healthy
       sqlserver:
