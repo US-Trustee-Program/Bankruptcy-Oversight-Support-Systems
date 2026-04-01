@@ -1,5 +1,5 @@
 # Backend API Dockerfile for E2E Testing
-# Cache bust: using container names instead of service names for DNS resolution
+# Cache bust: using host.containers.internal to access services via host network
 FROM localhost/e2e_built:latest
 
 WORKDIR /app/backend/function-apps/api
