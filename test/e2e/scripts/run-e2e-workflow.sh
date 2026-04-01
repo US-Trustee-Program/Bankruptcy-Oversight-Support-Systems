@@ -131,32 +131,12 @@ echo ""
 echo -e "${BLUE}🧹 Tearing down any containers from a previous run...${NC}"
 podman-compose down 2>/dev/null || true
 podman rm -f cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
+podman network rm e2e_cams-e2e 2>/dev/null || true
 echo ""
 
-# Start databases first and wait for their published ports to be reachable on localhost.
-# The backend runs on host network and connects to published ports via localhost — we must
-# confirm the ports are bound on the host before starting the backend, because the
-# container-internal healthcheck (</dev/tcp/localhost/PORT) can pass before the host-side
-# port binding is ready in rootless Podman.
-echo "Starting database services..."
-podman-compose up -d azurite mongodb sqlserver > /dev/null
-echo "Waiting for database ports to be reachable on localhost..."
-for port in 10000 27017 1433; do
-    waited=0
-    while ! nc -z 127.0.0.1 "$port" 2>/dev/null; do
-        sleep 2
-        waited=$((waited + 2))
-        if [ $waited -ge 60 ]; then
-            echo "WARNING: port $port not reachable after 60s, proceeding anyway"
-            break
-        fi
-    done
-    echo "  port $port: ready"
-done
-
-# Start backend and frontend
-echo "Starting backend and frontend..."
-podman-compose up -d backend frontend > /dev/null
+# Start all services (depends_on ensures azurite/mongodb/sqlserver are healthy before backend)
+echo "Starting services..."
+podman-compose up -d azurite mongodb sqlserver backend frontend > /dev/null
 CLEANUP_NEEDED=true
 echo ""
 echo -e "${GREEN}✅ Services started${NC}"
@@ -205,22 +185,15 @@ print_container_status() {
 }
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    # Use podman ps directly — podman-compose ps is unreliable outside compose context
-    MONGODB_STATUS=$(podman ps --filter "name=cams-mongodb-e2e" --filter "status=running" --format "{{.Names}}" 2>/dev/null | grep -c "." || echo "0")
-    SQLSERVER_STATUS=$(podman ps --filter "name=cams-sqlserver-e2e" --filter "status=running" --format "{{.Names}}" 2>/dev/null | grep -c "." || echo "0")
-    BACKEND_STATUS=$(podman ps --filter "name=cams-backend-e2e" --filter "status=running" --format "{{.Names}}" 2>/dev/null | grep -c "." || echo "0")
-    FRONTEND_STATUS=$(podman ps --filter "name=cams-frontend-e2e" --filter "status=running" --format "{{.Names}}" 2>/dev/null | grep -c "." || echo "0")
-
-    if [ "$MONGODB_STATUS" = "1" ] && [ "$SQLSERVER_STATUS" = "1" ] && [ "$BACKEND_STATUS" = "1" ] && [ "$FRONTEND_STATUS" = "1" ]; then
-        # Use --fail-with-body (-f omitted) so any HTTP response means the host is up.
-        # The /api/healthcheck returns 500 if DB checks fail but the Functions host IS ready.
-        BACKEND_HTTP=$(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo "ok" || echo "fail")
-        FRONTEND_HTTP=$(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
-        if [ "$BACKEND_HTTP" = "ok" ] && [ "$FRONTEND_HTTP" = "ok" ]; then
-            echo -e "${GREEN}✅ All services are healthy and responding${NC}"
-            echo ""
-            break
-        fi
+    # The Functions host is ready when it responds to any HTTP request (even 500 — the
+    # /api/healthcheck does deep DB checks that may fail but the host itself is up).
+    # The frontend is ready when it serves HTTP. These two checks are sufficient.
+    BACKEND_HTTP=$(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo "ok" || echo "fail")
+    FRONTEND_HTTP=$(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
+    if [ "$BACKEND_HTTP" = "ok" ] && [ "$FRONTEND_HTTP" = "ok" ]; then
+        echo -e "${GREEN}✅ All services are healthy and responding${NC}"
+        echo ""
+        break
     fi
 
     # Print verbose status periodically
