@@ -138,23 +138,6 @@ echo ""
 echo "Starting services..."
 podman-compose up -d azurite mongodb sqlserver backend frontend > /dev/null
 CLEANUP_NEEDED=true
-
-# Wait for published ports to be reachable on localhost before proceeding.
-# The container-internal healthcheck can pass before rootless Podman finishes
-# binding the published port on the host — using /dev/tcp avoids requiring nc.
-echo "Waiting for service ports to bind on localhost..."
-for port in 10000 27017 1433 7071; do
-    waited=0
-    while ! (bash -c ">/dev/tcp/127.0.0.1/$port") 2>/dev/null; do
-        sleep 2
-        waited=$((waited + 2))
-        if [ $waited -ge 90 ]; then
-            echo "  WARNING: port $port not reachable after 90s, proceeding anyway"
-            break
-        fi
-    done
-    echo "  port $port: ready"
-done
 echo ""
 echo -e "${GREEN}✅ Services started${NC}"
 echo ""
@@ -197,7 +180,7 @@ print_container_status() {
     echo ""
     echo -e "${BLUE}  HTTP checks:${NC}"
     echo "    backend  (7071): $(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
-    echo "    frontend (3000): $(curl -sf http://localhost:3000 > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
+    echo "    frontend (3000): $(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
     echo ""
 }
 
@@ -205,6 +188,7 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     # The Functions host is ready when it responds to any HTTP request (even 500 — the
     # /api/healthcheck does deep DB checks that may fail but the host itself is up).
     # The frontend is ready when it serves HTTP. These two checks are sufficient.
+    # Both services publish their ports so localhost works from the runner host.
     BACKEND_HTTP=$(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo "ok" || echo "fail")
     FRONTEND_HTTP=$(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
     if [ "$BACKEND_HTTP" = "ok" ] && [ "$FRONTEND_HTTP" = "ok" ]; then

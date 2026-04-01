@@ -63,19 +63,18 @@ services:
       start_period: 30s
 
   # Backend API service
-  # Uses host network so AzureWebJobsStorage can use UseDevelopmentStorage=true,
-  # which requires 127.0.0.1 and bypasses SharedKey HMAC auth entirely — avoiding
-  # a known incompatibility between Azure Functions extension bundle v4 and Azurite.
-  # MSSQL_HOST and MONGO_CONNECTION_STRING come from .env.
-  # The backend uses host network, so bridge-container published ports are reachable
-  # via localhost (127.0.0.1). The workflow script waits for those ports to be bound
-  # on the host before starting the backend.
+  # On the bridge network so it can reach azurite, mongodb, and sqlserver by DNS name.
+  # AzureWebJobsStorage uses the full Azurite connection string with the bridge DNS name
+  # (UseDevelopmentStorage=true only works with 127.0.0.1, not bridge DNS).
+  # Port 7071 is published so the Playwright host-network container can reach the API
+  # at localhost:7071, which matches the CAMS_SERVER_HOSTNAME=localhost UI config.
   backend:
     build:
       context: ../../
       dockerfile: test/e2e/Dockerfile.backend
     container_name: cams-backend-e2e
-    network_mode: host
+    ports:
+      - "7071:7071"
     env_file:
       - .env
     environment:
@@ -83,9 +82,9 @@ services:
       - DOTENV_CONFIG_SILENT=true
       - DOTENV_QUIET=true
       - COSMOS_DATABASE_NAME=${COSMOS_DATABASE_NAME}
-      - MONGO_CONNECTION_STRING=${MONGO_CONNECTION_STRING}
+      - MONGO_CONNECTION_STRING=mongodb://mongodb:27017/cams-e2e?retrywrites=false
       - DATABASE_MOCK=${DATABASE_MOCK}
-      - MSSQL_HOST=${MSSQL_HOST}
+      - MSSQL_HOST=sqlserver
       - MSSQL_DATABASE=${MSSQL_DATABASE}
       - MSSQL_DATABASE_DXTR=${MSSQL_DATABASE_DXTR}
       - MSSQL_USER=${MSSQL_USER}
@@ -93,7 +92,9 @@ services:
       - MSSQL_ENCRYPT=${MSSQL_ENCRYPT}
       - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
       - SLOT_NAME=${SLOT_NAME}
-      - AzureWebJobsStorage=UseDevelopmentStorage=true
+      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1
+    networks:
+      - cams-e2e
     depends_on:
       azurite:
         condition: service_healthy

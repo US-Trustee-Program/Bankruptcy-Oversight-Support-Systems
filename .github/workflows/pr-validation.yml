@@ -57,9 +57,9 @@ jobs:
           echo "OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }}" >> .env
           echo "OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }}" >> .env
           echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
-          echo "MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-e2e?retrywrites=false" >> .env
+          echo "MONGO_CONNECTION_STRING=mongodb://mongodb:27017/cams-e2e?retrywrites=false" >> .env
           echo "DATABASE_MOCK=false" >> .env
-          echo "MSSQL_HOST=localhost" >> .env
+          echo "MSSQL_HOST=sqlserver" >> .env
           echo "MSSQL_DATABASE=" >> .env
           echo "MSSQL_DATABASE_DXTR=CAMS_E2E" >> .env
           echo "MSSQL_USER=sa" >> .env
