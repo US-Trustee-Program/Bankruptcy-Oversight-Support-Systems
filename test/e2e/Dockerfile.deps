@@ -9,8 +9,11 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Azure Functions Core Tools globally (cached layer)
-RUN npm install -g azure-functions-core-tools@4 --unsafe-perm true
+# Install Azure Functions Core Tools and Azurite globally together so
+# both tools share a consistent global node_modules dependency resolution.
+# Installing azurite here (rather than in Dockerfile.backend) avoids npm
+# restructuring the global node_modules after the runtime is installed.
+RUN npm install -g azure-functions-core-tools@4 azurite --unsafe-perm true
 
 # Copy only package files for dependency installation (cached layer)
 COPY package*.json ./

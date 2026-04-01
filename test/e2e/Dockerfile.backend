@@ -3,11 +3,6 @@ FROM localhost/e2e_built:latest
 
 WORKDIR /app/backend/function-apps/api
 
-# Install Azurite locally so the Functions runtime can use UseDevelopmentStorage=true
-# (which requires 127.0.0.1). Running Azurite in-process avoids all bridge-network
-# SharedKey HMAC incompatibilities and startup race conditions.
-RUN npm install -g azurite
-
 # Provide CORS config for the local Functions host — the Azure platform handles CORS
 # in production via Bicep, but in the containerized E2E environment we need this file.
 COPY test/e2e/local.settings.backend.json ./local.settings.json

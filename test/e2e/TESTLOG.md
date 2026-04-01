@@ -74,6 +74,16 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
+## `npm install -g azurite` in Dockerfile.backend causes `IServiceProvider` crash
+
+**Symptom**: `func start` prints version banner then immediately crashes with `Cannot access a disposed object. Object name: 'IServiceProvider'.` — no further output, no storage connection attempts, no host.json reading.
+
+**Root cause**: Installing `azurite` globally in `Dockerfile.backend` (as a separate `RUN npm install -g azurite` layer on top of the `e2e_built` image) causes npm to restructure the global `node_modules` tree. This corrupts the `azure-functions-core-tools` installation, causing the .NET DI host to fail at initialization before any JavaScript runs.
+
+**What worked**: Move `azurite` into `Dockerfile.deps` alongside `azure-functions-core-tools` in a single `npm install -g azure-functions-core-tools@4 azurite` command. Both tools are resolved together with consistent shared dependencies. As a side effect, changing `Dockerfile.deps` changes its hash, forcing a fresh `e2e_deps` image rebuild on CI (amd64) and eliminating any stale aarch64-built cached image.
+
+---
+
 ## Health wait loop never exits despite services running
 
 **Symptom**: `⚠️ Services did not become healthy within 120s` even though `backend (7071): ok` and `frontend (3000): ok` in HTTP checks.
