@@ -14,6 +14,7 @@ COPY test/e2e/local.settings.backend.json ./local.settings.json
 
 EXPOSE 7071
 
-# Start Azurite in the background then launch the Functions host.
-# Azurite binds to 127.0.0.1 by default, satisfying UseDevelopmentStorage=true.
-CMD ["sh", "-c", "azurite --silent --location /tmp/azurite & func start --javascript --port 7071 --host 0.0.0.0"]
+# Start Azurite in the background, wait until all three services are ready,
+# then launch the Functions host. UseDevelopmentStorage=true requires 127.0.0.1
+# which Azurite binds to by default. Log to file so we can poll for readiness.
+CMD ["sh", "-c", "azurite --location /tmp/azurite > /tmp/azurite.log 2>&1 & until grep -q 'Table service is successfully listening' /tmp/azurite.log 2>/dev/null; do sleep 0.1; done && func start --javascript --port 7071 --host 0.0.0.0"]
