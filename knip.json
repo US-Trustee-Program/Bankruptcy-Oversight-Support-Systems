@@ -96,6 +96,7 @@
     "prettier",
     "typescript-eslint",
     "cams",
+    "@vitest/coverage-v8",
     "esbuild",
     "@launchdarkly/node-server-sdk",
     "launchdarkly-react-client-sdk",
