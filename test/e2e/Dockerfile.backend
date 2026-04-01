@@ -1,5 +1,5 @@
 # Backend API Dockerfile for E2E Testing
-# Cache bust: using host.containers.internal to access services via host network
+# Cache bust: added extra_hosts to resolve host.containers.internal
 FROM localhost/e2e_built:latest
 
 WORKDIR /app/backend/function-apps/api

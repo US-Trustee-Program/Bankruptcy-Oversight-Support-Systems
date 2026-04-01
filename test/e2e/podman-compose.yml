@@ -66,6 +66,8 @@ services:
     container_name: cams-backend-e2e
     ports:
       - "7071:7071"
+    extra_hosts:
+      - "host.containers.internal:host-gateway"
     env_file:
       - .env
     environment:
