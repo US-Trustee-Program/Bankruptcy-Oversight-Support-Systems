@@ -47,7 +47,7 @@ jobs:
 
       - name: Set up E2E environment
         working-directory: test/e2e
-        run: |
+        run: |  # pragma: allowlist secret
           echo "TARGET_HOST=http://localhost:3000" > .env
           echo "CAMS_LOGIN_PROVIDER=okta" >> .env
           echo "CAMS_LOGIN_PROVIDER_URL=${{ secrets.CAMS_LOGIN_PROVIDER_URL }}" >> .env
@@ -67,6 +67,7 @@ jobs:
           echo "MSSQL_ENCRYPT=false" >> .env
           echo "MSSQL_TRUST_UNSIGNED_CERT=true" >> .env
           echo "SLOT_NAME=local" >> .env
+          echo "AZURE_WEB_JOBS_STORAGE=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq+H5SRCQsXW0dFB2JU2mGlEVv9gP7A==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;" >> .env
 
       - name: Install podman and podman-compose
         run: |
