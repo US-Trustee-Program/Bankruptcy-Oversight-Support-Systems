@@ -28,8 +28,8 @@ const targetBaseConfig: sql.config = {
   user: process.env.LOCAL_MSSQL_USER || process.env.MSSQL_USER || 'sa',
   password: process.env.LOCAL_MSSQL_PASS || process.env.MSSQL_PASS || 'YourStrong!Passw0rd',
   options: {
-    encrypt: false,
-    trustServerCertificate: true,
+    encrypt: process.env.MSSQL_ENCRYPT?.toLowerCase() === 'true',
+    trustServerCertificate: process.env.MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true',
   },
   requestTimeout: 60000,
   connectionTimeout: 30000,
