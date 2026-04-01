@@ -47,6 +47,7 @@ services:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${MSSQL_PASS}
       - MSSQL_PID=Developer
+      - MSSQL_ENABLE_FORCE_ENCRYPTION=0
     volumes:
       - ./sqlserver-data:/var/opt/mssql
     networks:
