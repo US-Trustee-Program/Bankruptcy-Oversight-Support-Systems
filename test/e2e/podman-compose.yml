@@ -94,8 +94,6 @@ services:
       - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
       - SLOT_NAME=${SLOT_NAME}
       - AzureWebJobsStorage=UseDevelopmentStorage=true
-      - CORS=*
-      - CORS_CREDENTIALS=true
     depends_on:
       azurite:
         condition: service_healthy

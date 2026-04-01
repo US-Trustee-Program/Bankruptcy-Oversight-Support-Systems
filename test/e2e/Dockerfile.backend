@@ -3,6 +3,10 @@ FROM localhost/e2e_built:latest
 
 WORKDIR /app/backend/function-apps/api
 
+# Provide CORS config for the local Functions host — the Azure platform handles CORS
+# in production via Bicep, but in the containerized E2E environment we need this file.
+COPY test/e2e/local.settings.backend.json ./local.settings.json
+
 EXPOSE 7071
 
 CMD ["func", "start", "--javascript", "--port", "7071", "--host", "0.0.0.0"]
