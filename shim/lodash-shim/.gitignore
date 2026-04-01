@@ -1,2 +1,4 @@
 node_modules/
 coverage/
+# vitest.config.js is handwritten source here, not compiled TS output
+!vitest.config.js
