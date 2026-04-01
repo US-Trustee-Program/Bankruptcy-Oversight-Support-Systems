@@ -1,15 +1,8 @@
 # Backend API Dockerfile for E2E Testing
 FROM localhost/e2e_built:latest
 
-# Install netcat for connectivity testing
-RUN apt-get update && apt-get install -y netcat-openbsd && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app/backend/function-apps/api
-
-# Copy wait script
-COPY test/e2e/scripts/wait-for-sqlserver.sh /wait-for-sqlserver.sh
-RUN chmod +x /wait-for-sqlserver.sh
 
 EXPOSE 7071
 
-CMD ["/bin/bash", "-c", "/wait-for-sqlserver.sh && func start --javascript --port 7071 --host 0.0.0.0 --cors http://localhost:3000"]
+CMD ["func", "start", "--javascript", "--port", "7071", "--host", "0.0.0.0", "--cors", "http://localhost:3000"]
