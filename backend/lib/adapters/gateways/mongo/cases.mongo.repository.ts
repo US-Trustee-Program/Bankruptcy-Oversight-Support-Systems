@@ -29,12 +29,15 @@ const { and, or, using } = QueryBuilder;
 const {
   addFields,
   additionalField,
+  count,
   descending,
   exclude,
+  group,
   join,
   match,
   paginate,
   pipeline,
+  push,
   score,
   sort,
   source,
@@ -643,24 +646,37 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
   async findDuplicateSyncedCases(): Promise<
     Array<{ dxtrId: string; courtId: string; caseIds: string[] }>
   > {
+    type GroupResult = {
+      _id: { dxtrId: string; courtId: string };
+      caseIds: string[];
+      count: number;
+    };
     try {
-      const doc = using<SyncedCase>();
-      const query = and(
-        doc('documentType').equals('SYNCED_CASE'),
-        doc('movedToCaseId').notExists(),
+      const doc = source<SyncedCase>().usingFields(
+        'documentType',
+        'movedToCaseId',
+        'dxtrId',
+        'courtId',
+        'caseId',
       );
-      const cases = await this.getAdapter<SyncedCase>().find(query);
+      const groupDoc = source<GroupResult>().usingFields('caseIds', 'count');
+      const groupResult = using<GroupResult>();
 
-      const groups = new Map<string, { dxtrId: string; courtId: string; caseIds: string[] }>();
-      for (const c of cases) {
-        const key = `${c.dxtrId}:${c.courtId}`;
-        if (!groups.has(key)) {
-          groups.set(key, { dxtrId: c.dxtrId, courtId: c.courtId, caseIds: [] });
-        }
-        groups.get(key)!.caseIds.push(c.caseId);
-      }
+      const spec = pipeline(
+        match(and(doc.documentType.equals('SYNCED_CASE'), doc.movedToCaseId.notExists())),
+        group(
+          [doc.dxtrId, doc.courtId],
+          [push(doc.caseId, groupDoc.caseIds), count(groupDoc.count)],
+        ),
+        match(groupResult('count').greaterThan(1)),
+      );
 
-      return [...groups.values()].filter((g) => g.caseIds.length > 1);
+      const results = await this.getAdapter<SyncedCase>().aggregate<GroupResult>(spec);
+      return results.map((r) => ({
+        dxtrId: r._id.dxtrId,
+        courtId: r._id.courtId,
+        caseIds: r.caseIds,
+      }));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

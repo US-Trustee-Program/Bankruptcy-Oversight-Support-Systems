@@ -1467,4 +1467,73 @@ describe('Cases repository', () => {
       );
     });
   });
+
+  describe('findDuplicateSyncedCases', () => {
+    test('should return mapped flat results from aggregate GroupResult shape', async () => {
+      const groupResults = [
+        {
+          _id: { dxtrId: 'dxtr-1', courtId: 'court-1' },
+          caseIds: ['001-25-00001', '001-25-00002'],
+          count: 2,
+        },
+        {
+          _id: { dxtrId: 'dxtr-2', courtId: 'court-2' },
+          caseIds: ['002-25-00001', '002-25-00002', '002-25-00003'],
+          count: 3,
+        },
+      ];
+      vi.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockResolvedValue(groupResults);
+
+      const result = await repo.findDuplicateSyncedCases();
+
+      expect(result).toEqual([
+        { dxtrId: 'dxtr-1', courtId: 'court-1', caseIds: ['001-25-00001', '001-25-00002'] },
+        {
+          dxtrId: 'dxtr-2',
+          courtId: 'court-2',
+          caseIds: ['002-25-00001', '002-25-00002', '002-25-00003'],
+        },
+      ]);
+    });
+
+    test('should return empty array when no duplicates exist', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'aggregate').mockResolvedValue([]);
+
+      const result = await repo.findDuplicateSyncedCases();
+
+      expect(result).toEqual([]);
+    });
+
+    test('should wrap and rethrow adapter errors', async () => {
+      expect.assertions(1);
+      await expectAdapterErrorToBeWrapped('aggregate', () => repo.findDuplicateSyncedCases(), []);
+    });
+
+    test('pipeline should reference critical field names in first MATCH, GROUP, and final MATCH stages', async () => {
+      const aggregateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'aggregate')
+        .mockResolvedValue([]);
+
+      await repo.findDuplicateSyncedCases();
+
+      const spec = aggregateSpy.mock.calls[0][0];
+      expect(spec.stages).toHaveLength(3);
+      expect(spec.stages[0].stage).toBe('MATCH');
+      expect(spec.stages[1].stage).toBe('GROUP');
+      expect(spec.stages[2].stage).toBe('MATCH');
+      const pipelineString = JSON.stringify(spec);
+
+      expect(pipelineString).toContain('"movedToCaseId"');
+      expect(pipelineString).toContain('"condition":"EXISTS"');
+      expect(pipelineString).toContain('"rightOperand":false');
+      expect(pipelineString).toContain('"dxtrId"');
+      expect(pipelineString).toContain('"courtId"');
+      expect(pipelineString).toContain('"caseId"');
+      expect(pipelineString).toContain('"caseIds"');
+      expect(pipelineString).toContain('"count"');
+      expect(pipelineString).toContain('"SYNCED_CASE"');
+      expect(pipelineString).toContain('"condition":"GREATER_THAN"');
+      expect(pipelineString).toContain('"rightOperand":1');
+    });
+  });
 });
