@@ -45,6 +45,56 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Collect and save logs for all containers
+collect_container_logs() {
+    local log_dir="container-logs"
+    mkdir -p "${log_dir}"
+    for container in cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e; do
+        podman logs "${container}" > "${log_dir}/${container}.log" 2>&1 || true
+    done
+    echo -e "${BLUE}📋 Container logs saved to ${log_dir}/${NC}"
+}
+
+# Print host resource usage vs container consumption
+print_resource_usage() {
+    echo -e "${BLUE}  Host resources:${NC}"
+    free -m | awk '/^Mem:/ { printf "    Memory: %dMB used / %dMB total (%.0f%% used)\n", $3, $2, ($3/$2)*100 }'
+    CPUS=$(nproc)
+    LOAD=$(cut -d' ' -f1-3 /proc/loadavg)
+    echo "    CPU: ${CPUS} cores, load avg: ${LOAD}"
+    df -h / | awk 'NR==2 { printf "    Disk /: %s used / %s total (%s used, %s free)\n", $3, $2, $5, $4 }'
+    echo ""
+    echo -e "${BLUE}  Container resource usage:${NC}"
+    podman stats --no-stream --format "    {{.Name}}\tCPU: {{.CPUPerc}}\tMem: {{.MemUsage}}" \
+        cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || \
+        echo "    (stats unavailable)"
+    echo ""
+}
+
+# Print current status of all containers
+print_container_status() {
+    echo ""
+    echo -e "${BLUE}  Container status at ${WAIT_COUNT}s:${NC}"
+    podman ps -a \
+        --filter "name=cams-azurite-e2e" \
+        --filter "name=cams-mongodb-e2e" \
+        --filter "name=cams-sqlserver-e2e" \
+        --filter "name=cams-backend-e2e" \
+        --filter "name=cams-frontend-e2e" \
+        --format "    {{.Names}}\t{{.Status}}\t{{.Health}}" 2>/dev/null || true
+    echo ""
+    echo -e "${BLUE}  Backend log (last 10 lines):${NC}"
+    podman logs --tail 10 cams-backend-e2e 2>&1 | sed 's/^/    /' || true
+    echo ""
+    echo -e "${BLUE}  Frontend log (last 5 lines):${NC}"
+    podman logs --tail 5 cams-frontend-e2e 2>&1 | sed 's/^/    /' || true
+    echo ""
+    echo -e "${BLUE}  HTTP checks:${NC}"
+    echo "    backend  (7071): $(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
+    echo "    frontend (3000): $(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
+    echo ""
+}
+
 # Navigate to e2e directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
@@ -163,59 +213,6 @@ echo ""
 MAX_WAIT=120  # 2 minutes for services
 WAIT_COUNT=0
 LOG_INTERVAL=20  # Print verbose status every 20 seconds
-
-# Collect and save logs for all containers
-collect_container_logs() {
-    local log_dir="container-logs"
-    mkdir -p "${log_dir}"
-    for container in cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e; do
-        podman logs "${container}" > "${log_dir}/${container}.log" 2>&1 || true
-    done
-    echo -e "${BLUE}📋 Container logs saved to ${log_dir}/${NC}"
-}
-
-# Print host resource usage vs container consumption
-print_resource_usage() {
-    echo -e "${BLUE}  Host resources:${NC}"
-    # Memory: total, used, free (in MB)
-    free -m | awk '/^Mem:/ { printf "    Memory: %dMB used / %dMB total (%.0f%% used)\n", $3, $2, ($3/$2)*100 }'
-    # CPU: number of cores and current load average
-    CPUS=$(nproc)
-    LOAD=$(cut -d' ' -f1-3 /proc/loadavg)
-    echo "    CPU: ${CPUS} cores, load avg: ${LOAD}"
-    # Disk: available on /
-    df -h / | awk 'NR==2 { printf "    Disk /: %s used / %s total (%s used, %s free)\n", $3, $2, $5, $4 }'
-    echo ""
-    echo -e "${BLUE}  Container resource usage:${NC}"
-    podman stats --no-stream --format "    {{.Name}}\tCPU: {{.CPUPerc}}\tMem: {{.MemUsage}}" \
-        cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || \
-        echo "    (stats unavailable)"
-    echo ""
-}
-
-# Print current status of all containers
-print_container_status() {
-    echo ""
-    echo -e "${BLUE}  Container status at ${WAIT_COUNT}s:${NC}"
-    podman ps -a \
-        --filter "name=cams-azurite-e2e" \
-        --filter "name=cams-mongodb-e2e" \
-        --filter "name=cams-sqlserver-e2e" \
-        --filter "name=cams-backend-e2e" \
-        --filter "name=cams-frontend-e2e" \
-        --format "    {{.Names}}\t{{.Status}}\t{{.Health}}" 2>/dev/null || true
-    echo ""
-    echo -e "${BLUE}  Backend log (last 10 lines):${NC}"
-    podman logs --tail 10 cams-backend-e2e 2>&1 | sed 's/^/    /' || true
-    echo ""
-    echo -e "${BLUE}  Frontend log (last 5 lines):${NC}"
-    podman logs --tail 5 cams-frontend-e2e 2>&1 | sed 's/^/    /' || true
-    echo ""
-    echo -e "${BLUE}  HTTP checks:${NC}"
-    echo "    backend  (7071): $(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
-    echo "    frontend (3000): $(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
-    echo ""
-}
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     # The Functions host is ready when it responds to any HTTP request (even 500 — the
