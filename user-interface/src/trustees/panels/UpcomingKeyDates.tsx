@@ -1,4 +1,3 @@
-import './UpcomingKeyDates.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -9,10 +8,9 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
+import InfoCard from './InfoCard';
 
 export interface UpcomingKeyDatesProps {
   trusteeId: string;
@@ -75,48 +73,23 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
   }
 
   return (
-    <div className="upcoming-key-dates-card usa-card" data-testid="upcoming-key-dates-card">
-      <div className="usa-card__container">
-        <div className="usa-card__body">
-          <div className="upcoming-key-dates-header">
-            <h4>Upcoming Key Dates</h4>
-            {canManage && (
-              <Button
-                id="edit-upcoming-key-dates"
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit upcoming key dates"
-                title="Edit upcoming key dates"
-                onClick={openEdit}
-              >
-                <IconLabel icon="edit" label="Edit" />
-              </Button>
-            )}
-          </div>
-          <ul className="upcoming-key-dates-list" data-testid="upcoming-key-dates-list">
-            <li data-testid="field-exam-row">
-              <span className="upcoming-key-dates-label">Field Exam:</span> {fieldExam}
-            </li>
-            <li data-testid="audit-row">
-              <span className="upcoming-key-dates-label">Audit:</span> {audit}
-            </li>
-            <li data-testid="tpr-review-period-row">
-              <span className="upcoming-key-dates-label">TPR Review Period:</span> {tprReviewPeriod}
-            </li>
-            <li data-testid="tpr-due-row">
-              <span className="upcoming-key-dates-label">TPR Due:</span> {tprDue}
-            </li>
-            <li data-testid="tir-review-period-row">
-              <span className="upcoming-key-dates-label">TIR Review Period:</span> {tirReviewPeriod}
-            </li>
-            <li data-testid="tir-submission-row">
-              <span className="upcoming-key-dates-label">TIR Submission:</span> {tirSubmission}
-            </li>
-            <li data-testid="tir-review-row">
-              <span className="upcoming-key-dates-label">TIR Review:</span> {tirReview}
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
+    <InfoCard
+      id="edit-upcoming-key-dates"
+      title="Upcoming Key Dates"
+      onEdit={canManage ? openEdit : undefined}
+      editAriaLabel="Edit upcoming key dates"
+      editTitle="Edit upcoming key dates"
+      testId="upcoming-key-dates-card"
+      listTestId="upcoming-key-dates-list"
+      fields={[
+        { label: 'Field Exam', value: fieldExam, testId: 'field-exam-row' },
+        { label: 'Audit', value: audit, testId: 'audit-row' },
+        { label: 'TPR Review Period', value: tprReviewPeriod, testId: 'tpr-review-period-row' },
+        { label: 'TPR Due', value: tprDue, testId: 'tpr-due-row' },
+        { label: 'TIR Review Period', value: tirReviewPeriod, testId: 'tir-review-period-row' },
+        { label: 'TIR Submission', value: tirSubmission, testId: 'tir-submission-row' },
+        { label: 'TIR Review', value: tirReview, testId: 'tir-review-row' },
+      ]}
+    />
   );
 }

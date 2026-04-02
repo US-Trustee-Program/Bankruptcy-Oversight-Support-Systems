@@ -1,6 +1,7 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
+import react, { reactCompilerPreset } from '@vitejs/plugin-react';
+import babelPlugin from '@rolldown/plugin-babel';
 import viteTsconfigPaths from 'vite-tsconfig-paths';
 import envCompatible from 'vite-plugin-env-compatible';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
@@ -25,11 +26,8 @@ export default defineConfig({
   },
   assetsInclude: ['../node_modules/@uswds/uswds/dist/img'],
   plugins: [
-    react({
-      babel: {
-        plugins: ['babel-plugin-react-compiler'],
-      },
-    }),
+    react(),
+    babelPlugin({ presets: [reactCompilerPreset()] }),
     viteStaticCopy({
       targets: [
         {
