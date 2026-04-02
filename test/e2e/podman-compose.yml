@@ -44,9 +44,9 @@ services:
       start_period: 30s
 
   # Backend API service
-  # Azurite runs inside this container (installed in Dockerfile.backend) so
-  # UseDevelopmentStorage=true works via 127.0.0.1 — no external Azurite dependency,
-  # no SharedKey HMAC issues, no startup race condition.
+  # Azurite runs inside this container (installed in Dockerfile.deps) so
+  # the well-known devstoreaccount1 connection string works via 127.0.0.1 —
+  # no external Azurite dependency, no startup race condition.
   # Bridge network gives it mongodb/sqlserver DNS. Port 7071 published for Playwright.
   backend:
     build:
