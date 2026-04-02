@@ -14,7 +14,6 @@ describe('DivisionChangeCleanupUseCase', () => {
     context = await createMockApplicationContext();
     vi.restoreAllMocks();
 
-    // Setup default mocks for all repositories to prevent "not implemented" errors
     vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockResolvedValue({
       modifiedCount: 0,
       matchedCount: 0,
@@ -61,7 +60,6 @@ describe('DivisionChangeCleanupUseCase', () => {
       expect(markAsMovedSpy).not.toHaveBeenCalled();
     });
 
-    // Test 1: logs start message
     test('should log start message', async () => {
       const loggerSpy = vi.spyOn(context.logger, 'info');
       await DivisionChangeCleanupUseCase.cleanupOrphanedCase(
@@ -75,7 +73,6 @@ describe('DivisionChangeCleanupUseCase', () => {
       );
     });
 
-    // Test 4: calls markAsMoved with correct params
     test('should call markAsMoved with correct params', async () => {
       const markAsMovedSpy = vi.spyOn(MockMongoRepository.prototype, 'markAsMoved');
       await DivisionChangeCleanupUseCase.cleanupOrphanedCase(
@@ -90,7 +87,6 @@ describe('DivisionChangeCleanupUseCase', () => {
       );
     });
 
-    // Test 5: logs completion message
     test('should log completion message', async () => {
       const loggerSpy = vi.spyOn(context.logger, 'info');
       await DivisionChangeCleanupUseCase.cleanupOrphanedCase(
@@ -104,7 +100,6 @@ describe('DivisionChangeCleanupUseCase', () => {
       );
     });
 
-    // Test 7: wraps errors with getCamsError
     test('should wrap errors with getCamsError', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'updateManyByQuery').mockRejectedValue(
         new Error('Database error'),
@@ -118,7 +113,6 @@ describe('DivisionChangeCleanupUseCase', () => {
       expect(error.message).toContain('Failed to clean up');
     });
 
-    // Test 8: passes ISO timestamp to markAsMoved
     test('should pass ISO timestamp to markAsMoved', async () => {
       const markAsMovedSpy = vi.spyOn(MockMongoRepository.prototype, 'markAsMoved');
       const beforeCall = new Date();
@@ -138,7 +132,6 @@ describe('DivisionChangeCleanupUseCase', () => {
   });
 
   describe('updateReferences', () => {
-    // Test 9: updateReferences updates consolidations caseId
     test('should update consolidations caseId', async () => {
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateManyByQuery')
@@ -236,7 +229,6 @@ describe('DivisionChangeCleanupUseCase', () => {
   });
 
   describe('moveDocuments - orders (behavioral verification)', () => {
-    // Test 17: verifies order create method signature matches interface
     test('should create orders with new caseId after finding by oldCaseId', async () => {
       const oldOrder = {
         id: 'order-1',
@@ -259,7 +251,6 @@ describe('DivisionChangeCleanupUseCase', () => {
         currentCaseId,
       );
 
-      // Verify create was called with new caseId
       expect(createSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           caseId: currentCaseId,
@@ -267,12 +258,10 @@ describe('DivisionChangeCleanupUseCase', () => {
           documentType: 'ORDER',
         }),
       );
-      // Verify new document has no id (it's a new document)
       const createCall = createSpy.mock.calls[0][0];
       expect(createCall.id).toBeUndefined();
     });
 
-    // Test 18: verifies old orders are deleted after creating new ones
     test('should delete old orders after creating new ones', async () => {
       const oldOrder = { id: 'order-old-id', caseId: orphanedCaseId, documentType: 'ORDER' };
 
@@ -290,13 +279,11 @@ describe('DivisionChangeCleanupUseCase', () => {
         currentCaseId,
       );
 
-      // Verify delete was called with the old id
       expect(deleteSpy).toHaveBeenCalledWith('order-old-id');
     });
   });
 
   describe('moveDocuments - cases', () => {
-    // Test: SYNCED_CASE documents are not moved (verify filter logic)
     test('should not process SYNCED_CASE documents in move loop', async () => {
       const syncedCase = {
         id: 'synced-case-id',
@@ -304,8 +291,6 @@ describe('DivisionChangeCleanupUseCase', () => {
         documentType: 'SYNCED_CASE',
         caseNumber: '123',
       };
-      // findByCaseId is called 3 times: orders, assignments, cases
-      // Return empty for orders and assignments, then return the syncedCase for cases
       vi.spyOn(MockMongoRepository.prototype, 'findByCaseId')
         .mockResolvedValueOnce([]) // orders
         .mockResolvedValueOnce([]) // assignments
@@ -318,7 +303,6 @@ describe('DivisionChangeCleanupUseCase', () => {
         currentCaseId,
       );
 
-      // create should NOT have been called for the SYNCED_CASE document
       const createCallsForSyncedCase = createSpy.mock.calls.filter(
         (call) => call[0]?.documentType === 'SYNCED_CASE',
       );
@@ -434,7 +418,6 @@ describe('DivisionChangeCleanupUseCase', () => {
 
       const result = await DivisionChangeCleanupUseCase.findOrphanedCasePairs(context);
 
-      // Error group should be skipped and logged, good group should produce a message
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({ orphanedCaseId: '001-25-00001', currentCaseId: '001-25-00002' });
       expect(loggerErrorSpy).toHaveBeenCalledWith(
