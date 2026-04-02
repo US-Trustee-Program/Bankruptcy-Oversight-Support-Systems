@@ -9,7 +9,7 @@ COPY test/e2e/local.settings.backend.json ./local.settings.json
 
 EXPOSE 7071
 
-# Start Azurite in the background, wait for all three services (blob/queue/table)
-# to be socket-ready on localhost, then launch the Functions host.
-# TCP port checks are more reliable than log grepping for race condition prevention.
-CMD ["sh", "-c", "azurite --location /tmp/azurite --silent > /tmp/azurite.log 2>&1 & echo 'Waiting for Azurite services...' && until nc -z localhost 10000 && nc -z localhost 10001 && nc -z localhost 10002; do sleep 0.5; done && echo 'Azurite ready!' && func start --javascript --port 7071 --host 0.0.0.0"]
+# Start Azurite in the background, wait for all three services to be HTTP-ready,
+# then launch the Functions host. HTTP checks ensure Azurite is fully initialized
+# and can handle storage requests, preventing IServiceProvider disposal errors.
+CMD ["sh", "-c", "azurite --location /tmp/azurite --silent > /tmp/azurite.log 2>&1 & echo 'Waiting for Azurite ports...' && until nc -z localhost 10000 && nc -z localhost 10001 && nc -z localhost 10002; do sleep 0.5; done && echo 'Ports open, testing HTTP readiness...' && until curl -f http://127.0.0.1:10000/devstoreaccount1?comp=list 2>/dev/null; do echo 'Waiting for Azurite HTTP...' && sleep 0.5; done && echo 'Azurite fully ready!' && func start --javascript --port 7071 --host 0.0.0.0"]

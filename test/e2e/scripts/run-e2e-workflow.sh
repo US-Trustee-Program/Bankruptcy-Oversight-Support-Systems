@@ -198,6 +198,20 @@ print_container_status() {
 }
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+    # Check if backend container has crashed (exited status)
+    BACKEND_STATUS=$(podman inspect cams-backend-e2e --format '{{.State.Status}}' 2>/dev/null || echo "missing")
+    if [ "$BACKEND_STATUS" = "exited" ]; then
+        echo ""
+        echo -e "${RED}❌ Backend container has crashed!${NC}"
+        echo ""
+        echo -e "${BLUE}Backend logs:${NC}"
+        podman logs cams-backend-e2e 2>&1 | tail -30 | sed 's/^/  /'
+        collect_container_logs
+        echo ""
+        echo -e "${RED}Exiting due to backend crash. Check logs above for IServiceProvider or other errors.${NC}"
+        exit 1
+    fi
+
     # The Functions host is ready when it responds to any HTTP request (even 500 — the
     # /api/healthcheck does deep DB checks that may fail but the host itself is up).
     # The frontend is ready when it serves HTTP. These two checks are sufficient.
