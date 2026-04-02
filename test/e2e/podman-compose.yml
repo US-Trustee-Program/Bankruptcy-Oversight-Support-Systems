@@ -35,8 +35,8 @@ services:
     volumes:
       - ./sqlserver-data:/var/opt/mssql
     tmpfs:
-      - /.system:uid=10001,gid=0,mode=0755
-      - /log:uid=10001,gid=0,mode=0755
+      - /.system:mode=1777
+      - /log:mode=1777
     networks:
       - cams-e2e
     healthcheck:

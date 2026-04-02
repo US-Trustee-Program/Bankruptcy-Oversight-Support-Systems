@@ -4,7 +4,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23917121229`, 2026-04-02)
+## Current Status (run `23917974355`, 2026-04-02)
 
 **SQL Server crash-looping under rootless Podman — two root-level directories need writable tmpfs.** Every other container starts and becomes healthy. Playwright runs auth-setup and completes the Okta login flow. The app loads but renders "Access Denied — 500 Error - Server Error — Failed to fetch".
 
@@ -20,20 +20,20 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 - Host resources healthy: 11% memory (1613MB/15993MB), 4 cores, 78G disk free — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Active failure**: SQL Server container crash-loops — rootless Podman denies writes to `/log` and `/.system` (Permission Denied errno 13, uid 10001 `mssql` user). `podman stats` shows `0B / 0B` memory for sqlserver — container not actually running. TCP healthcheck on port 1433 passes anyway (port opens briefly during crash cycle). Backend gets `ENOTFOUND sqlserver` → `/api/me` returns 500. Only 1 HTTP request (healthcheck curl) ever reaches the backend; Playwright's actual GET `/api/me` never appears in backend logs.
+**Active failure**: SQL Server container never starts — `tmpfs: - /.system:uid=10001,gid=0,mode=0755` rejected by podman 4.9.3 with `unknown mount option "uid=10001"`. Cascaded: backend, frontend, and playwright never started. Zero tests ran.
 
-**Next fix**: Mount both `/log` and `/.system` as tmpfs with `uid=10001,gid=0,mode=0755` so they are owned by the `mssql` user from container start.
+**Next fix**: Replace `uid=10001,gid=0,mode=0755` with `mode=1777` (world-writable sticky) — a universally supported `--tmpfs` option that allows the `mssql` user to write without needing uid ownership.
 
 ---
 
 ## Proposed next experiments
 
-### Experiment 2 — Fix SQL Server crash-loop: tmpfs with uid=10001 for `/log` and `/.system` (QUEUED)
-Azure SQL Edge (mssql uid 10001) crash-loops because it cannot create `/log` and `/.system` at the container root under rootless Podman. `tmpfs: - /.system` alone (run `23917121229`) was insufficient — the default tmpfs ownership is `root:root 755` so the `mssql` user still cannot write subdirectories inside it. Fix: mount both paths with explicit uid/mode:
+### Experiment 2 — Fix SQL Server crash-loop: tmpfs mode=1777 for `/log` and `/.system` (QUEUED)
+Azure SQL Edge (mssql uid 10001) crash-loops because it cannot create `/log` and `/.system` at the container root under rootless Podman. `uid=10001` mount option is invalid on podman 4.9.3. Fix: use `mode=1777` (world-writable sticky) which is universally supported:
 ```yaml
 tmpfs:
-  - /.system:uid=10001,gid=0,mode=0755
-  - /log:uid=10001,gid=0,mode=0755
+  - /.system:mode=1777
+  - /log:mode=1777
 ```
 
 ### Experiment 3 — Verify Okta redirect URI (if above doesn't fix the 500)
@@ -147,10 +147,12 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 
 **Tried**: `tmpfs: - /.system` alone — fixed `/.system` creation but `/log` still failed on first run. On retries `/log` was somehow skipped but `/.system/system` (a subdirectory) failed, indicating the default tmpfs mount ownership was `root:root 755` and the `mssql` user could not write inside it.
 
-**What worked**: (pending) Mount both directories with explicit uid/mode so they are owned by the `mssql` user from the start:
+**Tried**: `tmpfs: - /.system:uid=10001,gid=0,mode=0755` and `/log:uid=10001,gid=0,mode=0755` — podman 4.9.3 on Ubuntu 24.04 does not support the `uid=` mount option for `--tmpfs`. Run failed immediately with `Error: unknown mount option "uid=10001": invalid mount option` before the container started. Cascaded — backend, frontend, playwright all dead on arrival.
+
+**What worked**: (pending) Use `mode=1777` (world-writable sticky) instead of uid ownership:
 ```yaml
 tmpfs:
-  - /.system:uid=10001,gid=0,mode=0755
-  - /log:uid=10001,gid=0,mode=0755
+  - /.system:mode=1777
+  - /log:mode=1777
 ```
-`uid=10001` is the standard `mssql` user uid in the SQL Server on Linux image. This makes the tmpfs writable by the `mssql` process and allows subdirectory creation inside it.
+`mode=1777` is universally supported by `--tmpfs` and allows any uid (including `mssql` uid 10001) to create files and subdirectories inside the mount.
