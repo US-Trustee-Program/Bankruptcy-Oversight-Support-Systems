@@ -254,9 +254,11 @@ echo -e "${BLUE}🌱 Step 2.5: Seeding E2E databases...${NC}"
 echo ""
 
 echo "Seeding MongoDB..."
-if podman-compose run --rm --no-deps \
+if podman run --rm \
+  --net e2e_cams-e2e \
   -e MONGO_CONNECTION_STRING="mongodb://mongodb:27017/cams-e2e?retrywrites=false" \
-  playwright npm run seed; then
+  -w /app/test/e2e \
+  e2e_playwright:latest npm run seed; then
     echo -e "${GREEN}✓ MongoDB seeded${NC}"
 else
     echo -e "${RED}✗ MongoDB seeding failed${NC}"
@@ -265,14 +267,16 @@ fi
 echo ""
 
 echo "Seeding SQL Server..."
-if podman-compose run --rm --no-deps \
+if podman run --rm \
+  --net e2e_cams-e2e \
   -e MSSQL_HOST=sqlserver \
   -e MSSQL_USER=sa \
   -e MSSQL_PASS="${MSSQL_PASS}" \
   -e MSSQL_DATABASE_DXTR=CAMS_E2E \
   -e MSSQL_ENCRYPT=false \
   -e MSSQL_TRUST_UNSIGNED_CERT=true \
-  playwright npm run seed:sql; then
+  -w /app/test/e2e \
+  e2e_playwright:latest npm run seed:sql; then
     echo -e "${GREEN}✓ SQL Server seeded${NC}"
 else
     echo -e "${RED}✗ SQL Server seeding failed${NC}"
@@ -335,14 +339,16 @@ fi
 # and load data pages into the buffer pool before Playwright starts.
 echo -e "${BLUE}🔥 Step 2.7: Warming up SQL Server plan cache...${NC}"
 echo ""
-podman-compose run --rm --no-deps \
+podman run --rm \
+  --net e2e_cams-e2e \
   -e MSSQL_HOST=sqlserver \
   -e MSSQL_USER=sa \
   -e MSSQL_PASS="${MSSQL_PASS}" \
   -e MSSQL_DATABASE_DXTR=CAMS_E2E \
   -e MSSQL_ENCRYPT=false \
   -e MSSQL_TRUST_UNSIGNED_CERT=true \
-  playwright npx tsx ./scripts/warmup-sqlserver.ts || true
+  -w /app/test/e2e \
+  e2e_playwright:latest npx tsx ./scripts/warmup-sqlserver.ts || true
 echo -e "${GREEN}✅ SQL Server warmed up${NC}"
 echo ""
 

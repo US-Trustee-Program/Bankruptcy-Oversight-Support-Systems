@@ -4,7 +4,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23919963501`, 2026-04-02)
+## Current Status (run `23920413835`, 2026-04-02)
 
 **SQL Server running. Backend ELOGIN on `CAMS_E2E` — database doesn't exist at backend startup.** SQL Server starts clean on a fresh named volume. Backend connects with `CAMS_E2E` as the initial catalog immediately at startup, before seeding has run. SQL Server rejects with State 38 (database not found), which the mssql driver surfaces as `ELOGIN`. Playwright auth-setup completes Okta login but app renders "Access Denied — 500 Error - Server Error — Failed to fetch" because `/api/me` hits the broken SQL connection.
 
@@ -20,9 +20,9 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 - Host resources healthy: 11% memory (1613MB/15993MB), 4 cores, 78G disk free — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Active failure**: `podman-compose run --network` is unrecognized by podman-compose 1.0.6. Seeding commands passed `--network e2e_cams-e2e` which is not a supported flag in this version. Both MongoDB and SQL Server seeding failed silently, backend started with no data, auth-setup failed.
+**Active failure**: Two podman-compose 1.0.6 bugs in seed invocations. (1) MongoDB seed: `-e VAR=value=with=equals` triggers a Python crash — `split("=")` produces 3+ parts instead of 2. (2) SQL seed: `podman-compose run --no-deps` still evaluates the playwright service's `depends_on` (backend, frontend) which don't exist at seed time — `"cams-frontend-e2e" is not a valid container`. Both seeds fail; backend starts unseeded; `ELOGIN` on `CAMS_E2E`.
 
-**Next fix**: Remove `--network e2e_cams-e2e` from all three `podman-compose run` invocations (seed MongoDB, seed SQL, warmup). The flag is redundant — `podman-compose run` automatically joins the compose project network.
+**Next fix**: Replace all three `podman-compose run` invocations (seed MongoDB, seed SQL, warmup) with `podman run --net e2e_cams-e2e` directly against `e2e_playwright:latest`. Bypasses podman-compose entirely — no env-var parsing bug, no dependency resolution.
 
 ---
 
@@ -161,4 +161,14 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 
 **Root cause**: The backend is started at the same time as the databases. On a fresh named volume `CAMS_E2E` doesn't exist yet — the seed script creates it in Step 2.5, but that runs after the health-wait loop which completes as soon as the backend HTTP port responds (even a 500 counts). So the backend starts, immediately tries to connect with `CAMS_E2E` as the initial catalog, and SQL Server rejects it.
 
-**What worked**: (pending) Restructure `run-e2e-workflow.sh` to start databases first, wait for TCP readiness on ports 27017 and 1433, seed unconditionally (not just with `--reseed`), then start backend and frontend. `CAMS_E2E` is guaranteed to exist before the backend's first SQL connection.
+**What worked**: Restructure `run-e2e-workflow.sh` to start databases first, wait for TCP readiness on ports 27017 and 1433, seed unconditionally, then start backend and frontend. `CAMS_E2E` is guaranteed to exist before the backend's first SQL connection.
+
+---
+
+## `podman-compose run` bugs in 1.0.6 — env var `=` crash and `--no-deps` dependency leak
+
+**Symptom 1 (MongoDB seed)**: `ValueError: dictionary update sequence element #0 has length 3; 2 is required` in `podman_compose.py`. Any `-e KEY=value` where `value` contains `=` (e.g. a connection string) causes the podman-compose 1.0.6 env-var parser to crash — it splits on `=` naively and gets 3+ parts instead of 2.
+
+**Symptom 2 (SQL seed)**: `"cams-frontend-e2e" is not a valid container, cannot be used as a dependency` — `podman-compose run --no-deps` still evaluates the `depends_on` of the service being run (playwright depends on backend and frontend). At seed time those containers don't exist yet.
+
+**What worked**: Replace all `podman-compose run` seed/warmup invocations with `podman run --net e2e_cams-e2e -w /app/test/e2e e2e_playwright:latest`. Direct `podman run` bypasses podman-compose entirely — no env-var parsing, no dependency resolution.
