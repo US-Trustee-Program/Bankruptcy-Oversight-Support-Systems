@@ -12,4 +12,4 @@ EXPOSE 7071
 # Start Azurite in the background, wait for all three services to be HTTP-ready,
 # then launch the Functions host. HTTP checks ensure Azurite is fully initialized
 # and can handle storage requests, preventing IServiceProvider disposal errors.
-CMD ["sh", "-c", "azurite --location /tmp/azurite --silent > /tmp/azurite.log 2>&1 & echo 'Waiting for embedded Azurite on 127.0.0.1:10000...' && timeout 60s bash -c 'until curl -s --connect-timeout 2 http://127.0.0.1:10000/ > /dev/null 2>&1; do echo \"Azurite not ready...\"; sleep 2; done' && echo 'Azurite is responding!' && sleep 5 && func start --javascript --port 7071 --host 0.0.0.0"]
+CMD ["sh", "-c", "azurite --location /tmp/azurite --silent > /tmp/azurite.log 2>&1 & echo 'Waiting for embedded Azurite...' && until timeout 1 bash -c 'cat < /dev/tcp/127.0.0.1/10000' 2>/dev/null; do sleep 1; done && echo 'Port open, allowing Azurite internal initialization...' && sleep 10 && echo 'Starting Functions Host...' && func host start --port 7071"]
