@@ -10,8 +10,6 @@ services:
       - "27017:27017"
     environment:
       - MONGO_INITDB_DATABASE=cams-e2e
-    volumes:
-      - ./mongodb-data:/data/db
     networks:
       - cams-e2e
     healthcheck:
@@ -32,8 +30,6 @@ services:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${MSSQL_PASS}
       - MSSQL_PID=Developer
-    volumes:
-      - sqlserver-data:/var/opt/mssql
     tmpfs:
       - /.system:mode=1777
       - /log:mode=1777
@@ -78,11 +74,6 @@ services:
       - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;
     networks:
       - cams-e2e
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      sqlserver:
-        condition: service_healthy
     healthcheck:
       disable: true
 
@@ -141,6 +132,3 @@ services:
 networks:
   cams-e2e:
     driver: bridge
-
-volumes:
-  sqlserver-data:

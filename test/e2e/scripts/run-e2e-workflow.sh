@@ -1,21 +1,23 @@
 #!/bin/bash
 
 # Complete E2E Testing Workflow
-# Orchestrates: startup → test → report → teardown
+# Orchestrates: startup → seed → test → report → teardown
+#
+# Databases are always reseeded on every run — both seed scripts drop and recreate
+# all tables/collections unconditionally, so there is no "preserve existing data" mode.
 #
 # Usage: ./run-e2e-workflow.sh [OPTIONS]
-#   --reseed         Clear and reseed the database before running tests
 #   --open-report    Open HTML report in browser after tests complete
 
 set -e
 
 # Parse command line arguments
-RESEED_DB=false
 OPEN_REPORT=false
 while [[ $# -gt 0 ]]; do
     case $1 in
         --reseed)
-            RESEED_DB=true
+            # Kept for backwards compatibility with CI workflow invocation — now a no-op
+            # since seeding always drops and recreates all data.
             shift
             ;;
         --open-report)
@@ -24,7 +26,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--reseed] [--open-report]"
+            echo "Usage: $0 [--open-report]"
             exit 1
             ;;
     esac
@@ -76,7 +78,6 @@ print_container_status() {
     echo ""
     echo -e "${BLUE}  Container status at ${WAIT_COUNT}s:${NC}"
     podman ps -a \
-        --filter "name=cams-azurite-e2e" \
         --filter "name=cams-mongodb-e2e" \
         --filter "name=cams-sqlserver-e2e" \
         --filter "name=cams-backend-e2e" \
@@ -196,29 +197,110 @@ podman rm -f cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-
 podman network rm e2e_cams-e2e 2>/dev/null || true
 echo ""
 
-# Start all services. Azurite runs inside the backend container so there is no external
-# storage dependency or startup race condition.
-echo "Starting services..."
-podman-compose up -d mongodb sqlserver backend frontend > /dev/null
+# Start databases first. The backend connects to CAMS_E2E as its initial catalog
+# at startup — the database must exist before the backend starts or the SQL
+# healthcheck will fail with ELOGIN (State 38: database not found).
+echo "Starting databases..."
+podman-compose up -d mongodb sqlserver > /dev/null
 CLEANUP_NEEDED=true
 echo ""
-echo -e "${GREEN}✅ Services started${NC}"
-echo ""
-print_resource_usage
-
-# Step 2: Wait for services to be healthy
-echo -e "${BLUE}⏳ Step 2: Waiting for databases and services to be healthy...${NC}"
+echo -e "${GREEN}✅ Databases started${NC}"
 echo ""
 
-MAX_WAIT=120  # 2 minutes for services
+# Step 2: Wait for databases to be healthy
+echo -e "${BLUE}⏳ Step 2: Waiting for databases to be ready...${NC}"
+echo ""
+
+MAX_WAIT=120  # 2 minutes for databases
 WAIT_COUNT=0
 LOG_INTERVAL=20  # Print verbose status every 20 seconds
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    # The Functions host is ready when it responds to any HTTP request (even 500 — the
-    # /api/healthcheck does deep DB checks that may fail but the host itself is up).
-    # The frontend is ready when it serves HTTP. These two checks are sufficient.
-    # Both services publish their ports so localhost works from the runner host.
+    MONGO_TCP=$(bash -c '</dev/tcp/localhost/27017' 2>/dev/null && echo "ok" || echo "fail")
+    SQL_TCP=$(bash -c '</dev/tcp/localhost/1433' 2>/dev/null && echo "ok" || echo "fail")
+    if [ "$MONGO_TCP" = "ok" ] && [ "$SQL_TCP" = "ok" ]; then
+        echo -e "${GREEN}✅ Databases are accepting connections${NC}"
+        echo ""
+        break
+    fi
+
+    # Print verbose status periodically
+    if [ $((WAIT_COUNT % LOG_INTERVAL)) -eq 0 ] && [ $WAIT_COUNT -gt 0 ]; then
+        print_container_status
+        print_resource_usage
+    else
+        echo -n "."
+    fi
+
+    sleep 2
+    WAIT_COUNT=$((WAIT_COUNT + 2))
+done
+
+if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
+    echo ""
+    echo -e "${YELLOW}⚠️  Databases did not become ready within ${MAX_WAIT}s — collecting diagnostic logs...${NC}"
+    print_container_status
+    print_resource_usage
+    collect_container_logs
+    echo ""
+    echo -e "${YELLOW}⚠️  Proceeding anyway — tests will likely fail${NC}"
+    echo ""
+fi
+
+# Step 2.5: Seed databases (always — both scripts drop and recreate all tables/collections)
+# CAMS_E2E must exist before the backend starts or the SQL connection will fail with
+# ELOGIN (State 38: database not found). Seeding here guarantees it.
+echo -e "${BLUE}🌱 Step 2.5: Seeding E2E databases...${NC}"
+echo ""
+
+echo "Seeding MongoDB..."
+if podman-compose run --rm --no-deps \
+  --network e2e_cams-e2e \
+  -e MONGO_CONNECTION_STRING="mongodb://mongodb:27017/cams-e2e?retrywrites=false" \
+  playwright npm run seed; then
+    echo -e "${GREEN}✓ MongoDB seeded${NC}"
+else
+    echo -e "${RED}✗ MongoDB seeding failed${NC}"
+    echo "Tests may fail due to missing data"
+fi
+echo ""
+
+echo "Seeding SQL Server..."
+if podman-compose run --rm --no-deps \
+  --network e2e_cams-e2e \
+  -e MSSQL_HOST=sqlserver \
+  -e MSSQL_USER=sa \
+  -e MSSQL_PASS="${MSSQL_PASS}" \
+  -e MSSQL_DATABASE_DXTR=CAMS_E2E \
+  -e MSSQL_ENCRYPT=false \
+  -e MSSQL_TRUST_UNSIGNED_CERT=true \
+  playwright npm run seed:sql; then
+    echo -e "${GREEN}✓ SQL Server seeded${NC}"
+else
+    echo -e "${RED}✗ SQL Server seeding failed${NC}"
+    echo "Tests may fail due to missing data"
+fi
+echo ""
+
+echo -e "${GREEN}✅ Databases seeded${NC}"
+echo ""
+
+# Now start backend and frontend — CAMS_E2E exists, backend SQL connection will succeed
+echo "Starting backend and frontend..."
+podman-compose up -d backend frontend > /dev/null
+echo ""
+echo -e "${GREEN}✅ All services started${NC}"
+echo ""
+print_resource_usage
+
+# Step 2.6: Wait for backend and frontend to be healthy
+echo -e "${BLUE}⏳ Step 2.6: Waiting for backend and frontend to be healthy...${NC}"
+echo ""
+
+MAX_WAIT=120
+WAIT_COUNT=0
+
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     BACKEND_HTTP=$(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo "ok" || echo "fail")
     FRONTEND_HTTP=$(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
     if [ "$BACKEND_HTTP" = "ok" ] && [ "$FRONTEND_HTTP" = "ok" ]; then
@@ -227,7 +309,6 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
         break
     fi
 
-    # Print verbose status periodically
     if [ $((WAIT_COUNT % LOG_INTERVAL)) -eq 0 ] && [ $WAIT_COUNT -gt 0 ]; then
         print_container_status
         print_resource_usage
@@ -250,50 +331,6 @@ if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
     echo ""
 fi
 
-# Step 2.5: Clear and seed databases (optional)
-if [ "$RESEED_DB" = true ]; then
-    echo -e "${BLUE}🌱 Clearing and seeding E2E databases...${NC}"
-    echo ""
-
-    # Seed MongoDB
-    echo "Seeding MongoDB..."
-    if podman-compose run --rm --no-deps \
-      --network e2e_cams-e2e \
-      -e MONGO_CONNECTION_STRING="mongodb://mongodb:27017/cams-e2e?retrywrites=false" \
-      playwright npm run seed; then
-        echo -e "${GREEN}✓ MongoDB seeded${NC}"
-    else
-        echo -e "${RED}✗ MongoDB seeding failed${NC}"
-        echo "Tests may fail due to missing data"
-    fi
-    echo ""
-
-    # Seed SQL Server
-    echo "Seeding SQL Server..."
-    if podman-compose run --rm --no-deps \
-      --network e2e_cams-e2e \
-      -e MSSQL_HOST=sqlserver \
-      -e MSSQL_USER=sa \
-      -e MSSQL_PASS="${MSSQL_PASS}" \
-      -e MSSQL_DATABASE_DXTR=CAMS_E2E \
-      -e MSSQL_ENCRYPT=false \
-      -e MSSQL_TRUST_UNSIGNED_CERT=true \
-      playwright npm run seed:sql; then
-        echo -e "${GREEN}✓ SQL Server seeded${NC}"
-    else
-        echo -e "${RED}✗ SQL Server seeding failed${NC}"
-        echo "Tests may fail due to missing data"
-    fi
-    echo ""
-
-    echo -e "${GREEN}✅ Databases cleared and seeded${NC}"
-    echo ""
-else
-    echo -e "${BLUE}ℹ️  Skipping database seeding (using existing data)${NC}"
-    echo -e "${BLUE}   Use --reseed flag to clear and reseed the databases${NC}"
-    echo ""
-fi
-
 # Step 2.7: Warm up SQL Server plan cache and buffer pool
 # The first getCaseDetail call hits 6+ uncompiled queries on a cold SQL Edge instance.
 # Running the key join patterns once here forces SQL Server to compile execution plans
@@ -308,7 +345,7 @@ podman-compose run --rm --no-deps \
   -e MSSQL_DATABASE_DXTR=CAMS_E2E \
   -e MSSQL_ENCRYPT=false \
   -e MSSQL_TRUST_UNSIGNED_CERT=true \
-  playwright npx tsx ./scripts/warmup-sqlserver.ts 2>/dev/null || true
+  playwright npx tsx ./scripts/warmup-sqlserver.ts || true
 echo -e "${GREEN}✅ SQL Server warmed up${NC}"
 echo ""
 

@@ -4,9 +4,9 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23918424348`, 2026-04-02)
+## Current Status (run `23918982613`, 2026-04-02)
 
-**SQL Server crash-looping under rootless Podman — two root-level directories need writable tmpfs.** Every other container starts and becomes healthy. Playwright runs auth-setup and completes the Okta login flow. The app loads but renders "Access Denied — 500 Error - Server Error — Failed to fetch".
+**SQL Server running. Backend ELOGIN on `CAMS_E2E` — database doesn't exist at backend startup.** SQL Server starts clean on a fresh named volume. Backend connects with `CAMS_E2E` as the initial catalog immediately at startup, before seeding has run. SQL Server rejects with State 38 (database not found), which the mssql driver surfaces as `ELOGIN`. Playwright auth-setup completes Okta login but app renders "Access Denied — 500 Error - Server Error — Failed to fetch" because `/api/me` hits the broken SQL connection.
 
 **Confirmed working:**
 - `e2e_deps`: installs `azure-functions-core-tools@4` + `azurite` together in one `npm install -g`, then pre-downloads the extension bundle via `func bundles download`
@@ -20,15 +20,18 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 - Host resources healthy: 11% memory (1613MB/15993MB), 4 cores, 78G disk free — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Active failure**: SQL Server crash-loops on `/var/opt/mssql/secrets/` — cannot create secrets subdirectory inside the bind-mounted volume. The CI runner creates `./sqlserver-data` as root-owned; the `mssql` user (uid 10001) cannot write into it. `mode=1777` tmpfs mounts for `/.system` and `/log` are working (those errors are gone), but the bind mount ownership is still wrong. `podman stats` shows `0B / 0B` — container not running. Warmup step silently succeeds due to `|| true`.
+**Active failure**: Backend gets `ELOGIN` (SQL Server State 38: database not found) on `CAMS_E2E` because seeding runs after the backend starts. Backend connects with `CAMS_E2E` as the initial catalog at startup — the database doesn't exist yet on a fresh named volume.
 
-**Next fix**: Replace bind mount `./sqlserver-data:/var/opt/mssql` with a named volume `sqlserver-data:/var/opt/mssql`. Podman initializes named volumes with the container's uid namespace mapping, so `mssql` can write into it. Add `volumes: sqlserver-data:` declaration at bottom of compose file.
+**Next fix**: Restructure workflow to start databases first, seed unconditionally (creating `CAMS_E2E`), then start backend and frontend. This guarantees `CAMS_E2E` exists before the backend's SQL connection is attempted.
 
 ---
 
 ## Proposed next experiments
 
-### Experiment 2 — Fix SQL Server crash-loop: named volume + tmpfs mode=1777 (QUEUED)
+### Experiment 3 — Fix ELOGIN (State 38): seed databases before starting backend (QUEUED)
+Backend connects with `CAMS_E2E` as the initial catalog at startup. On a fresh named volume `CAMS_E2E` doesn't exist yet — SQL Server rejects the connection with State 38 (database not found), surfaced as `ELOGIN`. Fix: restructure `run-e2e-workflow.sh` to start databases only, wait for TCP readiness, seed unconditionally (creates `CAMS_E2E`), then start backend and frontend. This ensures `CAMS_E2E` exists before any backend connection is attempted.
+
+### Experiment 2 — Fix SQL Server crash-loop: named volume + tmpfs mode=1777 (CONFIRMED WORKING, run `23918982613`)
 Azure SQL Edge crash-loops through a sequence of permission failures on root-level directories and the bind-mounted volume. Fix involves two changes:
 1. `tmpfs: - /.system:mode=1777` and `- /log:mode=1777` (confirmed working in run `23918424348` — those errors gone)
 2. Replace bind mount `./sqlserver-data:/var/opt/mssql` with named volume `sqlserver-data:/var/opt/mssql` — Podman initializes named volumes with correct uid namespace ownership, allowing `mssql` to create `secrets/` and other subdirectories inside `/var/opt/mssql`.
@@ -148,4 +151,14 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 
 **Tried**: `tmpfs: - /.system:mode=1777` and `/log:mode=1777` (run `23918424348`) — those two paths are no longer failing. But `/var/opt/mssql/secrets/` is now the new crash point, inside the bind-mounted volume.
 
-**What worked**: (pending) Replace bind mount with a named volume — Podman manages ownership correctly for named volumes under rootless user namespace mapping.
+**What worked**: Named volume `sqlserver-data:/var/opt/mssql` + `tmpfs: - /.system:mode=1777` + `- /log:mode=1777` (run `23918982613`). SQL Server starts successfully and accepts connections. Named volume with `volumes: sqlserver-data:` declaration at bottom of compose file — Podman initializes it with correct uid namespace ownership.
+
+---
+
+## Backend ELOGIN (State 38) — `CAMS_E2E` database not found at backend startup
+
+**Symptom**: `[ERROR] [HEALTHCHECK-SQL-DB] Login failed for user 'sa'. {"code":"ELOGIN"}`. SQL Server log shows `Error: 18456, Severity: 14, State: 38. Login failed for user 'sa'. Reason: Failed to open the explicitly specified database 'CAMS_E2E'.` The SA password is correct — State 38 means the login succeeded but the requested initial catalog doesn't exist.
+
+**Root cause**: The backend is started at the same time as the databases. On a fresh named volume `CAMS_E2E` doesn't exist yet — the seed script creates it in Step 2.5, but that runs after the health-wait loop which completes as soon as the backend HTTP port responds (even a 500 counts). So the backend starts, immediately tries to connect with `CAMS_E2E` as the initial catalog, and SQL Server rejects it.
+
+**What worked**: (pending) Restructure `run-e2e-workflow.sh` to start databases first, wait for TCP readiness on ports 27017 and 1433, seed unconditionally (not just with `--reseed`), then start backend and frontend. `CAMS_E2E` is guaranteed to exist before the backend's first SQL connection.

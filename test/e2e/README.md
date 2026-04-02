@@ -11,11 +11,8 @@ cd test/e2e
 npm run podman:install
 npm run podman:rebuild-deps
 
-# Run tests (uses existing database data)
+# Run tests (databases are always reseeded automatically)
 npm run e2e
-
-# First run, or after data issues: reseed databases before running
-npm run e2e:reseed
 ```
 
 ## Prerequisites
@@ -45,10 +42,8 @@ A `.env` file in `test/e2e/` is required. It contains database connection string
 ### Running Tests
 
 ```bash
-npm run e2e               # Run workflow using existing database data (faster)
-npm run e2e:reseed        # Clear and reseed both databases, then run tests
+npm run e2e               # Run workflow (databases always reseeded)
 npm run e2e:open          # Run tests and open HTML report in browser
-npm run e2e:full          # Reseed + run tests + open report
 ```
 
 ### Seeding Databases
@@ -156,8 +151,6 @@ test-results/                      # Screenshots, traces, videos
 playwright-report/                 # HTML test report
 backend-logs/                      # Backend log captured after each run
 fixtures/*-harvested.json          # Intermediate harvest files
-mongodb-data/                      # Persisted MongoDB volume
-sqlserver-data/                    # Persisted SQL Server volume
 ```
 
 ## Test Data
@@ -171,15 +164,9 @@ Test data lives in two committed JSON files:
 
 These files contain no PII. When the seed scripts run, they generate synthetic Faker values for any nulled PII columns at seed time. No live database credentials are required to run tests.
 
-### When to Reseed
+### Seeding
 
-```bash
-npm run e2e:reseed
-```
-
-- First time running tests (no schema or data exists yet)
-- After pulling updated fixture files from the repo
-- After data corruption or a partially completed test run left stale records
+Both seed scripts run automatically before every test run and always drop and recreate all data. There is no manual reseed step — just run `npm run e2e`.
 
 ### Updating Fixtures
 
@@ -208,7 +195,7 @@ Commit the updated `fixtures/mongo-fixture.json` and `fixtures/sqlserver-fixture
 
 ### Data Persistence
 
-Both databases persist data to host directories (`mongodb-data/`, `sqlserver-data/`) between runs. Use `npm run e2e:reseed` to reset — do not delete these directories. The SQL seed script drops and recreates all tables; deleting `sqlserver-data/` forces a full server re-initialization (~30s overhead) that is unnecessary.
+Both databases use ephemeral container storage — data does not persist between runs. Both seed scripts drop and recreate all tables/collections on every run, so there is no need for persistence and no stale-data problem.
 
 ### Required Cases
 
