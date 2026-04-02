@@ -4,8 +4,9 @@ FROM node:20-bookworm-slim
 WORKDIR /app
 
 # Install system dependencies once (cached layer)
+# netcat-openbsd needed for TCP port checks in backend startup
 RUN apt-get update && \
-    apt-get install -y curl libicu72 && \
+    apt-get install -y curl libicu72 netcat-openbsd && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
