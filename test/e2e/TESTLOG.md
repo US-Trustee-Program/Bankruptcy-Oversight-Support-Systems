@@ -4,34 +4,35 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (tag: `E2E_BEST_BRIAN_2`, run `23909519460`, 2026-04-02)
+## Current Status (run `23914186536`, 2026-04-02)
 
-**All infrastructure is working.** Every container starts and becomes healthy. Playwright runs auth-setup and completes the Okta login flow. The app loads but renders "Access Denied — 500 Error - Server Error — Failed to fetch", causing `expect(page.getByTestId('app-component-test-id')).toBeVisible()` to fail.
+**SQL Server crash-looping under rootless Podman.** Every other container starts and becomes healthy. Playwright runs auth-setup and completes the Okta login flow. The app loads but renders "Access Denied — 500 Error - Server Error — Failed to fetch".
 
-**Working configuration summary:**
+**Confirmed working:**
 - `e2e_deps`: installs `azure-functions-core-tools@4` + `azurite` together in one `npm install -g`, then pre-downloads the extension bundle via `func bundles download`
 - `e2e_built`: standard build, no changes — source `local.settings.json` (with `AzureWebJobsStorage` + `Host.CORS`) baked in via `COPY backend/`
 - `e2e_backend`: FROM `e2e_built`, no COPY, no extra installs — CMD starts azurite in background, waits for Table service ready, then `func start`
 - `AzureWebJobsStorage`: explicit Azurite connection string (`devstoreaccount1` / well-known key / `http://127.0.0.1:10000`) passed via compose env var — overrides the value in `local.settings.json` at runtime
+- **Experiment 1 confirmed**: `CAMS_SERVER_HOSTNAME=backend` eliminates CORS `OPTIONS /api/me` 404 — frontend proxies API calls server-side via bridge DNS, no preflight needed
 - Backend: bridge network, `ports: 7071:7071`
-- Frontend: bridge network, `CAMS_SERVER_HOSTNAME=backend` (Experiment 1 in progress), `CAMS_SERVER_PORT=7071`, `ports: 3000:3000`
+- Frontend: bridge network, `CAMS_SERVER_HOSTNAME=backend`, `CAMS_SERVER_PORT=7071`, `ports: 3000:3000`
 - Playwright: `network_mode: host`, `TARGET_HOST=http://localhost:3000`
+- Host resources healthy: 11% memory (1613MB/15993MB), 4 cores, 78G disk free — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Remaining failure**: Frontend gets "Failed to fetch" on initial API call after auth. Root cause: `CAMS_SERVER_HOSTNAME=localhost` resolves to the frontend container itself, not the backend. Experiment 1 (switching to `CAMS_SERVER_HOSTNAME=backend`) is queued.
+**Active failure**: SQL Server container crash-loops — rootless Podman denies `/.system` creation (Permission Denied errno 13). `podman stats` shows `0B / 0B` memory for sqlserver — container not actually running. TCP healthcheck on port 1433 passes anyway (port opens briefly during crash cycle). Backend gets `ENOTFOUND sqlserver` → `/api/me` returns 500. Only 1 HTTP request (healthcheck curl) ever reaches the backend; Playwright's actual GET `/api/me` never appears in backend logs.
+
+**Next fix**: Add `tmpfs: - /.system` to the sqlserver service in `podman-compose.yml` so SQL Edge can create its system directory under rootless Podman.
 
 ---
 
 ## Proposed next experiments
 
-### Experiment 1 — Use bridge DNS for frontend → backend calls (IN PROGRESS)
-Change `CAMS_SERVER_HOSTNAME=localhost` → `CAMS_SERVER_HOSTNAME=backend` in `pr-validation.yml`. The frontend container is on the bridge network and resolves `backend` via container DNS. The browser-side requests go through the frontend's Express proxy, so Playwright on host network reaches the API indirectly. This matches the best run `23820968253` which used `CAMS_API_BASE_URL=http://backend:7071`.
+### Experiment 2 — Fix SQL Server crash-loop: tmpfs for `/.system` (QUEUED)
+Azure SQL Edge tries to create `/.system` at the container root filesystem on initialization. Rootless Podman denies this with `errno 13 (Permission Denied)`. Fix: add `tmpfs: - /.system` to the sqlserver service in `podman-compose.yml`. This mounts a writable tmpfs at that path without requiring root privileges on the host filesystem.
 
-### Experiment 2 — Put backend on host network (MEDIUM RISK)
-Add `network_mode: host` to the backend service. Makes backend reachable at `localhost:7071` from all contexts (browser, Playwright, frontend server-side). The embedded Azurite at `127.0.0.1` still works. Requires removing the `ports: 7071:7071` mapping (incompatible with host network mode). MongoDB and SQL Server connections switch from bridge DNS to `localhost` (published ports). May re-introduce issues seen in earlier host-network experiments.
-
-### Experiment 3 — Verify Okta redirect URI (if Experiments 1-2 don't help)
-After auth succeeds the app renders but cannot call the API. If the frontend proxy is not the issue, the problem may be the Okta redirect URI configuration. Confirm the Okta app in the integrator tenant has `http://localhost:3000/...` registered as an allowed callback. Check `auth-setup.ts` to see what URL Playwright is waiting for after the Okta redirect.
+### Experiment 3 — Verify Okta redirect URI (if above doesn't fix the 500)
+After auth succeeds the app renders but cannot call the API. If fixing SQL Server still leaves a 500, the problem may be the Okta redirect URI or user/group mapping config. Confirm the Okta app in the integrator tenant has `http://localhost:3000/...` registered as an allowed callback. Check `auth-setup.ts` to see what URL Playwright is waiting for after the Okta redirect.
 
 ---
 
@@ -126,3 +127,15 @@ After auth succeeds the app renders but cannot call the API. If the frontend pro
 **Root cause**: Loop condition checked `podman ps --filter "name=..."` container status counts, which returned `"0"` indefinitely for bridge containers when backend was on host network.
 
 **What worked**: Removed the `podman ps` container-status gate entirely. HTTP reachability on both ports is the sufficient and correct readiness signal.
+
+---
+
+## SQL Server crash-loop under rootless Podman — `/.system` Permission Denied
+
+**Symptom**: `cams-sqlserver-e2e` container crash-loops. `podman stats` shows `CPU: 0.00%, Mem: 0B / 0B` — container not actually running. TCP healthcheck on port 1433 passes anyway (port opens briefly during crash cycle). Backend gets `ENOTFOUND sqlserver`. Only the healthcheck curl reaches the backend; Playwright's `/api/me` never appears in backend logs.
+
+**SQL Edge log**: `Error: The system directory [/.system] could not be created. File: LinuxDirectory.cpp:420 [Status: 0xC0000022 Access Denied errno = 0xD(13) Permission denied]`
+
+**Root cause**: Azure SQL Edge tries to create `/.system` at the container root filesystem on initialization. Rootless Podman denies writes to `/` in the container root because the user namespace mapping doesn't grant the container UID permission to create entries there.
+
+**What worked**: (pending) Add `tmpfs: - /.system` to the sqlserver service in `podman-compose.yml`. This mounts a writable in-memory filesystem at `/.system` before SQL Edge initializes, satisfying the directory creation without needing root on the host filesystem.

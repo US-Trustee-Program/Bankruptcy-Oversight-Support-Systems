@@ -34,6 +34,8 @@ services:
       - MSSQL_PID=Developer
     volumes:
       - ./sqlserver-data:/var/opt/mssql
+    tmpfs:
+      - /.system
     networks:
       - cams-e2e
     healthcheck:
