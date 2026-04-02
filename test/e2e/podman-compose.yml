@@ -10,8 +10,8 @@ services:
       - "27017:27017"
     environment:
       - MONGO_INITDB_DATABASE=cams-e2e
-    volumes:
-      - ./mongodb-data:/data/db
+    # Removed volume mount - causes permission issues in rootless podman (GitHub Actions)
+    # Data persistence not needed for E2E tests - fresh DB seeded each run
     networks:
       - cams-e2e
     healthcheck:
@@ -32,8 +32,8 @@ services:
       - ACCEPT_EULA=Y
       - MSSQL_SA_PASSWORD=${MSSQL_PASS}
       - MSSQL_PID=Developer
-    volumes:
-      - ./sqlserver-data:/var/opt/mssql
+    # Volume removed: causes permission issues in rootless podman (GitHub Actions CI)
+    # E2E tests don't need data persistence - DB is seeded fresh each run
     networks:
       - cams-e2e
     healthcheck:
@@ -92,6 +92,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - BROWSER=none
       - DOTENV_CONFIG_SILENT=true
       - DOTENV_QUIET=true
       - CAMS_PA11Y=false
