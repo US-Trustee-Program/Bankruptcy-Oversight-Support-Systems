@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, beforeEach, SpyInstance } from 'vitest';
+import { describe, expect, test, vi, beforeEach, MockInstance } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import ResyncTerminalTransactionCases from './resync-terminal-transaction-cases';
@@ -8,7 +8,7 @@ import { CasesInterface } from '../../use-cases/cases/cases.interface';
 
 describe('ResyncTerminalTransactionCases', () => {
   let context: ApplicationContext;
-  let gatewaySpy: SpyInstance<[ApplicationContext], CasesInterface>;
+  let gatewaySpy: MockInstance<(context: ApplicationContext) => CasesInterface>;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -20,7 +20,7 @@ describe('ResyncTerminalTransactionCases', () => {
       const mockCaseIds = MockData.buildArray(MockData.randomCaseId, 3);
       gatewaySpy.mockReturnValue({
         getCasesWithTerminalTransactionBlindSpot: vi.fn().mockResolvedValue(mockCaseIds),
-      });
+      } as unknown as CasesInterface);
 
       const result = await ResyncTerminalTransactionCases.getCaseIdsWithBlindSpot(context);
 
@@ -35,7 +35,7 @@ describe('ResyncTerminalTransactionCases', () => {
       const mockMethod = vi.fn().mockResolvedValue([]);
       gatewaySpy.mockReturnValue({
         getCasesWithTerminalTransactionBlindSpot: mockMethod,
-      });
+      } as unknown as CasesInterface);
 
       await ResyncTerminalTransactionCases.getCaseIdsWithBlindSpot(context);
 
@@ -46,7 +46,7 @@ describe('ResyncTerminalTransactionCases', () => {
       const mockMethod = vi.fn().mockResolvedValue([]);
       gatewaySpy.mockReturnValue({
         getCasesWithTerminalTransactionBlindSpot: mockMethod,
-      });
+      } as unknown as CasesInterface);
 
       await ResyncTerminalTransactionCases.getCaseIdsWithBlindSpot(context, '2020-01-01');
 
@@ -58,7 +58,7 @@ describe('ResyncTerminalTransactionCases', () => {
         getCasesWithTerminalTransactionBlindSpot: vi
           .fn()
           .mockRejectedValue(new Error('DXTR error')),
-      });
+      } as unknown as CasesInterface);
 
       const result = await ResyncTerminalTransactionCases.getCaseIdsWithBlindSpot(context);
 

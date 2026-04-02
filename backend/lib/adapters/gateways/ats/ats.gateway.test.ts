@@ -6,6 +6,7 @@ import {
   generateTestCredential,
 } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
+import { UnknownError } from '../../../common-errors/unknown-error';
 
 describe('ATS Gateway', () => {
   let context: ApplicationContext;
@@ -331,8 +332,9 @@ describe('ATS Gateway', () => {
       // Mock loadTrusteeOverrides to fail
       const loadOverridesMock = await import('./cleansing/ats-cleansing-overrides');
       vi.spyOn(loadOverridesMock, 'loadTrusteeOverrides').mockResolvedValueOnce({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        error: new Error('Failed to read override file') as any,
+        error: new UnknownError('ATS-CLEANSING-OVERRIDES', {
+          message: 'Failed to read override file',
+        }),
       });
 
       const loggerErrorSpy = vi.spyOn(context.logger, 'error');

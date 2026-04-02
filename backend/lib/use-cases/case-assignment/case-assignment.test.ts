@@ -1,6 +1,7 @@
-import { vi } from 'vitest';
+import { vi, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentUseCase } from './case-assignment';
+import { CaseAssignmentEvent } from '@common/cams/dataflow-events';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
@@ -95,7 +96,7 @@ describe('Case assignment tests', () => {
     const caseId = '081-23-01176';
     const role = CamsRole.TrialAttorney;
 
-    let assignmentEventSpy: ReturnType<typeof vi.fn>;
+    let assignmentEventSpy: Mock<(event: CaseAssignmentEvent) => Promise<void>>;
 
     beforeEach(async () => {
       applicationContext = await createMockApplicationContext({

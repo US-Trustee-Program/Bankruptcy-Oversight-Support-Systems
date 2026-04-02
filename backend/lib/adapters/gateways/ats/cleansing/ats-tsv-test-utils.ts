@@ -79,18 +79,18 @@ export function loadOverrides(): Map<string, TrusteeOverride[]> {
     });
 
     const override: TrusteeOverride = {
-      trusteeId: row.trustee_id,
-      status: row.status,
-      district: row.district,
-      state: row.state,
-      chapter: row.chapter,
+      trusteeId: row.trustee_id ?? '',
+      status: row.status ?? '',
+      district: row.district ?? '',
+      state: row.state ?? '',
+      chapter: row.chapter ?? '',
       action: row.action as 'SKIP' | 'MAP',
-      overrideStatus: row.override_status,
-      overrideDistrict: row.override_district,
-      overrideState: row.override_state,
-      overrideChapter: row.override_chapter,
-      overrideCourtId: row.override_court_id,
-      notes: row.notes,
+      overrideStatus: row.override_status ?? undefined,
+      overrideDistrict: row.override_district ?? undefined,
+      overrideState: row.override_state ?? undefined,
+      overrideChapter: row.override_chapter ?? undefined,
+      overrideCourtId: row.override_court_id ?? undefined,
+      notes: row.notes ?? undefined,
     };
 
     const existing = overridesMap.get(override.trusteeId) || [];

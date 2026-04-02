@@ -40,7 +40,7 @@ describe('ATS Cleansing Transform', () => {
     });
 
     test('should handle missing CHAPTER field', () => {
-      const recordWithoutChapter = { ...baseRecord, CHAPTER: undefined };
+      const recordWithoutChapter = { ...baseRecord, CHAPTER: undefined } as AtsAppointmentRecord;
 
       vi.spyOn(atsMappings, 'parseChapterAndType').mockReturnValue({ chapter: '7' });
       vi.spyOn(atsMappings, 'parseTodStatus').mockReturnValue({

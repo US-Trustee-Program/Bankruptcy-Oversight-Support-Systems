@@ -48,8 +48,14 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
           },
         );
         this.overridesCache = new Map();
-      } else {
+      } else if (result.data !== undefined) {
         this.overridesCache = result.data;
+      } else {
+        context.logger.warn(
+          MODULE_NAME,
+          'loadTrusteeOverrides returned no data and no error — proceeding without overrides',
+        );
+        this.overridesCache = new Map();
       }
     }
     return this.overridesCache;
@@ -121,7 +127,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       return trustees;
     } catch (originalError) {
       const error = getCamsError(
-        originalError,
+        originalError as Error,
         MODULE_NAME,
         'Failed to retrieve trustees page from ATS',
       );
@@ -289,7 +295,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       };
     } catch (originalError) {
       const error = getCamsError(
-        originalError,
+        originalError as Error,
         MODULE_NAME,
         `Failed to retrieve appointments for trustee ${trusteeId}`,
       );
@@ -318,7 +324,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       return count;
     } catch (originalError) {
       const error = getCamsError(
-        originalError,
+        originalError as Error,
         MODULE_NAME,
         'Failed to get trustee count from ATS',
       );
@@ -341,7 +347,11 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       context.logger.info(MODULE_NAME, 'ATS database connection test successful');
       return true;
     } catch (originalError) {
-      const error = getCamsError(originalError, MODULE_NAME, 'ATS database connection test failed');
+      const error = getCamsError(
+        originalError as Error,
+        MODULE_NAME,
+        'ATS database connection test failed',
+      );
       context.logger.error(MODULE_NAME, 'Connection test failed', {
         error: error.message,
       });

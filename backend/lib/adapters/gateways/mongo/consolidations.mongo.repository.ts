@@ -1,6 +1,6 @@
 import { OrdersSearchPredicate } from '@common/api/search';
 import { ConsolidationOrder } from '@common/cams/orders';
-import QueryBuilder, { ConditionOrConjunction, using } from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction, Query, using } from '../../../query/query-builder';
 import { ConsolidationOrdersRepository } from '../../../use-cases/gateways.types';
 import { ApplicationContext } from '../../types/basic';
 import { getCamsError } from '../../../common-errors/error-utilities';
@@ -9,6 +9,10 @@ import { escapeRegExCharacters } from '@common/cams/regex';
 
 const MODULE_NAME = 'CONSOLIDATIONS-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'consolidations';
+
+type ConsolidationOrderQueryable = ConsolidationOrder & {
+  'memberCases.caseId': string;
+};
 
 const { and, orderBy } = QueryBuilder;
 
@@ -152,10 +156,9 @@ export default class ConsolidationOrdersMongoRepository<
 
   public async findByCaseId(caseId: string): Promise<T[]> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const anyDoc = using<any>();
-      const query = anyDoc('caseId').equals(caseId);
-      return await this.getAdapter<T>().find(query);
+      const doc = using<ConsolidationOrderQueryable>();
+      const query = doc('memberCases.caseId').equals(caseId);
+      return await this.getAdapter<T>().find(query as unknown as Query<T>);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }

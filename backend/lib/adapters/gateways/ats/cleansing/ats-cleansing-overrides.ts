@@ -73,7 +73,7 @@ export async function loadTrusteeOverrides(
     return { data: overridesMap };
   } catch (originalError) {
     return {
-      error: getCamsError(originalError, MODULE_NAME, 'Failed to load trustee overrides'),
+      error: getCamsError(originalError as Error, MODULE_NAME, 'Failed to load trustee overrides'),
     };
   }
 }

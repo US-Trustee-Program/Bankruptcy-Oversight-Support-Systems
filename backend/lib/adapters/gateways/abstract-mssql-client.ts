@@ -43,12 +43,12 @@ export abstract class AbstractMssqlClient {
       return queryResults;
     } catch (error) {
       if (isConnectionError(error)) {
-        const errorMessages = [];
+        const errorMessages: string[] = [];
         // No recursive function here. Limiting this to just 2 "errors" lists deep.
         if (isAggregateError(error.originalError)) {
-          error.originalError.errors.reduce((acc, e) => {
+          error.originalError.errors?.reduce((acc, e) => {
             if (isAggregateError(e)) {
-              e.errors.forEach((lowestE) => {
+              e.errors?.forEach((lowestE) => {
                 acc.push(lowestE.message);
               });
             } else {
@@ -78,19 +78,24 @@ export abstract class AbstractMssqlClient {
 
         context.logger.error(this.moduleName, 'MssqlError', newError);
       } else {
-        context.logger.error(this.moduleName, error.message, { error, query, input });
+        const unknownError =
+          error instanceof Error
+            ? error
+            : new Error((error as { message?: string }).message ?? String(error));
+        context.logger.error(this.moduleName, unknownError.message, { error, query, input });
+        throw getCamsError(unknownError, this.moduleName, unknownError.message);
       }
 
-      throw getCamsError(error, this.moduleName, error.message);
+      throw getCamsError(error as Error, this.moduleName, (error as Error).message);
     }
   }
 }
 
-function isMssqlError(e): e is MSSQLError {
+function isMssqlError(e: unknown): e is MSSQLError {
   return e instanceof MSSQLError;
 }
 
-function isConnectionError(e): e is ConnectionError {
+function isConnectionError(e: unknown): e is ConnectionError {
   return e instanceof ConnectionError;
 }
 
@@ -99,5 +104,5 @@ type AggregateError = Error & {
 };
 
 function isAggregateError(e: unknown): e is AggregateError {
-  return e && 'errors' in (e as object);
+  return !!e && 'errors' in (e as object);
 }

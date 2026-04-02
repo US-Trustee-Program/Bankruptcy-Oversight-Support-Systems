@@ -44,9 +44,7 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   async search(predicate: OrdersSearchPredicate): Promise<Order[]> {
     try {
       const doc = using<Order>();
-      const query: Query<Order> = predicate
-        ? doc('courtDivisionCode').contains(predicate.divisionCodes)
-        : null;
+      const query = predicate ? doc('courtDivisionCode').contains(predicate.divisionCodes) : null;
       return await this.getAdapter<Order>().find(query, orderBy<Order>(['orderDate', 'ASCENDING']));
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
@@ -106,8 +104,7 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
 
   async findByCaseId(caseId: string): Promise<Order[]> {
     try {
-      const doc = using<Order>();
-      const query = doc('caseId' as keyof Order).equals(caseId);
+      const query = using<TransferOrder>()('caseId').equals(caseId) as Query<Order>;
       return await this.getAdapter<Order>().find(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
