@@ -4,7 +4,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23922642660`, 2026-04-02)
+## Current Status (run `23923746590`, 2026-04-02)
 
 **All infrastructure working. App renders 500 due to browser calling `http://backend:7071` — unresolvable from browser context.**
 
@@ -20,13 +20,17 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 - Host resources healthy: 12% memory, 4 cores — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Active failure**: Browser makes direct API calls to `http://backend:7071/api/me` — `backend` is only resolvable inside the compose bridge network, not from the browser (Playwright on host network). All API requests fail with `net::ERR_NAME_NOT_RESOLVED`. App renders "500 Error - Server Error / Failed to fetch". Backend receives no requests after the healthcheck curl.
+**CORS preflight `OPTIONS /api/me` returns 404.** Infrastructure fully working: databases start, seeding succeeds, backend healthcheck returns HTTP 200 (MongoDB + SQL all pass). Okta login completes. Browser calls `http://localhost:7071/api/me` — correct, reachable. But three `OPTIONS` preflights arrive at the backend and are rejected with HTTP 404: `Route value '(null)' with key 'httpMethod' did not match the constraint 'HttpMethodRouteConstraint'`. The routing layer rejects OPTIONS before CORS middleware handles it. React app never initializes; `app-component-test-id` never visible.
 
-Infrastructure is fully working: databases start, seeding succeeds, backend connects to `CAMS_E2E` cleanly (healthcheck returns HTTP 200, all checks pass including SQL).
+**`CAMS_SERVER_HOSTNAME=localhost` confirmed correct** — backend receives the requests (unlike `backend` which gave `ERR_NAME_NOT_RESOLVED`). The remaining issue is the CORS preflight handling.
 
-**Root cause of Experiment 1 (`CAMS_SERVER_HOSTNAME=backend`) being wrong**: The frontend is a static Vite build served by `vite preview` with no proxy. `envToConfig.js` writes `CAMS_SERVER_HOSTNAME` directly into `configuration.json` which is loaded as `window.CAMS_CONFIGURATION` in the browser. The browser constructs the API base URL directly — `http://backend:7071/api` — and calls it without any server-side proxying. `backend` is unresolvable from the browser.
+**Active failure**: Azure Functions host routing constraint rejects `OPTIONS` before CORS middleware responds. `Host.CORS: "*"` is configured in `local.settings.json` but either isn't being respected or `localhost:3000` isn't in the allowed origins list.
 
-**Next fix**: Set `CAMS_SERVER_HOSTNAME=localhost` in `pr-validation.yml`. The backend's port 7071 is published to the host, reachable as `localhost:7071` from the Playwright container (host network) and from the browser. `Host.CORS: "*"` is already baked into the backend image so CORS preflights will be handled.
+**Next steps to investigate:**
+1. Add `CORS_CREDENTIALS=false` and explicit `Host.CORS.AllowedOrigins: http://localhost:3000` to see if origin-specific config fixes it
+2. Check whether Azure Functions v4 node worker requires `Host.CORS` to include the specific origin or accept `*` for `localhost`
+3. Consider switching Playwright's origin to match whatever the CORS config allows — e.g. if CORS is already set to `*` the issue may be the Functions host version requiring explicit origins
+4. Alternatively: configure a `vite preview` proxy rule in a custom vite config override so browser requests go to the frontend at `localhost:3000/api/...` which proxies to `localhost:7071/api/...` — eliminates CORS entirely
 
 ---
 
@@ -92,6 +96,21 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 **Root cause**: Rootless Podman with `pasta`/`slirp4netns` on this runner does not make published bridge-container ports available at `127.0.0.1` from within other containers, even host-network ones.
 
 **What worked**: Keep backend on bridge network. Use bridge DNS names (`mongodb`, `sqlserver`) for all backend connections. Publish port `7071:7071` so Playwright (host-network) and the browser can reach the API at `localhost:7071`.
+
+---
+
+## CORS preflight `OPTIONS /api/me` returns 404 — route constraint rejects OPTIONS
+
+**Symptom**: Three `OPTIONS /api/me` preflights reach the backend (confirmed in log) and all return HTTP 404 within 1-9ms: `Route value '(null)' with key 'httpMethod' did not match the constraint 'Microsoft.AspNetCore.Routing.Constraints.HttpMethodRouteConstraint'`. Browser never sends the real `GET /api/me`. React app stays in error/loading state after Okta redirect. `app-component-test-id` never visible.
+
+**Context**: Only occurs with `CAMS_SERVER_HOSTNAME=localhost` (cross-origin from the browser's perspective — browser is at `http://localhost:3000`, API is at `http://localhost:7071`). Same-origin would suppress the preflight. `Host.CORS: "*"` is set in `local.settings.json` baked into the image, but the Functions host routing layer rejects OPTIONS before CORS middleware runs.
+
+**Tried**: `CAMS_SERVER_HOSTNAME=backend` (Experiment 1) — eliminated the CORS 404 by making browser requests fail entirely with `ERR_NAME_NOT_RESOLVED` instead. Not a fix.
+
+**Not yet tried**:
+1. Explicit `Host.CORS.AllowedOrigins` with `http://localhost:3000` — `*` may not be valid for credentialed requests
+2. A `vite preview` proxy rule routing `/api` → `http://localhost:7071/api` — eliminates cross-origin entirely, no preflight needed
+3. Verify `Host.CORS` is actually loaded at runtime by checking the full backend startup log for CORS-related lines
 
 ---
 
