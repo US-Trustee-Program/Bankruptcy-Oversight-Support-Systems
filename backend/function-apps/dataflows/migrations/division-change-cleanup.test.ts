@@ -23,10 +23,6 @@ describe('Division Change Cleanup Migration', () => {
     } as unknown as InvocationContext;
   });
 
-  // ============================================================================
-  // START HANDLER TESTS (1-5)
-  // ============================================================================
-
   describe('handleStart', () => {
     test('1. should call findOrphanedCasePairs', async () => {
       vi.spyOn(DivisionChangeCleanupUseCase, 'findOrphanedCasePairs').mockResolvedValue([]);
@@ -86,10 +82,6 @@ describe('Division Change Cleanup Migration', () => {
       expect(setValue).toEqual(fixMessages);
     });
   });
-
-  // ============================================================================
-  // FIX HANDLER TESTS (6-13)
-  // ============================================================================
 
   describe('handleFix', () => {
     test('6. should extract orphaned case ID from message', async () => {
@@ -178,7 +170,6 @@ describe('Division Change Cleanup Migration', () => {
 
       vi.spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase').mockResolvedValue(0);
 
-      // Should resolve without throwing, indicating trace was completed successfully
       await expect(handleFix(message, mockInvocationContext)).resolves.not.toThrow();
     });
 
@@ -195,10 +186,6 @@ describe('Division Change Cleanup Migration', () => {
       await expect(handleFix(message, mockInvocationContext)).rejects.toThrow('Cleanup failed');
     });
   });
-
-  // ============================================================================
-  // FIX POISON HANDLER TESTS (14-15)
-  // ============================================================================
 
   describe('handleFixPoison', () => {
     test('14. should be exported and callable', () => {

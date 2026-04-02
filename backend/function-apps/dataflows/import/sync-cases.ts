@@ -121,7 +121,6 @@ async function handlePage(events: CaseSyncEvent[], invocationContext: Invocation
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
   const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
 
-  // Queue division changes to FIX
   const divisionChanges = processedEvents
     .filter((event) => event.divisionChange !== undefined)
     .map((event) => event.divisionChange!);
