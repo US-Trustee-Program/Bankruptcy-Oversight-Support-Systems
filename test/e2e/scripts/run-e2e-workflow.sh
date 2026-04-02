@@ -255,7 +255,6 @@ echo ""
 
 echo "Seeding MongoDB..."
 if podman-compose run --rm --no-deps \
-  --network e2e_cams-e2e \
   -e MONGO_CONNECTION_STRING="mongodb://mongodb:27017/cams-e2e?retrywrites=false" \
   playwright npm run seed; then
     echo -e "${GREEN}✓ MongoDB seeded${NC}"
@@ -267,7 +266,6 @@ echo ""
 
 echo "Seeding SQL Server..."
 if podman-compose run --rm --no-deps \
-  --network e2e_cams-e2e \
   -e MSSQL_HOST=sqlserver \
   -e MSSQL_USER=sa \
   -e MSSQL_PASS="${MSSQL_PASS}" \
@@ -338,7 +336,6 @@ fi
 echo -e "${BLUE}🔥 Step 2.7: Warming up SQL Server plan cache...${NC}"
 echo ""
 podman-compose run --rm --no-deps \
-  --network e2e_cams-e2e \
   -e MSSQL_HOST=sqlserver \
   -e MSSQL_USER=sa \
   -e MSSQL_PASS="${MSSQL_PASS}" \

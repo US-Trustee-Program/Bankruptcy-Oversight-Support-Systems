@@ -4,7 +4,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23918982613`, 2026-04-02)
+## Current Status (run `23919963501`, 2026-04-02)
 
 **SQL Server running. Backend ELOGIN on `CAMS_E2E` — database doesn't exist at backend startup.** SQL Server starts clean on a fresh named volume. Backend connects with `CAMS_E2E` as the initial catalog immediately at startup, before seeding has run. SQL Server rejects with State 38 (database not found), which the mssql driver surfaces as `ELOGIN`. Playwright auth-setup completes Okta login but app renders "Access Denied — 500 Error - Server Error — Failed to fetch" because `/api/me` hits the broken SQL connection.
 
@@ -20,9 +20,9 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 - Host resources healthy: 11% memory (1613MB/15993MB), 4 cores, 78G disk free — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Active failure**: Backend gets `ELOGIN` (SQL Server State 38: database not found) on `CAMS_E2E` because seeding runs after the backend starts. Backend connects with `CAMS_E2E` as the initial catalog at startup — the database doesn't exist yet on a fresh named volume.
+**Active failure**: `podman-compose run --network` is unrecognized by podman-compose 1.0.6. Seeding commands passed `--network e2e_cams-e2e` which is not a supported flag in this version. Both MongoDB and SQL Server seeding failed silently, backend started with no data, auth-setup failed.
 
-**Next fix**: Restructure workflow to start databases first, seed unconditionally (creating `CAMS_E2E`), then start backend and frontend. This guarantees `CAMS_E2E` exists before the backend's SQL connection is attempted.
+**Next fix**: Remove `--network e2e_cams-e2e` from all three `podman-compose run` invocations (seed MongoDB, seed SQL, warmup). The flag is redundant — `podman-compose run` automatically joins the compose project network.
 
 ---
 
