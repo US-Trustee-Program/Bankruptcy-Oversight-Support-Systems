@@ -3,6 +3,14 @@ FROM localhost/e2e_built:latest
 
 WORKDIR /app/backend/function-apps/api
 
+# Provide CORS config and host settings for the local Functions host
+# Remove extensionBundle from host.json to avoid download attempts in offline environment
+COPY test/e2e/local.settings.backend.json ./local.settings.json
+COPY test/e2e/host.backend.json ./host.json
+
 EXPOSE 7071
 
-CMD ["func", "start", "--javascript", "--port", "7071", "--host", "0.0.0.0"]
+# Start Functions Host - connects to external Azurite service via bridge network
+# Use --javascript flag to indicate Node.js/JavaScript functions
+# Use --verbose for detailed logging
+CMD ["func", "start", "--javascript", "--port", "7071", "--verbose"]

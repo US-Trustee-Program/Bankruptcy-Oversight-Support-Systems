@@ -24,6 +24,7 @@ const MODULE_NAME = 'WARMUP-SQL-E2E';
 
 const poolConfig: sql.config = {
   server: process.env.LOCAL_MSSQL_HOST || process.env.MSSQL_HOST || 'localhost',
+  port: 1433,
   user: process.env.LOCAL_MSSQL_USER || process.env.MSSQL_USER || 'sa',
   password: process.env.LOCAL_MSSQL_PASS || process.env.MSSQL_PASS || 'YourStrong!Passw0rd',
   database: process.env.LOCAL_MSSQL_DATABASE || process.env.MSSQL_DATABASE_DXTR || 'CAMS_E2E',
@@ -71,27 +72,49 @@ const WARMUP_QUERIES = [
      WHERE py2.PY_ROLE = 'db' AND py2.PY_TAXID IS NOT NULL`,
 ];
 
+const MAX_RETRIES = 10;
+const RETRY_DELAY_MS = 3000;
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function main() {
   let pool: sql.ConnectionPool | null = null;
 
-  try {
-    pool = await new sql.ConnectionPool(poolConfig).connect();
-    console.log(`[${MODULE_NAME}] Connected — running ${WARMUP_QUERIES.length} warmup queries...`);
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      pool = await new sql.ConnectionPool(poolConfig).connect();
+      console.log(
+        `[${MODULE_NAME}] Connected — running ${WARMUP_QUERIES.length} warmup queries...`,
+      );
 
-    for (let i = 0; i < WARMUP_QUERIES.length; i++) {
-      await pool.request().query(WARMUP_QUERIES[i]);
-      process.stdout.write('.');
+      for (let i = 0; i < WARMUP_QUERIES.length; i++) {
+        await pool.request().query(WARMUP_QUERIES[i]);
+        process.stdout.write('.');
+      }
+
+      console.log(`\n[${MODULE_NAME}] ✓ SQL Server plan cache warmed`);
+      process.exit(0);
+    } catch (err: unknown) {
+      const error = err as Error;
+      if (attempt < MAX_RETRIES) {
+        console.log(
+          `[${MODULE_NAME}] Connection attempt ${attempt}/${MAX_RETRIES} failed (${error.message}) — retrying in ${RETRY_DELAY_MS / 1000}s...`,
+        );
+        await sleep(RETRY_DELAY_MS);
+      } else {
+        console.error(
+          `[${MODULE_NAME}] WARNING: Warmup failed after ${MAX_RETRIES} attempts (${error.message}) — continuing anyway`,
+        );
+      }
+    } finally {
+      await pool?.close();
+      pool = null;
     }
-
-    console.log(`\n[${MODULE_NAME}] ✓ SQL Server plan cache warmed`);
-    process.exit(0);
-  } catch (err: unknown) {
-    const error = err as Error;
-    console.error(`[${MODULE_NAME}] WARNING: Warmup failed (${error.message}) — continuing anyway`);
-    process.exit(0); // Non-fatal — tests may still pass
-  } finally {
-    await pool?.close();
   }
+
+  process.exit(0); // Non-fatal — tests may still pass
 }
 
 main();

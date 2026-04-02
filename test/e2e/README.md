@@ -68,9 +68,36 @@ npm run harvest           # Dump e2e MongoDB + pull SQL rows from DXTR → rebui
 npm run harvest:reseed    # Re-seed MongoDB from DXTR first, then harvest (full refresh)
 ```
 
+### Base Image Cache (ghcr.io)
+
+Upstream base images and the deps image are cached in GitHub Container Registry to avoid repeated large downloads and builds in CI.
+
+#### Upstream base images (`e2e-base-*`)
+
+MongoDB, Azure SQL Edge, Azurite, and the Playwright browser image are cached as multi-arch manifest lists (amd64 + arm64) so both CI runners (x86-64) and local macOS (arm64) pull the correct architecture automatically.
+
+These images do not update automatically. The E2E workflow script is self-healing: if a cached image is missing, it pulls from upstream and pushes the current platform's architecture to ghcr.io automatically. Over time both architectures will be present as each platform self-heals. Note that self-healing pushes a single-arch image, not a full multi-arch manifest list — use `podman:cache-images` when you need to explicitly refresh both architectures at once (e.g. after an upstream version bump).
+
+Refresh manually when upstream versions change:
+
+```bash
+npm run podman:cache-images
+```
+
+Requires `gh auth login`. The token must have `write:packages` scope — re-authenticate with `gh auth login --scopes write:packages` if needed.
+
+#### Deps image (`e2e-deps:<hash>`)
+
+The deps image (OS packages + Azure Functions Core Tools + `npm ci`) is cached using a content hash of all `package*.json` files. When any package file changes, the hash changes, the cache misses, and the image is rebuilt and pushed automatically on the next run. No manual refresh is needed.
+
+Stale deps image versions are pruned automatically by the `Prune E2E Image Cache` workflow, which runs weekly and deletes versions older than 30 days (keeping at least 1).
+
+After pushing refreshed images, update the image tags in `podman-compose.yml` if the upstream version changed (e.g., `mongo:7.0` → `mongo:8.0`).
+
 ### Podman Infrastructure
 
 ```bash
+npm run podman:cache-images   # Push upstream base images to ghcr.io cache (manual refresh)
 npm run podman:install        # Install Podman dependencies (first time only)
 npm run podman:rebuild-deps   # Rebuild deps image (after package.json changes only)
 npm run podman:services       # Start backend + frontend without running tests
@@ -362,7 +389,7 @@ mongodb://localhost:27017/cams-e2e
 
 ### SQL Server
 
-- **Image**: `mcr.microsoft.com/azure-sql-edge` (ARM64 native; SQL Server itself is x86-only)
+- **Image**: `mcr.microsoft.com/azure-sql-edge` (ARM64 native)
 - **Database**: `CAMS_E2E`
 - **Credentials**: `sa` / `YourStrong!Passw0rd`
 

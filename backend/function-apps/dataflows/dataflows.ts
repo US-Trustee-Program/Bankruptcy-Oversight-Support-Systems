@@ -3,7 +3,6 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
-import LoadE2eDb from './e2e/load-e2e-db';
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
 import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
@@ -83,7 +82,6 @@ dataflows.register(
   CaseClosedEvent,
   DivisionChangeCleanup,
   ImportZoomCsv,
-  LoadE2eDb,
   MigrateAssignees,
   MigrateCases,
   MigrateChildCasesToMemberCases,
