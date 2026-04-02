@@ -4,9 +4,9 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23914186536`, 2026-04-02)
+## Current Status (run `23917121229`, 2026-04-02)
 
-**SQL Server crash-looping under rootless Podman.** Every other container starts and becomes healthy. Playwright runs auth-setup and completes the Okta login flow. The app loads but renders "Access Denied — 500 Error - Server Error — Failed to fetch".
+**SQL Server crash-looping under rootless Podman — two root-level directories need writable tmpfs.** Every other container starts and becomes healthy. Playwright runs auth-setup and completes the Okta login flow. The app loads but renders "Access Denied — 500 Error - Server Error — Failed to fetch".
 
 **Confirmed working:**
 - `e2e_deps`: installs `azure-functions-core-tools@4` + `azurite` together in one `npm install -g`, then pre-downloads the extension bundle via `func bundles download`
@@ -20,16 +20,21 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 - Host resources healthy: 11% memory (1613MB/15993MB), 4 cores, 78G disk free — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Active failure**: SQL Server container crash-loops — rootless Podman denies `/.system` creation (Permission Denied errno 13). `podman stats` shows `0B / 0B` memory for sqlserver — container not actually running. TCP healthcheck on port 1433 passes anyway (port opens briefly during crash cycle). Backend gets `ENOTFOUND sqlserver` → `/api/me` returns 500. Only 1 HTTP request (healthcheck curl) ever reaches the backend; Playwright's actual GET `/api/me` never appears in backend logs.
+**Active failure**: SQL Server container crash-loops — rootless Podman denies writes to `/log` and `/.system` (Permission Denied errno 13, uid 10001 `mssql` user). `podman stats` shows `0B / 0B` memory for sqlserver — container not actually running. TCP healthcheck on port 1433 passes anyway (port opens briefly during crash cycle). Backend gets `ENOTFOUND sqlserver` → `/api/me` returns 500. Only 1 HTTP request (healthcheck curl) ever reaches the backend; Playwright's actual GET `/api/me` never appears in backend logs.
 
-**Next fix**: Add `tmpfs: - /.system` to the sqlserver service in `podman-compose.yml` so SQL Edge can create its system directory under rootless Podman.
+**Next fix**: Mount both `/log` and `/.system` as tmpfs with `uid=10001,gid=0,mode=0755` so they are owned by the `mssql` user from container start.
 
 ---
 
 ## Proposed next experiments
 
-### Experiment 2 — Fix SQL Server crash-loop: tmpfs for `/.system` (QUEUED)
-Azure SQL Edge tries to create `/.system` at the container root filesystem on initialization. Rootless Podman denies this with `errno 13 (Permission Denied)`. Fix: add `tmpfs: - /.system` to the sqlserver service in `podman-compose.yml`. This mounts a writable tmpfs at that path without requiring root privileges on the host filesystem.
+### Experiment 2 — Fix SQL Server crash-loop: tmpfs with uid=10001 for `/log` and `/.system` (QUEUED)
+Azure SQL Edge (mssql uid 10001) crash-loops because it cannot create `/log` and `/.system` at the container root under rootless Podman. `tmpfs: - /.system` alone (run `23917121229`) was insufficient — the default tmpfs ownership is `root:root 755` so the `mssql` user still cannot write subdirectories inside it. Fix: mount both paths with explicit uid/mode:
+```yaml
+tmpfs:
+  - /.system:uid=10001,gid=0,mode=0755
+  - /log:uid=10001,gid=0,mode=0755
+```
 
 ### Experiment 3 — Verify Okta redirect URI (if above doesn't fix the 500)
 After auth succeeds the app renders but cannot call the API. If fixing SQL Server still leaves a 500, the problem may be the Okta redirect URI or user/group mapping config. Confirm the Okta app in the integrator tenant has `http://localhost:3000/...` registered as an allowed callback. Check `auth-setup.ts` to see what URL Playwright is waiting for after the Okta redirect.
@@ -130,12 +135,22 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 
 ---
 
-## SQL Server crash-loop under rootless Podman — `/.system` Permission Denied
+## SQL Server crash-loop under rootless Podman — Permission Denied on root-level directories
 
 **Symptom**: `cams-sqlserver-e2e` container crash-loops. `podman stats` shows `CPU: 0.00%, Mem: 0B / 0B` — container not actually running. TCP healthcheck on port 1433 passes anyway (port opens briefly during crash cycle). Backend gets `ENOTFOUND sqlserver`. Only the healthcheck curl reaches the backend; Playwright's `/api/me` never appears in backend logs.
 
-**SQL Edge log**: `Error: The system directory [/.system] could not be created. File: LinuxDirectory.cpp:420 [Status: 0xC0000022 Access Denied errno = 0xD(13) Permission denied]`
+**SQL Edge log (first run)**: `Error: The log directory [/log] could not be created. File: LinuxDirectory.cpp:420 [Status: 0xC0000022 Access Denied errno = 0xD(13) Permission denied]`
 
-**Root cause**: Azure SQL Edge tries to create `/.system` at the container root filesystem on initialization. Rootless Podman denies writes to `/` in the container root because the user namespace mapping doesn't grant the container UID permission to create entries there.
+**SQL Edge log (retries after adding `tmpfs: - /.system`)**: `Error: Directory [/.system/system] could not be created. File: LinuxDirectory.cpp:420 [Status: 0xC0000022 Access Denied errno = 0xD(13) Permission denied]`
 
-**What worked**: (pending) Add `tmpfs: - /.system` to the sqlserver service in `podman-compose.yml`. This mounts a writable in-memory filesystem at `/.system` before SQL Edge initializes, satisfying the directory creation without needing root on the host filesystem.
+**Root cause**: Azure SQL Edge (running as `mssql` uid 10001) tries to create several directories at the container root filesystem during initialization — confirmed: `/log` and `/.system`. Rootless Podman mounts a fresh tmpfs at `/` owned by root, so the `mssql` user cannot create directories there.
+
+**Tried**: `tmpfs: - /.system` alone — fixed `/.system` creation but `/log` still failed on first run. On retries `/log` was somehow skipped but `/.system/system` (a subdirectory) failed, indicating the default tmpfs mount ownership was `root:root 755` and the `mssql` user could not write inside it.
+
+**What worked**: (pending) Mount both directories with explicit uid/mode so they are owned by the `mssql` user from the start:
+```yaml
+tmpfs:
+  - /.system:uid=10001,gid=0,mode=0755
+  - /log:uid=10001,gid=0,mode=0755
+```
+`uid=10001` is the standard `mssql` user uid in the SQL Server on Linux image. This makes the tmpfs writable by the `mssql` process and allows subdirectory creation inside it.
