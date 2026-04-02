@@ -43,7 +43,7 @@ jobs:
           echo "REPO=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
 
       - name: Log in to Container Registry
-        uses: docker/login-action@de05a6d3a24346d4659bce540fac29c04a309bad
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -51,7 +51,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@54262e8fce11c7b5496f28398368170da45de7e7
+        uses: docker/metadata-action@c3b064c6d7c32446d6bc214ea075f1caad2de35a
         with:
           images: ${{ env.REGISTRY }}/${{ env.REPO }}/azure-cli-runner
           tags: |
@@ -62,7 +62,7 @@ jobs:
             type=raw,value=latest
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@c5117b60bc829f00aaacb038e99de2712bee6e6e
+        uses: docker/build-push-action@83bfd93ab480705a7b99a2ed02765137f5ab55ba
         with:
           context: .
           file: .github/docker/Dockerfile.azure-cli
