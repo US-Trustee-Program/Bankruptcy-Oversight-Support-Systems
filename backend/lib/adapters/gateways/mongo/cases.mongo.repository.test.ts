@@ -1172,7 +1172,6 @@ describe('Cases repository', () => {
   });
 
   describe('Excluding MOVED cases from search', () => {
-    // Phase 1: Core searchCases Tests - verify query includes status exclusion
     test.each([
       {
         description: 'basic search should exclude MOVED cases',
@@ -1267,7 +1266,6 @@ describe('Cases repository', () => {
       expect(result.data).toEqual([]);
     });
 
-    // Phase 2: Repository Query Level Tests
     test('addConditions should exclude cases with movedToCaseId set', () => {
       const predicate: CasesSearchPredicate = {
         chapters: ['15'],
@@ -1341,7 +1339,6 @@ describe('Cases repository', () => {
       expect(queryString).toContain('EXISTS');
     });
 
-    // Phase 4: Integration/Edge Cases - verify MOVED filter works with complex predicates
     test.each([
       {
         description: 'searchCases with excludeClosedCases should exclude MOVED',
