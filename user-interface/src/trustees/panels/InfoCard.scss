@@ -1,0 +1,41 @@
+.info-card {
+  max-width: 21.5rem;
+  margin-bottom: 1.56rem;
+
+  .usa-card__body {
+    padding-top: 1.44rem;
+    padding-right: 1.64rem;
+    padding-bottom: 1.27rem;
+
+    .info-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.65rem;
+
+      h4 {
+        margin: 0;
+      }
+    }
+
+    .info-card-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+
+      li {
+        margin-bottom: 0.4rem;
+        line-height: 1.5;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+
+        .info-card-label {
+          font-family: "Source Sans Pro", sans-serif;
+          font-weight: 600;
+        }
+      }
+    }
+  }
+}
