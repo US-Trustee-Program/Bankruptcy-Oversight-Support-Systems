@@ -1,12 +1,11 @@
 import './AppointmentCard.scss';
 import UpcomingKeyDates from './UpcomingKeyDates';
 import PastKeyDates from './PastKeyDates';
+import InfoCard from './InfoCard';
 import { TrusteeAppointment, formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { formatDate } from '@/lib/utils/datetime';
 import { useNavigate } from 'react-router-dom';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import useFeatureFlags, {
@@ -79,47 +78,21 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     <div className="appointment-card-container">
       <h3 className="appointment-card-heading">{appointmentCardHeaderText}</h3>
       <div className="appointment-cards-row">
-        <div className="appointment-card usa-card">
-          <div className="usa-card__container">
-            <div className="usa-card__body">
-              <div className="appointment-card-header">
-                <h4>Key Information</h4>
-                {canManage && (
-                  <Button
-                    id="edit-trustee-appointment"
-                    uswdsStyle={UswdsButtonStyle.Unstyled}
-                    aria-label="Edit trustee appointment"
-                    title="Edit trustee appointment"
-                    onClick={openEditTrustee}
-                  >
-                    <IconLabel icon="edit" label="Edit" />
-                  </Button>
-                )}
-              </div>
-              <ul className="appointment-details-list">
-                <li>
-                  <span className="appointment-label">District:</span> {districtDisplay}
-                </li>
-                <li>
-                  <span className="appointment-label">Chapter:</span> {formattedChapter}
-                </li>
-                <li>
-                  <span className="appointment-label">Type:</span> {formattedAppointmentType}
-                </li>
-                <li>
-                  <span className="appointment-label">Appointed:</span> {formattedAppointedDate}
-                </li>
-                <li>
-                  <span className="appointment-label">Status:</span> {formattedStatus}
-                </li>
-                <li>
-                  <span className="appointment-label">Status Effective:</span>{' '}
-                  {formattedEffectiveDate}
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        <InfoCard
+          id="edit-trustee-appointment"
+          title="Key Information"
+          onEdit={canManage ? openEditTrustee : undefined}
+          editAriaLabel="Edit trustee appointment"
+          editTitle="Edit trustee appointment"
+          fields={[
+            { label: 'District', value: districtDisplay },
+            { label: 'Chapter', value: formattedChapter },
+            { label: 'Type', value: formattedAppointmentType },
+            { label: 'Appointed', value: formattedAppointedDate },
+            { label: 'Status', value: formattedStatus },
+            { label: 'Status Effective', value: formattedEffectiveDate },
+          ]}
+        />
         {displayChpt7PanelUpcomingKeyDates && isPanelChapter7 && canManage && (
           <>
             <UpcomingKeyDates
