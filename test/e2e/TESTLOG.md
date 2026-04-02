@@ -4,7 +4,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23917974355`, 2026-04-02)
+## Current Status (run `23918424348`, 2026-04-02)
 
 **SQL Server crash-looping under rootless Podman — two root-level directories need writable tmpfs.** Every other container starts and becomes healthy. Playwright runs auth-setup and completes the Okta login flow. The app loads but renders "Access Denied — 500 Error - Server Error — Failed to fetch".
 
@@ -20,21 +20,18 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 - Host resources healthy: 11% memory (1613MB/15993MB), 4 cores, 78G disk free — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Active failure**: SQL Server container never starts — `tmpfs: - /.system:uid=10001,gid=0,mode=0755` rejected by podman 4.9.3 with `unknown mount option "uid=10001"`. Cascaded: backend, frontend, and playwright never started. Zero tests ran.
+**Active failure**: SQL Server crash-loops on `/var/opt/mssql/secrets/` — cannot create secrets subdirectory inside the bind-mounted volume. The CI runner creates `./sqlserver-data` as root-owned; the `mssql` user (uid 10001) cannot write into it. `mode=1777` tmpfs mounts for `/.system` and `/log` are working (those errors are gone), but the bind mount ownership is still wrong. `podman stats` shows `0B / 0B` — container not running. Warmup step silently succeeds due to `|| true`.
 
-**Next fix**: Replace `uid=10001,gid=0,mode=0755` with `mode=1777` (world-writable sticky) — a universally supported `--tmpfs` option that allows the `mssql` user to write without needing uid ownership.
+**Next fix**: Replace bind mount `./sqlserver-data:/var/opt/mssql` with a named volume `sqlserver-data:/var/opt/mssql`. Podman initializes named volumes with the container's uid namespace mapping, so `mssql` can write into it. Add `volumes: sqlserver-data:` declaration at bottom of compose file.
 
 ---
 
 ## Proposed next experiments
 
-### Experiment 2 — Fix SQL Server crash-loop: tmpfs mode=1777 for `/log` and `/.system` (QUEUED)
-Azure SQL Edge (mssql uid 10001) crash-loops because it cannot create `/log` and `/.system` at the container root under rootless Podman. `uid=10001` mount option is invalid on podman 4.9.3. Fix: use `mode=1777` (world-writable sticky) which is universally supported:
-```yaml
-tmpfs:
-  - /.system:mode=1777
-  - /log:mode=1777
-```
+### Experiment 2 — Fix SQL Server crash-loop: named volume + tmpfs mode=1777 (QUEUED)
+Azure SQL Edge crash-loops through a sequence of permission failures on root-level directories and the bind-mounted volume. Fix involves two changes:
+1. `tmpfs: - /.system:mode=1777` and `- /log:mode=1777` (confirmed working in run `23918424348` — those errors gone)
+2. Replace bind mount `./sqlserver-data:/var/opt/mssql` with named volume `sqlserver-data:/var/opt/mssql` — Podman initializes named volumes with correct uid namespace ownership, allowing `mssql` to create `secrets/` and other subdirectories inside `/var/opt/mssql`.
 
 ### Experiment 3 — Verify Okta redirect URI (if above doesn't fix the 500)
 After auth succeeds the app renders but cannot call the API. If fixing SQL Server still leaves a 500, the problem may be the Okta redirect URI or user/group mapping config. Confirm the Okta app in the integrator tenant has `http://localhost:3000/...` registered as an allowed callback. Check `auth-setup.ts` to see what URL Playwright is waiting for after the Okta redirect.
@@ -149,10 +146,6 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 
 **Tried**: `tmpfs: - /.system:uid=10001,gid=0,mode=0755` and `/log:uid=10001,gid=0,mode=0755` — podman 4.9.3 on Ubuntu 24.04 does not support the `uid=` mount option for `--tmpfs`. Run failed immediately with `Error: unknown mount option "uid=10001": invalid mount option` before the container started. Cascaded — backend, frontend, playwright all dead on arrival.
 
-**What worked**: (pending) Use `mode=1777` (world-writable sticky) instead of uid ownership:
-```yaml
-tmpfs:
-  - /.system:mode=1777
-  - /log:mode=1777
-```
-`mode=1777` is universally supported by `--tmpfs` and allows any uid (including `mssql` uid 10001) to create files and subdirectories inside the mount.
+**Tried**: `tmpfs: - /.system:mode=1777` and `/log:mode=1777` (run `23918424348`) — those two paths are no longer failing. But `/var/opt/mssql/secrets/` is now the new crash point, inside the bind-mounted volume.
+
+**What worked**: (pending) Replace bind mount with a named volume — Podman manages ownership correctly for named volumes under rootless user namespace mapping.

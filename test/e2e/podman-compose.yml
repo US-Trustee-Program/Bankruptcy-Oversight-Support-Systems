@@ -33,7 +33,7 @@ services:
       - MSSQL_SA_PASSWORD=${MSSQL_PASS}
       - MSSQL_PID=Developer
     volumes:
-      - ./sqlserver-data:/var/opt/mssql
+      - sqlserver-data:/var/opt/mssql
     tmpfs:
       - /.system:mode=1777
       - /log:mode=1777
@@ -141,3 +141,6 @@ services:
 networks:
   cams-e2e:
     driver: bridge
+
+volumes:
+  sqlserver-data:
