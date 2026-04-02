@@ -154,6 +154,7 @@ CLEANUP_NEEDED=true
 echo ""
 echo -e "${GREEN}✅ Services started${NC}"
 echo ""
+print_resource_usage
 
 # Step 2: Wait for services to be healthy
 echo -e "${BLUE}⏳ Step 2: Waiting for databases and services to be healthy...${NC}"
@@ -171,6 +172,25 @@ collect_container_logs() {
         podman logs "${container}" > "${log_dir}/${container}.log" 2>&1 || true
     done
     echo -e "${BLUE}📋 Container logs saved to ${log_dir}/${NC}"
+}
+
+# Print host resource usage vs container consumption
+print_resource_usage() {
+    echo -e "${BLUE}  Host resources:${NC}"
+    # Memory: total, used, free (in MB)
+    free -m | awk '/^Mem:/ { printf "    Memory: %dMB used / %dMB total (%.0f%% used)\n", $3, $2, ($3/$2)*100 }'
+    # CPU: number of cores and current load average
+    CPUS=$(nproc)
+    LOAD=$(cut -d' ' -f1-3 /proc/loadavg)
+    echo "    CPU: ${CPUS} cores, load avg: ${LOAD}"
+    # Disk: available on /
+    df -h / | awk 'NR==2 { printf "    Disk /: %s used / %s total (%s used, %s free)\n", $3, $2, $5, $4 }'
+    echo ""
+    echo -e "${BLUE}  Container resource usage:${NC}"
+    podman stats --no-stream --format "    {{.Name}}\tCPU: {{.CPUPerc}}\tMem: {{.MemUsage}}" \
+        cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || \
+        echo "    (stats unavailable)"
+    echo ""
 }
 
 # Print current status of all containers
@@ -213,6 +233,7 @@ while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     # Print verbose status periodically
     if [ $((WAIT_COUNT % LOG_INTERVAL)) -eq 0 ] && [ $WAIT_COUNT -gt 0 ]; then
         print_container_status
+        print_resource_usage
     else
         echo -n "."
     fi
@@ -225,6 +246,7 @@ if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
     echo ""
     echo -e "${YELLOW}⚠️  Services did not become healthy within ${MAX_WAIT}s — collecting diagnostic logs...${NC}"
     print_container_status
+    print_resource_usage
     collect_container_logs
     echo ""
     echo -e "${YELLOW}⚠️  Proceeding anyway — tests will likely fail${NC}"
@@ -309,6 +331,7 @@ TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
 rm -f "$TEST_OUTPUT_FILE"
 
 # Save all container logs now (containers still running, before cleanup)
+print_resource_usage
 collect_container_logs
 mkdir -p backend-logs
 BACKEND_LOG_FILE="backend-logs/backend.log"
