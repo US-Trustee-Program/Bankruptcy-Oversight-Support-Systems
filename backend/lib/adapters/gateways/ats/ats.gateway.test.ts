@@ -331,7 +331,8 @@ describe('ATS Gateway', () => {
       // Mock loadTrusteeOverrides to fail
       const loadOverridesMock = await import('./cleansing/ats-cleansing-overrides');
       vi.spyOn(loadOverridesMock, 'loadTrusteeOverrides').mockResolvedValueOnce({
-        error: new Error('Failed to read override file'),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        error: new Error('Failed to read override file') as any,
       });
 
       const loggerErrorSpy = vi.spyOn(context.logger, 'error');

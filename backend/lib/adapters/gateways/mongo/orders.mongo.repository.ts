@@ -107,7 +107,7 @@ export class OrdersMongoRepository extends BaseMongoRepository implements Orders
   async findByCaseId(caseId: string): Promise<Order[]> {
     try {
       const doc = using<Order>();
-      const query = doc('caseId').equals(caseId);
+      const query = doc('caseId' as keyof Order).equals(caseId);
       return await this.getAdapter<Order>().find(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

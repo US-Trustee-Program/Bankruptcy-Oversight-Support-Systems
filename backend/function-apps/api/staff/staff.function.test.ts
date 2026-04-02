@@ -23,7 +23,8 @@ describe('Staff Azure Function tests', () => {
     vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
       MockData.getCamsSession(),
     );
-    vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    vi.spyOn(StaffUseCase.prototype, 'getOversightStaff').mockResolvedValue({} as any);
   });
 
   const errorTestCases = [

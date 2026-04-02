@@ -111,7 +111,7 @@ const mockContext: ApplicationContext = {
     warn: () => {},
     error: () => {},
   },
-} as ApplicationContext;
+} as unknown as ApplicationContext;
 
 /**
  * Convert TSV row into ATS appointment record and run through cleansing pipeline

@@ -11,7 +11,7 @@ export type CaseDeletedEvent = {
 };
 
 async function getDeletedCaseEvents(context: ApplicationContext): Promise<CaseDeletedEvent[]> {
-  const runtimeStateRepo = factory.getRuntimeStateRepository(context);
+  const runtimeStateRepo = factory.getRuntimeStateRepository<DeletedCasesSyncState>(context);
   let syncState: DeletedCasesSyncState | null = null;
 
   try {
