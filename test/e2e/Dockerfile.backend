@@ -7,9 +7,11 @@ WORKDIR /app/backend/function-apps/api
 # in production via Bicep, but in the containerized E2E environment we need this file.
 COPY test/e2e/local.settings.backend.json ./local.settings.json
 
-EXPOSE 7071
+# Create Azurite data directory with proper permissions
+RUN mkdir -p /data && chmod 777 /data
 
-# Start Azurite in the background, wait for all three services to be HTTP-ready,
-# then launch the Functions host. HTTP checks ensure Azurite is fully initialized
-# and can handle storage requests, preventing IServiceProvider disposal errors.
-CMD ["sh", "-c", "azurite --location /tmp/azurite --silent > /tmp/azurite.log 2>&1 & echo 'Waiting for embedded Azurite...' && until timeout 1 bash -c 'cat < /dev/tcp/127.0.0.1/10000' 2>/dev/null; do sleep 1; done && echo 'Port open, allowing Azurite internal initialization...' && sleep 10 && echo 'Starting Functions Host...' && func host start --port 7071"]
+EXPOSE 7071 10000 10001 10002
+
+# Start Azurite with explicit 0.0.0.0 binding, wait for port readiness,
+# then launch the Functions host. Logs Azurite errors if startup fails.
+CMD ["sh", "-c", "mkdir -p /data && touch /data/azurite.log && echo 'Starting Azurite in background...' && azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data --debug /data/debug.log > /data/azurite.log 2>&1 & echo 'Waiting for Azurite to bind...' && for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do if curl -s http://127.0.0.1:10000 > /dev/null 2>&1; then echo 'Azurite is responding!'; break; fi; echo \"Waiting for Azurite (attempt $i)...\"; if [ $i -eq 5 ]; then echo 'Azurite logs after 5 attempts:'; cat /data/azurite.log; fi; sleep 2; done && if ! curl -s http://127.0.0.1:10000 > /dev/null 2>&1; then echo 'ERROR: Azurite failed to start. Full logs:'; cat /data/azurite.log; exit 1; fi && echo 'Allowing Azurite internal initialization...' && sleep 10 && echo 'Starting Functions Host...' && func host start --port 7071"]
