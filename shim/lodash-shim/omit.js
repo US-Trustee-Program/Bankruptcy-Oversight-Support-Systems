@@ -8,6 +8,7 @@ const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
  * Does not mutate the original.
  */
 function omit(object, keys) {
+  if (object == null) return {};
   const keySet = new Set(keys);
   const result = {};
   for (const key of Object.keys(object)) {

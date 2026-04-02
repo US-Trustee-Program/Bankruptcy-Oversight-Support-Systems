@@ -56,9 +56,11 @@ function _mergeOne(dest, src, customizer) {
 }
 
 function merge(dest, ...args) {
-  // Last arg is customizer if it is a function
+  // Last arg is customizer if it is a function AND there is at least one source
+  // before it. Requiring args.length > 1 prevents a lone function argument from
+  // being silently swallowed as a customizer instead of merged as a source.
   const lastArg = args[args.length - 1];
-  const hasCustomizer = typeof lastArg === 'function';
+  const hasCustomizer = args.length > 1 && typeof lastArg === 'function';
   const sources = hasCustomizer ? args.slice(0, -1) : args;
   const customizer = hasCustomizer ? lastArg : undefined;
 

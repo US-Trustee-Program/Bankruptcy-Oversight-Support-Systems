@@ -13,6 +13,7 @@ const UNSAFE_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
 function get(object, path, defaultValue) {
   if (object === null || object === undefined) return defaultValue;
 
+  if (path == null || path === '') return defaultValue;
   const parts = String(path).split('.').filter(Boolean);
 
   let current = object;

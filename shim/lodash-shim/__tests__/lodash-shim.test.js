@@ -173,6 +173,28 @@ test('merge: prototype pollution protection — constructor', () => {
   expect({}.polluted).toBeUndefined();
 });
 
+test('merge: null/undefined dest is a no-op and returns dest', () => {
+  expect(merge(null, { a: 1 })).toBeNull();
+  expect(merge(undefined, { a: 1 })).toBeUndefined();
+});
+
+test('merge: null/non-object sources are safely ignored', () => {
+  expect(merge({}, null)).toEqual({});
+  expect(merge({}, undefined)).toEqual({});
+  expect(merge({}, 42)).toEqual({});
+});
+
+test('merge: single function arg is not invoked as a customizer', () => {
+  let called = false;
+  const fn = () => {
+    called = true;
+  };
+  const dest = { a: 1 };
+  merge(dest, fn);
+  expect(called).toBe(false);
+  expect(dest).toEqual({ a: 1 });
+});
+
 // ---------------------------------------------------------------------------
 // mergeWith (same implementation as merge with customizer)
 // ---------------------------------------------------------------------------
@@ -226,6 +248,11 @@ test('omit: does not mutate original', () => {
 test('omit: removes multiple keys', () => {
   const obj = { a: 1, b: 2, c: 3 };
   expect(omit(obj, ['a', 'c'])).toEqual({ b: 2 });
+});
+
+test('omit: returns empty object for null/undefined input', () => {
+  expect(omit(null, ['a'])).toEqual({});
+  expect(omit(undefined, ['a'])).toEqual({});
 });
 
 // ---------------------------------------------------------------------------
@@ -364,6 +391,19 @@ test('omit: skips __proto__ key to prevent prototype pollution', () => {
   const obj = { a: 1 };
   omit(obj, ['__proto__']);
   expect(Object.prototype.polluted).toBeUndefined();
+});
+
+test('omit: does not copy unsafe keys from input object', () => {
+  const parsed = JSON.parse('{"__proto__": {"polluted": true}, "a": 1}');
+  const result = omit(parsed, []);
+  expect({}.polluted).toBeUndefined();
+  expect(result).toEqual({ a: 1 });
+});
+
+test('omit: does not copy constructor or prototype keys from input object', () => {
+  const parsed = JSON.parse('{"constructor": {"evil": true}, "prototype": {"evil": true}, "b": 2}');
+  const result = omit(parsed, []);
+  expect(result).toEqual({ b: 2 });
 });
 
 test('merge: skips prototype key to prevent prototype pollution', () => {
