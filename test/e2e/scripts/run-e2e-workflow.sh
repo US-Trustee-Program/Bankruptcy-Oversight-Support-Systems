@@ -216,9 +216,15 @@ WAIT_COUNT=0
 LOG_INTERVAL=20  # Print verbose status every 20 seconds
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+    # MongoDB: TCP probe is sufficient — mongod binds only when ready to serve
     MONGO_TCP=$(bash -c '</dev/tcp/localhost/27017' 2>/dev/null && echo "ok" || echo "fail")
-    SQL_TCP=$(bash -c '</dev/tcp/localhost/1433' 2>/dev/null && echo "ok" || echo "fail")
-    if [ "$MONGO_TCP" = "ok" ] && [ "$SQL_TCP" = "ok" ]; then
+    # SQL Server: TCP probe is NOT sufficient — port 1433 opens before the login
+    # subsystem is ready. Use sqlcmd inside the container to probe with a real login.
+    # sqlcmd ships with Azure SQL Edge on amd64 at /opt/mssql-tools/bin/sqlcmd.
+    SQL_LOGIN=$(podman exec cams-sqlserver-e2e \
+        /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "${MSSQL_PASS}" -Q "SELECT 1" -b \
+        2>/dev/null && echo "ok" || echo "fail")
+    if [ "$MONGO_TCP" = "ok" ] && [ "$SQL_LOGIN" = "ok" ]; then
         echo -e "${GREEN}✅ Databases are accepting connections${NC}"
         echo ""
         break

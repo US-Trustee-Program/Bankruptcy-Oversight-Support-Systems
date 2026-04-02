@@ -4,7 +4,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23920413835`, 2026-04-02)
+## Current Status (run `23921803129`, 2026-04-02)
 
 **SQL Server running. Backend ELOGIN on `CAMS_E2E` — database doesn't exist at backend startup.** SQL Server starts clean on a fresh named volume. Backend connects with `CAMS_E2E` as the initial catalog immediately at startup, before seeding has run. SQL Server rejects with State 38 (database not found), which the mssql driver surfaces as `ELOGIN`. Playwright auth-setup completes Okta login but app renders "Access Denied — 500 Error - Server Error — Failed to fetch" because `/api/me` hits the broken SQL connection.
 
@@ -20,9 +20,9 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 - Host resources healthy: 11% memory (1613MB/15993MB), 4 cores, 78G disk free — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Active failure**: Two podman-compose 1.0.6 bugs in seed invocations. (1) MongoDB seed: `-e VAR=value=with=equals` triggers a Python crash — `split("=")` produces 3+ parts instead of 2. (2) SQL seed: `podman-compose run --no-deps` still evaluates the playwright service's `depends_on` (backend, frontend) which don't exist at seed time — `"cams-frontend-e2e" is not a valid container`. Both seeds fail; backend starts unseeded; `ELOGIN` on `CAMS_E2E`.
+**Active failure**: SQL Server TCP probe passes ~20ms after `podman run` completes — before port 1433 even opens, before SQL Server completes first-boot initialization. Seed script attempts connection ~3.6 seconds into cold start and gets `Could not connect (sequence)`. `CAMS_E2E` is never created; backend hits ELOGIN State 38 continuously.
 
-**Next fix**: Replace all three `podman-compose run` invocations (seed MongoDB, seed SQL, warmup) with `podman run --net e2e_cams-e2e` directly against `e2e_playwright:latest`. Bypasses podman-compose entirely — no env-var parsing bug, no dependency resolution.
+**Next fix**: Replace TCP probe for SQL Server with `podman exec cams-sqlserver-e2e /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P ... -Q "SELECT 1"`. Only succeeds when the login subsystem is actually operational.
 
 ---
 
@@ -162,6 +162,16 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 **Root cause**: The backend is started at the same time as the databases. On a fresh named volume `CAMS_E2E` doesn't exist yet — the seed script creates it in Step 2.5, but that runs after the health-wait loop which completes as soon as the backend HTTP port responds (even a 500 counts). So the backend starts, immediately tries to connect with `CAMS_E2E` as the initial catalog, and SQL Server rejects it.
 
 **What worked**: Restructure `run-e2e-workflow.sh` to start databases first, wait for TCP readiness on ports 27017 and 1433, seed unconditionally, then start backend and frontend. `CAMS_E2E` is guaranteed to exist before the backend's first SQL connection.
+
+---
+
+## TCP probe passes before SQL Server login subsystem is ready
+
+**Symptom**: `✅ Databases are accepting connections` printed ~20ms after `podman run` for sqlserver completes — before port 1433 has even opened. Seed script attempts connection ~3.6s into SQL Server's first-boot cold start and gets `ConnectionError: Failed to connect to sqlserver:1433 - Could not connect (sequence)`. `CAMS_E2E` never created; backend hits ELOGIN State 38.
+
+**Root cause**: `bash -c '</dev/tcp/localhost/1433'` is a raw socket-open probe. It passes the instant the TCP listener exists, well before the SQL Server login subsystem is initialized and accepting authenticated connections.
+
+**What worked**: (pending) Replace the TCP probe with `podman exec cams-sqlserver-e2e /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "${MSSQL_PASS}" -Q "SELECT 1"`. Only succeeds when `sa` can actually authenticate — a genuine readiness signal.
 
 ---
 
