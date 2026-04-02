@@ -26,7 +26,8 @@ export type TrusteeDocument = Trustee & {
 
 // Type augmentation for dot-notation queries on nested fields
 type TrusteeDocumentQueryable = TrusteeDocument & {
-  'legacy.truIds'?: string[];
+  'legacy.truIds'?: string; // typed as string (not string[]) so QueryBuilder contains() accepts a string value
+  'public.address.state'?: string;
 };
 
 type TrusteeOversightAssignmentDocument = TrusteeOversightAssignment & {
@@ -145,7 +146,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
 
       // Build query with word-boundary matching to handle middle names/suffixes
       // Matches "John Smith", "John Q. Smith", "John Smith Jr.", etc.
-      const doc = using<TrusteeDocument>();
+      const doc = using<TrusteeDocumentQueryable>();
       const query = and(
         doc('documentType').equals('TRUSTEE'),
         doc('name').regex(new RegExp(`\\b${escapedFirstName}\\b.*\\b${escapedLastName}\\b`, 'i')),

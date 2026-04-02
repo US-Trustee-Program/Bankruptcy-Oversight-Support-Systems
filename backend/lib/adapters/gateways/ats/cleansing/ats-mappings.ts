@@ -253,7 +253,7 @@ export function transformTrusteeRecord(
     status: status || DEFAULT_TRUSTEE_STATUS,
     public: publicContact,
     legacy: {
-      truId: atsTrustee.ID.toString(),
+      truIds: [atsTrustee.ID.toString()],
     },
   };
 

@@ -39,10 +39,11 @@ export interface AtsTrusteeRecord {
 export interface AtsAppointmentRecord {
   TRU_ID: number;
   DISTRICT: string;
+  DIVISION?: string;
   STATE?: string;
   CHAPTER: string;
   DATE_APPOINTED?: Date;
-  STATUS: string;
+  STATUS?: string;
   EFFECTIVE_DATE?: Date;
 }
 

@@ -34,13 +34,10 @@ describe('TrusteeAssignments Function', () => {
     });
 
     const mockAssignments = [];
-    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess({
-      statusCode: 200,
-      body: {
-        data: mockAssignments,
-        meta: { self: req.url },
-      },
-    });
+    const { azureHttpResponse, camsHttpResponse } = buildTestResponseSuccess(
+      { data: mockAssignments, meta: { self: req.url } },
+      { statusCode: 200 },
+    );
 
     const mockController = {
       handleRequest: vi.fn().mockResolvedValue(camsHttpResponse),

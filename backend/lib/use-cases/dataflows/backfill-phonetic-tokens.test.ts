@@ -144,9 +144,13 @@ describe('BackfillPhoneticTokens use case', () => {
 
   describe('getPageOfCasesNeedingBackfillByCursor', () => {
     test('should return cases that need backfill with cursor info', async () => {
-      const caseNeedingBackfill = MockData.getSyncedCase({
-        override: { caseId: '123-45-67890', debtor: { name: 'John Smith' }, _id: 'case-id-1' },
-      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const override1: any = {
+        caseId: '123-45-67890',
+        debtor: { name: 'John Smith' },
+        _id: 'case-id-1',
+      };
+      const caseNeedingBackfill = MockData.getSyncedCase({ override: override1 });
       const mockCases = [caseNeedingBackfill];
 
       vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue(mockCases);
@@ -167,10 +171,12 @@ describe('BackfillPhoneticTokens use case', () => {
 
     test('should detect hasMore when more results than limit', async () => {
       const case1 = MockData.getSyncedCase({
-        override: { caseId: '123-45-67890', _id: 'case-id-1' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        override: { caseId: '123-45-67890', _id: 'case-id-1' } as any,
       });
       const case2 = MockData.getSyncedCase({
-        override: { caseId: '123-45-67891', _id: 'case-id-2' },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        override: { caseId: '123-45-67891', _id: 'case-id-2' } as any,
       });
       // Return limit + 1 results to indicate hasMore
       const mockCases = [case1, case2];

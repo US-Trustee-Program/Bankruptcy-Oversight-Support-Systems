@@ -152,7 +152,9 @@ export default class ConsolidationOrdersMongoRepository<
 
   public async findByCaseId(caseId: string): Promise<T[]> {
     try {
-      const query = this.doc('caseId').equals(caseId);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyDoc = using<any>();
+      const query = anyDoc('caseId').equals(caseId);
       return await this.getAdapter<T>().find(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);

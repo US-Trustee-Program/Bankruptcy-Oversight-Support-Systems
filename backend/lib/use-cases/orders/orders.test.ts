@@ -18,7 +18,6 @@ import { ConsolidationFrom, ConsolidationTo, TransferFrom, TransferTo } from '@c
 import { CASE_SUMMARIES } from '../../testing/mock-data/case-summaries.mock';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
-import { CaseSummary } from '@common/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import * as crypto from 'crypto';
@@ -210,7 +209,7 @@ describe('Orders use case', () => {
       .spyOn(MockMongoRepository.prototype, 'createMany')
       .mockResolvedValue([...transfers, ...consolidations]);
 
-    const caseSummaries: Array<CaseSummary> = [
+    const caseSummaries = [
       consolidations[0].leadCase,
       ...consolidations[0].memberCases,
       consolidations[1].leadCase,
@@ -219,11 +218,10 @@ describe('Orders use case', () => {
       ...consolidations[2].memberCases,
     ];
 
-    vi.spyOn(CasesLocalGateway.prototype, 'getCaseSummary').mockImplementation(
-      (_context: ApplicationContext, caseId: string) => {
-        return Promise.resolve(caseSummaries.find((bCase) => bCase.caseId === caseId));
-      },
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const getCaseSummaryMock = (_context: ApplicationContext, caseId: string): any =>
+      Promise.resolve(caseSummaries.find((bCase) => bCase?.caseId === caseId));
+    vi.spyOn(CasesLocalGateway.prototype, 'getCaseSummary').mockImplementation(getCaseSummaryMock);
 
     const mockUpdateState = vi
       .spyOn(MockMongoRepository.prototype, 'upsert')
@@ -250,7 +248,10 @@ describe('Orders use case', () => {
     ];
 
     vi.spyOn(CasesLocalGateway.prototype, 'getCaseSummary')
-      .mockResolvedValueOnce(MockData.getCaseSummary({ override: { caseId: '999-99-00000' } }))
+      .mockResolvedValueOnce(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        MockData.getCaseSummary({ override: { caseId: '999-99-00000' } }) as any,
+      )
       .mockRejectedValue(
         new NotFoundError('MOCK', { message: 'Case summary not found for case ID.' }),
       );
