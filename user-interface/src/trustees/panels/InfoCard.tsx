@@ -1,14 +1,15 @@
 import './InfoCard.scss';
+import { type ReactNode } from 'react';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 
-export interface InfoCardField {
+interface InfoCardField {
   label: string;
-  value: React.ReactNode;
+  value: ReactNode;
   testId?: string;
 }
 
-export interface InfoCardProps {
+interface InfoCardProps {
   id: string;
   title: string;
   fields: InfoCardField[];
@@ -22,6 +23,9 @@ export interface InfoCardProps {
 export default function InfoCard(props: Readonly<InfoCardProps>) {
   const { id, title, fields, onEdit, editAriaLabel, editTitle, testId, listTestId } = props;
 
+  const effectiveEditTitle = editTitle ?? 'Edit';
+  const effectiveEditAriaLabel = editAriaLabel ?? effectiveEditTitle;
+
   return (
     <div className="info-card usa-card" data-testid={testId}>
       <div className="usa-card__container">
@@ -32,8 +36,8 @@ export default function InfoCard(props: Readonly<InfoCardProps>) {
               <Button
                 id={id}
                 uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label={editAriaLabel}
-                title={editTitle}
+                aria-label={effectiveEditAriaLabel}
+                title={effectiveEditTitle}
                 onClick={onEdit}
               >
                 <IconLabel icon="edit" label="Edit" />
