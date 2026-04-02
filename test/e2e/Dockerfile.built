@@ -15,6 +15,14 @@ RUN npm run build:common
 # Build backend
 RUN npm run build --workspace=backend
 
+# Pre-cache Azure Functions extension bundles for offline use in E2E containers
+# The backend needs Microsoft.Azure.Functions.ExtensionBundle but won't have
+# network access at runtime, so we download the bundles during image build.
+WORKDIR /app/backend/function-apps/api
+RUN func extensions sync && \
+    echo "Extension bundles cached successfully"
+WORKDIR /app
+
 # Build frontend (env vars baked in for E2E test environment)
 ENV NODE_ENV=production
 ENV CAMS_PA11Y=false
