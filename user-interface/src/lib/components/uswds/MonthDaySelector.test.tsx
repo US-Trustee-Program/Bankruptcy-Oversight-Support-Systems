@@ -34,15 +34,15 @@ describe('MonthDaySelector', () => {
 
     expect(monthSelect()).toHaveAttribute('aria-label', 'TPR Due Start Month');
     expect(daySelect()).toHaveAttribute('aria-label', 'TPR Due Start Day');
-    expect(monthSelect()).toHaveAttribute('aria-labelledby', 'test-month-label');
-    expect(daySelect()).toHaveAttribute('aria-labelledby', 'test-day-label');
+    expect(monthSelect()).not.toHaveAttribute('aria-labelledby');
+    expect(daySelect()).not.toHaveAttribute('aria-labelledby');
   });
 
-  test('falls back to sub-label aria-labelledby when neither label nor contextLabel is provided', () => {
+  test('has no aria-labelledby or aria-label when neither label nor contextLabel is provided', () => {
     render(<MonthDaySelector id="test" />);
 
-    expect(monthSelect()).toHaveAttribute('aria-labelledby', 'test-month-label');
-    expect(daySelect()).toHaveAttribute('aria-labelledby', 'test-day-label');
+    expect(monthSelect()).not.toHaveAttribute('aria-labelledby');
+    expect(daySelect()).not.toHaveAttribute('aria-labelledby');
     expect(monthSelect()).not.toHaveAttribute('aria-label');
     expect(daySelect()).not.toHaveAttribute('aria-label');
   });
