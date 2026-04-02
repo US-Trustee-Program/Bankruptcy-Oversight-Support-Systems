@@ -15,6 +15,16 @@ RUN apt-get update && \
 # restructuring the global node_modules after the runtime is installed.
 RUN npm install -g azure-functions-core-tools@4 azurite --unsafe-perm true
 
+# Pre-download the extension bundle so the backend container can start offline.
+# Bridge-networked containers have no internet access at runtime, so the bundle
+# must be cached in the image. `func bundles download` fetches the latest
+# bundle matching the version range in host.json.
+RUN mkdir -p /tmp/func-bundle-seed && \
+    cd /tmp/func-bundle-seed && \
+    echo '{"version":"2.0","extensionBundle":{"id":"Microsoft.Azure.Functions.ExtensionBundle","version":"[4.*, 5.0.0)"}}' > host.json && \
+    func bundles download && \
+    rm -rf /tmp/func-bundle-seed
+
 # Copy only package files for dependency installation (cached layer)
 COPY package*.json ./
 COPY common/package*.json ./common/
