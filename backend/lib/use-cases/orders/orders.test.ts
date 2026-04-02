@@ -1265,6 +1265,7 @@ describe('Orders use case', () => {
         get: vi.fn(),
         getRoleMapping: vi.fn(),
         getUstpOffices: vi.fn(),
+        getPrivilegedIdentityUserRoleGroupName: vi.fn(),
       };
     });
 

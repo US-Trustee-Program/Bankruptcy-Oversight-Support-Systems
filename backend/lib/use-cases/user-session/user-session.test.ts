@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, MockInstance } from 'vitest';
 import { UserSessionUseCase } from './user-session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -59,7 +59,7 @@ describe('user-session.gateway test', () => {
     claims,
     header: jwtHeader as CamsJwtHeader,
   };
-  let getUserSpy: vi.SpiedFunction<(typeof MockOpenIdConnectGateway)['getUser']>;
+  let getUserSpy: MockInstance<(typeof MockOpenIdConnectGateway)['getUser']>;
 
   beforeEach(async () => {
     context = await createMockApplicationContext({

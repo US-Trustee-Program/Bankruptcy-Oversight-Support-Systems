@@ -24,8 +24,11 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["../../user-interface/src/*"],
-      "@common/*": ["../../common/src/*"]
-    }
+      "@common/*": ["../../common/src/*"],
+      "react": ["../../user-interface/node_modules/@types/react/index.d.ts"],
+      "react/*": ["../../user-interface/node_modules/@types/react/*"]
+    },
+    "typeRoots": ["../../user-interface/node_modules/@types", "../../node_modules/@types"]
   },
   "include": ["src"]
 }
