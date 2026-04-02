@@ -4,25 +4,29 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23921803129`, 2026-04-02)
+## Current Status (run `23922642660`, 2026-04-02)
 
-**SQL Server running. Backend ELOGIN on `CAMS_E2E` — database doesn't exist at backend startup.** SQL Server starts clean on a fresh named volume. Backend connects with `CAMS_E2E` as the initial catalog immediately at startup, before seeding has run. SQL Server rejects with State 38 (database not found), which the mssql driver surfaces as `ELOGIN`. Playwright auth-setup completes Okta login but app renders "Access Denied — 500 Error - Server Error — Failed to fetch" because `/api/me` hits the broken SQL connection.
+**All infrastructure working. App renders 500 due to browser calling `http://backend:7071` — unresolvable from browser context.**
 
 **Confirmed working:**
 - `e2e_deps`: installs `azure-functions-core-tools@4` + `azurite` together in one `npm install -g`, then pre-downloads the extension bundle via `func bundles download`
 - `e2e_built`: standard build, no changes — source `local.settings.json` (with `AzureWebJobsStorage` + `Host.CORS`) baked in via `COPY backend/`
 - `e2e_backend`: FROM `e2e_built`, no COPY, no extra installs — CMD starts azurite in background, waits for Table service ready, then `func start`
 - `AzureWebJobsStorage`: explicit Azurite connection string (`devstoreaccount1` / well-known key / `http://127.0.0.1:10000`) passed via compose env var — overrides the value in `local.settings.json` at runtime
-- **Experiment 1 confirmed**: `CAMS_SERVER_HOSTNAME=backend` eliminates CORS `OPTIONS /api/me` 404 — frontend proxies API calls server-side via bridge DNS, no preflight needed
+- Databases start, seed succeeds, backend connects to `CAMS_E2E` cleanly — healthcheck returns HTTP 200, all checks pass including SQL
 - Backend: bridge network, `ports: 7071:7071`
-- Frontend: bridge network, `CAMS_SERVER_HOSTNAME=backend`, `CAMS_SERVER_PORT=7071`, `ports: 3000:3000`
+- Frontend: bridge network, `CAMS_SERVER_PORT=7071`, `ports: 3000:3000`
 - Playwright: `network_mode: host`, `TARGET_HOST=http://localhost:3000`
-- Host resources healthy: 11% memory (1613MB/15993MB), 4 cores, 78G disk free — not a resource exhaustion issue
+- Host resources healthy: 12% memory, 4 cores — not a resource exhaustion issue
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
-**Active failure**: SQL Server TCP probe passes ~20ms after `podman run` completes — before port 1433 even opens, before SQL Server completes first-boot initialization. Seed script attempts connection ~3.6 seconds into cold start and gets `Could not connect (sequence)`. `CAMS_E2E` is never created; backend hits ELOGIN State 38 continuously.
+**Active failure**: Browser makes direct API calls to `http://backend:7071/api/me` — `backend` is only resolvable inside the compose bridge network, not from the browser (Playwright on host network). All API requests fail with `net::ERR_NAME_NOT_RESOLVED`. App renders "500 Error - Server Error / Failed to fetch". Backend receives no requests after the healthcheck curl.
 
-**Next fix**: Replace TCP probe for SQL Server with `podman exec cams-sqlserver-e2e /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P ... -Q "SELECT 1"`. Only succeeds when the login subsystem is actually operational.
+Infrastructure is fully working: databases start, seeding succeeds, backend connects to `CAMS_E2E` cleanly (healthcheck returns HTTP 200, all checks pass including SQL).
+
+**Root cause of Experiment 1 (`CAMS_SERVER_HOSTNAME=backend`) being wrong**: The frontend is a static Vite build served by `vite preview` with no proxy. `envToConfig.js` writes `CAMS_SERVER_HOSTNAME` directly into `configuration.json` which is loaded as `window.CAMS_CONFIGURATION` in the browser. The browser constructs the API base URL directly — `http://backend:7071/api` — and calls it without any server-side proxying. `backend` is unresolvable from the browser.
+
+**Next fix**: Set `CAMS_SERVER_HOSTNAME=localhost` in `pr-validation.yml`. The backend's port 7071 is published to the host, reachable as `localhost:7071` from the Playwright container (host network) and from the browser. `Host.CORS: "*"` is already baked into the backend image so CORS preflights will be handled.
 
 ---
 
@@ -88,6 +92,18 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 **Root cause**: Rootless Podman with `pasta`/`slirp4netns` on this runner does not make published bridge-container ports available at `127.0.0.1` from within other containers, even host-network ones.
 
 **What worked**: Keep backend on bridge network. Use bridge DNS names (`mongodb`, `sqlserver`) for all backend connections. Publish port `7071:7071` so Playwright (host-network) and the browser can reach the API at `localhost:7071`.
+
+---
+
+## `CAMS_SERVER_HOSTNAME=backend` — browser cannot resolve compose DNS names
+
+**Symptom**: App renders "Access Denied — 500 Error - Server Error / Failed to fetch". Browser network trace shows all `/api/me` requests failing with `net::ERR_NAME_NOT_RESOLVED` against `http://backend:7071`. Backend receives zero requests after the healthcheck curl.
+
+**Initially misdiagnosed as**: Fixed by `CAMS_SERVER_HOSTNAME=backend` — this appeared to eliminate the CORS 404 issue. Wrong. The CORS 404 disappeared for a different reason (unrelated to the hostname), and `backend` was silently breaking the browser's ability to call the API at all.
+
+**Root cause**: The frontend is a static Vite build (`vite preview`) with no server-side proxy. `envToConfig.js` writes `CAMS_SERVER_HOSTNAME` directly into `configuration.json` → `window.CAMS_CONFIGURATION`. The browser constructs `http://backend:7071/api` and calls it directly. `backend` is a compose bridge DNS name, only resolvable inside the compose network — not from the browser running inside the Playwright host-network container.
+
+**What worked**: `CAMS_SERVER_HOSTNAME=localhost`. Port 7071 is published to the host. The browser (and Playwright, on host network) can reach the backend at `localhost:7071`. `Host.CORS: "*"` is baked into the backend image to handle CORS preflights.
 
 ---
 

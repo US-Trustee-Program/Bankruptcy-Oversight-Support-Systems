@@ -72,7 +72,7 @@ jobs:
           echo "MSSQL_ENCRYPT=false" >> .env
           echo "MSSQL_TRUST_UNSIGNED_CERT=true" >> .env
           echo "SLOT_NAME=local" >> .env
-          echo "CAMS_SERVER_HOSTNAME=backend" >> .env
+          echo "CAMS_SERVER_HOSTNAME=localhost" >> .env
           echo "CAMS_SERVER_PORT=7071" >> .env
           echo "CAMS_SERVER_PROTOCOL=http" >> .env
           echo "CAMS_BASE_PATH=/api" >> .env
