@@ -6,7 +6,7 @@ import {
   generateTestCredential,
 } from '../../../testing/testing-utilities';
 import { ApplicationContext } from '../../types/basic';
-import { UnknownError } from '../../../common-errors/unknown-error';
+import { CamsError } from '../../../common-errors/cams-error';
 
 describe('ATS Gateway', () => {
   let context: ApplicationContext;
@@ -53,8 +53,17 @@ describe('ATS Gateway', () => {
     });
 
     test('should return correct trustee count', async () => {
+      // Returns 5 — active trustees only (inactive trustee 6 is excluded)
       const count = await gateway.getTrusteeCount(context);
       expect(count).toBe(5);
+    });
+
+    test('should exclude trustees with no active appointments', async () => {
+      // Trustee 6 exists in the mock pool but has only inactive appointments
+      const page = await gateway.getTrusteesPage(context, null, 10);
+      const ids = page.map((t) => t.ID);
+      expect(ids).not.toContain(6);
+      expect(ids).toEqual(expect.arrayContaining([1, 2, 3, 4, 5]));
     });
 
     test('should successfully test connection', async () => {
@@ -118,9 +127,12 @@ describe('ATS Gateway', () => {
         expect.arrayContaining([expect.objectContaining({ name: 'pageSize', value: 50 })]),
       );
 
-      // Should not include WHERE clause for first page
       const query = mockExecuteQuery.mock.calls[0][1];
-      expect(query).not.toContain('WHERE ID >');
+      // Active-only filter is always present
+      expect(query).toContain('WHERE EXISTS');
+      expect(query).toContain('CHAPTER_DETAILS');
+      // Cursor condition not present on first page
+      expect(query).not.toContain('AND T.ID > @lastId');
     });
 
     test('should build correct query for subsequent pages of trustees', async () => {
@@ -130,12 +142,15 @@ describe('ATS Gateway', () => {
 
       expect(mockExecuteQuery).toHaveBeenCalledWith(
         context,
-        expect.stringContaining('WHERE ID > @lastId'),
+        expect.stringContaining('AND T.ID > @lastId'),
         expect.arrayContaining([
           expect.objectContaining({ name: 'pageSize', value: 50 }),
           expect.objectContaining({ name: 'lastId', value: 100 }),
         ]),
       );
+
+      const query = mockExecuteQuery.mock.calls[0][1];
+      expect(query).toContain('WHERE EXISTS');
     });
 
     test('should handle query errors gracefully', async () => {
@@ -191,10 +206,10 @@ describe('ATS Gateway', () => {
 
       const count = await gateway.getTrusteeCount(context);
 
-      expect(mockExecuteQuery).toHaveBeenCalledWith(
-        context,
-        expect.stringContaining('COUNT(*) as totalCount FROM TRUSTEES'),
-      );
+      const query = mockExecuteQuery.mock.calls[0][1];
+      expect(query).toContain('COUNT(*) as totalCount');
+      expect(query).toContain('WHERE EXISTS');
+      expect(query).toContain('CHAPTER_DETAILS');
 
       expect(count).toBe(1234);
     });
@@ -332,9 +347,7 @@ describe('ATS Gateway', () => {
       // Mock loadTrusteeOverrides to fail
       const loadOverridesMock = await import('./cleansing/ats-cleansing-overrides');
       vi.spyOn(loadOverridesMock, 'loadTrusteeOverrides').mockResolvedValueOnce({
-        error: new UnknownError('ATS-CLEANSING-OVERRIDES', {
-          message: 'Failed to read override file',
-        }),
+        error: new CamsError('ATS-GATEWAY', { message: 'Failed to read override file' }),
       });
 
       const loggerErrorSpy = vi.spyOn(context.logger, 'error');

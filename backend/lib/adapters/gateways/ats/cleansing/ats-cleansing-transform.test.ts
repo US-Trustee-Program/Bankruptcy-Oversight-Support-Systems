@@ -8,7 +8,6 @@ describe('ATS Cleansing Transform', () => {
     const baseRecord: AtsAppointmentRecord = {
       TRU_ID: 12345,
       DISTRICT: 'CA',
-      DIVISION: 'SBA',
       CHAPTER: '7',
       STATUS: 'PA',
       DATE_APPOINTED: new Date('2024-01-15'),

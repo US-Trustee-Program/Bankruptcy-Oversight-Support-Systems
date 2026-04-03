@@ -11,6 +11,22 @@ import { DbTableFieldSpec, QueryResults } from '../../types/database';
 const MODULE_NAME = 'ATS-MOCK-GATEWAY';
 
 /**
+ * IDs of all mock trustees in the pool.
+ * Trustee 6 exists but has only inactive appointments (see MOCK_ACTIVE_TRUSTEE_IDS).
+ */
+const MOCK_TRUSTEE_IDS = [1, 2, 3, 4, 5, 6];
+
+// IDs of mock trustees that have at least one active appointment (simulates WHERE EXISTS filter).
+// Trustee 6 has only inactive appointments and is intentionally excluded.
+const MOCK_ACTIVE_TRUSTEE_IDS = new Set(MOCK_TRUSTEE_IDS.filter((id) => id !== 6));
+
+/**
+ * Total number of mock trustees in the pool (used for pagination).
+ * Derived from MOCK_TRUSTEE_IDS to avoid drifting out of sync with filters.
+ */
+const MOCK_TOTAL_TRUSTEES = MOCK_TRUSTEE_IDS.length;
+
+/**
  * Mock implementation of ATS gateway for testing.
  * Returns sample trustee and appointment data.
  */
@@ -36,12 +52,13 @@ export class MockAtsGateway implements AtsGateway {
       `Mock: Getting trustees page with lastId: ${lastTrusteeId}, pageSize: ${pageSize}`,
     );
 
-    // Return mock trustees for testing
+    // Return only active mock trustees (simulates WHERE EXISTS on CHAPTER_DETAILS active STATUS).
+    // Trustee 6 exists in the pool but has only inactive appointments and is excluded.
     const mockTrustees: AtsTrusteeRecord[] = [];
     const startId = lastTrusteeId ? lastTrusteeId + 1 : 1;
-    const endId = Math.min(startId + pageSize - 1, 5); // Mock has 5 trustees total
 
-    for (let i = startId; i <= endId; i++) {
+    for (let i = startId; i <= MOCK_TOTAL_TRUSTEES && mockTrustees.length < pageSize; i++) {
+      if (!MOCK_ACTIVE_TRUSTEE_IDS.has(i)) continue;
       mockTrustees.push({
         ID: i,
         LAST_NAME: `LastName${i}`,
@@ -90,7 +107,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '7',
           DATE_APPOINTED: new Date('2023-01-15'),
           STATUS: 'PA', // panel, active
@@ -99,7 +115,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '12CBC',
           DATE_APPOINTED: new Date('2023-03-01'),
           STATUS: '1', // CBC: case-by-case, active
@@ -114,7 +129,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '7',
           DATE_APPOINTED: new Date('2023-02-01'),
           STATUS: 'NP', // off-panel, resigned
@@ -123,7 +137,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '7',
           DATE_APPOINTED: new Date('2023-03-01'),
           STATUS: 'PI', // panel, voluntarily-suspended
@@ -132,7 +145,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '7',
           DATE_APPOINTED: new Date('2023-04-01'),
           STATUS: 'O', // converted-case, active
@@ -141,7 +153,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '7',
           DATE_APPOINTED: new Date('2023-05-01'),
           STATUS: 'E', // elected, active
@@ -156,7 +167,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '11',
           DATE_APPOINTED: new Date('2023-06-01'),
           STATUS: 'V', // pool, active (11-subchapter-v)
@@ -165,7 +175,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '071',
           CHAPTER: '11',
           DATE_APPOINTED: new Date('2023-07-01'),
           STATUS: 'VR', // out-of-pool, resigned (11-subchapter-v)
@@ -180,7 +189,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '11',
           DATE_APPOINTED: new Date('2023-01-01'),
           STATUS: '1', // case-by-case, active
@@ -189,7 +197,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '12',
           DATE_APPOINTED: new Date('2023-02-01'),
           STATUS: '3', // standing, resigned
@@ -198,7 +205,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '13',
           DATE_APPOINTED: new Date('2023-03-01'),
           STATUS: '5', // standing, terminated
@@ -207,7 +213,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '13',
           DATE_APPOINTED: new Date('2023-04-01'),
           STATUS: '6', // standing, terminated
@@ -216,7 +221,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '12',
           DATE_APPOINTED: new Date('2023-05-01'),
           STATUS: '7', // standing, deceased
@@ -225,7 +229,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '11',
           DATE_APPOINTED: new Date('2023-06-01'),
           STATUS: '8', // case-by-case, active
@@ -234,7 +237,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '11',
           DATE_APPOINTED: new Date('2023-07-01'),
           STATUS: '9', // case-by-case, inactive
@@ -243,7 +245,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '11',
           DATE_APPOINTED: new Date('2023-08-01'),
           STATUS: '10', // case-by-case, inactive
@@ -252,7 +253,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '11',
           DATE_APPOINTED: new Date('2023-09-01'),
           STATUS: '12', // case-by-case, active
@@ -267,7 +267,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '12CBC',
           DATE_APPOINTED: new Date('2023-01-01'),
           STATUS: '1', // CBC: case-by-case, active
@@ -276,7 +275,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '12CBC',
           DATE_APPOINTED: new Date('2023-02-01'),
           STATUS: '2', // CBC: case-by-case, active
@@ -285,7 +283,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '12CBC',
           DATE_APPOINTED: new Date('2023-03-01'),
           STATUS: '3', // CBC: case-by-case, inactive
@@ -294,7 +291,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '12CBC',
           DATE_APPOINTED: new Date('2023-04-01'),
           STATUS: '5', // CBC: case-by-case, inactive
@@ -303,7 +299,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '12CBC',
           DATE_APPOINTED: new Date('2023-05-01'),
           STATUS: '7', // CBC: case-by-case, inactive
@@ -312,7 +307,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '071',
           CHAPTER: '13CBC',
           DATE_APPOINTED: new Date('2023-06-01'),
           STATUS: '1', // CBC: case-by-case, active
@@ -321,7 +315,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '071',
           CHAPTER: '13CBC',
           DATE_APPOINTED: new Date('2023-07-01'),
           STATUS: '3', // CBC: case-by-case, inactive
@@ -330,13 +323,24 @@ export class MockAtsGateway implements AtsGateway {
       );
     }
 
+    // Trustee 6: Only inactive appointments — excluded from active filter
+    if (trusteeId === 6) {
+      mockAppointments.push({
+        TRU_ID: trusteeId,
+        DISTRICT: '02',
+        CHAPTER: '7',
+        DATE_APPOINTED: new Date('2020-01-01'),
+        STATUS: 'NP', // off-panel, resigned — not in ACTIVE_STATUS_CODES
+        EFFECTIVE_DATE: new Date('2020-01-01'),
+      });
+    }
+
     // Default: Return basic appointments for any other trustee ID
     if (mockAppointments.length === 0) {
       mockAppointments.push(
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: '7',
           DATE_APPOINTED: new Date('2023-01-15'),
           STATUS: 'PA', // panel, active
@@ -345,7 +349,6 @@ export class MockAtsGateway implements AtsGateway {
         {
           TRU_ID: trusteeId,
           DISTRICT: '02',
-          DIVISION: '071',
           CHAPTER: '13',
           DATE_APPOINTED: new Date('2023-06-01'),
           STATUS: 'S', // standing, active
@@ -373,7 +376,7 @@ export class MockAtsGateway implements AtsGateway {
 
   async getTrusteeCount(context: ApplicationContext): Promise<number> {
     context.logger.debug(MODULE_NAME, 'Mock: Getting trustee count');
-    return 5; // Mock has 5 trustees
+    return MOCK_ACTIVE_TRUSTEE_IDS.size; // Active trustees only (excludes inactive trustee 6)
   }
 
   async testConnection(context: ApplicationContext): Promise<boolean> {
