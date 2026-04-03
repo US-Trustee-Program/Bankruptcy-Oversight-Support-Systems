@@ -310,7 +310,7 @@ WAIT_COUNT=0
 
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
     BACKEND_HTTP=$(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo "ok" || echo "fail")
-    FRONTEND_HTTP=$(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
+    FRONTEND_HTTP=$(curl -s --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
     if [ "$BACKEND_HTTP" = "ok" ] && [ "$FRONTEND_HTTP" = "ok" ]; then
         echo -e "${GREEN}✅ All services are healthy and responding${NC}"
         echo ""

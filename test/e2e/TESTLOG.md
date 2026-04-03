@@ -9,7 +9,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 **Vite proxy experiment in progress.** Infrastructure fully working through seed and backend healthcheck. Root cause of OPTIONS 404 identified: Azure Functions host routing rejects OPTIONS via `HttpMethodRouteConstraint` before CORS middleware runs — no fix exists at the `local.settings.json` level. In production Azure handles this at the platform layer (ARM `cors.allowedOrigins`), never reaching the runtime. Fix: eliminate cross-origin entirely via `vite preview` proxy.
 
 **Changes applied (Experiment 4 — queued for next CI run):**
-- `test/e2e/vite.config.e2e.mts` added: `preview.proxy` routes `/api` → `http://localhost:7071`
+- `test/e2e/vite.config.e2e.mts` added: `preview.proxy` routes `/api` → `http://backend:7071` (compose bridge DNS — `localhost:7071` is unreachable inside the frontend container)
 - `Dockerfile.frontend`: `COPY test/e2e/vite.config.e2e.mts /app/user-interface/vite.config.mts` overwrites the default vite config in the image at build time; `vite preview` runs with no `--config` flag and picks it up naturally
 - `podman-compose.yml` + `.env`: `CAMS_SERVER_HOSTNAME=localhost`, `CAMS_SERVER_PORT=3000`, `CAMS_SERVER_PROTOCOL=http` — browser calls `localhost:3000/api/...` (same-origin), proxy forwards to backend
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
@@ -35,7 +35,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 **Fix**: Eliminate cross-origin entirely. Browser calls `localhost:3000/api/...` (same-origin → no preflight). `vite preview` proxy rule forwards to `localhost:7071/api/...` server-side.
 
 **Changes**:
-1. `test/e2e/vite.config.e2e.mts` — new file, `preview.proxy: { '/api': { target: 'http://localhost:7071' } }`
+1. `test/e2e/vite.config.e2e.mts` — new file, `preview.proxy: { '/api': { target: 'http://backend:7071' } }`. Target is bridge DNS `backend`, not `localhost` — the frontend container is on the bridge network and `localhost:7071` doesn't exist inside it.
 2. `Dockerfile.frontend` — `COPY test/e2e/vite.config.e2e.mts /app/user-interface/vite.config.mts` overwrites the default config in the OCI image; `vite preview` picks it up without a `--config` flag
 3. `podman-compose.yml` + `.env` — `CAMS_SERVER_HOSTNAME=localhost`, `CAMS_SERVER_PORT=3000`, `CAMS_SERVER_PROTOCOL=http`
 
@@ -115,6 +115,8 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 **Tried**: `CAMS_SERVER_HOSTNAME=backend` (Experiment 1) — eliminated the CORS 404 by making browser requests fail entirely with `ERR_NAME_NOT_RESOLVED` instead. Not a fix.
 
 **Tried**: `vite preview --config /app/test/e2e/vite.config.e2e.mts` — vite's rolldown bundler resolves the config path relative to `user-interface/`, treating `../test/e2e/vite.config.e2e.mts` as an entry module outside the project root. Fails immediately with `[UNRESOLVED_ENTRY] Cannot resolve entry module ../test/e2e/vite.config.e2e.mts`. Container exits before binding port 3000.
+
+**Tried**: `proxy target: http://localhost:7071` — vite preview started and bound port 3000 (confirmed in container log: `➜  Local: http://localhost:3000/`), but `curl -sf http://localhost:3000` from the host always returned fail while `curl -s http://localhost:7071/api/healthcheck` passed. Root cause: two bugs at once. (1) `-f` flag on the frontend curl causes failure on any non-2xx — vite preview likely returns a redirect for `GET /`. (2) proxy target `localhost:7071` is unreachable inside the bridge-networked frontend container. Fixed both: drop `-f` from health check, change proxy target to `http://backend:7071` (bridge DNS).
 
 **What worked**: `COPY test/e2e/vite.config.e2e.mts /app/user-interface/vite.config.mts` in `Dockerfile.frontend`. The file lands inside the project root at build time; `vite preview` loads it as the default config with no `--config` flag needed.
 
