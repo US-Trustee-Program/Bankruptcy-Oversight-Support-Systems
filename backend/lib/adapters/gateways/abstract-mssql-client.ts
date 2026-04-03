@@ -77,7 +77,7 @@ export abstract class AbstractMssqlClient {
         if (error.originalError) {
           newError.originalError = {
             name: error.originalError.name,
-            description: error.originalError.name,
+            description: error.originalError.message,
           };
         }
 
@@ -86,7 +86,7 @@ export abstract class AbstractMssqlClient {
         context.logger.error(this.moduleName, unknownError.message, { error, query, input });
       }
 
-      throw getCamsError(unknownError, this.moduleName, unknownError.message);
+      throw getCamsError(unknownError, this.moduleName);
     }
   }
 }
