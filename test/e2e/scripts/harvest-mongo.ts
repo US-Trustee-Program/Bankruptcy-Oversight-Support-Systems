@@ -35,7 +35,7 @@ import { resolve } from 'path';
 const MODULE_NAME = 'HARVEST-MONGO';
 
 // Collections written by seedCosmosE2eDatabase
-const COLLECTIONS = ['cases', 'consolidations', 'orders', 'trustees', 'user-groups'];
+const COLLECTIONS = ['assignments', 'cases', 'consolidations', 'orders', 'trustees', 'user-groups'];
 
 // PII fields to null out on CaseSummary / case documents
 const CASE_PII_FIELDS = [

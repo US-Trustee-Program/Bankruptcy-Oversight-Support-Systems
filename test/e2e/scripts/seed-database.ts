@@ -30,7 +30,15 @@ const CONNECTION_STRING =
 
 const DB_NAME = process.env.COSMOS_DATABASE_NAME || 'cams-e2e';
 
-const COLLECTIONS = ['cases', 'consolidations', 'orders', 'trustees', 'user-groups'];
+const COLLECTIONS = [
+  'assignments',
+  'cases',
+  'consolidations',
+  'orders',
+  'trustee-match-verification',
+  'trustees',
+  'user-groups',
+];
 
 type MongoDocument = Record<string, unknown>;
 
