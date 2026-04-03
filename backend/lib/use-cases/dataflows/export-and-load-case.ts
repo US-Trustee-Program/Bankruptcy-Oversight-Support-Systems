@@ -33,17 +33,9 @@ function addPhoneticTokens(bCase: DxtrCase): DxtrCase {
   return result;
 }
 
-/**
- * Detect a division change for a case. A division change occurs when a case
- * with the same dxtrId and courtId already exists but has a different caseId.
- *
- * @param repo Cases repository for querying existing cases
- * @param syncedCase The synced case data to check
- * @returns The orphaned/current case pair if a division change is detected, null otherwise
- */
 async function detectDivisionChange(
   repo: CasesRepository,
-  syncedCase: SyncedCase,
+  syncedCase: DxtrCase,
 ): Promise<OrphanedCaseMessage | null> {
   const existing = await repo.findSyncedCaseByDxtrId(syncedCase.dxtrId, syncedCase.courtId);
 

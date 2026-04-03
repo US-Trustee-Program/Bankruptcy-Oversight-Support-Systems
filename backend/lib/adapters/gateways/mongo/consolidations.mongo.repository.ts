@@ -146,9 +146,9 @@ export default class ConsolidationOrdersMongoRepository<
     }
   }
 
-  public async updateManyByQuery(query: ConditionOrConjunction<T>, update: unknown) {
+  public async updateManyByQuery<U>(query: ConditionOrConjunction<U>, update: unknown) {
     try {
-      return await this.getAdapter<T>().updateMany(query, update);
+      return await this.getAdapter<U>().updateMany(query, update);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
