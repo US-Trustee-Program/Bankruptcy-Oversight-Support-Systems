@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { CamsUser, CamsUserGroup, CamsUserReference } from '@common/cams/users';
 import { UnknownError } from '../../../common-errors/unknown-error';
-import { UserGroupGateway, UserGroupGatewayConfig } from '../../types/authorization';
+import { UserGroupGatewayConfig } from '../../types/authorization';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { randomUUID } from 'node:crypto';
@@ -21,7 +21,7 @@ const configuration: UserGroupGatewayConfig = {
 };
 
 describe('OktaGroupGateway', () => {
-  let gateway: UserGroupGateway;
+  let gateway: OktaUserGroupGateway;
 
   beforeEach(async () => {
     gateway = new OktaUserGroupGateway();

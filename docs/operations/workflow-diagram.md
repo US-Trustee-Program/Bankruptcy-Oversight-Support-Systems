@@ -121,6 +121,9 @@ flowchart LR
     continuous_deployment_yml_knip["knip"]
     reusable_knip_yml["reusable-knip.yml"]
     reusable_knip_yml_knip["Knip"]
+    continuous_deployment_yml_typecheck["typecheck"]
+    reusable_typecheck_yml["reusable-typecheck.yml"]
+    reusable_typecheck_yml_typecheck["TypeScript"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["Security"]
     sub_security_scan_yml_sca_scan["SCA Scan"]
@@ -183,6 +186,9 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_knip
     reusable_knip_yml --> reusable_knip_yml_knip
     continuous_deployment_yml_knip --> reusable_knip_yml
+    continuous_deployment_yml --> continuous_deployment_yml_typecheck
+    reusable_typecheck_yml --> reusable_typecheck_yml_typecheck
+    continuous_deployment_yml_typecheck --> reusable_typecheck_yml
     continuous_deployment_yml --> continuous_deployment_yml_security_scan
     sub_security_scan_yml --> sub_security_scan_yml_sca_scan
     sub_security_scan_yml --> sub_security_scan_yml_sast_scan
@@ -252,6 +258,9 @@ flowchart LR
     class continuous_deployment_yml_knip job
     class reusable_knip_yml reusable
     class reusable_knip_yml_knip job
+    class continuous_deployment_yml_typecheck job
+    class reusable_typecheck_yml reusable
+    class reusable_typecheck_yml_typecheck job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml mainWorkflow
     class sub_security_scan_yml_sca_scan job
@@ -330,6 +339,9 @@ flowchart LR
         subgraph knip_subgraph["knip"]
             knip_vars["NODE_VERSION"]
         end
+        subgraph typecheck_subgraph["typecheck"]
+            typecheck_vars["NODE_VERSION"]
+        end
         security_scan["Security"]
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
@@ -354,6 +366,7 @@ flowchart LR
     Variables_NODE_VERSION -.-> accessibility_test_subgraph
     Variables_NODE_VERSION -.-> build_subgraph
     Variables_NODE_VERSION -.-> knip_subgraph
+    Variables_NODE_VERSION -.-> typecheck_subgraph
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
@@ -365,6 +378,7 @@ flowchart LR
     setup ==>|"needs"| build_subgraph
     setup ==>|"needs"| deploy_code_slot_subgraph
     setup ==>|"needs"| deploy_subgraph
+    typecheck_subgraph ==>|"needs"| deploy_subgraph
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
     unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
@@ -382,6 +396,7 @@ flowchart LR
     class knip_subgraph jobSubgraph
     class security_scan job
     class setup job
+    class typecheck_subgraph jobSubgraph
     class unit_test_backend_subgraph jobSubgraph
     class unit_test_common_subgraph jobSubgraph
     class unit_test_frontend_subgraph jobSubgraph
@@ -671,6 +686,9 @@ flowchart LR
     continuous_deployment_yml_knip["knip"]
     reusable_knip_yml["reusable-knip.yml"]
     reusable_knip_yml_knip["Knip"]
+    continuous_deployment_yml_typecheck["typecheck"]
+    reusable_typecheck_yml["reusable-typecheck.yml"]
+    reusable_typecheck_yml_typecheck["TypeScript"]
     continuous_deployment_yml_security_scan["Security"]
     sub_security_scan_yml["Security"]
     sub_security_scan_yml_sca_scan["SCA Scan"]
@@ -733,6 +751,9 @@ flowchart LR
     continuous_deployment_yml --> continuous_deployment_yml_knip
     reusable_knip_yml --> reusable_knip_yml_knip
     continuous_deployment_yml_knip --> reusable_knip_yml
+    continuous_deployment_yml --> continuous_deployment_yml_typecheck
+    reusable_typecheck_yml --> reusable_typecheck_yml_typecheck
+    continuous_deployment_yml_typecheck --> reusable_typecheck_yml
     continuous_deployment_yml --> continuous_deployment_yml_security_scan
     sub_security_scan_yml --> sub_security_scan_yml_sca_scan
     sub_security_scan_yml --> sub_security_scan_yml_sast_scan
@@ -802,6 +823,9 @@ flowchart LR
     class continuous_deployment_yml_knip job
     class reusable_knip_yml reusable
     class reusable_knip_yml_knip job
+    class continuous_deployment_yml_typecheck job
+    class reusable_typecheck_yml reusable
+    class reusable_typecheck_yml_typecheck job
     class continuous_deployment_yml_security_scan job
     class sub_security_scan_yml mainWorkflow
     class sub_security_scan_yml_sca_scan job
@@ -880,6 +904,9 @@ flowchart LR
         subgraph knip_subgraph["knip"]
             knip_vars["NODE_VERSION"]
         end
+        subgraph typecheck_subgraph["typecheck"]
+            typecheck_vars["NODE_VERSION"]
+        end
         security_scan["Security"]
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
@@ -904,6 +931,7 @@ flowchart LR
     Variables_NODE_VERSION -.-> accessibility_test_subgraph
     Variables_NODE_VERSION -.-> build_subgraph
     Variables_NODE_VERSION -.-> knip_subgraph
+    Variables_NODE_VERSION -.-> typecheck_subgraph
     Variables_NODE_VERSION -.-> unit_test_backend_subgraph
     Variables_NODE_VERSION -.-> unit_test_common_subgraph
     Variables_NODE_VERSION -.-> unit_test_frontend_subgraph
@@ -915,6 +943,7 @@ flowchart LR
     setup ==>|"needs"| build_subgraph
     setup ==>|"needs"| deploy_code_slot_subgraph
     setup ==>|"needs"| deploy_subgraph
+    typecheck_subgraph ==>|"needs"| deploy_subgraph
     unit_test_backend_subgraph ==>|"needs"| deploy_subgraph
     unit_test_common_subgraph ==>|"needs"| deploy_subgraph
     unit_test_frontend_subgraph ==>|"needs"| deploy_subgraph
@@ -932,6 +961,7 @@ flowchart LR
     class knip_subgraph jobSubgraph
     class security_scan job
     class setup job
+    class typecheck_subgraph jobSubgraph
     class unit_test_backend_subgraph jobSubgraph
     class unit_test_common_subgraph jobSubgraph
     class unit_test_frontend_subgraph jobSubgraph
@@ -1372,7 +1402,7 @@ flowchart LR
   - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
-  - Jobs: 10
+  - Jobs: 11
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
   - Triggers: schedule, workflow_dispatch
   - Jobs: 1
@@ -1394,6 +1424,8 @@ flowchart LR
 - **Azure Deployment - Supporting Infrastructure** (`reusable-infrastructure-deploy.yml`)
   - Jobs: 2
 - **End-to-end Tests** (`reusable-e2e.yml`)
+  - Jobs: 1
+- **TypeScript Type Check** (`reusable-typecheck.yml`)
   - Jobs: 1
 - **Deploy code for slot** (`sub-deploy-code-slot.yml`)
   - Jobs: 11

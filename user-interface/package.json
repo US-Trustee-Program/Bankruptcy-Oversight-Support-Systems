@@ -25,8 +25,7 @@
     "test:a11y:clean": "rm -rf test-results & rm -rf playwright-report",
     "test:a11y:ui": "playwright test --ui",
     "test:watch": "export CAMS_USE_FAKE_API=true && vitest watch",
-    "typecheck": "tsc -b --noEmit",
-    "typecheck:ci": "npm run typecheck"
+    "typecheck": "tsc -b --noEmit"
   },
   "browserslist": {
     "production": [
@@ -58,7 +57,7 @@
     "@tiptap/extension-underline": "3.20.4",
     "@tiptap/extensions": "3.20.4",
     "@tiptap/react": "3.20.4",
-    "@types/jsdom": "28.0.0",
+    "@types/jsdom": "28.0.1",
     "@types/node": "24.12.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
@@ -89,14 +88,14 @@
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",
-    "eslint-plugin-testing-library": "7.16.0",
-    "jsdom": "29.0.0",
+    "eslint-plugin-testing-library": "7.16.1",
+    "jsdom": "29.0.1",
     "prettier": "3.8.1",
     "react-router": "7.13.1",
     "sass-embedded": "1.98.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.54.0",
-    "vite": "8.0.0",
+    "vite": "8.0.1",
     "vite-plugin-env-compatible": "2.0.1",
     "vite-plugin-static-copy": "3.3.0",
     "vite-plugin-svgr": "4.5.0",

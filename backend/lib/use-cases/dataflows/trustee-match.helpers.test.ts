@@ -18,7 +18,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { LegacyAddress } from '@common/cams/parties';
 import { Address } from '@common/cams/contact';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
-import { DxtrTrusteeParty } from '@common/cams/dataflow-events';
+import { DxtrTrusteeParty, TrusteeAppointmentSyncEvent } from '@common/cams/dataflow-events';
 import { SyncedCase } from '@common/cams/cases';
 import { Trustee } from '@common/cams/trustees';
 import factory from '../../factory';
@@ -37,6 +37,8 @@ const makeAppointment = (overrides: Partial<TrusteeAppointment> = {}): TrusteeAp
   divisionCode: '1',
   appointmentType: 'panel',
   status: 'active',
+  appointedDate: '2024-01-01',
+  effectiveDate: '2024-01-01',
   createdBy: { id: 'system', name: 'System' },
   createdOn: '2024-01-01T00:00:00Z',
   updatedBy: { id: 'system', name: 'System' },
@@ -63,10 +65,15 @@ const makeCase = (overrides: Partial<SyncedCase> = {}): SyncedCase => ({
   courtName: 'Test Court',
   courtDivisionName: 'Test Division',
   groupDesignator: 'NY',
+  debtor: { name: 'Test Debtor' },
+  documentType: 'SYNCED_CASE',
+  updatedBy: { id: 'system', name: 'System' },
+  updatedOn: '2024-01-01T00:00:00Z',
   ...overrides,
 });
 
 const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
+  id: 'trustee-1',
   trusteeId: 'trustee-1',
   name: 'John Doe',
   status: 'active',

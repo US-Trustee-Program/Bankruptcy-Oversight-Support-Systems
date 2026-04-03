@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, Mocked, MockedClass } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssignmentsController } from './trustee-assignments.controller';
 import { TrusteeAssignmentsUseCase } from '../../use-cases/trustee-assignments/trustee-assignments';
@@ -15,7 +15,7 @@ vi.mock('../../use-cases/trustee-assignments/trustee-assignments');
 describe('TrusteeAssignmentsController', () => {
   let context: ApplicationContext;
   let controller: TrusteeAssignmentsController;
-  let mockUseCase: vi.Mocked<TrusteeAssignmentsUseCase>;
+  let mockUseCase: Mocked<TrusteeAssignmentsUseCase>;
 
   const mockUser: CamsUserReference = {
     id: 'user-123',
@@ -54,13 +54,13 @@ describe('TrusteeAssignmentsController', () => {
     mockUseCase = {
       getTrusteeOversightAssignments: vi.fn(),
       assignOversightStaffToTrustee: vi.fn(),
-    } as unknown as vi.Mocked<TrusteeAssignmentsUseCase>;
+    } as unknown as Mocked<TrusteeAssignmentsUseCase>;
 
-    (
-      TrusteeAssignmentsUseCase as vi.MockedClass<typeof TrusteeAssignmentsUseCase>
-    ).mockImplementation(function (this: TrusteeAssignmentsUseCase) {
-      return mockUseCase;
-    });
+    (TrusteeAssignmentsUseCase as MockedClass<typeof TrusteeAssignmentsUseCase>).mockImplementation(
+      function (this: TrusteeAssignmentsUseCase) {
+        return mockUseCase;
+      },
+    );
 
     controller = new TrusteeAssignmentsController(context);
 

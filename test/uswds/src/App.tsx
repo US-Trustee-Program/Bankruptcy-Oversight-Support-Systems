@@ -336,7 +336,7 @@ function App() {
                 submitButton: {
                   label: 'Confirm',
                   onClick: () => {
-                    modalRef.current?.hide({});
+                    modalRef.current?.hide();
                   },
                 },
                 cancelButton: {

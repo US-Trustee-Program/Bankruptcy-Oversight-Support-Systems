@@ -188,7 +188,7 @@ describe('ACMS gateway tests', () => {
     }).rejects.toThrow(
       expect.objectContaining({
         status: 500,
-        message: mockError.message,
+        message: 'Unknown Error',
         module: 'ACMS-GATEWAY',
       }),
     );
@@ -205,7 +205,7 @@ describe('ACMS gateway tests', () => {
     }).rejects.toThrow(
       expect.objectContaining({
         status: 500,
-        message: mockError.message,
+        message: 'Unknown Error',
         module: 'ACMS-GATEWAY',
       }),
     );

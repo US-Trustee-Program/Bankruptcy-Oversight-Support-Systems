@@ -47,7 +47,7 @@
     "test:watch:backend": "npm run test:watch --workspace=backend",
     "test:watch:common": "npm run test:watch --workspace=common",
     "test:watch:user-interface": "npm run test:watch --workspace=user-interface",
-    "tsc": "npm run tsc --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present"
   },
   "devDependencies": {
     "@eslint/js": "10.0.0",
@@ -61,8 +61,8 @@
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-react": "7.37.5",
-    "eslint-plugin-testing-library": "7.16.0",
-    "knip": "5.87.0",
+    "eslint-plugin-testing-library": "7.16.1",
+    "knip": "6.0.0",
     "prettier": "3.8.1",
     "react": "19.2.4",
     "typescript": "5.9.3",

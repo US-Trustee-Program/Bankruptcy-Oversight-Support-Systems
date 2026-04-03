@@ -30,8 +30,10 @@ function buildMockInput(
   return {
     trusteeId: 'trustee-001',
     appointmentId: 'appointment-001',
+    pastBackgroundQuestion: null,
     pastFieldExam: null,
     pastAudit: null,
+    pastTprSubmission: null,
     tprReviewPeriodStart: null,
     tprReviewPeriodEnd: null,
     tprDue: null,

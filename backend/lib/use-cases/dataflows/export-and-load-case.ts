@@ -42,7 +42,7 @@ async function exportAndLoad(
     try {
       event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
       const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
-      const syncedCase: SyncedCase = { ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' };
+      const syncedCase = { ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' as const };
 
       await repo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
     } catch (originalError) {

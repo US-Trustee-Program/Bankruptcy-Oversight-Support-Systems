@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, Mocked, MockedClass } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesController } from './trustees.controller';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
@@ -16,7 +16,7 @@ vi.mock('../../use-cases/trustees/trustees');
 describe('TrusteesController', () => {
   let context: ApplicationContext;
   let controller: TrusteesController;
-  let mockUseCase: vi.Mocked<TrusteesUseCase>;
+  let mockUseCase: Mocked<TrusteesUseCase>;
 
   const mockUser: CamsUserReference = {
     id: 'user123',
@@ -65,9 +65,9 @@ describe('TrusteesController', () => {
       listTrustees: vi.fn(),
       getTrustee: vi.fn(),
       updateTrustee: vi.fn(),
-    } as unknown as vi.Mocked<TrusteesUseCase>;
+    } as unknown as Mocked<TrusteesUseCase>;
 
-    (TrusteesUseCase as vi.MockedClass<typeof TrusteesUseCase>).mockImplementation(function (
+    (TrusteesUseCase as MockedClass<typeof TrusteesUseCase>).mockImplementation(function (
       this: TrusteesUseCase,
     ) {
       return mockUseCase;

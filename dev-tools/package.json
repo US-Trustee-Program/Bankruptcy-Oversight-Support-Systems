@@ -6,13 +6,13 @@
     "generate-api-key": "tsx --env-file=.env api-keys/generate-key.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "tsc": "npx tsc --noEmit"
+    "typecheck": "npx tsc --noEmit"
   },
   "author": "",
   "license": "CC0 v1.0",
   "dependencies": {
-    "@azure/cosmos": "4.9.1",
-    "@azure/identity": "4.13.0",
+    "@azure/cosmos": "4.9.2",
+    "@azure/identity": "4.13.1",
     "@types/node": "24.12.0",
     "tsx": "4.21.0"
   },
