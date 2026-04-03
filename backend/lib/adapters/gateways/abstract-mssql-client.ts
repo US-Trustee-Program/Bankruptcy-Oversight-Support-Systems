@@ -42,6 +42,11 @@ export abstract class AbstractMssqlClient {
 
       return queryResults;
     } catch (error) {
+      const unknownError =
+        error instanceof Error
+          ? error
+          : new Error((error as { message?: string }).message ?? String(error));
+
       if (isConnectionError(error)) {
         const errorMessages: string[] = [];
         // No recursive function here. Limiting this to just 2 "errors" lists deep.
@@ -78,15 +83,10 @@ export abstract class AbstractMssqlClient {
 
         context.logger.error(this.moduleName, 'MssqlError', newError);
       } else {
-        const unknownError =
-          error instanceof Error
-            ? error
-            : new Error((error as { message?: string }).message ?? String(error));
         context.logger.error(this.moduleName, unknownError.message, { error, query, input });
-        throw getCamsError(unknownError, this.moduleName, unknownError.message);
       }
 
-      throw getCamsError(error as Error, this.moduleName, (error as Error).message);
+      throw getCamsError(unknownError, this.moduleName, unknownError.message);
     }
   }
 }
