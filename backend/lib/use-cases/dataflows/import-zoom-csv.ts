@@ -5,10 +5,11 @@ import { MaybeData } from './queue-types';
 import { ZoomInfo } from '@common/cams/trustees';
 import { CamsUserReference } from '@common/cams/users';
 import { normalizeName } from './trustee-match.helpers';
+import ModuleNames from '../../../function-apps/dataflows/module-names';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const MODULE_NAME = 'IMPORT-ZOOM-CSV';
+const MODULE_NAME = ModuleNames.IMPORT_ZOOM_CSV;
 const CSV_FILE = path.join(__dirname, 'zoom-info.tsv');
 
 export type FileOperations = {
@@ -46,7 +47,7 @@ export function parseZoomCsvFile(content: string): ZoomCsvRow[] {
     const line = lines[i];
     if (!line.trim()) continue;
 
-    const parts = line.split('\t');
+    const parts = line.split('\t').map((p) => p.trim());
     if (parts.length < 8) {
       continue;
     }
