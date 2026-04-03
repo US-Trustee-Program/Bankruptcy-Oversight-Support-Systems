@@ -1,5 +1,5 @@
 function getAppConfiguration() {
-  const config = window.CAMS_CONFIGURATION;
+  const config = window.CAMS_CONFIGURATION as Record<string, string | undefined>;
   return {
     basePath: config?.CAMS_BASE_PATH,
     serverHostName: config?.CAMS_SERVER_HOSTNAME,
