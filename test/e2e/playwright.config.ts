@@ -49,20 +49,22 @@ export default defineConfig({
       dependencies: ['setup'],
     },
 
-    // Microsoft Edge is not supported on ARM64 (Linux aarch64)
-    ...(process.arch !== 'arm64'
-      ? [
-          {
-            name: 'Microsoft Edge',
-            use: {
-              ...devices['Desktop Edge'],
-              channel: 'msedge',
-              storageState: 'playwright/.auth/user.json',
-            },
-            dependencies: ['setup'],
-          },
-        ]
-      : []),
+    // Microsoft Edge is not available in the Playwright Docker image
+    // Only Chromium, Firefox, and WebKit are pre-installed
+    // Disabled for containerized E2E tests
+    // ...(process.arch !== 'arm64'
+    //   ? [
+    //       {
+    //         name: 'Microsoft Edge',
+    //         use: {
+    //           ...devices['Desktop Edge'],
+    //           channel: 'msedge',
+    //           storageState: 'playwright/.auth/user.json',
+    //         },
+    //         dependencies: ['setup'],
+    //       },
+    //     ]
+    //   : []),
     // {
     //   name: 'Google Chrome',
     //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
