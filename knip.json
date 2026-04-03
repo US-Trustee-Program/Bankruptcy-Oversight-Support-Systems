@@ -17,8 +17,7 @@
       "project": ["**/*.ts"],
       "ignore": [],
       "ignoreFiles": [
-        "function-apps/api/index.ts",
-        "lib/testing/mock-gateways/mock-oauth2-constants.ts"
+        "function-apps/api/index.ts"
       ]
     },
     "user-interface": {
@@ -99,7 +98,6 @@
     "launchdarkly-react-client-sdk",
     "react-router-dom",
     "common",
-    "globals",
-    "@babel/runtime"
+    "globals"
   ]
 }

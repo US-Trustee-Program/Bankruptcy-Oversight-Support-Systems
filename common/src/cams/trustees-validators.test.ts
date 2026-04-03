@@ -531,6 +531,45 @@ describe('trustees-validators', () => {
       expect(result).toEqual(VALID);
     });
 
+    test('should validate zoom info with accountEmail', () => {
+      const validZoom = {
+        link: 'https://zoom.us/j/123456789',
+        phone: '123-456-7890',
+        meetingId: '123456789',
+        passcode: MockData.randomAlphaNumeric(6),
+        accountEmail: 'trustee@example.com',
+      };
+
+      const result = validateObject(TV.zoomInfoSpec, validZoom);
+      expect(result).toEqual(VALID);
+    });
+
+    test('should validate zoom info without accountEmail (backward compatible)', () => {
+      const validZoom = {
+        link: 'https://zoom.us/j/123456789',
+        phone: '123-456-7890',
+        meetingId: '123456789',
+        passcode: MockData.randomAlphaNumeric(6),
+      };
+
+      const result = validateObject(TV.zoomInfoSpec, validZoom);
+      expect(result).toEqual(VALID);
+    });
+
+    test('should reject zoom info with invalid accountEmail', () => {
+      const invalidZoom = {
+        link: 'https://zoom.us/j/123456789',
+        phone: '123-456-7890',
+        meetingId: '123456789',
+        passcode: MockData.randomAlphaNumeric(6),
+        accountEmail: 'not-an-email',
+      };
+
+      const result = validateObject(TV.zoomInfoSpec, invalidZoom);
+      expect(result.reasonMap?.accountEmail).toBeDefined();
+      expect(result.reasonMap?.accountEmail?.reasons).toContain(FIELD_VALIDATION_MESSAGES.EMAIL);
+    });
+
     test('should reject zoom info with invalid link', () => {
       const invalidZoom = {
         link: 'invalid link',
