@@ -10,7 +10,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 **Changes applied (Experiment 4 — queued for next CI run):**
 - `test/e2e/vite.config.e2e.mts` added: `preview.proxy` routes `/api` → `http://localhost:7071`
-- `Dockerfile.frontend`: passes `--config /app/test/e2e/vite.config.e2e.mts` to `vite preview`
+- `Dockerfile.frontend`: `COPY test/e2e/vite.config.e2e.mts /app/user-interface/vite.config.mts` overwrites the default vite config in the image at build time; `vite preview` runs with no `--config` flag and picks it up naturally
 - `podman-compose.yml` + `.env`: `CAMS_SERVER_HOSTNAME=localhost`, `CAMS_SERVER_PORT=3000`, `CAMS_SERVER_PROTOCOL=http` — browser calls `localhost:3000/api/...` (same-origin), proxy forwards to backend
 - `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
 
@@ -36,7 +36,7 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 **Changes**:
 1. `test/e2e/vite.config.e2e.mts` — new file, `preview.proxy: { '/api': { target: 'http://localhost:7071' } }`
-2. `Dockerfile.frontend` — `npx vite preview --config /app/test/e2e/vite.config.e2e.mts ...`
+2. `Dockerfile.frontend` — `COPY test/e2e/vite.config.e2e.mts /app/user-interface/vite.config.mts` overwrites the default config in the OCI image; `vite preview` picks it up without a `--config` flag
 3. `podman-compose.yml` + `.env` — `CAMS_SERVER_HOSTNAME=localhost`, `CAMS_SERVER_PORT=3000`, `CAMS_SERVER_PROTOCOL=http`
 
 **Expected outcome**: Browser constructs `http://localhost:3000/api/me`, same-origin, no preflight. Vite forwards to backend. `app-component-test-id` becomes visible.
@@ -113,6 +113,10 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 **Context**: Only occurs with `CAMS_SERVER_HOSTNAME=localhost` (cross-origin from the browser's perspective — browser is at `http://localhost:3000`, API is at `http://localhost:7071`). Same-origin would suppress the preflight. `Host.CORS: "*"` is set in `local.settings.json` baked into the image, but the Functions host routing layer rejects OPTIONS before CORS middleware runs.
 
 **Tried**: `CAMS_SERVER_HOSTNAME=backend` (Experiment 1) — eliminated the CORS 404 by making browser requests fail entirely with `ERR_NAME_NOT_RESOLVED` instead. Not a fix.
+
+**Tried**: `vite preview --config /app/test/e2e/vite.config.e2e.mts` — vite's rolldown bundler resolves the config path relative to `user-interface/`, treating `../test/e2e/vite.config.e2e.mts` as an entry module outside the project root. Fails immediately with `[UNRESOLVED_ENTRY] Cannot resolve entry module ../test/e2e/vite.config.e2e.mts`. Container exits before binding port 3000.
+
+**What worked**: `COPY test/e2e/vite.config.e2e.mts /app/user-interface/vite.config.mts` in `Dockerfile.frontend`. The file lands inside the project root at build time; `vite preview` loads it as the default config with no `--config` flag needed.
 
 **Root cause confirmed (2026-04-03)**: `Host.CORS` in `local.settings.json` cannot fix this. The Azure Functions routing layer applies `HttpMethodRouteConstraint` before any CORS middleware runs. In Azure production, CORS preflights are handled by the ARM platform layer (`cors.allowedOrigins` in `siteConfig`) — the runtime never sees OPTIONS. The e2e stack has no platform layer.
 
