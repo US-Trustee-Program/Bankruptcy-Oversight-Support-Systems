@@ -392,5 +392,9 @@ else
     echo ""
 fi
 
-# Always exit 0 to avoid npm error messages
-exit 0
+# Exit with proper code so CI pipeline reflects test results
+if [ "$TESTS_PASSED" = true ]; then
+    exit 0
+else
+    exit 1
+fi
