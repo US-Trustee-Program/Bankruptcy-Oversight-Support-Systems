@@ -44,13 +44,19 @@ const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
 async function handleStart(message: ZoomStartMessage, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
-  const response = await fetch(message.csvUrl);
-  if (!response.ok) {
-    logger.error(MODULE_NAME, `Failed to fetch CSV from ${message.csvUrl}: ${response.status}`);
+  let content: string;
+  try {
+    const response = await fetch(message.csvUrl);
+    if (!response.ok) {
+      logger.error(MODULE_NAME, `Failed to fetch CSV from ${message.csvUrl}: ${response.status}`);
+      return;
+    }
+    content = await response.text();
+  } catch (error) {
+    logger.error(MODULE_NAME, `Network error fetching CSV from ${message.csvUrl}`, error);
     return;
   }
 
-  const content = await response.text();
   const rows = ImportZoomCsvUseCase.parseZoomCsvFile(content);
 
   if (rows.length === 0) {
@@ -91,6 +97,8 @@ async function handleRetry(row: ZoomCsvRowFailed, invocationContext: InvocationC
 
   if (outcome === 'matched') {
     logger.info(MODULE_NAME, `Successfully retried row for "${row.fullName}"`);
+  } else if (outcome === 'error') {
+    invocationContext.extraOutputs.set(RETRY, { ...csvRow, reason: outcome, retryCount });
   } else {
     invocationContext.extraOutputs.set(HARD_STOP, { ...csvRow, reason: outcome, retryCount });
   }
@@ -115,7 +123,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: RETRY.queueName,
     handler: handleRetry,
-    extraOutputs: [HARD_STOP],
+    extraOutputs: [RETRY, HARD_STOP],
   });
 }
 
