@@ -4,37 +4,44 @@ Tracks failed approaches so we don't repeat them. Each entry documents what was 
 
 ---
 
-## Current Status (run `23923746590`, 2026-04-02)
+## Current Status (2026-04-03)
 
-**All infrastructure working. App renders 500 due to browser calling `http://backend:7071` — unresolvable from browser context.**
+**Vite proxy experiment in progress.** Infrastructure fully working through seed and backend healthcheck. Root cause of OPTIONS 404 identified: Azure Functions host routing rejects OPTIONS via `HttpMethodRouteConstraint` before CORS middleware runs — no fix exists at the `local.settings.json` level. In production Azure handles this at the platform layer (ARM `cors.allowedOrigins`), never reaching the runtime. Fix: eliminate cross-origin entirely via `vite preview` proxy.
 
-**Confirmed working:**
+**Changes applied (Experiment 4 — queued for next CI run):**
+- `test/e2e/vite.config.e2e.mts` added: `preview.proxy` routes `/api` → `http://localhost:7071`
+- `Dockerfile.frontend`: passes `--config /app/test/e2e/vite.config.e2e.mts` to `vite preview`
+- `podman-compose.yml` + `.env`: `CAMS_SERVER_HOSTNAME=localhost`, `CAMS_SERVER_PORT=3000`, `CAMS_SERVER_PROTOCOL=http` — browser calls `localhost:3000/api/...` (same-origin), proxy forwards to backend
+- `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
+
+**Confirmed working (carried forward):**
 - `e2e_deps`: installs `azure-functions-core-tools@4` + `azurite` together in one `npm install -g`, then pre-downloads the extension bundle via `func bundles download`
 - `e2e_built`: standard build, no changes — source `local.settings.json` (with `AzureWebJobsStorage` + `Host.CORS`) baked in via `COPY backend/`
 - `e2e_backend`: FROM `e2e_built`, no COPY, no extra installs — CMD starts azurite in background, waits for Table service ready, then `func start`
-- `AzureWebJobsStorage`: explicit Azurite connection string (`devstoreaccount1` / well-known key / `http://127.0.0.1:10000`) passed via compose env var — overrides the value in `local.settings.json` at runtime
+- `AzureWebJobsStorage`: explicit Azurite connection string (`devstoreaccount1` / well-known key / `http://127.0.0.1:10000`) passed via compose env var
 - Databases start, seed succeeds, backend connects to `CAMS_E2E` cleanly — healthcheck returns HTTP 200, all checks pass including SQL
 - Backend: bridge network, `ports: 7071:7071`
-- Frontend: bridge network, `CAMS_SERVER_PORT=7071`, `ports: 3000:3000`
+- Frontend: bridge network, `ports: 3000:3000`
 - Playwright: `network_mode: host`, `TARGET_HOST=http://localhost:3000`
-- Host resources healthy: 12% memory, 4 cores — not a resource exhaustion issue
-- `FORCE_REBUILD_DEPS=true` hardcoded in `run-e2e-workflow.sh` (TODO: restore cache logic)
-
-**CORS preflight `OPTIONS /api/me` returns 404.** Infrastructure fully working: databases start, seeding succeeds, backend healthcheck returns HTTP 200 (MongoDB + SQL all pass). Okta login completes. Browser calls `http://localhost:7071/api/me` — correct, reachable. But three `OPTIONS` preflights arrive at the backend and are rejected with HTTP 404: `Route value '(null)' with key 'httpMethod' did not match the constraint 'HttpMethodRouteConstraint'`. The routing layer rejects OPTIONS before CORS middleware handles it. React app never initializes; `app-component-test-id` never visible.
-
-**`CAMS_SERVER_HOSTNAME=localhost` confirmed correct** — backend receives the requests (unlike `backend` which gave `ERR_NAME_NOT_RESOLVED`). The remaining issue is the CORS preflight handling.
-
-**Active failure**: Azure Functions host routing constraint rejects `OPTIONS` before CORS middleware responds. `Host.CORS: "*"` is configured in `local.settings.json` but either isn't being respected or `localhost:3000` isn't in the allowed origins list.
-
-**Next steps to investigate:**
-1. Add `CORS_CREDENTIALS=false` and explicit `Host.CORS.AllowedOrigins: http://localhost:3000` to see if origin-specific config fixes it
-2. Check whether Azure Functions v4 node worker requires `Host.CORS` to include the specific origin or accept `*` for `localhost`
-3. Consider switching Playwright's origin to match whatever the CORS config allows — e.g. if CORS is already set to `*` the issue may be the Functions host version requiring explicit origins
-4. Alternatively: configure a `vite preview` proxy rule in a custom vite config override so browser requests go to the frontend at `localhost:3000/api/...` which proxies to `localhost:7071/api/...` — eliminates CORS entirely
 
 ---
 
 ## Proposed next experiments
+
+### Experiment 4 — Eliminate CORS via vite preview proxy (QUEUED — changes applied 2026-04-03)
+
+**Root cause confirmed**: Azure Functions v4 host routing rejects `OPTIONS` via `HttpMethodRouteConstraint` before CORS middleware runs. `Host.CORS: "*"` in `local.settings.json` is irrelevant — routing kills OPTIONS first. In Azure production this never occurs because the platform ARM layer handles `OPTIONS` preflights upstream of the runtime.
+
+**Fix**: Eliminate cross-origin entirely. Browser calls `localhost:3000/api/...` (same-origin → no preflight). `vite preview` proxy rule forwards to `localhost:7071/api/...` server-side.
+
+**Changes**:
+1. `test/e2e/vite.config.e2e.mts` — new file, `preview.proxy: { '/api': { target: 'http://localhost:7071' } }`
+2. `Dockerfile.frontend` — `npx vite preview --config /app/test/e2e/vite.config.e2e.mts ...`
+3. `podman-compose.yml` + `.env` — `CAMS_SERVER_HOSTNAME=localhost`, `CAMS_SERVER_PORT=3000`, `CAMS_SERVER_PROTOCOL=http`
+
+**Expected outcome**: Browser constructs `http://localhost:3000/api/me`, same-origin, no preflight. Vite forwards to backend. `app-component-test-id` becomes visible.
+
+---
 
 ### Experiment 3 — Fix ELOGIN (State 38): seed databases before starting backend (QUEUED)
 Backend connects with `CAMS_E2E` as the initial catalog at startup. On a fresh named volume `CAMS_E2E` doesn't exist yet — SQL Server rejects the connection with State 38 (database not found), surfaced as `ELOGIN`. Fix: restructure `run-e2e-workflow.sh` to start databases only, wait for TCP readiness, seed unconditionally (creates `CAMS_E2E`), then start backend and frontend. This ensures `CAMS_E2E` exists before any backend connection is attempted.
@@ -107,10 +114,9 @@ After auth succeeds the app renders but cannot call the API. If fixing SQL Serve
 
 **Tried**: `CAMS_SERVER_HOSTNAME=backend` (Experiment 1) — eliminated the CORS 404 by making browser requests fail entirely with `ERR_NAME_NOT_RESOLVED` instead. Not a fix.
 
-**Not yet tried**:
-1. Explicit `Host.CORS.AllowedOrigins` with `http://localhost:3000` — `*` may not be valid for credentialed requests
-2. A `vite preview` proxy rule routing `/api` → `http://localhost:7071/api` — eliminates cross-origin entirely, no preflight needed
-3. Verify `Host.CORS` is actually loaded at runtime by checking the full backend startup log for CORS-related lines
+**Root cause confirmed (2026-04-03)**: `Host.CORS` in `local.settings.json` cannot fix this. The Azure Functions routing layer applies `HttpMethodRouteConstraint` before any CORS middleware runs. In Azure production, CORS preflights are handled by the ARM platform layer (`cors.allowedOrigins` in `siteConfig`) — the runtime never sees OPTIONS. The e2e stack has no platform layer.
+
+**What worked**: Vite preview proxy (see Experiment 4). Browser calls `localhost:3000/api/...` (same-origin, no preflight). Vite forwards to `localhost:7071` server-side. No OPTIONS request is ever generated.
 
 ---
 

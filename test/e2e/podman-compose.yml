@@ -91,9 +91,12 @@ services:
       - CAMS_PA11Y=false
       - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
       - CAMS_LOGIN_PROVIDER_CONFIG=${CAMS_LOGIN_PROVIDER_CONFIG}
-      - CAMS_SERVER_HOSTNAME=${CAMS_SERVER_HOSTNAME}
-      - CAMS_SERVER_PORT=${CAMS_SERVER_PORT}
-      - CAMS_SERVER_PROTOCOL=${CAMS_SERVER_PROTOCOL}
+      # Proxy experiment: browser calls localhost:3000/api (same-origin), vite preview
+      # forwards to localhost:7071 — eliminates CORS preflights entirely.
+      # See vite.config.e2e.mts for the proxy rule.
+      - CAMS_SERVER_HOSTNAME=localhost
+      - CAMS_SERVER_PORT=3000
+      - CAMS_SERVER_PROTOCOL=http
       - CAMS_BASE_PATH=${CAMS_BASE_PATH}
       - CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING=
       - SLOT_NAME=${SLOT_NAME}
