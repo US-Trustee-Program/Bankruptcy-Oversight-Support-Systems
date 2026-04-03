@@ -20,7 +20,7 @@
     "slotConfig": "node ./envToConfig.js -f configuration-${SLOT_NAME:-staging}.json",
     "start": "npm run envToConfig && vite",
     "start:a11y": "export CAMS_USE_FAKE_API=true && export CAMS_LOGIN_PROVIDER=none && npm run envToConfig && tsc --noEmit && vite build && vite preview --port 3000 --strict-port",
-    "test:screen-reader": "export CAMS_USE_FAKE_API=true && export CAMS_LOGIN_PROVIDER=none && npm run envToConfig && vite --host 0.0.0.0 --port 3000",
+    "test:screen-reader": "export CAMS_USE_FAKE_API=true && export CAMS_LOGIN_PROVIDER=none && npm run envToConfig && vite --host 0.0.0.0 --port 3000 --strict-port",
     "test": "export CAMS_USE_FAKE_API=true && vitest run",
     "test:a11y": "playwright test --reporter=list,html",
     "test:a11y:clean": "rm -rf test-results & rm -rf playwright-report",
