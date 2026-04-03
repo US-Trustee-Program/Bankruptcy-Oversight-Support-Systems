@@ -7,7 +7,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
 import { TRIAL_ATTORNEYS } from '@common/cams/test-utilities/attorneys.mock';
 import { BrowserRouter } from 'react-router-dom';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { CaseSummary } from '@common/cams/cases';

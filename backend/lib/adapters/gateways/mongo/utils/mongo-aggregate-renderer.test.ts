@@ -170,7 +170,7 @@ describe('aggregation query renderer tests', () => {
           },
         },
       },
-      { $group: { _id: '$userId', name: { $first: '$name' }, total: { $count: {} } } },
+      { $group: { _id: '$userId', name: { $first: '$name' }, total: { $sum: 1 } } },
     ];
 
     const simpleMatch: Stage = {
@@ -194,6 +194,42 @@ describe('aggregation query renderer tests', () => {
     const actual = MongoAggregateRenderer.toMongoAggregate(query);
 
     expect(actual).toEqual(expected);
+  });
+
+  test('should render a GROUP stage with composite groupBy as object _id', () => {
+    const expected = [
+      {
+        $group: {
+          _id: { dxtrId: '$dxtrId', courtId: '$courtId' },
+          caseIds: { $push: '$caseId' },
+          count: { $sum: 1 },
+        },
+      },
+    ];
+
+    const group: Stage = {
+      stage: 'GROUP',
+      groupBy: [{ name: 'dxtrId' }, { name: 'courtId' }],
+      accumulators: [
+        { accumulator: 'PUSH', as: { name: 'caseIds' }, field: { name: 'caseId' } },
+        { accumulator: 'COUNT', as: { name: 'count' } },
+      ],
+    };
+
+    const query = pipeline(group);
+    const actual = MongoAggregateRenderer.toMongoAggregate(query);
+    expect(actual).toEqual(expected);
+  });
+
+  test('should render PUSH accumulator as $push expression', () => {
+    const group: Stage = {
+      stage: 'GROUP',
+      groupBy: [{ name: 'userId' }],
+      accumulators: [{ accumulator: 'PUSH', as: { name: 'items' }, field: { name: 'itemId' } }],
+    };
+    const query = pipeline(group);
+    const actual = MongoAggregateRenderer.toMongoAggregate(query);
+    expect(actual).toEqual([{ $group: { _id: '$userId', items: { $push: '$itemId' } } }]);
   });
 
   test('should render a SCORE stage with multiple target fields', () => {

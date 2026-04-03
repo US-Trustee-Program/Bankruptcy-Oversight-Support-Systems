@@ -6,7 +6,7 @@ import { useConsolidationControlsMock } from '@/data-verification/consolidation/
 import { ConsolidationControls } from './consolidationControls';
 import { ConsolidationStore } from '@/data-verification/consolidation/consolidationStore';
 import { ConsolidationOrderCase } from '@common/cams/orders';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
 import { Consolidation } from '@common/cams/events';

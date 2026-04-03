@@ -10,7 +10,7 @@ import { ConsolidationControls } from '@/data-verification/consolidation/consoli
 import { getCaseId } from './consolidationOrderAccordionUtils';
 import Api2 from '@/lib/models/api2';
 import { CaseSummary } from '@common/cams/cases';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import { ConfirmActionResults } from './ConsolidationOrderModal';
 import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { CaseAssignment } from '@common/cams/assignments';

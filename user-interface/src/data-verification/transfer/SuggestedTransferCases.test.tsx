@@ -5,7 +5,7 @@ import { act, render, waitFor, screen, fireEvent } from '@testing-library/react'
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CaseBasics, CaseDocketEntry, CaseSummary } from '@common/cams/cases';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { CamsRole } from '@common/cams/roles';

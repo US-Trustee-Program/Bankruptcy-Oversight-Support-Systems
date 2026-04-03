@@ -2,7 +2,7 @@ import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { OrderStatus } from '@common/cams/orders';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 
 export interface TransferConfirmationModalProps {
   id: string;

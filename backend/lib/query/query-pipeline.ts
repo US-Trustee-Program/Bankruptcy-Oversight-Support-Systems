@@ -55,7 +55,13 @@ type Count = {
   as: Field;
 };
 
-export type Accumulator = Count | First;
+type Push = {
+  accumulator: 'PUSH';
+  as: Field;
+  field: Field;
+};
+
+export type Accumulator = Count | First | Push;
 
 type Match = ConditionOrConjunction<never> & {
   stage: 'MATCH';
@@ -93,7 +99,7 @@ export type IncludeFields = {
 export type Group = {
   stage: 'GROUP';
   groupBy: Field[];
-  accumulators?: Accumulator[];
+  accumulators: Accumulator[];
 };
 
 export type FieldReference<T> = Field<T> & {
@@ -246,6 +252,10 @@ function first(field: Field, as: Field): First {
   return { accumulator: 'FIRST', as: { name: as.name }, field: { name: field.name } };
 }
 
+function push(field: Field, as: Field): Push {
+  return { accumulator: 'PUSH', as: { name: as.name }, field: { name: field.name } };
+}
+
 interface ScoreParams {
   searchWords: string[];
   nicknameWords: string[];
@@ -291,6 +301,7 @@ const QueryPipeline = {
   match,
   paginate,
   pipeline,
+  push,
   score,
   sort,
   source,

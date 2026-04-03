@@ -1,8 +1,8 @@
 import {
   CaseDetail,
-  DxtrCase,
   getCaseConsolidationType,
   getCaseIdParts,
+  getCaseNumber,
   getLeadCaseLabel,
   getMemberCaseLabel,
   isCaseClosed,
@@ -185,44 +185,43 @@ describe('cases common functions tests', () => {
     });
   });
 
-  describe('DxtrCase type', () => {
-    test('should validate DxtrCase structure', () => {
-      // Create a valid DxtrCase object
-      const dxtrCase: DxtrCase = {
-        // CaseSummary properties (includes CaseBasics & FlatOfficeDetail)
-        dxtrId: '12345',
-        caseId: 'ABC-12-34567',
-        chapter: '7',
-        caseTitle: 'Test Case',
-        dateFiled: '2023-01-01',
-        officeName: 'Test Office',
-        officeCode: 'TO',
-        courtId: 'C123',
-        courtName: 'Test Court',
-        courtDivisionCode: 'TCD',
-        courtDivisionName: 'Test Court Division',
-        groupDesignator: 'TGD',
-        regionId: 'R1',
-        regionName: 'Test Region',
-        debtor: {
-          name: 'Test Debtor',
-          address1: '123 Main St',
-          cityStateZipCountry: 'Anytown, NY 12345',
-        },
+  describe('getCaseNumber utility function', () => {
+    test('should extract case number from standard format "122-26-12332" → "26-12332"', () => {
+      const caseId = '122-26-12332';
+      const actual = getCaseNumber(caseId);
+      expect(actual).toBe('26-12332');
+    });
 
-        // ClosedDismissedReopened properties
-        closedDate: '2023-12-31',
-        dismissedDate: undefined,
-        reopenedDate: undefined,
-      };
+    test('should extract case number from different division code "081-26-12332" → "26-12332"', () => {
+      const caseId = '081-26-12332';
+      const actual = getCaseNumber(caseId);
+      expect(actual).toBe('26-12332');
+    });
 
-      // Use the object in a way that exercises the type
-      const isClosed = isCaseClosed(dxtrCase);
+    test('should handle short format "26-12332" → "26-12332"', () => {
+      const caseId = '26-12332';
+      const actual = getCaseNumber(caseId);
+      expect(actual).toBe('26-12332');
+    });
 
-      // Make assertions to ensure the test code is executed
-      expect(isClosed).toBe(true);
-      expect(dxtrCase.caseId).toBe('ABC-12-34567');
-      expect(dxtrCase.debtor.name).toBe('Test Debtor');
+    test('should return empty string when caseId is undefined', () => {
+      const actual = getCaseNumber(undefined);
+      expect(actual).toBe('');
+    });
+
+    test('should return empty string when caseId is null', () => {
+      const actual = getCaseNumber(null as unknown as string);
+      expect(actual).toBe('');
+    });
+
+    test('should work with leading zeros "001-01-00001" → "01-00001"', () => {
+      const caseId = '001-01-00001';
+      const actual = getCaseNumber(caseId);
+      expect(actual).toBe('01-00001');
+    });
+
+    test('should throw for malformed case ID with no hyphens', () => {
+      expect(() => getCaseNumber('invalid')).toThrow('Invalid case ID: invalid');
     });
   });
 });
