@@ -39,7 +39,7 @@
   "dependencies": {
     "@azure/cosmos": "4.9.2",
     "@azure/functions": "4.11.2",
-    "@azure/identity": "4.13.0",
+    "@azure/identity": "4.13.1",
     "@azure/keyvault-secrets": "4.10.0",
     "@launchdarkly/node-server-sdk": "9.10.9",
     "@okta/jwt-verifier": "4.0.2",
