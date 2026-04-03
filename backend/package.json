@@ -34,7 +34,7 @@
     "start:express": "tsx --watch express/server.ts",
     "test": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest run",
     "test:watch": "CAMS_LOGIN_PROVIDER='mock' DATABASE_MOCK='true' MONGO_CONNECTION_STRING='mongodb://test-string' FEATURE_FLAG_SDK_KEY='' vitest watch",
-    "tsc": "npx tsc --noEmit --skipLibCheck"
+    "typecheck": "npx tsc --noEmit --skipLibCheck"
   },
   "dependencies": {
     "@azure/cosmos": "4.9.2",
