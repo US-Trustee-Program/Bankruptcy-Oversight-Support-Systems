@@ -61,6 +61,24 @@ VirtualBox is not recommended -- it has experimental and unstable ARM support.
 5. Complete the Windows setup wizard
 6. Install VMware Tools for improved integration
 
+### VM Setup: UTM (Free Alternative)
+
+1. Download [UTM](https://mac.getutm.app/) or install via `brew install --cask utm`
+2. Download a Windows 11 ARM ISO from [Microsoft](https://www.microsoft.com/software-download/windows11arm64) (select "Windows 11 (multi-edition ISO for Arm64)", choose English, then click the download button)
+   - [CrystalFetch](https://apps.apple.com/app/crystalfetch-iso-downloader/id6454431289) can also download ISOs from Microsoft's CDN, but may hang during download -- use the Microsoft page as a fallback
+3. Open UTM and click **"+"** to create a new VM
+4. Select **Virtualize** > **Windows**
+5. Check **"Install Windows 10 or higher"** and **"Install drivers and SPICE tools"**
+6. Browse and select the downloaded ISO
+7. Recommended VM specs:
+   - **RAM:** 4 GB (4096 MB)
+   - **CPU:** 2 cores
+   - **Disk:** 40 GB
+8. Skip the shared directory step
+9. Save the VM and click the play button to boot
+10. Press any key when prompted to boot from the ISO, then complete the Windows setup wizard (select "I don't have a product key" and choose Windows 11 Home)
+11. After Windows boots, install the SPICE guest tools from the mounted CD drive in File Explorer (improves display, clipboard, and networking)
+
 ### Installing Screen Readers
 
 **NVDA (free, open source):**
@@ -121,7 +139,7 @@ The `test:screen-reader` script binds to all interfaces, so the VM can reach it.
 ipconfig getifaddr en0
 ```
 
-For Parallels, the host is typically accessible at `10.211.55.2`. For VMware Fusion, check `ifconfig vmnet8` or the VM's network settings.
+For Parallels, the host is typically accessible at `10.211.55.2`. For VMware Fusion, check `ifconfig vmnet8` or the VM's network settings. For UTM, use your Mac's local network IP from the command above (`ipconfig getifaddr en0`).
 
 ### 3. Open CAMS in the VM browser
 
