@@ -130,7 +130,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
           onChange={handleMonthChange}
           disabled={disabled}
           required={required}
-          aria-labelledby={label ? `${id}-label ${id}-month-label` : `${id}-month-label`}
+          aria-labelledby={label ? `${id}-label ${id}-month-label` : undefined}
           aria-label={!label && contextLabel ? `${contextLabel} Month` : undefined}
           aria-describedby={hasError ? `${id}-error` : undefined}
           aria-invalid={hasError ? 'true' : undefined}
@@ -158,7 +158,7 @@ export default function MonthDaySelector(props: MonthDaySelectorProps) {
           onChange={handleDayChange}
           disabled={disabled || !month}
           required={required}
-          aria-labelledby={label ? `${id}-label ${id}-day-label` : `${id}-day-label`}
+          aria-labelledby={label ? `${id}-label ${id}-day-label` : undefined}
           aria-label={!label && contextLabel ? `${contextLabel} Day` : undefined}
           aria-describedby={hasError ? `${id}-error` : undefined}
           aria-invalid={hasError ? 'true' : undefined}
