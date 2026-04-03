@@ -583,6 +583,10 @@ export async function upsertProfessionalIds(
   lastName: string,
   state: string,
 ): Promise<number> {
+  if (!firstName || !lastName || !state) {
+    return 0;
+  }
+
   let acmsProfessionalIds: string[];
 
   try {
@@ -599,17 +603,22 @@ export async function upsertProfessionalIds(
   }
 
   const repo = factory.getTrusteeProfessionalIdsRepository(context);
-  let stored = 0;
 
-  for (const acmsProfessionalId of acmsProfessionalIds) {
-    try {
-      await repo.createProfessionalId(trusteeId, acmsProfessionalId, SYSTEM_USER);
+  const results = await Promise.allSettled(
+    acmsProfessionalIds.map((acmsProfessionalId) =>
+      repo.createProfessionalId(trusteeId, acmsProfessionalId, SYSTEM_USER),
+    ),
+  );
+
+  let stored = 0;
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
       stored++;
-    } catch (originalError) {
+    } else {
       context.logger.warn(
         MODULE_NAME,
-        `Failed to store professional ID ${acmsProfessionalId} for trustee ${trusteeId} — continuing`,
-        { error: getCamsError(originalError, MODULE_NAME).message },
+        `Failed to store a professional ID for trustee ${trusteeId} — continuing`,
+        { error: getCamsError(result.reason, MODULE_NAME).message },
       );
     }
   }

@@ -443,6 +443,22 @@ describe('Migrate Trustees Use Case', () => {
       expect(createProfIdSpy).toHaveBeenCalledTimes(2);
     });
 
+    test.each([
+      ['', 'Smith', 'CA'],
+      ['Jane', '', 'CA'],
+      ['Jane', 'Smith', ''],
+    ])(
+      'should return 0 without querying ACMS when name/state is empty ("%s", "%s", "%s")',
+      async (firstName, lastName, state) => {
+        const acmsSpy = vi.spyOn(factory, 'getAcmsGateway');
+
+        const count = await upsertProfessionalIds(context, 'trustee-x', firstName, lastName, state);
+
+        expect(count).toBe(0);
+        expect(acmsSpy).not.toHaveBeenCalled();
+      },
+    );
+
     test('should return 0 when ACMS returns no matches', async () => {
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
         getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
