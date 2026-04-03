@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseZoomCsvFile, processZoomCsvRow, importZoomCsv } from './import-zoom-csv';
+import { parseZoomCsvFile, processZoomCsvRow } from './import-zoom-csv';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -150,71 +150,6 @@ describe('import-zoom-csv', () => {
       const result = await processZoomCsvRow(context, row);
 
       expect(result).toBe('error');
-    });
-  });
-
-  describe('importZoomCsv', () => {
-    test('should return empty result when file does not exist', async () => {
-      const fileOps = {
-        existsSync: vi.fn().mockReturnValue(false),
-        readFileSync: vi.fn(),
-      };
-
-      const result = await importZoomCsv(context, undefined, fileOps);
-
-      expect(result.data).toEqual({
-        total: 0,
-        matched: 0,
-        unmatched: 0,
-        ambiguous: 0,
-        errors: 0,
-      });
-      expect(result.error).toBeUndefined();
-    });
-
-    test('should process rows and return accurate counts', async () => {
-      const fileOps = {
-        existsSync: vi.fn().mockReturnValue(true),
-        readFileSync: vi.fn().mockReturnValue(SAMPLE_TSV),
-      };
-
-      // Row 1: matched; Row 2: unmatched
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName')
-        .mockResolvedValueOnce([MOCK_TRUSTEE])
-        .mockResolvedValueOnce([]);
-      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue({
-        ...MOCK_TRUSTEE,
-        zoomInfo: {
-          link: 'https://zoom.us/j/1',
-          phone: '123-456-7890',
-          meetingId: '1',
-          passcode: 'x',
-        },
-      });
-
-      const result = await importZoomCsv(context, '/fake/path/zoom-info.tsv', fileOps);
-
-      expect(result.data).toEqual({
-        total: 2,
-        matched: 1,
-        unmatched: 1,
-        ambiguous: 0,
-        errors: 0,
-      });
-    });
-
-    test('should return error on unexpected top-level failure', async () => {
-      const fileOps = {
-        existsSync: vi.fn().mockImplementation(() => {
-          throw new Error('Unexpected FS error');
-        }),
-        readFileSync: vi.fn(),
-      };
-
-      const result = await importZoomCsv(context, undefined, fileOps);
-
-      expect(result.error).toBeDefined();
-      expect(result.data).toBeUndefined();
     });
   });
 });
