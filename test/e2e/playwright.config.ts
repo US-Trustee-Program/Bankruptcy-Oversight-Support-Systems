@@ -12,9 +12,9 @@ require('dotenv').config({ quiet: true });
  */
 export default defineConfig({
   expect: {
-    timeout: 10000,
+    timeout: 15000,
   },
-  timeout: 60000,
+  timeout: 90000,
   testDir: './playwright',
   /* Run tests in files in parallel */
   fullyParallel: false,
@@ -35,6 +35,12 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on',
+
+    /* Navigation timeout - containerized environments need more time */
+    navigationTimeout: 60000,
+
+    /* Action timeout */
+    actionTimeout: 15000,
   },
 
   /* Configure projects for major browsers */

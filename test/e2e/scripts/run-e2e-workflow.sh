@@ -164,14 +164,16 @@ echo -e "${GREEN}✓ Databases starting${NC}"
 echo ""
 
 # Step 2: Wait for databases to be ready
-echo -e "${BLUE}⏳ Step 2: Waiting for databases and services to be healthy...${NC}"
+echo -e "${BLUE}⏳ Step 2: Waiting for databases to be ready...${NC}"
 echo ""
 
-MAX_WAIT=120  # 2 minutes for services
-WAIT_COUNT=0
-LOG_INTERVAL=20  # Print verbose status every 20 seconds
+# Just wait a few seconds for databases to initialize
+# SQL Server and MongoDB health checks are defined in podman-compose.yml
+sleep 10
+echo -e "${GREEN}✅ Databases ready${NC}"
+echo ""
 
-# Collect and save logs for all containers
+# Collect and save logs for all containers (will be used later)
 collect_container_logs() {
     local log_dir="container-logs"
     mkdir -p "${log_dir}"
@@ -180,78 +182,6 @@ collect_container_logs() {
     done
     echo -e "${BLUE}📋 Container logs saved to ${log_dir}/${NC}"
 }
-
-# Print current status of all containers
-print_container_status() {
-    echo ""
-    echo -e "${BLUE}  Container status at ${WAIT_COUNT}s:${NC}"
-    podman ps -a \
-        --filter "name=cams-azurite-e2e" \
-        --filter "name=cams-mongodb-e2e" \
-        --filter "name=cams-sqlserver-e2e" \
-        --filter "name=cams-backend-e2e" \
-        --filter "name=cams-frontend-e2e" \
-        --format "    {{.Names}}\t{{.Status}}\t{{.Health}}" 2>/dev/null || true
-    echo ""
-    echo -e "${BLUE}  Backend log (last 10 lines):${NC}"
-    podman logs --tail 10 cams-backend-e2e 2>&1 | sed 's/^/    /' || true
-    echo ""
-    echo -e "${BLUE}  Frontend log (last 5 lines):${NC}"
-    podman logs --tail 5 cams-frontend-e2e 2>&1 | sed 's/^/    /' || true
-    echo ""
-    echo -e "${BLUE}  HTTP checks:${NC}"
-    echo "    backend  (7071): $(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
-    echo "    frontend (3000): $(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo 'ok' || echo 'fail')"
-    echo ""
-}
-
-while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    # Check if backend container has crashed (exited status)
-    BACKEND_STATUS=$(podman inspect cams-backend-e2e --format '{{.State.Status}}' 2>/dev/null || echo "missing")
-    if [ "$BACKEND_STATUS" = "exited" ]; then
-        echo ""
-        echo -e "${RED}❌ Backend container has crashed!${NC}"
-        echo ""
-        echo -e "${BLUE}Backend logs:${NC}"
-        podman logs cams-backend-e2e 2>&1 | tail -30 | sed 's/^/  /'
-        collect_container_logs
-        echo ""
-        echo -e "${RED}Exiting due to backend crash. Check logs above for IServiceProvider or other errors.${NC}"
-        exit 1
-    fi
-
-    # The Functions host is ready when it responds to any HTTP request (even 500 — the
-    # /api/healthcheck does deep DB checks that may fail but the host itself is up).
-    # The frontend is ready when it serves HTTP. These two checks are sufficient.
-    # Both services publish their ports so localhost works from the runner host.
-    BACKEND_HTTP=$(curl -s --max-time 3 http://localhost:7071/api/healthcheck > /dev/null 2>&1 && echo "ok" || echo "fail")
-    FRONTEND_HTTP=$(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
-    if [ "$BACKEND_HTTP" = "ok" ] && [ "$FRONTEND_HTTP" = "ok" ]; then
-        echo -e "${GREEN}✅ All services are healthy and responding${NC}"
-        echo ""
-        break
-    fi
-
-    # Print verbose status periodically
-    if [ $((WAIT_COUNT % LOG_INTERVAL)) -eq 0 ] && [ $WAIT_COUNT -gt 0 ]; then
-        print_container_status
-    else
-        echo -n "."
-    fi
-
-    sleep 2
-    WAIT_COUNT=$((WAIT_COUNT + 2))
-done
-
-if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
-    echo ""
-    echo -e "${YELLOW}⚠️  Services did not become healthy within ${MAX_WAIT}s — collecting diagnostic logs...${NC}"
-    print_container_status
-    collect_container_logs
-    echo ""
-    echo -e "${YELLOW}⚠️  Proceeding anyway — tests will likely fail${NC}"
-    echo ""
-fi
 
 # Step 2.5: Seed databases (always runs to ensure databases exist)
 echo -e "${BLUE}🌱 Seeding E2E databases...${NC}"
@@ -295,6 +225,47 @@ echo "Starting application services..."
 pcompose up -d backend frontend > /dev/null
 echo -e "${GREEN}✓ Application services starting${NC}"
 echo ""
+
+# Wait for backend and frontend to be ready
+echo -e "${BLUE}⏳ Waiting for backend and frontend to be ready...${NC}"
+echo ""
+
+APP_WAIT_COUNT=0
+APP_MAX_WAIT=120
+
+while [ $APP_WAIT_COUNT -lt $APP_MAX_WAIT ]; do
+    # Backend is ready when healthcheck returns 200 OK
+    # Frontend is ready when it serves HTTP
+    BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:7071/api/healthcheck 2>/dev/null || echo "000")
+    FRONTEND_HTTP=$(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
+
+    if [ "$BACKEND_STATUS" = "200" ] && [ "$FRONTEND_HTTP" = "ok" ]; then
+        echo -e "${GREEN}✅ Backend and frontend are healthy${NC}"
+        echo ""
+        echo -e "${BLUE}⏳ Allowing services to stabilize (5s)...${NC}"
+        sleep 5
+        echo -e "${GREEN}✅ Services ready for testing${NC}"
+        echo ""
+        break
+    fi
+
+    echo -n "."
+    sleep 2
+    APP_WAIT_COUNT=$((APP_WAIT_COUNT + 2))
+done
+
+if [ $APP_WAIT_COUNT -ge $APP_MAX_WAIT ]; then
+    echo ""
+    echo -e "${RED}❌ Backend or frontend failed to become healthy within ${APP_MAX_WAIT}s${NC}"
+    echo ""
+    echo -e "${BLUE}Backend logs (last 30 lines):${NC}"
+    podman logs --tail 30 cams-backend-e2e 2>&1 | sed 's/^/  /'
+    echo ""
+    echo -e "${BLUE}Frontend logs (last 30 lines):${NC}"
+    podman logs --tail 30 cams-frontend-e2e 2>&1 | sed 's/^/  /'
+    echo ""
+    exit 1
+fi
 
 # Step 2.7: Warm up SQL Server plan cache and buffer pool
 # The first getCaseDetail call hits 6+ uncompiled queries on a cold SQL Edge instance.
