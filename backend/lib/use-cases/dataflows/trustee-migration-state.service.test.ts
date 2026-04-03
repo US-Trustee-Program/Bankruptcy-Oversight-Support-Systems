@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach, afterEach, vi } from 'vitest';
+import { describe, expect, test, beforeEach, afterEach, vi, Mocked } from 'vitest';
 import {
   getOrCreateMigrationState,
   updateMigrationState,
@@ -14,7 +14,7 @@ import { RuntimeStateRepository } from '../gateways.types';
 
 describe('trustee-migration-state.service', () => {
   let context: ApplicationContext;
-  let mockRepository: vi.Mocked<RuntimeStateRepository<TrusteeMigrationState>>;
+  let mockRepository: Mocked<RuntimeStateRepository<TrusteeMigrationState>>;
 
   beforeEach(async () => {
     context = await createMockApplicationContext();
@@ -22,7 +22,6 @@ describe('trustee-migration-state.service', () => {
     mockRepository = {
       read: vi.fn(),
       upsert: vi.fn(),
-      release: vi.fn(),
     };
 
     vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(mockRepository);

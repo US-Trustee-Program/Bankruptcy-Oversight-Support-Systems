@@ -97,7 +97,6 @@ describe('TrusteeAssistantsUseCase', () => {
     test('should throw error when validation fails with undefined reasonMap', () => {
       expect(() =>
         trusteeAssistantsUseCase['checkValidation']({
-          valid: false,
           reasonMap: undefined,
         }),
       ).toThrow();

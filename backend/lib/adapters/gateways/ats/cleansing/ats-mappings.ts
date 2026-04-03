@@ -33,7 +33,7 @@ import {
  * @param todChapter - Chapter code from ATS (e.g., '7', '13', '12CBC')
  * @returns Chapter and optional appointment type
  */
-export function parseChapterAndType(todChapter: string): ChapterMapping {
+export function parseChapterAndType(todChapter: string | undefined): ChapterMapping {
   if (!todChapter) {
     throw new Error('Chapter code is required');
   }
@@ -41,8 +41,10 @@ export function parseChapterAndType(todChapter: string): ChapterMapping {
   const trimmedChapter = todChapter.trim().toUpperCase();
 
   // Check for special case-by-case chapters
-  if (SPECIAL_CHAPTER_CODES[trimmedChapter]) {
-    return SPECIAL_CHAPTER_CODES[trimmedChapter];
+  if (SPECIAL_CHAPTER_CODES[trimmedChapter as keyof typeof SPECIAL_CHAPTER_CODES]) {
+    return SPECIAL_CHAPTER_CODES[
+      trimmedChapter as keyof typeof SPECIAL_CHAPTER_CODES
+    ] as ChapterMapping;
   }
 
   // Standard chapters - remove any leading zeros
@@ -253,7 +255,7 @@ export function transformTrusteeRecord(
     status: status || DEFAULT_TRUSTEE_STATUS,
     public: publicContact,
     legacy: {
-      truId: atsTrustee.ID.toString(),
+      truIds: [atsTrustee.ID.toString()],
     },
   };
 
@@ -357,7 +359,7 @@ export function transformAppointmentRecord(
   const chapterMapping = parseChapterAndType(atsAppointment.CHAPTER);
 
   // Parse status to get appointment type and status (flat map defaults)
-  const statusMapping = parseTodStatus(atsAppointment.STATUS);
+  const statusMapping = parseTodStatus(atsAppointment.STATUS ?? '');
 
   // Apply special-case overrides
   const { chapter, appointmentType, status } = applyAppointmentOverrides(

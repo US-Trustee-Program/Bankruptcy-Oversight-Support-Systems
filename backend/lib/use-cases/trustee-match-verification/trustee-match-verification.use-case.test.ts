@@ -6,6 +6,7 @@ import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repo
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
+import { ObservabilityGateway } from '../../use-cases/gateways.types';
 
 describe('TrusteeMatchVerificationUseCase', () => {
   let context: ApplicationContext;
@@ -63,7 +64,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
   let mockGetActiveCaseAppointment: ReturnType<typeof vi.fn>;
   let mockCreateCaseAppointment: ReturnType<typeof vi.fn>;
   let mockUpdateCaseAppointment: ReturnType<typeof vi.fn>;
-  let mockCompleteTrace: ReturnType<typeof vi.fn>;
+  let mockCompleteTrace: ObservabilityGateway['completeTrace'];
 
   beforeEach(async () => {
     context = await createMockApplicationContext();

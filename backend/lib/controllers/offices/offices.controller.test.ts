@@ -43,7 +43,8 @@ describe('offices controller tests', () => {
   test('should return successful response', async () => {
     const getOffices = vi
       .spyOn(OfficesUseCase.prototype, 'getOffices')
-      .mockResolvedValue(COURT_DIVISIONS);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .mockResolvedValue(COURT_DIVISIONS as any);
     const getOfficeAttorneys = vi.spyOn(OfficesUseCase.prototype, 'getOfficeAttorneys');
 
     const controller = new OfficesController();

@@ -26,7 +26,8 @@ export type TrusteeDocument = Trustee & {
 
 // Type augmentation for dot-notation queries on nested fields
 type TrusteeDocumentQueryable = TrusteeDocument & {
-  'legacy.truIds'?: string[];
+  'legacy.truIds'?: string[]; // truthful type — callers wrap single values in an array before passing to contains()
+  'public.address.state'?: string;
 };
 
 type TrusteeOversightAssignmentDocument = TrusteeOversightAssignment & {
@@ -145,7 +146,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
 
       // Build query with word-boundary matching to handle middle names/suffixes
       // Matches "John Smith", "John Q. Smith", "John Smith Jr.", etc.
-      const doc = using<TrusteeDocument>();
+      const doc = using<TrusteeDocumentQueryable>();
       const query = and(
         doc('documentType').equals('TRUSTEE'),
         doc('name').regex(new RegExp(`\\b${escapedFirstName}\\b.*\\b${escapedLastName}\\b`, 'i')),
@@ -163,12 +164,12 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     }
   }
 
-  async findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null> {
+  async findTrusteeByLegacyTruId(trusteeId: string): Promise<Trustee | null> {
     try {
       const doc = using<TrusteeDocumentQueryable>();
       const query = and(
         doc('documentType').equals('TRUSTEE'),
-        doc('legacy.truIds').contains(truId),
+        doc('legacy.truIds').contains([trusteeId]),
       );
       return await this.getAdapter<TrusteeDocumentQueryable>().findOne(query);
     } catch (originalError) {
@@ -176,7 +177,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         return null;
       }
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
-        message: `Failed to find trustee by legacy TRU_ID ${truId}.`,
+        message: `Failed to find trustee by legacy TRU_ID ${trusteeId}.`,
       });
     }
   }

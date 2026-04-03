@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest';
+import { beforeEach, describe, expect, test, vi, Mock } from 'vitest';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import CaseReloadUseCase from './case-reload';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -8,7 +8,7 @@ describe('Case Reload Use Case', () => {
   const TEST_CASE_ID = '081-12-34567';
 
   let mockContext: ApplicationContext;
-  let queueCaseReloadSpy: ReturnType<typeof vi.fn>;
+  let queueCaseReloadSpy: Mock<(caseId: string) => Promise<void>>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();

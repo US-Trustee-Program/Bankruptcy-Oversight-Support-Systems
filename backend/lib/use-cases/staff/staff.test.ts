@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, Mocked } from 'vitest';
 import StaffUseCase from './staff';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { UserGroupsRepository } from '../gateways.types';
@@ -10,8 +10,8 @@ import { StorageGateway } from '../../adapters/types/storage';
 
 describe('StaffUseCase', () => {
   let mockApplicationContext: ApplicationContext;
-  let mockUserGroupsRepository: vi.Mocked<UserGroupsRepository>;
-  let mockStorageGateway: vi.Mocked<StorageGateway>;
+  let mockUserGroupsRepository: Mocked<UserGroupsRepository>;
+  let mockStorageGateway: Mocked<StorageGateway>;
   let staffUseCase: StaffUseCase;
 
   beforeEach(async () => {

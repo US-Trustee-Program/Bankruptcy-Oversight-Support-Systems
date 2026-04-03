@@ -6,7 +6,7 @@ import * as atsMappings from './ats-mappings';
 describe('ATS Cleansing Transform', () => {
   describe('transformAppointmentRecord', () => {
     const baseRecord: AtsAppointmentRecord = {
-      TRUSTEE_ID: 12345,
+      TRU_ID: 12345,
       DISTRICT: 'CA',
       DIVISION: 'SBA',
       CHAPTER: '7',
@@ -40,7 +40,7 @@ describe('ATS Cleansing Transform', () => {
     });
 
     test('should handle missing CHAPTER field', () => {
-      const recordWithoutChapter = { ...baseRecord, CHAPTER: undefined };
+      const recordWithoutChapter = { ...baseRecord, CHAPTER: undefined } as AtsAppointmentRecord;
 
       vi.spyOn(atsMappings, 'parseChapterAndType').mockReturnValue({ chapter: '7' });
       vi.spyOn(atsMappings, 'parseTodStatus').mockReturnValue({

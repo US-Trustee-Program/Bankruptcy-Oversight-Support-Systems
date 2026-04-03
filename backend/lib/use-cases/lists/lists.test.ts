@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, Mocked } from 'vitest';
 import ListsUseCase from './lists';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
@@ -15,7 +15,7 @@ import { Creatable } from '@common/cams/creatable';
 describe('ListsUseCase tests', () => {
   let useCase: ListsUseCase;
   let context: ApplicationContext;
-  let mockListsRepository: vi.Mocked<ListsRepository>;
+  let mockListsRepository: Mocked<ListsRepository>;
 
   beforeEach(async () => {
     useCase = new ListsUseCase();

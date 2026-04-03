@@ -5,6 +5,7 @@ import {
   AtsAppointmentRecord,
   TrusteeAppointmentsResult,
 } from '../../types/ats.types';
+import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 
 const MODULE_NAME = 'ATS-MOCK-GATEWAY';

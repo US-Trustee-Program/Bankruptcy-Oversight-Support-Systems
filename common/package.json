@@ -17,7 +17,7 @@
     "lint:fix": "eslint . --fix",
     "test": "vitest run",
     "test:watch": "vitest watch",
-    "tsc": "npx tsc --noEmit"
+    "typecheck": "npx tsc --noEmit"
   },
   "author": "",
   "dependencies": {

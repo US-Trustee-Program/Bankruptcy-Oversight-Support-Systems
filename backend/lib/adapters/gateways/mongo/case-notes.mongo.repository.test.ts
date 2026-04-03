@@ -232,7 +232,7 @@ describe('case notes repo tests', () => {
     });
 
     test('archiveCaseNote with minimal input', async () => {
-      const minimal = { caseId: 'case1', id: 'note1', archivedOn: new Date() };
+      const minimal = { caseId: 'case1', id: 'note1', archivedOn: new Date().toISOString() };
       const expectedQuery = and(
         doc('documentType').equals('NOTE'),
         doc('caseId').equals(minimal.caseId),

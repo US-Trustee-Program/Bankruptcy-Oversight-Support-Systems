@@ -311,7 +311,6 @@ describe('ATS Mappings', () => {
           address: {
             address1: '123 Main St',
             address2: 'Suite 100',
-            address3: undefined,
             city: 'New York',
             state: 'NY',
             zipCode: '10001',
@@ -322,7 +321,7 @@ describe('ATS Mappings', () => {
           companyName: 'Trustee Corp',
         },
         legacy: {
-          truId: '123',
+          truIds: ['123'],
         },
       });
     });
@@ -343,7 +342,6 @@ describe('ATS Mappings', () => {
           address: {
             address1: '',
             address2: undefined,
-            address3: undefined,
             city: '',
             state: '',
             zipCode: '',
@@ -351,7 +349,7 @@ describe('ATS Mappings', () => {
           },
         },
         legacy: {
-          truId: '456',
+          truIds: ['456'],
         },
       });
     });
@@ -894,7 +892,7 @@ describe('ATS Mappings', () => {
     });
 
     test('should prioritize CBC override over chapter mapping appointmentType', () => {
-      const chapterMapping = { chapter: '12', appointmentType: 'standing' as const };
+      const chapterMapping = { chapter: '12' };
       const result = applyAppointmentOverrides(chapterMapping, '12CBC', '3', {
         appointmentType: 'panel',
         status: 'active',
