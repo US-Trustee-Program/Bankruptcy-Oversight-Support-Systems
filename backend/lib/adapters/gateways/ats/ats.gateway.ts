@@ -15,6 +15,7 @@ import { cleanseAndMapAppointment } from './cleansing/ats-cleansing-pipeline';
 import { CleansingClassification, TrusteeOverride } from './cleansing/ats-cleansing-types';
 import { transformAppointmentRecord } from './cleansing/ats-cleansing-transform';
 import { loadTrusteeOverrides } from './cleansing/ats-cleansing-overrides';
+import { ACTIVE_STATUS_CODES } from './ats.constants';
 
 const MODULE_NAME = 'ATS-GATEWAY';
 
@@ -78,31 +79,38 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
       value: pageSize,
     });
 
+    const activeCodesInList = [...ACTIVE_STATUS_CODES].map((c) => `'${c}'`).join(',');
+
     let query = `
       SELECT
-        ID,
-        LAST_NAME,
-        FIRST_NAME,
-        MIDDLE,
-        COMPANY,
-        STREET,
-        STREET1,
-        CITY,
-        STATE,
-        ZIP,
-        ZIP_PLUS,
-        STREET_A2,
-        STREET1_A2,
-        CITY_A2,
-        STATE_A2,
-        ZIP_A2,
-        ZIP_PLUS_A2,
-        TELEPHONE,
-        EMAIL_ADDRESS
-      FROM TRUSTEES`;
+        T.ID,
+        T.LAST_NAME,
+        T.FIRST_NAME,
+        T.MIDDLE,
+        T.COMPANY,
+        T.STREET,
+        T.STREET1,
+        T.CITY,
+        T.STATE,
+        T.ZIP,
+        T.ZIP_PLUS,
+        T.STREET_A2,
+        T.STREET1_A2,
+        T.CITY_A2,
+        T.STATE_A2,
+        T.ZIP_A2,
+        T.ZIP_PLUS_A2,
+        T.TELEPHONE,
+        T.EMAIL_ADDRESS
+      FROM TRUSTEES T
+      WHERE EXISTS (
+        SELECT 1 FROM CHAPTER_DETAILS CD
+        WHERE CD.TRU_ID = T.ID
+          AND CD.STATUS IN (${activeCodesInList})
+      )`;
 
     if (lastTrusteeId !== null) {
-      query += ` WHERE ID > @lastId`;
+      query += ` AND T.ID > @lastId`;
       input.push({
         name: 'lastId',
         type: mssql.Int,
@@ -111,7 +119,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     }
 
     query += `
-      ORDER BY ID
+      ORDER BY T.ID
       OFFSET 0 ROWS FETCH NEXT @pageSize ROWS ONLY`;
 
     context.logger.debug(
@@ -312,7 +320,15 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
    * Useful for progress tracking during migration.
    */
   async getTrusteeCount(context: ApplicationContext): Promise<number> {
-    const query = `SELECT COUNT(*) as totalCount FROM TRUSTEES`;
+    const activeCodesInList = [...ACTIVE_STATUS_CODES].map((c) => `'${c}'`).join(',');
+    const query = `
+      SELECT COUNT(*) as totalCount
+      FROM TRUSTEES T
+      WHERE EXISTS (
+        SELECT 1 FROM CHAPTER_DETAILS CD
+        WHERE CD.TRU_ID = T.ID
+          AND CD.STATUS IN (${activeCodesInList})
+      )`;
 
     context.logger.debug(MODULE_NAME, 'Querying total trustee count');
 

@@ -3,7 +3,6 @@ import {
   parseChapterAndType,
   parseTodStatus,
   getDivisionOfficeName,
-  getCourtId,
   formatPhoneNumber,
   formatZipCode,
   transformTrusteeRecord,
@@ -179,55 +178,42 @@ describe('ATS Mappings', () => {
     });
   });
 
-  describe('getCourtId', () => {
+  describe('court ID resolution (via transformAppointmentRecord)', () => {
+    const makeRecord = (district: string): AtsAppointmentRecord => ({
+      TRU_ID: 1,
+      DISTRICT: district,
+      CHAPTER: '7',
+      STATUS: 'PA',
+      DATE_APPOINTED: new Date('2023-01-15'),
+    });
+
     test('should map district codes to DXTR court IDs', () => {
-      expect(getCourtId('01')).toBe('0101');
-      expect(getCourtId('02')).toBe('0208');
-      expect(getCourtId('76')).toBe('0090');
+      expect(transformAppointmentRecord(makeRecord('01')).courtId).toBe('0101');
+      expect(transformAppointmentRecord(makeRecord('02')).courtId).toBe('0208');
+      expect(transformAppointmentRecord(makeRecord('76')).courtId).toBe('0090');
     });
 
     test('should handle whitespace in district codes', () => {
-      expect(getCourtId(' 01 ')).toBe('0101');
-      expect(getCourtId(' 02 ', ' 081 ')).toBe('0208');
+      expect(transformAppointmentRecord(makeRecord(' 01 ')).courtId).toBe('0101');
+      expect(transformAppointmentRecord(makeRecord(' 02 ')).courtId).toBe('0208');
     });
 
-    test('should resolve multi-district states using division code', () => {
-      // Georgia: Northern (32x), Middle (33x), Southern (34x)
-      expect(getCourtId('19', '321')).toBe('113E');
-      expect(getCourtId('19', '331')).toBe('113G');
-      expect(getCourtId('19', '341')).toBe('113J');
-      // Georgia without division falls back to default (Northern)
-      expect(getCourtId('19')).toBe('113E');
-
-      // West Virginia: Northern (24x), Southern (25x)
-      expect(getCourtId('17', '241')).toBe('0424');
-      expect(getCourtId('17', '250')).toBe('0425');
-
-      // Louisiana: Eastern (30x), Middle (31x), Western (36x)
-      expect(getCourtId('24', '302')).toBe('053L');
-      expect(getCourtId('24', '313')).toBe('053N');
-      expect(getCourtId('24', '361')).toBe('0536');
-
-      // Mississippi: Northern (37x), Southern (38x)
-      expect(getCourtId('25', '371')).toBe('0537');
-      expect(getCourtId('25', '381')).toBe('0538');
-    });
-
-    test('should fallback to district mapping when division not found in DIVISION_TO_COURT_MAP', () => {
-      // Provide a division code that is not in DIVISION_TO_COURT_MAP
-      // but district code is valid
-      expect(getCourtId('01', '999')).toBe('0101');
-    });
-
-    test('should use multi-district logic when division prefix matches but division not in map', () => {
-      // Georgia (19) with division starting with '32' but not exact match in division map
-      // Should use prefix '32' to resolve to Northern district
-      expect(getCourtId('19', '329')).toBe('113E');
+    test('should resolve multi-district states to district default', () => {
+      // Georgia resolves to Northern (DISTRICT_TO_COURT_MAP default for district 19)
+      expect(transformAppointmentRecord(makeRecord('19')).courtId).toBe('113E');
+      // West Virginia resolves to Northern (default for district 17)
+      expect(transformAppointmentRecord(makeRecord('17')).courtId).toBe('0424');
+      // Louisiana resolves to Eastern (default for district 24)
+      expect(transformAppointmentRecord(makeRecord('24')).courtId).toBe('053L');
+      // Mississippi resolves to Southern (default for district 25)
+      expect(transformAppointmentRecord(makeRecord('25')).courtId).toBe('0538');
     });
 
     test('should throw error for invalid district codes', () => {
-      expect(() => getCourtId('99')).toThrow('Unknown district code: 99');
-      expect(() => getCourtId('')).toThrow('District code is required');
+      expect(() => transformAppointmentRecord(makeRecord('99'))).toThrow(
+        'Unknown district code: 99',
+      );
+      expect(() => transformAppointmentRecord(makeRecord(''))).toThrow('District code is required');
     });
   });
 
@@ -341,7 +327,6 @@ describe('ATS Mappings', () => {
         public: {
           address: {
             address1: '',
-            address2: undefined,
             city: '',
             state: '',
             zipCode: '',
@@ -508,7 +493,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '7',
         DATE_APPOINTED: new Date('2023-01-15'),
         STATUS: 'PA',
@@ -521,7 +505,6 @@ describe('ATS Mappings', () => {
         chapter: '7',
         appointmentType: 'panel',
         courtId: '0208',
-        divisionCode: '081',
         appointedDate: '2023-01-15',
         status: 'active',
         effectiveDate: '2023-01-15',
@@ -532,7 +515,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '12CBC',
         DATE_APPOINTED: new Date('2023-03-01'),
         STATUS: 'C',
@@ -545,7 +527,6 @@ describe('ATS Mappings', () => {
         chapter: '12',
         appointmentType: 'case-by-case',
         courtId: '0208',
-        divisionCode: '081',
         appointedDate: '2023-03-01',
         status: 'active',
         effectiveDate: '2023-03-01',
@@ -556,7 +537,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '7',
         STATUS: 'PA',
       };
@@ -570,7 +550,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '99',
-        DIVISION: '999',
         CHAPTER: '7',
         STATUS: 'PA',
       };
@@ -582,7 +561,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '11',
         DATE_APPOINTED: new Date('2023-06-01'),
         STATUS: 'V',
@@ -600,7 +578,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '11',
         DATE_APPOINTED: new Date('2023-06-01'),
         STATUS: 'VR',
@@ -628,7 +605,6 @@ describe('ATS Mappings', () => {
         const atsAppointment: AtsAppointmentRecord = {
           TRU_ID: 123,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: todChapter,
           DATE_APPOINTED: new Date('2023-06-01'),
           STATUS: todStatus,
@@ -653,7 +629,6 @@ describe('ATS Mappings', () => {
         const atsAppointment: AtsAppointmentRecord = {
           TRU_ID: 123,
           DISTRICT: '02',
-          DIVISION: '081',
           CHAPTER: todChapter,
           DATE_APPOINTED: new Date('2023-06-01'),
           STATUS: '1',
@@ -671,7 +646,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '11',
         DATE_APPOINTED: new Date('2023-06-01'),
         STATUS: '1',
@@ -688,7 +662,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '7',
         DATE_APPOINTED: new Date('2023-01-15'),
         STATUS: 'PA',
@@ -704,7 +677,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: ' 7 ',
         DATE_APPOINTED: new Date('2023-01-15'),
         STATUS: ' PA ',
@@ -722,7 +694,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '9',
         DATE_APPOINTED: new Date('2023-01-15'),
         STATUS: 'PA',
@@ -736,7 +707,6 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '7',
         DATE_APPOINTED: new Date('2023-01-15'),
         STATUS: '',
@@ -753,8 +723,8 @@ describe('ATS Mappings', () => {
       const atsAppointment: AtsAppointmentRecord = {
         TRU_ID: 123,
         DISTRICT: '02',
-        DIVISION: '081',
         CHAPTER: '7',
+        STATUS: undefined,
         DATE_APPOINTED: new Date('2023-01-15'),
         EFFECTIVE_DATE: new Date('2023-01-15'),
       };
@@ -911,7 +881,6 @@ describe('ATS Mappings', () => {
         chapter: '7' as const,
         appointmentType: 'panel' as const,
         courtId: '0208',
-        divisionCode: '081',
         appointedDate: '2023-01-15',
         status: 'active' as const,
         effectiveDate: '2023-01-15',
@@ -919,7 +888,7 @@ describe('ATS Mappings', () => {
 
       const key = getAppointmentKey('123', appointment);
 
-      expect(key).toBe('123-0208-081-7-panel');
+      expect(key).toBe('123-0208-7-panel');
     });
   });
 });
