@@ -1,6 +1,7 @@
 {
   "synthesizedAt": "2026-03-26T21:28:24.333Z",
   "collections": {
+    "assignments": [],
     "cases": [
       {
         "_id": "69c3f5c941ed9491bbd211ed",
@@ -2139,6 +2140,166 @@
           "jointDebtor": null,
           "debtorTypeLabel": "Individual Business",
           "petitionLabel": "Voluntary"
+        }
+      }
+    ],
+    "trustee-match-verification": [
+      {
+        "_id": "69c3f5c935071a9817e23cf0",
+        "id": "e2e-trustee-match-verification-pending-1",
+        "documentType": "TRUSTEE_MATCH_VERIFICATION",
+        "orderType": "trustee-match",
+        "caseId": "081-18-61881",
+        "courtId": "0208",
+        "status": "pending",
+        "mismatchReason": "IMPERFECT_MATCH",
+        "dxtrTrustee": {
+          "fullName": "E2E Dxtr Trustee 1"
+        },
+        "matchCandidates": [
+          {
+            "trusteeId": "e2e-trustee-candidate-1",
+            "trusteeName": "E2E Trustee 1",
+            "totalScore": 80,
+            "addressScore": 75,
+            "districtDivisionScore": 90,
+            "chapterScore": 80
+          }
+        ],
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "createdOn": "2026-03-26T21:28:24.333Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "69c3f5c935071a9817e23cf1",
+        "id": "e2e-trustee-match-verification-pending-2",
+        "documentType": "TRUSTEE_MATCH_VERIFICATION",
+        "orderType": "trustee-match",
+        "caseId": "081-91-06221",
+        "courtId": "0208",
+        "status": "pending",
+        "mismatchReason": "HIGH_CONFIDENCE_MATCH",
+        "dxtrTrustee": {
+          "fullName": "E2E Dxtr Trustee 2"
+        },
+        "matchCandidates": [
+          {
+            "trusteeId": "e2e-trustee-candidate-2",
+            "trusteeName": "E2E Trustee 2",
+            "totalScore": 70,
+            "addressScore": 75,
+            "districtDivisionScore": 90,
+            "chapterScore": 80
+          }
+        ],
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "createdOn": "2026-03-26T21:28:24.333Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "69c3f5c935071a9817e23cf2",
+        "id": "e2e-trustee-match-verification-pending-3",
+        "documentType": "TRUSTEE_MATCH_VERIFICATION",
+        "orderType": "trustee-match",
+        "caseId": "081-51-51841",
+        "courtId": "0208",
+        "status": "pending",
+        "mismatchReason": "NO_TRUSTEE_MATCH",
+        "dxtrTrustee": {
+          "fullName": "E2E Dxtr Trustee 3"
+        },
+        "matchCandidates": [],
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "createdOn": "2026-03-26T21:28:24.333Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "69c3f5c935071a9817e23cf3",
+        "id": "e2e-trustee-match-verification-approved",
+        "documentType": "TRUSTEE_MATCH_VERIFICATION",
+        "orderType": "trustee-match",
+        "caseId": "081-56-78971",
+        "courtId": "0208",
+        "status": "approved",
+        "mismatchReason": "IMPERFECT_MATCH",
+        "dxtrTrustee": {
+          "fullName": "E2E Dxtr Trustee Approved"
+        },
+        "matchCandidates": [
+          {
+            "trusteeId": "e2e-trustee-candidate-approved",
+            "trusteeName": "E2E Trustee Approved",
+            "totalScore": 95,
+            "addressScore": 90,
+            "districtDivisionScore": 100,
+            "chapterScore": 95
+          }
+        ],
+        "resolvedTrusteeId": "e2e-trustee-candidate-approved",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "createdOn": "2026-03-26T21:28:24.333Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
+      },
+      {
+        "_id": "69c3f5c935071a9817e23cf4",
+        "id": "e2e-trustee-match-verification-rejected",
+        "documentType": "TRUSTEE_MATCH_VERIFICATION",
+        "orderType": "trustee-match",
+        "caseId": "081-65-67641",
+        "courtId": "0208",
+        "status": "rejected",
+        "mismatchReason": "HIGH_CONFIDENCE_MATCH",
+        "dxtrTrustee": {
+          "fullName": "E2E Dxtr Trustee Rejected"
+        },
+        "matchCandidates": [
+          {
+            "trusteeId": "e2e-trustee-candidate-rejected",
+            "trusteeName": "E2E Trustee Rejected",
+            "totalScore": 70,
+            "addressScore": 65,
+            "districtDivisionScore": 80,
+            "chapterScore": 70
+          }
+        ],
+        "reason": "Rejected during e2e test seeding",
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "createdOn": "2026-03-26T21:28:24.333Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
         }
       }
     ],

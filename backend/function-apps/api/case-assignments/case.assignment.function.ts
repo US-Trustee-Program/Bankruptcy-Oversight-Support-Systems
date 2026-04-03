@@ -28,10 +28,14 @@ export default async function handler(
   }
 }
 
+// Conditionally add queue output binding - disabled in E2E tests where queue extension may not be available
+// Only add queue binding if connection is configured (not in E2E mode)
 app.http('case-assignments', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
   handler,
   route: 'case-assignments/{id?}',
-  extraOutputs: [CASE_ASSIGNMENT_EVENT_QUEUE],
+  ...(process.env.AzureWebJobsDataflowsStorage
+    ? { extraOutputs: [CASE_ASSIGNMENT_EVENT_QUEUE] }
+    : {}),
 });
