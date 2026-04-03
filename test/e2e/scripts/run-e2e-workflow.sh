@@ -4,27 +4,23 @@
 # Orchestrates: startup → test → report → teardown
 #
 # Usage: ./run-e2e-workflow.sh [OPTIONS]
-#   --reseed         Clear and reseed the database before running tests
 #   --open-report    Open HTML report in browser after tests complete
+#
+# Note: Database seeding always runs to ensure databases exist before backend starts
 
 set -e
 
 # Parse command line arguments
-RESEED_DB=false
 OPEN_REPORT=false
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --reseed)
-            RESEED_DB=true
-            shift
-            ;;
         --open-report)
             OPEN_REPORT=true
             shift
             ;;
         *)
             echo "Unknown option: $1"
-            echo "Usage: $0 [--reseed] [--open-report]"
+            echo "Usage: $0 [--open-report]"
             exit 1
             ;;
     esac
@@ -146,16 +142,15 @@ podman rm -f cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-
 podman network rm e2e_cams-e2e 2>/dev/null || true
 echo ""
 
-# Start all services. Azurite runs inside the backend container so there is no external
-# storage dependency or startup race condition.
-echo "Starting services..."
-podman-compose up -d mongodb sqlserver backend frontend > /dev/null
+# Start databases first (mongodb, sqlserver, azurite)
+echo "Starting databases..."
+podman-compose up -d azurite mongodb sqlserver > /dev/null
 CLEANUP_NEEDED=true
 echo ""
-echo -e "${GREEN}✅ Services started${NC}"
+echo -e "${GREEN}✓ Databases starting${NC}"
 echo ""
 
-# Step 2: Wait for services to be healthy
+# Step 2: Wait for databases to be ready
 echo -e "${BLUE}⏳ Step 2: Waiting for databases and services to be healthy...${NC}"
 echo ""
 
@@ -245,49 +240,49 @@ if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
     echo ""
 fi
 
-# Step 2.5: Clear and seed databases (optional)
-if [ "$RESEED_DB" = true ]; then
-    echo -e "${BLUE}🌱 Clearing and seeding E2E databases...${NC}"
-    echo ""
+# Step 2.5: Seed databases (always runs to ensure databases exist)
+echo -e "${BLUE}🌱 Seeding E2E databases...${NC}"
+echo ""
 
-    # Seed MongoDB
-    echo "Seeding MongoDB..."
-    if podman-compose run --rm --no-deps \
-      --network e2e_cams-e2e \
-      -e MONGO_CONNECTION_STRING="mongodb://mongodb:27017/cams-e2e?retrywrites=false" \
-      playwright npm run seed; then
-        echo -e "${GREEN}✓ MongoDB seeded${NC}"
-    else
-        echo -e "${RED}✗ MongoDB seeding failed${NC}"
-        echo "Tests may fail due to missing data"
-    fi
-    echo ""
-
-    # Seed SQL Server
-    echo "Seeding SQL Server..."
-    if podman-compose run --rm --no-deps \
-      --network e2e_cams-e2e \
-      -e MSSQL_HOST=sqlserver \
-      -e MSSQL_USER=sa \
-      -e MSSQL_PASS="${MSSQL_PASS}" \
-      -e MSSQL_DATABASE_DXTR=CAMS_E2E \
-      -e MSSQL_ENCRYPT=false \
-      -e MSSQL_TRUST_UNSIGNED_CERT=true \
-      playwright npm run seed:sql; then
-        echo -e "${GREEN}✓ SQL Server seeded${NC}"
-    else
-        echo -e "${RED}✗ SQL Server seeding failed${NC}"
-        echo "Tests may fail due to missing data"
-    fi
-    echo ""
-
-    echo -e "${GREEN}✅ Databases cleared and seeded${NC}"
-    echo ""
+# Seed MongoDB
+echo "Seeding MongoDB..."
+if podman-compose run --rm --no-deps \
+  --network e2e_cams-e2e \
+  -e MONGO_CONNECTION_STRING="mongodb://mongodb:27017/cams-e2e?retrywrites=false" \
+  playwright npm run seed; then
+    echo -e "${GREEN}✓ MongoDB seeded${NC}"
 else
-    echo -e "${BLUE}ℹ️  Skipping database seeding (using existing data)${NC}"
-    echo -e "${BLUE}   Use --reseed flag to clear and reseed the databases${NC}"
-    echo ""
+    echo -e "${RED}✗ MongoDB seeding failed${NC}"
+    echo "Tests may fail due to missing data"
 fi
+echo ""
+
+# Seed SQL Server (creates CAMS and CAMS_E2E databases + tables)
+echo "Seeding SQL Server..."
+if podman-compose run --rm --no-deps \
+  --network e2e_cams-e2e \
+  -e MSSQL_HOST=sqlserver \
+  -e MSSQL_USER=sa \
+  -e MSSQL_PASS="${MSSQL_PASS}" \
+  -e MSSQL_DATABASE_DXTR=CAMS_E2E \
+  -e MSSQL_ENCRYPT=false \
+  -e MSSQL_TRUST_UNSIGNED_CERT=true \
+  playwright npm run seed:sql; then
+    echo -e "${GREEN}✓ SQL Server seeded${NC}"
+else
+    echo -e "${RED}✗ SQL Server seeding failed${NC}"
+    echo "Tests may fail due to missing data"
+fi
+echo ""
+
+echo -e "${GREEN}✅ Databases seeded${NC}"
+echo ""
+
+# Step 2.6: Start application services (backend, frontend)
+echo "Starting application services..."
+podman-compose up -d backend frontend > /dev/null
+echo -e "${GREEN}✓ Application services starting${NC}"
+echo ""
 
 # Step 2.7: Warm up SQL Server plan cache and buffer pool
 # The first getCaseDetail call hits 6+ uncompiled queries on a cold SQL Edge instance.
