@@ -138,8 +138,7 @@ export const STANDARD_CHAPTERS = ['7', '11', '12', '13'];
  * Uses DXTR 4-character court identifiers that match CourtDivisionDetails.courtId.
  *
  * For multi-district states where ATS uses a single district code (17, 19, 24, 25),
- * the default courtId listed here is the primary district. Use MULTI_DISTRICT_COURT_MAP
- * with the division code for accurate resolution.
+ * the default courtId listed here is the primary district.
  */
 export const DISTRICT_TO_COURT_MAP: Record<string, string> = {
   '01': '0101', // District of Massachusetts
@@ -158,14 +157,14 @@ export const DISTRICT_TO_COURT_MAP: Record<string, string> = {
   '14': '0422', // Eastern District of Virginia
   '15': '0423', // Western District of Virginia
   '16': '0420', // District of South Carolina
-  '17': '0424', // West Virginia (default: Northern — see MULTI_DISTRICT_COURT_MAP)
-  '19': '113E', // Georgia (default: Northern — see MULTI_DISTRICT_COURT_MAP)
+  '17': '0424', // West Virginia (default: Northern)
+  '19': '113E', // Georgia (default: Northern)
   '20': '113C', // Southern District of Florida
   '21': '113A', // Middle District of Florida
   '22': '1129', // Northern District of Florida
   '23': '0104', // District of Puerto Rico
-  '24': '053L', // Louisiana (default: Eastern — see MULTI_DISTRICT_COURT_MAP)
-  '25': '0538', // Mississippi (default: Southern — see MULTI_DISTRICT_COURT_MAP)
+  '24': '053L', // Louisiana (default: Eastern)
+  '25': '0538', // Mississippi (default: Southern)
   '26': '0540', // Eastern District of Texas
   '27': '0542', // Western District of Texas
   '28': '0539', // Northern District of Texas
@@ -218,37 +217,4 @@ export const DISTRICT_TO_COURT_MAP: Record<string, string> = {
   '75': '1089', // District of Wyoming
   '76': '0090', // District of Columbia
   '77': '0391', // United States Virgin Islands
-};
-
-/**
- * For multi-district states where ATS uses a single district code, this map
- * disambiguates using the first 2 digits of the ATS DIVISION code to determine
- * the correct DXTR courtId.
- *
- * District 18 (North Carolina) is omitted — NC courtIds are not yet available
- * in the DXTR reference data.
- */
-export const MULTI_DISTRICT_COURT_MAP: Record<string, Record<string, string>> = {
-  '17': {
-    // West Virginia
-    '24': '0424', // Northern District
-    '25': '0425', // Southern District
-  },
-  '19': {
-    // Georgia
-    '32': '113E', // Northern District
-    '33': '113G', // Middle District
-    '34': '113J', // Southern District
-  },
-  '24': {
-    // Louisiana
-    '30': '053L', // Eastern District
-    '31': '053N', // Middle District
-    '36': '0536', // Western District
-  },
-  '25': {
-    // Mississippi
-    '37': '0537', // Northern District
-    '38': '0538', // Southern District
-  },
 };
