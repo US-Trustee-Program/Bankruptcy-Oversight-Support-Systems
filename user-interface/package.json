@@ -25,8 +25,7 @@
     "test:a11y:clean": "rm -rf test-results & rm -rf playwright-report",
     "test:a11y:ui": "playwright test --ui",
     "test:watch": "export CAMS_USE_FAKE_API=true && vitest watch",
-    "typecheck": "tsc -b --noEmit",
-    "typecheck:ci": "npm run typecheck"
+    "typecheck": "tsc -b --noEmit"
   },
   "browserslist": {
     "production": [

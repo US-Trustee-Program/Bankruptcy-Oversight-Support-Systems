@@ -16,7 +16,7 @@
     "extract:case-ids": "tsx ./scripts/extract-case-ids.ts",
     "load-data": "tsx --env-file=.env ./scripts/load-cosmos-data.ts",
     "load-data:ci": "tsx ./scripts/load-cosmos-data.ts",
-    "tsc": "npx tsc --noEmit",
+    "typecheck": "npx tsc --noEmit",
     "ui": "playwright test --ui",
     "test": "playwright test",
     "e2e": "./scripts/run-e2e-workflow.sh",
