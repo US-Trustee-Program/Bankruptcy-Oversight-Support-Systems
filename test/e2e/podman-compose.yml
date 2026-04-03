@@ -2,8 +2,9 @@ version: '3.8'
 
 services:
   # Azurite (Azure Storage Emulator) - separate service for backend to connect to
+  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
   azurite:
-    image: mcr.microsoft.com/azure-storage/azurite:latest
+    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-azure-storage-azurite-latest
     container_name: cams-azurite-e2e
     ports:
       - "10000:10000"

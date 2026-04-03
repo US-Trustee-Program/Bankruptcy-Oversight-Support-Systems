@@ -2,6 +2,9 @@ version: '3.8'
 
 services:
   # Override with public images for local development (no ghcr.io auth needed)
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+
   mongodb:
     image: mongo:7.0
 
