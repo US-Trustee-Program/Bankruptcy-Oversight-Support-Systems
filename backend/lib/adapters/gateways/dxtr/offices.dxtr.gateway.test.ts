@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, MockInstance } from 'vitest';
 import OfficesDxtrGateway from './offices.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
@@ -22,15 +22,13 @@ describe('offices gateway tests', () => {
 
   describe('getOffices test', () => {
     let applicationContext: ApplicationContext;
-    let querySpy: vi.SpyInstance<
-      Promise<QueryResults>,
-      [
+    let querySpy: MockInstance<
+      (
         applicationContext: ApplicationContext<unknown>,
         databaseConfig: IDbConfig,
         query: string,
         input?: DbTableFieldSpec[],
-      ],
-      unknown
+      ) => Promise<QueryResults>
     >;
 
     beforeEach(async () => {

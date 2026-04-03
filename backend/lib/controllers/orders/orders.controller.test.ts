@@ -208,7 +208,6 @@ describe('orders controller tests', () => {
     const mockConsolidationOrderActionRejection: ConsolidationOrderActionRejection = {
       ...mockConsolidationOrder,
       rejectedCases: [],
-      leadCase: undefined,
     };
     const request = mockCamsHttpRequest({ body: mockConsolidationOrderActionRejection });
     applicationContext.request = request;
@@ -222,6 +221,7 @@ describe('orders controller tests', () => {
       ...mockConsolidationOrder,
       approvedCases: [mockConsolidationOrder.memberCases[0].caseId],
       leadCase: mockConsolidationOrder.memberCases[0],
+      consolidationType: mockConsolidationOrder.consolidationType ?? 'administrative',
     };
     vi.spyOn(OrdersUseCase.prototype, 'approveConsolidation').mockResolvedValue([
       mockConsolidationOrder,
@@ -249,6 +249,7 @@ describe('orders controller tests', () => {
       ...mockConsolidationOrder,
       approvedCases: [],
       leadCase: mockConsolidationOrder.memberCases[0],
+      consolidationType: mockConsolidationOrder.consolidationType ?? 'administrative',
     };
     const request1 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval });
     applicationContext.request = request1;
@@ -261,7 +262,8 @@ describe('orders controller tests', () => {
       ...mockConsolidationOrder2,
       approvedCases: [],
       leadCase: mockConsolidationOrder.memberCases[0],
-      consolidationType: undefined,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      consolidationType: undefined as any,
     };
     const request2 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval2 });
     applicationContext.request = request2;
@@ -273,6 +275,7 @@ describe('orders controller tests', () => {
       ...mockConsolidationOrder,
       approvedCases: [mockConsolidationOrder.memberCases[0].caseId],
       leadCase: undefined,
+      consolidationType: mockConsolidationOrder.consolidationType ?? 'administrative',
     };
     const request3 = mockCamsHttpRequest({ body: mockConsolidationOrderActionApproval3 });
     applicationContext.request = request3;

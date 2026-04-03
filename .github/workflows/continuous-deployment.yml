@@ -59,6 +59,11 @@ jobs:
     with:
       node-version: ${{ vars.NODE_VERSION }}
 
+  typecheck:
+    uses: ./.github/workflows/reusable-typecheck.yml
+    with:
+      node-version: ${{ vars.NODE_VERSION }}
+
   security-scan:
     name: Security
     uses: ./.github/workflows/sub-security-scan.yml
@@ -95,6 +100,7 @@ jobs:
         unit-test-common,
         security-scan,
         knip,
+        typecheck,
       ]
     if: ((github.ref == 'refs/heads/main') || (inputs.deployBranch == 'true'))
     with:

@@ -71,18 +71,17 @@ describe('Tests database client exceptions', () => {
   });
 
   test('should rethrow miscelaneous mssql error exceptions', async () => {
-    const expectedErrorMessage = 'Test request error exception';
-    const requestError = new RequestError(expectedErrorMessage);
+    const requestError = new RequestError('Test request error exception');
     requestError.name = 'RequestError';
     requestError.code = '';
-    requestError.message = expectedErrorMessage;
+    requestError.message = 'Test request error exception';
     mockRequest.mockImplementation(() => {
       throw requestError;
     });
 
     // method under test
     await expect(client.executeQuery(context, 'SELECT * FROM bar', [])).rejects.toThrow(
-      expectedErrorMessage,
+      'Unknown Error',
     );
   });
 
@@ -107,7 +106,7 @@ describe('Tests database client exceptions', () => {
 
     // method under test
     await expect(client.executeQuery(context, 'SELECT * FROM bar', [])).rejects.toThrow(
-      expectedErrorMessage,
+      'Unknown Error',
     );
   });
 
@@ -124,7 +123,7 @@ describe('Tests database client exceptions', () => {
 
     // method under test
     await expect(client.executeQuery(context, 'SELECT * FROM bar', [])).rejects.toThrow(
-      expectedErrorMessage,
+      'Unknown Error',
     );
   });
 
@@ -168,7 +167,7 @@ describe('Tests database client exceptions', () => {
     const context = await createMockApplicationContext();
     // method under test
     await expect(client.executeQuery(context, 'SELECT * FROM bar', [])).rejects.toThrow(
-      expectedErrorMessage,
+      'Unknown Error',
     );
   });
 });

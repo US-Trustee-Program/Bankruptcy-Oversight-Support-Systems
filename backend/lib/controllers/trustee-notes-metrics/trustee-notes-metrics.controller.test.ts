@@ -23,7 +23,10 @@ describe('TrusteeNotesMetricsController', () => {
       notesPerTrustee: [{ trusteeId: 'trustee-1', noteCount: 3 }],
       uniqueNoteAuthors: 2,
     };
-    vi.spyOn(TrusteeNotesMetricsUseCase.prototype, 'gatherMetrics').mockResolvedValue(metrics);
+    vi.spyOn(TrusteeNotesMetricsUseCase.prototype, 'gatherMetrics').mockResolvedValue(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      metrics as any,
+    );
 
     const controller = new TrusteeNotesMetricsController();
     await expect(controller.handleTimer(context)).resolves.toEqual(metrics);

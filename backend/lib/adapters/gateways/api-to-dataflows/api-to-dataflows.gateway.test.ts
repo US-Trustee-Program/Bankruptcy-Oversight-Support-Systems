@@ -73,13 +73,15 @@ describe('ApiToDataflowsGatewayImpl', () => {
   describe('queueCaseAssignmentEvent', () => {
     test('should queue case assignment event wrapped for Azure Functions', async () => {
       const gateway = new ApiToDataflowsGatewayImpl(mockContext);
-      const event: CaseAssignmentEvent = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const eventData: any = {
         caseId: '081-12-34567',
         userId: 'user123',
         name: 'Test User',
         role: 'TrialAttorney',
         assignedOn: '2024-01-01',
       };
+      const event: CaseAssignmentEvent = eventData;
 
       await gateway.queueCaseAssignmentEvent(event);
 

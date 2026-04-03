@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, Mocked } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteeAssignmentsUseCase } from './trustee-assignments';
 import { TrusteesRepository, UserGroupsRepository } from '../gateways.types';
@@ -16,18 +16,18 @@ import * as errorUtilities from '../../common-errors/error-utilities';
 
 // Mock the factory functions
 vi.mock('../../factory');
-const mockFactory = factory as vi.Mocked<typeof factory>;
+const mockFactory = factory as Mocked<typeof factory>;
 
 // Mock the error utilities
 vi.mock('../../common-errors/error-utilities');
-const mockErrorUtilities = errorUtilities as vi.Mocked<typeof errorUtilities>;
+const mockErrorUtilities = errorUtilities as Mocked<typeof errorUtilities>;
 
 describe('TrusteeAssignmentsUseCase', () => {
   let useCase: TrusteeAssignmentsUseCase;
   let context: ApplicationContext;
-  let mockTrusteesRepository: vi.Mocked<TrusteesRepository>;
-  let mockUserGroupGateway: vi.Mocked<UserGroupGateway>;
-  let mockUserGroupsRepository: vi.Mocked<UserGroupsRepository>;
+  let mockTrusteesRepository: Mocked<TrusteesRepository>;
+  let mockUserGroupGateway: Mocked<UserGroupGateway>;
+  let mockUserGroupsRepository: Mocked<UserGroupsRepository>;
 
   const mockUser: CamsUserReference = {
     id: 'user-123',
@@ -71,7 +71,7 @@ describe('TrusteeAssignmentsUseCase', () => {
       listTrustees: vi.fn(),
       updateTrustee: vi.fn(),
       updateTrusteeOversightAssignment: vi.fn(),
-    };
+    } as unknown as Mocked<TrusteesRepository>;
 
     mockUserGroupGateway = {
       init: vi.fn(),
@@ -81,13 +81,13 @@ describe('TrusteeAssignmentsUseCase', () => {
       getUserGroups: vi.fn(),
       getUserGroupUsers: vi.fn(),
       release: vi.fn(),
-    } as vi.Mocked<UserGroupGateway>;
+    } as Mocked<UserGroupGateway>;
 
     mockUserGroupsRepository = {
       upsertUserGroupsBatch: vi.fn(),
       read: vi.fn(),
       release: vi.fn(),
-    } as vi.Mocked<UserGroupsRepository>;
+    } as unknown as Mocked<UserGroupsRepository>;
 
     mockFactory.getTrusteesRepository.mockReturnValue(mockTrusteesRepository);
     mockFactory.getUserGroupGateway.mockResolvedValue(mockUserGroupGateway);
