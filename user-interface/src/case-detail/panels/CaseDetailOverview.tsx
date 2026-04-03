@@ -1,5 +1,5 @@
 import './CaseDetailOverview.scss';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import { CaseDetail } from '@common/cams/cases';
 import DatesCard from './cards/DatesCard';
 import DebtorCard from './cards/DebtorCard';

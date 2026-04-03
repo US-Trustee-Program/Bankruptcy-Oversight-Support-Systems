@@ -1,7 +1,7 @@
 import Actions from '@common/cams/actions';
 import { AssignAttorneyModalCallbackProps } from '../modal/assignAttorneyModal.types';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import { CaseBasics } from '@common/cams/cases';
 import { useState } from '@/lib/hooks/UseState';
 import { CaseAssignment } from '@common/cams/assignments';

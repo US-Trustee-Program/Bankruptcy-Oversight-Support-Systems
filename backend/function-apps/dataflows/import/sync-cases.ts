@@ -12,6 +12,7 @@ import SyncCases from '../../../lib/use-cases/dataflows/sync-cases';
 import CasesRuntimeState from '../../../lib/use-cases/dataflows/cases-runtime-state';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
+import { FIX_QUEUE_NAME } from '../migrations/division-change-cleanup';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
@@ -20,7 +21,6 @@ import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow
 const MODULE_NAME = 'SYNC-CASES';
 const PAGE_SIZE = 100;
 
-// Queues
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
   connection: STORAGE_QUEUE_CONNECTION,
@@ -33,6 +33,11 @@ const PAGE = output.storageQueue({
 
 const DLQ = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'dlq'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
+
+const FIX = output.storageQueue({
+  queueName: FIX_QUEUE_NAME,
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
@@ -116,6 +121,15 @@ async function handlePage(events: CaseSyncEvent[], invocationContext: Invocation
   const trace = appContext.observability.startTrace(invocationContext.invocationId);
   const processedEvents = await ExportAndLoadCase.exportAndLoad(appContext, events);
 
+  const divisionChanges = processedEvents
+    .filter((event) => event.divisionChange !== undefined)
+    .map((event) => event.divisionChange!);
+
+  if (divisionChanges.length > 0) {
+    invocationContext.extraOutputs.set(FIX, divisionChanges);
+    appContext.logger.info(MODULE_NAME, `Queued ${divisionChanges.length} division changes to FIX`);
+  }
+
   const failedEvents = processedEvents.filter((event) => !!event.error);
   invocationContext.extraOutputs.set(DLQ, failedEvents);
   const successCount = processedEvents.length - failedEvents.length;
@@ -145,7 +159,7 @@ function setup() {
   app.storageQueue(HANDLE_PAGE, {
     connection: PAGE.connection,
     queueName: PAGE.queueName,
-    extraOutputs: [DLQ],
+    extraOutputs: [DLQ, FIX],
     handler: handlePage,
   });
 

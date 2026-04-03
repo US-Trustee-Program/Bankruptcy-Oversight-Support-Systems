@@ -29,12 +29,15 @@ const { and, or, using } = QueryBuilder;
 const {
   addFields,
   additionalField,
+  count,
   descending,
   exclude,
+  group,
   join,
   match,
   paginate,
   pipeline,
+  push,
   score,
   sort,
   source,
@@ -100,7 +103,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     }
   }
 
-  private async create<T>(itemToCreate: T): Promise<T> {
+  async create<T extends { caseId: string; documentType: string }>(itemToCreate: T): Promise<T> {
     try {
       const adapter = this.getAdapter<T>();
       const id = await adapter.insertOne(itemToCreate);
@@ -336,6 +339,10 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         ),
       );
     }
+
+    // Exclude MOVED cases universally from case searches
+    conditions.push(doc('movedToCaseId').notExists());
+
     return conditions;
   }
 
@@ -514,7 +521,11 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
 
   async getSyncedCase(caseId: string): Promise<SyncedCase> {
     const doc = using<SyncedCase>();
-    const query = and(doc('caseId').equals(caseId), doc('documentType').equals('SYNCED_CASE'));
+    const query = and(
+      doc('caseId').equals(caseId),
+      doc('documentType').equals('SYNCED_CASE'),
+      doc('movedToCaseId').notExists(),
+    );
     try {
       return await this.getAdapter<SyncedCase>().findOne(query);
     } catch (originalError) {
@@ -522,6 +533,30 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
         camsStackInfo: {
           module: MODULE_NAME,
           message: `Failed to retrieve synced case: ${caseId}`,
+        },
+      });
+    }
+  }
+
+  async markAsMoved(caseId: string, movedToCaseId: string, movedOn: string): Promise<void> {
+    const doc = using<SyncedCase>();
+    const query = and(doc('caseId').equals(caseId), doc('documentType').equals('SYNCED_CASE'));
+    try {
+      await this.updateManyByQuery(query, {
+        $set: {
+          movedToCaseId,
+          movedOn,
+        },
+      });
+      this.context.logger.debug(
+        MODULE_NAME,
+        `Marked case ${caseId} as moved to ${movedToCaseId} on ${movedOn}.`,
+      );
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        camsStackInfo: {
+          module: MODULE_NAME,
+          message: 'Failed to mark case as moved.',
         },
       });
     }
@@ -560,6 +595,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const conditions = [
         doc('documentType').equals('SYNCED_CASE'),
         doc('updatedOn').lessThan(cutoffDate),
+        doc('movedToCaseId').notExists(),
       ];
       if (lastId) {
         conditions.push(doc('_id').greaterThan(lastId));
@@ -602,6 +638,62 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       const doc = using<{ id: string }>();
       const query = doc('id').equals(id);
       await this.getAdapter<{ id: string; [key: string]: unknown }>().deleteOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async findDuplicateSyncedCases(): Promise<
+    Array<{ dxtrId: string; courtId: string; caseIds: string[] }>
+  > {
+    type GroupResult = {
+      _id: { dxtrId: string; courtId: string };
+      caseIds: string[];
+      count: number;
+    };
+    try {
+      const doc = source<SyncedCase>().usingFields(
+        'documentType',
+        'movedToCaseId',
+        'dxtrId',
+        'courtId',
+        'caseId',
+      );
+      const groupDoc = source<GroupResult>().usingFields('caseIds', 'count');
+      const groupResult = using<GroupResult>();
+
+      const spec = pipeline(
+        match(and(doc.documentType.equals('SYNCED_CASE'), doc.movedToCaseId.notExists())),
+        group(
+          [doc.dxtrId, doc.courtId],
+          [push(doc.caseId, groupDoc.caseIds), count(groupDoc.count)],
+        ),
+        match(groupResult('count').greaterThan(1)),
+      );
+
+      const results = await this.getAdapter<SyncedCase>().aggregate<GroupResult>(spec);
+      return results.map((r) => ({
+        dxtrId: r._id.dxtrId,
+        courtId: r._id.courtId,
+        caseIds: r.caseIds,
+      }));
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async findSyncedCaseByDxtrId(dxtrId: string, courtId: string): Promise<SyncedCase | undefined> {
+    try {
+      const doc = using<SyncedCase>();
+      const query = and(
+        doc('documentType').equals('SYNCED_CASE'),
+        doc('dxtrId').equals(dxtrId),
+        doc('courtId').equals(courtId),
+        doc('movedToCaseId').notExists(),
+      );
+      const adapter = this.getAdapter<SyncedCase>();
+      const results = await adapter.find(query, undefined, 1);
+      return results[0];
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
