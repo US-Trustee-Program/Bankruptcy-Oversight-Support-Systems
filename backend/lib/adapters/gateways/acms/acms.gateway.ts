@@ -15,7 +15,7 @@ const MODULE_NAME = 'ACMS-GATEWAY';
 function throwCamsError(originalError: unknown): never {
   const normalizedError =
     originalError instanceof Error ? originalError : new Error(String(originalError));
-  throw getCamsError(normalizedError, MODULE_NAME, normalizedError.message);
+  throw getCamsError(normalizedError, MODULE_NAME);
 }
 
 export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway {
@@ -125,11 +125,6 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         memberCases,
       };
     } catch (originalError) {
-      context.logger.error(
-        MODULE_NAME,
-        `Failed to get case info for lead case id: ${leadCaseId}.`,
-        originalError,
-      );
       throwCamsError(originalError);
     }
   }
