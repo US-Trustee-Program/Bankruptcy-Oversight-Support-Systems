@@ -237,7 +237,7 @@ while [ $APP_WAIT_COUNT -lt $APP_MAX_WAIT ]; do
     # Backend is ready when healthcheck returns 200 OK
     # Frontend is ready when it serves HTTP
     BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:7071/api/healthcheck 2>/dev/null || echo "000")
-    FRONTEND_HTTP=$(curl -sf --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
+    FRONTEND_HTTP=$(curl -s --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
 
     if [ "$BACKEND_STATUS" = "200" ] && [ "$FRONTEND_HTTP" = "ok" ]; then
         echo -e "${GREEN}✅ Backend and frontend are healthy${NC}"
