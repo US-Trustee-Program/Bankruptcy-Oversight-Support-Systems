@@ -46,15 +46,18 @@ Write-Host "[3/3] Configuring NVDA for testing..." -ForegroundColor Green
 $nvdaConfigDir = "$env:APPDATA\nvda"
 $nvdaConfigFile = "$nvdaConfigDir\nvda.ini"
 
-if (Test-Path $nvdaConfigDir) {
-    # Back up existing config if present
-    if (Test-Path $nvdaConfigFile) {
-        Copy-Item $nvdaConfigFile "$nvdaConfigFile.bak" -Force
-        Write-Host "  Backed up existing NVDA config to nvda.ini.bak" -ForegroundColor Gray
-    }
+if (-not (Test-Path $nvdaConfigDir)) {
+    New-Item -ItemType Directory -Path $nvdaConfigDir -Force | Out-Null
+}
 
-    # Write testing-friendly NVDA configuration
-    @"
+# Back up existing config if present
+if (Test-Path $nvdaConfigFile) {
+    Copy-Item $nvdaConfigFile "$nvdaConfigFile.bak" -Force
+    Write-Host "  Backed up existing NVDA config to nvda.ini.bak" -ForegroundColor Gray
+}
+
+# Write testing-friendly NVDA configuration
+@"
 [speech]
     autoLanguageSwitching = False
     autoDialectSwitching = False
@@ -74,14 +77,11 @@ if (Test-Path $nvdaConfigDir) {
     playStartAndExitSounds = False
 "@ | Out-File -FilePath $nvdaConfigFile -Encoding utf8
 
-    Write-Host "  NVDA configured with testing defaults:" -ForegroundColor Green
-    Write-Host "    - Symbol level: most (verbose announcements)" -ForegroundColor Gray
-    Write-Host "    - Welcome dialog disabled" -ForegroundColor Gray
-    Write-Host "    - Startup/exit sounds disabled" -ForegroundColor Gray
-    Write-Host "    - Braille display disabled" -ForegroundColor Gray
-} else {
-    Write-Host "  NVDA config directory not found. Launch NVDA once, then re-run this script to apply config." -ForegroundColor Yellow
-}
+Write-Host "  NVDA configured with testing defaults:" -ForegroundColor Green
+Write-Host "    - Symbol level: most (verbose announcements)" -ForegroundColor Gray
+Write-Host "    - Welcome dialog disabled" -ForegroundColor Gray
+Write-Host "    - Startup/exit sounds disabled" -ForegroundColor Gray
+Write-Host "    - Braille display disabled" -ForegroundColor Gray
 
 # --- Print connection instructions ---
 Write-Host ""
