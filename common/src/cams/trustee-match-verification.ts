@@ -5,6 +5,7 @@ import {
   TrusteeAppointmentSyncErrorCode,
 } from './dataflow-events';
 import { OrderStatus } from './orders';
+import { AppointmentStatus } from './trustees';
 
 export const TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE = 'TRUSTEE_MATCH_VERIFICATION' as const;
 
@@ -20,4 +21,5 @@ export type TrusteeMatchVerification = Auditable & {
   resolvedTrusteeId?: string;
   orderType: 'trustee-match';
   reason?: string;
+  inactiveAppointmentStatus?: AppointmentStatus;
 };
