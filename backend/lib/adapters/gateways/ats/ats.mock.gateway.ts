@@ -7,14 +7,24 @@ import {
 } from '../../types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
-import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 
 const MODULE_NAME = 'ATS-MOCK-GATEWAY';
 
+/**
+ * IDs of all mock trustees in the pool.
+ * Trustee 6 exists but has only inactive appointments (see MOCK_ACTIVE_TRUSTEE_IDS).
+ */
+const MOCK_TRUSTEE_IDS = [1, 2, 3, 4, 5, 6];
+
 // IDs of mock trustees that have at least one active appointment (simulates WHERE EXISTS filter).
 // Trustee 6 has only inactive appointments and is intentionally excluded.
-const MOCK_ACTIVE_TRUSTEE_IDS = new Set([1, 2, 3, 4, 5]);
-const MOCK_TOTAL_TRUSTEES = 6;
+const MOCK_ACTIVE_TRUSTEE_IDS = new Set(MOCK_TRUSTEE_IDS.filter((id) => id !== 6));
+
+/**
+ * Total number of mock trustees in the pool (used for pagination).
+ * Derived from MOCK_TRUSTEE_IDS to avoid drifting out of sync with filters.
+ */
+const MOCK_TOTAL_TRUSTEES = MOCK_TRUSTEE_IDS.length;
 
 /**
  * Mock implementation of ATS gateway for testing.
