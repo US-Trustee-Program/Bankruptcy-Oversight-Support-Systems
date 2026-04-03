@@ -1,42 +1,25 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import factory from '../../factory';
-import { MaybeData } from './queue-types';
 import { ZoomInfo } from '@common/cams/trustees';
 import { CamsUserReference } from '@common/cams/users';
 import { normalizeName } from './trustee-match.helpers';
 import ModuleNames from '../../../function-apps/dataflows/module-names';
-import * as fs from 'fs';
-import * as path from 'path';
 
 const MODULE_NAME = ModuleNames.IMPORT_ZOOM_CSV;
-const CSV_FILE = path.join(__dirname, 'zoom-info.tsv');
-
-export type FileOperations = {
-  existsSync: (p: string) => boolean;
-  readFileSync: (p: string, encoding: BufferEncoding) => string;
-};
 
 const SYSTEM_USER: CamsUserReference = {
   id: 'SYSTEM',
   name: 'ATS Migration',
 };
 
-type ZoomCsvRow = {
+export type ZoomCsvRow = {
   fullName: string;
   accountEmail: string;
   meetingId: string;
   passcode: string;
   phone: string;
   link: string;
-};
-
-export type ZoomImportResult = {
-  total: number;
-  matched: number;
-  unmatched: number;
-  ambiguous: number;
-  errors: number;
 };
 
 export function parseZoomCsvFile(content: string): ZoomCsvRow[] {
@@ -106,42 +89,5 @@ export async function processZoomCsvRow(
     );
     context.logger.error(MODULE_NAME, camsError.message, camsError);
     return 'error';
-  }
-}
-
-export async function importZoomCsv(
-  context: ApplicationContext,
-  filePath?: string,
-  fileOps: FileOperations = fs,
-): Promise<MaybeData<ZoomImportResult>> {
-  const resolvedPath = filePath ?? CSV_FILE;
-
-  try {
-    if (!fileOps.existsSync(resolvedPath)) {
-      context.logger.info(MODULE_NAME, `No CSV file found at ${resolvedPath} — skipping import`);
-      return { data: { total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 } };
-    }
-
-    const content = fileOps.readFileSync(resolvedPath, 'utf-8');
-    const rows = parseZoomCsvFile(content);
-
-    const result: ZoomImportResult = {
-      total: rows.length,
-      matched: 0,
-      unmatched: 0,
-      ambiguous: 0,
-      errors: 0,
-    };
-
-    for (const row of rows) {
-      const outcome = await processZoomCsvRow(context, row);
-      result[outcome === 'error' ? 'errors' : outcome]++;
-    }
-
-    return { data: result };
-  } catch (originalError) {
-    return {
-      error: getCamsError(originalError as Error, MODULE_NAME, 'Failed to import Zoom CSV'),
-    };
   }
 }
