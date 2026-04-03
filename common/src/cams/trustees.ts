@@ -69,6 +69,7 @@ export type ZoomInfo = {
   phone: string;
   meetingId: string;
   passcode: string;
+  accountEmail?: string;
 };
 
 type TrusteeCore = {

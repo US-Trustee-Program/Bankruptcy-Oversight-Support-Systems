@@ -77,6 +77,7 @@ export const zoomInfoSpec: ValidationSpec<ZoomInfo> = {
   phone: [zoomPhone],
   meetingId: [zoomMeetingId],
   passcode: [zoomPasscode],
+  accountEmail: [V.optional(email)],
 };
 
 export const addressSpec: ValidationSpec<Address> = {
