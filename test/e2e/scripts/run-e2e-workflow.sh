@@ -45,6 +45,19 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# Compose file configuration - if override exists, use it automatically for local dev
+if [ -f "podman-compose.override.yml" ]; then
+    COMPOSE_FILES="-f podman-compose.yml -f podman-compose.override.yml"
+else
+    COMPOSE_FILES="-f podman-compose.yml"
+fi
+
+# Helper function to run podman-compose with correct files
+# shellcheck disable=SC2086  # Word splitting is intentional for COMPOSE_FILES
+pcompose() {
+    podman-compose $COMPOSE_FILES "$@"
+}
+
 # Check if .env exists
 if [ ! -f ".env" ]; then
     echo -e "${RED}❌ Error: .env file not found in test/e2e/${NC}"
@@ -69,7 +82,7 @@ cleanup() {
         echo ""
         echo -e "${BLUE}🧹 Tearing down services...${NC}"
         # Suppress errors if containers are already stopped
-        podman-compose down 2>/dev/null || true
+        pcompose down 2>/dev/null || true
         echo -e "${GREEN}✅ Services stopped${NC}"
     fi
 }
@@ -137,14 +150,14 @@ echo ""
 
 # Tear down any containers/networks left from a previous run before starting fresh
 echo -e "${BLUE}🧹 Tearing down any containers from a previous run...${NC}"
-podman-compose down 2>/dev/null || true
+pcompose down 2>/dev/null || true
 podman rm -f cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
 podman network rm e2e_cams-e2e 2>/dev/null || true
 echo ""
 
 # Start databases first (mongodb, sqlserver, azurite)
 echo "Starting databases..."
-podman-compose up -d azurite mongodb sqlserver > /dev/null
+pcompose up -d azurite mongodb sqlserver > /dev/null
 CLEANUP_NEEDED=true
 echo ""
 echo -e "${GREEN}✓ Databases starting${NC}"
@@ -245,11 +258,11 @@ echo -e "${BLUE}🌱 Seeding E2E databases...${NC}"
 echo ""
 
 # Seed MongoDB
+# Use podman run with explicit network since podman-compose run doesn't connect to networks properly
 echo "Seeding MongoDB..."
-if podman-compose run --rm --no-deps \
-  --network e2e_cams-e2e \
+if podman run --rm --network e2e_cams-e2e \
   -e MONGO_CONNECTION_STRING="mongodb://mongodb:27017/cams-e2e?retrywrites=false" \
-  playwright npm run seed; then
+  localhost/e2e_playwright:latest npm run seed; then
     echo -e "${GREEN}✓ MongoDB seeded${NC}"
 else
     echo -e "${RED}✗ MongoDB seeding failed${NC}"
@@ -259,15 +272,14 @@ echo ""
 
 # Seed SQL Server (creates CAMS and CAMS_E2E databases + tables)
 echo "Seeding SQL Server..."
-if podman-compose run --rm --no-deps \
-  --network e2e_cams-e2e \
+if podman run --rm --network e2e_cams-e2e \
   -e MSSQL_HOST=sqlserver \
   -e MSSQL_USER=sa \
   -e MSSQL_PASS="${MSSQL_PASS}" \
   -e MSSQL_DATABASE_DXTR=CAMS_E2E \
   -e MSSQL_ENCRYPT=false \
   -e MSSQL_TRUST_UNSIGNED_CERT=true \
-  playwright npm run seed:sql; then
+  localhost/e2e_playwright:latest npm run seed:sql; then
     echo -e "${GREEN}✓ SQL Server seeded${NC}"
 else
     echo -e "${RED}✗ SQL Server seeding failed${NC}"
@@ -280,7 +292,7 @@ echo ""
 
 # Step 2.6: Start application services (backend, frontend)
 echo "Starting application services..."
-podman-compose up -d backend frontend > /dev/null
+pcompose up -d backend frontend > /dev/null
 echo -e "${GREEN}✓ Application services starting${NC}"
 echo ""
 
@@ -290,15 +302,14 @@ echo ""
 # and load data pages into the buffer pool before Playwright starts.
 echo -e "${BLUE}🔥 Step 2.7: Warming up SQL Server plan cache...${NC}"
 echo ""
-podman-compose run --rm --no-deps \
-  --network e2e_cams-e2e \
+podman run --rm --network e2e_cams-e2e \
   -e MSSQL_HOST=sqlserver \
   -e MSSQL_USER=sa \
   -e MSSQL_PASS="${MSSQL_PASS}" \
   -e MSSQL_DATABASE_DXTR=CAMS_E2E \
   -e MSSQL_ENCRYPT=false \
   -e MSSQL_TRUST_UNSIGNED_CERT=true \
-  playwright npx tsx ./scripts/warmup-sqlserver.ts 2>/dev/null || true
+  localhost/e2e_playwright:latest npx tsx ./scripts/warmup-sqlserver.ts 2>/dev/null || true
 echo -e "${GREEN}✅ SQL Server warmed up${NC}"
 echo ""
 
@@ -311,7 +322,7 @@ echo ""
 # Capture to a temp file so we can parse the summary counts afterward.
 TEST_OUTPUT_FILE=$(mktemp)
 set +e
-podman-compose run --rm --no-deps playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
+pcompose run --rm --no-deps playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
 TEST_EXIT_CODE=${PIPESTATUS[0]}
 set -e
 TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
