@@ -426,7 +426,10 @@ describe('Migrate Trustees Use Case', () => {
           id: 'pid-1',
           camsTrusteeId: 'trustee-123',
           acmsProfessionalId: 'NY-00063',
-        });
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          updatedOn: '2026-01-01T00:00:00.000Z',
+          updatedBy: { id: 'SYSTEM', name: 'ATS Migration' },
+        } as unknown as never);
 
       const count = await upsertProfessionalIds(context, 'trustee-123', 'Harvey', 'Barr', 'NY');
 
@@ -472,7 +475,10 @@ describe('Migrate Trustees Use Case', () => {
           id: 'pid-2',
           camsTrusteeId: 'trustee-abc',
           acmsProfessionalId: 'WA-00002',
-        });
+          documentType: 'TRUSTEE_PROFESSIONAL_ID',
+          updatedOn: '2026-01-01T00:00:00.000Z',
+          updatedBy: { id: 'SYSTEM', name: 'ATS Migration' },
+        } as unknown as never);
 
       const count = await upsertProfessionalIds(context, 'trustee-abc', 'Alice', 'Wu', 'WA');
 
