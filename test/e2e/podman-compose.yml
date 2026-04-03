@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  # Azurite (Azure Storage Emulator) - separate service for backend to connect to
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: cams-azurite-e2e
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
+    networks:
+      - cams-e2e
+    healthcheck:
+      disable: true
+
   # MongoDB (compatible with Cosmos DB MongoDB API)
   # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
   mongodb:
@@ -44,10 +58,9 @@ services:
       start_period: 30s
 
   # Backend API service
-  # Azurite runs inside this container (installed in Dockerfile.backend) so
-  # UseDevelopmentStorage=true works via 127.0.0.1 — no external Azurite dependency,
-  # no SharedKey HMAC issues, no startup race condition.
-  # Bridge network gives it mongodb/sqlserver DNS. Port 7071 published for Playwright.
+  # Connects to external Azurite service over bridge network.
+  # Bridge network gives it azurite/mongodb/sqlserver DNS.
+  # Port 7071 published for Playwright.
   backend:
     build:
       context: ../../
@@ -56,9 +69,6 @@ services:
     restart: "no"
     ports:
       - "7071:7071"
-      - "10000:10000"
-      - "10001:10001"
-      - "10002:10002"
     env_file:
       - .env
     environment:
@@ -76,14 +86,12 @@ services:
       - MSSQL_ENCRYPT=${MSSQL_ENCRYPT}
       - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
       - SLOT_NAME=${SLOT_NAME}
-      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1
     networks:
       - cams-e2e
     depends_on:
-      mongodb:
-        condition: service_healthy
-      sqlserver:
-        condition: service_healthy
+      - azurite
+      - mongodb
+      - sqlserver
     healthcheck:
       disable: true
 
