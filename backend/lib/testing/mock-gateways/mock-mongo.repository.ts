@@ -186,10 +186,6 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  deleteAll(): Promise<any> {
-    throw new Error('Method not implemented.');
-  }
-
   getNotesByCaseId(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }
@@ -489,9 +485,5 @@ export class MockMongoRepository
 
   markAsMoved(..._ignore: any[]): Promise<void> {
     return Promise.resolve();
-  }
-
-  findTrusteeByNameAndState(..._ignore): Promise<any> {
-    throw new Error('Method not implemented.');
   }
 }
