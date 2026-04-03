@@ -244,6 +244,39 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     }
   }
 
+  async getTrusteeProfessionalIds(
+    context: ApplicationContext,
+    firstName: string,
+    lastName: string,
+    state: string,
+  ): Promise<string[]> {
+    const input: DbTableFieldSpec[] = [
+      { name: 'firstName', type: mssql.VarChar, value: firstName },
+      { name: 'lastName', type: mssql.VarChar, value: lastName },
+      { name: 'state', type: mssql.VarChar, value: state },
+    ];
+
+    const query = `
+      SELECT
+        CONCAT(ACMS.GROUP_DESIGNATOR, '-', RIGHT(CONCAT('0000', ACMS.UST_PROF_CODE), 5)) AS acmsProfessionalId
+      FROM CMMPR ACMS
+      WHERE ACMS.PROF_FIRST_NAME = @firstName
+        AND ACMS.PROF_LAST_NAME = @lastName
+        AND ACMS.PROF_STATE = @state
+        AND (ACMS.PROF_TYPE = 'TR' OR ACMS.PROF_TYPE IS NULL)`;
+
+    try {
+      const { results } = await this.executeQuery<{ acmsProfessionalId: string }>(
+        context,
+        query,
+        input,
+      );
+      return (results as Array<{ acmsProfessionalId: string }>).map((r) => r.acmsProfessionalId);
+    } catch (originalError) {
+      throwCamsError(originalError);
+    }
+  }
+
   private formatCaseId(caseId: string): string {
     const padded = caseId.padStart(10, '0');
     return `${padded.slice(0, 3)}-${padded.slice(3, 5)}-${padded.slice(5)}`;
