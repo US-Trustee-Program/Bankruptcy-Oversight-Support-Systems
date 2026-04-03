@@ -859,6 +859,154 @@ describe('SyncTrusteeAppointments.processAppointments', () => {
       );
     });
   });
+
+  describe('PERFECT_MATCH_INACTIVE_STATUS handling', () => {
+    const inactiveAppointment = {
+      id: 'appt-inactive',
+      trusteeId: 'trustee-123',
+      chapter: '7',
+      courtId: '081',
+      divisionCode: 'NY',
+      appointmentType: 'panel' as const,
+      status: 'voluntarily-suspended' as const,
+      createdBy: { id: 'system', name: 'System' },
+      createdOn: '2024-01-01T00:00:00Z',
+      updatedBy: { id: 'system', name: 'System' },
+      updatedOn: '2024-01-01T00:00:00Z',
+    };
+
+    beforeEach(() => {
+      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+      vi.spyOn(trusteeMatchHelpers, 'findInactivePerfectMatch').mockReturnValue(
+        inactiveAppointment,
+      );
+      vi.spyOn(trusteeMatchHelpers, 'calculateAddressScore').mockReturnValue(100);
+      (mockAppointmentsRepo.getTrusteeAppointments as ReturnType<typeof vi.fn>).mockResolvedValue([
+        inactiveAppointment,
+      ]);
+    });
+
+    test('should persist PERFECT_MATCH_INACTIVE_STATUS to verification collection', async () => {
+      const { successCount, dlqMessages, scenarioDistribution } =
+        await SyncTrusteeAppointments.processAppointments(context, [
+          makeEvent('case-001', 'John Doe'),
+        ]);
+
+      expect(mockAppointmentsRepo.createCaseAppointment).not.toHaveBeenCalled();
+      expect(successCount).toBe(0);
+      expect(dlqMessages).toHaveLength(0);
+      expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          mismatchReason: 'PERFECT_MATCH_INACTIVE_STATUS',
+          inactiveAppointmentStatus: 'voluntarily-suspended',
+          status: 'pending',
+          matchCandidates: [
+            expect.objectContaining({
+              trusteeId: 'trustee-123',
+              totalScore: 100,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+            }),
+          ],
+        }),
+      );
+      expect(scenarioDistribution.perfectMatchInactiveCount).toBe(1);
+    });
+
+    test('should emit TRUSTEE_MATCH_AUDIT log for inactive-perfect-match', async () => {
+      const infoSpy = vi.spyOn(context.logger, 'info');
+
+      await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'John Doe'),
+      ]);
+
+      const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
+      expect(auditCalls).toHaveLength(1);
+      expect(auditCalls[0][2]).toEqual(
+        expect.objectContaining({
+          matchOutcome: 'inactive-perfect-match',
+          matchedTrusteeId: 'trustee-123',
+          appointmentStatus: 'voluntarily-suspended',
+          scoringBreakdown: { districtDivisionScore: 100, chapterScore: 100 },
+        }),
+      );
+    });
+
+    test('should fall through to IMPERFECT_MATCH when findInactivePerfectMatch returns undefined', async () => {
+      vi.spyOn(trusteeMatchHelpers, 'findInactivePerfectMatch').mockReturnValue(undefined);
+      vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+        trusteeId: 'trustee-123',
+        trusteeName: 'John Doe',
+        totalScore: 60,
+        addressScore: 100,
+        districtDivisionScore: 50,
+        chapterScore: 0,
+      });
+
+      const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'John Doe'),
+      ]);
+
+      expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+      expect(scenarioDistribution.perfectMatchInactiveCount).toBe(0);
+    });
+
+    test('should include perfectMatchInactiveCount in scenarioDistribution for mixed batch', async () => {
+      // Event 1: perfect match (auto-link)
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce('trustee-1')
+        // Event 2: inactive perfect match
+        .mockResolvedValueOnce('trustee-2')
+        // Event 3: no match
+        .mockRejectedValueOnce(
+          new CamsError('TRUSTEE-MATCH', {
+            message: 'No match',
+            data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+          }),
+        );
+
+      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch')
+        .mockReturnValueOnce(true) // Event 1
+        .mockReturnValueOnce(false); // Event 2
+
+      // Event 1 takes the isPerfectMatch=true branch, so findInactivePerfectMatch is not called.
+      // Only Event 2 calls it.
+      vi.spyOn(trusteeMatchHelpers, 'findInactivePerfectMatch').mockReturnValueOnce(
+        inactiveAppointment,
+      );
+
+      const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'Perfect'),
+        makeEvent('case-002', 'Inactive'),
+        makeEvent('case-003', 'NoMatch'),
+      ]);
+
+      expect(scenarioDistribution.autoMatchCount).toBe(1);
+      expect(scenarioDistribution.perfectMatchInactiveCount).toBe(1);
+      expect(scenarioDistribution.noMatchCount).toBe(1);
+    });
+
+    test('should track reVerificationCount when inactive match already resolved', async () => {
+      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        caseId: 'case-001',
+        status: 'approved',
+        createdOn: '2025-01-01T00:00:00.000Z',
+        updatedOn: '2025-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'Operator' },
+      });
+
+      const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'John Doe'),
+      ]);
+
+      expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+      expect(scenarioDistribution.reVerificationCount).toBe(1);
+      expect(scenarioDistribution.perfectMatchInactiveCount).toBe(1);
+    });
+  });
 });
 
 describe('SyncTrusteeAppointments.getAppointmentEvents', () => {
