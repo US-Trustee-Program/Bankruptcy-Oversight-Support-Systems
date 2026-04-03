@@ -1,13 +1,11 @@
-import './PastKeyDates.scss';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TrusteeUpcomingKeyDates, isoToMMDDYYYY } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
+import InfoCard from './InfoCard';
 
 export interface PastKeyDatesProps {
   trusteeId: string;
@@ -60,40 +58,24 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
   }
 
   return (
-    <div className="past-key-dates-card usa-card" data-testid="past-key-dates-card">
-      <div className="usa-card__container">
-        <div className="usa-card__body">
-          <div className="past-key-dates-header">
-            <h4>Past Key Dates</h4>
-            {canManage && (
-              <Button
-                id="edit-past-key-dates"
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit past key dates"
-                title="Edit past key dates"
-                onClick={openEdit}
-              >
-                <IconLabel icon="edit" label="Edit" />
-              </Button>
-            )}
-          </div>
-          <ul className="past-key-dates-list" data-testid="past-key-dates-list">
-            <li data-testid="past-background-question-row">
-              <span className="past-key-dates-label">Background Question:</span>{' '}
-              {backgroundQuestion}
-            </li>
-            <li data-testid="past-field-exam-row">
-              <span className="past-key-dates-label">Field Exam:</span> {fieldExam}
-            </li>
-            <li data-testid="past-audit-row">
-              <span className="past-key-dates-label">Audit:</span> {audit}
-            </li>
-            <li data-testid="past-tpr-submission-row">
-              <span className="past-key-dates-label">TPR Submission:</span> {tprSubmission}
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
+    <InfoCard
+      id="edit-past-key-dates"
+      title="Past Key Dates"
+      onEdit={canManage ? openEdit : undefined}
+      editAriaLabel="Edit past key dates"
+      editTitle="Edit past key dates"
+      testId="past-key-dates-card"
+      listTestId="past-key-dates-list"
+      fields={[
+        {
+          label: 'Background Question',
+          value: backgroundQuestion,
+          testId: 'past-background-question-row',
+        },
+        { label: 'Field Exam', value: fieldExam, testId: 'past-field-exam-row' },
+        { label: 'Audit', value: audit, testId: 'past-audit-row' },
+        { label: 'TPR Submission', value: tprSubmission, testId: 'past-tpr-submission-row' },
+      ]}
+    />
   );
 }

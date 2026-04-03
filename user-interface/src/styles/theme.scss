@@ -4,6 +4,21 @@ $cams-theme-background: white;
    Icon Buttons that are used often in H1 and H3 tags. Icon Button classes for those are
    defined below.
 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family:
+    Source Sans Pro Web,
+    Helvetica Neue,
+    Helvetica,
+    Roboto,
+    Arial,
+    sans-serif;
+}
+
 h1 {
   font-size: 2.5rem;
   margin: 1rem 0;
