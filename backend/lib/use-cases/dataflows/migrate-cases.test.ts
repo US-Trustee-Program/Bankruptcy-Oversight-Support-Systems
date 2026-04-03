@@ -32,6 +32,9 @@ const mockAcmsGateway: AcmsGateway = {
   getDeletedCaseIds(..._ignore) {
     throw new Error('Function not implemented.');
   },
+  getTrusteeProfessionalIds(..._ignore): Promise<string[]> {
+    throw new Error('Function not implemented.');
+  },
 };
 
 describe('Migrate cases use case', () => {

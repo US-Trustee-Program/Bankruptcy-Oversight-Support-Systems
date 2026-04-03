@@ -201,6 +201,12 @@ export interface AcmsGateway {
     context: ApplicationContext,
     lastChangeDate: string,
   ): Promise<{ caseIds: string[]; latestDeletedCaseDate: string }>;
+  getTrusteeProfessionalIds(
+    context: ApplicationContext,
+    firstName: string,
+    lastName: string,
+    state: string,
+  ): Promise<string[]>;
 }
 
 export interface AtsGateway {
