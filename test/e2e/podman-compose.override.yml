@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  # Override with public images for local development (no ghcr.io auth needed)
+  mongodb:
+    image: mongo:7.0
+
+  sqlserver:
+    image: mcr.microsoft.com/azure-sql-edge:latest
