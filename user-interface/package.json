@@ -90,7 +90,7 @@
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",
     "eslint-plugin-testing-library": "7.16.1",
-    "jsdom": "29.0.0",
+    "jsdom": "29.0.1",
     "prettier": "3.8.1",
     "react-router": "7.13.1",
     "sass-embedded": "1.98.0",
