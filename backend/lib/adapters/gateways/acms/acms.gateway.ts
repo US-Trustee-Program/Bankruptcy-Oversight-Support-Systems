@@ -12,6 +12,12 @@ import { DbTableFieldSpec } from '../../types/database';
 
 const MODULE_NAME = 'ACMS-GATEWAY';
 
+function throwCamsError(originalError: unknown): never {
+  const normalizedError =
+    originalError instanceof Error ? originalError : new Error(String(originalError));
+  throw getCamsError(normalizedError, MODULE_NAME, normalizedError.message);
+}
+
 export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway {
   constructor(context: ApplicationContext) {
     // The context carries different database connection configurations.
@@ -63,9 +69,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       const leadCaseIdsResults = results as ResultType[];
       return leadCaseIdsResults.map((record) => record.leadCaseId);
     } catch (originalError) {
-      const normalizedError =
-        originalError instanceof Error ? originalError : new Error(String(originalError));
-      throw getCamsError(normalizedError, MODULE_NAME, normalizedError.message);
+      throwCamsError(originalError);
     }
   }
 
@@ -126,9 +130,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         `Failed to get case info for lead case id: ${leadCaseId}.`,
         originalError,
       );
-      const normalizedError =
-        originalError instanceof Error ? originalError : new Error(String(originalError));
-      throw getCamsError(normalizedError, MODULE_NAME, normalizedError.message);
+      throwCamsError(originalError);
     }
   }
 
@@ -151,9 +153,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     try {
       await this.executeQuery(context, selectIntoQuery);
     } catch (originalError) {
-      const normalizedError =
-        originalError instanceof Error ? originalError : new Error(String(originalError));
-      throw getCamsError(normalizedError, MODULE_NAME, normalizedError.message);
+      throwCamsError(originalError);
     }
   }
 
@@ -168,9 +168,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       const caseIdResults = results as ResultType[];
       return caseIdResults.map((record) => record.caseId);
     } catch (originalError) {
-      const normalizedError =
-        originalError instanceof Error ? originalError : new Error(String(originalError));
-      throw getCamsError(normalizedError, MODULE_NAME, normalizedError.message);
+      throwCamsError(originalError);
     }
   }
 
@@ -180,9 +178,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     try {
       await this.executeQuery(context, emptyTableQuery);
     } catch (originalError) {
-      const normalizedError =
-        originalError instanceof Error ? originalError : new Error(String(originalError));
-      throw getCamsError(normalizedError, MODULE_NAME, normalizedError.message);
+      throwCamsError(originalError);
     }
   }
 
@@ -198,9 +194,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
       const caseIdResults = results as ResultType[];
       return caseIdResults[0].total;
     } catch (originalError) {
-      const normalizedError =
-        originalError instanceof Error ? originalError : new Error(String(originalError));
-      throw getCamsError(normalizedError, MODULE_NAME, normalizedError.message);
+      throwCamsError(originalError);
     }
   }
 
@@ -251,9 +245,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
       return { caseIds, latestDeletedCaseDate };
     } catch (originalError) {
-      const normalizedError =
-        originalError instanceof Error ? originalError : new Error(String(originalError));
-      throw getCamsError(normalizedError, MODULE_NAME, normalizedError.message);
+      throwCamsError(originalError);
     }
   }
 
