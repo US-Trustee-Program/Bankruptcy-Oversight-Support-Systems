@@ -9,6 +9,7 @@ import {
   getTotalTrusteeCount,
   deleteAllTrusteesAndAppointments,
   mergeTrusteeRecords,
+  upsertProfessionalIds,
 } from './migrate-trustees';
 import {
   getOrCreateMigrationState,
@@ -21,7 +22,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { AtsTrusteeRecord } from '../../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { AtsGateway } from '../../use-cases/gateways.types';
+import { AcmsGateway, AtsGateway } from '../../use-cases/gateways.types';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 
 /**
@@ -411,7 +412,82 @@ describe('Migrate Trustees Use Case', () => {
     });
   });
 
+  describe('upsertProfessionalIds', () => {
+    test('should store all professional IDs returned by ACMS gateway', async () => {
+      const mockAcmsGateway = {
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue(['NY-00063', 'UT-05321']),
+      };
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue(
+        mockAcmsGateway as unknown as AcmsGateway,
+      );
+      const createProfIdSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createProfessionalId')
+        .mockResolvedValue({
+          id: 'pid-1',
+          camsTrusteeId: 'trustee-123',
+          acmsProfessionalId: 'NY-00063',
+        });
+
+      const count = await upsertProfessionalIds(context, 'trustee-123', 'Harvey', 'Barr', 'NY');
+
+      expect(count).toBe(2);
+      expect(mockAcmsGateway.getTrusteeProfessionalIds).toHaveBeenCalledWith(
+        context,
+        'Harvey',
+        'Barr',
+        'NY',
+      );
+      expect(createProfIdSpy).toHaveBeenCalledTimes(2);
+    });
+
+    test('should return 0 when ACMS returns no matches', async () => {
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+      const createProfIdSpy = vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId');
+
+      const count = await upsertProfessionalIds(context, 'trustee-456', 'Jane', 'Smith', 'CA');
+
+      expect(count).toBe(0);
+      expect(createProfIdSpy).not.toHaveBeenCalled();
+    });
+
+    test('should return 0 and not throw when ACMS gateway fails', async () => {
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockRejectedValue(new Error('ACMS unavailable')),
+      } as unknown as AcmsGateway);
+
+      const count = await upsertProfessionalIds(context, 'trustee-789', 'Bob', 'Jones', 'TX');
+
+      expect(count).toBe(0);
+    });
+
+    test('should continue and count only successful stores when one createProfessionalId fails', async () => {
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue(['WA-00001', 'WA-00002']),
+      } as unknown as AcmsGateway);
+      vi.spyOn(MockMongoRepository.prototype, 'createProfessionalId')
+        .mockRejectedValueOnce(new Error('DB error'))
+        .mockResolvedValueOnce({
+          id: 'pid-2',
+          camsTrusteeId: 'trustee-abc',
+          acmsProfessionalId: 'WA-00002',
+        });
+
+      const count = await upsertProfessionalIds(context, 'trustee-abc', 'Alice', 'Wu', 'WA');
+
+      expect(count).toBe(1);
+    });
+  });
+
   describe('processTrusteeWithAppointments', () => {
+    beforeEach(() => {
+      // Stub ACMS gateway so upsertProfessionalIds does not reach the network
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+    });
+
     test('should process trustee with appointments successfully', async () => {
       const atsTrustee: AtsTrusteeRecord = {
         ID: 1,
