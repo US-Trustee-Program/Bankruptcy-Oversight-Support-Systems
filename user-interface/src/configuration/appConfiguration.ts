@@ -1,11 +1,12 @@
 function getAppConfiguration() {
-  const config = window.CAMS_CONFIGURATION;
+  const config = window.CAMS_CONFIGURATION as Record<string, string | undefined>;
   return {
     basePath: config?.CAMS_BASE_PATH,
     serverHostName: config?.CAMS_SERVER_HOSTNAME,
     serverPort: config?.CAMS_SERVER_PORT,
     serverProtocol: config?.CAMS_SERVER_PROTOCOL,
     featureFlagClientId: config?.CAMS_FEATURE_FLAG_CLIENT_ID,
+    featureFlagsMode: config?.CAMS_FEATURE_FLAGS_MODE,
     launchDarklyEnv: config?.CAMS_LAUNCH_DARKLY_ENV,
     applicationInsightsConnectionString: config?.CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING,
     useFakeApi: config?.CAMS_USE_FAKE_API?.toLowerCase() === 'true',
