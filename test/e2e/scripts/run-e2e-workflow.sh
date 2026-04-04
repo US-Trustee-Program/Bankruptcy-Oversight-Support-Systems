@@ -56,6 +56,12 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
+# Load environment variables from .env
+set -a
+# shellcheck disable=SC1091
+source .env
+set +a
+
 # Track overall success
 TESTS_PASSED=false
 CLEANUP_NEEDED=false
@@ -66,8 +72,10 @@ cleanup() {
     if [ "$CLEANUP_NEEDED" = true ]; then
         echo ""
         echo -e "${BLUE}🧹 Tearing down services...${NC}"
-        # Suppress errors if containers are already stopped
-        podman-compose down 2>/dev/null || true
+        for container in cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e cams-playwright-e2e; do
+            podman rm -f "$container" 2>/dev/null || true
+        done
+        podman network rm cams-e2e 2>/dev/null || true
         echo -e "${GREEN}✅ Services stopped${NC}"
     fi
 }
@@ -99,14 +107,23 @@ fi
 
 # Build service images (thin layers on top of built — only CMD/WORKDIR)
 echo "Building service images..."
-podman-compose build backend frontend playwright
+podman build -t e2e_backend:latest -f Dockerfile.backend ../../
+podman build -t e2e_frontend:latest -f Dockerfile.frontend ../../
+podman build -t e2e_playwright:latest -f Dockerfile.playwright ../../
 echo ""
 echo -e "${GREEN}✅ Images built${NC}"
 echo ""
 
-# Start MongoDB, SQL Server, backend, and frontend services
-echo "Starting MongoDB, SQL Server, backend, and frontend services..."
-podman-compose up -d mongodb sqlserver backend frontend > /dev/null
+# Force-remove any stale named containers before starting fresh
+echo -e "${BLUE}🧹 Clearing any stale containers...${NC}"
+for container in cams-azurite-e2e cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e cams-playwright-e2e; do
+    podman rm -f "$container" 2>/dev/null || true
+done
+echo ""
+
+# Start all services (azurite must be healthy before backend starts)
+echo "Starting services..."
+podman-compose up -d azurite mongodb sqlserver backend frontend > /dev/null
 CLEANUP_NEEDED=true
 echo ""
 echo -e "${GREEN}✅ Services started${NC}"
@@ -147,6 +164,11 @@ if [ $WAIT_COUNT -ge $MAX_WAIT ]; then
     echo ""
 fi
 
+# TEMPORARY: Log frontend startup output to verify envToConfig.js ran correctly
+echo -e "${BLUE}🔍 Frontend container logs (last 20 lines):${NC}"
+podman logs cams-frontend-e2e 2>&1 | tail -20
+echo ""
+
 # Step 2.5: Clear and seed databases (optional)
 if [ "$RESEED_DB" = true ]; then
     echo -e "${BLUE}🌱 Clearing and seeding E2E databases...${NC}"
@@ -156,7 +178,7 @@ if [ "$RESEED_DB" = true ]; then
     echo "Seeding MongoDB..."
     # Run seed script from playwright container which has full codebase
     # Override MONGO_CONNECTION_STRING to use localhost (host network mode)
-    if podman-compose run --rm \
+    if podman-compose run --rm --no-deps \
       -e MONGO_CONNECTION_STRING="mongodb://localhost:27017/cams-e2e?retrywrites=false" \
       -e MSSQL_HOST=localhost \
       playwright npm run seed; then
@@ -169,10 +191,10 @@ if [ "$RESEED_DB" = true ]; then
 
     # Seed SQL Server
     echo "Seeding SQL Server..."
-    if podman-compose run --rm \
+    if podman-compose run --rm --no-deps \
       -e MSSQL_HOST=localhost \
       -e MSSQL_USER=sa \
-      -e MSSQL_PASS=YourStrong!Passw0rd \
+      -e MSSQL_PASS="${MSSQL_PASS}" \
       -e MSSQL_DATABASE_DXTR=CAMS_E2E \
       -e MSSQL_ENCRYPT=false \
       -e MSSQL_TRUST_UNSIGNED_CERT=true \
@@ -198,15 +220,23 @@ fi
 # and load data pages into the buffer pool before Playwright starts.
 echo -e "${BLUE}🔥 Step 2.7: Warming up SQL Server plan cache...${NC}"
 echo ""
-podman-compose run --rm \
+podman-compose run --rm --no-deps \
   -e MSSQL_HOST=localhost \
   -e MSSQL_USER=sa \
-  -e MSSQL_PASS=YourStrong\!Passw0rd \
+  -e MSSQL_PASS="${MSSQL_PASS}" \
   -e MSSQL_DATABASE_DXTR=CAMS_E2E \
   -e MSSQL_ENCRYPT=false \
   -e MSSQL_TRUST_UNSIGNED_CERT=true \
   playwright npx tsx ./scripts/warmup-sqlserver.ts 2>/dev/null || true
 echo -e "${GREEN}✅ SQL Server warmed up${NC}"
+echo ""
+
+# TEMPORARY: Check container states before running tests
+echo -e "${BLUE}🔍 Container states before test run:${NC}"
+podman ps -a --filter "name=cams-" --format "table {{.Names}}\t{{.Status}}"
+echo ""
+echo -e "${BLUE}🔍 SQL Server container logs (last 20 lines):${NC}"
+podman logs cams-sqlserver-e2e 2>&1 | tail -20
 echo ""
 
 # Step 3: Run tests
@@ -218,7 +248,7 @@ echo ""
 # Capture to a temp file so we can parse the summary counts afterward.
 TEST_OUTPUT_FILE=$(mktemp)
 set +e
-podman-compose run --rm playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
+podman-compose run --rm --no-deps playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
 TEST_EXIT_CODE=${PIPESTATUS[0]}
 set -e
 TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")

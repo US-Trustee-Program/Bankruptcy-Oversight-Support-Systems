@@ -5,4 +5,4 @@ WORKDIR /app/backend/function-apps/api
 
 EXPOSE 7071
 
-CMD ["func", "start", "--javascript", "--port", "7071", "--host", "0.0.0.0"]
+CMD ["func", "start", "--javascript", "--port", "7071", "--host", "0.0.0.0", "--cors", "*"]

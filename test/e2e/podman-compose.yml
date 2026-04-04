@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  # Azure Storage emulator (required for Azure Functions runtime health)
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: cams-azurite-e2e
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    networks:
+      - cams-e2e
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "10000"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
   # MongoDB (compatible with Cosmos DB MongoDB API)
   mongodb:
     image: mongo:7.0
@@ -28,7 +45,7 @@ services:
       - "1433:1433"
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+      - MSSQL_SA_PASSWORD=${MSSQL_PASS}
       - MSSQL_PID=Developer
     volumes:
       - ./sqlserver-data:/var/opt/mssql
@@ -66,7 +83,10 @@ services:
       - MSSQL_ENCRYPT=${MSSQL_ENCRYPT}
       - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
       - SLOT_NAME=${SLOT_NAME}
+      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiqIkEl+pA==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;
     depends_on:
+      azurite:
+        condition: service_healthy
       mongodb:
         condition: service_healthy
       sqlserver:
@@ -89,11 +109,12 @@ services:
       - DOTENV_QUIET=true
       - CAMS_PA11Y=false
       - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
-      - CAMS_LOGIN_PROVIDER_URL=${CAMS_LOGIN_PROVIDER_URL}
-      - CAMS_LOGIN_CLIENT_ID=${CAMS_LOGIN_CLIENT_ID}
-      - CAMS_LOGIN_PROVIDER_PARAMS=${CAMS_LOGIN_PROVIDER_PARAMS}
+      - CAMS_LOGIN_PROVIDER_CONFIG=${CAMS_LOGIN_PROVIDER_CONFIG}
       - CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING=
-      - CAMS_API_BASE_URL=http://backend:7071
+      - CAMS_SERVER_HOSTNAME=localhost
+      - CAMS_SERVER_PORT=7071
+      - CAMS_SERVER_PROTOCOL=http
+      - CAMS_BASE_PATH=/api
       - SLOT_NAME=${SLOT_NAME}
     depends_on:
       - backend

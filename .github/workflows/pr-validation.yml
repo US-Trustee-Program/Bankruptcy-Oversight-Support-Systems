@@ -1,13 +1,12 @@
-name: Pull Request Validation
+name: Pull Request E2E Validation
 
 on:
   pull_request:
     branches:
-      - main-copy-for-testing  # Testing branch (change to 'main' after validation)
+      - main
     types:
       - ready_for_review  # When PR moved from draft to ready
-      - labeled           # When any label is added
-      - synchronize       # When new commits pushed (gated by label check)
+      - labeled           # When run-e2e-tests label is added
     paths-ignore:
       - 'docs/**'
       - '*.md'
@@ -18,108 +17,76 @@ concurrency:
   cancel-in-progress: false  # Queue PRs, don't cancel
 
 jobs:
-  # Fast checks run on every trigger
   setup:
     name: Setup
+    # Only run if explicitly requested via label or ready_for_review
+    if: |
+      github.event.action == 'ready_for_review' ||
+      contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')
     uses: ./.github/workflows/reusable-build-info.yml
     secrets: inherit # pragma: allowlist secret
     with:
       environment: 'Develop'  # Always use Develop for PRs
+      branchNameOverride: ${{ github.head_ref }}  # Use source branch for resource naming
 
-  accessibility-test:
-    uses: ./.github/workflows/reusable-accessibility.yml
-    with:
-      path: user-interface
-      node-version: ${{ vars.NODE_VERSION }}
-
-  unit-test-frontend:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: user-interface
-      node-version: ${{ vars.NODE_VERSION }}
-
-  unit-test-backend:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: backend
-      node-version: ${{ vars.NODE_VERSION }}
-
-  unit-test-common:
-    uses: ./.github/workflows/reusable-unit-test.yml
-    with:
-      path: common
-      node-version: ${{ vars.NODE_VERSION }}
-
-  knip:
-    uses: ./.github/workflows/reusable-knip.yml
-    with:
-      node-version: ${{ vars.NODE_VERSION }}
-
-  security-scan:
-    name: Security
-    uses: ./.github/workflows/sub-security-scan.yml
-    secrets: inherit # pragma: allowlist secret
-
-  build:
-    name: Build
+  run-e2e-tests:
     needs: [setup]
-    uses: ./.github/workflows/sub-build.yml
-    secrets: inherit # pragma: allowlist secret
-    with:
-      nodeVersion: ${{ vars.NODE_VERSION }}
-      camsServerPort: ${{ vars.CAMS_SERVER_PORT }}
-      camsServerProtocol: ${{ vars.CAMS_SERVER_PROTOCOL }}
-      camsBasePath: ${{ vars.CAMS_BASE_PATH }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
-      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
-      environment: ${{ needs.setup.outputs.ghaEnvironment }}
-      launchDarklyEnvironment: ${{ vars.CAMS_LAUNCH_DARKLY_ENV }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      slotName: ${{ needs.setup.outputs.slotName }}
+    runs-on: ubuntu-latest
+    environment: Develop
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
-  # E2E deployment and tests only run when explicitly requested
-  deploy-pr-code:
-    name: Deploy PR to Staging Slot
-    needs:
-      [
-        setup,
-        build,
-        accessibility-test,
-        unit-test-frontend,
-        unit-test-backend,
-        unit-test-common,
-        security-scan,
-        knip,
-      ]
-    # Only deploy if: (1) PR has run-e2e-tests label, OR (2) event is ready_for_review
-    if: |
-      github.event.action == 'ready_for_review' ||
-      contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')
-    uses: ./.github/workflows/sub-deploy-code-slot.yml
-    with:
-      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
-      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      environmentHash: ${{ needs.setup.outputs.environmentHash }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-      initialDeployment: 'false'  # Never initial deployment for PRs
-    secrets: inherit # pragma: allowlist secret
+      - name: Setup Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '20'
+          cache: 'npm'
 
-  execute-pr-e2e:
-    name: E2E Tests
-    needs: [setup, deploy-pr-code]
-    uses: ./.github/workflows/reusable-e2e.yml
-    with:
-      apiFunctionName: ${{ needs.setup.outputs.apiFunctionName }}
-      dataflowsFunctionName: ${{ needs.setup.outputs.dataflowsFunctionName }}
-      slotName: ${{ needs.setup.outputs.slotName }}
-      webappName: ${{ needs.setup.outputs.webappName }}
-      stackName: ${{ needs.setup.outputs.stackName }}
-      azResourceGrpAppEncrypted: ${{ needs.setup.outputs.azResourceGrpAppEncrypted }}
-      ghaEnvironment: ${{ needs.setup.outputs.ghaEnvironment }}
-      branchHashId: ${{ needs.setup.outputs.environmentHash }}
-    secrets: inherit # pragma: allowlist secret
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up E2E environment
+        working-directory: test/e2e
+        run: |
+          echo "TARGET_HOST=http://localhost:3000" > .env
+          echo "CAMS_LOGIN_PROVIDER=okta" >> .env
+          echo "CAMS_LOGIN_PROVIDER_CONFIG=${{ vars.CAMS_LOGIN_PROVIDER_CONFIG }}" >> .env
+          echo "OKTA_USER_NAME=${{ secrets.OKTA_USER_NAME }}" >> .env
+          echo "OKTA_PASSWORD=${{ secrets.OKTA_PASSWORD }}" >> .env
+          echo "COSMOS_DATABASE_NAME=cams-e2e" >> .env
+          echo "MONGO_CONNECTION_STRING=mongodb://mongodb:27017/cams-e2e?retrywrites=false" >> .env
+          echo "DATABASE_MOCK=false" >> .env
+          echo "MSSQL_HOST=sqlserver" >> .env
+          echo "MSSQL_DATABASE=" >> .env
+          echo "MSSQL_DATABASE_DXTR=CAMS_E2E" >> .env
+          echo "MSSQL_USER=sa" >> .env
+          echo "MSSQL_PASS=${{ secrets.MSSQL_PASS }}" >> .env
+          echo "MSSQL_SA_PASSWORD=${{ secrets.MSSQL_PASS }}" >> .env
+          echo "MSSQL_ENCRYPT=false" >> .env
+          echo "MSSQL_TRUST_UNSIGNED_CERT=true" >> .env
+          echo "SLOT_NAME=local" >> .env
+
+      - name: Install podman and podman-compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman podman-compose
+
+      - name: Run E2E Tests
+        run: npm run test:e2e -- --reseed
+
+      - name: Upload Playwright Report
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        if: always()
+        with:
+          name: playwright-report
+          path: test/e2e/playwright-report/
+          retention-days: 30
+
+      - name: Upload Backend Logs
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        if: always()
+        with:
+          name: backend-logs
+          path: test/e2e/backend-logs/
+          retention-days: 7
