@@ -6,13 +6,23 @@ import DataGenerationUtils from './data-generation-utils';
 
 async function getCasesFromDxtr(appContext: ApplicationContext) {
   const casesGateway = factory.getCasesGateway(appContext);
+  const limit = 60;
   const predicate: CasesSearchPredicate = {
-    limit: 60,
+    limit,
     offset: 0,
     chapters: ['15'],
     divisionCodes: ['081'],
   };
   const dxtrCases = await casesGateway.searchCases(appContext, predicate);
+
+  dxtrCases.slice = (start?: number, end?: number) => {
+    if (end !== undefined && end > limit) {
+      throw new Error(
+        `Slice end index (${end}) exceeds the fetch limit (${limit}). Please increase the "limit" to ${end} or greater.`,
+      );
+    }
+    return Array.prototype.slice.call(dxtrCases, start, end);
+  };
 
   return dxtrCases;
 }
