@@ -29,6 +29,7 @@ import {
   calculateAddressScore,
 } from './trustee-match.helpers';
 import { AppointmentStatus } from '@common/cams/trustees';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
@@ -242,6 +243,56 @@ async function upsertMatchVerification(
   return false;
 }
 
+async function handleInactivePerfectMatch(
+  context: ApplicationContext,
+  verificationRepo: TrusteeMatchVerificationRepository,
+  event: TrusteeAppointmentSyncEvent,
+  trusteeId: string,
+  trusteeAppointments: TrusteeAppointment[],
+  inactiveMatch: TrusteeAppointment,
+  scenarioDistribution: ScenarioDistribution,
+  audit: MatchAuditEntry,
+): Promise<void> {
+  const trusteesRepo = factory.getTrusteesRepository(context);
+  const trustee = await trusteesRepo.read(trusteeId);
+  const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
+  const candidateScore: CandidateScore = {
+    trusteeId,
+    trusteeName: trustee.name,
+    totalScore: addressScore * 0.2 + 100 * 0.4 + 100 * 0.4,
+    addressScore,
+    districtDivisionScore: 100,
+    chapterScore: 100,
+    address: trustee.public.address,
+    phone: trustee.public.phone,
+    email: trustee.public.email,
+    appointments: trusteeAppointments,
+  };
+
+  const isReVerification = await upsertMatchVerification(
+    verificationRepo,
+    event,
+    TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
+    [candidateScore],
+    inactiveMatch.status,
+  );
+  if (isReVerification) scenarioDistribution.reVerificationCount++;
+  scenarioDistribution.perfectMatchInactiveCount++;
+
+  context.logger.info(
+    MODULE_NAME,
+    `Perfect match with inactive status (${inactiveMatch.status}): case ${event.caseId} trustee ${trusteeId} saved for verification`,
+  );
+
+  audit.matchOutcome = 'inactive-perfect-match';
+  audit.matchedTrusteeId = trusteeId;
+  audit.appointmentStatus = inactiveMatch.status;
+  audit.scoringBreakdown = {
+    districtDivisionScore: 100,
+    chapterScore: 100,
+  };
+}
+
 /**
  * Process trustee appointment events by:
  * 1. Matching each DXTR trustee to a CAMS trustee by name
@@ -311,46 +362,16 @@ async function processAppointments(
         );
 
         if (inactiveMatch) {
-          const trustee = await trusteesRepo.read(trusteeId);
-          const addressScore = calculateAddressScore(
-            event.dxtrTrustee.legacy,
-            trustee.public.address,
-          );
-          const candidateScore: CandidateScore = {
-            trusteeId,
-            trusteeName: trustee.name,
-            totalScore: addressScore * 0.2 + 100 * 0.4 + 100 * 0.4,
-            addressScore,
-            districtDivisionScore: 100,
-            chapterScore: 100,
-            address: trustee.public.address,
-            phone: trustee.public.phone,
-            email: trustee.public.email,
-            appointments: trusteeAppointments,
-          };
-
-          const isReVerification = await upsertMatchVerification(
+          await handleInactivePerfectMatch(
+            context,
             verificationRepo,
             event,
-            TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
-            [candidateScore],
-            inactiveMatch.status,
+            trusteeId,
+            trusteeAppointments,
+            inactiveMatch,
+            scenarioDistribution,
+            audit,
           );
-          if (isReVerification) scenarioDistribution.reVerificationCount++;
-          scenarioDistribution.perfectMatchInactiveCount++;
-
-          context.logger.info(
-            MODULE_NAME,
-            `Perfect match with inactive status (${inactiveMatch.status}): case ${event.caseId} trustee ${trusteeId} saved for verification`,
-          );
-
-          audit.matchOutcome = 'inactive-perfect-match';
-          audit.matchedTrusteeId = trusteeId;
-          audit.appointmentStatus = inactiveMatch.status;
-          audit.scoringBreakdown = {
-            districtDivisionScore: 100,
-            chapterScore: 100,
-          };
           continue;
         }
 
