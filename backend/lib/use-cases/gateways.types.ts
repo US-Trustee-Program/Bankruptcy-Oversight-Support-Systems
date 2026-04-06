@@ -557,3 +557,7 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }
+
+export type ObjectStorageGateway = {
+  readObject(containerName: string, objectName: string): Promise<string | null>;
+};

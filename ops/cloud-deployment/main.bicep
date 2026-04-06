@@ -121,6 +121,9 @@ param e2eDatabaseName string = cosmosDatabaseName
 @description('Comma delimited list of data flow names to enable.')
 param enabledDataflows string = ''
 
+@description('Name of the blob container used for migration and operational artifacts.')
+param objectContainerName string = 'migration-files'
+
 param gitSha string
 
 var webappTags = {
@@ -307,6 +310,7 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     isUstpDeployment: isUstpDeployment
     mssqlRequestTimeout: mssqlRequestTimeout
     enabledDataflows: enabledDataflows
+    objectContainerName: objectContainerName
     gitSha: gitSha
     tags: dataflowsTags
   }

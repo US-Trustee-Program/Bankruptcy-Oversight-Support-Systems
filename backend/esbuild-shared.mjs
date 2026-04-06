@@ -9,6 +9,7 @@ export const EXTERNAL_DEPENDENCIES = [
   // All third-party packages - let Azure install them on Linux during deployment
   // This avoids platform-specific binary issues with native modules
   '@azure/functions',
+  '@azure/storage-blob',
   'mssql',
   'mongodb',
   'applicationinsights',
