@@ -139,6 +139,34 @@ export function isPerfectMatch(
 }
 
 /**
+ * Finds a deterministic inactive appointment matching court + division + chapter.
+ * Where the status is NOT 'active'. Used to detect the "perfect match
+ * but inactive status" scenario. If multiple inactive appointments match,
+ * the most recently created one is returned to ensure predictable, auditable behavior.
+ * Returns the matching appointment (for status extraction), or undefined.
+ */
+export function findInactivePerfectMatch(
+  appointments: TrusteeAppointment[],
+  courtId: string,
+  divisionCode: string,
+  chapter: string,
+): TrusteeAppointment | undefined {
+  const normalizedChapter = normalizeChapter(chapter);
+  const matches = appointments.filter(
+    (a) =>
+      a.status !== 'active' &&
+      a.courtId === courtId &&
+      a.divisionCode === divisionCode &&
+      normalizeChapter(a.chapter) === normalizedChapter,
+  );
+  if (matches.length === 0) return undefined;
+  const sorted = matches.slice().sort((a, b) => {
+    return new Date(b.createdOn).getTime() - new Date(a.createdOn).getTime();
+  });
+  return sorted[0];
+}
+
+/**
  * Calculates district/division match score for a trustee.
  * Scoring:
  * - Exact court + division match with active appointment: 100 points

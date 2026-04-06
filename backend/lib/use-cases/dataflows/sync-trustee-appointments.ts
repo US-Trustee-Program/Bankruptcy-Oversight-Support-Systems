@@ -24,8 +24,12 @@ import {
   matchTrusteeByName,
   resolveTrusteeWithFuzzyMatching,
   isPerfectMatch,
+  findInactivePerfectMatch,
   calculateCandidateScore,
+  calculateAddressScore,
 } from './trustee-match.helpers';
+import { AppointmentStatus } from '@common/cams/trustees';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { randomUUID } from 'node:crypto';
 
 const MODULE_NAME = 'SYNC-TRUSTEE-APPOINTMENTS-USE-CASE';
@@ -36,6 +40,7 @@ type ScenarioDistribution = {
   highConfidenceMatchCount: number;
   noMatchCount: number;
   multipleMatchCount: number;
+  perfectMatchInactiveCount: number;
   reVerificationCount: number;
 };
 
@@ -48,6 +53,7 @@ type MatchAuditEntry = {
     | 'high-confidence'
     | 'no-match'
     | 'multiple-match'
+    | 'inactive-perfect-match'
     | 'error';
   matchedTrusteeId: string | null;
   scoringBreakdown: { districtDivisionScore: number; chapterScore: number } | null;
@@ -90,7 +96,8 @@ function classifyMatchOutcome(
 
   if (
     mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch ||
-    mismatchReason === TrusteeAppointmentSyncErrorCode.ImperfectMatch
+    mismatchReason === TrusteeAppointmentSyncErrorCode.ImperfectMatch ||
+    mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus
   ) {
     return {
       ...event,
@@ -201,6 +208,7 @@ async function upsertMatchVerification(
   event: TrusteeAppointmentSyncEvent,
   mismatchReason: TrusteeAppointmentSyncErrorCode,
   matchCandidates: CandidateScore[],
+  inactiveAppointmentStatus?: AppointmentStatus,
 ): Promise<boolean> {
   const existing = await verificationRepo.getVerification(event.caseId);
   if (existing && existing.status !== 'pending') {
@@ -211,6 +219,7 @@ async function upsertMatchVerification(
       ...existing,
       mismatchReason,
       matchCandidates,
+      inactiveAppointmentStatus,
       updatedOn: new Date().toISOString(),
       updatedBy: SYSTEM_USER_REFERENCE,
     });
@@ -223,6 +232,7 @@ async function upsertMatchVerification(
         dxtrTrustee: event.dxtrTrustee,
         mismatchReason,
         matchCandidates,
+        inactiveAppointmentStatus,
         orderType: 'trustee-match',
         status: 'pending',
       },
@@ -231,6 +241,56 @@ async function upsertMatchVerification(
     await verificationRepo.upsertVerification(doc);
   }
   return false;
+}
+
+async function handleInactivePerfectMatch(
+  context: ApplicationContext,
+  verificationRepo: TrusteeMatchVerificationRepository,
+  event: TrusteeAppointmentSyncEvent,
+  trusteeId: string,
+  trusteeAppointments: TrusteeAppointment[],
+  inactiveMatch: TrusteeAppointment,
+  scenarioDistribution: ScenarioDistribution,
+  audit: MatchAuditEntry,
+): Promise<void> {
+  const trusteesRepo = factory.getTrusteesRepository(context);
+  const trustee = await trusteesRepo.read(trusteeId);
+  const addressScore = calculateAddressScore(event.dxtrTrustee.legacy, trustee.public.address);
+  const candidateScore: CandidateScore = {
+    trusteeId,
+    trusteeName: trustee.name,
+    totalScore: addressScore * 0.2 + 100 * 0.4 + 100 * 0.4,
+    addressScore,
+    districtDivisionScore: 100,
+    chapterScore: 100,
+    address: trustee.public.address,
+    phone: trustee.public.phone,
+    email: trustee.public.email,
+    appointments: trusteeAppointments,
+  };
+
+  const isReVerification = await upsertMatchVerification(
+    verificationRepo,
+    event,
+    TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
+    [candidateScore],
+    inactiveMatch.status,
+  );
+  if (isReVerification) scenarioDistribution.reVerificationCount++;
+  scenarioDistribution.perfectMatchInactiveCount++;
+
+  context.logger.info(
+    MODULE_NAME,
+    `Perfect match with inactive status (${inactiveMatch.status}): case ${event.caseId} trustee ${trusteeId} saved for verification`,
+  );
+
+  audit.matchOutcome = 'inactive-perfect-match';
+  audit.matchedTrusteeId = trusteeId;
+  audit.appointmentStatus = inactiveMatch.status;
+  audit.scoringBreakdown = {
+    districtDivisionScore: 100,
+    chapterScore: 100,
+  };
 }
 
 /**
@@ -255,6 +315,7 @@ async function processAppointments(
     highConfidenceMatchCount: 0,
     noMatchCount: 0,
     multipleMatchCount: 0,
+    perfectMatchInactiveCount: 0,
     reVerificationCount: 0,
   };
 
@@ -293,6 +354,27 @@ async function processAppointments(
         audit.matchedTrusteeId = trusteeId;
         audit.appointmentStatus = 'active';
       } else {
+        const inactiveMatch = findInactivePerfectMatch(
+          trusteeAppointments,
+          syncedCase.courtId,
+          syncedCase.courtDivisionCode,
+          syncedCase.chapter,
+        );
+
+        if (inactiveMatch) {
+          await handleInactivePerfectMatch(
+            context,
+            verificationRepo,
+            event,
+            trusteeId,
+            trusteeAppointments,
+            inactiveMatch,
+            scenarioDistribution,
+            audit,
+          );
+          continue;
+        }
+
         const trustee = await trusteesRepo.read(trusteeId);
         const candidateScore = calculateCandidateScore(
           context,

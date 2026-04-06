@@ -10,8 +10,9 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
+import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
 import { getCaseNumber, getCaseIdParts } from '@common/cams/cases';
-import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Api2 from '@/lib/models/api2';
 import TrusteeMatchRejectionModal, {
   TrusteeMatchRejectionModalImperative,
@@ -264,6 +265,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     );
   }
 
+  const caseLink = (
+    <NewTabLink to={`/case-detail/${order.caseId}`} label={getCaseNumber(order.caseId)} />
+  );
+
   return (
     <>
       <Accordion key={order.id} id={`order-list-${order.id}`} hidden={hidden}>
@@ -318,18 +323,33 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               Trustee{' '}
               {order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
                 ?.trusteeName ?? order.resolvedTrusteeId}{' '}
-              was appointed to case:{' '}
-              <NewTabLink to={`/case-detail/${order.caseId}`} label={getCaseNumber(order.caseId)} />
+              was appointed to case: {caseLink}
             </p>
           ) : (
             <>
-              <p className="problem-statement">
-                Trustee sent from the court does not match a CAMS Trustee for case:{' '}
-                <NewTabLink
-                  to={`/case-detail/${order.caseId}`}
-                  label={getCaseNumber(order.caseId)}
-                />
-              </p>
+              {order.mismatchReason ===
+              TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus ? (
+                <>
+                  <p className="problem-statement">
+                    Matched trustee has an inactive appointment status for case: {caseLink}
+                  </p>
+                  {order.inactiveAppointmentStatus && (
+                    <Alert
+                      id={`inactive-status-warning-${order.id}`}
+                      type={UswdsAlertStyle.Warning}
+                      title="Inactive Appointment Status"
+                      message={`The matched trustee's appointment status is ${formatAppointmentStatus(order.inactiveAppointmentStatus)}. Review the appointment details before confirming.`}
+                      show={true}
+                      inline={true}
+                      role="status"
+                    />
+                  )}
+                </>
+              ) : (
+                <p className="problem-statement">
+                  Trustee sent from the court does not match a CAMS Trustee for case: {caseLink}
+                </p>
+              )}
 
               <h3>Trustee Information Sent By Court</h3>
               <div className="trustee-data-grid trustee-info-grid" data-testid="dxtr-trustee-info">

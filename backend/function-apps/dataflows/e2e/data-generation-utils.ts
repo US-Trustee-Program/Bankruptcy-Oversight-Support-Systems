@@ -43,7 +43,7 @@ async function seedCosmosE2eDatabase(context: ApplicationContext) {
   const userGroups = await generateUserGroups();
   await insertUserGroups(context, userGroups);
 
-  const verifications = generateTrusteeMatchVerifications(dxtrCases.slice(45, 51));
+  const verifications = generateTrusteeMatchVerifications(dxtrCases.slice(45, 52));
   await insertTrusteeMatchVerifications(context, verifications);
 }
 
@@ -181,7 +181,34 @@ function generateTrusteeMatchVerifications(cases: CaseBasics[]): TrusteeMatchVer
     };
   });
 
-  const approvedCase = cases[4] ?? cases[0];
+  const inactiveCase = cases[4] ?? cases[0];
+  const inactiveItem: TrusteeMatchVerification = {
+    id: 'e2e-trustee-match-verification-inactive',
+    documentType: 'TRUSTEE_MATCH_VERIFICATION' as const,
+    orderType: 'trustee-match' as const,
+    caseId: inactiveCase.caseId,
+    courtId: inactiveCase.courtId,
+    status: 'pending' as const,
+    mismatchReason: TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
+    inactiveAppointmentStatus: 'voluntarily-suspended',
+    dxtrTrustee: { fullName: 'E2E Dxtr Trustee Inactive' },
+    matchCandidates: [
+      {
+        trusteeId: 'e2e-trustee-candidate-inactive',
+        trusteeName: 'E2E Trustee Inactive',
+        totalScore: 100,
+        addressScore: 100,
+        districtDivisionScore: 100,
+        chapterScore: 100,
+      },
+    ],
+    updatedOn: isoNow,
+    updatedBy: auditUser,
+    createdOn: isoNow,
+    createdBy: auditUser,
+  };
+
+  const approvedCase = cases[5] ?? cases[0];
   const approvedItem: TrusteeMatchVerification = {
     id: 'e2e-trustee-match-verification-approved',
     documentType: 'TRUSTEE_MATCH_VERIFICATION' as const,
@@ -208,7 +235,7 @@ function generateTrusteeMatchVerifications(cases: CaseBasics[]): TrusteeMatchVer
     createdBy: auditUser,
   };
 
-  const rejectedCase = cases[5] ?? cases[0];
+  const rejectedCase = cases[6] ?? cases[0];
   const rejectedItem: TrusteeMatchVerification = {
     id: 'e2e-trustee-match-verification-rejected',
     documentType: 'TRUSTEE_MATCH_VERIFICATION' as const,
@@ -235,7 +262,7 @@ function generateTrusteeMatchVerifications(cases: CaseBasics[]): TrusteeMatchVer
     createdBy: auditUser,
   };
 
-  return [...pendingItems, approvedItem, rejectedItem];
+  return [...pendingItems, inactiveItem, approvedItem, rejectedItem];
 }
 
 const DataGenerationUtils = {

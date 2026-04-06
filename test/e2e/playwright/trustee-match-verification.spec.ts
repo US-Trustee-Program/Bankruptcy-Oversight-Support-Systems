@@ -1,6 +1,7 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 import { TrusteeMatchVerification } from '../../../common/src/cams/trustee-match-verification';
+import { TrusteeAppointmentSyncErrorCode } from '../../../common/src/cams/dataflow-events';
 import { logout } from './login/login-helpers';
 
 const timeoutOption = { timeout: 30000 };
@@ -101,5 +102,39 @@ test.describe('Trustee Match Verification', () => {
     const content = page.getByTestId(`accordion-content-order-list-${rejectedItem!.id}`);
     await expect(content).toBeVisible(timeoutOption);
     await expect(content.getByTestId('reject-button')).not.toBeAttached();
+  });
+
+  test('should show distinct problem statement for inactive match verification', async ({
+    page,
+  }) => {
+    const inactiveItem = verificationItems.find(
+      (v) =>
+        v.orderType === 'trustee-match' &&
+        v.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
+    );
+    expect(inactiveItem).not.toBeFalsy();
+
+    await page.getByTestId(`accordion-button-order-list-${inactiveItem!.id}`).click();
+
+    const content = page.getByTestId(`accordion-content-order-list-${inactiveItem!.id}`);
+    await expect(content).toBeVisible(timeoutOption);
+    await expect(content).toContainText('inactive appointment status');
+  });
+
+  test('should show warning alert with inactive status for inactive match verification', async ({
+    page,
+  }) => {
+    const inactiveItem = verificationItems.find(
+      (v) =>
+        v.orderType === 'trustee-match' &&
+        v.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
+    );
+    expect(inactiveItem).not.toBeFalsy();
+
+    await page.getByTestId(`accordion-button-order-list-${inactiveItem!.id}`).click();
+
+    const alert = page.getByTestId(`alert-inactive-status-warning-${inactiveItem!.id}`);
+    await expect(alert).toBeVisible(timeoutOption);
+    await expect(alert).toContainText('Voluntarily Suspended');
   });
 });
