@@ -6,7 +6,8 @@
   },
   "workspaces": {
     ".": {
-      "ignore": []
+      "ignore": [],
+      "ignoreFiles": ["test/migration/**"]
     },
     "backend": {
       "entry": [
@@ -75,7 +76,6 @@
     "buffer",
     "ts-node",
     "@eslint/js",
-    "@typescript-eslint/eslint-plugin",
     "@typescript-eslint/parser",
     "eslint-config-prettier",
     "eslint-plugin-import",
