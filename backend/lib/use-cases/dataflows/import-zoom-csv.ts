@@ -5,6 +5,7 @@ import { ZoomInfo } from '@common/cams/trustees';
 import { CamsUserReference } from '@common/cams/users';
 import { normalizeName } from './trustee-match.helpers';
 import ModuleNames from '../../../function-apps/dataflows/module-names';
+import { ZoomCsvFailedRow, ZoomCsvImportState } from '../gateways.types';
 
 const MODULE_NAME = ModuleNames.IMPORT_ZOOM_CSV;
 const ZOOM_CSV_BLOB_NAME = 'zoom-info.tsv';
@@ -116,6 +117,8 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
   const rows = parseZoomCsvFile(content);
   result.total = rows.length;
 
+  const failedRows: ZoomCsvFailedRow[] = [];
+
   for (const row of rows) {
     const outcome = await processZoomCsvRow(context, row);
     result[
@@ -127,8 +130,22 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
             ? 'ambiguous'
             : 'errors'
     ]++;
+    if (outcome !== 'matched') {
+      failedRows.push({ ...row, reason: outcome });
+    }
   }
 
   context.logger.info(MODULE_NAME, `Import complete: ${JSON.stringify(result)}`);
+
+  const stateRepo = factory.getRuntimeStateRepository<ZoomCsvImportState>(context);
+  const report: ZoomCsvImportState = {
+    documentType: 'ZOOM_CSV_IMPORT_STATE',
+    importedAt: new Date().toISOString(),
+    ...result,
+    failedRows,
+  };
+  await stateRepo.upsert(report);
+  context.logger.info(MODULE_NAME, `Report saved: ${failedRows.length} failed rows`);
+
   return result;
 }
