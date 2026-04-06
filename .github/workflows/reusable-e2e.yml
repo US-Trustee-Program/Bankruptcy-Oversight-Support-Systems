@@ -73,38 +73,34 @@ jobs:
           npm ci
           npx playwright install chromium msedge
 
-      - name: Set Dataflow Import Endpoint
-        run: |
-          # Build the endpoint for the dataflow import using workflow inputs
-          if [[ "${{ inputs.slotName }}" == "production" ]]; then
-            echo "DATAFLOW_IMPORT_URL=https://${{ inputs.dataflowsFunctionName }}.azurewebsites.us/import/load-e2e-db" >> $GITHUB_ENV
-          else
-            echo "DATAFLOW_IMPORT_URL=https://${{ inputs.dataflowsFunctionName }}-${{ inputs.slotName }}.azurewebsites.us/import/load-e2e-db" >> $GITHUB_ENV
-          fi
-
       - name: Seed e2e database
         run: |
+          # Seed MongoDB
           e2eDatabaseName="${{ secrets.AZ_COSMOS_DATABASE_NAME }}-e2e"
           if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
-            echo "Adding suffix to database name"
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
 
-          export CAMS_LOGIN_PROVIDER=${{ secrets.CAMS_LOGIN_PROVIDER }}
-          export MSSQL_HOST=${{ secrets.MSSQL_HOST }}
-          export MSSQL_DATABASE_DXTR=${{ secrets.MSSQL_DATABASE_DXTR }}
-          export MSSQL_USER=${{ secrets.MSSQL_USER }}
-          export MSSQL_PASS=${{ secrets.MSSQL_PASS }}
-          export MSSQL_ENCRYPT=true
-          export MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.MSSQL_TRUST_UNSIGNED_CERT }}
           export MONGO_CONNECTION_STRING="${{ secrets.MONGO_CONNECTION_STRING }}"
           export COSMOS_DATABASE_NAME="${e2eDatabaseName}"
-          export DATABASE_MOCK=false
-          export ADMIN_KEY="${{ secrets.ADMIN_KEY }}"
 
-          echo "Seeding E2E CosmosDB..."
+          echo "Seeding E2E MongoDB..."
+          cd ./test/e2e && npm run seed
 
-          cd ./test/e2e && npm run load-data:ci
+          # Seed SQL Server
+          e2eSqlDatabaseName="CAMS_E2E"
+          if [[ ${{ inputs.ghaEnvironment }} != "Main-Gov" ]]; then
+            e2eSqlDatabaseName="CAMS_E2E-${{ inputs.branchHashId }}"
+          fi
+
+          export MSSQL_HOST=${{ secrets.MSSQL_HOST }}
+          export MSSQL_DATABASE_DXTR="${e2eSqlDatabaseName}"
+          export MSSQL_CLIENT_ID=${{ secrets.MSSQL_CLIENT_ID }}
+          export MSSQL_ENCRYPT=true
+          export MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.MSSQL_TRUST_UNSIGNED_CERT }}
+
+          echo "Seeding E2E SQL Server..."
+          cd ./test/e2e && npm run seed:sql
 
       - name: Run E2E Tests
         id: e2eTests

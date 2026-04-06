@@ -28,6 +28,12 @@ Help()
   echo "                                Can be set via DB_ACCOUNT environment variable."
   echo "  --db-resource-group=<rg>      Database resource group name. **REQUIRED**"
   echo "                                Can be set via DB_RESOURCE_GROUP environment variable."
+  echo "  --sql-server-name=<name>      SQL Server name for E2E database deletion."
+  echo "                                Can be set via SQL_SERVER_NAME environment variable."
+  echo "                                Optional - skips SQL database deletion if not provided."
+  echo "  --sql-resource-group=<rg>     SQL Server resource group name."
+  echo "                                Can be set via SQL_RESOURCE_GROUP environment variable."
+  echo "                                Optional - skips SQL database deletion if not provided."
   echo "  --network-resource-group=<rg> Network resource group name. **REQUIRED**"
   echo "                                Can be set via NETWORK_RESOURCE_GROUP_BASE environment variable."
   echo "  --analytics-resource-group=<rg> Analytics resource group name."
@@ -77,6 +83,14 @@ while [[ $# -gt 0 ]]; do
       db_rg="${1#*=}"
       shift
       ;;
+    --sql-server-name=*)
+      sql_server="${1#*=}"
+      shift
+      ;;
+    --sql-resource-group=*)
+      sql_rg="${1#*=}"
+      shift
+      ;;
     --network-resource-group=*)
       net_rg="${1#*=}"
       shift
@@ -109,6 +123,8 @@ done
   app_rg=${app_rg:-${APP_RESOURCE_GROUP_BASE:-}}
   db_account=${db_account:-${DB_ACCOUNT:-}}
   db_rg=${db_rg:-${DB_RESOURCE_GROUP:-}}
+  sql_server=${sql_server:-${SQL_SERVER_NAME:-}}
+  sql_rg=${sql_rg:-${SQL_RESOURCE_GROUP:-}}
   net_rg=${net_rg:-${NETWORK_RESOURCE_GROUP_BASE:-}}
   analytics_rg=${analytics_rg:-${ANALYTICS_RESOURCE_GROUP:-}}
   stack_name=${stack_name:-${STACK_NAME:-}}
@@ -162,6 +178,22 @@ if [[ "${dbExists}" == "true" ]]; then
   az cosmosdb mongodb database delete -g "${db_rg}" -a "${db_account}" -n "${e2e_db}" --yes
 elif [[ "${dbExists}" != "true" ]]; then
   echo "E2E database does not exist for branch has ${hash_id}"
+fi
+
+# Delete SQL E2E database if SQL server params provided
+if [[ -n "${sql_server:-}" && -n "${sql_rg:-}" ]]; then
+  e2e_sql_db="CAMS_E2E-${hash_id}"
+  echo "Checking for E2E SQL database ${e2e_sql_db}"
+  sqlDbExists=$(az sql db show -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --query id -o tsv 2>/dev/null || echo "")
+  if [[ -n "${sqlDbExists}" ]]; then
+    echo "Deleting E2E SQL database ${e2e_sql_db}"
+    az sql db delete -g "${sql_rg}" -s "${sql_server}" -n "${e2e_sql_db}" --yes
+    echo "Completed deleting E2E SQL database ${e2e_sql_db}"
+  else
+    echo "E2E SQL database ${e2e_sql_db} does not exist, skipping"
+  fi
+else
+  echo "Skipping SQL database deletion (sql-server-name or sql-resource-group not provided)"
 fi
 
 # Delete Log Analytics Workspace and associated storage account if they exist
