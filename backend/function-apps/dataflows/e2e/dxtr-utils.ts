@@ -7,7 +7,7 @@ import DataGenerationUtils from './data-generation-utils';
 async function getCasesFromDxtr(appContext: ApplicationContext) {
   const casesGateway = factory.getCasesGateway(appContext);
   const predicate: CasesSearchPredicate = {
-    limit: 50,
+    limit: 60,
     offset: 0,
     chapters: ['15'],
     divisionCodes: ['081'],
