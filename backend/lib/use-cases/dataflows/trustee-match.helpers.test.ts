@@ -10,6 +10,7 @@ import {
   calculateCandidateScore,
   resolveTrusteeWithFuzzyMatching,
   isPerfectMatch,
+  findInactivePerfectMatch,
 } from './trustee-match.helpers';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -1060,5 +1061,106 @@ describe('resolveTrusteeWithFuzzyMatching', () => {
         mismatchReason: 'NO_TRUSTEE_MATCH',
       },
     });
+  });
+});
+
+describe('findInactivePerfectMatch', () => {
+  test('should return undefined when all matching appointments are active', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '7', status: 'active' }),
+    ];
+    expect(findInactivePerfectMatch(appointments, '081', '1', '7')).toBeUndefined();
+  });
+
+  test('should return undefined when appointments array is empty', () => {
+    expect(findInactivePerfectMatch([], '081', '1', '7')).toBeUndefined();
+  });
+
+  test.each([
+    'inactive',
+    'voluntarily-suspended',
+    'involuntarily-suspended',
+    'deceased',
+    'resigned',
+    'terminated',
+    'removed',
+  ] as const)('should return appointment for non-active status: %s', (status) => {
+    const appointment = makeAppointment({
+      courtId: '081',
+      divisionCode: '1',
+      chapter: '7',
+      status,
+    });
+    const result = findInactivePerfectMatch([appointment], '081', '1', '7');
+    expect(result).toBe(appointment);
+  });
+
+  test('should return undefined when court does not match', () => {
+    const appointments = [
+      makeAppointment({ courtId: '082', divisionCode: '1', chapter: '7', status: 'inactive' }),
+    ];
+    expect(findInactivePerfectMatch(appointments, '081', '1', '7')).toBeUndefined();
+  });
+
+  test('should return undefined when division does not match', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '2', chapter: '7', status: 'inactive' }),
+    ];
+    expect(findInactivePerfectMatch(appointments, '081', '1', '7')).toBeUndefined();
+  });
+
+  test('should return undefined when chapter does not match', () => {
+    const appointments = [
+      makeAppointment({ courtId: '081', divisionCode: '1', chapter: '13', status: 'inactive' }),
+    ];
+    expect(findInactivePerfectMatch(appointments, '081', '1', '7')).toBeUndefined();
+  });
+
+  test('should normalize chapter before comparison', () => {
+    const appointment = makeAppointment({
+      courtId: '081',
+      divisionCode: '1',
+      chapter: '7',
+      status: 'inactive',
+    });
+    const result = findInactivePerfectMatch([appointment], '081', '1', '07');
+    expect(result).toBe(appointment);
+  });
+
+  test('should return an inactive match when multiple inactive appointments exist', () => {
+    const first = makeAppointment({
+      id: 'first',
+      courtId: '081',
+      divisionCode: '1',
+      chapter: '7',
+      status: 'inactive',
+    });
+    const second = makeAppointment({
+      id: 'second',
+      courtId: '081',
+      divisionCode: '1',
+      chapter: '7',
+      status: 'resigned',
+    });
+    const result = findInactivePerfectMatch([first, second], '081', '1', '7');
+    expect(result).toBeDefined();
+    expect(result!.status).not.toBe('active');
+  });
+
+  test('should return inactive match even when active non-matching appointments exist', () => {
+    const activeNonMatching = makeAppointment({
+      courtId: '082',
+      divisionCode: '2',
+      chapter: '13',
+      status: 'active',
+    });
+    const inactiveMatching = makeAppointment({
+      courtId: '081',
+      divisionCode: '1',
+      chapter: '7',
+      status: 'voluntarily-suspended',
+    });
+    const result = findInactivePerfectMatch([activeNonMatching, inactiveMatching], '081', '1', '7');
+    expect(result).toBe(inactiveMatching);
   });
 });
