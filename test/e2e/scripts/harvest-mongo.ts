@@ -25,10 +25,9 @@ config({ path: '.env', quiet: true });
 
 import { InvocationContext } from '@azure/functions';
 import ContextCreator from '../../../backend/function-apps/azure/application-context-creator';
-// @ts-expect-error - Files deleted in CAMS-723
-import { clearAllCollections } from '../../../backend/function-apps/dataflows/e2e/db-utils';
-// @ts-expect-error - Files deleted in CAMS-723
-import DataGenerationUtils from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
+// Files deleted in CAMS-723 - imports commented out to prevent knip errors
+// import { clearAllCollections } from '../../../backend/function-apps/dataflows/e2e/db-utils';
+// import DataGenerationUtils from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
 import { MongoClient } from 'mongodb';
 import { writeFileSync, mkdirSync } from 'fs';
 import { resolve } from 'path';
@@ -187,9 +186,11 @@ async function main() {
   if (!dumpOnly) {
     // Step 1: Clear and reseed MongoDB from DXTR
     console.log(`[${MODULE_NAME}] Clearing existing data...`);
+    // @ts-expect-error - Function deleted in CAMS-723, file is deprecated
     await clearAllCollections(context);
 
     console.log(`[${MODULE_NAME}] Seeding from DXTR SQL...`);
+    // @ts-expect-error - Function deleted in CAMS-723, file is deprecated
     await DataGenerationUtils.seedCosmosE2eDatabase(context);
     console.log(`[${MODULE_NAME}] ✓ MongoDB seeded`);
   } else {
