@@ -3,7 +3,7 @@ import CaseDetailTrusteeAndAssignedStaff, {
   CaseDetailTrusteeAndAssignedStaffProps,
 } from './CaseDetailTrusteeAndAssignedStaff';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { parsePhoneNumber } from '@common/phone-helper';
 import Actions from '@common/cams/actions';

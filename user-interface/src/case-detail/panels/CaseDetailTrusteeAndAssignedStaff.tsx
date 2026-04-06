@@ -13,7 +13,7 @@ import Actions from '@common/cams/actions';
 import { AttorneyUser } from '@common/cams/users';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import LegacyFormattedContact from '@/lib/components/cams/LegacyFormattedContact';
 import { useTrustee } from './useTrustee';
 import { TrusteeZoomInfo } from './TrusteeZoomInfo';

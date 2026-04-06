@@ -329,4 +329,194 @@ describe('Export and Load Case Tests', () => {
       expect(syncedCase.chapter).toBe('7');
     });
   });
+
+  describe('exportAndLoad - division change detection', () => {
+    test('should detect division change and set divisionChange on event', async () => {
+      const existingCase = MockData.getSyncedCase({
+        override: {
+          caseId: '081-24-12345',
+          dxtrId: '081-1234567',
+          courtId: '081',
+        },
+      });
+
+      const newCase = MockData.getCaseDetail({
+        override: {
+          caseId: '081-24-67890',
+          dxtrId: '081-1234567',
+          courtId: '081',
+        },
+      });
+
+      const events = [mockCaseSyncEvent({ caseId: newCase.caseId })];
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(newCase);
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findSyncedCaseByDxtrId')
+        .mockResolvedValue(existingCase);
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      const result = await ExportAndLoadCase.exportAndLoad(context, events);
+
+      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId);
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+      expect(result[0].divisionChange).toEqual({
+        orphanedCaseId: existingCase.caseId,
+        currentCaseId: newCase.caseId,
+      });
+      expect(result[0].error).toBeUndefined();
+    });
+
+    test('should not set divisionChange when no existing case found', async () => {
+      const newCase = MockData.getCaseDetail({
+        override: {
+          caseId: '081-24-67890',
+          dxtrId: '081-1234567',
+          courtId: '081',
+        },
+      });
+
+      const events = [mockCaseSyncEvent({ caseId: newCase.caseId })];
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(newCase);
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findSyncedCaseByDxtrId')
+        .mockResolvedValue(undefined);
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      const result = await ExportAndLoadCase.exportAndLoad(context, events);
+
+      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId);
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+      expect(result[0].divisionChange).toBeUndefined();
+      expect(result[0].error).toBeUndefined();
+    });
+
+    test('should not set divisionChange when existing caseId matches new caseId', async () => {
+      const existingCase = MockData.getSyncedCase({
+        override: {
+          caseId: '081-24-12345',
+          dxtrId: '081-1234567',
+          courtId: '081',
+        },
+      });
+
+      const newCase = MockData.getCaseDetail({
+        override: {
+          caseId: '081-24-12345',
+          dxtrId: '081-1234567',
+          courtId: '081',
+        },
+      });
+
+      const events = [mockCaseSyncEvent({ caseId: newCase.caseId })];
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(newCase);
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findSyncedCaseByDxtrId')
+        .mockResolvedValue(existingCase);
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      const result = await ExportAndLoadCase.exportAndLoad(context, events);
+
+      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId);
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+      expect(result[0].divisionChange).toBeUndefined();
+      expect(result[0].error).toBeUndefined();
+    });
+
+    test('should log but continue sync if division change detection fails', async () => {
+      const newCase = MockData.getCaseDetail({
+        override: {
+          caseId: '081-24-67890',
+          dxtrId: '081-1234567',
+          courtId: '081',
+        },
+      });
+
+      const events = [mockCaseSyncEvent({ caseId: newCase.caseId })];
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockResolvedValue(newCase);
+      const detectionError = new Error('Database connection failed');
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findSyncedCaseByDxtrId')
+        .mockRejectedValue(detectionError);
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+      const logSpy = vi.spyOn(context.logger, 'error');
+
+      const result = await ExportAndLoadCase.exportAndLoad(context, events);
+
+      expect(findSpy).toHaveBeenCalledWith(newCase.dxtrId, newCase.courtId);
+      expect(logSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('Division change detection failed'),
+      );
+      expect(syncSpy).toHaveBeenCalledTimes(1);
+      expect(result[0].divisionChange).toBeUndefined();
+      expect(result[0].error).toBeUndefined();
+    });
+
+    test('should continue to process remaining events if one has division change', async () => {
+      const existingCase = MockData.getSyncedCase({
+        override: {
+          caseId: '081-24-11111',
+          dxtrId: '081-1111111',
+          courtId: '081',
+        },
+      });
+
+      const divisionChangeCase = MockData.getCaseDetail({
+        override: {
+          caseId: '081-24-22222',
+          dxtrId: '081-1111111',
+          courtId: '081',
+        },
+      });
+
+      const normalCase = MockData.getCaseDetail({
+        override: {
+          caseId: '081-24-33333',
+          dxtrId: '081-3333333',
+          courtId: '081',
+        },
+      });
+
+      const events = [
+        mockCaseSyncEvent({ caseId: divisionChangeCase.caseId }),
+        mockCaseSyncEvent({ caseId: normalCase.caseId }),
+      ];
+
+      const getCaseDetailSpy = vi
+        .spyOn(CasesLocalGateway.prototype, 'getCaseDetail')
+        .mockImplementation(async (_context, caseId) => {
+          if (caseId === divisionChangeCase.caseId) return divisionChangeCase;
+          if (caseId === normalCase.caseId) return normalCase;
+          throw new Error('Unexpected caseId');
+        });
+
+      const findSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'findSyncedCaseByDxtrId')
+        .mockImplementation(async (dxtrId) => {
+          if (dxtrId === divisionChangeCase.dxtrId) return existingCase;
+          return undefined;
+        });
+
+      const syncSpy = vi.spyOn(MockMongoRepository.prototype, 'syncDxtrCase').mockResolvedValue();
+
+      const result = await ExportAndLoadCase.exportAndLoad(context, events);
+
+      expect(getCaseDetailSpy).toHaveBeenCalledTimes(2);
+      expect(findSpy).toHaveBeenCalledTimes(2);
+      expect(syncSpy).toHaveBeenCalledTimes(2);
+
+      expect(result[0].divisionChange).toEqual({
+        orphanedCaseId: existingCase.caseId,
+        currentCaseId: divisionChangeCase.caseId,
+      });
+      expect(result[0].error).toBeUndefined();
+
+      expect(result[1].divisionChange).toBeUndefined();
+      expect(result[1].error).toBeUndefined();
+    });
+  });
 });

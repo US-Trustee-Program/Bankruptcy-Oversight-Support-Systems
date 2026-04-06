@@ -2,7 +2,7 @@ import { BrowserRouter, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe } from 'vitest';
 import { render, waitFor, screen } from '@testing-library/react';
 import CaseDetailScreen from './CaseDetailScreen';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
+import { getCaseNumber } from '@common/cams/cases';
 import { formatDate } from '@/lib/utils/datetime';
 import { CaseDetail } from '@common/cams/cases';
 import { Debtor, DebtorAttorney } from '@common/cams/parties';
@@ -549,4 +549,119 @@ describe('Case Detail screen tests', () => {
       expect(caseDocketLink).toHaveClass('usa-current');
     },
   );
+
+  describe('MOVED case handling tests', () => {
+    test('should render USWDS warning alert when case status is MOVED', async () => {
+      const movedCaseDetail: CaseDetail = {
+        ...defaultTestCaseDetail,
+        movedToCaseId: '101-23-54321',
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney,
+      };
+
+      await renderWithProps({ ...movedCaseDetail });
+
+      const alert = screen.getByTestId('case-moved-alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveClass('usa-alert--warning');
+    });
+
+    test('should display Case Division Changed heading in MOVED alert', async () => {
+      const movedCaseDetail: CaseDetail = {
+        ...defaultTestCaseDetail,
+        movedToCaseId: '101-23-54321',
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney,
+      };
+
+      await renderWithProps({ ...movedCaseDetail });
+
+      const heading = screen.getByRole('heading', { name: 'Case Division Changed' });
+      expect(heading).toBeInTheDocument();
+      expect(heading).toHaveClass('usa-alert__heading');
+    });
+
+    test('should display message explaining case was moved to different division', async () => {
+      const movedCaseDetail: CaseDetail = {
+        ...defaultTestCaseDetail,
+        movedToCaseId: '101-23-54321',
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney,
+      };
+
+      await renderWithProps({ ...movedCaseDetail });
+
+      const alertText = screen.getByText(/This case was moved to a different division/);
+      expect(alertText).toBeInTheDocument();
+    });
+
+    test('should include link to current case in MOVED alert', async () => {
+      const movedCaseDetail: CaseDetail = {
+        ...defaultTestCaseDetail,
+        movedToCaseId: '101-23-54321',
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney,
+      };
+
+      await renderWithProps({ ...movedCaseDetail });
+
+      const link = screen.getByRole('link', { name: /View the current case/ });
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute('href', '/case-detail/101-23-54321');
+    });
+
+    test('should not render MOVED alert when movedToCaseId is absent', async () => {
+      const activeCaseDetail: CaseDetail = {
+        ...defaultTestCaseDetail,
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney,
+      };
+
+      await renderWithProps({ ...activeCaseDetail });
+
+      const alert = screen.queryByTestId('case-moved-alert');
+      expect(alert).not.toBeInTheDocument();
+    });
+
+    test('should not render MOVED alert when movedToCaseId is not set', async () => {
+      const activeCaseDetail: CaseDetail = {
+        ...defaultTestCaseDetail,
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney,
+      };
+
+      await renderWithProps({ ...activeCaseDetail });
+
+      const alert = screen.queryByTestId('case-moved-alert');
+      expect(alert).not.toBeInTheDocument();
+    });
+
+    test('should render rest of case detail normally when case status is MOVED', async () => {
+      const movedCaseDetail: CaseDetail = {
+        ...defaultTestCaseDetail,
+        movedToCaseId: '101-23-54321',
+        debtor: {
+          name: 'Roger Rabbit',
+        },
+        debtorAttorney,
+      };
+
+      await renderWithProps({ ...movedCaseDetail });
+
+      const title = screen.getByTestId('case-detail-heading-title');
+      expect(title.textContent).toContain('Roger Rabbit');
+    });
+  });
 });

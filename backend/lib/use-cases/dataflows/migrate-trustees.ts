@@ -217,6 +217,7 @@ type TrusteeProcessingResult = {
   todIds: string[];
   success: boolean;
   appointmentsProcessed: number;
+  professionalIdsStored?: number;
   failedAppointments?: FailedAppointment[];
   error?: string;
 };
@@ -570,6 +571,69 @@ async function fetchAndAggregateAppointments(
 }
 
 /**
+ * Look up ACMS professional IDs for a trustee and store them in the cross-reference collection.
+ * Non-fatal: ACMS failures are logged as warnings and do not block trustee migration.
+ *
+ * @returns Count of professional IDs successfully stored
+ */
+export async function upsertProfessionalIds(
+  context: ApplicationContext,
+  trusteeId: string,
+  firstName: string,
+  lastName: string,
+  state: string,
+): Promise<number> {
+  if (!firstName || !lastName || !state) {
+    return 0;
+  }
+
+  let acmsProfessionalIds: string[];
+
+  try {
+    acmsProfessionalIds = await factory
+      .getAcmsGateway(context)
+      .getTrusteeProfessionalIds(context, firstName, lastName, state);
+  } catch (originalError) {
+    context.logger.warn(
+      MODULE_NAME,
+      `Failed to retrieve ACMS professional IDs for trustee ${trusteeId} — skipping`,
+      { error: getCamsError(originalError, MODULE_NAME).message },
+    );
+    return 0;
+  }
+
+  const repo = factory.getTrusteeProfessionalIdsRepository(context);
+
+  const results = await Promise.allSettled(
+    acmsProfessionalIds.map((acmsProfessionalId) =>
+      repo.createProfessionalId(trusteeId, acmsProfessionalId, SYSTEM_USER),
+    ),
+  );
+
+  let stored = 0;
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      stored++;
+    } else {
+      context.logger.warn(
+        MODULE_NAME,
+        `Failed to store a professional ID for trustee ${trusteeId} — continuing`,
+        { error: getCamsError(result.reason, MODULE_NAME).message },
+      );
+    }
+  }
+
+  if (stored > 0) {
+    context.logger.info(
+      MODULE_NAME,
+      `Stored ${stored} ACMS professional ID(s) for trustee ${trusteeId}`,
+    );
+  }
+
+  return stored;
+}
+
+/**
  * Process a single merged trustee group with all their appointments.
  * This is the main unit of work for the migration with deduplication.
  * Gateway handles appointment cleansing - use case just stores clean data.
@@ -633,14 +697,27 @@ export async function processTrusteeWithAppointments(
       }
     }
 
+    // Look up and store ACMS professional IDs (non-fatal)
+    const professionalIdsStored = await upsertProfessionalIds(
+      context,
+      trustee.trusteeId,
+      primary.FIRST_NAME ?? '',
+      primary.LAST_NAME ?? '',
+      primary.STATE ?? '',
+    );
+
     // Log statistics
-    context.logger.info(MODULE_NAME, `Trustee TOD IDs ${todIds.join(', ')} stats:`, stats);
+    context.logger.info(MODULE_NAME, `Trustee TOD IDs ${todIds.join(', ')} stats:`, {
+      ...stats,
+      professionalIdsStored,
+    });
 
     return {
       trusteeId: trustee.trusteeId,
       todIds,
       success: true,
       appointmentsProcessed,
+      professionalIdsStored,
       failedAppointments,
     };
   } catch (error) {

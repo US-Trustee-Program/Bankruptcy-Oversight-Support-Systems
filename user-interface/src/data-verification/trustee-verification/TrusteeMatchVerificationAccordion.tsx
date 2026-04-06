@@ -10,10 +10,9 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
-import { getCaseNumber } from '@/lib/utils/caseNumber';
-import { getCaseIdParts } from '@common/cams/cases';
 import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
+import { getCaseNumber, getCaseIdParts } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
 import TrusteeMatchRejectionModal, {
   TrusteeMatchRejectionModalImperative,

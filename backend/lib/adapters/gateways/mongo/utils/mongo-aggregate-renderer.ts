@@ -93,15 +93,30 @@ function toMongoAccumulatorOperator(spec: Accumulator) {
     };
   } else if (spec.accumulator === 'COUNT') {
     return {
-      $count: {},
+      $sum: 1,
+    };
+  } else if (spec.accumulator === 'PUSH') {
+    return {
+      $push: `$${spec.field.name.toString()}`,
     };
   }
 }
 
 function toMongoGroup(stage: Group) {
+  const id =
+    stage.groupBy.length === 1
+      ? `$${stage.groupBy[0].name.toString()}`
+      : stage.groupBy.reduce(
+          (acc, field) => {
+            acc[field.name.toString()] = `$${field.name.toString()}`;
+            return acc;
+          },
+          {} as Record<string, string>,
+        );
+
   const group = {
     $group: {
-      _id: stage.groupBy.map((field) => `$${field.name.toString()}`).join(''),
+      _id: id,
     },
   };
 

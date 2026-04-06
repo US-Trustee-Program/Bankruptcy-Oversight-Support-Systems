@@ -132,7 +132,7 @@ export interface ConsolidationOrdersRepository<T = ConsolidationOrder>
     Updates<T, T>,
     Releasable {
   count: (keyRoot: string) => Promise<number>;
-  updateManyByQuery: (query: Query<T>, update: unknown) => Promise<UpdateResult>;
+  updateManyByQuery: <U>(query: Query<U>, update: unknown) => Promise<UpdateResult>;
   findByCaseId(caseId: string): Promise<ConsolidationOrder[]>;
 }
 
@@ -164,6 +164,7 @@ export interface TrusteeNotesRepository<T = TrusteeNote>
 export interface OrdersRepository<T = Order>
   extends
     Searches<OrdersSearchPredicate, T>,
+    Creates<T, T>,
     CreatesMany<T, T[]>,
     Reads<T>,
     Updates<TransferOrderAction>,
@@ -201,6 +202,12 @@ export interface AcmsGateway {
     context: ApplicationContext,
     lastChangeDate: string,
   ): Promise<{ caseIds: string[]; latestDeletedCaseDate: string }>;
+  getTrusteeProfessionalIds(
+    context: ApplicationContext,
+    firstName: string,
+    lastName: string,
+    state: string,
+  ): Promise<string[]>;
 }
 
 export interface AtsGateway {
@@ -230,6 +237,7 @@ export interface AtsGateway {
 export type CaseHistoryDocumentType = 'AUDIT_ASSIGNMENT' | 'AUDIT_TRANSFER' | 'AUDIT_CONSOLIDATION';
 
 export interface CasesRepository extends Releasable {
+  create<T extends { caseId: string; documentType: string }>(data: T): Promise<T>;
   createTransferFrom(reference: TransferFrom): Promise<TransferFrom>;
   createTransferTo(reference: TransferTo): Promise<TransferTo>;
   getTransfers(caseId: string): Promise<Array<TransferFrom | TransferTo>>;
@@ -249,6 +257,7 @@ export interface CasesRepository extends Releasable {
   ): Promise<CamsPaginationResponse<ResourceActions<SyncedCase>>>;
   getConsolidationMemberCaseIds(predicate: CasesSearchPredicate): Promise<string[]>;
   getSyncedCase(caseId: string): Promise<SyncedCase>;
+  markAsMoved(caseId: string, movedToCaseId: string, movedOn: string): Promise<void>;
   updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;
   findByCursor: <T>(
     query: Query<T>,
@@ -265,6 +274,10 @@ export interface CasesRepository extends Releasable {
   ): Promise<T[]>;
   findByCaseId(caseId: string): Promise<unknown[]>;
   delete(id: string): Promise<void>;
+  findDuplicateSyncedCases(): Promise<
+    Array<{ dxtrId: string; courtId: string; caseIds: string[] }>
+  >;
+  findSyncedCaseByDxtrId(dxtrId: string, courtId: string): Promise<SyncedCase | undefined>;
 }
 
 export interface OfficesRepository
@@ -300,6 +313,7 @@ export interface OfficeAssigneesRepository
     Searches<OfficeAssigneePredicate, OfficeAssignee>,
     Releasable {
   getDistinctAssigneesByOffice: (officeCode: string) => Promise<CamsUserReference[]>;
+  updateManyByQuery: <T>(query: Query<T>, update: unknown) => Promise<UpdateResult>;
 }
 
 export interface TrusteesRepository extends Reads<Trustee>, Releasable {

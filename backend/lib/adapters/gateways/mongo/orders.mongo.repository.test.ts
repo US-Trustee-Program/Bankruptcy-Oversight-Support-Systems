@@ -200,7 +200,6 @@ describe('orders repo', () => {
     });
     const transferOrder: TransferOrderAction = {
       ...existing,
-      newCase: MockData.getCaseSummary(),
       orderType: 'transfer',
       status: 'rejected', // not approved, and valid
       caseId: existing.caseId,

@@ -3,8 +3,9 @@ import { DxtrCase, SyncedCase } from '@common/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
-import { CaseSyncEvent } from '@common/cams/dataflow-events';
+import { CaseSyncEvent, OrphanedCaseMessage } from '@common/cams/dataflow-events';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
+import { CasesRepository } from '../gateways.types';
 
 const MODULE_NAME = 'EXPORT-AND-LOAD';
 
@@ -32,6 +33,22 @@ function addPhoneticTokens(bCase: DxtrCase): DxtrCase {
   return result;
 }
 
+async function detectDivisionChange(
+  repo: CasesRepository,
+  syncedCase: DxtrCase,
+): Promise<OrphanedCaseMessage | null> {
+  const existing = await repo.findSyncedCaseByDxtrId(syncedCase.dxtrId, syncedCase.courtId);
+
+  if (!existing || existing.caseId === syncedCase.caseId) {
+    return null;
+  }
+
+  return {
+    orphanedCaseId: existing.caseId,
+    currentCaseId: syncedCase.caseId,
+  };
+}
+
 async function exportAndLoad(
   context: ApplicationContext,
   events: CaseSyncEvent[],
@@ -42,7 +59,23 @@ async function exportAndLoad(
     try {
       event.bCase = await casesGateway.getCaseDetail(context, event.caseId);
       const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
-      const syncedCase: SyncedCase = { ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' };
+      const syncedCase = { ...caseWithPhoneticTokens, documentType: 'SYNCED_CASE' as const };
+
+      try {
+        const divisionChange = await detectDivisionChange(repo, syncedCase);
+        if (divisionChange) {
+          event.divisionChange = divisionChange;
+          context.logger.info(
+            MODULE_NAME,
+            `Division change detected: dxtrId=${syncedCase.dxtrId} courtId=${syncedCase.courtId} orphaned=${divisionChange.orphanedCaseId} current=${divisionChange.currentCaseId}`,
+          );
+        }
+      } catch (detectionError) {
+        context.logger.error(
+          MODULE_NAME,
+          `Division change detection failed for case ${event.caseId} dxtrId=${syncedCase.dxtrId}: ${detectionError}`,
+        );
+      }
 
       await repo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
     } catch (originalError) {

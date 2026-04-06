@@ -107,6 +107,8 @@ export type CaseDetail = CaseSummary & {
   judgeName?: string;
   trustee?: LegacyTrustee;
   trusteeId?: string;
+  movedToCaseId?: string;
+  movedOn?: string;
 };
 
 export type CaseDocketEntryDocument = {
@@ -174,6 +176,8 @@ export type SyncedCase = DxtrCase &
     documentType: 'SYNCED_CASE';
     id?: string;
     trusteeId?: string;
+    movedToCaseId?: string;
+    movedOn?: string;
   };
 
 export function isCaseClosed<T extends ClosedDismissedReopened>(bCase: T) {
@@ -228,4 +232,14 @@ export function getCaseIdParts(caseId: string) {
   const divisionCode = parts[0];
   const caseNumber = `${parts[1]}-${parts[2]}`;
   return { divisionCode, caseNumber };
+}
+
+export function getCaseNumber(caseId: string | undefined): string {
+  if (caseId) {
+    const caseData = caseId.split('-');
+    if (caseData.length === 2) return caseId;
+    if (caseData.length !== 3) throw new Error(`Invalid case ID: ${caseId}`);
+    return `${caseData[1]}-${caseData[2]}`;
+  }
+  return '';
 }

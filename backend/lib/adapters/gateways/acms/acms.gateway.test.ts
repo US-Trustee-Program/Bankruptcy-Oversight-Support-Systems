@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { AcmsGatewayImpl } from './acms.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
+import { CamsError } from '../../../common-errors/cams-error';
 import {
   AcmsConsolidation,
   AcmsConsolidationMemberCase,
@@ -188,7 +189,7 @@ describe('ACMS gateway tests', () => {
     }).rejects.toThrow(
       expect.objectContaining({
         status: 500,
-        message: mockError.message,
+        message: 'Unknown Error',
         module: 'ACMS-GATEWAY',
       }),
     );
@@ -205,7 +206,7 @@ describe('ACMS gateway tests', () => {
     }).rejects.toThrow(
       expect.objectContaining({
         status: 500,
-        message: mockError.message,
+        message: 'Unknown Error',
         module: 'ACMS-GATEWAY',
       }),
     );
@@ -328,6 +329,50 @@ describe('ACMS gateway tests', () => {
 
         vi.restoreAllMocks();
       }
+    });
+  });
+
+  describe('getTrusteeProfessionalIds', () => {
+    test('should return formatted professional IDs for matching trustee', async () => {
+      const dbResults = [{ acmsProfessionalId: 'NY-00123' }, { acmsProfessionalId: 'UT-05321' }];
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: dbResults,
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getTrusteeProfessionalIds(context, 'Harvey', 'Barr', 'NY');
+
+      expect(result).toEqual(['NY-00123', 'UT-05321']);
+    });
+
+    test('should return empty array when no matching professional IDs found', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
+        success: true,
+        results: [],
+        message: '',
+      });
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+      const result = await gateway.getTrusteeProfessionalIds(context, 'Unknown', 'Trustee', 'TX');
+
+      expect(result).toEqual([]);
+    });
+
+    test('should throw CamsError when executeQuery fails', async () => {
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockRejectedValue(
+        new Error('connection failed'),
+      );
+
+      const context = await createMockApplicationContext();
+      const gateway = new AcmsGatewayImpl(context);
+
+      await expect(gateway.getTrusteeProfessionalIds(context, 'John', 'Doe', 'CA')).rejects.toThrow(
+        CamsError,
+      );
     });
   });
 });

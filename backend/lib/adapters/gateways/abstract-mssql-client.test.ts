@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import { QueryResults, IDbConfig } from '../types/database';
+import { QueryResults, IDbConfig, DbTableFieldSpec } from '../types/database';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AbstractMssqlClient } from './abstract-mssql-client';
 import { ApplicationContext } from '../types/basic';
@@ -70,7 +70,7 @@ describe('Abstract MS-SQL client', () => {
         type: null,
         value: 'nameValue',
       },
-    ];
+    ] as unknown as DbTableFieldSpec[];
 
     // execute method under test
     class TestDbClient extends AbstractMssqlClient {
