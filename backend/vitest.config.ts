@@ -34,6 +34,7 @@ export default defineConfig({
         'user-interface/',
         'dev-tools/',
         'test/',
+        '../test/migration/**',
         '.dependency-cruiser.js',
         '.*test.[jt]s',
         '.*mock.*.ts',

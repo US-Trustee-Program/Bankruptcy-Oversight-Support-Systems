@@ -53,6 +53,7 @@ export default defineConfig({
         '**/initialize.ts',
         '**/testing/**',
         '**/test-utilities/**',
+        'test/migration/**',
         '**/server.ts',
         ...coverageConfigDefaults.exclude,
       ],
