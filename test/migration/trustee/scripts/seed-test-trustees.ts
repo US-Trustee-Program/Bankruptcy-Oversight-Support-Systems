@@ -14,7 +14,7 @@
  *     [command]
  *
  * Commands:
- *   seed-proid               Create 3 trustees WITH proIds + 3 WITHOUT
+ *   seed-proid               Create trustees WITH proIds, WITHOUT proIds, and an ambiguous duplicate pair
  *   seed-match-verification  Create TrusteeMatchVerification docs for all slice 3 outcomes
  *   list                     Show seeded test data currently in MongoDB
  *   clean                    Delete all seeded test data from MongoDB
@@ -71,6 +71,9 @@ const TRUSTEES_WITHOUT_PROID: TrusteeSeedNoProId[] = [
   { name: 'SEED Test David Noproid', state: 'FL' },
   { name: 'SEED Test Eve Noproid', state: 'IL' },
   { name: 'SEED Test Frank Noproid', state: 'OH' },
+  // Two trustees with identical names to trigger the "ambiguous" outcome in zoom CSV import.
+  { name: 'SEED Test Ambiguous Duplicate', state: 'MA' },
+  { name: 'SEED Test Ambiguous Duplicate', state: 'WA' },
 ];
 
 function makeTrusteeInput(name: string, state: string): TrusteeInput {

@@ -1,0 +1,4 @@
+Region	Location (City, State)	Trustee First and Last Name	Zoom Account Email Address	Zoom Meeting ID	Zoom Passcode	Zoom Dedicated Phone Number	Zoom Meeting Link
+NE	New York, NY	SEED Test Alice Proid	alice.proid@example.com	111222333	abc123	123-456-7890	https://zoom.us/j/111222333
+SE	Atlanta, GA	SEED Test Nobody Unknown		999888777	xyz789	098-765-4321	https://zoom.us/j/999888777
+MW	Chicago, IL	SEED Test Ambiguous Duplicate	ambiguous@example.com	555666777	pass99	312-555-0100	https://zoom.us/j/555666777

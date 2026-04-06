@@ -35,8 +35,8 @@ enhancements: active-only filtering, ACMS professional ID import, and Zoom CSV i
    MONGO_CONNECTION_STRING=mongodb://localhost:27017
    COSMOS_DATABASE_NAME=cams-local
 
-   # Azure Blob Storage (Slice 3)
-   AzureWebJobsStorage=<connection-string>
+   # Azure Storage (Slice 3 — queue trigger, no connection string needed)
+   AzureWebJobsStorage=<azure-storage-connection-string>
    CAMS_OBJECT_CONTAINER=migration-files
 
    # Feature flags
@@ -45,9 +45,10 @@ enhancements: active-only filtering, ACMS professional ID import, and Zoom CSV i
 
 3. **MongoDB** — Running locally or accessible via `MONGO_CONNECTION_STRING`.
 
-4. **Azure Storage** — For Slice 3 Zoom CSV testing, an Azure Storage account accessible
-   via `AzureWebJobsStorage`. The TSV file is read from the `CAMS_OBJECT_CONTAINER` container
-   as `zoom-info.tsv`.
+4. **Azure Storage** — For Slice 3 Zoom CSV testing, authenticate with `az login`. The script
+   triggers the deployed Azure Function by enqueuing a message on the `import-zoom-csv-start`
+   queue. The function reads `zoom-info.tsv` from Blob Storage using its managed identity.
+   Requires `AzureWebJobsStorage` (Azure Storage connection string) in `backend/.env`.
 
 ---
 
@@ -118,6 +119,37 @@ npx tsx --tsconfig backend/tsconfig.json \
 # Remove all seeded test data
 npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
+  clean
+```
+
+### Zoom CSV import script (Slice 3)
+
+Path: `test/migration/trustee/scripts/run-zoom-csv-import.ts`
+
+Triggers the deployed `importZoomCsv` Azure Function by sending a message to the
+`import-zoom-csv-start` Azure Storage Queue. Uses `az login` credentials — no connection string
+required. The function reads `zoom-info.tsv` from Blob Storage using its managed identity.
+
+| Command | Description |
+|---|---|
+| `run` | Enqueue a start message to trigger the importZoomCsv dataflow in Azure |
+| `report` | Show the latest `ZOOM_CSV_IMPORT_STATE` document from MongoDB |
+| `clean` | Delete the `ZOOM_CSV_IMPORT_STATE` document from MongoDB |
+
+```bash
+# Trigger the import (requires: AzureWebJobsStorage in backend/.env)
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/run-zoom-csv-import.ts \
+  run
+
+# View the import report once the function completes (failed rows, counts)
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/run-zoom-csv-import.ts \
+  report
+
+# Delete the state document when done
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/run-zoom-csv-import.ts \
   clean
 ```
 
@@ -315,11 +347,20 @@ Note: row 2 has a blank `Account Email` — this is valid and is stored as `unde
 
 4. Monitor output in the terminal running the functions runtime.
 
-**Option B — Invoke the use case directly (no Azure Functions runtime needed):**
+**Option B — Trigger via queue message (no Azure Functions runtime needed locally):**
 
-Write a quick `tsx` script or modify `seed-test-trustees.ts` to call `importZoomCsv(context)`
-directly. The use case reads from object storage and logs results to the application context
-logger.
+Use `run-zoom-csv-import.ts` to enqueue a start message. The deployed function picks it
+up and runs against the real blob storage and MongoDB:
+
+```bash
+# Trigger (requires: AzureWebJobsStorage in backend/.env)
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/run-zoom-csv-import.ts run
+
+# View results once the function has completed
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/run-zoom-csv-import.ts report
+```
 
 ### Verifying results in MongoDB
 
@@ -400,8 +441,10 @@ npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-tes
 # 5. Seed match verification scenarios (CAMS-713 Slice 3)
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-match-verification
 
-# 6. Upload zoom-info.tsv to blob storage and trigger the import (Slice 3)
-#    (See "Zoom CSV import locally" section above)
+# 6. Trigger Zoom CSV import and view results (Slice 3)
+#    Requires: AzureWebJobsStorage in backend/.env
+npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/run-zoom-csv-import.ts run
+npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/run-zoom-csv-import.ts report
 
 # 7. Verify everything
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts list
