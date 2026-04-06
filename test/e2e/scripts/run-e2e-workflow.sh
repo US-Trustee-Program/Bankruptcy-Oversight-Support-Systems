@@ -101,9 +101,6 @@ REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
 DEPS_HASH=$(cat ../../package*.json ../../common/package*.json ../../backend/package*.json ../../user-interface/package*.json package*.json 2>/dev/null | sha256sum | cut -c1-12)
 DEPS_CACHED_IMAGE="${REGISTRY}/e2e-deps:${DEPS_HASH}"
 
-# TODO: restore to false once the e2e pipeline is stable
-FORCE_REBUILD_DEPS=true
-
 # Check local image first, then ghcr.io cache, then build from scratch.
 # Set FORCE_REBUILD_DEPS=true to skip the cache and rebuild unconditionally.
 DEPS_EXISTS=$(podman images -q localhost/e2e_deps:latest 2>/dev/null)

@@ -1,9 +1,9 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 26
+- **Total Workflows**: 27
 - **Main Workflows**: 12
-- **Reusable Workflows**: 14
+- **Reusable Workflows**: 15
 
 ## Legend
 

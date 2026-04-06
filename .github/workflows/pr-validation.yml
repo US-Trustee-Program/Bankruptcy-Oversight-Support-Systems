@@ -92,6 +92,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
+          FORCE_REBUILD_DEPS: ${{ inputs.force_rebuild_deps || 'false' }}
         run: npm run test:e2e
 
       - name: Upload Playwright Report
