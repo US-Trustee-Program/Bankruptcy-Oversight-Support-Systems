@@ -265,6 +265,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     );
   }
 
+  const caseLink = (
+    <NewTabLink to={`/case-detail/${order.caseId}`} label={getCaseNumber(order.caseId)} />
+  );
+
   return (
     <>
       <Accordion key={order.id} id={`order-list-${order.id}`} hidden={hidden}>
@@ -319,8 +323,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               Trustee{' '}
               {order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
                 ?.trusteeName ?? order.resolvedTrusteeId}{' '}
-              was appointed to case:{' '}
-              <NewTabLink to={`/case-detail/${order.caseId}`} label={getCaseNumber(order.caseId)} />
+              was appointed to case: {caseLink}
             </p>
           ) : (
             <>
@@ -328,11 +331,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus ? (
                 <>
                   <p className="problem-statement">
-                    Matched trustee has an inactive appointment status for case:{' '}
-                    <NewTabLink
-                      to={`/case-detail/${order.caseId}`}
-                      label={getCaseNumber(order.caseId)}
-                    />
+                    Matched trustee has an inactive appointment status for case: {caseLink}
                   </p>
                   {order.inactiveAppointmentStatus && (
                     <Alert
@@ -348,11 +347,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 </>
               ) : (
                 <p className="problem-statement">
-                  Trustee sent from the court does not match a CAMS Trustee for case:{' '}
-                  <NewTabLink
-                    to={`/case-detail/${order.caseId}`}
-                    label={getCaseNumber(order.caseId)}
-                  />
+                  Trustee sent from the court does not match a CAMS Trustee for case: {caseLink}
                 </p>
               )}
 
