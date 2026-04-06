@@ -78,7 +78,7 @@
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
     "@vitejs/plugin-react": "6.0.1",
-    "@vitest/coverage-v8": "4.1.0",
+    "@vitest/coverage-v8": "4.1.1",
     "@vitest/eslint-plugin": "1.6.13",
     "babel-plugin-react-compiler": "1.0.0",
     "dependency-cruiser": "17.3.9",
@@ -100,6 +100,6 @@
     "vite-plugin-static-copy": "3.4.0",
     "vite-plugin-svgr": "4.5.0",
     "vite-tsconfig-paths": "6.1.1",
-    "vitest": "4.1.0"
+    "vitest": "4.1.1"
   }
 }
