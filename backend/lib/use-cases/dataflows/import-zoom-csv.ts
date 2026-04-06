@@ -7,19 +7,28 @@ import { normalizeName } from './trustee-match.helpers';
 import ModuleNames from '../../../function-apps/dataflows/module-names';
 
 const MODULE_NAME = ModuleNames.IMPORT_ZOOM_CSV;
+const ZOOM_CSV_BLOB_NAME = 'zoom-info.tsv';
 
 const SYSTEM_USER: CamsUserReference = {
   id: 'SYSTEM',
   name: 'ATS Migration',
 };
 
-export type ZoomCsvRow = {
+type ZoomCsvRow = {
   fullName: string;
   accountEmail: string;
   meetingId: string;
   passcode: string;
   phone: string;
   link: string;
+};
+
+type ZoomImportResult = {
+  total: number;
+  matched: number;
+  unmatched: number;
+  ambiguous: number;
+  errors: number;
 };
 
 export function parseZoomCsvFile(content: string): ZoomCsvRow[] {
@@ -90,4 +99,36 @@ export async function processZoomCsvRow(
     context.logger.error(MODULE_NAME, camsError.message, camsError);
     return 'error';
   }
+}
+
+export async function importZoomCsv(context: ApplicationContext): Promise<ZoomImportResult> {
+  const result: ZoomImportResult = { total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 };
+
+  const containerName = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
+  const objectStorage = factory.getObjectStorageGateway(context);
+  const content = await objectStorage.readObject(containerName, ZOOM_CSV_BLOB_NAME);
+
+  if (!content) {
+    context.logger.info(MODULE_NAME, 'No zoom CSV found in object storage — skipping import');
+    return result;
+  }
+
+  const rows = parseZoomCsvFile(content);
+  result.total = rows.length;
+
+  for (const row of rows) {
+    const outcome = await processZoomCsvRow(context, row);
+    result[
+      outcome === 'matched'
+        ? 'matched'
+        : outcome === 'unmatched'
+          ? 'unmatched'
+          : outcome === 'ambiguous'
+            ? 'ambiguous'
+            : 'errors'
+    ]++;
+  }
+
+  context.logger.info(MODULE_NAME, `Import complete: ${JSON.stringify(result)}`);
+  return result;
 }

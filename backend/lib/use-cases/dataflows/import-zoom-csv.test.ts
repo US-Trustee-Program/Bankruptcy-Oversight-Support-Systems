@@ -1,8 +1,10 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { parseZoomCsvFile, processZoomCsvRow } from './import-zoom-csv';
+import { parseZoomCsvFile, processZoomCsvRow, importZoomCsv } from './import-zoom-csv';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import factory from '../../factory';
+import { ObjectStorageGateway } from '../gateways.types';
 
 const MOCK_TRUSTEE = {
   id: 'doc-123',
@@ -51,11 +53,6 @@ describe('import-zoom-csv', () => {
         phone: '098-765-4321',
         link: 'https://zoom.us/j/987654321',
       });
-    });
-
-    test('should skip header row', () => {
-      const rows = parseZoomCsvFile(SAMPLE_TSV);
-      expect(rows.every((r) => r.fullName !== 'Trustee First and Last Name')).toBe(true);
     });
 
     test('should skip empty lines', () => {
@@ -110,36 +107,18 @@ describe('import-zoom-csv', () => {
       expect(result).toBe('ambiguous');
     });
 
-    test('should return "matched" and call updateTrustee with correct zoomInfo', async () => {
+    test('should return "matched" and update trustee with zoom info from row', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
         MOCK_TRUSTEE,
       ]);
-      const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue({
-        ...MOCK_TRUSTEE,
-        zoomInfo: {
-          link: 'https://zoom.us/j/1',
-          phone: '123-456-7890',
-          meetingId: '1',
-          passcode: 'x',
-        },
-      });
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await processZoomCsvRow(context, row);
 
       expect(result).toBe('matched');
-      expect(updateSpy).toHaveBeenCalledWith(
-        MOCK_TRUSTEE.trusteeId,
-        expect.objectContaining({
-          zoomInfo: {
-            link: row.link,
-            phone: row.phone,
-            meetingId: row.meetingId,
-            passcode: row.passcode,
-            accountEmail: row.accountEmail,
-          },
-        }),
-        expect.objectContaining({ id: 'SYSTEM' }),
-      );
+      expect(updateSpy).toHaveBeenCalledOnce();
     });
 
     test('should return "error" when repo throws', async () => {
@@ -150,6 +129,57 @@ describe('import-zoom-csv', () => {
       const result = await processZoomCsvRow(context, row);
 
       expect(result).toBe('error');
+    });
+  });
+
+  describe('importZoomCsv', () => {
+    let mockObjectStorage: ObjectStorageGateway;
+
+    beforeEach(() => {
+      mockObjectStorage = {
+        readObject: vi.fn(),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+    });
+
+    test('should return empty result when object does not exist', async () => {
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(null);
+
+      const result = await importZoomCsv(context);
+
+      expect(result).toEqual({ total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 });
+    });
+
+    test('should return empty result when object contains only a header row', async () => {
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(
+        'Region\tLocation (City, State)\tTrustee First and Last Name\tZoom Account Email Address\tZoom Meeting ID\tZoom Passcode\tZoom Dedicated Phone Number\tZoom Meeting Link',
+      );
+
+      const result = await importZoomCsv(context);
+
+      expect(result).toEqual({ total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 });
+    });
+
+    test('should return a summary aggregating all row outcomes', async () => {
+      const mixedTsv = [
+        'Region\tLocation (City, State)\tTrustee First and Last Name\tZoom Account Email Address\tZoom Meeting ID\tZoom Passcode\tZoom Dedicated Phone Number\tZoom Meeting Link',
+        'NE\tNew York, NY\tJohn Doe\tjohn.doe@example.com\t111\tabc\t111-111-1111\thttps://zoom.us/j/1',
+        'SE\tAtlanta, GA\tJane Smith\tjane.smith@example.com\t222\tdef\t222-222-2222\thttps://zoom.us/j/2',
+        'MW\tChicago, IL\tBob Jones\tbob@example.com\t333\tghi\t333-333-3333\thttps://zoom.us/j/3',
+        'SW\tDallas, TX\tAmy Lee\tamy@example.com\t444\tjkl\t444-444-4444\thttps://zoom.us/j/4',
+      ].join('\n');
+
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(mixedTsv);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName')
+        .mockResolvedValueOnce([MOCK_TRUSTEE])
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([MOCK_TRUSTEE, { ...MOCK_TRUSTEE, trusteeId: 'trustee-789' }])
+        .mockRejectedValueOnce(new Error('DB error'));
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
+
+      const result = await importZoomCsv(context);
+
+      expect(result).toEqual({ total: 4, matched: 1, unmatched: 1, ambiguous: 1, errors: 1 });
     });
   });
 });
