@@ -3,6 +3,7 @@ import { getCaseNumber } from '@common/cams/cases';
 import { CaseDetail } from '@common/cams/cases';
 import DatesCard from './cards/DatesCard';
 import DebtorCard from './cards/DebtorCard';
+import CaseTrusteeCard from './cards/CaseTrusteeCard';
 import { composeCaseTitle } from '../caseDetailHelper';
 
 export interface CaseDetailOverviewProps {
@@ -43,6 +44,9 @@ function CaseDetailOverview(props: Readonly<CaseDetailOverviewProps>) {
           testIdPrefix="case-detail-joint-debtor"
         />
       )}
+      <div className="record-detail-card-list">
+        <CaseTrusteeCard trusteeId={caseDetail.trusteeId} />
+      </div>
     </div>
   );
 }

@@ -3,6 +3,11 @@ import CaseDetailOverview, { CaseDetailOverviewProps } from './CaseDetailOvervie
 import { render, screen } from '@testing-library/react';
 import { CaseDetail } from '@common/cams/cases';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { vi } from 'vitest';
+
+vi.mock('./useTrustee', () => ({
+  useTrustee: vi.fn().mockReturnValue({ trustee: null, loading: false }),
+}));
 
 const TEST_CASE_ID = '101-23-12345';
 const TEST_DEBTOR_ATTORNEY = MockData.getDebtorAttorney();
@@ -48,6 +53,26 @@ describe('Case detail overview panel', () => {
 
       const element = screen.queryByTestId('case-detail-debtor-counsel-office');
       expect(element).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Trustee section', () => {
+    test('renders trustee card when trusteeId is present', () => {
+      const testCaseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, trusteeId: 'trustee-123' };
+
+      renderWithProps({ caseDetail: testCaseDetail });
+
+      expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
+    });
+
+    test('renders trustee card empty state when trusteeId is absent', () => {
+      const testCaseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL };
+      delete testCaseDetail.trusteeId;
+
+      renderWithProps({ caseDetail: testCaseDetail });
+
+      expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
+      expect(screen.getByTestId('case-trustee-card-empty')).toBeInTheDocument();
     });
   });
 });
