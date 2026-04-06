@@ -16,7 +16,7 @@ const SYSTEM_USER: CamsUserReference = {
 
 type ZoomCsvRow = {
   fullName: string;
-  accountEmail: string;
+  accountEmail: string | undefined;
   meetingId: string;
   passcode: string;
   phone: string;
@@ -46,7 +46,7 @@ export function parseZoomCsvFile(content: string): ZoomCsvRow[] {
 
     rows.push({
       fullName: parts[2],
-      accountEmail: parts[3],
+      accountEmail: parts[3] || undefined,
       meetingId: parts[4],
       passcode: parts[5],
       phone: parts[6],
@@ -85,7 +85,7 @@ export async function processZoomCsvRow(
       phone: row.phone,
       meetingId: row.meetingId,
       passcode: row.passcode,
-      accountEmail: row.accountEmail,
+      accountEmail: row.accountEmail || undefined,
     };
 
     await repo.updateTrustee(trustee.trusteeId, { ...trustee, zoomInfo }, SYSTEM_USER);
