@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { parseZoomCsvFile, processZoomCsvRow, importZoomCsv } from './import-zoom-csv';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
@@ -25,11 +25,8 @@ describe('import-zoom-csv', () => {
   let context: ApplicationContext;
 
   beforeEach(async () => {
-    context = await createMockApplicationContext();
-  });
-
-  afterEach(() => {
     vi.restoreAllMocks();
+    context = await createMockApplicationContext();
   });
 
   describe('parseZoomCsvFile', () => {
@@ -76,6 +73,18 @@ describe('import-zoom-csv', () => {
       const rows = parseZoomCsvFile(headerOnly);
       expect(rows).toHaveLength(0);
     });
+
+    test('should normalize empty accountEmail column to undefined', () => {
+      const contentWithBlankEmail = [
+        'Region\tLocation (City, State)\tTrustee First and Last Name\tZoom Account Email Address\tZoom Meeting ID\tZoom Passcode\tZoom Dedicated Phone Number\tZoom Meeting Link',
+        'NE\tNew York, NY\tJohn Doe\t\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789',
+      ].join('\n');
+
+      const rows = parseZoomCsvFile(contentWithBlankEmail);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].accountEmail).toBeUndefined();
+    });
   });
 
   describe('processZoomCsvRow', () => {
@@ -119,6 +128,25 @@ describe('import-zoom-csv', () => {
 
       expect(result).toBe('matched');
       expect(updateSpy).toHaveBeenCalledOnce();
+    });
+
+    test('should set accountEmail to undefined on trustee when row has no accountEmail', async () => {
+      const rowWithoutEmail = { ...row, accountEmail: undefined };
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
+        MOCK_TRUSTEE,
+      ]);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(MOCK_TRUSTEE);
+
+      const result = await processZoomCsvRow(context, rowWithoutEmail);
+
+      expect(result).toBe('matched');
+      expect(updateSpy).toHaveBeenCalledWith(
+        MOCK_TRUSTEE.trusteeId,
+        expect.objectContaining({ zoomInfo: expect.objectContaining({ accountEmail: undefined }) }),
+        { id: 'SYSTEM', name: 'ATS Migration' },
+      );
     });
 
     test('should return "error" when repo throws', async () => {
