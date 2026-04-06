@@ -1,8 +1,13 @@
 #!/usr/bin/env tsx
 
 /**
- * MongoDB Harvest Script (ONE-TIME USE)
+ * MongoDB Harvest Script (ONE-TIME USE) - DEPRECATED
  *
+ * @deprecated This script depends on backend/function-apps/dataflows/e2e/ utilities
+ * that were removed in CAMS-723. The fixtures have already been generated and committed.
+ * This file is retained for historical reference only.
+ *
+ * Original purpose:
  * Runs the full seedCosmosE2eDatabase() logic (requires live DXTR SQL credentials),
  * then reads all seeded collections back out of MongoDB, strips PII from case
  * documents, and writes a fixture file to fixtures/mongo-fixture.json.
@@ -10,15 +15,9 @@
  * The harvest file (mongo-harvested.json) is a temporary intermediate file consumed
  * by synthesize-fixtures.ts to produce the committed mongo-fixture.json.
  * PII is replaced with Faker data at seed time — nothing sensitive is stored in the fixture.
- *
- * Usage:
- *   MSSQL_HOST=<host> \
- *   COSMOS_CONNECTION_STRING=<conn> \
- *   COSMOS_DATABASE_NAME=cams-e2e \
- *   tsx ./scripts/harvest-mongo.ts
- *
- * Or set the vars in .env before running.
  */
+
+process.exit(1); // Prevent accidental execution
 
 import { config } from 'dotenv';
 
@@ -26,7 +25,9 @@ config({ path: '.env', quiet: true });
 
 import { InvocationContext } from '@azure/functions';
 import ContextCreator from '../../../backend/function-apps/azure/application-context-creator';
+// @ts-expect-error - Files deleted in CAMS-723
 import { clearAllCollections } from '../../../backend/function-apps/dataflows/e2e/db-utils';
+// @ts-expect-error - Files deleted in CAMS-723
 import DataGenerationUtils from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
 import { MongoClient } from 'mongodb';
 import { writeFileSync, mkdirSync } from 'fs';

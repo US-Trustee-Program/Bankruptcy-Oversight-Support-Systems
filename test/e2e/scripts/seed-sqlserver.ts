@@ -47,15 +47,14 @@ function buildTargetConfig(): sql.config {
     config.user = user;
     config.password = password;
   } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mssql auth type is a string literal union
     config.authentication = {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mssql auth type is a string literal union
       type: authType as any,
-    };
-
-    // If client id is not set here, ensure that AZURE_CLIENT_ID is set when using DefaultAzureCredential
-    if (identityClientId) {
-      config.authentication.options = { clientId: identityClientId };
-    }
+      // If client id is not set here, ensure that AZURE_CLIENT_ID is set when using DefaultAzureCredential
+      ...(identityClientId && { options: { clientId: identityClientId } }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- casting full object to satisfy mssql types
+    } as any;
   }
 
   return config;
