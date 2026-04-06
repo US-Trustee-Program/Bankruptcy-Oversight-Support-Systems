@@ -24,7 +24,7 @@ on:
         default: false
 
 concurrency:
-  group: pr-e2e-staging-slot
+  group: pr-e2e-containerized
   cancel-in-progress: false  # Queue PRs, don't cancel
 
 jobs:
