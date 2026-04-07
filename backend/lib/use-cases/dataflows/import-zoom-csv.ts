@@ -102,6 +102,48 @@ export async function processZoomCsvRow(
   }
 }
 
+type ZoomCsvRowDiagnosis = {
+  fullName: string;
+  normalizedName: string;
+  matchCount: number;
+  outcome: 'matched' | 'unmatched' | 'ambiguous';
+  matchedTrusteeIds: string[];
+};
+
+/** @public */
+export async function diagnoseZoomCsvImport(
+  context: ApplicationContext,
+): Promise<ZoomCsvRowDiagnosis[]> {
+  const containerName = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
+  const objectStorage = factory.getObjectStorageGateway(context);
+  const content = await objectStorage.readObject(containerName, ZOOM_CSV_BLOB_NAME);
+
+  if (!content) {
+    return [];
+  }
+
+  const rows = parseZoomCsvFile(content);
+  const repo = factory.getTrusteesRepository(context);
+  const diagnoses: ZoomCsvRowDiagnosis[] = [];
+
+  for (const row of rows) {
+    const normalizedName = normalizeName(row.fullName);
+    const trustees = await repo.findTrusteesByName(normalizedName);
+    const matchCount = trustees.length;
+    const outcome = matchCount === 0 ? 'unmatched' : matchCount === 1 ? 'matched' : 'ambiguous';
+
+    diagnoses.push({
+      fullName: row.fullName,
+      normalizedName,
+      matchCount,
+      outcome,
+      matchedTrusteeIds: trustees.map((t) => t.trusteeId),
+    });
+  }
+
+  return diagnoses;
+}
+
 export async function importZoomCsv(context: ApplicationContext): Promise<ZoomImportResult> {
   const result: ZoomImportResult = { total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 };
 

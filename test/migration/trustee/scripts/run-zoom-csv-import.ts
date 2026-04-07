@@ -28,7 +28,7 @@ import * as dotenv from 'dotenv';
 import { MongoClient } from 'mongodb';
 import { InvocationContext } from '@azure/functions';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
-import { importZoomCsv } from '../../../../backend/lib/use-cases/dataflows/import-zoom-csv';
+import { importZoomCsv, diagnoseZoomCsvImport } from '../../../../backend/lib/use-cases/dataflows/import-zoom-csv';
 
 dotenv.config({ path: 'backend/.env' });
 
@@ -56,6 +56,37 @@ async function run() {
   console.log(`  ambiguous : ${result.ambiguous}`);
   console.log(`  errors    : ${result.errors}`);
   console.log('\nReport saved to runtime-state collection. Run "report" to view failed rows.');
+}
+
+async function diagnose() {
+  console.log('\nDiagnosing Zoom CSV import...');
+  console.log(`  container : ${process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files'}`);
+  console.log('  blob      : zoom-info.tsv');
+
+  const invocationContext = new InvocationContext();
+  const context = await ApplicationContextCreator.getApplicationContext({
+    invocationContext,
+    logger: ApplicationContextCreator.getLogger(invocationContext),
+  });
+
+  const diagnoses = await diagnoseZoomCsvImport(context);
+
+  if (diagnoses.length === 0) {
+    console.log('\n  No zoom-info.tsv found in object storage or file is empty.');
+    return;
+  }
+
+  console.log(`\n  Parsed ${diagnoses.length} row(s) from TSV:\n`);
+
+  for (const d of diagnoses) {
+    console.log(`  [${d.outcome}] "${d.fullName}"`);
+    console.log(`    normalized : "${d.normalizedName}"`);
+    console.log(`    db matches : ${d.matchCount}`);
+    for (const id of d.matchedTrusteeIds) {
+      console.log(`      trusteeId : ${id}`);
+    }
+    console.log();
+  }
 }
 
 async function report() {
@@ -140,6 +171,10 @@ async function main() {
       await run();
       break;
 
+    case 'diagnose':
+      await diagnose();
+      break;
+
     case 'report':
       await report();
       break;
@@ -165,6 +200,10 @@ Commands:
   run      Execute the importZoomCsv use case directly.
            Reads zoom-info.tsv from Azure Blob Storage, matches trustees in MongoDB,
            and saves a ZOOM_CSV_IMPORT_STATE report to the runtime-state collection.
+
+  diagnose Read zoom-info.tsv from Azure Blob Storage and show, for each row, exactly
+           how many trustees matched by name in MongoDB — without writing anything.
+           Useful for diagnosing unmatched/ambiguous discrepancies.
 
   report   Show the latest ZOOM_CSV_IMPORT_STATE document from MongoDB,
            including counts and any failed rows (unmatched, ambiguous, errors).
