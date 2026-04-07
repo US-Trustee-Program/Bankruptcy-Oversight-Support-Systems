@@ -92,6 +92,9 @@ param createAlerts bool = false
 @description('Comma delimited list of data flow names to enable.')
 param enabledDataflows string
 
+@description('Name of the blob container used for migration and operational artifacts.')
+param objectContainerName string = 'migration-files'
+
 param privateDnsZoneName string = 'privatelink.azurewebsites.us'
 
 param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
@@ -173,6 +176,17 @@ module dataflowsSlotQueues './lib/storage/storage-queues.bicep' = {
   ]
 }
 
+module dataflowsObjectContainer './lib/storage/storage-blob-container.bicep' = {
+  name: 'dataflows-object-container-module'
+  params: {
+    storageAccountName: dataflowsFunctionStorageName
+    containerName: objectContainerName
+  }
+  dependsOn: [
+    dataflowsFunctionStorageAccount
+  ]
+}
+
 //Function App Resources
 var userAssignedIdentities = union(
   {
@@ -220,6 +234,10 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
         {
           name: 'AzureWebJobsDataflowsStorage'
           value: dataflowsFunctionStorageAccount.outputs.connectionString
+        }
+        {
+          name: 'CAMS_OBJECT_CONTAINER'
+          value: objectContainerName
         }
       ])
     })
@@ -279,6 +297,10 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           {
             name: 'AzureWebJobsDataflowsStorage'
             value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
+          }
+          {
+            name: 'CAMS_OBJECT_CONTAINER'
+            value: objectContainerName
           }
         ])
       })
