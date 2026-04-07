@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import CaseDetailTrusteePanel from './CaseDetailTrusteePanel';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { ZoomInfo } from '@common/cams/trustees';
 
 vi.mock('./useTrustee', () => ({
   useTrustee: vi.fn(),
@@ -88,5 +89,49 @@ describe('CaseDetailTrusteePanel', () => {
 
     expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
     expect(screen.getByText('Internal use only.')).toBeInTheDocument();
+  });
+
+  test('renders 341 meeting card when trustee is loaded', () => {
+    const trustee = MockData.getTrustee();
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+    renderPanel(trustee.trusteeId);
+
+    expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
+  });
+
+  test('renders 341 meeting empty state when trustee has no zoomInfo', () => {
+    const trustee = MockData.getTrustee({ zoomInfo: undefined });
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+    renderPanel(trustee.trusteeId);
+
+    expect(screen.getByTestId('zoom-info-empty-message')).toBeInTheDocument();
+  });
+
+  test('renders 341 meeting content when trustee has zoomInfo', () => {
+    const zoomInfo: ZoomInfo = {
+      link: 'https://zoom.us/j/123456789',
+      phone: '1-555-123-4567',
+      meetingId: '123456789',
+      passcode: 'abc123',
+    };
+    const trustee = MockData.getTrustee({ zoomInfo });
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+    renderPanel(trustee.trusteeId);
+
+    expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
+  });
+
+  test('does not render edit button on 341 meeting card', () => {
+    const trustee = MockData.getTrustee();
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+    renderPanel(trustee.trusteeId);
+
+    expect(
+      screen.queryByRole('button', { name: 'Edit 341 meeting information' }),
+    ).not.toBeInTheDocument();
   });
 });
