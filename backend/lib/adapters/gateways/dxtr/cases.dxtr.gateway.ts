@@ -25,6 +25,16 @@ import { Trustee } from '@common/cams/trustees';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
+export function parseAoDate(yymmdd: string | undefined): string | undefined {
+  if (!yymmdd) return undefined;
+  const s = yymmdd.trim();
+  if (s === '' || s === '000000') return undefined;
+  const year = `20${s.substring(0, 2)}`;
+  const month = s.substring(2, 4);
+  const day = s.substring(4, 6);
+  return `${year}-${month}-${day}`;
+}
+
 const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
@@ -1264,7 +1274,8 @@ class CasesDxtrGateway implements CasesInterface {
         P.PY_E_MAIL AS email,
         P.PY_PHONENO AS phone,
         P.PY_FAX_PHONE AS fax,
-        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
+        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate,
+        SUBSTRING(TX.REC, 24, 6) AS aptDate
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
@@ -1300,6 +1311,7 @@ class CasesDxtrGateway implements CasesInterface {
       phone?: string;
       fax?: string;
       latestSyncDate: string;
+      aptDate?: string;
     };
 
     const records = handleQueryResult<TrusteeAppointmentRecord[]>(
@@ -1348,6 +1360,7 @@ class CasesDxtrGateway implements CasesInterface {
         caseId: record.caseId,
         courtId: record.courtId,
         dxtrTrustee,
+        appointedDate: parseAoDate(record.aptDate),
       };
     });
 

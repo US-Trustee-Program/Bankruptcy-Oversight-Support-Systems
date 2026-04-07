@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import CasesDxtrGateway from './cases.dxtr.gateway';
+import CasesDxtrGateway, { parseAoDate } from './cases.dxtr.gateway';
 import * as database from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '@common/cams/cases';
@@ -1993,5 +1993,31 @@ describe('Test DXTR Gateway', () => {
 
       expect(debtor).toBeUndefined();
     });
+  });
+});
+
+describe('parseAoDate', () => {
+  test('converts YYMMDD string to ISO date', () => {
+    expect(parseAoDate('260407')).toBe('2026-04-07');
+  });
+
+  test('returns undefined for undefined input', () => {
+    expect(parseAoDate(undefined)).toBeUndefined();
+  });
+
+  test('returns undefined for empty string', () => {
+    expect(parseAoDate('')).toBeUndefined();
+  });
+
+  test('returns undefined for all-zeros sentinel', () => {
+    expect(parseAoDate('000000')).toBeUndefined();
+  });
+
+  test('returns undefined for whitespace-only string', () => {
+    expect(parseAoDate('   ')).toBeUndefined();
+  });
+
+  test('trims whitespace before parsing', () => {
+    expect(parseAoDate(' 260407 ')).toBe('2026-04-07');
   });
 });

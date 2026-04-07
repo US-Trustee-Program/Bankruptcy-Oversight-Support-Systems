@@ -61,6 +61,7 @@ export type TrusteeAppointmentSyncEvent = {
   caseId: string;
   courtId: string;
   dxtrTrustee: DxtrTrusteeParty;
+  appointedDate?: string;
   error?: unknown;
   retryCount?: number;
 };

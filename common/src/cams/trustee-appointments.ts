@@ -155,6 +155,7 @@ export type CaseAppointmentInput = {
   caseId: string;
   trusteeId: string;
   assignedOn: string;
+  appointedDate?: string;
   unassignedOn?: string;
 };
 
@@ -163,5 +164,6 @@ export type CaseAppointment = Auditable &
     caseId: string;
     trusteeId: string;
     assignedOn: string;
+    appointedDate?: string;
     unassignedOn?: string;
   };
