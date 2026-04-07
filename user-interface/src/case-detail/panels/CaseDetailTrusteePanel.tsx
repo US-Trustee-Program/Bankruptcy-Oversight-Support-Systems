@@ -42,6 +42,7 @@ export default function CaseDetailTrusteePanel({
 
   return (
     <div data-testid="case-detail-trustee-panel" className={'case-detail-trustee-panel'}>
+      <h3 data-testid="case-detail-trustee-panel-heading">Trustee - {trustee.name}</h3>
       <div className="record-detail-card-list">
         <CaseTrusteeCard trustee={trustee} trusteeId={caseDetail.trusteeId} />
         <ContactInformationCard internalContact={trustee.internal} />

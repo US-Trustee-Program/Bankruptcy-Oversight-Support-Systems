@@ -72,6 +72,17 @@ describe('CaseDetailTrusteePanel', () => {
     expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
   });
 
+  test('renders heading with trustee name when trustee is loaded', () => {
+    const trustee = MockData.getTrustee();
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+    renderPanel(trustee.trusteeId);
+
+    expect(screen.getByTestId('case-detail-trustee-panel-heading')).toHaveTextContent(
+      `Trustee - ${trustee.name}`,
+    );
+  });
+
   test('renders internal contact card when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
