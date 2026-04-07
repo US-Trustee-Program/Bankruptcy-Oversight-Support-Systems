@@ -408,7 +408,8 @@ export type RuntimeStateDocumentType =
   | 'TRUSTEE_MIGRATION_STATE'
   | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
-  | 'DELETED_CASES_SYNC_STATE';
+  | 'DELETED_CASES_SYNC_STATE'
+  | 'ZOOM_CSV_IMPORT_STATE';
 
 export type RuntimeState = {
   id?: string;
@@ -462,6 +463,27 @@ export type TrusteeNotesMetricsState = RuntimeState & {
 export type DeletedCasesSyncState = RuntimeState & {
   documentType: 'DELETED_CASES_SYNC_STATE';
   lastChangeDate: string;
+};
+
+export type ZoomCsvFailedRow = {
+  fullName: string;
+  accountEmail: string | undefined;
+  meetingId: string;
+  passcode: string;
+  phone: string;
+  link: string;
+  reason: 'unmatched' | 'ambiguous' | 'error';
+};
+
+export type ZoomCsvImportState = RuntimeState & {
+  documentType: 'ZOOM_CSV_IMPORT_STATE';
+  importedAt: string;
+  total: number;
+  matched: number;
+  unmatched: number;
+  ambiguous: number;
+  errors: number;
+  failedRows: ZoomCsvFailedRow[];
 };
 
 export interface DocumentCollectionAdapter<T> {
@@ -557,3 +579,7 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
   deleteByCamsTrusteeId(camsTrusteeId: string): Promise<number>;
   deleteAll(): Promise<number>;
 }
+
+export type ObjectStorageGateway = {
+  readObject(containerName: string, objectName: string): Promise<string | null>;
+};

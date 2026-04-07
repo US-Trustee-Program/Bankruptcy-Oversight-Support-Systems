@@ -6,7 +6,8 @@
   },
   "workspaces": {
     ".": {
-      "ignore": []
+      "ignore": [],
+      "ignoreFiles": ["test/migration/**"]
     },
     "backend": {
       "entry": [
@@ -17,8 +18,7 @@
       "project": ["**/*.ts"],
       "ignore": [],
       "ignoreFiles": [
-        "function-apps/api/index.ts",
-        "lib/testing/mock-gateways/mock-oauth2-constants.ts"
+        "function-apps/api/index.ts"
       ]
     },
     "user-interface": {
@@ -76,7 +76,6 @@
     "buffer",
     "ts-node",
     "@eslint/js",
-    "@typescript-eslint/eslint-plugin",
     "@typescript-eslint/parser",
     "eslint-config-prettier",
     "eslint-plugin-import",
@@ -99,7 +98,6 @@
     "launchdarkly-react-client-sdk",
     "react-router-dom",
     "common",
-    "globals",
-    "@babel/runtime"
+    "globals"
   ]
 }
