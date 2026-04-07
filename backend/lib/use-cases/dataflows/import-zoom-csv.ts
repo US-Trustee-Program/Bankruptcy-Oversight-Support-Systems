@@ -9,7 +9,12 @@ import ModuleNames from '../../../function-apps/dataflows/module-names';
 const MODULE_NAME = ModuleNames.IMPORT_ZOOM_CSV;
 const ZOOM_CSV_BLOB_NAME = 'zoom-info.tsv';
 const ZOOM_REPORT_BLOB_NAME = 'zoom-import-report.csv';
-const ZOOM_REPORT_HEADERS = 'fullName,accountEmail,meetingId,passcode,phone,link,outcome';
+const ZOOM_REPORT_HEADERS =
+  '"fullName","accountEmail","meetingId","passcode","phone","link","outcome"';
+
+function toCsvField(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
 
 const SYSTEM_USER: CamsUserReference = {
   id: 'SYSTEM',
@@ -175,13 +180,13 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
     ]++;
     reportLines.push(
       [
-        row.fullName,
-        row.accountEmail ?? '',
-        row.meetingId,
-        row.passcode,
-        row.phone,
-        row.link,
-        outcome,
+        toCsvField(row.fullName),
+        toCsvField(row.accountEmail ?? ''),
+        toCsvField(row.meetingId),
+        toCsvField(row.passcode),
+        toCsvField(row.phone),
+        toCsvField(row.link),
+        toCsvField(outcome),
       ].join(','),
     );
   }
