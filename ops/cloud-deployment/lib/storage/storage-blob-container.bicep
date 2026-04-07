@@ -5,7 +5,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' existing 
   name: storageAccountName
 }
 
-resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
+resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' existing = {
   parent: storageAccount
   name: 'default'
 }
