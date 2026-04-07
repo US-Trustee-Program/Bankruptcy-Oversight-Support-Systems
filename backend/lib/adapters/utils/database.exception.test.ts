@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import { executeQuery } from './database';
 import { QueryResults, IDbConfig } from '../types/database';
-import { ConnectionError, MSSQLError, RequestError } from 'mssql';
+import { ConnectionError, MSSQL_ERROR_CODE, MSSQLError, RequestError } from 'mssql';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 
 // Setting default Vitest mocks for mssql
@@ -55,7 +55,7 @@ describe('Tests database client exceptions', () => {
     const context = await createMockApplicationContext();
     const requestError = new RequestError(expectedErrorMessage);
     requestError.name = 'RequestError';
-    requestError.code = '';
+    requestError.code = MSSQL_ERROR_CODE.EREQUEST;
     requestError.message = expectedErrorMessage;
     mockRequest.mockImplementation(() => {
       throw requestError;
@@ -77,7 +77,7 @@ describe('Tests database client exceptions', () => {
     const expectedErrorMessage = 'Test ConnectionError exception';
     const context = await createMockApplicationContext();
     const connectionError = new ConnectionError(expectedErrorMessage);
-    connectionError.code = '';
+    connectionError.code = MSSQL_ERROR_CODE.ELOGIN;
     connectionError.name = 'ConnectionError';
     connectionError.message = expectedErrorMessage;
     mockConnect.mockImplementation(() => {
@@ -98,24 +98,36 @@ describe('Tests database client exceptions', () => {
   test('should handle known mssql ConnectionError exceptions with AggregateErrors', async () => {
     const expectedErrorMessage = 'Test ConnectionError exception with AggregateErrors';
     const connectionError = new ConnectionError(expectedErrorMessage);
-    connectionError.code = '';
+    connectionError.code = MSSQL_ERROR_CODE.ELOGIN;
     connectionError.name = 'ConnectionError';
     connectionError.message = expectedErrorMessage;
     connectionError.originalError = {
       message: '',
       name: 'AggregateError',
       errors: [
-        { message: 'Something happen 01', name: '01', code: '' } as MSSQLError,
+        {
+          message: 'Something happen 01',
+          name: '01',
+          code: MSSQL_ERROR_CODE.EREQUEST,
+        } as MSSQLError,
         {
           message: 'Something happen 02',
           name: '02',
-          code: '',
+          code: MSSQL_ERROR_CODE.ELOGIN,
           originalError: {
             name: '03',
             message: 'Nested aggregate errors',
             errors: [
-              { message: 'Nested aggregate error 04', name: '04', code: '' } as MSSQLError,
-              { message: 'Nested aggregate error 05', name: '05', code: '' } as MSSQLError,
+              {
+                message: 'Nested aggregate error 04',
+                name: '04',
+                code: MSSQL_ERROR_CODE.EREQUEST,
+              } as MSSQLError,
+              {
+                message: 'Nested aggregate error 05',
+                name: '05',
+                code: MSSQL_ERROR_CODE.EREQUEST,
+              } as MSSQLError,
             ],
           } as AggregateError,
         } as ConnectionError,
