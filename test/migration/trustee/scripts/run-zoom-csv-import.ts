@@ -2,7 +2,7 @@
  * Local testing script for Zoom CSV import (CAMS-596 Slice 3).
  *
  * Invokes the importZoomCsv use case directly using backend/.env configuration.
- * Reads zoom-info.tsv from Azure Blob Storage and writes zoom-import-report.csv
+ * Reads zoom-info.tsv from Azure Blob Storage and writes zoom-import-report.tsv
  * to the same container.
  *
  * Usage (from repo root):
@@ -12,7 +12,7 @@
  *
  * Commands:
  *   run      Execute the importZoomCsv use case
- *   report   Show the latest zoom-import-report.csv from Azure Blob Storage
+ *   report   Show the latest zoom-import-report.tsv from Azure Blob Storage
  *   diagnose Show per-row DB match counts without writing anything
  *   help     Show this message
  *
@@ -53,7 +53,7 @@ async function run() {
   console.log(`  unmatched : ${result.unmatched}`);
   console.log(`  ambiguous : ${result.ambiguous}`);
   console.log(`  errors    : ${result.errors}`);
-  console.log(`\nReport saved to ${process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files'}/zoom-import-report.csv. Run "report" to view it.`);
+  console.log(`\nReport saved to ${process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files'}/zoom-import-report.tsv. Run "report" to view it.`);
 }
 
 async function diagnose() {
@@ -97,14 +97,14 @@ async function report() {
   });
 
   const objectStorage = factory.getObjectStorageGateway(context);
-  const content = await objectStorage.readObject(containerName, 'zoom-import-report.csv');
+  const content = await objectStorage.readObject(containerName, 'zoom-import-report.tsv');
 
   if (!content) {
-    console.log('\nNo zoom-import-report.csv found. Run "run" first.');
+    console.log('\nNo zoom-import-report.tsv found. Run "run" first.');
     return;
   }
 
-  console.log(`\nZoom CSV Import Report (${containerName}/zoom-import-report.csv):\n`);
+  console.log(`\nZoom CSV Import Report (${containerName}/zoom-import-report.tsv):\n`);
   const lines = content.split('\n');
   for (const line of lines) {
     console.log('  ' + line);
@@ -113,7 +113,7 @@ async function report() {
 
 function clean() {
   console.log(
-    '\nThe zoom-import-report.csv is stored in Azure Blob Storage and is overwritten on each "run". No cleanup needed.',
+    '\nThe zoom-import-report.tsv is stored in Azure Blob Storage and is overwritten on each "run". No cleanup needed.',
   );
 }
 
@@ -159,13 +159,13 @@ Prerequisites (backend/.env):
 Commands:
   run      Execute the importZoomCsv use case directly.
            Reads zoom-info.tsv from Azure Blob Storage, matches trustees in MongoDB,
-           and writes zoom-import-report.csv to the same container.
+           and writes zoom-import-report.tsv to the same container.
 
   diagnose Read zoom-info.tsv from Azure Blob Storage and show, for each row, exactly
            how many trustees matched by name in MongoDB — without writing anything.
            Useful for diagnosing unmatched/ambiguous discrepancies.
 
-  report   Show the latest zoom-import-report.csv from Azure Blob Storage.
+  report   Show the latest zoom-import-report.tsv from Azure Blob Storage.
 
   help     Show this message
 

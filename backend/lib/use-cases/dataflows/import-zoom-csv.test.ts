@@ -1,5 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { parseZoomCsvFile, processZoomCsvRow, importZoomCsv } from './import-zoom-csv';
+import { parseZoomTsvFile, processZoomTsvRow, importZoomCsv } from './import-zoom-csv';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -29,9 +29,9 @@ describe('import-zoom-csv', () => {
     context = await createMockApplicationContext();
   });
 
-  describe('parseZoomCsvFile', () => {
+  describe('parseZoomTsvFile', () => {
     test('should parse valid rows from TSV content', () => {
-      const rows = parseZoomCsvFile(SAMPLE_TSV);
+      const rows = parseZoomTsvFile(SAMPLE_TSV);
 
       expect(rows).toHaveLength(2);
       expect(rows[0]).toEqual({
@@ -54,7 +54,7 @@ describe('import-zoom-csv', () => {
 
     test('should skip empty lines', () => {
       const contentWithEmptyLine = SAMPLE_TSV + '\n\n';
-      const rows = parseZoomCsvFile(contentWithEmptyLine);
+      const rows = parseZoomTsvFile(contentWithEmptyLine);
       expect(rows).toHaveLength(2);
     });
 
@@ -64,13 +64,13 @@ describe('import-zoom-csv', () => {
         'NE\tNew York\tJohn Doe',
       ].join('\n');
 
-      const rows = parseZoomCsvFile(contentWithShortRow);
+      const rows = parseZoomTsvFile(contentWithShortRow);
       expect(rows).toHaveLength(0);
     });
 
     test('should return empty array for header-only content', () => {
       const headerOnly = 'Region\tLocation\tName\tEmail\tMeetingId\tPasscode\tPhone\tLink';
-      const rows = parseZoomCsvFile(headerOnly);
+      const rows = parseZoomTsvFile(headerOnly);
       expect(rows).toHaveLength(0);
     });
 
@@ -80,14 +80,14 @@ describe('import-zoom-csv', () => {
         'NE\tNew York, NY\tJohn Doe\t\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789',
       ].join('\n');
 
-      const rows = parseZoomCsvFile(contentWithBlankEmail);
+      const rows = parseZoomTsvFile(contentWithBlankEmail);
 
       expect(rows).toHaveLength(1);
       expect(rows[0].accountEmail).toBeUndefined();
     });
   });
 
-  describe('processZoomCsvRow', () => {
+  describe('processZoomTsvRow', () => {
     const row = {
       fullName: 'John Doe',
       accountEmail: 'john.doe@example.com',
@@ -100,7 +100,7 @@ describe('import-zoom-csv', () => {
     test('should return "unmatched" when no trustees found', async () => {
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
 
-      const result = await processZoomCsvRow(context, row);
+      const result = await processZoomTsvRow(context, row);
 
       expect(result).toBe('unmatched');
     });
@@ -111,7 +111,7 @@ describe('import-zoom-csv', () => {
         { ...MOCK_TRUSTEE, trusteeId: 'trustee-789' },
       ]);
 
-      const result = await processZoomCsvRow(context, row);
+      const result = await processZoomTsvRow(context, row);
 
       expect(result).toBe('ambiguous');
     });
@@ -124,7 +124,7 @@ describe('import-zoom-csv', () => {
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(MOCK_TRUSTEE);
 
-      const result = await processZoomCsvRow(context, row);
+      const result = await processZoomTsvRow(context, row);
 
       expect(result).toBe('matched');
       expect(updateSpy).toHaveBeenCalledOnce();
@@ -139,7 +139,7 @@ describe('import-zoom-csv', () => {
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(MOCK_TRUSTEE);
 
-      const result = await processZoomCsvRow(context, rowWithoutEmail);
+      const result = await processZoomTsvRow(context, rowWithoutEmail);
 
       expect(result).toBe('matched');
       expect(updateSpy).toHaveBeenCalledWith(
@@ -154,7 +154,7 @@ describe('import-zoom-csv', () => {
         new Error('DB error'),
       );
 
-      const result = await processZoomCsvRow(context, row);
+      const result = await processZoomTsvRow(context, row);
 
       expect(result).toBe('error');
     });
@@ -190,8 +190,8 @@ describe('import-zoom-csv', () => {
       expect(result).toEqual({ total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 });
       expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
         expect.any(String),
-        'zoom-import-report.csv',
-        '"fullName","accountEmail","meetingId","passcode","phone","link","outcome"',
+        'zoom-import-report.tsv',
+        'fullName\taccountEmail\tmeetingId\tpasscode\tphone\tlink\toutcome',
       );
     });
 
@@ -217,7 +217,7 @@ describe('import-zoom-csv', () => {
       expect(result).toEqual({ total: 4, matched: 1, unmatched: 1, ambiguous: 1, errors: 1 });
     });
 
-    test('should write CSV report with outcome for each row', async () => {
+    test('should write TSV report with outcome for each row', async () => {
       const tsv = [
         'Region\tLocation (City, State)\tTrustee First and Last Name\tZoom Account Email Address\tZoom Meeting ID\tZoom Passcode\tZoom Dedicated Phone Number\tZoom Meeting Link',
         'NE\tNew York, NY\tJohn Doe\tjohn.doe@example.com\t111\tabc\t111-111-1111\thttps://zoom.us/j/1',
@@ -235,9 +235,7 @@ describe('import-zoom-csv', () => {
 
       const reportContent = vi.mocked(mockObjectStorage.writeObject).mock.calls[0][2];
       const lines = reportContent.split('\n');
-      expect(lines[0]).toBe(
-        '"fullName","accountEmail","meetingId","passcode","phone","link","outcome"',
-      );
+      expect(lines[0]).toBe('fullName\taccountEmail\tmeetingId\tpasscode\tphone\tlink\toutcome');
       expect(lines[1]).toContain('John Doe');
       expect(lines[1]).toContain('unmatched');
       expect(lines[2]).toContain('Jane Smith');
@@ -246,21 +244,18 @@ describe('import-zoom-csv', () => {
       expect(lines[3]).toContain('error');
     });
 
-    test('should quote and escape CSV fields containing commas or double-quotes', async () => {
-      const tsv = [
+    test('should write report file to zoom-import-report.tsv', async () => {
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(
         'Region\tLocation (City, State)\tTrustee First and Last Name\tZoom Account Email Address\tZoom Meeting ID\tZoom Passcode\tZoom Dedicated Phone Number\tZoom Meeting Link',
-        'NE\tNew York, NY\tDoe, John\t"tricky"@example.com\t111\tabc\t111-111-1111\thttps://zoom.us/j/1',
-      ].join('\n');
-
-      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(tsv);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      );
 
       await importZoomCsv(context);
 
-      const reportContent = vi.mocked(mockObjectStorage.writeObject).mock.calls[0][2];
-      const lines = reportContent.split('\n');
-      expect(lines[1]).toContain('"Doe, John"');
-      expect(lines[1]).toContain('"""tricky""@example.com"');
+      expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
+        expect.any(String),
+        'zoom-import-report.tsv',
+        expect.any(String),
+      );
     });
   });
 });

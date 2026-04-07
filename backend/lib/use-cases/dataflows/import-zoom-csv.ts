@@ -7,21 +7,16 @@ import { normalizeName } from './trustee-match.helpers';
 import ModuleNames from '../../../function-apps/dataflows/module-names';
 
 const MODULE_NAME = ModuleNames.IMPORT_ZOOM_CSV;
-const ZOOM_CSV_BLOB_NAME = 'zoom-info.tsv';
-const ZOOM_REPORT_BLOB_NAME = 'zoom-import-report.csv';
-const ZOOM_REPORT_HEADERS =
-  '"fullName","accountEmail","meetingId","passcode","phone","link","outcome"';
-
-function toCsvField(value: string): string {
-  return `"${value.replace(/"/g, '""')}"`;
-}
+const ZOOM_TSV_BLOB_NAME = 'zoom-info.tsv';
+const ZOOM_REPORT_BLOB_NAME = 'zoom-import-report.tsv';
+const ZOOM_REPORT_HEADERS = 'fullName\taccountEmail\tmeetingId\tpasscode\tphone\tlink\toutcome';
 
 const SYSTEM_USER: CamsUserReference = {
   id: 'SYSTEM',
   name: 'ATS Migration',
 };
 
-type ZoomCsvRow = {
+type ZoomTsvRow = {
   fullName: string;
   accountEmail: string | undefined;
   meetingId: string;
@@ -38,9 +33,9 @@ type ZoomImportResult = {
   errors: number;
 };
 
-export function parseZoomCsvFile(content: string): ZoomCsvRow[] {
+export function parseZoomTsvFile(content: string): ZoomTsvRow[] {
   const lines = content.split('\n');
-  const rows: ZoomCsvRow[] = [];
+  const rows: ZoomTsvRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
@@ -64,9 +59,9 @@ export function parseZoomCsvFile(content: string): ZoomCsvRow[] {
   return rows;
 }
 
-export async function processZoomCsvRow(
+export async function processZoomTsvRow(
   context: ApplicationContext,
-  row: ZoomCsvRow,
+  row: ZoomTsvRow,
 ): Promise<'matched' | 'unmatched' | 'ambiguous' | 'error'> {
   try {
     const repo = factory.getTrusteesRepository(context);
@@ -108,7 +103,7 @@ export async function processZoomCsvRow(
   }
 }
 
-type ZoomCsvRowDiagnosis = {
+type ZoomTsvRowDiagnosis = {
   fullName: string;
   normalizedName: string;
   matchCount: number;
@@ -119,18 +114,18 @@ type ZoomCsvRowDiagnosis = {
 /** @public */
 export async function diagnoseZoomCsvImport(
   context: ApplicationContext,
-): Promise<ZoomCsvRowDiagnosis[]> {
+): Promise<ZoomTsvRowDiagnosis[]> {
   const containerName = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
   const objectStorage = factory.getObjectStorageGateway(context);
-  const content = await objectStorage.readObject(containerName, ZOOM_CSV_BLOB_NAME);
+  const content = await objectStorage.readObject(containerName, ZOOM_TSV_BLOB_NAME);
 
   if (!content) {
     return [];
   }
 
-  const rows = parseZoomCsvFile(content);
+  const rows = parseZoomTsvFile(content);
   const repo = factory.getTrusteesRepository(context);
-  const diagnoses: ZoomCsvRowDiagnosis[] = [];
+  const diagnoses: ZoomTsvRowDiagnosis[] = [];
 
   for (const row of rows) {
     const normalizedName = normalizeName(row.fullName);
@@ -155,20 +150,20 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
 
   const containerName = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
   const objectStorage = factory.getObjectStorageGateway(context);
-  const content = await objectStorage.readObject(containerName, ZOOM_CSV_BLOB_NAME);
+  const content = await objectStorage.readObject(containerName, ZOOM_TSV_BLOB_NAME);
 
   if (!content) {
-    context.logger.info(MODULE_NAME, 'No zoom CSV found in object storage — skipping import');
+    context.logger.info(MODULE_NAME, 'No zoom TSV found in object storage — skipping import');
     return result;
   }
 
-  const rows = parseZoomCsvFile(content);
+  const rows = parseZoomTsvFile(content);
   result.total = rows.length;
 
   const reportLines: string[] = [ZOOM_REPORT_HEADERS];
 
   for (const row of rows) {
-    const outcome = await processZoomCsvRow(context, row);
+    const outcome = await processZoomTsvRow(context, row);
     result[
       outcome === 'matched'
         ? 'matched'
@@ -180,14 +175,14 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
     ]++;
     reportLines.push(
       [
-        toCsvField(row.fullName),
-        toCsvField(row.accountEmail ?? ''),
-        toCsvField(row.meetingId),
-        toCsvField(row.passcode),
-        toCsvField(row.phone),
-        toCsvField(row.link),
-        toCsvField(outcome),
-      ].join(','),
+        row.fullName,
+        row.accountEmail ?? '',
+        row.meetingId,
+        row.passcode,
+        row.phone,
+        row.link,
+        outcome,
+      ].join('\t'),
     );
   }
 
