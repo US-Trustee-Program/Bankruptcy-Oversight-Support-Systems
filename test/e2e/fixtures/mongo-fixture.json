@@ -2301,6 +2301,40 @@
           "id": "SYSTEM",
           "name": "SYSTEM"
         }
+      },
+      {
+        "_id": "69c3f5c935071a9817e23cf5",
+        "id": "e2e-trustee-match-verification-inactive",
+        "documentType": "TRUSTEE_MATCH_VERIFICATION",
+        "orderType": "trustee-match",
+        "caseId": "081-72-11223",
+        "courtId": "0208",
+        "status": "pending",
+        "mismatchReason": "PERFECT_MATCH_INACTIVE_STATUS",
+        "inactiveAppointmentStatus": "voluntarily-suspended",
+        "dxtrTrustee": {
+          "fullName": "E2E Dxtr Trustee Inactive"
+        },
+        "matchCandidates": [
+          {
+            "trusteeId": "e2e-trustee-candidate-inactive",
+            "trusteeName": "E2E Trustee Inactive",
+            "totalScore": 98,
+            "addressScore": 95,
+            "districtDivisionScore": 100,
+            "chapterScore": 98
+          }
+        ],
+        "updatedOn": "2026-03-26T21:28:24.333Z",
+        "updatedBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        },
+        "createdOn": "2026-03-26T21:28:24.333Z",
+        "createdBy": {
+          "id": "SYSTEM",
+          "name": "SYSTEM"
+        }
       }
     ],
     "trustees": [
