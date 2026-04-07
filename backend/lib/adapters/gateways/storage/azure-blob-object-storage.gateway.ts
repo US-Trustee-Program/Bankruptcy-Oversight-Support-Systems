@@ -15,6 +15,13 @@ function getBlobServiceClient(): BlobServiceClient {
 }
 
 export class AzureBlobObjectStorageGateway implements ObjectStorageGateway {
+  async writeObject(containerName: string, objectName: string, content: string): Promise<void> {
+    const containerClient = getBlobServiceClient().getContainerClient(containerName);
+    const blockBlobClient = containerClient.getBlockBlobClient(objectName);
+    const buffer = Buffer.from(content, 'utf-8');
+    await blockBlobClient.upload(buffer, buffer.length);
+  }
+
   async readObject(containerName: string, objectName: string): Promise<string | null> {
     const containerClient = getBlobServiceClient().getContainerClient(containerName);
     const blobClient = containerClient.getBlobClient(objectName);
