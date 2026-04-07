@@ -436,6 +436,7 @@ npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/test-tru
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/test-trustee-migration-local.ts state
 
 # 4. Seed synthetic proId scenarios for controlled testing (Slice 2)
+# if clean slate is needed: npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-proid
 
 # 5. Seed match verification scenarios (CAMS-713 Slice 3)
