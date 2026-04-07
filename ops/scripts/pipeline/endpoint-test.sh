@@ -164,6 +164,24 @@ if [ "${isLocalRun}" != "true" ] && [ -n "${resource_group}" ]; then
 
   echo "Waiting for access restriction propagation..."
   sleep 10
+
+  # Log function app state before testing to diagnose startup/deployment issues
+  if [ -n "${api_name}" ]; then
+    echo "=== Function app state ==="
+    if [ -n "${slot_name}" ] && [ "${slot_name}" != "initial" ] && [ "${slot_name}" != "self" ]; then
+      az functionapp show -g "${resource_group}" -n "${api_name}" --slot "${slot_name}" \
+        --query "{state:state, lastModified:lastModifiedTimeUtc, hostNames:hostNames}" 2>/dev/null || echo "Warning: Could not retrieve function app state"
+      echo "=== Registered functions in slot ==="
+      az functionapp function list -g "${resource_group}" -n "${api_name}" --slot "${slot_name}" \
+        --query "[].{name:name, isDisabled:isDisabled}" 2>/dev/null || echo "Warning: Could not list functions"
+    else
+      az functionapp show -g "${resource_group}" -n "${api_name}" \
+        --query "{state:state, lastModified:lastModifiedTimeUtc, hostNames:hostNames}" 2>/dev/null || echo "Warning: Could not retrieve function app state"
+      echo "=== Registered functions ==="
+      az functionapp function list -g "${resource_group}" -n "${api_name}" \
+        --query "[].{name:name, isDisabled:isDisabled}" 2>/dev/null || echo "Warning: Could not list functions"
+    fi
+  fi
 fi
 
 webCmd=(curl -q -o /dev/null -I -L -s -w "%{http_code}" --retry 5 --retry-delay 60 --retry-all-errors -f "${targetWebAppURL}")
@@ -173,8 +191,16 @@ echo "Checking Webapp endpoint: ${targetWebAppURL}"
 webStatusCode=$("${webCmd[@]}" || true)
 echo "webStatusCode: $webStatusCode"
 echo "Checking API endpoint: ${targetApiURL}"
+# Capture response body separately so we can log it on failure
+apiResponseBody=$(curl -L -s "${targetApiURL}" || true)
 apiStatusCode=$("${apiCmd[@]}" || true)
 echo "apiStatusCode: $apiStatusCode"
+if [[ "${apiStatusCode}" != "200" ]]; then
+  echo "=== API response body (non-200) ==="
+  echo "${apiResponseBody}"
+  echo "=== API response headers ==="
+  curl -s -I -L "${targetApiURL}" || true
+fi
 
 if [[ "${expected_git_sha}" != '' ]]; then
   echo "Expect sha ${expected_git_sha}"

@@ -36,3 +36,7 @@ import './trustee-upcoming-key-dates/trustee-upcoming-key-dates.function';
 import './trustees/trustees.function';
 
 // All functions are now registered via their app.http() calls
+// This log confirms the bundle loaded successfully and all registrations ran.
+// It appears in Application Insights traces and Azure Functions host output even before
+// ApplicationContext is initialized, making it useful for diagnosing pre-swap 404s.
+console.log('[STARTUP] API bundle loaded. All function registrations complete.');
