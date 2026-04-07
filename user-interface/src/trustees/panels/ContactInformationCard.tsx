@@ -20,7 +20,7 @@ export default function ContactInformationCard({
         <div className="usa-card__container">
           <div className="usa-card__body">
             <div className="contact-information-card-header">
-              <h4>Internal</h4>
+              <h4>Internal Contact Info</h4>
               {onEdit && (
                 <Button
                   id="edit-internal-profile"

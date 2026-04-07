@@ -13,12 +13,11 @@ export default function CaseTrusteeCard({ trustee, trusteeId }: Readonly<CaseTru
     <div data-testid="case-trustee-card" className="case-trustee-information usa-card">
       <div className="usa-card__container">
         <div className="usa-card__body">
-          <h4>Trustee</h4>
+          <h4>Public Contact Info</h4>
           <div data-testid="case-trustee-card-name">
             <TrusteeName trusteeName={trustee.name} trusteeId={trusteeId} />
           </div>
           <div data-testid="case-trustee-public-contact">
-            <h5>Public</h5>
             <FormattedContact contact={trustee.public} testIdPrefix="case-trustee-public" />
           </div>
         </div>
