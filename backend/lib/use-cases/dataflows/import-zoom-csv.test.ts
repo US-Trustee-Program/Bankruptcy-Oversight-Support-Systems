@@ -191,7 +191,7 @@ describe('import-zoom-csv', () => {
       expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
         expect.any(String),
         'zoom-import-report.csv',
-        'fullName,accountEmail,meetingId,passcode,phone,link,outcome',
+        '"fullName","accountEmail","meetingId","passcode","phone","link","outcome"',
       );
     });
 
@@ -235,13 +235,32 @@ describe('import-zoom-csv', () => {
 
       const reportContent = vi.mocked(mockObjectStorage.writeObject).mock.calls[0][2];
       const lines = reportContent.split('\n');
-      expect(lines[0]).toBe('fullName,accountEmail,meetingId,passcode,phone,link,outcome');
+      expect(lines[0]).toBe(
+        '"fullName","accountEmail","meetingId","passcode","phone","link","outcome"',
+      );
       expect(lines[1]).toContain('John Doe');
       expect(lines[1]).toContain('unmatched');
       expect(lines[2]).toContain('Jane Smith');
       expect(lines[2]).toContain('ambiguous');
       expect(lines[3]).toContain('Bob Jones');
       expect(lines[3]).toContain('error');
+    });
+
+    test('should quote and escape CSV fields containing commas or double-quotes', async () => {
+      const tsv = [
+        'Region\tLocation (City, State)\tTrustee First and Last Name\tZoom Account Email Address\tZoom Meeting ID\tZoom Passcode\tZoom Dedicated Phone Number\tZoom Meeting Link',
+        'NE\tNew York, NY\tDoe, John\t"tricky"@example.com\t111\tabc\t111-111-1111\thttps://zoom.us/j/1',
+      ].join('\n');
+
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(tsv);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+
+      await importZoomCsv(context);
+
+      const reportContent = vi.mocked(mockObjectStorage.writeObject).mock.calls[0][2];
+      const lines = reportContent.split('\n');
+      expect(lines[1]).toContain('"Doe, John"');
+      expect(lines[1]).toContain('"""tricky""@example.com"');
     });
   });
 });
