@@ -34,6 +34,7 @@ import {
   TrusteeMatchVerification,
 } from '../../../../common/src/cams/trustee-match-verification';
 import { TrusteeAppointmentSyncErrorCode } from '../../../../common/src/cams/dataflow-events';
+import MockData from '../../../../common/src/cams/test-utilities/mock-data';
 
 dotenv.config({ path: 'backend/.env' });
 
@@ -44,8 +45,8 @@ dotenv.config({ path: 'backend/.env' });
 /** All seeded trustee names start with this prefix for easy identification and cleanup. */
 const SEED_NAME_PREFIX = 'SEED Test ';
 
-/** All seeded verification case IDs start with this prefix. */
-const SEED_CASE_PREFIX = 'SEED-';
+/** All seeded verification case IDs use this division code prefix for easy identification and cleanup. */
+const SEED_CASE_PREFIX = 'TST-';
 
 const SEED_COURT_ID = '091';
 
@@ -106,7 +107,7 @@ type VerificationSeed = {
 
 const VERIFICATION_SEEDS: VerificationSeed[] = [
   {
-    caseId: 'SEED-091-11-00001',
+    caseId: MockData.randomCaseId('TST'),
     dxtrFullName: 'Unknown Trustee NoMatch',
     mismatchReason: TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
     status: 'pending',
@@ -114,7 +115,7 @@ const VERIFICATION_SEEDS: VerificationSeed[] = [
     note: 'No CAMS trustee name match — pending manual resolution',
   },
   {
-    caseId: 'SEED-091-11-00002',
+    caseId: MockData.randomCaseId('TST'),
     dxtrFullName: 'Common Name MultipleMatch',
     mismatchReason: TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch,
     status: 'pending',
@@ -122,7 +123,7 @@ const VERIFICATION_SEEDS: VerificationSeed[] = [
     note: 'Multiple name matches (ambiguous) — pending manual resolution',
   },
   {
-    caseId: 'SEED-091-11-00003',
+    caseId: MockData.randomCaseId('TST'),
     dxtrFullName: 'Alice Imperfect Match',
     mismatchReason: TrusteeAppointmentSyncErrorCode.ImperfectMatch,
     status: 'pending',
@@ -130,7 +131,7 @@ const VERIFICATION_SEEDS: VerificationSeed[] = [
     note: 'Single low-confidence candidate — pending manual resolution',
   },
   {
-    caseId: 'SEED-091-11-00004',
+    caseId: MockData.randomCaseId('TST'),
     dxtrFullName: 'Bob Highconfidence Match',
     mismatchReason: TrusteeAppointmentSyncErrorCode.HighConfidenceMatch,
     status: 'pending',
@@ -138,7 +139,7 @@ const VERIFICATION_SEEDS: VerificationSeed[] = [
     note: 'High-confidence but not perfect match — pending manual resolution',
   },
   {
-    caseId: 'SEED-091-11-00005',
+    caseId: MockData.randomCaseId('TST'),
     dxtrFullName: 'Carol Resolved Case',
     mismatchReason: TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
     status: 'approved',
@@ -146,7 +147,7 @@ const VERIFICATION_SEEDS: VerificationSeed[] = [
     note: 'Already resolved (approved) — upsertMatchVerification should skip this doc',
   },
   {
-    caseId: 'SEED-091-11-00006',
+    caseId: MockData.randomCaseId('TST'),
     dxtrFullName: 'David Dismissed Case',
     mismatchReason: TrusteeAppointmentSyncErrorCode.ImperfectMatch,
     status: 'rejected',
@@ -340,10 +341,10 @@ async function cleanSeededData() {
       .deleteMany({ name: { $regex: `^${SEED_NAME_PREFIX}` } });
     console.log(`  Deleted ${trusteeResult.deletedCount} trustee record(s)`);
 
-    // Delete seeded verification docs
+    // Delete seeded verification docs (current TST- prefix and legacy SEED- prefix)
     const verificationResult = await db
       .collection('trustee-match-verification')
-      .deleteMany({ caseId: { $regex: `^${SEED_CASE_PREFIX}` } });
+      .deleteMany({ caseId: { $regex: `^(${SEED_CASE_PREFIX}|SEED-)` } });
     console.log(`  Deleted ${verificationResult.deletedCount} TrusteeMatchVerification record(s)`);
 
     console.log('\nClean complete.');
@@ -394,12 +395,13 @@ Commands:
                            (3 without proIds)
 
   seed-match-verification  Seed TrusteeMatchVerification documents for all slice 3 outcomes:
-                             SEED-091-11-00001  NO_TRUSTEE_MATCH      pending
-                             SEED-091-11-00002  MULTIPLE_TRUSTEES_MATCH pending
-                             SEED-091-11-00003  IMPERFECT_MATCH       pending
-                             SEED-091-11-00004  HIGH_CONFIDENCE_MATCH pending
-                             SEED-091-11-00005  NO_TRUSTEE_MATCH      approved (skip test)
-                             SEED-091-11-00006  IMPERFECT_MATCH       rejected (skip test)
+                             TST-xx-xxxxx  NO_TRUSTEE_MATCH        pending
+                             TST-xx-xxxxx  MULTIPLE_TRUSTEES_MATCH pending
+                             TST-xx-xxxxx  IMPERFECT_MATCH         pending
+                             TST-xx-xxxxx  HIGH_CONFIDENCE_MATCH   pending
+                             TST-xx-xxxxx  NO_TRUSTEE_MATCH        approved (skip test)
+                             TST-xx-xxxxx  IMPERFECT_MATCH         rejected (skip test)
+                           (case IDs are randomly generated on each seed run)
 
   list                     Show all seeded test data currently in MongoDB
 

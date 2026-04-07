@@ -465,27 +465,6 @@ export type DeletedCasesSyncState = RuntimeState & {
   lastChangeDate: string;
 };
 
-export type ZoomCsvFailedRow = {
-  fullName: string;
-  accountEmail: string | undefined;
-  meetingId: string;
-  passcode: string;
-  phone: string;
-  link: string;
-  reason: 'unmatched' | 'ambiguous' | 'error';
-};
-
-export type ZoomCsvImportState = RuntimeState & {
-  documentType: 'ZOOM_CSV_IMPORT_STATE';
-  importedAt: string;
-  total: number;
-  matched: number;
-  unmatched: number;
-  ambiguous: number;
-  errors: number;
-  failedRows: ZoomCsvFailedRow[];
-};
-
 export interface DocumentCollectionAdapter<T> {
   find: (query: ConditionOrConjunction<T>, sort?: SortSpec) => Promise<T[]>;
   paginate: (pipelineOrQuery: Pipeline | Query) => Promise<CamsPaginationResponse<T>>;
@@ -582,4 +561,5 @@ export interface TrusteeProfessionalIdsRepository extends Releasable {
 
 export type ObjectStorageGateway = {
   readObject(containerName: string, objectName: string): Promise<string | null>;
+  writeObject(containerName: string, objectName: string, content: string): Promise<void>;
 };
