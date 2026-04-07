@@ -235,7 +235,7 @@ describe('CaseDetailTrusteePanel', () => {
     renderPanel();
 
     expect(screen.getByTestId('case-detail-trustee-panel-appointed-date')).toHaveTextContent(
-      'Appointed: April 7, 2026',
+      'Appointed: 04/07/2026',
     );
   });
 

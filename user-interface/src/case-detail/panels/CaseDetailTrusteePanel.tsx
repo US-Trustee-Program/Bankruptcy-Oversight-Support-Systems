@@ -8,8 +8,8 @@ import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfo
 
 const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
-  month: 'long',
-  day: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
   timeZone: 'UTC',
 });
 
