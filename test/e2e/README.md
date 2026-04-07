@@ -354,9 +354,23 @@ If ports 3000, 7071, 27017, or 1433 are already in use, stop the conflicting pro
 
 ### Podman out of disk space
 
+Symptoms: build fails with `no space left on device` while committing a container layer.
+
+```bash
+podman system prune -a --volumes
+```
+
+If that isn't enough, also clean E2E-specific images and artifacts:
+
 ```bash
 npm run podman:clean
-podman system prune -a
+podman system prune -a --volumes
+```
+
+After freeing space, force-rebuild the deps image since it may have failed mid-commit:
+
+```bash
+FORCE_REBUILD_DEPS=true npm run e2e
 ```
 
 ### Authentication errors
