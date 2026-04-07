@@ -1,9 +1,21 @@
 import './CaseDetailTrusteePanel.scss';
 import { CaseDetail } from '@common/cams/cases';
 import { useTrustee } from './useTrustee';
+import { useCaseAppointment } from './useCaseAppointment';
 import CaseTrusteeCard from './cards/CaseTrusteeCard';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 import MeetingOfCreditorsInfoCard from '@/trustees/panels/MeetingOfCreditorsInfoCard';
+
+const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+
+function formatAppointedDate(isoDate: string): string {
+  return appointedDateFormatter.format(new Date(isoDate));
+}
 
 interface CaseDetailTrusteePanelProps {
   caseDetail: CaseDetail;
@@ -13,6 +25,7 @@ export default function CaseDetailTrusteePanel({
   caseDetail,
 }: Readonly<CaseDetailTrusteePanelProps>) {
   const { trustee, loading } = useTrustee(caseDetail.trusteeId);
+  const { appointedDate } = useCaseAppointment(caseDetail.caseId);
 
   if (!caseDetail.trusteeId) {
     return (
@@ -43,6 +56,11 @@ export default function CaseDetailTrusteePanel({
   return (
     <div data-testid="case-detail-trustee-panel" className={'case-detail-trustee-panel'}>
       <h3 data-testid="case-detail-trustee-panel-heading">Trustee - {trustee.name}</h3>
+      {appointedDate && (
+        <p data-testid="case-detail-trustee-panel-appointed-date">
+          Appointed: {formatAppointedDate(appointedDate)}
+        </p>
+      )}
       <div className="record-detail-card-list">
         <CaseTrusteeCard trustee={trustee} trusteeId={caseDetail.trusteeId} />
         <ContactInformationCard internalContact={trustee.internal} />

@@ -9,9 +9,15 @@ vi.mock('./useTrustee', () => ({
   useTrustee: vi.fn(),
 }));
 
+vi.mock('./useCaseAppointment', () => ({
+  useCaseAppointment: vi.fn(),
+}));
+
 import { useTrustee } from './useTrustee';
+import { useCaseAppointment } from './useCaseAppointment';
 
 const mockUseTrustee = vi.mocked(useTrustee);
+const mockUseCaseAppointment = vi.mocked(useCaseAppointment);
 
 function renderPanel(trusteeId?: string) {
   const caseDetail = MockData.getCaseDetail({ override: { trusteeId } });
@@ -25,6 +31,7 @@ function renderPanel(trusteeId?: string) {
 describe('CaseDetailTrusteePanel', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockUseCaseAppointment.mockReturnValue({ appointedDate: null, loading: false });
   });
 
   test('renders panel wrapper', () => {
@@ -143,6 +150,30 @@ describe('CaseDetailTrusteePanel', () => {
 
     expect(
       screen.queryByRole('button', { name: 'Edit 341 meeting information' }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('renders appointed date when appointedDate is present', () => {
+    const trustee = MockData.getTrustee();
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+    mockUseCaseAppointment.mockReturnValue({ appointedDate: '2026-04-07', loading: false });
+
+    renderPanel(trustee.trusteeId);
+
+    expect(screen.getByTestId('case-detail-trustee-panel-appointed-date')).toHaveTextContent(
+      'Appointed: April 7, 2026',
+    );
+  });
+
+  test('does not render appointed date when appointedDate is null', () => {
+    const trustee = MockData.getTrustee();
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+    mockUseCaseAppointment.mockReturnValue({ appointedDate: null, loading: false });
+
+    renderPanel(trustee.trusteeId);
+
+    expect(
+      screen.queryByTestId('case-detail-trustee-panel-appointed-date'),
     ).not.toBeInTheDocument();
   });
 });

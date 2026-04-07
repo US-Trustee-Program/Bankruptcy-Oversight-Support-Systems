@@ -44,7 +44,11 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
-import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import {
+  CaseAppointment,
+  TrusteeAppointment,
+  TrusteeAppointmentInput,
+} from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { OversightRoleType } from '@common/cams/roles';
@@ -538,6 +542,10 @@ async function deleteBank(id: string) {
   return api().delete(`/lists/banks/${id}`);
 }
 
+async function getCaseTrusteeAppointment(caseId: string) {
+  return api().get<CaseAppointment>(`/cases/${caseId}/trustee-appointment`);
+}
+
 async function postCaseReload(caseId: string) {
   await api().post('/dev-tools/case-reload', { caseId });
 }
@@ -635,6 +643,7 @@ export const _Api2 = {
   deleteBankruptcySoftware,
   getOversightStaff,
   postCaseReload,
+  getCaseTrusteeAppointment,
 };
 
 const Api2 = getAppConfiguration().useFakeApi ? MockApi2 : _Api2;
