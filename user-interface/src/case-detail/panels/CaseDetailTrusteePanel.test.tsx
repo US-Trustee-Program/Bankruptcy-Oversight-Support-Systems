@@ -30,10 +30,11 @@ describe('CaseDetailTrusteePanel', () => {
     expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
   });
 
-  test('renders CaseTrusteeCard empty state when trusteeId is absent', () => {
+  test('renders plain text message when trusteeId is absent', () => {
     renderPanel(undefined);
 
-    expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
-    expect(screen.getByTestId('case-trustee-card-empty')).toBeInTheDocument();
+    expect(screen.getByTestId('case-detail-trustee-panel-empty')).toBeInTheDocument();
+    expect(screen.getByText('No Trustee has been appointed for this case.')).toBeInTheDocument();
+    expect(screen.queryByTestId('case-trustee-card')).not.toBeInTheDocument();
   });
 });
