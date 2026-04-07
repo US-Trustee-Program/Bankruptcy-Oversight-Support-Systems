@@ -162,13 +162,13 @@ describe('import-zoom-csv', () => {
 
   describe('importZoomCsv', () => {
     let mockObjectStorage: ObjectStorageGateway;
-    let mockStateRepo: { upsert: ReturnType<typeof vi.fn> };
 
     beforeEach(() => {
-      mockObjectStorage = { readObject: vi.fn() };
-      mockStateRepo = { upsert: vi.fn().mockResolvedValue(undefined) };
+      mockObjectStorage = {
+        readObject: vi.fn(),
+        writeObject: vi.fn().mockResolvedValue(undefined),
+      };
       vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
-      vi.spyOn(factory, 'getRuntimeStateRepository').mockReturnValue(mockStateRepo as never);
     });
 
     test('should return empty result and skip report when no file exists', async () => {
@@ -177,10 +177,10 @@ describe('import-zoom-csv', () => {
       const result = await importZoomCsv(context);
 
       expect(result).toEqual({ total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 });
-      expect(mockStateRepo.upsert).not.toHaveBeenCalled();
+      expect(mockObjectStorage.writeObject).not.toHaveBeenCalled();
     });
 
-    test('should save report with empty failedRows when all rows match', async () => {
+    test('should write report with only headers when no data rows', async () => {
       vi.mocked(mockObjectStorage.readObject).mockResolvedValue(
         'Region\tLocation (City, State)\tTrustee First and Last Name\tZoom Account Email Address\tZoom Meeting ID\tZoom Passcode\tZoom Dedicated Phone Number\tZoom Meeting Link',
       );
@@ -188,8 +188,10 @@ describe('import-zoom-csv', () => {
       const result = await importZoomCsv(context);
 
       expect(result).toEqual({ total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 });
-      expect(mockStateRepo.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({ documentType: 'ZOOM_CSV_IMPORT_STATE', failedRows: [] }),
+      expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
+        expect.any(String),
+        'zoom-import-report.csv',
+        'fullName,accountEmail,meetingId,passcode,phone,link,outcome',
       );
     });
 
@@ -215,7 +217,7 @@ describe('import-zoom-csv', () => {
       expect(result).toEqual({ total: 4, matched: 1, unmatched: 1, ambiguous: 1, errors: 1 });
     });
 
-    test('should save report with all failed rows and their reasons', async () => {
+    test('should write CSV report with outcome for each row', async () => {
       const tsv = [
         'Region\tLocation (City, State)\tTrustee First and Last Name\tZoom Account Email Address\tZoom Meeting ID\tZoom Passcode\tZoom Dedicated Phone Number\tZoom Meeting Link',
         'NE\tNew York, NY\tJohn Doe\tjohn.doe@example.com\t111\tabc\t111-111-1111\thttps://zoom.us/j/1',
@@ -231,25 +233,15 @@ describe('import-zoom-csv', () => {
 
       await importZoomCsv(context);
 
-      expect(mockStateRepo.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          documentType: 'ZOOM_CSV_IMPORT_STATE',
-          total: 3,
-          matched: 0,
-          unmatched: 1,
-          ambiguous: 1,
-          errors: 1,
-          failedRows: [
-            expect.objectContaining({ fullName: 'John Doe', reason: 'unmatched' }),
-            expect.objectContaining({
-              fullName: 'Jane Smith',
-              accountEmail: undefined,
-              reason: 'ambiguous',
-            }),
-            expect.objectContaining({ fullName: 'Bob Jones', reason: 'error' }),
-          ],
-        }),
-      );
+      const reportContent = vi.mocked(mockObjectStorage.writeObject).mock.calls[0][2];
+      const lines = reportContent.split('\n');
+      expect(lines[0]).toBe('fullName,accountEmail,meetingId,passcode,phone,link,outcome');
+      expect(lines[1]).toContain('John Doe');
+      expect(lines[1]).toContain('unmatched');
+      expect(lines[2]).toContain('Jane Smith');
+      expect(lines[2]).toContain('ambiguous');
+      expect(lines[3]).toContain('Bob Jones');
+      expect(lines[3]).toContain('error');
     });
   });
 });
