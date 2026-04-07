@@ -1,7 +1,7 @@
 import { CaseDetail } from '@common/cams/cases';
 import { useTrustee } from './useTrustee';
 import CaseTrusteeCard from './cards/CaseTrusteeCard';
-import CaseTrusteeInternalCard from './cards/CaseTrusteeInternalCard';
+import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
 
 interface CaseDetailTrusteePanelProps {
   caseDetail: CaseDetail;
@@ -44,7 +44,7 @@ export default function CaseDetailTrusteePanel({
     <div data-testid="case-detail-trustee-panel" className={PANEL_CLASS}>
       <div className="record-detail-card-list">
         <CaseTrusteeCard trustee={trustee} trusteeId={caseDetail.trusteeId} />
-        <CaseTrusteeInternalCard internalContact={trustee.internal} />
+        <ContactInformationCard internalContact={trustee.internal} />
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 interface ContactInformationCardProps {
   internalContact?: Partial<ContactInformation>;
-  onEdit: () => void;
+  onEdit?: () => void;
 }
 
 export default function ContactInformationCard({
@@ -21,15 +21,17 @@ export default function ContactInformationCard({
           <div className="usa-card__body">
             <div className="contact-information-card-header">
               <h4>Internal</h4>
-              <Button
-                id="edit-internal-profile"
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit trustee internal contact information"
-                title="Edit trustee contact information"
-                onClick={onEdit}
-              >
-                <IconLabel icon="edit" label="Edit" />
-              </Button>
+              {onEdit && (
+                <Button
+                  id="edit-internal-profile"
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  aria-label="Edit trustee internal contact information"
+                  title="Edit trustee contact information"
+                  onClick={onEdit}
+                >
+                  <IconLabel icon="edit" label="Edit" />
+                </Button>
+              )}
             </div>
             <Alert
               message={'Internal use only.'}

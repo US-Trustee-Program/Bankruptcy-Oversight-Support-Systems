@@ -71,22 +71,22 @@ describe('CaseDetailTrusteePanel', () => {
     expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
   });
 
-  test('renders CaseTrusteeInternalCard when trustee is loaded', () => {
+  test('renders internal contact card when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
     renderPanel(trustee.trusteeId);
 
-    expect(screen.getByTestId('case-trustee-internal-card')).toBeInTheDocument();
+    expect(screen.getByText('Internal use only.')).toBeInTheDocument();
   });
 
-  test('renders both cards when trustee is loaded', () => {
+  test('renders both public and internal cards when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
     renderPanel(trustee.trusteeId);
 
     expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
-    expect(screen.getByTestId('case-trustee-internal-card')).toBeInTheDocument();
+    expect(screen.getByText('Internal use only.')).toBeInTheDocument();
   });
 });

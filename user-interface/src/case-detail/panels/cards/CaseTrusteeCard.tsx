@@ -1,3 +1,4 @@
+import './CaseTrusteeCard.scss';
 import { Trustee } from '@common/cams/trustees';
 import { TrusteeName } from '../TrusteeName';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
