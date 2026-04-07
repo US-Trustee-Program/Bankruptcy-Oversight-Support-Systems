@@ -30,40 +30,23 @@ macOS (host)                          Windows 11 VM
 
 ### VM Tool Options
 
-| Tool | Cost | Notes |
-|------|------|-------|
-| **Parallels Desktop** | $99.99/yr | Best performance and easiest setup on Apple Silicon |
-| **VMware Fusion** | Free (personal) | Good free alternative, slightly more manual setup |
-| **UTM** | Free | Viable but less polished audio/display drivers |
+All recommended VM tools are free. No paid software is required for screen reader testing.
+
+| Tool | License | Notes |
+|------|---------|-------|
+| **UTM** | Free, open source ([Apache 2.0](https://github.com/utmapp/UTM)) | Recommended free option for Apple Silicon |
+| **VMware Fusion** | Free for all users | Good performance, slightly more manual setup |
 
 VirtualBox is not recommended -- it has experimental and unstable ARM support.
 
-### VM Setup: Parallels Desktop (Recommended)
+### Windows Licensing
 
-1. Download and install [Parallels Desktop](https://www.parallels.com/products/desktop/)
-2. Create a new VM -- Parallels will download the Windows 11 ARM installer automatically
-3. Recommended VM specs:
-   - **RAM:** 4 GB
-   - **CPU:** 2 cores
-   - **Disk:** 40 GB
-4. Complete the Windows setup wizard
-5. Install Parallels Tools when prompted (improves display, networking, and audio)
+During Windows 11 installation, select **"I don't have a product key"** and choose **Windows 11 Home**. An unactivated Windows installation is fully functional for screen reader testing. The only limitations are a desktop watermark and restricted personalization settings (wallpaper, themes), which do not affect testing.
 
-### VM Setup: VMware Fusion (Free Alternative)
-
-1. Download [VMware Fusion](https://www.vmware.com/products/desktop-hypervisor/workstation-and-fusion) (free for personal use)
-2. Download a Windows 11 ARM ISO from [Microsoft](https://www.microsoft.com/software-download/windows11arm64)
-3. Create a new VM using the ISO
-4. Recommended VM specs:
-   - **RAM:** 4 GB
-   - **CPU:** 2 cores
-   - **Disk:** 40 GB
-5. Complete the Windows setup wizard
-6. Install VMware Tools for improved integration
-
-### VM Setup: UTM (Free Alternative)
+### VM Setup: UTM (Recommended)
 
 1. Download [UTM](https://mac.getutm.app/) or install via `brew install --cask utm`
+   - UTM is free and open source. It is available at no cost from [GitHub](https://github.com/utmapp/UTM/releases) and Homebrew. A Mac App Store version exists as an optional way to support the developers, but the application is identical.
 2. Download a Windows 11 ARM ISO from [Microsoft](https://www.microsoft.com/software-download/windows11arm64) (select "Windows 11 (multi-edition ISO for Arm64)", choose English, then click the download button)
    - [CrystalFetch](https://apps.apple.com/app/crystalfetch-iso-downloader/id6454431289) can also download ISOs from Microsoft's CDN, but may hang during download -- use the Microsoft page as a fallback
 3. Open UTM and click **"+"** to create a new VM
@@ -79,9 +62,21 @@ VirtualBox is not recommended -- it has experimental and unstable ARM support.
 10. Press any key when prompted to boot from the ISO, then complete the Windows setup wizard (select "I don't have a product key" and choose Windows 11 Home)
 11. After Windows boots, install the SPICE guest tools from the mounted CD drive in File Explorer (improves display, clipboard, and networking)
 
+### VM Setup: VMware Fusion (Alternative)
+
+1. Download [VMware Fusion](https://www.vmware.com/products/desktop-hypervisor/workstation-and-fusion) (free for all users)
+2. Download a Windows 11 ARM ISO from [Microsoft](https://www.microsoft.com/software-download/windows11arm64)
+3. Create a new VM using the ISO
+4. Recommended VM specs:
+   - **RAM:** 4 GB
+   - **CPU:** 2 cores
+   - **Disk:** 40 GB
+5. Complete the Windows setup wizard (select "I don't have a product key" and choose Windows 11 Home)
+6. Install VMware Tools for improved integration
+
 ### Installing Screen Readers
 
-**NVDA (free, open source):**
+**NVDA** (free, open source -- [GPL v2](https://github.com/nvaccess/nvda/)):
 
 Run the automated setup script inside the VM (see [VM Setup Script](#vm-setup-script) below), or install manually:
 
@@ -93,7 +88,7 @@ Run the automated setup script inside the VM (see [VM Setup Script](#vm-setup-sc
 
 ### Installing a Browser
 
-Chrome ARM64 is recommended for consistency with how most users access CAMS:
+Chrome ARM64 (free) is recommended for consistency with how most users access CAMS:
 
 ```powershell
 winget install --id=Google.Chrome -e
@@ -139,7 +134,7 @@ The `test:screen-reader` script binds to all interfaces, so the VM can reach it.
 ipconfig getifaddr en0
 ```
 
-For Parallels, the host is typically accessible at `10.211.55.2`. For VMware Fusion, check `ifconfig vmnet8` or the VM's network settings. For UTM, use your Mac's local network IP from the command above (`ipconfig getifaddr en0`).
+For VMware Fusion, check `ifconfig vmnet8` or the VM's network settings. For UTM, use your Mac's local network IP from the command above (`ipconfig getifaddr en0`).
 
 ### 3. Open CAMS in the VM browser
 
