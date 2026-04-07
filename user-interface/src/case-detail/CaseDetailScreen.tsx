@@ -29,6 +29,7 @@ import { CaseAssignment } from '@common/cams/assignments';
 import { CamsRole } from '@common/cams/roles';
 import CaseNotes from './panels/case-notes/CaseNotes';
 import CaseDetailTrusteeAndAssignedStaff from './panels/CaseDetailTrusteeAndAssignedStaff';
+import CaseDetailTrusteePanel from './panels/CaseDetailTrusteePanel';
 
 const CaseDetailHeader = lazy(() => import('./panels/CaseDetailHeader'));
 const CaseDetailOverview = lazy(() => import('./panels/CaseDetailOverview'));
@@ -600,6 +601,10 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
                         onCaseAssignment={handleCaseAssignment}
                       />
                     }
+                  />
+                  <Route
+                    path="trustee"
+                    element={<CaseDetailTrusteePanel caseDetail={caseBasicInfo} />}
                   />
                   <Route
                     path="court-docket"

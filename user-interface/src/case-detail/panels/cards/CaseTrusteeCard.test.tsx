@@ -73,4 +73,105 @@ describe('CaseTrusteeCard', () => {
     expect(screen.getByTestId('case-trustee-card-empty')).toBeInTheDocument();
     expect(screen.getByText('No trustee information available.')).toBeInTheDocument();
   });
+
+  describe('contact sections', () => {
+    test('renders public contact section when trustee is loaded', () => {
+      const trustee = MockData.getTrustee();
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderCard(trustee.trusteeId);
+
+      expect(screen.getByTestId('case-trustee-public-contact')).toBeInTheDocument();
+    });
+
+    test('renders public address via FormattedContact', () => {
+      const trustee = MockData.getTrustee();
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderCard(trustee.trusteeId);
+
+      expect(screen.getByTestId('case-trustee-public-street-address')).toBeInTheDocument();
+    });
+
+    test('renders public phone number', () => {
+      const trustee = MockData.getTrustee({
+        public: MockData.getContactInformation({ phone: { number: '555-123-4567' } }),
+      });
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderCard(trustee.trusteeId);
+
+      expect(screen.getByTestId('case-trustee-public-phone-number')).toBeInTheDocument();
+    });
+
+    test('renders public email', () => {
+      const trustee = MockData.getTrustee({
+        public: MockData.getContactInformation({ email: 'test@example.com' }),
+      });
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderCard(trustee.trusteeId);
+
+      expect(screen.getByTestId('case-trustee-public-email')).toBeInTheDocument();
+    });
+
+    test('renders internal contact section when trustee is loaded', () => {
+      const trustee = MockData.getTrustee();
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderCard(trustee.trusteeId);
+
+      expect(screen.getByTestId('case-trustee-internal-contact')).toBeInTheDocument();
+    });
+
+    test('renders "Internal use only." alert in internal section', () => {
+      const trustee = MockData.getTrustee();
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderCard(trustee.trusteeId);
+
+      expect(screen.getByText('Internal use only.')).toBeInTheDocument();
+    });
+
+    test('renders internal contact fields when trustee.internal is present', () => {
+      const trustee = MockData.getTrustee({
+        internal: MockData.getContactInformation(),
+      });
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderCard(trustee.trusteeId);
+
+      expect(screen.getByTestId('case-trustee-internal-street-address')).toBeInTheDocument();
+    });
+
+    test('renders internal empty state when trustee.internal is absent', () => {
+      const trustee = MockData.getTrustee();
+      // getTrustee() does not include internal by default
+      trustee.internal = undefined;
+      mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+      renderCard(trustee.trusteeId);
+
+      expect(screen.getByTestId('case-trustee-internal-contact-empty')).toBeInTheDocument();
+      expect(screen.getByText('No internal contact information.')).toBeInTheDocument();
+    });
+
+    test('does not render contact sections when trusteeId is undefined', () => {
+      mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
+
+      renderCard(undefined);
+
+      expect(screen.queryByTestId('case-trustee-public-contact')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('case-trustee-internal-contact')).not.toBeInTheDocument();
+    });
+
+    test('does not render contact sections while loading', () => {
+      mockUseTrustee.mockReturnValue({ trustee: null, loading: true });
+
+      renderCard('trustee-123');
+
+      expect(screen.queryByTestId('case-trustee-public-contact')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('case-trustee-internal-contact')).not.toBeInTheDocument();
+    });
+  });
 });
