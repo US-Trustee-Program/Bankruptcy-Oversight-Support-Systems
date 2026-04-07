@@ -88,7 +88,7 @@
     "eslint-plugin-prettier": "5.5.5",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.0.1",
-    "eslint-plugin-testing-library": "7.16.1",
+    "eslint-plugin-testing-library": "7.16.2",
     "jsdom": "29.0.1",
     "prettier": "3.8.1",
     "react-router": "7.13.2",

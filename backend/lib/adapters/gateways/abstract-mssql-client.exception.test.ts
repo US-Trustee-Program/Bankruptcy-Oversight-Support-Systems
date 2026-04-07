@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 import { IDbConfig } from '../types/database';
 import { ConnectionError, MSSQLError, RequestError } from 'mssql';
+import type { MSSQL_ERROR_CODE } from 'mssql';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { AbstractMssqlClient } from './abstract-mssql-client';
 import { ApplicationContext } from '../types/basic';
@@ -73,7 +74,7 @@ describe('Tests database client exceptions', () => {
   test('should rethrow miscelaneous mssql error exceptions', async () => {
     const requestError = new RequestError('Test request error exception');
     requestError.name = 'RequestError';
-    requestError.code = '';
+    requestError.code = 'EREQUEST' as unknown as MSSQL_ERROR_CODE;
     requestError.message = 'Test request error exception';
     mockRequest.mockImplementation(() => {
       throw requestError;
@@ -89,7 +90,7 @@ describe('Tests database client exceptions', () => {
     const expectedErrorMessage = 'Test MSSQLError exception';
     const requestError = new RequestError(expectedErrorMessage);
     requestError.name = 'RequestError';
-    requestError.code = '';
+    requestError.code = 'EREQUEST' as unknown as MSSQL_ERROR_CODE;
     requestError.message = expectedErrorMessage;
     mockRequest.mockImplementation(() => {
       const mssqlError = new MSSQLError({
@@ -99,7 +100,7 @@ describe('Tests database client exceptions', () => {
       // not totally sure why I have to set the error in this way to get it to work.
       mssqlError.name = 'TestMSSQLMessage';
       mssqlError.message = expectedErrorMessage;
-      mssqlError.code = '1';
+      mssqlError.code = 'EREQUEST' as unknown as MSSQL_ERROR_CODE;
       mssqlError.originalError = { message: 'original error', name: 'originalError' };
       throw mssqlError;
     });
@@ -114,7 +115,7 @@ describe('Tests database client exceptions', () => {
     const expectedErrorMessage = 'Test ConnectionError exception';
     const context = await createMockApplicationContext();
     const connectionError = new ConnectionError(expectedErrorMessage);
-    connectionError.code = '';
+    connectionError.code = 'ELOGIN' as unknown as MSSQL_ERROR_CODE;
     connectionError.name = 'ConnectionError';
     connectionError.message = expectedErrorMessage;
     mockConnect.mockImplementation(() => {
@@ -130,31 +131,43 @@ describe('Tests database client exceptions', () => {
   test('should handle known mssql ConnectionError exceptions with AggregateErrors', async () => {
     const expectedErrorMessage = 'Test ConnectionError exception with AggregateErrors';
     const connectionError = new ConnectionError(expectedErrorMessage);
-    connectionError.code = '';
+    connectionError.code = 'ELOGIN' as unknown as MSSQL_ERROR_CODE;
     connectionError.name = 'ConnectionError';
     connectionError.message = expectedErrorMessage;
     connectionError.originalError = {
       message: '',
       name: 'AggregateError',
       errors: [
-        { message: 'Something happen 01', name: '01', code: '' } as MSSQLError,
+        {
+          message: 'Something happen 01',
+          name: '01',
+          code: 'EREQUEST' as unknown as MSSQL_ERROR_CODE,
+        } as MSSQLError,
         {
           message: 'Something happen 02',
           name: '02',
-          code: '',
+          code: 'ELOGIN' as unknown as MSSQL_ERROR_CODE,
           errors: [
             {
               message: 'Agreggate error sub error 1',
               name: '02.1',
-              code: '',
+              code: 'EREQUEST' as unknown as MSSQL_ERROR_CODE,
             },
           ],
           originalError: {
             name: '03',
             message: 'Nested aggregate errors',
             errors: [
-              { message: 'Nested aggregate error 04', name: '04', code: '' } as MSSQLError,
-              { message: 'Nested aggregate error 05', name: '05', code: '' } as MSSQLError,
+              {
+                message: 'Nested aggregate error 04',
+                name: '04',
+                code: 'EREQUEST' as unknown as MSSQL_ERROR_CODE,
+              } as MSSQLError,
+              {
+                message: 'Nested aggregate error 05',
+                name: '05',
+                code: 'EREQUEST' as unknown as MSSQL_ERROR_CODE,
+              } as MSSQLError,
             ],
           } as AggregateError,
         } as ConnectionError,
