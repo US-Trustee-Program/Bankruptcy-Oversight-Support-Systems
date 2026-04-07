@@ -1,16 +1,32 @@
 version: '3.8'
 
 services:
+  # Azurite (Azure Storage Emulator) - separate service for backend to connect to
+  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
+  azurite:
+    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-azure-storage-azurite-latest
+    container_name: cams-azurite-e2e
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
+    networks:
+      - cams-e2e
+    healthcheck:
+      disable: true
+
   # MongoDB (compatible with Cosmos DB MongoDB API)
+  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
   mongodb:
-    image: mongo:7.0
+    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-mongo-7.0
     container_name: cams-mongodb-e2e
     ports:
       - "27017:27017"
     environment:
       - MONGO_INITDB_DATABASE=cams-e2e
-    volumes:
-      - ./mongodb-data:/data/db
+    # Removed volume mount - causes permission issues in rootless podman (GitHub Actions)
+    # Data persistence not needed for E2E tests - fresh DB seeded each run
     networks:
       - cams-e2e
     healthcheck:
@@ -21,17 +37,18 @@ services:
       start_period: 10s
 
   # Azure SQL Edge (ARM64-compatible SQL Server for testing)
+  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
   sqlserver:
-    image: mcr.microsoft.com/azure-sql-edge:latest
+    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-azure-sql-edge-latest
     container_name: cams-sqlserver-e2e
     ports:
       - "1433:1433"
     environment:
       - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${MSSQL_SA_PASSWORD}
+      - MSSQL_SA_PASSWORD=${MSSQL_PASS}
       - MSSQL_PID=Developer
-    volumes:
-      - ./sqlserver-data:/var/opt/mssql
+    # Volume removed: causes permission issues in rootless podman (GitHub Actions CI)
+    # E2E tests don't need data persistence - DB is seeded fresh each run
     networks:
       - cams-e2e
     healthcheck:
@@ -42,11 +59,15 @@ services:
       start_period: 30s
 
   # Backend API service
+  # Connects to external Azurite service over bridge network.
+  # Bridge network gives it azurite/mongodb/sqlserver DNS.
+  # Port 7071 published for Playwright.
   backend:
     build:
       context: ../../
       dockerfile: test/e2e/Dockerfile.backend
     container_name: cams-backend-e2e
+    restart: "no"
     ports:
       - "7071:7071"
     env_file:
@@ -56,9 +77,9 @@ services:
       - DOTENV_CONFIG_SILENT=true
       - DOTENV_QUIET=true
       - COSMOS_DATABASE_NAME=${COSMOS_DATABASE_NAME}
-      - MONGO_CONNECTION_STRING=${MONGO_CONNECTION_STRING}
+      - MONGO_CONNECTION_STRING=mongodb://mongodb:27017/cams-e2e?retrywrites=false
       - DATABASE_MOCK=${DATABASE_MOCK}
-      - MSSQL_HOST=${MSSQL_HOST}
+      - MSSQL_HOST=sqlserver
       - MSSQL_DATABASE=${MSSQL_DATABASE}
       - MSSQL_DATABASE_DXTR=${MSSQL_DATABASE_DXTR}
       - MSSQL_USER=${MSSQL_USER}
@@ -66,13 +87,12 @@ services:
       - MSSQL_ENCRYPT=${MSSQL_ENCRYPT}
       - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
       - SLOT_NAME=${SLOT_NAME}
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      sqlserver:
-        condition: service_healthy
     networks:
       - cams-e2e
+    depends_on:
+      - azurite
+      - mongodb
+      - sqlserver
     healthcheck:
       disable: true
 
@@ -85,15 +105,18 @@ services:
     ports:
       - "3000:3000"
     environment:
+      - BROWSER=none
       - DOTENV_CONFIG_SILENT=true
       - DOTENV_QUIET=true
       - CAMS_PA11Y=false
+      - CAMS_FEATURE_FLAGS_MODE=test
       - CAMS_LOGIN_PROVIDER=${CAMS_LOGIN_PROVIDER}
-      - CAMS_LOGIN_PROVIDER_URL=${CAMS_LOGIN_PROVIDER_URL}
-      - CAMS_LOGIN_CLIENT_ID=${CAMS_LOGIN_CLIENT_ID}
-      - CAMS_LOGIN_PROVIDER_PARAMS=${CAMS_LOGIN_PROVIDER_PARAMS}
+      - CAMS_LOGIN_PROVIDER_CONFIG=${CAMS_LOGIN_PROVIDER_CONFIG}
+      - CAMS_SERVER_HOSTNAME=${CAMS_SERVER_HOSTNAME}
+      - CAMS_SERVER_PORT=${CAMS_SERVER_PORT}
+      - CAMS_SERVER_PROTOCOL=${CAMS_SERVER_PROTOCOL}
+      - CAMS_BASE_PATH=${CAMS_BASE_PATH}
       - CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING=
-      - CAMS_API_BASE_URL=http://backend:7071
       - SLOT_NAME=${SLOT_NAME}
     depends_on:
       - backend

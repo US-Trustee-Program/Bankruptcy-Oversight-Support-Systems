@@ -74,6 +74,7 @@ param idKeyvaultAppConfiguration string
 
 param cosmosDatabaseName string
 param e2eDatabaseName string
+param e2eSqlDatabaseName string
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
@@ -295,6 +296,10 @@ var baseApiFunctionAppConfigProperties = {
       {
         name: 'COSMOS_DATABASE_NAME'
         value: e2eDatabaseName
+      }
+      {
+        name: 'MSSQL_DATABASE_DXTR'
+        value: e2eSqlDatabaseName
       }
       {
         name: 'AzureWebJobsStorage'

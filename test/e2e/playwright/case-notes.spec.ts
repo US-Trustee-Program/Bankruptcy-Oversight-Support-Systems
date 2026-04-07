@@ -1,14 +1,16 @@
-import DataGenerationUtils from '../../../backend/function-apps/dataflows/e2e/data-generation-utils';
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 
 const timeoutOption = { timeout: 60000 };
 
+// Case ID from e2e fixtures (previously DataGenerationUtils.KNOWN_GOOD_TRANSFER_TO_CASE_ID)
+const KNOWN_GOOD_TRANSFER_TO_CASE_ID = '091-69-12345';
+
 test.describe('Case Notes', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
 
   test.beforeEach(async ({ page }) => {
-    await page.goto(`/case-detail/${DataGenerationUtils.KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
+    await page.goto(`/case-detail/${KNOWN_GOOD_TRANSFER_TO_CASE_ID}/notes`);
 
     const addCaseNoteButton = page.getByTestId('open-modal-button_note-add-button');
     await expect(addCaseNoteButton).toBeVisible(timeoutOption);

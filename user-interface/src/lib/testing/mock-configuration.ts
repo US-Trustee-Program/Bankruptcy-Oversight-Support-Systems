@@ -8,6 +8,7 @@ export const blankConfiguration: AppConfiguration = {
   serverPort: undefined,
   serverProtocol: undefined,
   featureFlagClientId: undefined,
+  featureFlagsMode: undefined,
   launchDarklyEnv: undefined,
   applicationInsightsConnectionString: undefined,
   useFakeApi: false,
