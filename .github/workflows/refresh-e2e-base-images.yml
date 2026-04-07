@@ -1,0 +1,22 @@
+name: Refresh E2E Base Image Cache
+
+on:
+  schedule:
+    - cron: '0 5 * * 0'  # Weekly on Sunday at 05:00 UTC (before prune at 06:00)
+  workflow_dispatch:       # Allow manual trigger
+
+jobs:
+  refresh:
+    name: Re-cache upstream base images to ghcr.io
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Refresh base images
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_ACTOR: ${{ github.actor }}
+        run: test/e2e/scripts/cache-base-images.sh

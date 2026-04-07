@@ -44,8 +44,9 @@ export class ApplicationConfiguration {
   private getDxtrDbConfig(database: string): IDbConfig {
     const server = process.env.MSSQL_HOST;
     const port: number = Number(process.env.MSSQL_PORT) || 1433;
-    const encrypt: boolean = Boolean(process.env.MSSQL_ENCRYPT);
-    const trustServerCertificate: boolean = Boolean(process.env.MSSQL_TRUST_UNSIGNED_CERT);
+    const encrypt: boolean = process.env.MSSQL_ENCRYPT?.toLowerCase() === 'true';
+    const trustServerCertificate: boolean =
+      process.env.MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
     const authType = process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-default';
     const user = process.env.MSSQL_USER;
     const password = process.env.MSSQL_PASS;
@@ -92,8 +93,9 @@ export class ApplicationConfiguration {
   private getAcmsDbConfig(database: string): IDbConfig {
     const server = process.env.ACMS_MSSQL_HOST;
     const port: number = Number(process.env.ACMS_MSSQL_PORT) || 1433;
-    const encrypt: boolean = Boolean(process.env.ACMS_MSSQL_ENCRYPT);
-    const trustServerCertificate: boolean = Boolean(process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT);
+    const encrypt: boolean = process.env.ACMS_MSSQL_ENCRYPT?.toLowerCase() === 'true';
+    const trustServerCertificate: boolean =
+      process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
     const authType = process.env.ACMS_MSSQL_AUTH_TYPE || 'azure-active-directory-default';
     const user = process.env.ACMS_MSSQL_USER;
     const password = process.env.ACMS_MSSQL_PASS;
@@ -139,8 +141,9 @@ export class ApplicationConfiguration {
   private getAtsDbConfig(database: string): IDbConfig {
     const server = process.env.ATS_MSSQL_HOST;
     const port: number = Number(process.env.ATS_MSSQL_PORT) || 1433;
-    const encrypt: boolean = Boolean(process.env.ATS_MSSQL_ENCRYPT);
-    const trustServerCertificate: boolean = Boolean(process.env.ATS_MSSQL_TRUST_UNSIGNED_CERT);
+    const encrypt: boolean = process.env.ATS_MSSQL_ENCRYPT?.toLowerCase() === 'true';
+    const trustServerCertificate: boolean =
+      process.env.ATS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
     const authType = process.env.ATS_MSSQL_AUTH_TYPE || 'azure-active-directory-default';
     const user = process.env.ATS_MSSQL_USER;
     const password = process.env.ATS_MSSQL_PASS;

@@ -92,6 +92,8 @@ jobs:
             --app-resource-group=${{ secrets.AZ_APP_RG }} \
             --db-account=${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
             --db-resource-group=${{ secrets.AZURE_RG }} \
+            --sql-server-name=${{ secrets.AZ_SQL_SERVER_NAME }} \
+            --sql-resource-group=${{ secrets.AZURE_RG }} \
             --network-resource-group=${{ secrets.AZ_NETWORK_RG }} \
             --analytics-resource-group=${{ secrets.AZ_ANALYTICS_RG }} \
             --stack-name=${{ needs.check.outputs.stackName }} \

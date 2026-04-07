@@ -23,17 +23,42 @@ import { resolve } from 'path';
 
 const MODULE_NAME = 'SEED-SQL-E2E';
 
-const targetBaseConfig: sql.config = {
-  server: process.env.LOCAL_MSSQL_HOST || process.env.MSSQL_HOST || 'localhost',
-  user: process.env.LOCAL_MSSQL_USER || process.env.MSSQL_USER || 'sa',
-  password: process.env.LOCAL_MSSQL_PASS || process.env.MSSQL_PASS || 'YourStrong!Passw0rd',
-  options: {
-    encrypt: false,
-    trustServerCertificate: true,
-  },
-  requestTimeout: 60000,
-  connectionTimeout: 30000,
-};
+function buildTargetConfig(): sql.config {
+  const server = process.env.LOCAL_MSSQL_HOST || process.env.MSSQL_HOST || 'localhost';
+  const user = process.env.LOCAL_MSSQL_USER || process.env.MSSQL_USER;
+  const password = process.env.LOCAL_MSSQL_PASS || process.env.MSSQL_PASS;
+  const encrypt = process.env.MSSQL_ENCRYPT?.toLowerCase() === 'true';
+  const trustServerCertificate = process.env.MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
+  const authType = process.env.MSSQL_AUTH_TYPE || 'azure-active-directory-default';
+  const identityClientId = process.env.MSSQL_CLIENT_ID;
+
+  const config: sql.config = {
+    server,
+    options: {
+      encrypt,
+      trustServerCertificate,
+    },
+    requestTimeout: 60000,
+    connectionTimeout: 30000,
+  };
+
+  const useSqlAuth = user && password;
+  if (useSqlAuth) {
+    config.user = user;
+    config.password = password;
+  } else {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mssql auth type is a string literal union
+    config.authentication = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mssql auth type is a string literal union
+      type: authType as any,
+      // If client id is not set here, ensure that AZURE_CLIENT_ID is set when using DefaultAzureCredential
+      ...(identityClientId && { options: { clientId: identityClientId } }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- casting full object to satisfy mssql types
+    } as any;
+  }
+
+  return config;
+}
 
 const TARGET_DATABASE =
   process.env.LOCAL_MSSQL_DATABASE || process.env.MSSQL_DATABASE_DXTR || 'CAMS_E2E';
@@ -352,6 +377,8 @@ async function main() {
   console.log(`[${MODULE_NAME}] Starting SQL Server seeding from fixture...`);
   console.log(`[${MODULE_NAME}] Fixture harvested: ${fixture.harvestedAt}`);
   console.log(`[${MODULE_NAME}] Source case IDs: ${fixture.sourceCaseIds.length}`);
+
+  const targetBaseConfig = buildTargetConfig();
   console.log(`[${MODULE_NAME}] Target: ${targetBaseConfig.server}/${TARGET_DATABASE}`);
 
   let masterPool: sql.ConnectionPool | null = null;

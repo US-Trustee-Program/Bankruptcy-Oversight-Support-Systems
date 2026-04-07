@@ -45,6 +45,12 @@ export function getLastInteraction(): number | null {
 }
 
 export function checkForInactivity() {
+  // Skip session timeout in test mode (E2E tests)
+  const config = getAppConfiguration();
+  if (config.featureFlagsMode === 'test') {
+    return;
+  }
+
   const now = Date.now();
   const lastInteraction = getLastInteraction();
 
