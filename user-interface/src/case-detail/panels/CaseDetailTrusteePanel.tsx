@@ -24,23 +24,27 @@ interface CaseDetailTrusteePanelProps {
 export default function CaseDetailTrusteePanel({
   caseDetail,
 }: Readonly<CaseDetailTrusteePanelProps>) {
-  const { trustee, loading } = useTrustee(caseDetail.trusteeId);
-  const { appointedDate } = useCaseAppointment(caseDetail.caseId);
+  const {
+    appointedDate,
+    trusteeId,
+    loading: appointmentLoading,
+  } = useCaseAppointment(caseDetail.caseId);
+  const { trustee, loading: trusteeLoading } = useTrustee(trusteeId ?? undefined);
 
-  if (!caseDetail.trusteeId) {
+  if (appointmentLoading || trusteeLoading) {
+    return (
+      <div data-testid="case-detail-trustee-panel" className={'case-detail-trustee-panel'}>
+        <div data-testid="case-detail-trustee-panel-loading">Loading trustee information...</div>
+      </div>
+    );
+  }
+
+  if (!trusteeId) {
     return (
       <div data-testid="case-detail-trustee-panel" className={'case-detail-trustee-panel'}>
         <p data-testid="case-detail-trustee-panel-empty">
           No Trustee has been appointed for this case.
         </p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div data-testid="case-detail-trustee-panel" className={'case-detail-trustee-panel'}>
-        <div data-testid="case-detail-trustee-panel-loading">Loading trustee information...</div>
       </div>
     );
   }
@@ -57,12 +61,12 @@ export default function CaseDetailTrusteePanel({
     <div data-testid="case-detail-trustee-panel" className={'case-detail-trustee-panel'}>
       <h3 data-testid="case-detail-trustee-panel-heading">Trustee - {trustee.name}</h3>
       {appointedDate && (
-        <p data-testid="case-detail-trustee-panel-appointed-date">
-          Appointed: {formatAppointedDate(appointedDate)}
+        <p data-testid="case-detail-trustee-panel-appointed-date" className="appointed-date">
+          <strong>Appointed:</strong> {formatAppointedDate(appointedDate)}
         </p>
       )}
       <div className="record-detail-card-list">
-        <CaseTrusteeCard trustee={trustee} trusteeId={caseDetail.trusteeId} />
+        <CaseTrusteeCard trustee={trustee} trusteeId={trusteeId} />
         <ContactInformationCard internalContact={trustee.internal} />
         <MeetingOfCreditorsInfoCard zoomInfo={trustee.zoomInfo} />
       </div>

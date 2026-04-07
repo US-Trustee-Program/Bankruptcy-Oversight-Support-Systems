@@ -29,7 +29,7 @@ describe('useCaseAppointment', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  test('returns appointedDate when API returns appointment with date', async () => {
+  test('returns appointedDate and trusteeId when API returns appointment', async () => {
     vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockResolvedValue({ data: mockAppointment });
 
     const { result } = renderHook(() => useCaseAppointment('111-24-00001'));
@@ -39,6 +39,7 @@ describe('useCaseAppointment', () => {
     });
 
     expect(result.current.appointedDate).toBe('2026-04-07');
+    expect(result.current.trusteeId).toBe('trustee-abc');
   });
 
   test('returns null when API returns appointment with no appointedDate', async () => {

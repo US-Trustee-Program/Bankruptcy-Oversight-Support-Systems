@@ -19,8 +19,8 @@ import { useCaseAppointment } from './useCaseAppointment';
 const mockUseTrustee = vi.mocked(useTrustee);
 const mockUseCaseAppointment = vi.mocked(useCaseAppointment);
 
-function renderPanel(trusteeId?: string) {
-  const caseDetail = MockData.getCaseDetail({ override: { trusteeId } });
+function renderPanel() {
+  const caseDetail = MockData.getCaseDetail();
   render(
     <BrowserRouter>
       <CaseDetailTrusteePanel caseDetail={caseDetail} />
@@ -31,40 +31,70 @@ function renderPanel(trusteeId?: string) {
 describe('CaseDetailTrusteePanel', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    mockUseCaseAppointment.mockReturnValue({ appointedDate: null, loading: false });
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: null,
+      loading: false,
+    });
+    mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
   });
 
   test('renders panel wrapper', () => {
-    mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
-
-    renderPanel('trustee-001');
+    renderPanel();
 
     expect(screen.getByTestId('case-detail-trustee-panel')).toBeInTheDocument();
   });
 
-  test('renders plain text message when trusteeId is absent', () => {
-    mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
+  test('renders plain text message when no active appointment exists', () => {
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: null,
+      loading: false,
+    });
 
-    renderPanel(undefined);
+    renderPanel();
 
     expect(screen.getByTestId('case-detail-trustee-panel-empty')).toBeInTheDocument();
     expect(screen.getByText('No Trustee has been appointed for this case.')).toBeInTheDocument();
     expect(screen.queryByTestId('case-trustee-card')).not.toBeInTheDocument();
   });
 
-  test('renders loading state while fetching', () => {
+  test('renders loading state while appointment is fetching', () => {
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: null,
+      loading: true,
+    });
+
+    renderPanel();
+
+    expect(screen.getByTestId('case-detail-trustee-panel-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('case-trustee-card')).not.toBeInTheDocument();
+  });
+
+  test('renders loading state while trustee is fetching', () => {
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: 'trustee-001',
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee: null, loading: true });
 
-    renderPanel('trustee-001');
+    renderPanel();
 
     expect(screen.getByTestId('case-detail-trustee-panel-loading')).toBeInTheDocument();
     expect(screen.queryByTestId('case-trustee-card')).not.toBeInTheDocument();
   });
 
   test('renders no-info state when trustee fetch returns null', () => {
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: 'trustee-001',
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
 
-    renderPanel('trustee-001');
+    renderPanel();
 
     expect(screen.getByTestId('case-detail-trustee-panel-no-info')).toBeInTheDocument();
     expect(screen.queryByTestId('case-trustee-card')).not.toBeInTheDocument();
@@ -72,18 +102,28 @@ describe('CaseDetailTrusteePanel', () => {
 
   test('renders CaseTrusteeCard when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
   });
 
   test('renders heading with trustee name when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(screen.getByTestId('case-detail-trustee-panel-heading')).toHaveTextContent(
       `Trustee - ${trustee.name}`,
@@ -92,18 +132,28 @@ describe('CaseDetailTrusteePanel', () => {
 
   test('renders internal contact card when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(screen.getByText('Internal use only.')).toBeInTheDocument();
   });
 
   test('renders both public and internal cards when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
     expect(screen.getByText('Internal use only.')).toBeInTheDocument();
@@ -111,18 +161,28 @@ describe('CaseDetailTrusteePanel', () => {
 
   test('renders 341 meeting card when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(screen.getByTestId('zoom-info-card')).toBeInTheDocument();
   });
 
   test('renders 341 meeting empty state when trustee has no zoomInfo', () => {
     const trustee = MockData.getTrustee({ zoomInfo: undefined });
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(screen.getByTestId('zoom-info-empty-message')).toBeInTheDocument();
   });
@@ -135,18 +195,28 @@ describe('CaseDetailTrusteePanel', () => {
       passcode: 'abc123',
     };
     const trustee = MockData.getTrustee({ zoomInfo });
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(screen.getByTestId('zoom-info-content')).toBeInTheDocument();
   });
 
   test('does not render edit button on 341 meeting card', () => {
     const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(
       screen.queryByRole('button', { name: 'Edit 341 meeting information' }),
@@ -155,10 +225,14 @@ describe('CaseDetailTrusteePanel', () => {
 
   test('renders appointed date when appointedDate is present', () => {
     const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: '2026-04-07',
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
-    mockUseCaseAppointment.mockReturnValue({ appointedDate: '2026-04-07', loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(screen.getByTestId('case-detail-trustee-panel-appointed-date')).toHaveTextContent(
       'Appointed: April 7, 2026',
@@ -167,10 +241,14 @@ describe('CaseDetailTrusteePanel', () => {
 
   test('does not render appointed date when appointedDate is null', () => {
     const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
     mockUseTrustee.mockReturnValue({ trustee, loading: false });
-    mockUseCaseAppointment.mockReturnValue({ appointedDate: null, loading: false });
 
-    renderPanel(trustee.trusteeId);
+    renderPanel();
 
     expect(
       screen.queryByTestId('case-detail-trustee-panel-appointed-date'),
