@@ -278,44 +278,59 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   }
 }
 
-// Deployed as a separate resource (not nested in the slot) so that ARM fully provisions
-// the slot — including its internal Azure Files content share — before applying config/web.
-// Deploying config/web inline during slot creation races with Azure Files setup and
-// causes error 01019 (Invalid values supplied for Azure Files related app settings).
-resource dataflowsSlotConfig 'Microsoft.Web/sites/slots/config@2023-12-01' = {
+// config/web and config/appsettings are deployed as separate top-level resources
+// (not nested in the slot) so that ARM fully provisions the slot — including its
+// internal Azure Files content share — before applying configuration.
+//
+// Deploying config/web with appSettings inline during slot creation races with
+// Azure Files setup and causes error 01019. Splitting site config from app settings
+// avoids this: config/web sets only runtime/network config (no appSettings),
+// and config/appsettings sets the app settings via a separate endpoint that does
+// not interact with Azure Files internals.
+resource dataflowsSlotSiteConfig 'Microsoft.Web/sites/slots/config@2023-12-01' = {
   name: '${dataflowsFunctionName}/${slotName}/web'
-  properties: union(dataflowsFunctionConfigProperties, {
-    appSettings: concat(dataflowsFunctionConfigProperties.appSettings, [
-      {
-        name: 'INFO_SHA'
-        value: gitSha
-      }
-      {
-        name: 'MyTaskHub'
-        value: slotName
-      }
-      {
-        name: 'COSMOS_DATABASE_NAME'
-        value: e2eDatabaseName
-      }
-      {
-        name: 'MSSQL_DATABASE_DXTR'
-        value: e2eSqlDatabaseName
-      }
-      {
-        name: 'AzureWebJobsStorage'
-        value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
-      }
-      {
-        name: 'AzureWebJobsDataflowsStorage'
-        value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
-      }
-      {
-        name: 'CAMS_OBJECT_CONTAINER'
-        value: objectContainerName
-      }
-    ])
-  })
+  properties: {
+    cors: dataflowsFunctionConfigProperties.cors
+    numberOfWorkers: dataflowsFunctionConfigProperties.numberOfWorkers
+    alwaysOn: dataflowsFunctionConfigProperties.alwaysOn
+    http20Enabled: dataflowsFunctionConfigProperties.http20Enabled
+    functionAppScaleLimit: dataflowsFunctionConfigProperties.functionAppScaleLimit
+    minimumElasticInstanceCount: dataflowsFunctionConfigProperties.minimumElasticInstanceCount
+    publicNetworkAccess: dataflowsFunctionConfigProperties.publicNetworkAccess
+    ipSecurityRestrictions: dataflowsFunctionConfigProperties.ipSecurityRestrictions
+    ipSecurityRestrictionsDefaultAction: dataflowsFunctionConfigProperties.ipSecurityRestrictionsDefaultAction
+    scmIpSecurityRestrictions: dataflowsFunctionConfigProperties.scmIpSecurityRestrictions
+    scmIpSecurityRestrictionsDefaultAction: dataflowsFunctionConfigProperties.scmIpSecurityRestrictionsDefaultAction
+    scmIpSecurityRestrictionsUseMain: dataflowsFunctionConfigProperties.scmIpSecurityRestrictionsUseMain
+    linuxFxVersion: dataflowsFunctionConfigProperties.linuxFxVersion
+    ftpsState: dataflowsFunctionConfigProperties.ftpsState
+  }
+  dependsOn: [
+    dataflowsFunctionApp::slot
+  ]
+}
+
+resource dataflowsSlotAppSettings 'Microsoft.Web/sites/slots/config@2023-12-01' = {
+  name: '${dataflowsFunctionName}/${slotName}/appsettings'
+  properties: union(
+    dataflowsSlotBaseAppSettingsObject,
+    createApplicationInsights
+      ? {
+          APPLICATIONINSIGHTS_CONNECTION_STRING: dataflowsFunctionAppInsights.outputs.connectionString
+          APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION: 'false'
+          AzureFunctionsJobHost__logging__console__isEnabled: 'false'
+        }
+      : {},
+    {
+      INFO_SHA: gitSha
+      MyTaskHub: slotName
+      COSMOS_DATABASE_NAME: e2eDatabaseName
+      MSSQL_DATABASE_DXTR: e2eSqlDatabaseName
+      AzureWebJobsStorage: dataflowsFunctionSlotStorageAccount.outputs.connectionString
+      AzureWebJobsDataflowsStorage: dataflowsFunctionSlotStorageAccount.outputs.connectionString
+      CAMS_OBJECT_CONTAINER: objectContainerName
+    }
+  )
   dependsOn: [
     dataflowsFunctionApp::slot
   ]
@@ -504,6 +519,47 @@ var dataflowsApplicationSettings = concat(
         { name: 'AzureFunctionsJobHost__logging__console__isEnabled', value: 'false' }
       ]
     : []
+)
+
+// Flat object form of baseApplicationSettings for use with config/appsettings (which requires
+// a {KEY: VALUE} object rather than the [{name, value}] array format used by config/web).
+var dataflowsSlotBaseAppSettingsObject = union(
+  {
+    FUNCTIONS_EXTENSION_VERSION: functionsVersion
+    FUNCTIONS_WORKER_RUNTIME: functionsRuntime
+    CAMS_LOGIN_PROVIDER_CONFIG: loginProviderConfig
+    CAMS_LOGIN_PROVIDER: loginProvider
+    STARTING_MONTH: '-70'
+    ADMIN_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN-KEY)'
+    MONGO_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
+    WEBSITE_RUN_FROM_PACKAGE: '1'
+    SCM_DO_BUILD_DURING_DEPLOYMENT: false
+    MSSQL_HOST: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-HOST)'
+    MSSQL_CLIENT_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
+    MSSQL_ENCRYPT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-ENCRYPT)'
+    MSSQL_TRUST_UNSIGNED_CERT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-TRUST-UNSIGNED-CERT)'
+    MSSQL_REQUEST_TIMEOUT: mssqlRequestTimeout
+    ACMS_MSSQL_HOST: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-HOST)'
+    ACMS_MSSQL_DATABASE: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-DATABASE)'
+    ACMS_MSSQL_ENCRYPT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-ENCRYPT)'
+    ACMS_MSSQL_TRUST_UNSIGNED_CERT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-TRUST-UNSIGNED-CERT)'
+    ACMS_MSSQL_REQUEST_TIMEOUT: mssqlRequestTimeout
+    FEATURE_FLAG_SDK_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
+    CAMS_USER_GROUP_GATEWAY_CONFIG: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=CAMS-USER-GROUP-GATEWAY-CONFIG)'
+    OKTA_API_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
+    CAMS_ENABLED_DATAFLOWS: enabledDataflows
+  },
+  isUstpDeployment
+    ? {
+        MSSQL_USER: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)'
+        MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)'
+        ACMS_MSSQL_USER: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)'
+        ACMS_MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)'
+      }
+    : {
+        MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)'
+        ACMS_MSSQL_CLIENT_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'
+      }
 )
 
 var ipSecurityRestrictionsRules = [
