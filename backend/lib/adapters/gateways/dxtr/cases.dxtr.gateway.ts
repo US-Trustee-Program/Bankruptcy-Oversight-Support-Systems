@@ -25,7 +25,7 @@ import { Trustee } from '@common/cams/trustees';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
-export function parseAoDate(yymmdd: string | undefined): string | undefined {
+export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
   if (!yymmdd) return undefined;
   const s = yymmdd.trim();
   if (s === '' || s === '000000') return undefined;
@@ -1361,7 +1361,7 @@ class CasesDxtrGateway implements CasesInterface {
         caseId: record.caseId,
         courtId: record.courtId,
         dxtrTrustee,
-        appointedDate: parseAoDate(record.aptDate),
+        appointedDate: parseDxtrDate(record.aptDate),
       };
     });
 
@@ -1416,11 +1416,16 @@ class CasesDxtrGateway implements CasesInterface {
       queryResult,
     );
 
-    // Deduplicate — keep first (most recent) row per caseId
+    return this.getMostRecentAppointmentDates(records);
+  }
+
+  private getMostRecentAppointmentDates(
+    records: { caseId: string; aptDate?: string }[],
+  ): Map<string, string> {
     const result = new Map<string, string>();
     for (const record of records) {
       if (result.has(record.caseId)) continue;
-      const appointedDate = parseAoDate(record.aptDate);
+      const appointedDate = parseDxtrDate(record.aptDate);
       if (appointedDate) {
         result.set(record.caseId, appointedDate);
       }

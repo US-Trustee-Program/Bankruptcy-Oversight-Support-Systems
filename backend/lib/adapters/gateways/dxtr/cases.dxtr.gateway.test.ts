@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import CasesDxtrGateway, { parseAoDate } from './cases.dxtr.gateway';
+import CasesDxtrGateway, { parseDxtrDate } from './cases.dxtr.gateway';
 import * as database from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '@common/cams/cases';
@@ -2083,40 +2083,40 @@ describe('getAppointmentDatesByCaseIds', () => {
   });
 });
 
-describe('parseAoDate', () => {
+describe('parseDxtrDate', () => {
   test('converts YYMMDD string to ISO date', () => {
-    expect(parseAoDate('260407')).toBe('2026-04-07');
+    expect(parseDxtrDate('260407')).toBe('2026-04-07');
   });
 
   test('returns undefined for undefined input', () => {
-    expect(parseAoDate(undefined)).toBeUndefined();
+    expect(parseDxtrDate(undefined)).toBeUndefined();
   });
 
   test('returns undefined for empty string', () => {
-    expect(parseAoDate('')).toBeUndefined();
+    expect(parseDxtrDate('')).toBeUndefined();
   });
 
   test('returns undefined for all-zeros sentinel', () => {
-    expect(parseAoDate('000000')).toBeUndefined();
+    expect(parseDxtrDate('000000')).toBeUndefined();
   });
 
   test('returns undefined for whitespace-only string', () => {
-    expect(parseAoDate('   ')).toBeUndefined();
+    expect(parseDxtrDate('   ')).toBeUndefined();
   });
 
   test('trims whitespace before parsing', () => {
-    expect(parseAoDate(' 260407 ')).toBe('2026-04-07');
+    expect(parseDxtrDate(' 260407 ')).toBe('2026-04-07');
   });
 
   test('returns undefined for string shorter than 6 characters', () => {
-    expect(parseAoDate('2604')).toBeUndefined();
+    expect(parseDxtrDate('2604')).toBeUndefined();
   });
 
   test('returns undefined for string longer than 6 characters', () => {
-    expect(parseAoDate('2604071')).toBeUndefined();
+    expect(parseDxtrDate('2604071')).toBeUndefined();
   });
 
   test('returns undefined for non-numeric string', () => {
-    expect(parseAoDate('26040X')).toBeUndefined();
+    expect(parseDxtrDate('26040X')).toBeUndefined();
   });
 });

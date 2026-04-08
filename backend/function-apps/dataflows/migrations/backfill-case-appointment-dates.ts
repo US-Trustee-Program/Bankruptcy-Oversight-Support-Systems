@@ -90,14 +90,12 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
   const lastId = existingState?.lastId ?? null;
   const processedCount = existingState?.processedCount ?? 0;
 
-  if (existingState) {
-    logger.info(
-      MODULE_NAME,
-      `Resuming backfill from cursor ${lastId}. Already processed ${processedCount} appointments.`,
-    );
-  } else {
-    logger.info(MODULE_NAME, 'Starting fresh case appointment date backfill migration.');
-  }
+  logger.info(
+    MODULE_NAME,
+    existingState
+      ? `Resuming backfill from cursor ${lastId}. Already processed ${processedCount} appointments.`
+      : 'Starting fresh case appointment date backfill migration.',
+  );
 
   const cursorMessage: CursorMessage = { lastId };
   invocationContext.extraOutputs.set(PAGE, cursorMessage);

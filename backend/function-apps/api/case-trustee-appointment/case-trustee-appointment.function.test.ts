@@ -38,7 +38,7 @@ describe('CaseTrusteeAppointmentFunction', () => {
   });
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('returns 200 with CaseAppointment on success', async () => {
