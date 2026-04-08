@@ -16,6 +16,8 @@ function makeCaseAppointment(override: Partial<CaseAppointment> = {}): CaseAppoi
     assignedOn: '2025-01-01T00:00:00.000Z',
     createdOn: '2025-01-01T00:00:00.000Z',
     createdBy: { id: 'user-1', name: 'Test User' },
+    updatedOn: '2025-01-01T00:00:00.000Z',
+    updatedBy: { id: 'user-1', name: 'Test User' },
     ...override,
   };
 }
