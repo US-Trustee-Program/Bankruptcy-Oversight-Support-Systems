@@ -43,7 +43,8 @@ server_fqdn="${server_name}${sql_hostname_suffix}"
 sql_resource="https://${sql_hostname_suffix#.}/"
 
 # Detect sqlcmd binary, installing go-sqlcmd on Linux if not found.
-# go-sqlcmd is required (not mssql-tools18) because --token auth is a go-sqlcmd feature.
+# go-sqlcmd is required (not mssql-tools18) because it supports --authentication-method
+# ActiveDirectoryServicePrincipalAccessToken with a pre-obtained token via -P.
 if command -v sqlcmd &>/dev/null; then
   # go-sqlcmd on PATH (macOS via brew install go-sqlcmd, or existing install)
   SQLCMD="sqlcmd"
@@ -78,7 +79,8 @@ echo "Provisioning SQL user '${identity_name}' in database '${database}' on '${s
 "${SQLCMD}" \
   -S "${server_fqdn}" \
   -d "${database}" \
-  --token "${sql_token}" \
+  --authentication-method ActiveDirectoryServicePrincipalAccessToken \
+  -P "${sql_token}" \
   -Q "
     IF NOT EXISTS (
       SELECT 1 FROM sys.database_principals
