@@ -121,7 +121,9 @@ jobs:
           ./ops/scripts/pipeline/az-sql-provision-e2e-db-user.sh \
             --server-name "${{ secrets.AZ_SQL_SERVER_NAME }}" \
             --database "${{ steps.azure-e2e-sql-deploy.outputs.e2eSqlDatabaseName }}" \
-            --identity-name "${{ secrets.AZ_SQL_IDENTITY_NAME }}"
+            --identity-name "${{ secrets.AZ_SQL_IDENTITY_NAME }}" \
+            --identity-client-id "${{ secrets.MSSQL_CLIENT_ID }}" \
+            --sa-password "${{ secrets.MSSQL_PASS }}"
 
       - name: Remove SQL firewall rule for GHA runner
         if: ${{ always() && inputs.environmentHash != '' && inputs.ghaEnvironment != 'Main-Gov' }}

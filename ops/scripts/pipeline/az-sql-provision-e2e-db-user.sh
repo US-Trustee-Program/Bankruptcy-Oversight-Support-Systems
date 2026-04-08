@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 
 # Description: Provisions a contained database user for a managed identity in an Azure SQL database.
-#              Detects or installs go-sqlcmd based on OS/architecture.
+#              Uses SQL auth (sa) to avoid requiring an Azure AD admin connection.
+#              Detects or installs mssql-tools18 on Linux; macOS requires manual install.
 # Prerequisites:
-#   - Azure CLI (logged in)
-#   - sqlcmd: go-sqlcmd auto-installed on Linux if absent; macOS: brew install go-sqlcmd
-# Usage: az-sql-provision-e2e-db-user.sh --server-name <name> --database <db> --identity-name <name>
+#   - Azure CLI (logged in, for cloud suffix discovery)
+#   - sqlcmd: mssql-tools18 auto-installed on Linux if absent; macOS: brew install mssql-tools
+# Usage: az-sql-provision-e2e-db-user.sh --server-name <name> --database <db> --identity-name <name> --identity-client-id <guid> --sa-password <password>
 
 set -euo pipefail
 
@@ -23,6 +24,14 @@ while [[ $# -gt 0 ]]; do
     identity_name="${2}"
     shift 2
     ;;
+  --identity-client-id)
+    identity_client_id="${2}"
+    shift 2
+    ;;
+  --sa-password)
+    sa_password="${2}"
+    shift 2
+    ;;
   *)
     echo "Unknown argument: $1"
     exit 2
@@ -30,64 +39,55 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "${server_name:-}" || -z "${database:-}" || -z "${identity_name:-}" ]]; then
-  echo "Error: --server-name, --database, and --identity-name are required"
+if [[ -z "${server_name:-}" || -z "${database:-}" || -z "${identity_name:-}" || -z "${identity_client_id:-}" || -z "${sa_password:-}" ]]; then
+  echo "Error: --server-name, --database, --identity-name, --identity-client-id, and --sa-password are required"
   exit 1
 fi
 
-# Build FQDN from server name using the current cloud's SQL hostname suffix.
-# The suffix includes a leading dot (e.g. ".database.usgovcloudapi.net"), so strip it
-# for the token resource URL but use it as-is for the FQDN.
+# Build FQDN using the current cloud's SQL hostname suffix (includes leading dot)
 sql_hostname_suffix=$(az cloud show --query "suffixes.sqlServerHostname" -o tsv)
 server_fqdn="${server_name}${sql_hostname_suffix}"
-sql_resource="https://${sql_hostname_suffix#.}/"
 
-# Detect sqlcmd binary, installing go-sqlcmd on Linux if not found.
-# go-sqlcmd is required (not mssql-tools18) because it supports --authentication-method
-# ActiveDirectoryServicePrincipalAccessToken with a pre-obtained token via -P.
-if command -v sqlcmd &>/dev/null; then
-  # go-sqlcmd on PATH (macOS via brew install go-sqlcmd, or existing install)
+# Detect sqlcmd binary, installing mssql-tools18 on Linux if not found
+if [[ -x "/opt/mssql-tools18/bin/sqlcmd" ]]; then
+  SQLCMD="/opt/mssql-tools18/bin/sqlcmd"
+elif command -v sqlcmd &>/dev/null; then
   SQLCMD="sqlcmd"
 elif [[ "$(uname -s)" == "Linux" ]]; then
-  echo "sqlcmd not found — installing go-sqlcmd..."
-  arch="$(uname -m)"
-  case "${arch}" in
-    x86_64)  go_sqlcmd_arch="amd64" ;;
-    aarch64) go_sqlcmd_arch="arm64" ;;
-    *)
-      echo "Error: unsupported architecture ${arch}"
-      exit 1
-      ;;
-  esac
-  go_sqlcmd_version="v1.9.0"
-  go_sqlcmd_url="https://github.com/microsoft/go-sqlcmd/releases/download/${go_sqlcmd_version}/sqlcmd-linux-${go_sqlcmd_arch}.tar.bz2"
-  curl -fsSL "${go_sqlcmd_url}" | tar -xj -C /usr/local/bin sqlcmd
-  SQLCMD="sqlcmd"
+  echo "sqlcmd not found — installing mssql-tools18 via apt..."
+  curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add - 2>/dev/null
+  curl -fsSL "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/prod.list" \
+    | sudo tee /etc/apt/sources.list.d/mssql-release.list
+  sudo apt-get update -q
+  sudo ACCEPT_EULA=Y apt-get install -y -q mssql-tools18 unixodbc-dev
+  SQLCMD="/opt/mssql-tools18/bin/sqlcmd"
 else
-  echo "Error: sqlcmd not found. Install go-sqlcmd (macOS: brew install go-sqlcmd)."
+  echo "Error: sqlcmd not found. Install mssql-tools18 (Linux) or go-sqlcmd (macOS: brew install go-sqlcmd)."
   exit 1
 fi
 
 echo "Using sqlcmd: ${SQLCMD}"
-
-# Get an Azure AD access token for the SQL resource endpoint
-# Azure Government: database.usgovcloudapi.net; Azure Commercial: database.windows.net
-sql_token=$(az account get-access-token --resource "${sql_resource}" --query accessToken -o tsv)
-
 echo "Provisioning SQL user '${identity_name}' in database '${database}' on '${server_fqdn}'"
 
+# CREATE USER ... WITH SID = <clientId>, TYPE = E creates a contained database user
+# mapped to the managed identity without requiring an Azure AD admin connection.
+# SID must be the client ID (application ID) of the managed identity, not the object/principal ID.
+# TYPE = E covers service principals and managed identities.
+# This avoids FROM EXTERNAL PROVIDER which requires an Entra-authenticated connection.
 "${SQLCMD}" \
   -S "${server_fqdn}" \
   -d "${database}" \
-  --authentication-method ActiveDirectoryServicePrincipalAccessToken \
-  -P "${sql_token}" \
+  -U "sa" \
+  -P "${sa_password}" \
   -Q "
     IF NOT EXISTS (
       SELECT 1 FROM sys.database_principals
       WHERE name = '${identity_name}'
     )
     BEGIN
-      CREATE USER [${identity_name}] FROM EXTERNAL PROVIDER;
+      DECLARE @sid NVARCHAR(MAX) = CONVERT(VARCHAR(MAX), CONVERT(VARBINARY(16), CAST('${identity_client_id}' AS UNIQUEIDENTIFIER)), 1);
+      DECLARE @cmd NVARCHAR(MAX) = N'CREATE USER [${identity_name}] WITH SID = ' + @sid + N', TYPE = E;';
+      EXEC (@cmd);
       ALTER ROLE db_datareader ADD MEMBER [${identity_name}];
     END
   "
