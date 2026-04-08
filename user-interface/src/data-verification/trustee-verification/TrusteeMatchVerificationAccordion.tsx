@@ -10,7 +10,7 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import { formatChapterType } from '@common/cams/trustees';
-import Alert, { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { AlertDetails, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { TrusteeAppointmentSyncErrorCode } from '@common/cams/dataflow-events';
 import { getCaseNumber, getCaseIdParts } from '@common/cams/cases';
 import Api2 from '@/lib/models/api2';
@@ -63,6 +63,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const { divisionCode } = getCaseIdParts(order.caseId);
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
   const courtName = courtDetails?.courtName ?? order.courtId;
+
+  const isInactiveStatus =
+    order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
+  const taskTypeLabel = isInactiveStatus ? 'Inactive trustee' : orderType.get(order.orderType);
 
   const { legacy } = order.dxtrTrustee;
   const addressLines = [
@@ -297,9 +301,9 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           >
             <span
               className="event-type-label"
-              aria-label={`${fieldHeaders[2]} - ${orderType.get(order.orderType)}.`}
+              aria-label={`${fieldHeaders[2]} - ${taskTypeLabel}.`}
             >
-              {orderType.get(order.orderType)}
+              {taskTypeLabel}
             </span>
           </div>
           <div
@@ -327,24 +331,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             </p>
           ) : (
             <>
-              {order.mismatchReason ===
-              TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus ? (
-                <>
-                  <p className="problem-statement">
-                    Matched trustee has an inactive appointment status for case: {caseLink}
-                  </p>
-                  {order.inactiveAppointmentStatus && (
-                    <Alert
-                      id={`inactive-status-warning-${order.id}`}
-                      type={UswdsAlertStyle.Warning}
-                      title="Inactive Appointment Status"
-                      message={`The matched trustee's appointment status is ${formatAppointmentStatus(order.inactiveAppointmentStatus)}. Review the appointment details before confirming.`}
-                      show={true}
-                      inline={true}
-                      role="status"
-                    />
-                  )}
-                </>
+              {isInactiveStatus ? (
+                <p className="problem-statement">
+                  Trustee is inactive in CAMS but was appointed to case: {caseLink}
+                </p>
               ) : (
                 <p className="problem-statement">
                   Trustee sent from the court does not match a CAMS Trustee for case: {caseLink}
