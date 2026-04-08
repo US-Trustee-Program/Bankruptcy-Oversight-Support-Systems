@@ -275,42 +275,50 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
       virtualNetworkSubnetId: dataflowsFunctionApp.properties.virtualNetworkSubnetId
       keyVaultReferenceIdentity: dataflowsFunctionApp.properties.keyVaultReferenceIdentity
     }
-    resource dataflowsFunctionConfig 'config' = {
-      name: 'web'
-      properties: union(dataflowsFunctionConfigProperties, {
-        appSettings: concat(dataflowsFunctionConfigProperties.appSettings, [
-          {
-            name: 'INFO_SHA'
-            value: gitSha
-          }
-          {
-            name: 'MyTaskHub'
-            value: slotName
-          }
-          {
-            name: 'COSMOS_DATABASE_NAME'
-            value: e2eDatabaseName
-          }
-          {
-            name: 'MSSQL_DATABASE_DXTR'
-            value: e2eSqlDatabaseName
-          }
-          {
-            name: 'AzureWebJobsStorage'
-            value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
-          }
-          {
-            name: 'AzureWebJobsDataflowsStorage'
-            value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
-          }
-          {
-            name: 'CAMS_OBJECT_CONTAINER'
-            value: objectContainerName
-          }
-        ])
-      })
-    }
   }
+}
+
+// Deployed as a separate resource (not nested in the slot) so that ARM fully provisions
+// the slot — including its internal Azure Files content share — before applying config/web.
+// Deploying config/web inline during slot creation races with Azure Files setup and
+// causes error 01019 (Invalid values supplied for Azure Files related app settings).
+resource dataflowsSlotConfig 'Microsoft.Web/sites/slots/config@2023-12-01' = {
+  name: '${dataflowsFunctionName}/${slotName}/web'
+  properties: union(dataflowsFunctionConfigProperties, {
+    appSettings: concat(dataflowsFunctionConfigProperties.appSettings, [
+      {
+        name: 'INFO_SHA'
+        value: gitSha
+      }
+      {
+        name: 'MyTaskHub'
+        value: slotName
+      }
+      {
+        name: 'COSMOS_DATABASE_NAME'
+        value: e2eDatabaseName
+      }
+      {
+        name: 'MSSQL_DATABASE_DXTR'
+        value: e2eSqlDatabaseName
+      }
+      {
+        name: 'AzureWebJobsStorage'
+        value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
+      }
+      {
+        name: 'AzureWebJobsDataflowsStorage'
+        value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
+      }
+      {
+        name: 'CAMS_OBJECT_CONTAINER'
+        value: objectContainerName
+      }
+    ])
+  })
+  dependsOn: [
+    dataflowsFunctionApp::slot
+  ]
 }
 
 var dataflowsFunctionConfigProperties = {
