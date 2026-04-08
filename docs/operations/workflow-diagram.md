@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 25
-- **Main Workflows**: 10
+- **Total Workflows**: 27
+- **Main Workflows**: 12
 - **Reusable Workflows**: 15
 
 ## Legend
@@ -77,117 +77,16 @@ flowchart LR
 ### Pull_request Triggered Workflows
 
 Workflows triggered by `pull_request`:
-- **Pull Request Validation** (`pr-validation.yml`)
+- **Pull Request E2E Validation** (`pr-validation.yml`)
 
 ```mermaid
 flowchart LR
     trigger_pull_request(["pull_request"])
-    pr_validation_yml["Pull Request Validation"]
-    pr_validation_yml_setup["Setup"]
-    reusable_build_info_yml["reusable-build-info.yml"]
-    reusable_build_info_yml_build_info["Run Info"]
-    pr_validation_yml_accessibility_test["accessibility-test"]
-    reusable_accessibility_yml["reusable-accessibility.yml"]
-    reusable_accessibility_yml_playwright_accessibility_test["playwright-accessibility-test"]
-    pr_validation_yml_unit_test_frontend["unit-test-frontend"]
-    reusable_unit_test_yml["reusable-unit-test.yml"]
-    reusable_unit_test_yml_unit_test["Unit test ${{ inputs.path }}"]
-    pr_validation_yml_unit_test_backend["unit-test-backend"]
-    pr_validation_yml_unit_test_common["unit-test-common"]
-    pr_validation_yml_knip["knip"]
-    reusable_knip_yml["reusable-knip.yml"]
-    reusable_knip_yml_knip["Knip"]
-    pr_validation_yml_security_scan["Security"]
-    sub_security_scan_yml["Security"]
-    sub_security_scan_yml_sca_scan["SCA Scan"]
-    sub_security_scan_yml_sast_scan["SAST Scan"]
-    pr_validation_yml_build["Build"]
-    sub_build_yml["sub-build.yml"]
-    sub_build_yml_see_slot_name["see-slot-name"]
-    sub_build_yml_build_frontend_predeployment["Build Frontend Predeployment"]
-    reusable_build_frontend_yml["reusable-build-frontend.yml"]
-    reusable_build_frontend_yml_build_frontend["build-frontend"]
-    sub_build_yml_backend["backend"]
-    pr_validation_yml_deploy_pr_code["Deploy PR to Staging Slot"]
-    sub_deploy_code_slot_yml["sub-deploy-code-slot.yml"]
-    sub_deploy_code_slot_yml_deploy_code["Slot Code Deployment"]
-    sub_deploy_code_yml["sub-deploy-code.yml"]
-    sub_deploy_code_yml_deploy_webapp["deploy-webapp"]
-    sub_deploy_code_yml_deploy_api["deploy-api"]
-    sub_deploy_code_yml_deploy_dataflows_app["deploy-dataflows-app"]
-    sub_deploy_code_yml_endpoint_test_application["endpoint-test-application"]
-    reusable_endpoint_test_yml["reusable-endpoint-test.yml"]
-    reusable_endpoint_test_yml_endpoint_test_application["endpoint-test-application"]
-    sub_deploy_code_yml_enable_access["enable-access"]
-    sub_deploy_code_slot_yml_deploy_webapp_slot["deploy-webapp-slot"]
-    sub_deploy_code_slot_yml_deploy_api_slot["deploy-api-slot"]
-    sub_deploy_code_slot_yml_deploy_dataflows_slot["deploy-dataflows-slot"]
-    sub_deploy_code_slot_yml_endpoint_test_application_slot["endpoint-test-application-slot"]
-    sub_deploy_code_slot_yml_execute_e2e_test["execute-e2e-test"]
-    reusable_e2e_yml["reusable-e2e.yml"]
-    reusable_e2e_yml_playwright_e2e_test["playwright-e2e-test"]
-    sub_deploy_code_slot_yml_swap_webapp_deployment_slot["swap-webapp-deployment-slot"]
-    sub_deploy_code_slot_yml_swap_nodeapi_deployment_slot["swap-nodeapi-deployment-slot"]
-    sub_deploy_code_slot_yml_swap_dataflows_app_deployment_slot["swap-dataflows-app-deployment-slot"]
-    sub_deploy_code_slot_yml_endpoint_test_application_post_swap["endpoint-test-application-post-swap"]
-    sub_deploy_code_slot_yml_enable_access["enable-access"]
-    pr_validation_yml_execute_pr_e2e["E2E Tests"]
+    pr_validation_yml["Pull Request E2E Validation"]
+    pr_validation_yml_run_e2e_tests["run-e2e-tests"]
 
     trigger_pull_request --> pr_validation_yml
-    pr_validation_yml --> pr_validation_yml_setup
-    reusable_build_info_yml --> reusable_build_info_yml_build_info
-    pr_validation_yml_setup --> reusable_build_info_yml
-    pr_validation_yml --> pr_validation_yml_accessibility_test
-    reusable_accessibility_yml --> reusable_accessibility_yml_playwright_accessibility_test
-    pr_validation_yml_accessibility_test --> reusable_accessibility_yml
-    pr_validation_yml --> pr_validation_yml_unit_test_frontend
-    reusable_unit_test_yml --> reusable_unit_test_yml_unit_test
-    pr_validation_yml_unit_test_frontend --> reusable_unit_test_yml
-    pr_validation_yml --> pr_validation_yml_unit_test_backend
-    pr_validation_yml_unit_test_backend --> reusable_unit_test_yml
-    pr_validation_yml --> pr_validation_yml_unit_test_common
-    pr_validation_yml_unit_test_common --> reusable_unit_test_yml
-    pr_validation_yml --> pr_validation_yml_knip
-    reusable_knip_yml --> reusable_knip_yml_knip
-    pr_validation_yml_knip --> reusable_knip_yml
-    pr_validation_yml --> pr_validation_yml_security_scan
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan
-    sub_security_scan_yml --> sub_security_scan_yml_sast_scan
-    pr_validation_yml_security_scan --> sub_security_scan_yml
-    pr_validation_yml --> pr_validation_yml_build
-    sub_build_yml --> sub_build_yml_see_slot_name
-    sub_build_yml --> sub_build_yml_build_frontend_predeployment
-    reusable_build_frontend_yml --> reusable_build_frontend_yml_build_frontend
-    sub_build_yml_build_frontend_predeployment --> reusable_build_frontend_yml
-    sub_build_yml --> sub_build_yml_backend
-    pr_validation_yml_build --> sub_build_yml
-    pr_validation_yml --> pr_validation_yml_deploy_pr_code
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_code
-    sub_deploy_code_yml --> sub_deploy_code_yml_deploy_webapp
-    sub_deploy_code_yml --> sub_deploy_code_yml_deploy_api
-    sub_deploy_code_yml --> sub_deploy_code_yml_deploy_dataflows_app
-    sub_deploy_code_yml --> sub_deploy_code_yml_endpoint_test_application
-    reusable_endpoint_test_yml --> reusable_endpoint_test_yml_endpoint_test_application
-    sub_deploy_code_yml_endpoint_test_application --> reusable_endpoint_test_yml
-    sub_deploy_code_yml --> sub_deploy_code_yml_enable_access
-    sub_deploy_code_slot_yml_deploy_code --> sub_deploy_code_yml
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_webapp_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_api_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_deploy_dataflows_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_endpoint_test_application_slot
-    sub_deploy_code_slot_yml_endpoint_test_application_slot --> reusable_endpoint_test_yml
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_execute_e2e_test
-    reusable_e2e_yml --> reusable_e2e_yml_playwright_e2e_test
-    sub_deploy_code_slot_yml_execute_e2e_test --> reusable_e2e_yml
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_swap_webapp_deployment_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_swap_nodeapi_deployment_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_swap_dataflows_app_deployment_slot
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_endpoint_test_application_post_swap
-    sub_deploy_code_slot_yml_endpoint_test_application_post_swap --> reusable_endpoint_test_yml
-    sub_deploy_code_slot_yml --> sub_deploy_code_slot_yml_enable_access
-    pr_validation_yml_deploy_pr_code --> sub_deploy_code_slot_yml
-    pr_validation_yml --> pr_validation_yml_execute_pr_e2e
-    pr_validation_yml_execute_pr_e2e --> reusable_e2e_yml
+    pr_validation_yml --> pr_validation_yml_run_e2e_tests
 
     classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -196,55 +95,7 @@ flowchart LR
 
     class trigger_pull_request trigger
     class pr_validation_yml mainWorkflow
-    class pr_validation_yml_setup job
-    class reusable_build_info_yml reusable
-    class reusable_build_info_yml_build_info job
-    class pr_validation_yml_accessibility_test job
-    class reusable_accessibility_yml reusable
-    class reusable_accessibility_yml_playwright_accessibility_test job
-    class pr_validation_yml_unit_test_frontend job
-    class reusable_unit_test_yml reusable
-    class reusable_unit_test_yml_unit_test job
-    class pr_validation_yml_unit_test_backend job
-    class pr_validation_yml_unit_test_common job
-    class pr_validation_yml_knip job
-    class reusable_knip_yml reusable
-    class reusable_knip_yml_knip job
-    class pr_validation_yml_security_scan job
-    class sub_security_scan_yml mainWorkflow
-    class sub_security_scan_yml_sca_scan job
-    class sub_security_scan_yml_sast_scan job
-    class pr_validation_yml_build job
-    class sub_build_yml reusable
-    class sub_build_yml_see_slot_name job
-    class sub_build_yml_build_frontend_predeployment job
-    class reusable_build_frontend_yml reusable
-    class reusable_build_frontend_yml_build_frontend job
-    class sub_build_yml_backend job
-    class pr_validation_yml_deploy_pr_code job
-    class sub_deploy_code_slot_yml reusable
-    class sub_deploy_code_slot_yml_deploy_code job
-    class sub_deploy_code_yml reusable
-    class sub_deploy_code_yml_deploy_webapp job
-    class sub_deploy_code_yml_deploy_api job
-    class sub_deploy_code_yml_deploy_dataflows_app job
-    class sub_deploy_code_yml_endpoint_test_application job
-    class reusable_endpoint_test_yml reusable
-    class reusable_endpoint_test_yml_endpoint_test_application job
-    class sub_deploy_code_yml_enable_access job
-    class sub_deploy_code_slot_yml_deploy_webapp_slot job
-    class sub_deploy_code_slot_yml_deploy_api_slot job
-    class sub_deploy_code_slot_yml_deploy_dataflows_slot job
-    class sub_deploy_code_slot_yml_endpoint_test_application_slot job
-    class sub_deploy_code_slot_yml_execute_e2e_test job
-    class reusable_e2e_yml reusable
-    class reusable_e2e_yml_playwright_e2e_test job
-    class sub_deploy_code_slot_yml_swap_webapp_deployment_slot job
-    class sub_deploy_code_slot_yml_swap_nodeapi_deployment_slot job
-    class sub_deploy_code_slot_yml_swap_dataflows_app_deployment_slot job
-    class sub_deploy_code_slot_yml_endpoint_test_application_post_swap job
-    class sub_deploy_code_slot_yml_enable_access job
-    class pr_validation_yml_execute_pr_e2e job
+    class pr_validation_yml_run_e2e_tests job
 ```
 
 ### Push Triggered Workflows
@@ -673,12 +524,18 @@ flowchart LR
 ### Schedule Triggered Workflows
 
 Workflows triggered by `schedule`:
+- **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
+- **Refresh E2E Base Image Cache** (`refresh-e2e-base-images.yml`)
 - **Build Custom Azure CLI Runner Image** (`build-azure-cli-image.yml`)
 - **Stand Alone DAST Scan** (`dast-scan.yml`)
 
 ```mermaid
 flowchart LR
     trigger_schedule(["schedule"])
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    prune_e2e_image_cache_yml_prune["Delete e2e-deps images older than 30 days"]
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
+    refresh_e2e_base_images_yml_refresh["Re-cache upstream base images to ghcr.io"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     build_azure_cli_image_yml_build_and_push["build-and-push"]
     dast_scan_yml["Stand Alone DAST Scan"]
@@ -689,6 +546,10 @@ flowchart LR
     reusable_dast_yml["reusable-dast.yml"]
     reusable_dast_yml_zap_dast_scan["zap-dast-scan"]
 
+    trigger_schedule --> prune_e2e_image_cache_yml
+    prune_e2e_image_cache_yml --> prune_e2e_image_cache_yml_prune
+    trigger_schedule --> refresh_e2e_base_images_yml
+    refresh_e2e_base_images_yml --> refresh_e2e_base_images_yml_refresh
     trigger_schedule --> build_azure_cli_image_yml
     build_azure_cli_image_yml --> build_azure_cli_image_yml_build_and_push
     trigger_schedule --> dast_scan_yml
@@ -705,6 +566,10 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_schedule trigger
+    class prune_e2e_image_cache_yml mainWorkflow
+    class prune_e2e_image_cache_yml_prune job
+    class refresh_e2e_base_images_yml mainWorkflow
+    class refresh_e2e_base_images_yml_refresh job
     class build_azure_cli_image_yml mainWorkflow
     class build_azure_cli_image_yml_build_and_push job
     class dast_scan_yml mainWorkflow
@@ -1320,6 +1185,75 @@ flowchart LR
     class reusable_e2e_yml_playwright_e2e_test job
 ```
 
+#### Pull Request E2E Validation
+
+Manual execution of `pr-validation.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    pr_validation_yml["Pull Request E2E Validation"]
+    pr_validation_yml_run_e2e_tests["run-e2e-tests"]
+
+    trigger_workflow_dispatch --> pr_validation_yml
+    pr_validation_yml --> pr_validation_yml_run_e2e_tests
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class pr_validation_yml mainWorkflow
+    class pr_validation_yml_run_e2e_tests job
+```
+
+#### Prune E2E Image Cache
+
+Manual execution of `prune-e2e-image-cache.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    prune_e2e_image_cache_yml_prune["Delete e2e-deps images older than 30 days"]
+
+    trigger_workflow_dispatch --> prune_e2e_image_cache_yml
+    prune_e2e_image_cache_yml --> prune_e2e_image_cache_yml_prune
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class prune_e2e_image_cache_yml mainWorkflow
+    class prune_e2e_image_cache_yml_prune job
+```
+
+#### Refresh E2E Base Image Cache
+
+Manual execution of `refresh-e2e-base-images.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
+    refresh_e2e_base_images_yml_refresh["Re-cache upstream base images to ghcr.io"]
+
+    trigger_workflow_dispatch --> refresh_e2e_base_images_yml
+    refresh_e2e_base_images_yml --> refresh_e2e_base_images_yml_refresh
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class refresh_e2e_base_images_yml mainWorkflow
+    class refresh_e2e_base_images_yml_refresh job
+```
+
 #### NPM Package Updates
 
 Manual execution of `update-dependencies.yml`
@@ -1377,19 +1311,24 @@ flowchart LR
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
     e2e_test_yml["Stand Alone E2E Test Runs"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
+    pr_validation_yml["Pull Request E2E Validation"]
     continuous_deployment_yml["Continuous Deployment"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
     update_dependencies_yml["NPM Package Updates"]
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
-    trigger_pull_request(["pull_request"])
-    pr_validation_yml["Pull Request Validation"]
-    trigger_push(["push"])
-    continuous_deployment_yml["Continuous Deployment"]
     trigger_schedule(["schedule"])
+    prune_e2e_image_cache_yml["Prune E2E Image Cache"]
+    refresh_e2e_base_images_yml["Refresh E2E Base Image Cache"]
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
+    trigger_pull_request(["pull_request"])
+    pr_validation_yml["Pull Request E2E Validation"]
+    trigger_push(["push"])
+    continuous_deployment_yml["Continuous Deployment"]
     trigger_workflow_run(["workflow_run"])
     slack_notification_yml["slack-notification"]
 
@@ -1397,15 +1336,20 @@ flowchart LR
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
     trigger_workflow_dispatch --> e2e_test_yml
     trigger_workflow_dispatch --> azure_remove_branch_yml
+    trigger_workflow_dispatch --> prune_e2e_image_cache_yml
+    trigger_workflow_dispatch --> refresh_e2e_base_images_yml
+    trigger_workflow_dispatch --> pr_validation_yml
     trigger_workflow_dispatch --> continuous_deployment_yml
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
     trigger_delete --> azure_remove_branch_yml
-    trigger_pull_request --> pr_validation_yml
-    trigger_push --> continuous_deployment_yml
+    trigger_schedule --> prune_e2e_image_cache_yml
+    trigger_schedule --> refresh_e2e_base_images_yml
     trigger_schedule --> build_azure_cli_image_yml
     trigger_schedule --> dast_scan_yml
+    trigger_pull_request --> pr_validation_yml
+    trigger_push --> continuous_deployment_yml
     trigger_workflow_run --> slack_notification_yml
 
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
@@ -1414,14 +1358,16 @@ flowchart LR
     class trigger_workflow_call trigger
     class trigger_workflow_dispatch trigger
     class trigger_delete trigger
+    class trigger_schedule trigger
     class trigger_pull_request trigger
     class trigger_push trigger
-    class trigger_schedule trigger
     class trigger_workflow_run trigger
     class sub_security_scan_yml mainWorkflow
     class deploy_security_scan_storage_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
+    class prune_e2e_image_cache_yml mainWorkflow
+    class refresh_e2e_base_images_yml mainWorkflow
     class pr_validation_yml mainWorkflow
     class continuous_deployment_yml mainWorkflow
     class build_azure_cli_image_yml mainWorkflow
@@ -1445,9 +1391,15 @@ flowchart LR
 - **Clean up Flexion Azure Resources** (`azure-remove-branch.yml`)
   - Triggers: delete, workflow_dispatch
   - Jobs: 3
-- **Pull Request Validation** (`pr-validation.yml`)
-  - Triggers: pull_request
-  - Jobs: 10
+- **Prune E2E Image Cache** (`prune-e2e-image-cache.yml`)
+  - Triggers: schedule, workflow_dispatch
+  - Jobs: 1
+- **Refresh E2E Base Image Cache** (`refresh-e2e-base-images.yml`)
+  - Triggers: schedule, workflow_dispatch
+  - Jobs: 1
+- **Pull Request E2E Validation** (`pr-validation.yml`)
+  - Triggers: pull_request, workflow_dispatch
+  - Jobs: 1
 - **Continuous Deployment** (`continuous-deployment.yml`)
   - Triggers: push, workflow_dispatch
   - Jobs: 11

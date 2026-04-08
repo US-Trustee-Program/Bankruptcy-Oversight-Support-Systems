@@ -38,7 +38,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   kind: kind
   properties: {
     supportsHttpsTrafficOnly: true
-    defaultToOAuthAuthentication: true
   }
 }
 

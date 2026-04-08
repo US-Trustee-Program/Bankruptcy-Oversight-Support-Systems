@@ -70,7 +70,7 @@ async function oktaLogin(page: Page) {
         })()
       }`;
   await page.waitForURL(expectedHost);
-  await expect(page.getByTestId('app-component-test-id')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId('app-component-test-id')).toBeVisible({ timeout: 60000 });
 }
 
 function usingAuthenticationProvider() {

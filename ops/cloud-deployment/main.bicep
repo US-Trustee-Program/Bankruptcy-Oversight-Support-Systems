@@ -117,9 +117,13 @@ param ustpIssueCollectorHash string = ''
 
 param cosmosDatabaseName string
 param e2eDatabaseName string = cosmosDatabaseName
+param e2eSqlDatabaseName string = 'CAMS_E2E'
 
 @description('Comma delimited list of data flow names to enable.')
 param enabledDataflows string = ''
+
+@description('Name of the blob container used for migration and operational artifacts.')
+param objectContainerName string = 'migration-files'
 
 param gitSha string
 
@@ -258,6 +262,7 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       loginProvider: loginProvider
       cosmosDatabaseName: cosmosDatabaseName
       e2eDatabaseName: e2eDatabaseName
+      e2eSqlDatabaseName: e2eSqlDatabaseName
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
       mssqlRequestTimeout: mssqlRequestTimeout
@@ -303,10 +308,12 @@ module ustpDataflowsFunction 'dataflows-resource-deploy.bicep' = {
     loginProvider: loginProvider
     cosmosDatabaseName: cosmosDatabaseName
     e2eDatabaseName: e2eDatabaseName
+    e2eSqlDatabaseName: e2eSqlDatabaseName
     kvAppConfigName: kvAppConfigName
     isUstpDeployment: isUstpDeployment
     mssqlRequestTimeout: mssqlRequestTimeout
     enabledDataflows: enabledDataflows
+    objectContainerName: objectContainerName
     gitSha: gitSha
     tags: dataflowsTags
   }

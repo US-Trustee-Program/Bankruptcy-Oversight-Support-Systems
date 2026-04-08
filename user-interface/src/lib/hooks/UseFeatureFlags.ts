@@ -17,9 +17,17 @@ export const TRUSTEE_VERIFICATION_ENABLED = 'trustee-verification-enabled';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
-  if (getAppConfiguration().useFakeApi) {
+  const appConfig = getAppConfiguration();
+
+  if (appConfig.useFakeApi) {
     return testFeatureFlags;
   }
+
+  // E2E testing mode: use test flags without mocking API
+  if (appConfig.featureFlagsMode === 'test') {
+    return testFeatureFlags;
+  }
+
   if (!config.clientId) {
     return {};
   }

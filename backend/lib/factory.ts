@@ -89,14 +89,17 @@ import {
 } from './common-errors/server-config-error';
 import {
   ApiToDataflowsGateway,
+  ObjectStorageGateway,
   TrusteeMatchVerificationRepository,
   TrusteeUpcomingKeyDatesRepository,
 } from './use-cases/gateways.types';
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
+import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
 let storageGateway: StorageGateway;
+let objectStorageGateway: ObjectStorageGateway;
 let acmsGateway: AcmsGateway;
 let atsGateway: AtsGateway;
 let idpApiGateway: UserGroupGateway & Initializer<UserGroupGatewayConfig | ApplicationContext>;
@@ -378,6 +381,13 @@ const getStorageGateway = (_context: ApplicationContext): StorageGateway => {
   return storageGateway;
 };
 
+const getObjectStorageGateway = (_context: ApplicationContext): ObjectStorageGateway => {
+  if (!objectStorageGateway) {
+    objectStorageGateway = new AzureBlobObjectStorageGateway();
+  }
+  return objectStorageGateway;
+};
+
 const getUserGroupGateway = async (context: ApplicationContext): Promise<UserGroupGateway> => {
   if (context.config.authConfig.provider === 'mock') {
     return new MockUserGroupGateway();
@@ -538,6 +548,7 @@ const factory = {
   getUserSessionUseCase,
   getUserSessionCacheRepository,
   getStorageGateway,
+  getObjectStorageGateway,
   getUserGroupGateway,
   getUsersRepository,
   getTrusteesRepository,
