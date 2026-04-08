@@ -213,11 +213,6 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
       type: 'UserAssigned'
       userAssignedIdentities: userAssignedIdentities
     }
-    resource apiFunctionConfig 'config' = {
-      name: 'web'
-      properties: slotFunctionAppConfigProperties
-    }
-
     properties: {
       serverFarmId: apiFunctionApp.properties.serverFarmId
       enabled: apiFunctionApp.properties.enabled
@@ -226,6 +221,60 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
       keyVaultReferenceIdentity: apiFunctionApp.properties.keyVaultReferenceIdentity
     }
   }
+}
+
+// config/web and config/appsettings are deployed as separate top-level resources
+// (not nested in the slot) so that ARM fully provisions the slot — including its
+// internal Azure Files content share — before applying configuration.
+// See dataflows-resource-deploy.bicep for full explanation.
+resource apiSlotSiteConfig 'Microsoft.Web/sites/slots/config@2023-12-01' = {
+  name: '${apiFunctionName}/${slotName}/web'
+  properties: {
+    numberOfWorkers: baseApiFunctionAppConfigProperties.numberOfWorkers
+    alwaysOn: baseApiFunctionAppConfigProperties.alwaysOn
+    http20Enabled: baseApiFunctionAppConfigProperties.http20Enabled
+    functionAppScaleLimit: baseApiFunctionAppConfigProperties.functionAppScaleLimit
+    minimumElasticInstanceCount: baseApiFunctionAppConfigProperties.minimumElasticInstanceCount
+    publicNetworkAccess: baseApiFunctionAppConfigProperties.publicNetworkAccess
+    ipSecurityRestrictions: stagingIpSecurityRestrictionsRules
+    ipSecurityRestrictionsDefaultAction: 'Deny'
+    scmIpSecurityRestrictions: baseApiFunctionAppConfigProperties.scmIpSecurityRestrictions
+    scmIpSecurityRestrictionsDefaultAction: baseApiFunctionAppConfigProperties.scmIpSecurityRestrictionsDefaultAction
+    scmIpSecurityRestrictionsUseMain: baseApiFunctionAppConfigProperties.scmIpSecurityRestrictionsUseMain
+    linuxFxVersion: baseApiFunctionAppConfigProperties.linuxFxVersion
+    ftpsState: baseApiFunctionAppConfigProperties.ftpsState
+    cors: {
+      allowedOrigins: apiSlotCorsAllowOrigins
+    }
+  }
+  dependsOn: [
+    apiFunctionApp::slot
+  ]
+}
+
+resource apiSlotAppSettings 'Microsoft.Web/sites/slots/config@2023-12-01' = {
+  name: '${apiFunctionName}/${slotName}/appsettings'
+  properties: union(
+    apiSlotBaseAppSettingsObject,
+    createApplicationInsights
+      ? {
+          APPLICATIONINSIGHTS_CONNECTION_STRING: apiFunctionAppInsights.outputs.connectionString
+          APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION: 'false'
+          AzureFunctionsJobHost__logging__console__isEnabled: 'false'
+        }
+      : {},
+    {
+      INFO_SHA: gitSha
+      MyTaskHub: slotName
+      COSMOS_DATABASE_NAME: e2eDatabaseName
+      MSSQL_DATABASE_DXTR: e2eSqlDatabaseName
+      AzureWebJobsStorage: apiFunctionSlotStorageAccount.outputs.connectionString
+      AzureWebJobsDataflowsStorage: dataflowsSlotStorageConnectionString
+    }
+  )
+  dependsOn: [
+    apiFunctionApp::slot
+  ]
 }
 
 var baseApiFunctionAppConfigProperties = {
@@ -468,6 +517,47 @@ var apiApplicationSettings = concat(
         { name: 'AzureFunctionsJobHost__logging__console__isEnabled', value: 'false' }
       ]
     : []
+)
+
+// Flat object form of baseApplicationSettings for use with config/appsettings.
+var apiSlotBaseAppSettingsObject = union(
+  {
+    FUNCTIONS_EXTENSION_VERSION: functionsVersion
+    FUNCTIONS_WORKER_RUNTIME: functionsRuntime
+    CAMS_LOGIN_PROVIDER_CONFIG: loginProviderConfig
+    CAMS_LOGIN_PROVIDER: loginProvider
+    STARTING_MONTH: '-70'
+    ADMIN_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN-KEY)'
+    MONGO_CONNECTION_STRING: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
+    WEBSITE_RUN_FROM_PACKAGE: '1'
+    SCM_DO_BUILD_DURING_DEPLOYMENT: false
+    MSSQL_HOST: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-HOST)'
+    MSSQL_CLIENT_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
+    MSSQL_ENCRYPT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-ENCRYPT)'
+    MSSQL_TRUST_UNSIGNED_CERT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-TRUST-UNSIGNED-CERT)'
+    MSSQL_REQUEST_TIMEOUT: mssqlRequestTimeout
+    ACMS_MSSQL_HOST: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-HOST)'
+    ACMS_MSSQL_DATABASE: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-DATABASE)'
+    ACMS_MSSQL_ENCRYPT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-ENCRYPT)'
+    ACMS_MSSQL_TRUST_UNSIGNED_CERT: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-TRUST-UNSIGNED-CERT)'
+    ACMS_MSSQL_REQUEST_TIMEOUT: mssqlRequestTimeout
+    FEATURE_FLAG_SDK_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
+    CAMS_USER_GROUP_GATEWAY_CONFIG: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=CAMS-USER-GROUP-GATEWAY-CONFIG)'
+    OKTA_API_KEY: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
+    MAX_OBJECT_DEPTH: maxObjectDepth
+    MAX_OBJECT_KEY_COUNT: maxObjectKeyCount
+  },
+  isUstpDeployment
+    ? {
+        MSSQL_USER: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)'
+        MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)'
+        ACMS_MSSQL_USER: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)'
+        ACMS_MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)'
+      }
+    : {
+        MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
+        ACMS_MSSQL_CLIENT_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'
+      }
 )
 
 var productionIpSecurityRestrictionsRules = isUstpDeployment
