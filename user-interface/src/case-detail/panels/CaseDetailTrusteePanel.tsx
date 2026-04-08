@@ -14,7 +14,7 @@ const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
 });
 
 function formatAppointedDate(isoDate: string): string {
-  return appointedDateFormatter.format(new Date(isoDate));
+  return appointedDateFormatter.format(new Date(`${isoDate}T00:00:00Z`));
 }
 
 interface CaseDetailTrusteePanelProps {

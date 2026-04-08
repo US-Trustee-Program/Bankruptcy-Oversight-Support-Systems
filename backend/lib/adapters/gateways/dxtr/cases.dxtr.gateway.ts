@@ -29,6 +29,7 @@ export function parseAoDate(yymmdd: string | undefined): string | undefined {
   if (!yymmdd) return undefined;
   const s = yymmdd.trim();
   if (s === '' || s === '000000') return undefined;
+  if (s.length !== 6 || !/^[0-9]+$/.test(s)) return undefined;
   const year = `20${s.substring(0, 2)}`;
   const month = s.substring(2, 4);
   const day = s.substring(4, 6);

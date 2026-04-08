@@ -2020,4 +2020,16 @@ describe('parseAoDate', () => {
   test('trims whitespace before parsing', () => {
     expect(parseAoDate(' 260407 ')).toBe('2026-04-07');
   });
+
+  test('returns undefined for string shorter than 6 characters', () => {
+    expect(parseAoDate('2604')).toBeUndefined();
+  });
+
+  test('returns undefined for string longer than 6 characters', () => {
+    expect(parseAoDate('2604071')).toBeUndefined();
+  });
+
+  test('returns undefined for non-numeric string', () => {
+    expect(parseAoDate('26040X')).toBeUndefined();
+  });
 });

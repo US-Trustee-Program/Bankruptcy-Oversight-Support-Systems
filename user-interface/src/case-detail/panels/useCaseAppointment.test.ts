@@ -2,6 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { useCaseAppointment } from './useCaseAppointment';
 import Api2 from '@/lib/models/api2';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
+import { CamsHttpError } from '@/lib/models/api';
 
 const mockAppointment: CaseAppointment = {
   id: 'ca-001',
@@ -55,8 +56,11 @@ describe('useCaseAppointment', () => {
     expect(result.current.appointedDate).toBeNull();
   });
 
-  test('returns null when API throws (404 or other error)', async () => {
-    vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockRejectedValue(new Error('Not Found'));
+  test('returns null silently when API throws 404', async () => {
+    const consoleSpy = vi.spyOn(console, 'error');
+    vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockRejectedValue(
+      new CamsHttpError(404, 'Not Found'),
+    );
 
     const { result } = renderHook(() => useCaseAppointment('111-24-99999'));
 
@@ -65,5 +69,25 @@ describe('useCaseAppointment', () => {
     });
 
     expect(result.current.appointedDate).toBeNull();
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  test('returns null and logs error when API throws non-404 error', async () => {
+    const consoleSpy = vi.spyOn(console, 'error');
+    vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockRejectedValue(
+      new CamsHttpError(500, 'Internal Server Error'),
+    );
+
+    const { result } = renderHook(() => useCaseAppointment('111-24-99999'));
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false);
+    });
+
+    expect(result.current.appointedDate).toBeNull();
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Unexpected error fetching case trustee appointment',
+      expect.any(CamsHttpError),
+    );
   });
 });

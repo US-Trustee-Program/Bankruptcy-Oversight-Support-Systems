@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
+import { CamsHttpError } from '@/lib/models/api';
 
 export function useCaseAppointment(caseId: string | undefined) {
   const [appointedDate, setAppointedDate] = useState<string | null>(null);
@@ -20,8 +21,11 @@ export function useCaseAppointment(caseId: string | undefined) {
         setAppointedDate(response.data?.appointedDate ?? null);
         setTrusteeId(response.data?.trusteeId ?? null);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (!isCurrent) return;
+        if (!(error instanceof CamsHttpError && error.status === 404)) {
+          console.error('Unexpected error fetching case trustee appointment', error);
+        }
         setAppointedDate(null);
         setTrusteeId(null);
       })
