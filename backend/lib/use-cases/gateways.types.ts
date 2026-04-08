@@ -382,6 +382,10 @@ export interface TrusteeAppointmentsRepository extends Releasable {
     query: Query<T>,
     options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
   ): Promise<T[]>;
+  findActiveMissingAppointedDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>>;
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;

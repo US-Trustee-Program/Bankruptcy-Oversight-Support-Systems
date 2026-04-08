@@ -41,7 +41,9 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
         appointedDate: undefined,
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([mockAppointment]);
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveMissingAppointedDate').mockResolvedValue([
+        mockAppointment,
+      ]);
 
       const result = await BackfillCaseAppointmentDatesUseCase.getPageNeedingBackfill(
         context,
@@ -61,7 +63,10 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
       const appt1 = { ...makeCaseAppointment(), _id: 'appt-id-1' };
       const appt2 = { ...makeCaseAppointment(), _id: 'appt-id-2' };
 
-      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([appt1, appt2]);
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveMissingAppointedDate').mockResolvedValue([
+        appt1,
+        appt2,
+      ]);
 
       const result = await BackfillCaseAppointmentDatesUseCase.getPageNeedingBackfill(
         context,
@@ -75,7 +80,9 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
     });
 
     test('should return empty result when no appointments found', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveMissingAppointedDate').mockResolvedValue(
+        [],
+      );
 
       const result = await BackfillCaseAppointmentDatesUseCase.getPageNeedingBackfill(
         context,
@@ -89,8 +96,8 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
       expect(result.data?.lastId).toBeNull();
     });
 
-    test('should return error when findByCursor fails', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findByCursor').mockRejectedValue(
+    test('should return error when repo call fails', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'findActiveMissingAppointedDate').mockRejectedValue(
         new Error('Database error'),
       );
 

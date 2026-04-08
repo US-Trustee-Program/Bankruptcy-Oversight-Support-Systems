@@ -1,39 +1,11 @@
-import { CaseAppointment } from '@common/cams/trustee-appointments';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
-import QueryBuilder from '../../query/query-builder';
 import { MaybeData } from './queue-types';
 import { CaseAppointmentDateBackfillState } from '../gateways.types';
 
 const MODULE_NAME = 'BACKFILL-CASE-APPOINTMENT-DATES-USE-CASE';
-
-const { and, using } = QueryBuilder;
-
-type CaseAppointmentQueryable = CaseAppointment & {
-  documentType: string;
-  _id: string;
-};
-
-/**
- * Builds the query to find active CASE_APPOINTMENT documents missing appointedDate.
- * Active means unassignedOn is absent (trustee has not been removed from the case).
- */
-function buildNeedsBackfillQuery(lastId?: string | null) {
-  const doc = using<CaseAppointmentQueryable>();
-  const conditions = [
-    doc('documentType').equals('CASE_APPOINTMENT'),
-    doc('unassignedOn').notExists(),
-    doc('appointedDate').notExists(),
-  ];
-
-  if (lastId) {
-    conditions.push(doc('_id').greaterThan(lastId));
-  }
-
-  return and(...conditions);
-}
 
 export type BackfillAppointment = {
   _id: string;
@@ -60,13 +32,7 @@ async function getPageNeedingBackfill(
 ): Promise<CursorPageMaybeResult> {
   try {
     const repo = factory.getTrusteeAppointmentsRepository(context);
-    const query = buildNeedsBackfillQuery(lastId);
-
-    const results = await repo.findByCursor<CaseAppointmentQueryable>(query, {
-      limit: limit + 1,
-      sortField: '_id',
-      sortDirection: 'ASCENDING',
-    });
+    const results = await repo.findActiveMissingAppointedDate(lastId, limit + 1);
 
     const hasMore = results.length > limit;
     const appointments = results.slice(0, limit);

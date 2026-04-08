@@ -261,6 +261,30 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
+  async findActiveMissingAppointedDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>> {
+    type CaseAppointmentQueryable = CaseAppointmentDocument & { _id: string };
+    const doc = using<CaseAppointmentQueryable>();
+    const conditions = [
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('unassignedOn').notExists(),
+      doc('appointedDate').notExists(),
+    ];
+
+    if (lastId) {
+      conditions.push(doc('_id').greaterThan(lastId));
+    }
+
+    const query = and(...conditions);
+    return this.findByCursor<CaseAppointmentQueryable>(query, {
+      limit,
+      sortField: '_id',
+      sortDirection: 'ASCENDING',
+    });
+  }
+
   async getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation> {
     try {
       // Total number of required field groups for completeness calculation
