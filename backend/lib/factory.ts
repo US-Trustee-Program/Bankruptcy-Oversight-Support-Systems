@@ -24,6 +24,7 @@ import {
   OrdersRepository,
   OrderSyncState,
   PhoneticBackfillState,
+  CaseAppointmentDateBackfillState,
   RuntimeState,
   RuntimeStateRepository,
   TrusteeAppointmentsRepository,
@@ -104,6 +105,7 @@ let orderSyncStateRepo: RuntimeStateRepository<OrderSyncState>;
 let casesSyncStateRepo: RuntimeStateRepository<CasesSyncState>;
 let officeStaffSyncStateRepo: RuntimeStateRepository<OfficeStaffSyncState>;
 let phoneticBackfillStateRepo: RuntimeStateRepository<PhoneticBackfillState>;
+let caseAppointmentDateBackfillStateRepo: RuntimeStateRepository<CaseAppointmentDateBackfillState>;
 let trusteeAppointmentsSyncStateRepo: RuntimeStateRepository<TrusteeAppointmentsSyncState>;
 let trusteeNotesMetricsSyncStateRepo: RuntimeStateRepository<TrusteeNotesMetricsState>;
 let usersRepository: UsersRepository;
@@ -295,6 +297,16 @@ const getPhoneticBackfillStateRepo = (
     phoneticBackfillStateRepo = getRuntimeStateRepository<PhoneticBackfillState>(context);
   }
   return phoneticBackfillStateRepo;
+};
+
+const getCaseAppointmentDateBackfillStateRepo = (
+  context: ApplicationContext,
+): RuntimeStateRepository<CaseAppointmentDateBackfillState> => {
+  if (!caseAppointmentDateBackfillStateRepo) {
+    caseAppointmentDateBackfillStateRepo =
+      getRuntimeStateRepository<CaseAppointmentDateBackfillState>(context);
+  }
+  return caseAppointmentDateBackfillStateRepo;
 };
 
 const getTrusteeAppointmentsSyncStateRepo = (
@@ -519,6 +531,7 @@ const factory = {
   getOfficeStaffSyncStateRepo,
   getCasesSyncStateRepo,
   getPhoneticBackfillStateRepo,
+  getCaseAppointmentDateBackfillStateRepo,
   getTrusteeAppointmentsSyncStateRepo,
   getTrusteeNotesMetricsSyncStateRepo,
   getAuthorizationGateway,

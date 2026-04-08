@@ -1996,6 +1996,93 @@ describe('Test DXTR Gateway', () => {
   });
 });
 
+describe('getAppointmentDatesByCaseIds', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    querySpy = vi.spyOn(database, 'executeQuery');
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('returns empty map when caseIds is empty', async () => {
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, []);
+    expect(result).toEqual(new Map());
+    expect(querySpy).not.toHaveBeenCalled();
+  });
+
+  test('returns map of caseId to ISO appointed date', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          { caseId: '081-24-12345', aptDate: '260407' },
+          { caseId: '082-24-67890', aptDate: '250115' },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, [
+      '081-24-12345',
+      '082-24-67890',
+    ]);
+
+    expect(result.get('081-24-12345')).toBe('2026-04-07');
+    expect(result.get('082-24-67890')).toBe('2025-01-15');
+  });
+
+  test('deduplicates rows — keeps most recent (first) row per caseId', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          { caseId: '081-24-12345', aptDate: '260407' },
+          { caseId: '081-24-12345', aptDate: '250101' }, // older, should be ignored
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
+
+    expect(result.get('081-24-12345')).toBe('2026-04-07');
+    expect(result.size).toBe(1);
+  });
+
+  test('excludes entries where aptDate is sentinel 000000', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [{ caseId: '081-24-12345', aptDate: '000000' }],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
+
+    expect(result.size).toBe(0);
+  });
+
+  test('returns empty map when no records returned from DXTR', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
+
+    expect(result.size).toBe(0);
+  });
+});
+
 describe('parseAoDate', () => {
   test('converts YYMMDD string to ISO date', () => {
     expect(parseAoDate('260407')).toBe('2026-04-07');

@@ -1371,6 +1371,63 @@ class CasesDxtrGateway implements CasesInterface {
     };
   }
 
+  async getAppointmentDatesByCaseIds(
+    context: ApplicationContext,
+    caseIds: string[],
+  ): Promise<Map<string, string>> {
+    if (caseIds.length === 0) return new Map();
+
+    const params: DbTableFieldSpec[] = caseIds.map((caseId, idx) => ({
+      name: `caseId${idx}`,
+      type: mssql.VarChar,
+      value: caseId,
+    }));
+
+    const caseIdVars = caseIds.map((_, idx) => `@caseId${idx}`).join(', ');
+
+    const query = `
+      SELECT
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
+        SUBSTRING(TX.REC, 24, 6) AS aptDate,
+        TX.TX_DATE
+      FROM AO_TX TX
+      JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      WHERE TX.TX_TYPE = 'A'
+        AND TX.TX_CODE IN ('TR')
+        AND CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) IN (${caseIdVars})
+      ORDER BY TX.TX_DATE DESC
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      params,
+    );
+
+    type AppointmentDateRecord = {
+      caseId: string;
+      aptDate?: string;
+    };
+
+    const records = this.trusteeAppointmentsQueryCallback<AppointmentDateRecord>(
+      context,
+      queryResult,
+    );
+
+    // Deduplicate — keep first (most recent) row per caseId
+    const result = new Map<string, string>();
+    for (const record of records) {
+      if (result.has(record.caseId)) continue;
+      const appointedDate = parseAoDate(record.aptDate);
+      if (appointedDate) {
+        result.set(record.caseId, appointedDate);
+      }
+    }
+    return result;
+  }
+
   trusteeAppointmentsQueryCallback<T>(
     applicationContext: ApplicationContext,
     queryResult: QueryResults,

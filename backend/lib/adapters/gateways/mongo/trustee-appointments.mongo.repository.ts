@@ -1,12 +1,12 @@
 import { ApplicationContext } from '../../types/basic';
-import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
+import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import {
   TrusteeAppointmentsRepository,
   TrusteeDueDateMetricsAggregation,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import {
   CaseAppointment,
   CaseAppointmentInput,
@@ -245,6 +245,19 @@ export class TrusteeAppointmentsMongoRepository
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to retrieve case appointments for case ${caseId}.`,
       });
+    }
+  }
+
+  async findByCursor<T>(
+    query: ConditionOrConjunction<T>,
+    options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
+  ): Promise<T[]> {
+    try {
+      const sortSpec = QueryBuilder.orderBy<T>([options.sortField, options.sortDirection]);
+      const adapter = this.getAdapter<T>();
+      return await adapter.find(query, sortSpec, options.limit);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
     }
   }
 

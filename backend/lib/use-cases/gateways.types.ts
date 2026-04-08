@@ -378,6 +378,10 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   createCaseAppointment(appointment: CaseAppointmentInput): Promise<CaseAppointment>;
   updateCaseAppointment(appointment: CaseAppointment): Promise<CaseAppointment>;
   findByCaseId(caseId: string): Promise<CaseAppointment[]>;
+  findByCursor<T>(
+    query: Query<T>,
+    options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
+  ): Promise<T[]>;
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
@@ -405,6 +409,7 @@ export type RuntimeStateDocumentType =
   | 'OFFICE_STAFF_SYNC_STATE'
   | 'CASES_SYNC_STATE'
   | 'PHONETIC_BACKFILL_STATE'
+  | 'CASE_APPOINTMENT_DATE_BACKFILL_STATE'
   | 'TRUSTEE_MIGRATION_STATE'
   | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
@@ -442,6 +447,15 @@ export type OfficeStaffSyncState = RuntimeState & {
 
 export type PhoneticBackfillState = RuntimeState & {
   documentType: 'PHONETIC_BACKFILL_STATE';
+  lastId: string | null;
+  processedCount: number;
+  startedAt: string;
+  lastUpdatedAt: string;
+  status: 'IN_PROGRESS' | 'COMPLETED' | 'FAILED';
+};
+
+export type CaseAppointmentDateBackfillState = RuntimeState & {
+  documentType: 'CASE_APPOINTMENT_DATE_BACKFILL_STATE';
   lastId: string | null;
   processedCount: number;
   startedAt: string;
