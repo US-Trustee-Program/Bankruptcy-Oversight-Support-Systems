@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Post-merge hook to sync spec files to beads after pull
+# Install: ln -sf ../../.beads/hooks-optional/post-merge .git/hooks/post-merge-beads-sync
+
+# Check if we're on main/master (PR merge scenario)
+current_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [[ "$current_branch" =~ ^(main|master)$ ]]; then
+    # Check merge commit message for PR number
+    merge_msg=$(git log -1 --pretty=%B 2>/dev/null)
+
+    # Pattern: "Merge pull request #1234 from user/CAMS-362-branch"
+    if [[ "$merge_msg" =~ Merge\ pull\ request\ \#([0-9]+).*CAMS-([0-9]+) ]]; then
+        pr_number="${BASH_REMATCH[1]}"
+        ticket="CAMS-${BASH_REMATCH[2]}"
+
+        echo "🎉 Detected PR #$pr_number merge for $ticket"
+        echo "   Closing beads issue..."
+
+        # Close beads issue
+        "$(git rev-parse --show-toplevel)/.beads/hooks-optional/post-pr-merge" "$ticket" "$pr_number" || true
+    fi
+fi
+
+# Only run spec sync if spec files were modified in the merge
+if git diff --name-only ORIG_HEAD HEAD 2>/dev/null | grep -q "^\.ustp-cams-fdp/ai/specs/"; then
+    echo "📋 Spec files updated in merge, syncing to beads..."
+
+    # Run full sync after merge (simpler than trying to detect specific changes)
+    "$(git rev-parse --show-toplevel)/.beads/sync-specs.sh" || true
+fi
