@@ -1,5 +1,5 @@
 import { CamsUserReference } from './users';
-import { CamsRole } from './roles';
+import { AssignableRoleType } from './roles';
 import { Auditable } from './auditable';
 
 export type CaseAssignment = Auditable & {
@@ -16,5 +16,5 @@ export type CaseAssignment = Auditable & {
 export type StaffAssignmentAction = {
   caseId: string;
   attorneyList: CamsUserReference[];
-  role: typeof CamsRole.TrialAttorney;
+  role: AssignableRoleType;
 };

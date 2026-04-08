@@ -176,9 +176,9 @@ describe('assignAttorneyModalUseCase tests', () => {
   });
 
   test('submitValues should throw an error when no case is supplied.', async () => {
-    await expect(useCase.submitValues(() => {})).rejects.toThrow(
-      'No bankruptcy case was supplied. Can not set attorneys without a case.',
-    );
+    await expect(
+      useCase.submitValues(() => {}, { id: 'att-1', name: 'Test Attorney' }),
+    ).rejects.toThrow('No bankruptcy case was supplied. Can not set attorneys without a case.');
   });
 
   test('updateCheckList should throw an error when no case is supplied.', async () => {
@@ -353,7 +353,10 @@ describe('assignAttorneyModalUseCase tests', () => {
       setCheckListValues: vi.fn(),
       setIsUpdatingAssignment: vi.fn(),
     });
-    await localUseCase.submitValues(mockAssignmentChangeCallback);
+    await localUseCase.submitValues(mockAssignmentChangeCallback, {
+      id: 'att-1',
+      name: 'Test Attorney',
+    });
     expect(mockSubmissionCallback).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'success' }),
     );
@@ -371,7 +374,7 @@ describe('assignAttorneyModalUseCase tests', () => {
       setCheckListValues: vi.fn(),
       setIsUpdatingAssignment: vi.fn(),
     });
-    await localUseCase.submitValues(() => {});
+    await localUseCase.submitValues(() => {}, { id: 'att-1', name: 'Test Attorney' });
     expect(mockSubmissionCallback).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'error' }),
     );
@@ -403,6 +406,90 @@ describe('assignAttorneyModalUseCase tests', () => {
     const localUseCase = assignAttorneyModalUseCase(mockStore, localControls);
     localUseCase.hide();
     expect(mockHide).toHaveBeenCalled();
+  });
+
+  test('show should pre-populate checkListValues from leadTrialAttorney when not already in assignments', () => {
+    const leadAttorney = { id: 'lead-1', name: 'Lead Attorney' };
+    const localSetCheckListValues = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      setBCase: vi.fn(),
+      setCheckListValues: localSetCheckListValues,
+      setPreviouslySelectedList: vi.fn(),
+      setSubmissionCallback: vi.fn(),
+    });
+
+    localUseCase.show({
+      bCase: { caseId: 'c1', assignments: [], leadTrialAttorney: leadAttorney },
+      callback: vi.fn(),
+    } as never);
+
+    expect(localSetCheckListValues).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({ id: leadAttorney.id, name: leadAttorney.name }),
+      ]),
+    );
+  });
+
+  test('show should not duplicate attorney who is both in assignments and leadTrialAttorney', () => {
+    const attorney = { id: 'att-1', name: 'Attorney One' };
+    const localSetCheckListValues = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      setBCase: vi.fn(),
+      setCheckListValues: localSetCheckListValues,
+      setPreviouslySelectedList: vi.fn(),
+      setSubmissionCallback: vi.fn(),
+    });
+
+    localUseCase.show({
+      bCase: {
+        caseId: 'c1',
+        assignments: [{ userId: attorney.id, name: attorney.name }],
+        leadTrialAttorney: attorney,
+      },
+      callback: vi.fn(),
+    } as never);
+
+    const calledWith = localSetCheckListValues.mock.calls[0][0];
+    expect(calledWith.filter((a: { id: string }) => a.id === attorney.id)).toHaveLength(1);
+  });
+
+  test('submitValues should post to both TrialAttorney and LeadTrialAttorney roles', async () => {
+    const postSpy = vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({} as never);
+    const leadAttorney = { id: 'lead-1', name: 'Lead Attorney' };
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', officeCode: 'OFF', assignments: [] },
+      checkListValues: [leadAttorney],
+      attorneyList: [leadAttorney],
+      submissionCallback: vi.fn(),
+      setCheckListValues: vi.fn(),
+      setIsUpdatingAssignment: vi.fn(),
+    });
+
+    await localUseCase.submitValues(vi.fn(), leadAttorney);
+
+    expect(postSpy).toHaveBeenCalledTimes(2);
+    expect(postSpy).toHaveBeenCalledWith(expect.objectContaining({ role: 'TrialAttorney' }));
+    expect(postSpy).toHaveBeenCalledWith(expect.objectContaining({ role: 'LeadTrialAttorney' }));
+  });
+
+  test('submitValues should include leadTrialAttorney in the success callback', async () => {
+    vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({} as never);
+    const leadAttorney = { id: 'lead-1', name: 'Lead Attorney' };
+    const mockSubmissionCallback = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', officeCode: 'OFF', assignments: [] },
+      checkListValues: [leadAttorney],
+      attorneyList: [leadAttorney],
+      submissionCallback: mockSubmissionCallback,
+      setCheckListValues: vi.fn(),
+      setIsUpdatingAssignment: vi.fn(),
+    });
+
+    await localUseCase.submitValues(vi.fn(), leadAttorney);
+
+    expect(mockSubmissionCallback).toHaveBeenCalledWith(
+      expect.objectContaining({ leadTrialAttorney: leadAttorney, status: 'success' }),
+    );
   });
 
   test('show should call setSubmissionCallback when a callback is provided', () => {

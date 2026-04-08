@@ -49,6 +49,9 @@ export interface AssignAttorneyModalViewModel {
   sortAttorneys(a: AttorneyUser, b: AttorneyUser): number;
   tableContainerRef: RefObject<HTMLDivElement | null>;
   updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser): void;
+  checkedAttorneys: CamsUserReference[];
+  leadTrialAttorney: CamsUserReference | null;
+  updateLeadTrialAttorney(attorney: CamsUserReference | null): void;
 }
 
 export interface AssignAttorneyModalUseCase {
@@ -61,13 +64,17 @@ export interface AssignAttorneyModalUseCase {
   onOpen(): void;
   show(showProps: AssignAttorneyModalOpenProps | undefined): void;
   sortAttorneys(a: AttorneyUser, b: AttorneyUser): number;
-  submitValues(callback: (val: CamsUserReference[]) => void): void;
+  submitValues(
+    callback: (val: CamsUserReference[]) => void,
+    leadTrialAttorney: CamsUserReference,
+  ): void;
   updateCheckList(ev: React.ChangeEvent<HTMLInputElement>, attorney: AttorneyUser): void;
 }
 
 export interface AssignAttorneyModalCallbackProps {
   bCase: CaseBasics;
   selectedAttorneyList: AttorneyUser[];
+  leadTrialAttorney: CamsUserReference;
   previouslySelectedList: AttorneyUser[];
   status: 'success' | 'error';
   apiResult: object;

@@ -290,6 +290,80 @@ describe('Test Assign Attorney Modal Component', () => {
     });
   });
 
+  test('should enable submit button when exactly one attorney is checked (auto-select as lead)', async () => {
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef);
+
+    const bCase: CaseBasics = MockData.getCaseBasics({
+      override: { caseId: '081-23-00002', caseTitle: 'Test Case', dateFiled: '2024-01-01' },
+    });
+    bCase.assignments = [];
+
+    act(() => modalRef.current?.show({ bCase, callback }));
+
+    await userEvent.click(screen.getByTestId('open-modal-button'));
+    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
+
+    await waitFor(() => expect(submitButton).toBeDisabled());
+
+    const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[0].id}-checkbox`);
+
+    await waitFor(() => expect(submitButton).toBeEnabled());
+  });
+
+  test('should post LeadTrialAttorney assignment when submitting', async () => {
+    const postSpy = vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({ data: undefined });
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef);
+
+    const bCase: CaseBasics = MockData.getCaseBasics({
+      override: { caseId: '081-23-00003', caseTitle: 'Test Case', dateFiled: '2024-01-01' },
+    });
+    bCase.assignments = [];
+
+    act(() => modalRef.current?.show({ bCase, callback }));
+    await userEvent.click(screen.getByTestId('open-modal-button'));
+
+    await waitFor(() => expect(screen.getByTestId(`modal-${modalId}`)).toHaveClass('is-visible'));
+
+    const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[0].id}-checkbox`);
+
+    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
+    await waitFor(() => expect(submitButton).toBeEnabled());
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(postSpy).toHaveBeenCalledWith(expect.objectContaining({ role: 'LeadTrialAttorney' }));
+    });
+  });
+
+  test('should pre-check and enable submit when bCase has leadTrialAttorney', async () => {
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef);
+
+    const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
+    const preSelectedAttorney = sortedAttorneys[0];
+
+    const bCase: CaseBasics = MockData.getCaseBasics({
+      override: { caseId: '081-23-00004', caseTitle: 'Test Case', dateFiled: '2024-01-01' },
+    });
+    bCase.assignments = [];
+    bCase.leadTrialAttorney = { id: preSelectedAttorney.id, name: preSelectedAttorney.name };
+
+    act(() => modalRef.current?.show({ bCase, callback }));
+    await userEvent.click(screen.getByTestId('open-modal-button'));
+
+    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
+    await waitFor(() => expect(submitButton).toBeEnabled());
+
+    await waitFor(() => {
+      const checkbox = screen.getByTestId(`checkbox-attorney-${preSelectedAttorney.id}-checkbox`);
+      expect(checkbox).toBeChecked();
+    });
+  });
+
   test('should display error alert when call to getAttorneys throws an error', async () => {
     const error = new Error('API Rejection');
     vi.spyOn(Api2, 'getOfficeAttorneys').mockRejectedValue(error);

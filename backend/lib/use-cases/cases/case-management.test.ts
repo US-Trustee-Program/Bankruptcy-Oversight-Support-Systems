@@ -271,6 +271,47 @@ describe('Case management tests', () => {
       expect(actual).toEqual(expected);
     });
 
+    test('should split mixed assignments into TrialAttorney and leadTrialAttorney in getCaseDetail', async () => {
+      const leadAttorney = { id: '003', name: 'Lead Attorney' };
+      const leadAssignment: CaseAssignment = {
+        documentType: 'ASSIGNMENT',
+        id: '3',
+        caseId: caseIdWithAssignments,
+        userId: leadAttorney.id,
+        name: leadAttorney.name,
+        role: CamsRole.LeadTrialAttorney,
+        assignedOn: currentDate,
+        updatedOn: currentDate,
+        updatedBy: MockData.getCamsUserReference(),
+      };
+      const mixedMap = new Map([[caseIdWithAssignments, [...assignments, leadAssignment]]]);
+      const bCase = MockData.getCaseDetail({ override: { caseId: caseIdWithAssignments } });
+
+      vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockResolvedValue(
+        mixedMap,
+      );
+      vi.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
+
+      const actual = await useCase.getCaseDetail(applicationContext, caseIdWithAssignments);
+
+      expect(actual.assignments).toEqual(assignments);
+      expect(actual.leadTrialAttorney).toEqual({ id: leadAttorney.id, name: leadAttorney.name });
+    });
+
+    test('should set leadTrialAttorney to undefined when no LeadTrialAttorney assignments exist', async () => {
+      const bCase = MockData.getCaseDetail({ override: { caseId: caseIdWithAssignments } });
+
+      vi.spyOn(CaseAssignmentUseCase.prototype, 'findAssignmentsByCaseId').mockResolvedValue(
+        assignmentMap,
+      );
+      vi.spyOn(useCase.casesGateway, 'getCaseDetail').mockResolvedValue(bCase);
+
+      const actual = await useCase.getCaseDetail(applicationContext, caseIdWithAssignments);
+
+      expect(actual.assignments).toEqual(assignments);
+      expect(actual.leadTrialAttorney).toBeUndefined();
+    });
+
     test('should throw an AssignmentError when CaseAssignmentUseCase.findAssignmentsByCaseId throws an error', async () => {
       const bCase = MockData.getCaseDetail({ override: { caseId: 'ThrowError' } });
 
@@ -439,6 +480,39 @@ describe('Case management tests', () => {
       const expectedCases = args.includeCaseAssignments ? casesWithAssignments : cases;
       expect(actual).toEqual({ metadata: { total: cases.length }, data: expectedCases });
       expect(!!assignmentsSpy.mock.calls.length).toEqual(args.includeCaseAssignments);
+    });
+
+    test('should split assignments into TrialAttorney and leadTrialAttorney in searchCases', async () => {
+      const caseId = MockData.randomCaseId();
+      const leadAttorney = MockData.getCamsUserReference();
+      const trialAttorneyAssignment = MockData.getAttorneyAssignment({ caseId });
+      const leadAssignment: CaseAssignment = {
+        ...trialAttorneyAssignment,
+        id: 'lead-id',
+        userId: leadAttorney.id,
+        name: leadAttorney.name,
+        role: CamsRole.LeadTrialAttorney,
+      };
+      const mixedMap = new Map([[caseId, [trialAttorneyAssignment, leadAssignment]]]);
+
+      vi.spyOn(useCase.casesRepository, 'searchCases').mockResolvedValue({
+        metadata: { total: 1 },
+        data: [MockData.getSyncedCase({ override: { caseId } })],
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases').mockResolvedValue(mixedMap);
+
+      const actual = await useCase.searchCases(
+        applicationContext,
+        { caseNumber: '00-00000' },
+        true,
+      );
+
+      const resultCase = actual.data[0];
+      expect(resultCase.assignments).toEqual([trialAttorneyAssignment]);
+      expect(resultCase.leadTrialAttorney).toEqual({
+        id: leadAttorney.id,
+        name: leadAttorney.name,
+      });
     });
 
     test('should return cases and actions for the user', async () => {
