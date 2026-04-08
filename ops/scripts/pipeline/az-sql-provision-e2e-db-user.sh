@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
 # Description: Provisions a contained database user for a managed identity in an Azure SQL database.
-#              Detects sqlcmd installation path based on OS/architecture.
+#              Detects or installs go-sqlcmd based on OS/architecture.
 # Prerequisites:
 #   - Azure CLI (logged in)
-#   - sqlcmd (mssql-tools18 on Linux/amd64, go-sqlcmd on macOS/arm64)
+#   - sqlcmd: go-sqlcmd auto-installed on Linux if absent; macOS: brew install go-sqlcmd
 # Usage: az-sql-provision-e2e-db-user.sh --server-name <name> --database <db> --identity-name <name>
 
 set -euo pipefail
@@ -39,15 +39,28 @@ fi
 sql_hostname_suffix=$(az cloud show --query "suffixes.sqlServerHostname" -o tsv)
 server_fqdn="${server_name}.${sql_hostname_suffix}"
 
-# Detect sqlcmd binary
-if [[ -x "/opt/mssql-tools18/bin/sqlcmd" ]]; then
-  # Pre-installed on ubuntu-latest (amd64) GHA runners
-  SQLCMD="/opt/mssql-tools18/bin/sqlcmd"
-elif command -v sqlcmd &>/dev/null; then
-  # go-sqlcmd or mssql-tools on PATH (macOS via brew, or go-sqlcmd install)
+# Detect sqlcmd binary, installing go-sqlcmd on Linux if not found.
+# go-sqlcmd is required (not mssql-tools18) because --token auth is a go-sqlcmd feature.
+if command -v sqlcmd &>/dev/null; then
+  # go-sqlcmd on PATH (macOS via brew install go-sqlcmd, or existing install)
+  SQLCMD="sqlcmd"
+elif [[ "$(uname -s)" == "Linux" ]]; then
+  echo "sqlcmd not found — installing go-sqlcmd..."
+  arch="$(uname -m)"
+  case "${arch}" in
+    x86_64)  go_sqlcmd_arch="amd64" ;;
+    aarch64) go_sqlcmd_arch="arm64" ;;
+    *)
+      echo "Error: unsupported architecture ${arch}"
+      exit 1
+      ;;
+  esac
+  go_sqlcmd_version="v1.9.0"
+  go_sqlcmd_url="https://github.com/microsoft/go-sqlcmd/releases/download/${go_sqlcmd_version}/sqlcmd-linux-${go_sqlcmd_arch}.tar.bz2"
+  curl -fsSL "${go_sqlcmd_url}" | tar -xj -C /usr/local/bin sqlcmd
   SQLCMD="sqlcmd"
 else
-  echo "Error: sqlcmd not found. Install mssql-tools18 (Linux) or go-sqlcmd (macOS: brew install go-sqlcmd)."
+  echo "Error: sqlcmd not found. Install go-sqlcmd (macOS: brew install go-sqlcmd)."
   exit 1
 fi
 
