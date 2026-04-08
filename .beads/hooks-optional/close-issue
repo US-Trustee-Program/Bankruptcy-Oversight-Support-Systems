@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Close beads issue with a reason
+# Usage: .beads/hooks-optional/close-issue CAMS-362 [reason]
+
+set -e
+
+TICKET=$1
+REASON=${2:-"Work complete"}
+
+if [ -z "$TICKET" ]; then
+    echo "Usage: $0 TICKET [REASON]"
+    echo ""
+    echo "Examples:"
+    echo "  $0 CAMS-362 'PR closed without merge - work abandoned'"
+    echo "  $0 CAMS-362 'Completed manually without PR'"
+    echo "  $0 CAMS-362 'No longer needed'"
+    echo "  $0 CAMS-362  # Default: 'Work complete'"
+    exit 1
+fi
+
+# Find beads issue
+beads_issue=$(bd list --json 2>/dev/null | jq -r ".[] | select(.title | contains(\"$TICKET\")) | .id" | head -1)
+
+if [ -z "$beads_issue" ]; then
+    echo "⚠️  No beads issue found for $TICKET"
+    exit 1
+fi
+
+echo "📋 Closing beads issue $beads_issue for $TICKET"
+echo "   Reason: $REASON"
+
+bd close "$beads_issue" --reason="$REASON"
+
+echo "✓ Issue closed"

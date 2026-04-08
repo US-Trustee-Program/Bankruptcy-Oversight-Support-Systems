@@ -1,0 +1,1 @@
+# Beads Integration Test
