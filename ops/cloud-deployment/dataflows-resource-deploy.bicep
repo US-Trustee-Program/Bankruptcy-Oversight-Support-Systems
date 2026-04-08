@@ -254,8 +254,6 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
       appSettingNames: [
         'AzureWebJobsStorage'
         'AzureWebJobsDataflowsStorage'
-        'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-        'WEBSITE_CONTENTSHARE'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
       ]
@@ -304,14 +302,6 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
           {
             name: 'AzureWebJobsDataflowsStorage'
             value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
-          }
-          {
-            name: 'WEBSITE_CONTENTAZUREFILECONNECTIONSTRING'
-            value: dataflowsFunctionSlotStorageAccount.outputs.connectionString
-          }
-          {
-            name: 'WEBSITE_CONTENTSHARE'
-            value: '${dataflowsFunctionName}-${slotName}'
           }
           {
             name: 'CAMS_OBJECT_CONTAINER'
