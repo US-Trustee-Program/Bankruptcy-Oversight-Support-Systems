@@ -35,9 +35,12 @@ if [[ -z "${server_name:-}" || -z "${database:-}" || -z "${identity_name:-}" ]];
   exit 1
 fi
 
-# Build FQDN from server name using the current cloud's SQL hostname suffix
+# Build FQDN from server name using the current cloud's SQL hostname suffix.
+# The suffix includes a leading dot (e.g. ".database.usgovcloudapi.net"), so strip it
+# for the token resource URL but use it as-is for the FQDN.
 sql_hostname_suffix=$(az cloud show --query "suffixes.sqlServerHostname" -o tsv)
-server_fqdn="${server_name}.${sql_hostname_suffix}"
+server_fqdn="${server_name}${sql_hostname_suffix}"
+sql_resource="https://${sql_hostname_suffix#.}/"
 
 # Detect sqlcmd binary, installing go-sqlcmd on Linux if not found.
 # go-sqlcmd is required (not mssql-tools18) because --token auth is a go-sqlcmd feature.
@@ -68,7 +71,7 @@ echo "Using sqlcmd: ${SQLCMD}"
 
 # Get an Azure AD access token for the SQL resource endpoint
 # Azure Government: database.usgovcloudapi.net; Azure Commercial: database.windows.net
-sql_token=$(az account get-access-token --resource "https://${sql_hostname_suffix}/" --query accessToken -o tsv)
+sql_token=$(az account get-access-token --resource "${sql_resource}" --query accessToken -o tsv)
 
 echo "Provisioning SQL user '${identity_name}' in database '${database}' on '${server_fqdn}'"
 
