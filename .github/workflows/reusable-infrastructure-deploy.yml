@@ -118,26 +118,10 @@ jobs:
             --stack-name ${{ inputs.stackName }} \
             --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
 
-          curl -sSL https://aka.ms/install-sqlcmd-linux | sudo bash
-
-          sqlToken=$(az account get-access-token \
-            --resource "https://database.usgovcloudapi.net/" \
-            --query accessToken -o tsv)
-
-          sqlcmd \
-            -S "${{ secrets.AZ_SQL_SERVER_NAME }}.database.usgovcloudapi.net" \
-            -d "${{ steps.azure-e2e-sql-deploy.outputs.e2eSqlDatabaseName }}" \
-            --token "${sqlToken}" \
-            -Q "
-              IF NOT EXISTS (
-                SELECT 1 FROM sys.database_principals
-                WHERE name = '${{ secrets.AZ_SQL_IDENTITY_NAME }}'
-              )
-              BEGIN
-                CREATE USER [${{ secrets.AZ_SQL_IDENTITY_NAME }}] FROM EXTERNAL PROVIDER;
-                ALTER ROLE db_datareader ADD MEMBER [${{ secrets.AZ_SQL_IDENTITY_NAME }}];
-              END
-            "
+          ./ops/scripts/pipeline/az-sql-provision-e2e-db-user.sh \
+            --server-name "${{ secrets.AZ_SQL_SERVER_NAME }}" \
+            --database "${{ steps.azure-e2e-sql-deploy.outputs.e2eSqlDatabaseName }}" \
+            --identity-name "${{ secrets.AZ_SQL_IDENTITY_NAME }}"
 
       - name: Remove SQL firewall rule for GHA runner
         if: ${{ always() && inputs.environmentHash != '' && inputs.ghaEnvironment != 'Main-Gov' }}
