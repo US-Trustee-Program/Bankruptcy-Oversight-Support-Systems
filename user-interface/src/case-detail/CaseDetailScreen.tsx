@@ -349,6 +349,7 @@ export default function CaseDetailScreen(props: Readonly<CaseDetailProps>) {
     const updatedCaseBasicInfo: CaseDetail = {
       ...caseBasicInfo!,
       assignments,
+      leadTrialAttorney: assignment.leadTrialAttorney,
     };
 
     setCaseBasicInfo(updatedCaseBasicInfo);

@@ -2,7 +2,7 @@ import { AttorneyUser, CamsUserReference } from '@common/cams/users';
 import { deepEqual } from '@common/object-equality';
 import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
-import { CamsRole } from '@common/cams/roles';
+import { CamsRole, AssignableRole } from '@common/cams/roles';
 import { getCamsUserReference } from '@common/cams/session';
 import {
   AssignAttorneyModalStore,
@@ -74,7 +74,10 @@ const assignAttorneyModalUseCase = (
       }
     },
 
-    submitValues: async (assignmentChangeCallback: (val: CamsUserReference[]) => void) => {
+    submitValues: async (
+      assignmentChangeCallback: (val: CamsUserReference[]) => void,
+      leadTrialAttorney: CamsUserReference,
+    ) => {
       if (!store.bCase) {
         throw Error('No bankruptcy case was supplied. Can not set attorneys without a case.');
       }
@@ -98,10 +101,16 @@ const assignAttorneyModalUseCase = (
           attorneyList: finalAttorneyList,
           role: CamsRole.TrialAttorney,
         });
+        await Api2.postStaffAssignments({
+          caseId: store.bCase?.caseId,
+          attorneyList: [leadTrialAttorney],
+          role: AssignableRole.LeadTrialAttorney,
+        });
         if (store.submissionCallback) {
           store.submissionCallback({
             bCase: store.bCase,
             selectedAttorneyList: finalAttorneyList,
+            leadTrialAttorney: leadTrialAttorney,
             previouslySelectedList: store.previouslySelectedList,
             status: 'success',
             apiResult: {},
@@ -115,6 +124,7 @@ const assignAttorneyModalUseCase = (
           store.submissionCallback({
             bCase: store.bCase,
             selectedAttorneyList: finalAttorneyList,
+            leadTrialAttorney: leadTrialAttorney,
             previouslySelectedList: store.previouslySelectedList,
             status: 'error',
             apiResult: e as Error,
@@ -184,14 +194,16 @@ const assignAttorneyModalUseCase = (
   const show = (showProps: AssignAttorneyModalOpenProps | undefined) => {
     if (showProps && showProps.bCase) {
       store.setBCase(showProps.bCase);
-      if (showProps.bCase.assignments) {
-        const attorneys: AttorneyUser[] = [];
-        showProps.bCase.assignments.forEach((assignment) => {
-          attorneys.push({ id: assignment.userId, name: assignment.name } as AttorneyUser);
-        });
-        store.setCheckListValues(attorneys);
-        store.setPreviouslySelectedList(attorneys);
+      const attorneys: AttorneyUser[] = [];
+      showProps.bCase.assignments?.forEach((assignment) => {
+        attorneys.push({ id: assignment.userId, name: assignment.name } as AttorneyUser);
+      });
+      const lta = showProps.bCase.leadTrialAttorney;
+      if (lta && !attorneys.find((a) => a.id === lta.id)) {
+        attorneys.push({ id: lta.id, name: lta.name } as AttorneyUser);
       }
+      store.setCheckListValues(attorneys);
+      store.setPreviouslySelectedList(attorneys);
       if (showProps.callback) {
         store.setSubmissionCallback(() => showProps.callback);
       }
