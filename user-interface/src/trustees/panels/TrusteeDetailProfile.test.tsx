@@ -109,7 +109,7 @@ describe('TrusteeDetailProfile', () => {
   test('should render internal contact information section', () => {
     renderWithProps({});
 
-    expect(screen.getByText('Internal')).toBeInTheDocument();
+    expect(screen.getByText('Internal Contact Info')).toBeInTheDocument();
     expect(screen.getByText('Internal use only.')).toBeInTheDocument();
   });
 
@@ -150,7 +150,7 @@ describe('TrusteeDetailProfile', () => {
       'No information added.',
     );
     const internalSection = screen
-      .getByText('Internal')
+      .getByText('Internal Contact Info')
       .closest('.contact-information-card-container');
     expect(internalSection).toHaveTextContent('No information added.');
   });
