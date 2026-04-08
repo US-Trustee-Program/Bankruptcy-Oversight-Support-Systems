@@ -596,24 +596,24 @@ describe('TrusteeMatchVerificationAccordion', () => {
       ],
     };
 
+    test('should render "Inactive trustee" as task type label for inactive match', () => {
+      renderWithProps({ order: inactiveOrder });
+
+      const heading = screen.getByTestId(`accordion-heading-${inactiveOrder.id}`);
+      expect(heading.textContent).toContain('Inactive trustee');
+      expect(heading.textContent).not.toContain('Trustee Mismatch');
+    });
+
     test('should render distinct problem statement for inactive match', () => {
       renderWithProps({ order: inactiveOrder });
 
       const content = screen.getByTestId(`accordion-content-${inactiveOrder.id}`);
       expect(content.textContent).toContain(
-        'Matched trustee has an inactive appointment status for case',
+        'Trustee is inactive in CAMS but was appointed to case',
       );
       expect(content.textContent).not.toContain(
         'Trustee sent from the court does not match a CAMS Trustee',
       );
-    });
-
-    test('should render warning alert banner with formatted inactive status', () => {
-      renderWithProps({ order: inactiveOrder });
-
-      const alert = screen.getByTestId(`alert-inactive-status-warning-${inactiveOrder.id}`);
-      expect(alert).toBeInTheDocument();
-      expect(alert.textContent).toContain('Voluntarily Suspended');
     });
 
     test('should still render original problem statement for other mismatch types', () => {
@@ -625,30 +625,17 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(content.textContent).toContain(
         'Trustee sent from the court does not match a CAMS Trustee',
       );
-      expect(content.textContent).not.toContain('inactive appointment status');
+      expect(content.textContent).not.toContain('inactive');
     });
 
-    test('should not render warning alert for non-inactive mismatch types', () => {
+    test('should render "Trustee Mismatch" as task type label for non-inactive mismatch types', () => {
       renderWithProps({
         order: { ...sampleOrderWithCandidates, mismatchReason: 'HIGH_CONFIDENCE_MATCH' },
       });
 
-      expect(
-        screen.queryByTestId(`alert-inactive-status-warning-${sampleOrder.id}`),
-      ).not.toBeInTheDocument();
-    });
-
-    test('should not render warning alert when inactiveAppointmentStatus is undefined', () => {
-      const { inactiveAppointmentStatus: _omit, ...orderWithoutStatus } = inactiveOrder;
-      renderWithProps({ order: orderWithoutStatus as TrusteeMatchVerification });
-
-      const content = screen.getByTestId(`accordion-content-${inactiveOrder.id}`);
-      expect(content.textContent).toContain(
-        'Matched trustee has an inactive appointment status for case',
-      );
-      expect(
-        screen.queryByTestId(`alert-inactive-status-warning-${inactiveOrder.id}`),
-      ).not.toBeInTheDocument();
+      const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
+      expect(heading.textContent).toContain('Trustee Mismatch');
+      expect(heading.textContent).not.toContain('Inactive trustee');
     });
   });
 });
