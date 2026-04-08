@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Helper script to close beads issues after PR merge
+# Usage: .beads/hooks-optional/post-pr-merge CAMS-362 [PR-NUMBER]
+#
+# Call this manually after merging a PR, or integrate into your workflow
+
+set -e
+
+TICKET=$1
+PR_NUMBER=${2:-}
+
+if [ -z "$TICKET" ]; then
+    echo "Usage: $0 TICKET [PR-NUMBER]"
+    echo "Example: $0 CAMS-362 1234"
+    exit 1
+fi
+
+echo "🎉 Processing PR merge for $TICKET..."
+
+# Find beads issue
+beads_issue=$(bd list --json 2>/dev/null | jq -r ".[] | select(.title | contains(\"$TICKET\")) | .id" | head -1)
+
+if [ -z "$beads_issue" ]; then
+    echo "⚠️  No beads issue found for $TICKET"
+    exit 0
+fi
+
+# Build close reason
+if [ -n "$PR_NUMBER" ]; then
+    close_reason="PR #$PR_NUMBER merged"
+else
+    close_reason="PR merged"
+fi
+
+echo "   Closing beads issue $beads_issue..."
+
+# Close the issue
+bd close "$beads_issue" --reason="$close_reason"
+
+echo "   ✓ Issue $beads_issue closed: $close_reason"
