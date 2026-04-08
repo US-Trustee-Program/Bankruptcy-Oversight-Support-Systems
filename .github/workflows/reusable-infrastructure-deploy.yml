@@ -18,6 +18,9 @@ on:
       environmentHash:
         required: true
         type: string
+      stackName:
+        required: true
+        type: string
 
 jobs:
   deploy-log-analytics-workspace:
@@ -84,6 +87,66 @@ jobs:
             --keyVaultName ${{ secrets.AZ_KV_APP_CONFIG_NAME }} \
             --kvResourceGroup ${{ secrets.AZ_KV_APP_CONFIG_RG_NAME }} \
             --branchHashId ${{ inputs.environmentHash || 'DOES_NOT_EXIST' }}
+
+      - name: Deploy E2E SQL Database
+        id: azure-e2e-sql-deploy
+        if: ${{ inputs.environmentHash != '' && inputs.ghaEnvironment != 'Main-Gov' }}
+        run: |
+          e2eSqlDatabaseName="CAMS_E2E-${{ inputs.environmentHash }}"
+          sqlDbExists=$(az sql db show \
+            -g ${{ secrets.AZURE_RG }} \
+            -s ${{ secrets.AZ_SQL_SERVER_NAME }} \
+            -n "${e2eSqlDatabaseName}" \
+            --query id -o tsv 2>/dev/null || echo "")
+          if [[ -z "${sqlDbExists}" ]]; then
+            echo "Creating E2E SQL database ${e2eSqlDatabaseName}"
+            az sql db create \
+              -g ${{ secrets.AZURE_RG }} \
+              -s ${{ secrets.AZ_SQL_SERVER_NAME }} \
+              -n "${e2eSqlDatabaseName}" \
+              --elastic-pool CAMS-ELASTIC-POOL
+          else
+            echo "E2E SQL database ${e2eSqlDatabaseName} already exists, skipping"
+          fi
+          echo "e2eSqlDatabaseName=${e2eSqlDatabaseName}" >> $GITHUB_OUTPUT
+
+      - name: Provision E2E SQL Database user
+        if: ${{ inputs.environmentHash != '' && inputs.ghaEnvironment != 'Main-Gov' }}
+        run: |
+          ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
+            -g ${{ secrets.AZURE_RG }} \
+            --stack-name ${{ inputs.stackName }} \
+            --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
+
+          curl -sSL https://aka.ms/install-sqlcmd-linux | sudo bash
+
+          sqlToken=$(az account get-access-token \
+            --resource "https://database.usgovcloudapi.net/" \
+            --query accessToken -o tsv)
+
+          sqlcmd \
+            -S "${{ secrets.AZ_SQL_SERVER_NAME }}.database.usgovcloudapi.net" \
+            -d "${{ steps.azure-e2e-sql-deploy.outputs.e2eSqlDatabaseName }}" \
+            --token "${sqlToken}" \
+            -Q "
+              IF NOT EXISTS (
+                SELECT 1 FROM sys.database_principals
+                WHERE name = '${{ secrets.AZ_SQL_IDENTITY_NAME }}'
+              )
+              BEGIN
+                CREATE USER [${{ secrets.AZ_SQL_IDENTITY_NAME }}] FROM EXTERNAL PROVIDER;
+                ALTER ROLE db_datareader ADD MEMBER [${{ secrets.AZ_SQL_IDENTITY_NAME }}];
+              END
+            "
+
+      - name: Remove SQL firewall rule for GHA runner
+        if: ${{ always() && inputs.environmentHash != '' && inputs.ghaEnvironment != 'Main-Gov' }}
+        run: |
+          ./ops/scripts/pipeline/add-sql-firewall-rule.sh \
+            -g ${{ secrets.AZURE_RG }} \
+            --stack-name ${{ inputs.stackName }} \
+            --server-name ${{ secrets.AZ_SQL_SERVER_NAME }} \
+            --delete
 
       - name: Deploy Dev Users Database
         id: azure-dev-users-deploy
