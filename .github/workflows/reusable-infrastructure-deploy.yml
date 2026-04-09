@@ -126,6 +126,20 @@ jobs:
             --identity-client-id "$(az identity show -g ${{ secrets.AZURE_RG }} -n ${{ secrets.AZ_SQL_IDENTITY_NAME }} --query clientId -o tsv)" \
             --sa-password "${{ secrets.MSSQL_PASS }}"
 
+      - name: Seed E2E SQL Database
+        if: ${{ inputs.environmentHash != '' && inputs.ghaEnvironment != 'Main-Gov' }}
+        run: |
+          npm ci
+          sql_hostname_suffix=$(az cloud show --query "suffixes.sqlServerHostname" -o tsv)
+          sa_user=$(az sql server show -g "${{ secrets.AZURE_RG }}" -n "${{ secrets.AZ_SQL_SERVER_NAME }}" --query administratorLogin -o tsv)
+          LOCAL_MSSQL_HOST="${{ secrets.AZ_SQL_SERVER_NAME }}${sql_hostname_suffix}" \
+          LOCAL_MSSQL_USER="${sa_user}" \
+          LOCAL_MSSQL_PASS="${{ secrets.MSSQL_PASS }}" \
+          MSSQL_DATABASE_DXTR="${{ steps.azure-e2e-sql-deploy.outputs.e2eSqlDatabaseName }}" \
+          MSSQL_ENCRYPT=true \
+          MSSQL_TRUST_UNSIGNED_CERT=false \
+          npx tsx test/e2e/scripts/seed-sqlserver.ts
+
       - name: Remove SQL firewall rule for GHA runner
         if: ${{ always() && inputs.environmentHash != '' && inputs.ghaEnvironment != 'Main-Gov' }}
         run: |

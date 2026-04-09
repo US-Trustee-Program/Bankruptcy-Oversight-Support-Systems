@@ -267,7 +267,8 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
 }
 
 resource dataflowsMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
-  name: '${dataflowsFunctionName}/appsettings'
+  name: 'appsettings'
+  parent: dataflowsFunctionApp
   properties: union(
     dataflowsSlotBaseAppSettingsObject,
     createApplicationInsights
@@ -286,9 +287,6 @@ resource dataflowsMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
       CAMS_OBJECT_CONTAINER: objectContainerName
     }
   )
-  dependsOn: [
-    dataflowsFunctionApp
-  ]
 }
 
 // config/web and config/appsettings are deployed as separate top-level resources
