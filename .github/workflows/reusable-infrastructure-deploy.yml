@@ -122,7 +122,7 @@ jobs:
             --server-name "${{ secrets.AZ_SQL_SERVER_NAME }}" \
             --database "${{ steps.azure-e2e-sql-deploy.outputs.e2eSqlDatabaseName }}" \
             --identity-name "${{ secrets.AZ_SQL_IDENTITY_NAME }}" \
-            --identity-client-id "${{ secrets.MSSQL_CLIENT_ID }}" \
+            --identity-client-id "$(az identity show -g ${{ secrets.AZURE_RG }} -n ${{ secrets.AZ_SQL_IDENTITY_NAME }} --query clientId -o tsv)" \
             --sa-password "${{ secrets.MSSQL_PASS }}"
 
       - name: Remove SQL firewall rule for GHA runner
