@@ -22,6 +22,12 @@ if ! command -v bd &> /dev/null; then
     exit 1
 fi
 
+# Check if jq command exists
+if ! command -v jq &> /dev/null; then
+    echo "❌ jq command not found. Install jq first."
+    exit 1
+fi
+
 # Check if specs directory exists
 if [ ! -d "$SPECS_DIR" ]; then
     echo "⚠️  No specs directory found at $SPECS_DIR"
