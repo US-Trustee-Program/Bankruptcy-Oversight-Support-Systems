@@ -4,6 +4,8 @@ import { describe, test, expect } from 'vitest';
 import CaseTrusteeCard from './CaseTrusteeCard';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { Trustee } from '@common/cams/trustees';
+import { CamsRole } from '@common/cams/roles';
+import LocalStorage from '@/lib/utils/local-storage';
 
 function renderCard(trustee: Trustee, trusteeId: string) {
   render(
@@ -14,6 +16,10 @@ function renderCard(trustee: Trustee, trusteeId: string) {
 }
 
 describe('CaseTrusteeCard', () => {
+  beforeEach(() => {
+    const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+  });
   test('renders card wrapper', () => {
     const trustee = MockData.getTrustee();
 
