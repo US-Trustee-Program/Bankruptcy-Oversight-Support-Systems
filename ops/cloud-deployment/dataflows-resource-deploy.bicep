@@ -214,34 +214,22 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
   }
   resource dataflowsFunctionConfig 'config' = {
     name: 'web'
-    properties: union(dataflowsFunctionConfigProperties, {
-      appSettings: concat(dataflowsFunctionConfigProperties.appSettings, [
-        {
-          name: 'INFO_SHA'
-          value: 'ProductionSlot'
-        }
-        {
-          name: 'MyTaskHub'
-          value: 'main'
-        }
-        {
-          name: 'COSMOS_DATABASE_NAME'
-          value: cosmosDatabaseName
-        }
-        {
-          name: 'AzureWebJobsStorage'
-          value: dataflowsFunctionStorageAccount.outputs.connectionString
-        }
-        {
-          name: 'AzureWebJobsDataflowsStorage'
-          value: dataflowsFunctionStorageAccount.outputs.connectionString
-        }
-        {
-          name: 'CAMS_OBJECT_CONTAINER'
-          value: objectContainerName
-        }
-      ])
-    })
+    properties: {
+      cors: dataflowsFunctionConfigProperties.cors
+      numberOfWorkers: dataflowsFunctionConfigProperties.numberOfWorkers
+      alwaysOn: dataflowsFunctionConfigProperties.alwaysOn
+      http20Enabled: dataflowsFunctionConfigProperties.http20Enabled
+      functionAppScaleLimit: dataflowsFunctionConfigProperties.functionAppScaleLimit
+      minimumElasticInstanceCount: dataflowsFunctionConfigProperties.minimumElasticInstanceCount
+      publicNetworkAccess: dataflowsFunctionConfigProperties.publicNetworkAccess
+      ipSecurityRestrictions: dataflowsFunctionConfigProperties.ipSecurityRestrictions
+      ipSecurityRestrictionsDefaultAction: dataflowsFunctionConfigProperties.ipSecurityRestrictionsDefaultAction
+      scmIpSecurityRestrictions: dataflowsFunctionConfigProperties.scmIpSecurityRestrictions
+      scmIpSecurityRestrictionsDefaultAction: dataflowsFunctionConfigProperties.scmIpSecurityRestrictionsDefaultAction
+      scmIpSecurityRestrictionsUseMain: dataflowsFunctionConfigProperties.scmIpSecurityRestrictionsUseMain
+      linuxFxVersion: dataflowsFunctionConfigProperties.linuxFxVersion
+      ftpsState: dataflowsFunctionConfigProperties.ftpsState
+    }
   }
   dependsOn: [
     appConfigIdentity
@@ -276,6 +264,31 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
       keyVaultReferenceIdentity: dataflowsFunctionApp.properties.keyVaultReferenceIdentity
     }
   }
+}
+
+resource dataflowsMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
+  name: '${dataflowsFunctionName}/appsettings'
+  properties: union(
+    dataflowsSlotBaseAppSettingsObject,
+    createApplicationInsights
+      ? {
+          APPLICATIONINSIGHTS_CONNECTION_STRING: dataflowsFunctionAppInsights.outputs.connectionString
+          APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION: 'false'
+          AzureFunctionsJobHost__logging__console__isEnabled: 'false'
+        }
+      : {},
+    {
+      INFO_SHA: 'ProductionSlot'
+      MyTaskHub: 'main'
+      COSMOS_DATABASE_NAME: cosmosDatabaseName
+      AzureWebJobsStorage: dataflowsFunctionStorageAccount.outputs.connectionString
+      AzureWebJobsDataflowsStorage: dataflowsFunctionStorageAccount.outputs.connectionString
+      CAMS_OBJECT_CONTAINER: objectContainerName
+    }
+  )
+  dependsOn: [
+    dataflowsFunctionApp
+  ]
 }
 
 // config/web and config/appsettings are deployed as separate top-level resources

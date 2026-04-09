@@ -190,7 +190,24 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
 
   resource apiFunctionConfig 'config' = {
     name: 'web'
-    properties: prodFunctionAppConfigProperties
+    properties: {
+      numberOfWorkers: baseApiFunctionAppConfigProperties.numberOfWorkers
+      alwaysOn: baseApiFunctionAppConfigProperties.alwaysOn
+      http20Enabled: baseApiFunctionAppConfigProperties.http20Enabled
+      functionAppScaleLimit: baseApiFunctionAppConfigProperties.functionAppScaleLimit
+      minimumElasticInstanceCount: baseApiFunctionAppConfigProperties.minimumElasticInstanceCount
+      publicNetworkAccess: baseApiFunctionAppConfigProperties.publicNetworkAccess
+      ipSecurityRestrictions: productionIpSecurityRestrictionsRules
+      ipSecurityRestrictionsDefaultAction: baseApiFunctionAppConfigProperties.ipSecurityRestrictionsDefaultAction
+      scmIpSecurityRestrictions: baseApiFunctionAppConfigProperties.scmIpSecurityRestrictions
+      scmIpSecurityRestrictionsDefaultAction: baseApiFunctionAppConfigProperties.scmIpSecurityRestrictionsDefaultAction
+      scmIpSecurityRestrictionsUseMain: baseApiFunctionAppConfigProperties.scmIpSecurityRestrictionsUseMain
+      linuxFxVersion: baseApiFunctionAppConfigProperties.linuxFxVersion
+      ftpsState: baseApiFunctionAppConfigProperties.ftpsState
+      cors: {
+        allowedOrigins: apiCorsAllowOrigins
+      }
+    }
   }
 
   resource slotConfigNames 'config' = {
@@ -221,6 +238,30 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
       keyVaultReferenceIdentity: apiFunctionApp.properties.keyVaultReferenceIdentity
     }
   }
+}
+
+resource apiMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
+  name: '${apiFunctionName}/appsettings'
+  properties: union(
+    apiSlotBaseAppSettingsObject,
+    createApplicationInsights
+      ? {
+          APPLICATIONINSIGHTS_CONNECTION_STRING: apiFunctionAppInsights.outputs.connectionString
+          APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION: 'false'
+          AzureFunctionsJobHost__logging__console__isEnabled: 'false'
+        }
+      : {},
+    {
+      INFO_SHA: 'ProductionSlot'
+      MyTaskHub: 'main'
+      COSMOS_DATABASE_NAME: cosmosDatabaseName
+      AzureWebJobsStorage: apiFunctionStorageAccount.outputs.connectionString
+      AzureWebJobsDataflowsStorage: dataflowsStorageConnectionString
+    }
+  )
+  dependsOn: [
+    apiFunctionApp
+  ]
 }
 
 // config/web and config/appsettings are deployed as separate top-level resources
