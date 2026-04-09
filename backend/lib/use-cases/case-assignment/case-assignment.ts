@@ -47,6 +47,11 @@ export class CaseAssignmentUseCase {
         message: 'User does not have appropriate access to create assignments for this office.',
       });
     }
+    if (role === CamsRole.LeadTrialAttorney && newAssignees.length > 1) {
+      throw new AssignmentError(MODULE_NAME, {
+        message: 'Only one Lead Trial Attorney may be assigned to a case.',
+      });
+    }
     await this.assignTrialAttorneys(context, caseId, newAssignees, role);
 
     // Reassign all member cases if this is a joint administration lead case.
@@ -79,15 +84,19 @@ export class CaseAssignmentUseCase {
     const { officeCode } = divisionCodeMap.get(bCase.caseId.substring(0, 3));
 
     const officesRepo = factory.getOfficesRepository(context);
+    const assignableRole = role === CamsRole.LeadTrialAttorney ? CamsRole.TrialAttorney : role;
     const calls = [];
     const validatedAssignments: CamsUserReference[] = [];
     newAssignees.forEach((assignee) => {
       calls.push(
         officesRepo
-          .search({ officeCode, userId: assignee.id, role })
+          .search({ officeCode, userId: assignee.id, role: assignableRole })
           .then((response) => {
             return response.find((staff) => {
-              if (staff.roles.includes(role as CamsRoleType) && staff.name === assignee.name) {
+              if (
+                staff.roles.includes(assignableRole as CamsRoleType) &&
+                staff.name === assignee.name
+              ) {
                 return true;
               }
             });
@@ -143,7 +152,9 @@ export class CaseAssignmentUseCase {
     const existingAssignmentRecordsMap = await assignmentRepo.getAssignmentsForCases([
       bCase.caseId,
     ]);
-    const existingAssignmentRecords = existingAssignmentRecordsMap.get(bCase.caseId) ?? [];
+    const existingAssignmentRecords = (existingAssignmentRecordsMap.get(bCase.caseId) ?? []).filter(
+      (a) => a.role === role,
+    );
     for (const existingAssignment of existingAssignmentRecords) {
       const stillAssigned = listOfAssignments.find((newAssignment) => {
         return (

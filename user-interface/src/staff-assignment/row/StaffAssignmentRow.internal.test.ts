@@ -57,6 +57,7 @@ describe('StaffAssignmentRowInternal', () => {
       status: 'success',
       apiResult: {},
       bCase,
+      leadTrialAttorney: mappedCaseAssignments[0],
       previouslySelectedList: mappedCaseAssignments,
       selectedAttorneyList: endingAssignments.map((assignment) => {
         return { id: assignment.userId!, name: assignment.name! };
@@ -82,6 +83,7 @@ describe('StaffAssignmentRowInternal', () => {
         message: errorMessage,
       },
       bCase,
+      leadTrialAttorney: mappedCaseAssignments[0],
       previouslySelectedList: mappedCaseAssignments,
       selectedAttorneyList: mappedCaseAssignments,
     });
@@ -99,6 +101,7 @@ describe('StaffAssignmentRowInternal', () => {
       status: 'success',
       apiResult: {},
       bCase: undefined as never,
+      leadTrialAttorney: mappedCaseAssignments[0],
       previouslySelectedList: mappedCaseAssignments,
       selectedAttorneyList: mappedCaseAssignments,
     });
@@ -117,6 +120,7 @@ describe('StaffAssignmentRowInternal', () => {
       status: 'success',
       apiResult: {},
       bCase,
+      leadTrialAttorney: { id: attorney.id, name: attorney.name },
       previouslySelectedList: [],
       selectedAttorneyList: [{ id: attorney.id, name: attorney.name }],
     });
@@ -136,6 +140,7 @@ describe('StaffAssignmentRowInternal', () => {
       status: 'success',
       apiResult: {},
       bCase,
+      leadTrialAttorney: mappedCaseAssignments[0],
       previouslySelectedList: mappedCaseAssignments,
       selectedAttorneyList: [],
     });

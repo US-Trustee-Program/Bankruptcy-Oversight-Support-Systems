@@ -10,7 +10,7 @@ import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { useRef } from 'react';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import Actions from '@common/cams/actions';
-import { AttorneyUser } from '@common/cams/users';
+import { CaseAssignment } from '@common/cams/assignments';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { getCaseNumber } from '@common/cams/cases';
@@ -79,25 +79,30 @@ function CaseDetailTrusteeAndAssignedStaff(
               </div>
             )}
             <div className="assigned-staff-list">
-              {(typeof caseDetail.assignments === 'undefined' ||
-                caseDetail.assignments.length === 0) && (
-                <span className="unassigned-placeholder">(unassigned)</span>
+              {(!caseDetail.assignments || caseDetail.assignments.length === 0) &&
+                !caseDetail.leadTrialAttorney && (
+                  <span className="unassigned-placeholder">(unassigned)</span>
+                )}
+              {caseDetail.leadTrialAttorney && (
+                <ul className="usa-list usa-list--unstyled">
+                  <li className="individual-assignee">
+                    <span className="assignee-name">{caseDetail.leadTrialAttorney.name}</span>
+                    <span className="vertical-divider"> | </span>
+                    <span className="assignee-role">Lead Trial Attorney</span>
+                  </li>
+                </ul>
               )}
               {caseDetail.assignments && caseDetail.assignments.length > 0 && (
                 <ul className="usa-list usa-list--unstyled">
-                  {caseDetail.assignments &&
-                    caseDetail.assignments.length > 0 &&
-                    (caseDetail.assignments as Array<AttorneyUser>)?.map(
-                      (staff: AttorneyUser, idx: number) => {
-                        return (
-                          <li key={idx} className="individual-assignee">
-                            <span className="assignee-name">{staff.name}</span>
-                            <span className="vertical-divider"> | </span>
-                            <span className="assignee-role">Trial Attorney</span>
-                          </li>
-                        );
-                      },
-                    )}
+                  {(caseDetail.assignments as Array<CaseAssignment>)
+                    .filter((staff) => caseDetail.leadTrialAttorney?.id !== staff.userId)
+                    .map((staff: CaseAssignment, idx: number) => (
+                      <li key={idx} className="individual-assignee">
+                        <span className="assignee-name">{staff.name}</span>
+                        <span className="vertical-divider"> | </span>
+                        <span className="assignee-role">Trial Attorney</span>
+                      </li>
+                    ))}
                 </ul>
               )}
             </div>

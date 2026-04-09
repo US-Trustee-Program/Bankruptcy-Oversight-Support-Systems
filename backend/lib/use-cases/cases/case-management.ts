@@ -196,10 +196,13 @@ export default class CaseManagement {
       if (includeAssignments) {
         const assignmentsMap = await this.assignmentRepository.getAssignmentsForCases(caseIds);
         for (const caseId of caseIds) {
-          const assignments = assignmentsMap.get(caseId) ?? [];
+          const allAssignments = assignmentsMap.get(caseId) ?? [];
           const caseWithAssignments = {
             ...casesMap.get(caseId),
-            assignments,
+            assignments: allAssignments.filter((a) => a.role === CamsRole.TrialAttorney),
+            leadTrialAttorney: allAssignments
+              .filter((a) => a.role === CamsRole.LeadTrialAttorney)
+              .map((a) => ({ id: a.userId, name: a.name }))[0],
           };
           casesMap.set(caseId, caseWithAssignments);
         }
@@ -279,7 +282,12 @@ export default class CaseManagement {
       }
 
       if (assignments.status === 'fulfilled') {
-        caseDetails.assignments = assignments.value;
+        caseDetails.assignments = assignments.value.filter(
+          (a) => a.role === CamsRole.TrialAttorney,
+        );
+        caseDetails.leadTrialAttorney = assignments.value
+          .filter((a) => a.role === CamsRole.LeadTrialAttorney)
+          .map((a) => ({ id: a.userId, name: a.name }))[0];
       } else {
         context.logger.debug(
           MODULE_NAME,
@@ -328,7 +336,7 @@ export default class CaseManagement {
     const caseAssignment = new CaseAssignmentUseCase(context);
     try {
       const assignmentsMap = await caseAssignment.findAssignmentsByCaseId([bCase.caseId]);
-      return assignmentsMap.get(bCase.caseId);
+      return assignmentsMap.get(bCase.caseId) ?? [];
     } catch (e) {
       throw new AssignmentError(MODULE_NAME, {
         message:
