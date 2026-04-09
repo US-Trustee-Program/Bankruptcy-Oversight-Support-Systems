@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { CamsRole } from '@common/cams/roles';
+import LocalStorage from '@/lib/utils/local-storage';
 
 interface TrusteeNameProps {
   trusteeName: string;
@@ -6,11 +8,14 @@ interface TrusteeNameProps {
 }
 
 /**
- * Displays trustee name as a link to the trustee profile if trusteeId is available,
- * otherwise displays plain text.
+ * Displays trustee name as a link to the trustee profile if trusteeId is available
+ * and the user has the TrusteeAdmin role, otherwise displays plain text.
  */
 export function TrusteeName({ trusteeName, trusteeId }: TrusteeNameProps) {
-  if (!trusteeId) return <>{trusteeName}</>;
+  const session = LocalStorage.getSession();
+  const hasAccess = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
+
+  if (!trusteeId || !hasAccess) return <>{trusteeName}</>;
 
   return (
     <Link

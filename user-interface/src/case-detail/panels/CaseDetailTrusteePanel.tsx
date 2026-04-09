@@ -13,8 +13,10 @@ const appointedDateFormatter = new Intl.DateTimeFormat('en-US', {
   timeZone: 'UTC',
 });
 
-function formatAppointedDate(isoDate: string): string {
-  return appointedDateFormatter.format(new Date(`${isoDate}T00:00:00Z`));
+function formatAppointedDate(isoDate: string): string | null {
+  const date = new Date(`${isoDate}T00:00:00Z`);
+  if (isNaN(date.getTime())) return null;
+  return appointedDateFormatter.format(date);
 }
 
 interface CaseDetailTrusteePanelProps {
@@ -60,7 +62,7 @@ export default function CaseDetailTrusteePanel({
   return (
     <div data-testid="case-detail-trustee-panel" className={'case-detail-trustee-panel'}>
       <h3 data-testid="case-detail-trustee-panel-heading">Trustee - {trustee.name}</h3>
-      {appointedDate && (
+      {appointedDate && formatAppointedDate(appointedDate) && (
         <p data-testid="case-detail-trustee-panel-appointed-date" className="appointed-date">
           <strong>Appointed:</strong> {formatAppointedDate(appointedDate)}
         </p>
