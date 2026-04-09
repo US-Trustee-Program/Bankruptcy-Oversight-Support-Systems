@@ -500,7 +500,7 @@ var baseApplicationSettings = concat(
         }
       ]
     : [
-        { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }
+        { name: 'MSSQL_CLIENT_ID', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }
         {
           name: 'ACMS_MSSQL_CLIENT_ID'
           value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'
@@ -555,7 +555,7 @@ var apiSlotBaseAppSettingsObject = union(
         ACMS_MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)'
       }
     : {
-        MSSQL_PASS: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
+        MSSQL_CLIENT_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
         ACMS_MSSQL_CLIENT_ID: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'
       }
 )
