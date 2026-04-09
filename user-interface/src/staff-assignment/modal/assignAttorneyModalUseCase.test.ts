@@ -472,6 +472,39 @@ describe('assignAttorneyModalUseCase tests', () => {
     expect(postSpy).toHaveBeenCalledWith(expect.objectContaining({ role: 'LeadTrialAttorney' }));
   });
 
+  test('submitValues should roll back TrialAttorney assignments when the LeadTrialAttorney call fails', async () => {
+    const leadAttorney = { id: 'lead-1', name: 'Lead Attorney' };
+    const previousAssignment = { userId: 'att-prev', name: 'Previous Attorney' };
+    const postSpy = vi
+      .spyOn(Api2, 'postStaffAssignments')
+      .mockResolvedValueOnce({} as never) // TrialAttorney succeeds
+      .mockRejectedValueOnce(new Error('Lead API error')) // LeadTrialAttorney fails
+      .mockResolvedValueOnce({} as never); // rollback succeeds
+    const mockSubmissionCallback = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      bCase: { caseId: 'c1', officeCode: 'OFF', assignments: [previousAssignment] },
+      checkListValues: [leadAttorney],
+      attorneyList: [leadAttorney],
+      submissionCallback: mockSubmissionCallback,
+      setCheckListValues: vi.fn(),
+      setIsUpdatingAssignment: vi.fn(),
+    });
+
+    await localUseCase.submitValues(vi.fn(), leadAttorney);
+
+    expect(postSpy).toHaveBeenCalledTimes(3);
+    expect(postSpy).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        role: 'TrialAttorney',
+        attorneyList: [{ id: previousAssignment.userId, name: previousAssignment.name }],
+      }),
+    );
+    expect(mockSubmissionCallback).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'error' }),
+    );
+  });
+
   test('submitValues should include leadTrialAttorney in the success callback', async () => {
     vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({} as never);
     const leadAttorney = { id: 'lead-1', name: 'Lead Attorney' };

@@ -431,6 +431,23 @@ describe('Case assignment tests', () => {
       expect(createAssignment).not.toHaveBeenCalled();
     });
 
+    test('should throw when more than one LeadTrialAttorney is assigned', async () => {
+      vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          applicationContext,
+          caseId,
+          [attorneyJaneSmith, attorneyJoeNobel],
+          CamsRole.LeadTrialAttorney,
+        ),
+      ).rejects.toThrow('Only one Lead Trial Attorney may be assigned to a case.');
+    });
+
     test('should use TrialAttorney as assignableRole when role is LeadTrialAttorney', async () => {
       const searchSpy = vi
         .spyOn(MockMongoRepository.prototype, 'search')

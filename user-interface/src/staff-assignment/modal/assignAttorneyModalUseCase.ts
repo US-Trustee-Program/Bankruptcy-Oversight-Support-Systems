@@ -11,6 +11,20 @@ import {
   AssignAttorneyModalOpenProps,
 } from './assignAttorneyModal.types';
 
+function buildInitialAttorneyChecklist(
+  bCase: AssignAttorneyModalOpenProps['bCase'],
+): AttorneyUser[] {
+  const attorneys: AttorneyUser[] = [];
+  bCase.assignments?.forEach((assignment) => {
+    attorneys.push({ id: assignment.userId, name: assignment.name } as AttorneyUser);
+  });
+  const lta = bCase.leadTrialAttorney;
+  if (lta && !attorneys.find((a) => a.id === lta.id)) {
+    attorneys.push({ id: lta.id, name: lta.name } as AttorneyUser);
+  }
+  return attorneys;
+}
+
 const assignAttorneyModalUseCase = (
   store: AssignAttorneyModalStore,
   controls: AssignAttorneyModalControls,
@@ -101,11 +115,24 @@ const assignAttorneyModalUseCase = (
           attorneyList: finalAttorneyList,
           role: CamsRole.TrialAttorney,
         });
-        await Api2.postStaffAssignments({
-          caseId: store.bCase?.caseId,
-          attorneyList: [leadTrialAttorney],
-          role: AssignableRole.LeadTrialAttorney,
-        });
+        try {
+          await Api2.postStaffAssignments({
+            caseId: store.bCase?.caseId,
+            attorneyList: [leadTrialAttorney],
+            role: AssignableRole.LeadTrialAttorney,
+          });
+        } catch (leadError) {
+          const rollbackList: CamsUserReference[] = (store.bCase.assignments ?? []).map((a) => ({
+            id: a.userId,
+            name: a.name,
+          }));
+          await Api2.postStaffAssignments({
+            caseId: store.bCase.caseId,
+            attorneyList: rollbackList,
+            role: CamsRole.TrialAttorney,
+          });
+          throw leadError;
+        }
         if (store.submissionCallback) {
           store.submissionCallback({
             bCase: store.bCase,
@@ -194,14 +221,7 @@ const assignAttorneyModalUseCase = (
   const show = (showProps: AssignAttorneyModalOpenProps | undefined) => {
     if (showProps && showProps.bCase) {
       store.setBCase(showProps.bCase);
-      const attorneys: AttorneyUser[] = [];
-      showProps.bCase.assignments?.forEach((assignment) => {
-        attorneys.push({ id: assignment.userId, name: assignment.name } as AttorneyUser);
-      });
-      const lta = showProps.bCase.leadTrialAttorney;
-      if (lta && !attorneys.find((a) => a.id === lta.id)) {
-        attorneys.push({ id: lta.id, name: lta.name } as AttorneyUser);
-      }
+      const attorneys = buildInitialAttorneyChecklist(showProps.bCase);
       store.setCheckListValues(attorneys);
       store.setPreviouslySelectedList(attorneys);
       if (showProps.callback) {
