@@ -549,7 +549,12 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue(apiResult);
 
       const onCaseAssignment = vi.fn();
-      renderWithProps({ onCaseAssignment });
+      // Use a case with no existing assignments so selecting 1 attorney auto-selects them as lead,
+      // satisfying the LeadTrialAttorney requirement before submitting.
+      renderWithProps({
+        onCaseAssignment,
+        caseDetail: { ...BASE_TEST_CASE_DETAIL, assignments: [] },
+      });
 
       const assignedStaffEditButton = screen.getByTestId('open-modal-button');
       await userEvent.click(assignedStaffEditButton);
