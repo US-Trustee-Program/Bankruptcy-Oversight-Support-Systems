@@ -38,7 +38,10 @@ function AssignAttorneyModal_(
     modalRef: ref as React.RefObject<ModalRefType | null>,
     submitButton: {
       label: 'Assign',
-      onClick: () => useCase.submitValues(props.assignmentChangeCallback, leadTrialAttorney!),
+      onClick: () => {
+        if (!leadTrialAttorney) return;
+        useCase.submitValues(props.assignmentChangeCallback, leadTrialAttorney);
+      },
       disabled: true,
       closeOnClick: false,
     },

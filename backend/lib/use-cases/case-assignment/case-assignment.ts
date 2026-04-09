@@ -47,6 +47,11 @@ export class CaseAssignmentUseCase {
         message: 'User does not have appropriate access to create assignments for this office.',
       });
     }
+    if (role === CamsRole.LeadTrialAttorney && newAssignees.length > 1) {
+      throw new AssignmentError(MODULE_NAME, {
+        message: 'Only one Lead Trial Attorney may be assigned to a case.',
+      });
+    }
     await this.assignTrialAttorneys(context, caseId, newAssignees, role);
 
     // Reassign all member cases if this is a joint administration lead case.
