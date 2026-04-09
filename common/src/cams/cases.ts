@@ -38,6 +38,7 @@ export type CaseBasics = FlatOfficeDetail & {
   debtorTypeCode?: string;
   debtorTypeLabel?: string;
   assignments?: CaseAssignment[];
+  leadTrialAttorney?: CamsUserReference;
 };
 
 export type CaseSummary = CaseBasics & {
@@ -68,6 +69,7 @@ export function getCaseBasics<T extends CaseBasics>(bCase: T): CaseBasics {
     debtorTypeCode,
     debtorTypeLabel,
     assignments,
+    leadTrialAttorney,
   } = bCase;
   const result: CaseBasics = {
     officeName,
@@ -92,6 +94,7 @@ export function getCaseBasics<T extends CaseBasics>(bCase: T): CaseBasics {
   if (debtorTypeCode !== undefined) result.debtorTypeCode = debtorTypeCode;
   if (debtorTypeLabel !== undefined) result.debtorTypeLabel = debtorTypeLabel;
   if (assignments !== undefined) result.assignments = assignments;
+  if (leadTrialAttorney !== undefined) result.leadTrialAttorney = leadTrialAttorney;
   return result;
 }
 

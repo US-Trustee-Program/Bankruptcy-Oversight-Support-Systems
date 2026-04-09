@@ -3,6 +3,7 @@ export const CamsRole = {
   SuperUser: 'SuperUser',
   CaseAssignmentManager: 'CaseAssignmentManager',
   TrialAttorney: 'TrialAttorney',
+  LeadTrialAttorney: 'LeadTrialAttorney',
   DataVerifier: 'DataVerifier',
   TrusteeAdmin: 'TrusteeAdmin',
   Auditor: 'Auditor',
@@ -17,6 +18,7 @@ export type CamsRoleType = (typeof CamsRole)[keyof typeof CamsRole];
 
 export const AssignableRole = {
   TrialAttorney: CamsRole.TrialAttorney,
+  LeadTrialAttorney: CamsRole.LeadTrialAttorney,
 } as const;
 
 export type AssignableRoleType = (typeof AssignableRole)[keyof typeof AssignableRole];

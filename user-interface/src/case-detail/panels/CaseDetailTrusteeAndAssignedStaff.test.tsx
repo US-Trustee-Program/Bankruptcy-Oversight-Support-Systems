@@ -142,6 +142,58 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(placeholder).toBeInTheDocument();
     });
 
+    test('should display leadTrialAttorney with Lead Trial Attorney role label', () => {
+      const leadAttorney = { id: 'lead-1', name: 'Lead Attorney Name' };
+      const caseDetailWithLead = {
+        ...BASE_TEST_CASE_DETAIL,
+        assignments: [],
+        leadTrialAttorney: leadAttorney,
+      };
+      renderWithProps({ caseDetail: caseDetailWithLead });
+
+      const assigneeNames = screen.getAllByText((_content, element) => {
+        return element?.classList.contains('assignee-name') || false;
+      });
+      expect(assigneeNames[0]).toHaveTextContent(leadAttorney.name);
+      expect(screen.getByText('Lead Trial Attorney')).toBeInTheDocument();
+    });
+
+    test('should not show unassigned placeholder when leadTrialAttorney is set', () => {
+      const leadAttorney = { id: 'lead-1', name: 'Lead Attorney' };
+      const caseDetailWithLead = {
+        ...BASE_TEST_CASE_DETAIL,
+        assignments: [],
+        leadTrialAttorney: leadAttorney,
+      };
+      renderWithProps({ caseDetail: caseDetailWithLead });
+
+      expect(screen.queryByText('(unassigned)')).not.toBeInTheDocument();
+    });
+
+    test('should not render lead trial attorney in the trial attorney list (deduplication)', () => {
+      const caseDetailWithLead = {
+        ...BASE_TEST_CASE_DETAIL,
+        leadTrialAttorney: { id: TEST_ASSIGNMENT_1.userId, name: TEST_TRIAL_ATTORNEY_1.name },
+      };
+      renderWithProps({ caseDetail: caseDetailWithLead });
+
+      expect(screen.getByText('Lead Trial Attorney')).toBeInTheDocument();
+
+      // TEST_ASSIGNMENT_1 should only appear once total (as Lead, not also as Trial Attorney)
+      const assigneeNames = screen.getAllByText((_content, element) => {
+        return element?.classList.contains('assignee-name') || false;
+      });
+      const leadCount = assigneeNames.filter((el) =>
+        el.textContent?.includes(TEST_TRIAL_ATTORNEY_1.name),
+      );
+      expect(leadCount).toHaveLength(1);
+
+      // Only TEST_ASSIGNMENT_2 should appear as Trial Attorney
+      expect(screen.getByText('Trial Attorney')).toBeInTheDocument();
+      const trialRoles = screen.getAllByText('Trial Attorney');
+      expect(trialRoles).toHaveLength(1);
+    });
+
     test('should render list of assigned staff with names and roles', () => {
       renderWithProps();
 
@@ -497,7 +549,12 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue(apiResult);
 
       const onCaseAssignment = vi.fn();
-      renderWithProps({ onCaseAssignment });
+      // Use a case with no existing assignments so selecting 1 attorney auto-selects them as lead,
+      // satisfying the LeadTrialAttorney requirement before submitting.
+      renderWithProps({
+        onCaseAssignment,
+        caseDetail: { ...BASE_TEST_CASE_DETAIL, assignments: [] },
+      });
 
       const assignedStaffEditButton = screen.getByTestId('open-modal-button');
       await userEvent.click(assignedStaffEditButton);
