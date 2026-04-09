@@ -90,7 +90,7 @@ jobs:
           export COSMOS_DATABASE_NAME="${e2eDatabaseName}"
 
           echo "Seeding E2E MongoDB..."
-          cd ./test/e2e && npm run seed
+          (cd ./test/e2e && npm run seed)
 
           # Seed SQL Server
           e2eSqlDatabaseName="CAMS_E2E"
@@ -105,7 +105,7 @@ jobs:
           export MSSQL_TRUST_UNSIGNED_CERT=${{ secrets.MSSQL_TRUST_UNSIGNED_CERT }}
 
           echo "Seeding E2E SQL Server..."
-          cd ./test/e2e && npm run seed:sql
+          (cd ./test/e2e && npm run seed:sql)
 
       - name: Run E2E Tests
         id: e2eTests
