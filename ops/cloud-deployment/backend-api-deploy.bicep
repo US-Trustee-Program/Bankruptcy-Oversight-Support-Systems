@@ -277,6 +277,32 @@ resource apiSlotAppSettings 'Microsoft.Web/sites/slots/config@2023-12-01' = {
   ]
 }
 
+// config/appsettings deployed as a separate top-level resource so that ARM fully
+// provisions the main app — including its Azure Files content share — before applying
+// configuration. Avoids error 01019 "Invalid values supplied for Azure Files related
+// app settings" that occurs when appSettings are inlined in config/web.
+resource apiMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
+  name: 'appsettings'
+  parent: apiFunctionApp
+  properties: union(
+    apiSlotBaseAppSettingsObject,
+    createApplicationInsights
+      ? {
+          APPLICATIONINSIGHTS_CONNECTION_STRING: apiFunctionAppInsights.outputs.connectionString
+          APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION: 'false'
+          AzureFunctionsJobHost__logging__console__isEnabled: 'false'
+        }
+      : {},
+    {
+      INFO_SHA: 'ProductionSlot'
+      MyTaskHub: 'main'
+      COSMOS_DATABASE_NAME: cosmosDatabaseName
+      AzureWebJobsStorage: apiFunctionStorageAccount.outputs.connectionString
+      AzureWebJobsDataflowsStorage: dataflowsStorageConnectionString
+    }
+  )
+}
+
 var baseApiFunctionAppConfigProperties = {
     numberOfWorkers: 1
     alwaysOn: true
@@ -297,70 +323,13 @@ var baseApiFunctionAppConfigProperties = {
     scmIpSecurityRestrictionsDefaultAction: 'Deny'
     scmIpSecurityRestrictionsUseMain: false
     linuxFxVersion: linuxFxVersionMap['${functionsRuntime}']
-    appSettings: apiApplicationSettings
     ftpsState: 'Disabled'
   }
 
   var prodFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
     ipSecurityRestrictions: productionIpSecurityRestrictionsRules
-    appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
-      {
-        name: 'INFO_SHA'
-        value: 'ProductionSlot'
-      }
-      {
-        name: 'MyTaskHub'
-        value: 'main'
-      }
-      {
-        name: 'COSMOS_DATABASE_NAME'
-        value: cosmosDatabaseName
-      }
-      {
-        name: 'AzureWebJobsStorage'
-        value: apiFunctionStorageAccount.outputs.connectionString
-      }
-      {
-        name: 'AzureWebJobsDataflowsStorage'
-        value: dataflowsStorageConnectionString
-      }
-    ])
     cors: {
       allowedOrigins: apiCorsAllowOrigins
-    }
-  })
-
-  var slotFunctionAppConfigProperties = union(baseApiFunctionAppConfigProperties, {
-    ipSecurityRestrictions: stagingIpSecurityRestrictionsRules
-    ipSecurityRestrictionsDefaultAction: 'Deny'
-    appSettings: concat(baseApiFunctionAppConfigProperties.appSettings, [
-      {
-        name: 'INFO_SHA'
-        value: gitSha
-      }
-      {
-        name: 'MyTaskHub'
-        value: slotName
-      }
-      {
-        name: 'COSMOS_DATABASE_NAME'
-        value: e2eDatabaseName
-      }
-      {
-        name: 'MSSQL_DATABASE_DXTR'
-        value: e2eSqlDatabaseName
-      }
-      {
-        name: 'AzureWebJobsStorage'
-        value: apiFunctionSlotStorageAccount.outputs.connectionString
-      }
-      {
-        name: 'AzureWebJobsDataflowsStorage'
-        value: dataflowsSlotStorageConnectionString
-      }
-    ])
-    cors: {
-      allowedOrigins: apiSlotCorsAllowOrigins
     }
   })
 
@@ -382,144 +351,6 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
 }
 
 //TODO: Clear segregation with DXTR vs ACMS variable/secret naming in GitHub and ADO secret libraries
-
-var baseApplicationSettings = concat(
-  [
-    {
-      name: 'FUNCTIONS_EXTENSION_VERSION'
-      value: functionsVersion
-    }
-    {
-      name: 'FUNCTIONS_WORKER_RUNTIME'
-      value: functionsRuntime
-    }
-    {
-      name: 'CAMS_LOGIN_PROVIDER_CONFIG'
-      value: loginProviderConfig
-    }
-    {
-      name: 'CAMS_LOGIN_PROVIDER'
-      value: loginProvider
-    }
-    {
-      name: 'STARTING_MONTH'
-      value: '-70'
-    }
-    {
-      name: 'ADMIN_KEY'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ADMIN-KEY)'
-    }
-    {
-      name: 'MONGO_CONNECTION_STRING'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MONGO-CONNECTION-STRING)'
-    }
-    {
-      name: 'WEBSITE_RUN_FROM_PACKAGE'
-      value: '1'
-    }
-    {
-      name: 'SCM_DO_BUILD_DURING_DEPLOYMENT'
-      value: false
-    }
-    {
-      name: 'MSSQL_HOST'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-HOST)'
-    }
-    {
-      name: 'MSSQL_DATABASE_DXTR'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
-    }
-    {
-      name: 'MSSQL_CLIENT_ID'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
-    }
-    {
-      name: 'MSSQL_ENCRYPT'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-ENCRYPT)'
-    }
-    {
-      name: 'MSSQL_TRUST_UNSIGNED_CERT'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-TRUST-UNSIGNED-CERT)'
-    }
-    {
-      name: 'MSSQL_REQUEST_TIMEOUT'
-      value: mssqlRequestTimeout
-    }
-    {
-      name: 'ACMS_MSSQL_HOST'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-HOST)'
-    }
-    {
-      name: 'ACMS_MSSQL_DATABASE'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-DATABASE)'
-    }
-    {
-      name: 'ACMS_MSSQL_ENCRYPT'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-ENCRYPT)'
-    }
-    {
-      name: 'ACMS_MSSQL_TRUST_UNSIGNED_CERT'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-TRUST-UNSIGNED-CERT)'
-    }
-    {
-      name: 'ACMS_MSSQL_REQUEST_TIMEOUT'
-      value: mssqlRequestTimeout
-    }
-    {
-      name: 'FEATURE_FLAG_SDK_KEY'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=FEATURE-FLAG-SDK-KEY)'
-    }
-    {
-      name: 'CAMS_USER_GROUP_GATEWAY_CONFIG'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=CAMS-USER-GROUP-GATEWAY-CONFIG)'
-    }
-    {
-      name: 'OKTA_API_KEY'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=OKTA-API-KEY)'
-    }
-    {
-      name: 'MAX_OBJECT_DEPTH'
-      value: maxObjectDepth
-    }
-    {
-      name: 'MAX_OBJECT_KEY_COUNT'
-      value: maxObjectKeyCount
-    }
-  ],
-  isUstpDeployment
-    ? [
-        { name: 'MSSQL_USER', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-USER)' }
-        { name: 'MSSQL_PASS', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-PASS)' }
-        {
-          name: 'ACMS_MSSQL_USER'
-          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-USER)'
-        }
-        {
-          name: 'ACMS_MSSQL_PASS'
-          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-PASS)'
-        }
-      ]
-    : [
-        { name: 'MSSQL_CLIENT_ID', value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)' }
-        {
-          name: 'ACMS_MSSQL_CLIENT_ID'
-          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=ACMS-MSSQL-CLIENT-ID)'
-        }
-      ]
-)
-
-var apiApplicationSettings = concat(
-  baseApplicationSettings,
-  createApplicationInsights
-    ? [
-        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }
-        { name: 'APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION', value: 'false' }
-        { name: 'AzureFunctionsJobHost__logging__console__isEnabled', value: 'false' }
-      ]
-    : []
-)
-
-// Flat object form of baseApplicationSettings for use with config/appsettings.
 var apiSlotBaseAppSettingsObject = union(
   {
     FUNCTIONS_EXTENSION_VERSION: functionsVersion
