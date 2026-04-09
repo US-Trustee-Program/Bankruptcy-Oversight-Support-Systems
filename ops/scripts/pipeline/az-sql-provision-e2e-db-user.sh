@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
 
 # Description: Provisions a contained database user for a managed identity in an Azure SQL database.
-#              Uses SQL auth (sa) to avoid requiring an Azure AD admin connection.
+#              Uses SQL auth (server admin) to avoid requiring an Azure AD admin connection.
 #              Detects or installs mssql-tools18 on Linux; macOS requires manual install.
 # Prerequisites:
-#   - Azure CLI (logged in, for cloud suffix discovery)
+#   - Azure CLI (logged in, for cloud suffix discovery and admin login lookup)
 #   - sqlcmd: mssql-tools18 auto-installed on Linux if absent; macOS: brew install mssql-tools
-# Usage: az-sql-provision-e2e-db-user.sh --server-name <name> --database <db> --identity-name <name> --identity-client-id <guid> --sa-password <password>
+# Usage: az-sql-provision-e2e-db-user.sh --resource-group <rg> --server-name <name> --database <db> --identity-name <name> --identity-client-id <guid> --sa-password <password>
 
 set -euo pipefail
 
 while [[ $# -gt 0 ]]; do
   case $1 in
+  --resource-group | -g)
+    resource_group="${2}"
+    shift 2
+    ;;
   --server-name)
     server_name="${2}"
     shift 2
@@ -39,14 +43,17 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "${server_name:-}" || -z "${database:-}" || -z "${identity_name:-}" || -z "${identity_client_id:-}" || -z "${sa_password:-}" ]]; then
-  echo "Error: --server-name, --database, --identity-name, --identity-client-id, and --sa-password are required"
+if [[ -z "${resource_group:-}" || -z "${server_name:-}" || -z "${database:-}" || -z "${identity_name:-}" || -z "${identity_client_id:-}" || -z "${sa_password:-}" ]]; then
+  echo "Error: --resource-group, --server-name, --database, --identity-name, --identity-client-id, and --sa-password are required"
   exit 1
 fi
 
 # Build FQDN using the current cloud's SQL hostname suffix (includes leading dot)
 sql_hostname_suffix=$(az cloud show --query "suffixes.sqlServerHostname" -o tsv)
 server_fqdn="${server_name}${sql_hostname_suffix}"
+
+# Look up the server admin login from Azure rather than hardcoding it
+sa_user=$(az sql server show -g "${resource_group}" -n "${server_name}" --query administratorLogin -o tsv)
 
 # Detect sqlcmd binary, installing mssql-tools18 on Linux if not found
 if [[ -x "/opt/mssql-tools18/bin/sqlcmd" ]]; then
@@ -77,7 +84,7 @@ echo "Provisioning SQL user '${identity_name}' in database '${database}' on '${s
 "${SQLCMD}" \
   -S "${server_fqdn}" \
   -d "${database}" \
-  -U "sa" \
+  -U "${sa_user}" \
   -P "${sa_password}" \
   -Q "
     IF NOT EXISTS (

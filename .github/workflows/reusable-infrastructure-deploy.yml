@@ -119,6 +119,7 @@ jobs:
             --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
 
           ./ops/scripts/pipeline/az-sql-provision-e2e-db-user.sh \
+            --resource-group "${{ secrets.AZURE_RG }}" \
             --server-name "${{ secrets.AZ_SQL_SERVER_NAME }}" \
             --database "${{ steps.azure-e2e-sql-deploy.outputs.e2eSqlDatabaseName }}" \
             --identity-name "${{ secrets.AZ_SQL_IDENTITY_NAME }}" \
