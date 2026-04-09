@@ -3,8 +3,8 @@
 # Install: Add to .git/hooks/post-checkout or call from existing hook
 
 # Arguments: previous-HEAD new-HEAD branch-checkout-flag
-prev_head=$1
-new_head=$2
+_prev_head=$1
+_new_head=$2
 branch_checkout=$3
 
 # Only run on branch checkouts (not file checkouts)
