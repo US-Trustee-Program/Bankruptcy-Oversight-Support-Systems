@@ -23,8 +23,8 @@ fi
 ticket="CAMS-${BASH_REMATCH[1]}"
 echo "📋 Branch $branch detected, checking beads..."
 
-# Check if beads issue already exists
-beads_issue=$(bd list --json 2>/dev/null | jq -r ".[] | select(.title | contains(\"$ticket\")) | .id" | head -1)
+# Check if beads issue already exists (search by label)
+beads_issue=$(bd search " " --label "$ticket" --json 2>/dev/null | jq -r '.[0].id // empty')
 
 if [ -n "$beads_issue" ]; then
     # Issue exists - check if it's already claimed
@@ -64,6 +64,7 @@ else
         new_issue=$(bd create \
             --title="$ticket: $gh_title" \
             --description="Auto-created from GitHub issue #$gh_number on branch checkout. See GitHub for full requirements." \
+            --labels="$ticket" \
             --external-ref="gh-$gh_number" \
             --type="$type" \
             --priority=2 \

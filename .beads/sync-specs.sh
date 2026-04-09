@@ -49,8 +49,8 @@ for spec_dir in "$SPECS_DIR"/*/; do
         continue
     fi
 
-    # Find corresponding beads issue by searching title for ticket number
-    issue_id=$(bd list --json 2>/dev/null | jq -r ".[] | select(.title | contains(\"$ticket\")) | .id" | head -1 || true)
+    # Find corresponding beads issue by label
+    issue_id=$(bd search " " --label "$ticket" --json 2>/dev/null | jq -r '.[0].id // empty' || true)
 
     if [ -z "$issue_id" ]; then
         echo -e "${YELLOW}⚠️  No beads issue found for $ticket${NC}"
