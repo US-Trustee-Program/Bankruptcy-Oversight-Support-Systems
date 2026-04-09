@@ -81,7 +81,12 @@ jobs:
             e2eDatabaseName="${e2eDatabaseName}-${{ inputs.branchHashId }}"
           fi
 
-          export MONGO_CONNECTION_STRING="${{ secrets.MONGO_CONNECTION_STRING }}"
+          export MONGO_CONNECTION_STRING="$(az cosmosdb keys list \
+            -g ${{ secrets.AZURE_RG }} \
+            -n ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
+            --type connection-strings \
+            --query "connectionStrings[?description=='Primary MongoDB Connection String'].connectionString" \
+            -o tsv)"
           export COSMOS_DATABASE_NAME="${e2eDatabaseName}"
 
           echo "Seeding E2E MongoDB..."
