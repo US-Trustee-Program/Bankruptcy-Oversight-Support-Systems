@@ -8,7 +8,11 @@ echo "[entrypoint] Starting MongoDB..."
 mongod --bind_ip_all --dbpath /data/db --fork --logpath /var/log/mongodb/mongod.log
 
 echo "[entrypoint] Starting SQL Edge..."
+# LD_LIBRARY_PATH scoped to sqlservr only — prevents SQL Edge's older libs
+# (OpenSSL 1.1, libldap 2.4, Heimdal, libsss-nss-idmap) from conflicting
+# with the Bookworm system libs used by all other processes.
 ACCEPT_EULA=Y MSSQL_SA_PASSWORD="${MSSQL_PASS}" MSSQL_PID=Developer \
+  LD_LIBRARY_PATH="/opt/mssql-libs:${LD_LIBRARY_PATH:-}" \
   /opt/mssql/bin/sqlservr &
 
 echo "[entrypoint] Starting Azurite..."

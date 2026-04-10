@@ -34,16 +34,36 @@ COPY --from=mongodb /usr/bin/mongos /usr/bin/mongos
 # and use LD_LIBRARY_PATH so sqlservr finds them without conflicting with
 # the host's libs. This is arch-agnostic (works on both aarch64 and x86_64).
 COPY --from=sqledge /opt/mssql /opt/mssql
-# Copy all shared libraries from SQL Edge into a dedicated path.
-# SQL Edge depends on OpenSSL 1.1, libldap 2.4, Heimdal Kerberos, libsss-nss-idmap, etc.
-# which don't exist in Bookworm. Copy the arch-specific lib directory from the SQL Edge
-# image and register it with ldconfig so sqlservr finds them at runtime.
-# Works on both aarch64 (ARM64) and x86_64 (amd64) — the arch dir is detected at build time.
-COPY --from=sqledge /usr/lib/ /opt/mssql-libs/
-RUN ARCH_LIB_DIR=$(find /opt/mssql-libs -maxdepth 1 -type d -name "*linux-gnu*" | head -1) && \
-    echo "/opt/mssql-libs" >> /etc/ld.so.conf.d/mssql.conf && \
-    echo "${ARCH_LIB_DIR}" >> /etc/ld.so.conf.d/mssql.conf && \
-    ldconfig
+# Copy SQL Edge-specific shared libraries that are missing from Bookworm into an
+# isolated directory. DO NOT include core glibc libs (libc, libpthread, libm, etc.)
+# as they conflict with Bookworm's system libc and break the shell.
+# Only copy libs that sqlservr needs but Bookworm doesn't provide:
+# OpenSSL 1.1, libldap 2.4, Heimdal Kerberos, libsss-nss-idmap.
+# LD_LIBRARY_PATH is set in the entrypoint only for the sqlservr process.
+#
+# We copy the entire arch-specific lib dir from sqledge then delete known-conflicting
+# glibc/gcc libs, leaving only the SQL Edge-specific ones.
+COPY --from=sqledge /usr/lib/ /opt/mssql-libs-src/
+RUN mkdir -p /opt/mssql-libs && \
+    ARCH_DIR=$(find /opt/mssql-libs-src -maxdepth 1 -type d -name "*linux-gnu*" | head -1) && \
+    if [ -n "$ARCH_DIR" ]; then \
+        cp ${ARCH_DIR}/libsss_nss_idmap.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libldap_r-2.4.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/liblber-2.4.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libcrypto.so.1.1 /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libssl.so.1.1 /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libsasl2.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libgssapi.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libheimntlm.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libkrb5.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libhx509.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libroken.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libasn1.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libwind.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libheimbase.so* /opt/mssql-libs/ 2>/dev/null || true; \
+        cp ${ARCH_DIR}/libhcrypto.so* /opt/mssql-libs/ 2>/dev/null || true; \
+    fi && \
+    rm -rf /opt/mssql-libs-src
 ENV PATH="/opt/mssql/bin:${PATH}"
 
 # Create data/log directories for all embedded services
