@@ -3,16 +3,40 @@ import { InvocationContext } from '@azure/functions';
 import BackfillTrusteePhoneticTokensUseCase from '../../../lib/use-cases/dataflows/backfill-trustee-phonetic-tokens';
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
+import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
+import { Trustee } from '@common/cams/trustees';
 
 // Import the module to access handleStart
 // Note: Since handleStart is not exported, we need to test via the module's behavior
 // or restructure to export it. For now, we'll test the use case methods that are called.
 
+function makeTrustee(trusteeId: string, name: string): Trustee {
+  return {
+    id: `doc-${trusteeId}`,
+    trusteeId,
+    name,
+    documentType: 'TRUSTEE',
+    public: {
+      address: {
+        address1: '123 Main St',
+        city: 'Anytown',
+        state: 'NY',
+        zipCode: '10001',
+        countryCode: 'US',
+      },
+    },
+    updatedBy: { id: 'SYSTEM', name: 'SYSTEM' },
+    updatedOn: '2025-01-01T00:00:00.000Z',
+  } as Trustee;
+}
+
 describe('Backfill Trustee Phonetic Tokens Migration', () => {
+  let context: ApplicationContext;
   let _mockInvocationContext: InvocationContext;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
+    context = await createMockApplicationContext();
     _mockInvocationContext = {
       invocationId: 'test-invocation-id',
       functionName: 'backfill-trustee-phonetic-tokens',
@@ -23,14 +47,6 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
 
   describe('getTrusteesNeedingBackfill', () => {
     test('should be called to identify trustees missing phonetic tokens', async () => {
-      const mockContext = {
-        logger: {
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-        },
-      } as ApplicationContext;
-
       vi.spyOn(
         BackfillTrusteePhoneticTokensUseCase,
         'getTrusteesNeedingBackfill',
@@ -39,8 +55,7 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
         error: null,
       });
 
-      const result =
-        await BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill(mockContext);
+      const result = await BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill(context);
 
       expect(BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill).toHaveBeenCalled();
       expect(result.data).toEqual([]);
@@ -48,14 +63,6 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
     });
 
     test('should handle error when fetching trustees fails', async () => {
-      const mockContext = {
-        logger: {
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-        },
-      } as ApplicationContext;
-
       const testError = new CamsError('BACKFILL-TEST', {
         message: 'Database connection failed',
       });
@@ -68,31 +75,16 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
         error: testError,
       });
 
-      const result =
-        await BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill(mockContext);
+      const result = await BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill(context);
 
       expect(result.error).toBe(testError);
       expect(result.data).toBeUndefined();
     });
 
     test('should return trustees that need phonetic token backfill', async () => {
-      const mockContext = {
-        logger: {
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-        },
-      } as ApplicationContext;
-
       const mockTrustees = [
-        {
-          trusteeId: 'trustee-001',
-          name: 'John Smith',
-        },
-        {
-          trusteeId: 'trustee-002',
-          name: 'Jane Doe',
-        },
+        makeTrustee('trustee-001', 'John Smith'),
+        makeTrustee('trustee-002', 'Jane Doe'),
       ];
 
       vi.spyOn(
@@ -103,8 +95,7 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
         error: null,
       });
 
-      const result =
-        await BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill(mockContext);
+      const result = await BackfillTrusteePhoneticTokensUseCase.getTrusteesNeedingBackfill(context);
 
       expect(result.data).toEqual(mockTrustees);
       expect(result.data).toHaveLength(2);
@@ -113,23 +104,9 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
 
   describe('backfillTokensForTrustees', () => {
     test('should process all provided trustees', async () => {
-      const mockContext = {
-        logger: {
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-        },
-      } as ApplicationContext;
-
       const mockTrustees = [
-        {
-          trusteeId: 'trustee-001',
-          name: 'John Smith',
-        },
-        {
-          trusteeId: 'trustee-002',
-          name: 'Jane Doe',
-        },
+        makeTrustee('trustee-001', 'John Smith'),
+        makeTrustee('trustee-002', 'Jane Doe'),
       ];
 
       const mockResults = [
@@ -145,12 +122,12 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
       );
 
       const result = await BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees(
-        mockContext,
+        context,
         mockTrustees,
       );
 
       expect(BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees).toHaveBeenCalledWith(
-        mockContext,
+        context,
         mockTrustees,
       );
       expect(result.data).toEqual(mockResults);
@@ -158,23 +135,9 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
     });
 
     test('should return partial results when some trustees fail', async () => {
-      const mockContext = {
-        logger: {
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-        },
-      } as ApplicationContext;
-
       const mockTrustees = [
-        {
-          trusteeId: 'trustee-001',
-          name: 'John Smith',
-        },
-        {
-          trusteeId: 'trustee-002',
-          name: 'Jane Doe',
-        },
+        makeTrustee('trustee-001', 'John Smith'),
+        makeTrustee('trustee-002', 'Jane Doe'),
       ];
 
       const mockResults = [
@@ -194,7 +157,7 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
       );
 
       const result = await BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees(
-        mockContext,
+        context,
         mockTrustees,
       );
 
@@ -204,14 +167,6 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
     });
 
     test('should handle empty trustee array', async () => {
-      const mockContext = {
-        logger: {
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-        },
-      } as ApplicationContext;
-
       vi.spyOn(BackfillTrusteePhoneticTokensUseCase, 'backfillTokensForTrustees').mockResolvedValue(
         {
           data: [],
@@ -220,7 +175,7 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
       );
 
       const result = await BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees(
-        mockContext,
+        context,
         [],
       );
 
@@ -229,20 +184,7 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
     });
 
     test('should handle complete failure during backfill', async () => {
-      const mockContext = {
-        logger: {
-          info: vi.fn(),
-          warn: vi.fn(),
-          error: vi.fn(),
-        },
-      } as ApplicationContext;
-
-      const mockTrustees = [
-        {
-          trusteeId: 'trustee-001',
-          name: 'John Smith',
-        },
-      ];
+      const mockTrustees = [makeTrustee('trustee-001', 'John Smith')];
 
       const testError = new CamsError('BACKFILL-TEST', {
         message: 'Repository failure',
@@ -256,7 +198,7 @@ describe('Backfill Trustee Phonetic Tokens Migration', () => {
       );
 
       const result = await BackfillTrusteePhoneticTokensUseCase.backfillTokensForTrustees(
-        mockContext,
+        context,
         mockTrustees,
       );
 
