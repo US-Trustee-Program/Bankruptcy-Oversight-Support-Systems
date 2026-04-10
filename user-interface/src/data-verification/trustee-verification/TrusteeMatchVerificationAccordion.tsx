@@ -101,27 +101,33 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     viewMode = 'no-candidates';
   }
 
+  async function approveTrustee({
+    trusteeId,
+    trusteeName,
+  }: {
+    trusteeId: string;
+    trusteeName: string;
+  }) {
+    await Api2.patchTrusteeVerificationOrderApproval(order.id, trusteeId, trusteeName);
+    onOrderUpdate(
+      {
+        message: `Trustee ${trusteeName} appointed to case ${getCaseNumber(order.caseId)}.`,
+        type: UswdsAlertStyle.Success,
+        timeOut: 8,
+      },
+      {
+        ...order,
+        status: 'approved',
+        resolvedTrusteeId: trusteeId,
+        resolvedTrusteeName: trusteeName,
+      },
+    );
+  }
+
   async function handleApprove(candidate: CandidateScore) {
     setIsProcessing(true);
     try {
-      await Api2.patchTrusteeVerificationOrderApproval(
-        order.id,
-        candidate.trusteeId,
-        candidate.trusteeName,
-      );
-      onOrderUpdate(
-        {
-          message: `Trustee ${candidate.trusteeName} appointed to case ${getCaseNumber(order.caseId)}.`,
-          type: UswdsAlertStyle.Success,
-          timeOut: 8,
-        },
-        {
-          ...order,
-          status: 'approved',
-          resolvedTrusteeId: candidate.trusteeId,
-          resolvedTrusteeName: candidate.trusteeName,
-        },
-      );
+      await approveTrustee({ trusteeId: candidate.trusteeId, trusteeName: candidate.trusteeName });
     } catch {
       onOrderUpdate(
         { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
@@ -167,20 +173,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   async function handleManualMatch(result: TrusteeSearchResult) {
     setIsProcessing(true);
     try {
-      await Api2.patchTrusteeVerificationOrderApproval(order.id, result.trusteeId, result.name);
-      onOrderUpdate(
-        {
-          message: `Trustee ${result.name} appointed to case ${getCaseNumber(order.caseId)}.`,
-          type: UswdsAlertStyle.Success,
-          timeOut: 8,
-        },
-        {
-          ...order,
-          status: 'approved',
-          resolvedTrusteeId: result.trusteeId,
-          resolvedTrusteeName: result.name,
-        },
-      );
+      await approveTrustee({ trusteeId: result.trusteeId, trusteeName: result.name });
     } catch {
       onOrderUpdate(
         { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
@@ -190,6 +183,15 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
       searchModalRef.current?.hide();
       setIsProcessing(false);
     }
+  }
+
+  function getResolvedTrusteeDisplayName(): string {
+    return (
+      order.resolvedTrusteeName ??
+      order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)?.trusteeName ??
+      order.resolvedTrusteeId ??
+      ''
+    );
   }
 
   type TrusteeCandidateRowProps = {
@@ -369,12 +371,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         >
           {viewMode === 'resolved' ? (
             <p className="resolved-statement" data-testid="resolved-statement">
-              Trustee{' '}
-              {order.resolvedTrusteeName ??
-                order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
-                  ?.trusteeName ??
-                order.resolvedTrusteeId}{' '}
-              was appointed to case: {caseLink}
+              Trustee {getResolvedTrusteeDisplayName()} was appointed to case: {caseLink}
             </p>
           ) : (
             <>
