@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import CaseDetailTrusteePanel from './CaseDetailTrusteePanel';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ZoomInfo } from '@common/cams/trustees';
@@ -31,6 +31,10 @@ function renderPanel() {
 }
 
 describe('CaseDetailTrusteePanel', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     vi.resetAllMocks();
     const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
