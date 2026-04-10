@@ -83,6 +83,33 @@ echo -e "${BLUE}📦 Step 1: Building images...${NC}"
 echo ""
 
 REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
+
+# Cached base images in GHCR — multi-arch (amd64 + arm64)
+# Refresh with: npm run podman:cache-images
+GHCR_SQLEDGE="${REGISTRY}/e2e-base-azure-sql-edge-latest"
+GHCR_MONGODB="${REGISTRY}/e2e-base-mongo-7.0"
+GHCR_AZURITE="${REGISTRY}/e2e-base-azure-storage-azurite-latest"
+
+# Use GHCR cached images if available (CI has GITHUB_TOKEN), otherwise fall back to upstream
+resolve_image() {
+    local ghcr_image="$1" upstream="$2"
+    if podman image exists "${ghcr_image}" 2>/dev/null || \
+       ([ -n "${GITHUB_TOKEN:-}" ] && podman pull "${ghcr_image}" 2>/dev/null); then
+        echo "${ghcr_image}"
+    else
+        echo "${upstream}"
+    fi
+}
+
+IMAGE_SQLEDGE=$(resolve_image "${GHCR_SQLEDGE}" "mcr.microsoft.com/azure-sql-edge:latest")
+IMAGE_MONGODB=$(resolve_image "${GHCR_MONGODB}" "mongo:7.0")
+IMAGE_AZURITE=$(resolve_image "${GHCR_AZURITE}" "mcr.microsoft.com/azure-storage/azurite:latest")
+
+echo "  SQL Edge: ${IMAGE_SQLEDGE}"
+echo "  MongoDB:  ${IMAGE_MONGODB}"
+echo "  Azurite:  ${IMAGE_AZURITE}"
+echo ""
+
 DEPS_HASH=$(cat ../../package*.json ../../common/package*.json ../../backend/package*.json ../../user-interface/package*.json package*.json 2>/dev/null | sha256sum | cut -c1-12)
 DEPS_CACHED_IMAGE="${REGISTRY}/e2e-deps:${DEPS_HASH}"
 
@@ -138,26 +165,26 @@ podman pod create \
     --publish 10001:10001 \
     --publish 10002:10002
 
-# Start SQL Edge in the pod
+# Start SQL Edge in the pod (from GHCR cache)
 podman run -d \
     --pod "${POD_NAME}" \
     --name cams-sqledge-e2e \
     -e ACCEPT_EULA=Y \
     -e MSSQL_SA_PASSWORD="${MSSQL_PASS}" \
     -e MSSQL_PID=Developer \
-    mcr.microsoft.com/azure-sql-edge:latest
+    "${IMAGE_SQLEDGE}"
 
-# Start MongoDB in the pod
+# Start MongoDB in the pod (from GHCR cache)
 podman run -d \
     --pod "${POD_NAME}" \
     --name cams-mongodb-e2e \
-    mongo:7.0 --bind_ip_all
+    "${IMAGE_MONGODB}" --bind_ip_all
 
-# Start Azurite in the pod
+# Start Azurite in the pod (from GHCR cache)
 podman run -d \
     --pod "${POD_NAME}" \
     --name cams-azurite-e2e \
-    mcr.microsoft.com/azure-storage/azurite:latest \
+    "${IMAGE_AZURITE}" \
     azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
 
 # Start backend in the pod (waits for DBs, seeds, starts Functions host)

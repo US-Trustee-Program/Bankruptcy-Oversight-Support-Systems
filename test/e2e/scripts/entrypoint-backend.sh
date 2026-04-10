@@ -7,7 +7,7 @@ set -e
 # Wait for MongoDB
 echo "[entrypoint] Waiting for MongoDB..."
 for i in $(seq 1 30); do
-    if mongosh --quiet --eval "db.adminCommand('ping')" 2>/dev/null | grep -q "ok"; then
+    if bash -c '</dev/tcp/localhost/27017' 2>/dev/null; then
         echo "[entrypoint] MongoDB ready"
         break
     fi
