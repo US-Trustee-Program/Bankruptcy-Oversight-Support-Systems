@@ -73,6 +73,7 @@ jobs:
       ghaEnvironment: ${{ inputs.ghaEnvironment }}
       azResourceGrpNetworkEncrypted: ${{ inputs.azResourceGrpNetworkEncrypted }}
       environmentHash: ${{ inputs.environmentHash }}
+      stackName: ${{ inputs.stackName }}
       apiFunctionName: ${{ inputs.apiFunctionName }}
       dataflowsFunctionName: ${{ inputs.dataflowsFunctionName }}
     secrets: inherit # pragma: allowlist secret
