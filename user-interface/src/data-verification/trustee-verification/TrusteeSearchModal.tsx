@@ -1,5 +1,6 @@
 import './TrusteeSearchModal.scss';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import useDebounce from '@/lib/hooks/UseDebounce';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -33,6 +34,7 @@ function TrusteeSearchModal_(
   const [selectedTrustee, setSelectedTrustee] = useState<TrusteeSearchResult | null>(null);
   const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
   const [selectedCourtId, setSelectedCourtId] = useState<string | undefined>(courtId);
+  const debounce = useDebounce();
 
   useEffect(() => {
     Api2.getCourts()
@@ -70,17 +72,19 @@ function TrusteeSearchModal_(
       courts.find((c) => c.courtDivisionCode === selectedCourtId))
     : undefined;
 
-  async function handleFilterChange(value: string) {
+  function handleFilterChange(value: string) {
     if (!value || value.length < 2) {
       setSearchResults([]);
       return;
     }
-    try {
-      const response = await Api2.searchTrustees(value, selectedCourtEntry?.courtId);
-      setSearchResults(response.data);
-    } catch {
-      setSearchResults([]);
-    }
+    debounce(async () => {
+      try {
+        const response = await Api2.searchTrustees(value, selectedCourtEntry?.courtId);
+        setSearchResults(response.data);
+      } catch {
+        setSearchResults([]);
+      }
+    }, 300);
   }
 
   function handleCourtSelection(options: ComboOption[]) {
