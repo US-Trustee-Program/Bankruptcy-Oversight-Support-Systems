@@ -36,8 +36,10 @@ export class TrusteeSearchController {
         });
       }
 
+      const courtId = context.request.query['courtId'] || undefined;
+
       const useCase = new TrusteeSearchUseCase();
-      const data = await useCase.searchTrustees(context, name);
+      const data = await useCase.searchTrustees(context, name, courtId);
 
       return httpSuccess({
         body: {

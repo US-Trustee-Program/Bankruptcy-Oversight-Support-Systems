@@ -2355,7 +2355,10 @@ async function getOrders(): Promise<ResponseBody<Order[]>> {
   return get<Order[]>(`/orders`);
 }
 
-async function searchTrustees(_name: string): Promise<ResponseBody<TrusteeSearchResult[]>> {
+async function searchTrustees(
+  _name: string,
+  _courtId?: string,
+): Promise<ResponseBody<TrusteeSearchResult[]>> {
   return { data: [] };
 }
 

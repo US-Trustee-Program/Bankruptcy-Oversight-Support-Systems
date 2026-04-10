@@ -23,6 +23,7 @@ describe('TrusteeSearchController', () => {
       phone: { number: '(212) 555-0100' },
       email: 'john.smith@example.com',
       appointments: [],
+      matchType: 'exact',
     },
   ];
 
@@ -43,7 +44,26 @@ describe('TrusteeSearchController', () => {
     const controller = new TrusteeSearchController();
     const response = await controller.handleRequest(context);
 
-    expect(TrusteeSearchUseCase.prototype.searchTrustees).toHaveBeenCalledWith(context, 'smith');
+    expect(TrusteeSearchUseCase.prototype.searchTrustees).toHaveBeenCalledWith(
+      context,
+      'smith',
+      undefined,
+    );
+    expect(response.body.data).toEqual(mockSearchResults);
+  });
+
+  test('should pass courtId to use case when provided', async () => {
+    context.request.query = { name: 'smith', courtId: '081' };
+    vi.spyOn(TrusteeSearchUseCase.prototype, 'searchTrustees').mockResolvedValue(mockSearchResults);
+
+    const controller = new TrusteeSearchController();
+    const response = await controller.handleRequest(context);
+
+    expect(TrusteeSearchUseCase.prototype.searchTrustees).toHaveBeenCalledWith(
+      context,
+      'smith',
+      '081',
+    );
     expect(response.body.data).toEqual(mockSearchResults);
   });
 
@@ -90,6 +110,8 @@ describe('TrusteeSearchController', () => {
 
     const controller = new TrusteeSearchController();
 
-    await expect(controller.handleRequest(context)).rejects.toThrow();
+    await expect(controller.handleRequest(context)).rejects.toThrow(
+      expect.objectContaining({ isCamsError: true }),
+    );
   });
 });

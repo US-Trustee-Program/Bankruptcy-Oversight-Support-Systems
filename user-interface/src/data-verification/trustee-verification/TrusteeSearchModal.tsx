@@ -8,6 +8,7 @@ import { TrusteeSearchResult } from '@common/cams/trustee-search';
 interface TrusteeSearchModalProps {
   id: string;
   dxtrTrusteeName: string;
+  courtId?: string;
   onConfirm: (result: TrusteeSearchResult) => void;
   onCancel?: () => void;
 }
@@ -21,7 +22,7 @@ function TrusteeSearchModal_(
   props: TrusteeSearchModalProps,
   ref: React.Ref<TrusteeSearchModalImperative>,
 ) {
-  const { id, dxtrTrusteeName, onConfirm, onCancel } = props;
+  const { id, dxtrTrusteeName, courtId, onConfirm, onCancel } = props;
   const modalRef = useRef<ModalRefType>(null);
   const [searchResults, setSearchResults] = useState<TrusteeSearchResult[]>([]);
   const [selectedTrustee, setSelectedTrustee] = useState<TrusteeSearchResult | null>(null);
@@ -44,7 +45,7 @@ function TrusteeSearchModal_(
       return;
     }
     try {
-      const response = await Api2.searchTrustees(value);
+      const response = await Api2.searchTrustees(value, courtId);
       setSearchResults(response.data);
     } catch {
       setSearchResults([]);
@@ -62,7 +63,7 @@ function TrusteeSearchModal_(
 
   const comboOptions: ComboOption[] = searchResults.map((r) => ({
     value: r.trusteeId,
-    label: r.name,
+    label: r.matchType === 'phonetic' ? `${r.name} (similar name)` : r.name,
   }));
 
   const addressLines = selectedTrustee?.address
