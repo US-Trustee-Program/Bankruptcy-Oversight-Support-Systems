@@ -358,9 +358,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     try {
       const doc = using<TrusteeDocument>();
       const query = and(doc('documentType').equals('TRUSTEE'), doc('trusteeId').equals(trusteeId));
-      await this.getAdapter<TrusteeDocument>().updateOne(query, {
-        $set: { phoneticTokens: tokens },
-      } as unknown as Partial<TrusteeDocument>);
+      await this.getAdapter<TrusteeDocument>().updateOne(query, { phoneticTokens: tokens });
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to set phonetic tokens for trustee ${trusteeId}.`,
