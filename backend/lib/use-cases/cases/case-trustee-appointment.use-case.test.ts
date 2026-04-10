@@ -26,9 +26,9 @@ describe('CaseTrusteeAppointmentUseCase', () => {
       mockAppointment,
     );
     const context = await createMockApplicationContext();
-    const useCase = new CaseTrusteeAppointmentUseCase(context);
+    const useCase = new CaseTrusteeAppointmentUseCase();
 
-    const result = await useCase.getActiveCaseAppointment(mockAppointment.caseId);
+    const result = await useCase.getActiveCaseAppointment(context, mockAppointment.caseId);
 
     expect(result).toEqual(mockAppointment);
   });
@@ -36,9 +36,9 @@ describe('CaseTrusteeAppointmentUseCase', () => {
   test('returns null when repo returns null', async () => {
     vi.spyOn(MockMongoRepository.prototype, 'getActiveCaseAppointment').mockResolvedValue(null);
     const context = await createMockApplicationContext();
-    const useCase = new CaseTrusteeAppointmentUseCase(context);
+    const useCase = new CaseTrusteeAppointmentUseCase();
 
-    const result = await useCase.getActiveCaseAppointment('111-00-00001');
+    const result = await useCase.getActiveCaseAppointment(context, '111-00-00001');
 
     expect(result).toBeNull();
   });

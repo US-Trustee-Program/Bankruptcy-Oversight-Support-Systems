@@ -97,6 +97,19 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
       : 'Starting fresh case appointment date backfill migration.',
   );
 
+  const stateUpdateResult = await BackfillCaseAppointmentDatesUseCase.updateBackfillState(
+    context,
+    { lastId, processedCount, status: 'IN_PROGRESS' },
+    existingState,
+  );
+  if (stateUpdateResult.error) {
+    invocationContext.extraOutputs.set(
+      DLQ,
+      buildQueueError(stateUpdateResult.error, MODULE_NAME, HANDLE_START),
+    );
+    return;
+  }
+
   const cursorMessage: CursorMessage = { lastId };
   invocationContext.extraOutputs.set(PAGE, cursorMessage);
 }
@@ -143,14 +156,16 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
 
   const { appointments, lastId: newLastId, hasMore } = pageResult.data;
 
+  const existingState = stateResult.data;
+
   if (appointments.length === 0) {
     logger.info(MODULE_NAME, `No more appointments to backfill. Migration complete.`);
 
-    await BackfillCaseAppointmentDatesUseCase.updateBackfillState(context, {
-      lastId: cursor.lastId,
-      processedCount: currentProcessedCount,
-      status: 'COMPLETED',
-    });
+    await BackfillCaseAppointmentDatesUseCase.updateBackfillState(
+      context,
+      { lastId: cursor.lastId, processedCount: currentProcessedCount, status: 'COMPLETED' },
+      existingState,
+    );
     return;
   }
 
@@ -165,11 +180,11 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   );
 
   if (backfillResult.error) {
-    await BackfillCaseAppointmentDatesUseCase.updateBackfillState(context, {
-      lastId: cursor.lastId,
-      processedCount: currentProcessedCount,
-      status: 'FAILED',
-    });
+    await BackfillCaseAppointmentDatesUseCase.updateBackfillState(
+      context,
+      { lastId: cursor.lastId, processedCount: currentProcessedCount, status: 'FAILED' },
+      existingState,
+    );
 
     invocationContext.extraOutputs.set(
       DLQ,
@@ -183,11 +198,15 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   const failedResults = results.filter((r) => !r.success);
   const newProcessedCount = currentProcessedCount + successCount;
 
-  const updateResult = await BackfillCaseAppointmentDatesUseCase.updateBackfillState(context, {
-    lastId: newLastId,
-    processedCount: newProcessedCount,
-    status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
-  });
+  const updateResult = await BackfillCaseAppointmentDatesUseCase.updateBackfillState(
+    context,
+    {
+      lastId: newLastId,
+      processedCount: newProcessedCount,
+      status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
+    },
+    existingState,
+  );
 
   if (updateResult.error) {
     invocationContext.extraOutputs.set(
@@ -200,13 +219,8 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   if (failedResults.length > 0) {
     logger.warn(MODULE_NAME, `${failedResults.length} appointments failed to backfill.`);
     const failedEvents: BackfillEvent[] = failedResults.map((r) => {
-      const original = appointments.find((a) => a.caseId === r.caseId);
-      return {
-        _id: original?._id ?? '',
-        caseId: r.caseId,
-        trusteeId: original?.trusteeId ?? '',
-        error: new Error(r.error ?? 'Unknown error'),
-      };
+      const original = appointments.find((a) => a.caseId === r.caseId)!;
+      return { ...original, error: new Error(r.error ?? 'Unknown error') };
     });
     invocationContext.extraOutputs.set(DLQ, failedEvents);
   }
@@ -240,8 +254,8 @@ async function handleError(event: BackfillEvent, invocationContext: InvocationCo
     `Error encountered backfilling appointment for case ${event.caseId}: ${event.error?.message ?? 'Unknown error'}.`,
   );
 
-  delete event.error;
-  invocationContext.extraOutputs.set(RETRY, [event]);
+  const { error: _, ...retryEvent } = event;
+  invocationContext.extraOutputs.set(RETRY, [retryEvent]);
 }
 
 /**
@@ -266,11 +280,7 @@ async function handleRetry(event: BackfillEvent, invocationContext: InvocationCo
     return;
   }
 
-  const appointment: BackfillAppointment = {
-    _id: event._id,
-    caseId: event.caseId,
-    trusteeId: event.trusteeId,
-  };
+  const { retryCount: _r, error: _e, ...appointment } = event;
 
   const result = await BackfillCaseAppointmentDatesUseCase.backfillAppointmentDates(context, [
     appointment,

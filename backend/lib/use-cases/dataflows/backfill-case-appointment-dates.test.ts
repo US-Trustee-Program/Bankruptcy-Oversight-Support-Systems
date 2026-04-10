@@ -114,21 +114,18 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
 
   describe('backfillAppointmentDates', () => {
     test('should write appointedDate for appointments found in DXTR', async () => {
-      const appointment = makeCaseAppointment();
+      const appointment = { ...makeCaseAppointment(), _id: 'appt-id-1' };
       const dxtrMap = new Map([[appointment.caseId, '2026-04-07']]);
 
       vi.spyOn(CasesLocalGateway.prototype, 'getAppointmentDatesByCaseIds').mockResolvedValue(
         dxtrMap,
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'getActiveCaseAppointment').mockResolvedValue(
-        appointment,
       );
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateCaseAppointment')
         .mockResolvedValue({ ...appointment, appointedDate: '2026-04-07' } as CaseAppointment);
 
       const result = await BackfillCaseAppointmentDatesUseCase.backfillAppointmentDates(context, [
-        { _id: 'appt-id-1', caseId: appointment.caseId, trusteeId: appointment.trusteeId },
+        appointment,
       ]);
 
       expect(result.error).toBeUndefined();
@@ -140,7 +137,7 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
     });
 
     test('should skip and log when DXTR has no date for a case', async () => {
-      const appointment = makeCaseAppointment();
+      const appointment = { ...makeCaseAppointment(), _id: 'appt-id-1' };
       const dxtrMap = new Map<string, string>(); // empty — no date
 
       vi.spyOn(CasesLocalGateway.prototype, 'getAppointmentDatesByCaseIds').mockResolvedValue(
@@ -149,7 +146,7 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
       const updateSpy = vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment');
 
       const result = await BackfillCaseAppointmentDatesUseCase.backfillAppointmentDates(context, [
-        { _id: 'appt-id-1', caseId: appointment.caseId, trusteeId: appointment.trusteeId },
+        appointment,
       ]);
 
       expect(result.error).toBeUndefined();
@@ -158,21 +155,18 @@ describe('BackfillCaseAppointmentDatesUseCase', () => {
     });
 
     test('should record failure when updateCaseAppointment throws', async () => {
-      const appointment = makeCaseAppointment();
+      const appointment = { ...makeCaseAppointment(), _id: 'appt-id-1' };
       const dxtrMap = new Map([[appointment.caseId, '2026-04-07']]);
 
       vi.spyOn(CasesLocalGateway.prototype, 'getAppointmentDatesByCaseIds').mockResolvedValue(
         dxtrMap,
-      );
-      vi.spyOn(MockMongoRepository.prototype, 'getActiveCaseAppointment').mockResolvedValue(
-        appointment,
       );
       vi.spyOn(MockMongoRepository.prototype, 'updateCaseAppointment').mockRejectedValue(
         new Error('Write failed'),
       );
 
       const result = await BackfillCaseAppointmentDatesUseCase.backfillAppointmentDates(context, [
-        { _id: 'appt-id-1', caseId: appointment.caseId, trusteeId: appointment.trusteeId },
+        appointment,
       ]);
 
       expect(result.data?.[0].success).toBe(false);

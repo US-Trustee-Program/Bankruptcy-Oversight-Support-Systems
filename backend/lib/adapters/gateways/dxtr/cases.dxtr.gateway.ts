@@ -33,6 +33,9 @@ export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
   const year = `20${s.substring(0, 2)}`;
   const month = s.substring(2, 4);
   const day = s.substring(4, 6);
+  const monthNum = parseInt(month, 10);
+  const dayNum = parseInt(day, 10);
+  if (monthNum < 1 || monthNum > 12 || dayNum < 1 || dayNum > 31) return undefined;
   return `${year}-${month}-${day}`;
 }
 

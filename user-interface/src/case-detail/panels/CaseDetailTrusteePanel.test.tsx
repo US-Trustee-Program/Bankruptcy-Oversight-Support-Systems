@@ -4,6 +4,8 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import CaseDetailTrusteePanel from './CaseDetailTrusteePanel';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { ZoomInfo } from '@common/cams/trustees';
+import { CamsRole } from '@common/cams/roles';
+import LocalStorage from '@/lib/utils/local-storage';
 
 vi.mock('./useTrustee', () => ({
   useTrustee: vi.fn(),
@@ -31,6 +33,8 @@ function renderPanel() {
 describe('CaseDetailTrusteePanel', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
       trusteeId: null,
@@ -100,7 +104,7 @@ describe('CaseDetailTrusteePanel', () => {
     expect(screen.queryByTestId('case-trustee-card')).not.toBeInTheDocument();
   });
 
-  test('renders CaseTrusteeCard when trustee is loaded', () => {
+  test('renders trustee card when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
     mockUseCaseAppointment.mockReturnValue({
       appointedDate: null,
@@ -112,6 +116,35 @@ describe('CaseDetailTrusteePanel', () => {
     renderPanel();
 
     expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
+  });
+
+  test('renders trustee name as link to trustee profile', () => {
+    const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+    renderPanel();
+
+    const link = screen.getByTestId('case-detail-trustee-link');
+    expect(link).toHaveAttribute('href', `/trustees/${trustee.trusteeId}`);
+  });
+
+  test('renders public address in trustee card', () => {
+    const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+    renderPanel();
+
+    expect(screen.getByTestId('case-trustee-public-street-address')).toBeInTheDocument();
   });
 
   test('renders heading with trustee name when trustee is loaded', () => {

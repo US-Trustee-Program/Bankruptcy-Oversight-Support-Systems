@@ -2119,4 +2119,20 @@ describe('parseDxtrDate', () => {
   test('returns undefined for non-numeric string', () => {
     expect(parseDxtrDate('26040X')).toBeUndefined();
   });
+
+  test('returns undefined for invalid month (> 12)', () => {
+    expect(parseDxtrDate('261399')).toBeUndefined();
+  });
+
+  test('returns undefined for invalid month (00)', () => {
+    expect(parseDxtrDate('260001')).toBeUndefined();
+  });
+
+  test('returns undefined for invalid day (> 31)', () => {
+    expect(parseDxtrDate('260432')).toBeUndefined();
+  });
+
+  test('returns undefined for invalid day (00)', () => {
+    expect(parseDxtrDate('260400')).toBeUndefined();
+  });
 });

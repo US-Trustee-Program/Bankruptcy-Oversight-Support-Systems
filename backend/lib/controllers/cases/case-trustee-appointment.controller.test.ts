@@ -3,6 +3,7 @@ import { CaseTrusteeAppointmentController } from './case-trustee-appointment.con
 import { CaseTrusteeAppointmentUseCase } from '../../use-cases/cases/case-trustee-appointment.use-case';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
+import { BadRequestError } from '../../common-errors/bad-request';
 import { NotFoundError } from '../../common-errors/not-found-error';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
 
@@ -45,5 +46,13 @@ describe('CaseTrusteeAppointmentController', () => {
     const controller = new CaseTrusteeAppointmentController();
 
     await expect(controller.handleRequest(context)).rejects.toThrow(NotFoundError);
+  });
+
+  test('throws BadRequestError for invalid caseId format', async () => {
+    const context = await createMockApplicationContext();
+    context.request = mockCamsHttpRequest({ params: { caseId: '<script>alert(1)</script>' } });
+    const controller = new CaseTrusteeAppointmentController();
+
+    await expect(controller.handleRequest(context)).rejects.toThrow(BadRequestError);
   });
 });

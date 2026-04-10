@@ -4,14 +4,12 @@ import { isNotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { CaseAppointmentDateBackfillState } from '../gateways.types';
+import { CaseAppointment } from '@common/cams/trustee-appointments';
 
 const MODULE_NAME = 'BACKFILL-CASE-APPOINTMENT-DATES-USE-CASE';
 
-export type BackfillAppointment = {
-  _id: string;
-  caseId: string;
-  trusteeId: string;
-};
+// _id is a MongoDB artifact unavoidable for cursor-based pagination
+export type BackfillAppointment = CaseAppointment & { _id: string };
 
 type CursorPageResult = {
   appointments: BackfillAppointment[];
@@ -40,11 +38,7 @@ async function getPageNeedingBackfill(
 
     return {
       data: {
-        appointments: appointments.map((a) => ({
-          _id: a._id,
-          caseId: a.caseId,
-          trusteeId: a.trusteeId,
-        })),
+        appointments,
         lastId: newLastId,
         hasMore,
       },
@@ -84,12 +78,15 @@ async function backfillAppointmentDates(
     const caseIds = appointments.map((a) => a.caseId);
     const appointedDateMap = await dxtrGateway.getAppointmentDatesByCaseIds(context, caseIds);
 
+    let skippedNoDxtrDate = 0;
+
     for (const appointment of appointments) {
       try {
         const appointedDate = appointedDateMap.get(appointment.caseId);
 
         if (!appointedDate) {
-          context.logger.warn(
+          skippedNoDxtrDate++;
+          context.logger.debug(
             MODULE_NAME,
             `No apt_date found in DXTR for case ${appointment.caseId} — skipping.`,
           );
@@ -97,17 +94,7 @@ async function backfillAppointmentDates(
           continue;
         }
 
-        const existing = await appointmentsRepo.getActiveCaseAppointment(appointment.caseId);
-        if (!existing) {
-          context.logger.warn(
-            MODULE_NAME,
-            `Active case appointment not found for case ${appointment.caseId} — skipping.`,
-          );
-          results.push({ caseId: appointment.caseId, success: true });
-          continue;
-        }
-
-        await appointmentsRepo.updateCaseAppointment({ ...existing, appointedDate });
+        await appointmentsRepo.updateCaseAppointment({ ...appointment, appointedDate });
         results.push({ caseId: appointment.caseId, success: true });
       } catch (originalError) {
         results.push({
@@ -118,6 +105,12 @@ async function backfillAppointmentDates(
       }
     }
 
+    if (skippedNoDxtrDate > 0) {
+      context.logger.info(
+        MODULE_NAME,
+        `Skipped ${skippedNoDxtrDate} appointments with no DXTR apt_date.`,
+      );
+    }
     return { data: results };
   } catch (originalError) {
     return {
@@ -161,26 +154,30 @@ async function updateBackfillState(
     processedCount: number;
     status: CaseAppointmentDateBackfillState['status'];
   },
+  existingState?: CaseAppointmentDateBackfillState | null,
 ): Promise<MaybeData<CaseAppointmentDateBackfillState>> {
   try {
     const repo = factory.getCaseAppointmentDateBackfillStateRepo(context);
     const now = new Date().toISOString();
 
-    let existingState: CaseAppointmentDateBackfillState | null = null;
-    try {
-      existingState = await repo.read('CASE_APPOINTMENT_DATE_BACKFILL_STATE');
-    } catch (originalError) {
-      if (!isNotFoundError(originalError)) {
-        throw originalError;
+    let stateBase = existingState;
+    if (stateBase === undefined) {
+      try {
+        stateBase = await repo.read('CASE_APPOINTMENT_DATE_BACKFILL_STATE');
+      } catch (originalError) {
+        if (!isNotFoundError(originalError)) {
+          throw originalError;
+        }
+        stateBase = null;
       }
     }
 
     const state: CaseAppointmentDateBackfillState = {
-      id: existingState?.id,
+      id: stateBase?.id,
       documentType: 'CASE_APPOINTMENT_DATE_BACKFILL_STATE',
       lastId: updates.lastId,
       processedCount: updates.processedCount,
-      startedAt: existingState?.startedAt ?? now,
+      startedAt: stateBase?.startedAt ?? now,
       lastUpdatedAt: now,
       status: updates.status,
     };
