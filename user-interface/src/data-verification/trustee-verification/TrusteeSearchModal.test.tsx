@@ -4,10 +4,12 @@ import { BrowserRouter } from 'react-router-dom';
 import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
 import Api2 from '@/lib/models/api2';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
+import { COURT_DIVISIONS } from '@common/cams/test-utilities/courts.mock';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 
 const modalId = 'test-search';
 const comboBoxId = `trustee-search-combobox-${modalId}`;
+const districtComboBoxId = `trustee-district-combobox-${modalId}`;
 
 const sampleResults: TrusteeSearchResult[] = [
   {
@@ -76,6 +78,7 @@ describe('TrusteeSearchModal', () => {
       cb(0);
       return 0;
     });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: COURT_DIVISIONS });
   });
 
   afterEach(() => {
@@ -89,13 +92,12 @@ describe('TrusteeSearchModal', () => {
     expect(wrapper).toHaveClass('is-hidden');
   });
 
-  test('shows heading and DXTR context after show() is called', async () => {
+  test('shows heading after show() is called', async () => {
     renderWithProps();
     act(() => modalRef.current?.show());
 
     await waitFor(() => {
       expect(document.querySelector('.usa-modal__heading')).toHaveTextContent('Search for Trustee');
-      expect(screen.getByText('DOE, JOHN')).toBeInTheDocument();
     });
   });
 
@@ -121,6 +123,30 @@ describe('TrusteeSearchModal', () => {
           ref={modalRef}
           id={modalId}
           dxtrTrusteeName="DOE, JOHN"
+          courtId="0881"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0881');
+    });
+  });
+
+  test('normalizes courtDivisionCode to courtId when searching', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    // courtDivisionCode '081' maps to courtId '0881' in COURT_DIVISIONS
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
           courtId="081"
           onConfirm={vi.fn()}
         />
@@ -131,7 +157,67 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', '081');
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0881');
+    });
+  });
+
+  test('renders Trustee District dropdown', async () => {
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      const expandButton = document.querySelector(`#${districtComboBoxId}-expand`);
+      expect(expandButton).toBeInTheDocument();
+    });
+  });
+
+  test('pre-selects district matching the courtId prop', async () => {
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await waitFor(() => {
+      const input = document.querySelector(
+        `#${districtComboBoxId}-combo-box-input`,
+      ) as HTMLInputElement;
+      expect(input?.value).toBe('Southern District of New York');
+    });
+  });
+
+  test('uses updated courtId from district dropdown for search', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    // Change district selection by clicking a court option
+    const districtExpandButton = document.querySelector(`#${districtComboBoxId}-expand`);
+    await userEvent.click(districtExpandButton!);
+    const districtInput = document.querySelector(
+      `#${districtComboBoxId}-combo-box-input`,
+    ) as HTMLInputElement;
+    await userEvent.type(districtInput, 'Alaska');
+    await waitFor(() => {
+      const firstOption = screen.getByTestId(`${districtComboBoxId}-option-item-0`);
+      expect(firstOption).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${districtComboBoxId}-option-item-0`));
+
+    // Now search by name
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      const courtId = COURT_DIVISIONS.find((c) => c.courtName === 'District of Alaska')?.courtId;
+      expect(searchSpy).toHaveBeenCalledWith('sm', courtId);
     });
   });
 
