@@ -1,3 +1,5 @@
+AGENTS.md
+
 # IDEs
 
 ## Keep the environment config out of the repo
@@ -126,3 +128,6 @@ dev-tools/.venv/
 vitest.config.d.ts
 vitest.config.js
 vitest.config.js.map
+
+# Beads issue tracker (local-only; issues are stored in the remote Dolt repo)
+.beads/

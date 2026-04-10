@@ -5,3 +5,4 @@
 * [Package Updates](/contributing/package-updates.md)
 * [Phonetic Search Guide](/contributing/phonetic-search.md)
 * [React Best Practices](/contributing/react-best-practices/README.md)
+* [Screen Reader Testing](/contributing/screen-reader-testing.md)

@@ -60,6 +60,7 @@
   "ignoreBinaries": [
     "pushd",
     "popd",
+    "tsx",
     "playwright",
     "dot",
     "dev-tools/.venv-docs/bin/python",

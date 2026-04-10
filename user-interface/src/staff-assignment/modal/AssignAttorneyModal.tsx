@@ -22,6 +22,7 @@ function AssignAttorneyModal_(
   const controls = useAssignAttorneyModalControlsReact();
   const store = useAssignAttorneyModalStoreReact();
   const useCase = assignAttorneyModalUseCase(store, controls);
+  const [leadTrialAttorney, setLeadTrialAttorney] = useState<CamsUserReference | null>(null);
 
   const modalHeading = (
     <>
@@ -37,7 +38,10 @@ function AssignAttorneyModal_(
     modalRef: ref as React.RefObject<ModalRefType | null>,
     submitButton: {
       label: 'Assign',
-      onClick: () => useCase.submitValues(props.assignmentChangeCallback),
+      onClick: () => {
+        if (!leadTrialAttorney) return;
+        useCase.submitValues(props.assignmentChangeCallback, leadTrialAttorney);
+      },
       disabled: true,
       closeOnClick: false,
     },
@@ -55,6 +59,7 @@ function AssignAttorneyModal_(
 
   useEffect(() => {
     useCase.fetchAttorneys();
+    setLeadTrialAttorney(store.bCase?.leadTrialAttorney ?? null);
   }, [store.bCase]);
 
   useEffect(() => {
@@ -62,6 +67,21 @@ function AssignAttorneyModal_(
       globalAlert?.error(store.globalAlertError);
     }
   }, [store.globalAlertError]);
+
+  useEffect(() => {
+    const checked = store.checkListValues;
+    if (checked.length === 1) {
+      setLeadTrialAttorney({ id: checked[0].id, name: checked[0].name });
+    } else {
+      setLeadTrialAttorney((prev) =>
+        prev && !checked.find((a) => a.id === prev.id) ? null : prev,
+      );
+    }
+  }, [store.checkListValues]);
+
+  useEffect(() => {
+    controls.modalRef.current?.buttons?.current?.disableSubmitButton(leadTrialAttorney === null);
+  }, [leadTrialAttorney]);
 
   const viewModel: AssignAttorneyModalViewModel = {
     actionButtonGroup,
@@ -79,6 +99,9 @@ function AssignAttorneyModal_(
     sortAttorneys: useCase.sortAttorneys,
     tableContainerRef: controls.tableContainerRef,
     updateCheckList: useCase.updateCheckList,
+    checkedAttorneys: store.checkListValues,
+    leadTrialAttorney,
+    updateLeadTrialAttorney: setLeadTrialAttorney,
   };
 
   return <AssignAttorneyModalView viewModel={viewModel} />;

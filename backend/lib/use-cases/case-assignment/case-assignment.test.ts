@@ -431,6 +431,127 @@ describe('Case assignment tests', () => {
       expect(createAssignment).not.toHaveBeenCalled();
     });
 
+    test('should throw when more than one LeadTrialAttorney is assigned', async () => {
+      vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
+      await expect(
+        assignmentUseCase.createTrialAttorneyAssignments(
+          applicationContext,
+          caseId,
+          [attorneyJaneSmith, attorneyJoeNobel],
+          CamsRole.LeadTrialAttorney,
+        ),
+      ).rejects.toThrow('Only one Lead Trial Attorney may be assigned to a case.');
+    });
+
+    test('should use TrialAttorney as assignableRole when role is LeadTrialAttorney', async () => {
+      const searchSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'search')
+        .mockImplementation((predicate: OfficeUserRolesPredicate) => {
+          if (predicate.userId === attorneyJaneSmith.id) {
+            return Promise.resolve([officeStaffJaneSmith]);
+          }
+          return Promise.resolve([]);
+        });
+      vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'create').mockImplementation(
+        (consolidationOrder: ConsolidationOrder) =>
+          Promise.resolve(MockData.getConsolidationOrder({ override: { ...consolidationOrder } })),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
+
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
+      await assignmentUseCase.createTrialAttorneyAssignments(
+        applicationContext,
+        caseId,
+        [attorneyJaneSmith],
+        CamsRole.LeadTrialAttorney,
+      );
+
+      expect(searchSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ role: CamsRole.TrialAttorney }),
+      );
+    });
+
+    test('should not remove TrialAttorney assignments when assigning a LeadTrialAttorney', async () => {
+      const trialAttorneyRecord = {
+        caseId,
+        userId: attorneyJoeNobel.id,
+        name: attorneyJoeNobel.name,
+        role: CamsRole.TrialAttorney,
+      };
+      vi.spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases').mockResolvedValue(
+        new Map([[caseId, [trialAttorneyRecord]]]),
+      );
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'update')
+        .mockResolvedValue(randomId);
+      vi.spyOn(MockMongoRepository.prototype, 'create').mockImplementation(
+        (consolidationOrder: ConsolidationOrder) =>
+          Promise.resolve(MockData.getConsolidationOrder({ override: { ...consolidationOrder } })),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
+      vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
+
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
+      await assignmentUseCase.createTrialAttorneyAssignments(
+        applicationContext,
+        caseId,
+        [attorneyJaneSmith],
+        CamsRole.LeadTrialAttorney,
+      );
+
+      expect(updateSpy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ role: CamsRole.TrialAttorney }),
+      );
+    });
+
+    test('should create assignment with LeadTrialAttorney role when role is LeadTrialAttorney', async () => {
+      vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
+        MockData.getCaseDetail({
+          override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },
+        }),
+      );
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'create')
+        .mockImplementation((consolidationOrder: ConsolidationOrder) =>
+          Promise.resolve(MockData.getConsolidationOrder({ override: { ...consolidationOrder } })),
+        );
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseHistory').mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'getConsolidation').mockResolvedValue([]);
+
+      const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
+      await assignmentUseCase.createTrialAttorneyAssignments(
+        applicationContext,
+        caseId,
+        [attorneyJaneSmith],
+        CamsRole.LeadTrialAttorney,
+      );
+
+      expect(createSpy.mock.calls[0][0]).toEqual(
+        expect.objectContaining({
+          caseId,
+          userId: attorneyJaneSmith.id,
+          name: attorneyJaneSmith.name,
+          role: CamsRole.LeadTrialAttorney,
+        }),
+      );
+    });
+
     test('should not do anything if user does have the CaseAssignmentManager role but not for the correct division', async () => {
       const assignmentUseCase = new CaseAssignmentUseCase(applicationContext);
       vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
