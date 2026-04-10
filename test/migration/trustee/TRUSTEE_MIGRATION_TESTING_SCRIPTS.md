@@ -98,7 +98,8 @@ Directly inserts synthetic fixtures into MongoDB. No VPN or ATS connection requi
 | `seed-proid` | Create 3 trustees WITH professional IDs + 3 WITHOUT |
 | `seed-match-verification` | Create `TrusteeMatchVerification` docs for all Slice 3 outcomes |
 | `list` | Show all seeded test data currently in MongoDB |
-| `clean` | Delete all seeded test data (trustees, proIds, verifications) |
+| `clean` | Delete only seeded test data (SEED Test trustees, proIds, TST-/SEED- verifications) |
+| `clean-all` | Delete **all** trustee data regardless of origin — use to fully reset dev Cosmos DB |
 
 ```bash
 # Seed trustees with and without professional IDs
@@ -116,10 +117,17 @@ npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
   list
 
-# Remove all seeded test data
+# Remove only seeded test data (SEED Test trustees + TST-/SEED- verifications)
 npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
   clean
+
+# Remove ALL trustee data (full dev Cosmos DB reset)
+# Wipes: trustees, trustee-appointments, trustee-professional-ids,
+#        trustee-match-verification, and trustee-related runtime-state entries
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/seed-test-trustees.ts \
+  clean-all
 ```
 
 ### Zoom CSV import script (Slice 3)
@@ -424,6 +432,9 @@ db['trustee-match-verification'].find({ caseId: /^SEED-/, status: { $ne: 'pendin
 This sequence exercises all three slices together:
 
 ```bash
+# 0. (Optional) Full reset — wipe all stale trustee data before starting fresh
+npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean-all
+
 # 1. Verify ATS connection and active trustee counts (Slice 1)
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/test-trustee-migration-local.ts test
 
@@ -436,7 +447,7 @@ npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/test-tru
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/test-trustee-migration-local.ts state
 
 # 4. Seed synthetic proId scenarios for controlled testing (Slice 2)
-# if clean slate is needed: npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean
+# if a clean slate is needed: npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean-all
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-proid
 
 # 5. Seed match verification scenarios (CAMS-713 Slice 3)
@@ -462,8 +473,9 @@ npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-tes
 |---|---|
 | Re-run migration from scratch | `test-trustee-migration-local.ts clean` then `run` |
 | Reset migration state only (keep trustees) | `test-trustee-migration-local.ts reset` |
-| Remove synthetic seed data | `seed-test-trustees.ts clean` |
+| Remove only synthetic seed data | `seed-test-trustees.ts clean` |
 | Remove all seeded data and restart migration | Both clean commands, then `run` |
+| **Full dev DB reset** (stale data from many runs) | `seed-test-trustees.ts clean-all` then `run` |
 
 ---
 

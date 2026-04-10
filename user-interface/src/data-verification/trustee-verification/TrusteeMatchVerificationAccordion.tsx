@@ -479,7 +479,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         ref={searchModalRef}
         id={order.id}
         dxtrTrusteeName={order.dxtrTrustee.fullName}
-        courtId={order.courtId}
+        courtId={courtDetails?.courtId ?? order.courtId}
         onConfirm={handleManualMatch}
       />
     </>
