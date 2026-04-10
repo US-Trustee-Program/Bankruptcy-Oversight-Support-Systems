@@ -1,23 +1,8 @@
 #!/bin/bash
 set -e
 
-# Start all services as background processes, wait for readiness, seed, start Functions host.
-# All services run on localhost inside a single container.
-
-echo "[entrypoint] Starting MongoDB..."
-mongod --bind_ip_all --dbpath /data/db --fork --logpath /var/log/mongodb/mongod.log
-
-echo "[entrypoint] Starting SQL Edge..."
-# LD_LIBRARY_PATH scoped to sqlservr only — prevents SQL Edge's older libs
-# (OpenSSL 1.1, libldap 2.4, Heimdal, libsss-nss-idmap) from conflicting
-# with the Bookworm system libs used by all other processes.
-ACCEPT_EULA=Y MSSQL_SA_PASSWORD="${MSSQL_PASS}" MSSQL_PID=Developer \
-  LD_LIBRARY_PATH="/opt/mssql-libs:${LD_LIBRARY_PATH:-}" \
-  /opt/mssql/bin/sqlservr &
-
-echo "[entrypoint] Starting Azurite..."
-azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 \
-  --location /data/azurite --silent &
+# Wait for pod-sibling services (MongoDB, SQL Edge, Azurite) then seed and start
+# the Functions host. All services share localhost via the Podman pod network namespace.
 
 # Wait for MongoDB
 echo "[entrypoint] Waiting for MongoDB..."
@@ -69,8 +54,7 @@ LOCAL_MSSQL_HOST=localhost \
 
 echo "[entrypoint] Databases seeded"
 
-# Warm up SQL Server plan cache and buffer pool.
-# The offices query (5-table JOIN) times out on a cold SQL Edge instance.
+# Warm up SQL Server plan cache
 echo "[entrypoint] Warming up SQL Server..."
 LOCAL_MSSQL_HOST=localhost \
   LOCAL_MSSQL_USER=sa \

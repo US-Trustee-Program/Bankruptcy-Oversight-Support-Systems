@@ -3,33 +3,27 @@
 # Complete E2E Testing Workflow
 # Orchestrates: build → start → wait → test → report → teardown
 #
-# Architecture: 3 containers, all on host network
-#   backend:    MongoDB + SQL Edge + Azurite + Azure Functions (all localhost)
-#   frontend:   Vite preview server (port 3000)
-#   playwright: Chromium test runner
+# Architecture:
+#   cams-e2e-pod  (Podman pod — shared localhost network namespace)
+#     ├── sqledge   mcr.microsoft.com/azure-sql-edge:latest
+#     ├── mongodb   mongo:7.0
+#     ├── azurite   mcr.microsoft.com/azure-storage/azurite:latest
+#     └── backend   e2e_backend:latest (Functions host, seeds DBs on startup)
+#   frontend        e2e_frontend:latest (port 3000, standalone)
+#   playwright      e2e_playwright:latest (test runner, standalone)
 #
-# Usage: ./run-e2e-workflow.sh [OPTIONS]
-#   --open-report    Open HTML report in browser after tests complete
+# Usage: ./run-e2e-workflow.sh [--open-report]
 
 set -e
 
-# Parse command line arguments
 OPEN_REPORT=false
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --open-report)
-            OPEN_REPORT=true
-            shift
-            ;;
-        *)
-            echo "Unknown option: $1"
-            echo "Usage: $0 [--open-report]"
-            exit 1
-            ;;
+        --open-report) OPEN_REPORT=true; shift ;;
+        *) echo "Unknown option: $1"; exit 1 ;;
     esac
 done
 
-# Suppress dotenv hints/tips
 export DOTENV_CONFIG_SILENT=true
 export DOTENV_QUIET=true
 
@@ -37,57 +31,46 @@ echo "🚀 Starting Complete E2E Testing Workflow"
 echo "=========================================="
 echo ""
 
-# Color codes for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Navigate to e2e directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
-COMPOSE_FILES="-f podman-compose.yml"
-
-# shellcheck disable=SC2086
-pcompose() {
-    podman-compose $COMPOSE_FILES "$@"
-}
-
-# Check if .env exists
 if [ ! -f ".env" ]; then
     echo -e "${RED}❌ Error: .env file not found in test/e2e/${NC}"
     exit 1
 fi
 
-# Load environment variables from .env
 set -a
 # shellcheck disable=SC1091
 source .env
 set +a
 
+POD_NAME="cams-e2e-pod"
 TESTS_PASSED=false
 CLEANUP_NEEDED=false
 
-# Collect container logs
 collect_container_logs() {
     local log_dir="container-logs"
     mkdir -p "${log_dir}"
-    for container in cams-backend-e2e cams-frontend-e2e; do
+    for container in cams-sqledge-e2e cams-mongodb-e2e cams-azurite-e2e cams-backend-e2e cams-frontend-e2e; do
         podman logs "${container}" > "${log_dir}/${container}.log" 2>&1 || true
     done
     echo -e "${BLUE}📋 Container logs saved to ${log_dir}/${NC}"
 }
 
-# Cleanup on exit
-# shellcheck disable=SC2329
 cleanup() {
     if [ "$CLEANUP_NEEDED" = true ]; then
         echo ""
         collect_container_logs
         echo -e "${BLUE}🧹 Tearing down services...${NC}"
-        pcompose down 2>/dev/null || true
+        podman pod stop "${POD_NAME}" 2>/dev/null || true
+        podman pod rm -f "${POD_NAME}" 2>/dev/null || true
+        podman rm -f cams-frontend-e2e cams-playwright-e2e 2>/dev/null || true
         echo -e "${GREEN}✅ Services stopped${NC}"
     fi
 }
@@ -103,7 +86,6 @@ REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
 DEPS_HASH=$(cat ../../package*.json ../../common/package*.json ../../backend/package*.json ../../user-interface/package*.json package*.json 2>/dev/null | sha256sum | cut -c1-12)
 DEPS_CACHED_IMAGE="${REGISTRY}/e2e-deps:${DEPS_HASH}"
 
-# Build or pull deps image
 DEPS_EXISTS=$(podman images -q localhost/e2e_deps:latest 2>/dev/null)
 if [ "${FORCE_REBUILD_DEPS:-false}" = "true" ]; then
     echo "Force-rebuilding deps image..."
@@ -118,7 +100,6 @@ else
     podman build -t localhost/e2e_deps:latest -f Dockerfile.deps ../../
 fi
 
-# Build or reuse built image
 BUILT_EXISTS=$(podman images -q localhost/e2e_built:latest)
 if [ -z "$BUILT_EXISTS" ]; then
     echo "Building compiled image (first time)..."
@@ -127,7 +108,6 @@ else
     echo "Using cached built image (run 'npm run podman:rebuild-built' to rebuild)"
 fi
 
-# Build service images
 echo "Building service images..."
 podman build -t e2e_backend:latest -f Dockerfile.backend ../../
 podman build -t e2e_frontend:latest -f Dockerfile.frontend ../../
@@ -137,35 +117,83 @@ echo -e "${GREEN}✅ Images built${NC}"
 echo ""
 
 # ──────────────────────────────────────────────────────
-# Step 2: Start services and wait for readiness
+# Step 2: Start services
 # ──────────────────────────────────────────────────────
-
-# Clean up previous run
 echo -e "${BLUE}🧹 Cleaning up previous run...${NC}"
-pcompose down 2>/dev/null || true
-podman rm -f cams-backend-e2e cams-frontend-e2e cams-playwright-e2e >/dev/null 2>&1 || true
+podman pod stop "${POD_NAME}" 2>/dev/null || true
+podman pod rm -f "${POD_NAME}" 2>/dev/null || true
+podman rm -f cams-frontend-e2e cams-playwright-e2e >/dev/null 2>&1 || true
 rm -rf container-logs/*.log test-results/* playwright-report/*
 echo ""
 
-# Start backend (includes MongoDB, SQL Edge, Azurite — seeds DBs on startup)
-echo -e "${BLUE}⏳ Step 2: Starting backend (databases + API)...${NC}"
-pcompose up -d backend
+echo -e "${BLUE}⏳ Step 2: Starting pod and services...${NC}"
+
+# Create the pod — publishes the ports that need host access
+podman pod create \
+    --name "${POD_NAME}" \
+    --publish 7071:7071 \
+    --publish 1433:1433 \
+    --publish 27017:27017 \
+    --publish 10000:10000 \
+    --publish 10001:10001 \
+    --publish 10002:10002
+
+# Start SQL Edge in the pod
+podman run -d \
+    --pod "${POD_NAME}" \
+    --name cams-sqledge-e2e \
+    -e ACCEPT_EULA=Y \
+    -e MSSQL_SA_PASSWORD="${MSSQL_PASS}" \
+    -e MSSQL_PID=Developer \
+    mcr.microsoft.com/azure-sql-edge:latest
+
+# Start MongoDB in the pod
+podman run -d \
+    --pod "${POD_NAME}" \
+    --name cams-mongodb-e2e \
+    mongo:7.0 --bind_ip_all
+
+# Start Azurite in the pod
+podman run -d \
+    --pod "${POD_NAME}" \
+    --name cams-azurite-e2e \
+    mcr.microsoft.com/azure-storage/azurite:latest \
+    azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
+
+# Start backend in the pod (waits for DBs, seeds, starts Functions host)
+podman run -d \
+    --pod "${POD_NAME}" \
+    --name cams-backend-e2e \
+    -e NODE_ENV=development \
+    -e DOTENV_CONFIG_SILENT=true \
+    -e COSMOS_DATABASE_NAME="${COSMOS_DATABASE_NAME}" \
+    -e MONGO_CONNECTION_STRING="mongodb://localhost:27017/cams-e2e?retrywrites=false" \
+    -e DATABASE_MOCK="${DATABASE_MOCK}" \
+    -e MSSQL_HOST=localhost \
+    -e MSSQL_DATABASE="${MSSQL_DATABASE:-}" \
+    -e MSSQL_DATABASE_DXTR="${MSSQL_DATABASE_DXTR}" \
+    -e MSSQL_USER="${MSSQL_USER}" \
+    -e MSSQL_PASS="${MSSQL_PASS}" \
+    -e MSSQL_ENCRYPT="${MSSQL_ENCRYPT}" \
+    -e MSSQL_TRUST_UNSIGNED_CERT="${MSSQL_TRUST_UNSIGNED_CERT}" \
+    -e MSSQL_REQUEST_TIMEOUT="${MSSQL_REQUEST_TIMEOUT:-60000}" \
+    -e SLOT_NAME="${SLOT_NAME}" \
+    e2e_backend:latest
+
 CLEANUP_NEEDED=true
 echo ""
 
-# Verify container is running
+# Verify backend container started
 if ! podman ps --filter name=cams-backend-e2e --format "{{.Names}}" | grep -q cams-backend-e2e; then
     echo -e "${RED}❌ Backend container failed to start${NC}"
-    echo ""
-    echo -e "${BLUE}Build/start logs:${NC}"
-    podman logs cams-backend-e2e 2>&1 | tail -30 || echo "  (no logs available)"
+    podman logs cams-backend-e2e 2>&1 | tail -30
     exit 1
 fi
 
-# Wait for backend healthcheck (databases start, seed, then Functions host starts)
-echo "Waiting for backend to be ready..."
+# Wait for backend healthcheck
+echo "Waiting for backend (databases + seeding + Functions host)..."
 APP_WAIT_COUNT=0
-APP_MAX_WAIT=120
+APP_MAX_WAIT=180
 
 while [ $APP_WAIT_COUNT -lt $APP_MAX_WAIT ]; do
     BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:7071/api/healthcheck 2>/dev/null || echo "000")
@@ -181,25 +209,36 @@ done
 if [ $APP_WAIT_COUNT -ge $APP_MAX_WAIT ]; then
     echo ""
     echo -e "${RED}❌ Backend failed to become healthy within ${APP_MAX_WAIT}s${NC}"
-    echo ""
-    echo -e "${BLUE}Backend logs (last 50 lines):${NC}"
     podman logs --tail 50 cams-backend-e2e 2>&1 | sed 's/^/  /'
     exit 1
 fi
 echo ""
 
-# Start frontend
+# Start frontend (standalone — not in pod, port 3000)
 echo "Starting frontend..."
-pcompose up -d frontend > /dev/null
+podman run -d \
+    --name cams-frontend-e2e \
+    --publish 3000:3000 \
+    -e BROWSER=none \
+    -e DOTENV_CONFIG_SILENT=true \
+    -e CAMS_PA11Y=false \
+    -e CAMS_FEATURE_FLAGS_MODE=test \
+    -e CAMS_LOGIN_PROVIDER="${CAMS_LOGIN_PROVIDER}" \
+    -e CAMS_LOGIN_PROVIDER_CONFIG="${CAMS_LOGIN_PROVIDER_CONFIG}" \
+    -e CAMS_SERVER_HOSTNAME="${CAMS_SERVER_HOSTNAME}" \
+    -e CAMS_SERVER_PORT="${CAMS_SERVER_PORT}" \
+    -e CAMS_SERVER_PROTOCOL="${CAMS_SERVER_PROTOCOL}" \
+    -e CAMS_APPLICATIONINSIGHTS_CONNECTION_STRING= \
+    -e SLOT_NAME="${SLOT_NAME}" \
+    e2e_frontend:latest
 
-# Wait for frontend
 echo "Waiting for frontend..."
 for i in $(seq 1 60); do
     if curl -s --max-time 3 http://localhost:3000 > /dev/null 2>&1; then
         echo -e "${GREEN}✅ Frontend healthy${NC}"
         break
     fi
-    [ "$i" -eq 60 ] && echo -e "${RED}❌ Frontend failed to start within 60s${NC}" && podman logs --tail 20 cams-frontend-e2e 2>&1 && exit 1
+    [ "$i" -eq 60 ] && echo -e "${RED}❌ Frontend failed to start${NC}" && podman logs --tail 20 cams-frontend-e2e 2>&1 && exit 1
     sleep 1
 done
 echo ""
@@ -214,13 +253,22 @@ echo ""
 
 TEST_OUTPUT_FILE=$(mktemp)
 set +e
-pcompose run --rm --no-deps playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
+podman run --rm \
+    --name cams-playwright-e2e \
+    --network host \
+    -e DOTENV_CONFIG_SILENT=true \
+    -e TARGET_HOST=http://localhost:3000 \
+    -e CAMS_LOGIN_PROVIDER="${CAMS_LOGIN_PROVIDER}" \
+    -e OKTA_USER_NAME="${OKTA_USER_NAME}" \
+    -e OKTA_PASSWORD="${OKTA_PASSWORD}" \
+    -v "$(pwd)/test-results:/app/test/e2e/test-results" \
+    -v "$(pwd)/playwright-report:/app/test/e2e/playwright-report" \
+    e2e_playwright:latest npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
 TEST_EXIT_CODE=${PIPESTATUS[0]}
 set -e
 TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
 rm -f "$TEST_OUTPUT_FILE"
 
-# Save logs (containers still running)
 collect_container_logs
 mkdir -p backend-logs
 cp container-logs/cams-backend-e2e.log backend-logs/backend.log 2>/dev/null || true
@@ -282,9 +330,7 @@ fi
 echo ""
 
 if [ "$OPEN_REPORT" = true ] && [ -f "playwright-report/index.html" ]; then
-    if command -v open >/dev/null 2>&1; then
-        open playwright-report/index.html
-    fi
+    command -v open >/dev/null 2>&1 && open playwright-report/index.html
 fi
 
 [ "$TESTS_PASSED" = true ] && exit 0 || exit 1

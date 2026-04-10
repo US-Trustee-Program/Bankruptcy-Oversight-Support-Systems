@@ -1,11 +1,9 @@
 # Backend API Dockerfile for E2E Testing
 #
-# Single container running all E2E services on localhost:
-# - MongoDB (port 27017), SQL Edge (port 1433), Azurite (ports 10000-10002)
-# - Azure Functions host (port 7071)
-#
-# MongoDB, SQL Edge, Azurite, and supervisord are pre-installed in e2e_deps.
-# This image just adds config files and the entrypoint.
+# Runs Azure Functions host only. MongoDB, SQL Edge, and Azurite run as
+# separate official containers in the same Podman pod, sharing localhost.
+# Seeds databases on startup before starting the Functions host.
+
 FROM localhost/e2e_built:latest
 
 # Provide CORS config and host settings for the local Functions host
@@ -15,7 +13,7 @@ COPY test/e2e/host.backend.json ./host.json
 
 WORKDIR /app
 
-# Copy e2e seed scripts and fixtures (not in e2e_built which only has common/backend/ui)
+# Copy e2e seed scripts and fixtures
 COPY test/e2e/scripts/ ./test/e2e/scripts/
 COPY test/e2e/fixtures/ ./test/e2e/fixtures/
 COPY test/e2e/package.json ./test/e2e/package.json
@@ -24,6 +22,6 @@ COPY test/e2e/package.json ./test/e2e/package.json
 COPY test/e2e/scripts/entrypoint-backend.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 7071 27017 1433 10000 10001 10002
+EXPOSE 7071
 
 CMD ["/app/entrypoint.sh"]

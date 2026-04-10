@@ -1,76 +1,21 @@
 # Dependencies-only base image (cached, rarely changes)
 #
-# Includes: Node.js deps, Azure Functions Core Tools, Azurite,
-# MongoDB server, Azure SQL Edge, and supervisord.
+# Includes: Node.js, Azure Functions Core Tools, Azurite, and npm workspace deps.
+# MongoDB and SQL Edge run as separate official containers in the same Podman pod,
+# sharing localhost — no library grafting needed.
 
-# Grab binaries from official images
-FROM mcr.microsoft.com/azure-sql-edge:latest AS sqledge
-FROM mongo:7.0 AS mongodb
-
-# Build the deps image
 FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-# Install system dependencies, supervisor, and runtime libs for MongoDB + SQL Edge
+# Install system dependencies
 RUN apt-get update && \
-    apt-get install -y curl libicu72 netcat-openbsd libssl3 libcurl4 libnuma1 libatomic1 libsqlite3-0 && \
+    apt-get install -y curl libicu72 netcat-openbsd && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install Azure Functions Core Tools and Azurite globally together so
-# both tools share a consistent global node_modules dependency resolution.
+# Install Azure Functions Core Tools and Azurite globally
 RUN npm install -g azure-functions-core-tools@4 azurite --unsafe-perm true
-
-# Copy MongoDB binaries from official image (ARM64 native)
-COPY --from=mongodb /usr/bin/mongod /usr/bin/mongod
-COPY --from=mongodb /usr/bin/mongosh /usr/bin/mongosh
-COPY --from=mongodb /usr/bin/mongos /usr/bin/mongos
-
-# Copy SQL Edge binaries and ALL shared libraries from official image.
-# SQL Edge links against OpenSSL 1.1, libldap 2.4, Heimdal Kerberos, and
-# libsss-nss-idmap — none of which are in Bookworm. Rather than chasing
-# individual .so files, copy the entire lib directory into a separate path
-# and use LD_LIBRARY_PATH so sqlservr finds them without conflicting with
-# the host's libs. This is arch-agnostic (works on both aarch64 and x86_64).
-COPY --from=sqledge /opt/mssql /opt/mssql
-# Copy SQL Edge-specific shared libraries that are missing from Bookworm into an
-# isolated directory. DO NOT include core glibc libs (libc, libpthread, libm, etc.)
-# as they conflict with Bookworm's system libc and break the shell.
-# Only copy libs that sqlservr needs but Bookworm doesn't provide:
-# OpenSSL 1.1, libldap 2.4, Heimdal Kerberos, libsss-nss-idmap.
-# LD_LIBRARY_PATH is set in the entrypoint only for the sqlservr process.
-#
-# We copy the entire arch-specific lib dir from sqledge then delete known-conflicting
-# glibc/gcc libs, leaving only the SQL Edge-specific ones.
-COPY --from=sqledge /usr/lib/ /opt/mssql-libs-src/
-RUN mkdir -p /opt/mssql-libs && \
-    ARCH_DIR=$(find /opt/mssql-libs-src -maxdepth 1 -type d -name "*linux-gnu*" | head -1) && \
-    if [ -n "$ARCH_DIR" ]; then \
-        cp ${ARCH_DIR}/libsss_nss_idmap.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libldap_r-2.4.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/liblber-2.4.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libcrypto.so.1.1 /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libssl.so.1.1 /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libsasl2.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libgssapi.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libheimntlm.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libkrb5.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libhx509.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libroken.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libasn1.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libwind.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libheimbase.so* /opt/mssql-libs/ 2>/dev/null || true; \
-        cp ${ARCH_DIR}/libhcrypto.so* /opt/mssql-libs/ 2>/dev/null || true; \
-    fi && \
-    rm -rf /opt/mssql-libs-src
-ENV PATH="/opt/mssql/bin:${PATH}"
-
-# Create data/log directories for all embedded services
-RUN mkdir -p /data/db /var/log/mongodb /var/log/supervisor \
-    /var/opt/mssql/data /var/opt/mssql/log /var/opt/mssql/secrets \
-    /data/azurite && \
-    chmod -R 777 /data/db /var/log/mongodb /var/opt/mssql /data/azurite
 
 # Copy only package files for dependency installation (cached layer)
 COPY package*.json ./
@@ -79,5 +24,5 @@ COPY backend/package*.json ./backend/
 COPY user-interface/package*.json ./user-interface/
 COPY test/e2e/package*.json ./test/e2e/
 
-# Install all dependencies (cached layer - only rebuilds when package*.json changes)
+# Install all dependencies
 RUN npm ci
