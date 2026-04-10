@@ -118,10 +118,10 @@ test.describe('Trustee Match Verification', () => {
 
     const content = page.getByTestId(`accordion-content-order-list-${inactiveItem!.id}`);
     await expect(content).toBeVisible(timeoutOption);
-    await expect(content).toContainText('inactive appointment status');
+    await expect(content).toContainText('inactive in CAMS but was appointed to case');
   });
 
-  test('should show warning alert with inactive status for inactive match verification', async ({
+  test('should show inactive trustee task type label for inactive match verification', async ({
     page,
   }) => {
     const inactiveItem = verificationItems.find(
@@ -133,8 +133,8 @@ test.describe('Trustee Match Verification', () => {
 
     await page.getByTestId(`accordion-button-order-list-${inactiveItem!.id}`).click();
 
-    const alert = page.getByTestId(`alert-inactive-status-warning-${inactiveItem!.id}`);
-    await expect(alert).toBeVisible(timeoutOption);
-    await expect(alert).toContainText('Voluntarily Suspended');
+    const content = page.getByTestId(`accordion-content-order-list-${inactiveItem!.id}`);
+    await expect(content).toBeVisible(timeoutOption);
+    await expect(content).toContainText('Inactive trustee');
   });
 });
