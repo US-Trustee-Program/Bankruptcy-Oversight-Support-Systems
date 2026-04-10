@@ -182,12 +182,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   }
 
   function getResolvedTrusteeDisplayName(): string {
-    return (
-      order.resolvedTrusteeName ??
-      order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)?.trusteeName ??
-      order.resolvedTrusteeId ??
-      ''
-    );
+    const matchedCandidateName = order.matchCandidates.find(
+      (c) => c.trusteeId === order.resolvedTrusteeId,
+    )?.trusteeName;
+    return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
   }
 
   type TrusteeCandidateRowProps = {
