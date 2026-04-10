@@ -55,6 +55,10 @@ Alternatively, you can run the tests in interactive UI mode:
 npm run test:a11y:ui
 ```
 
+### Screen Reader Testing
+
+Automated axe-core tests catch structural accessibility issues but cannot evaluate focus management, live region announcements, reading order, or interactive widget behavior. For manual screen reader testing with NVDA and Narrator on a local Windows VM, see the [Screen Reader Testing Guide](/contributing/screen-reader-testing.md).
+
 ## Node Version
 
 [Node Version Manager](https://github.com/nvm-sh/nvm) supports consistent use of a specific version of Node across environments.
