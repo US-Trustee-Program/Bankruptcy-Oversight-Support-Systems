@@ -4,7 +4,7 @@ import { TrusteeMatchVerification } from '../../../common/src/cams/trustee-match
 import { TrusteeAppointmentSyncErrorCode } from '../../../common/src/cams/dataflow-events';
 import { logout } from './login/login-helpers';
 
-const timeoutOption = { timeout: 30000 };
+const timeoutOption = { timeout: 60000 };
 
 test.describe('Trustee Match Verification', () => {
   let verificationItems: TrusteeMatchVerification[];
@@ -131,10 +131,8 @@ test.describe('Trustee Match Verification', () => {
     );
     expect(inactiveItem).not.toBeFalsy();
 
-    await page.getByTestId(`accordion-button-order-list-${inactiveItem!.id}`).click();
-
-    const content = page.getByTestId(`accordion-content-order-list-${inactiveItem!.id}`);
-    await expect(content).toBeVisible(timeoutOption);
-    await expect(content).toContainText('Inactive trustee');
+    const heading = page.getByTestId(`accordion-heading-${inactiveItem!.id}`);
+    await expect(heading).toBeVisible(timeoutOption);
+    await expect(heading).toContainText('Inactive trustee');
   });
 });

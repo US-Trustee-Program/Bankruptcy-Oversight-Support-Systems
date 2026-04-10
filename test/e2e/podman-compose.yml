@@ -1,75 +1,24 @@
 version: '3.8'
 
+# Simplified E2E architecture:
+# - backend: all-in-one container (MongoDB + SQL Edge + Azurite + Functions host)
+# - frontend: Vite preview server
+# - playwright: test runner
+#
+# All services use host networking — every port is on localhost.
+
 services:
-  # Azurite (Azure Storage Emulator) - separate service for backend to connect to
-  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
-  azurite:
-    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-azure-storage-azurite-latest
-    container_name: cams-azurite-e2e
-    ports:
-      - "10000:10000"
-      - "10001:10001"
-      - "10002:10002"
-    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --location /data
-    networks:
-      - cams-e2e
-    healthcheck:
-      disable: true
-
-  # MongoDB (compatible with Cosmos DB MongoDB API)
-  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
-  mongodb:
-    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-mongo-7.0
-    container_name: cams-mongodb-e2e
-    ports:
-      - "27017:27017"
-    environment:
-      - MONGO_INITDB_DATABASE=cams-e2e
-    # Removed volume mount - causes permission issues in rootless podman (GitHub Actions)
-    # Data persistence not needed for E2E tests - fresh DB seeded each run
-    networks:
-      - cams-e2e
-    healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-      start_period: 10s
-
-  # Azure SQL Edge (ARM64-compatible SQL Server for testing)
-  # Image cached to ghcr.io — run `npm run podman:cache-images` to refresh upstream
-  sqlserver:
-    image: ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems/e2e-base-azure-sql-edge-latest
-    container_name: cams-sqlserver-e2e
-    ports:
-      - "1433:1433"
-    environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_SA_PASSWORD=${MSSQL_PASS}
-      - MSSQL_PID=Developer
-    # Volume removed: causes permission issues in rootless podman (GitHub Actions CI)
-    # E2E tests don't need data persistence - DB is seeded fresh each run
-    networks:
-      - cams-e2e
-    healthcheck:
-      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/1433' 2>/dev/null && echo OK || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
-
-  # Backend API service
-  # Connects to external Azurite service over bridge network.
-  # Bridge network gives it azurite/mongodb/sqlserver DNS.
-  # Port 7071 published for Playwright.
+  # All-in-one backend: MongoDB, SQL Edge, Azurite, and Azure Functions
+  # Databases run internally on localhost within the container.
+  # Only port 7071 (API) is exposed to the host for Playwright/frontend.
   backend:
     build:
       context: ../../
       dockerfile: test/e2e/Dockerfile.backend
     container_name: cams-backend-e2e
-    restart: "no"
     ports:
       - "7071:7071"
+    restart: "no"
     env_file:
       - .env
     environment:
@@ -77,26 +26,25 @@ services:
       - DOTENV_CONFIG_SILENT=true
       - DOTENV_QUIET=true
       - COSMOS_DATABASE_NAME=${COSMOS_DATABASE_NAME}
-      - MONGO_CONNECTION_STRING=mongodb://mongodb:27017/cams-e2e?retrywrites=false
+      - MONGO_CONNECTION_STRING=mongodb://localhost:27017/cams-e2e?retrywrites=false
       - DATABASE_MOCK=${DATABASE_MOCK}
-      - MSSQL_HOST=sqlserver
+      - MSSQL_HOST=localhost
       - MSSQL_DATABASE=${MSSQL_DATABASE}
       - MSSQL_DATABASE_DXTR=${MSSQL_DATABASE_DXTR}
       - MSSQL_USER=${MSSQL_USER}
       - MSSQL_PASS=${MSSQL_PASS}
       - MSSQL_ENCRYPT=${MSSQL_ENCRYPT}
       - MSSQL_TRUST_UNSIGNED_CERT=${MSSQL_TRUST_UNSIGNED_CERT}
+      - MSSQL_REQUEST_TIMEOUT=${MSSQL_REQUEST_TIMEOUT}
       - SLOT_NAME=${SLOT_NAME}
-    networks:
-      - cams-e2e
-    depends_on:
-      - azurite
-      - mongodb
-      - sqlserver
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "curl -sf http://localhost:7071/api/healthcheck || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
 
-  # Frontend UI service
+  # Frontend UI service (Vite preview on port 3000)
   frontend:
     build:
       context: ../../
@@ -120,8 +68,6 @@ services:
       - SLOT_NAME=${SLOT_NAME}
     depends_on:
       - backend
-    networks:
-      - cams-e2e
     healthcheck:
       disable: true
 
@@ -131,8 +77,6 @@ services:
       context: ../../
       dockerfile: test/e2e/Dockerfile.playwright
     container_name: cams-playwright-e2e
-    # Use host network mode so Playwright can access services via localhost
-    # This allows Okta callbacks to work (Okta whitelist requires http://localhost:3000)
     network_mode: host
     environment:
       - DOTENV_CONFIG_SILENT=true
@@ -149,7 +93,3 @@ services:
       - ./playwright-report:/app/test/e2e/playwright-report
     command: ["npm", "run", "headless"]
     working_dir: /app/test/e2e
-
-networks:
-  cams-e2e:
-    driver: bridge

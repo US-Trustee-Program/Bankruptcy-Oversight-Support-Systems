@@ -1,12 +1,15 @@
 #!/bin/bash
 
 # Complete E2E Testing Workflow
-# Orchestrates: startup → test → report → teardown
+# Orchestrates: build → start → wait → test → report → teardown
+#
+# Architecture: 3 containers, all on host network
+#   backend:    MongoDB + SQL Edge + Azurite + Azure Functions (all localhost)
+#   frontend:   Vite preview server (port 3000)
+#   playwright: Chromium test runner
 #
 # Usage: ./run-e2e-workflow.sh [OPTIONS]
 #   --open-report    Open HTML report in browser after tests complete
-#
-# Note: Database seeding always runs to ensure databases exist before backend starts
 
 set -e
 
@@ -45,15 +48,9 @@ NC='\033[0m' # No Color
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
-# Compose file configuration - if override exists, use it automatically for local dev
-if [ -f "podman-compose.override.yml" ]; then
-    COMPOSE_FILES="-f podman-compose.yml -f podman-compose.override.yml"
-else
-    COMPOSE_FILES="-f podman-compose.yml"
-fi
+COMPOSE_FILES="-f podman-compose.yml"
 
-# Helper function to run podman-compose with correct files
-# shellcheck disable=SC2086  # Word splitting is intentional for COMPOSE_FILES
+# shellcheck disable=SC2086
 pcompose() {
     podman-compose $COMPOSE_FILES "$@"
 }
@@ -61,7 +58,6 @@ pcompose() {
 # Check if .env exists
 if [ ! -f ".env" ]; then
     echo -e "${RED}❌ Error: .env file not found in test/e2e/${NC}"
-    echo "Please create .env file with required configuration."
     exit 1
 fi
 
@@ -71,72 +67,67 @@ set -a
 source .env
 set +a
 
-# Track overall success
 TESTS_PASSED=false
 CLEANUP_NEEDED=false
 
-# Cleanup function
-# shellcheck disable=SC2329  # Function invoked via trap
+# Collect container logs
+collect_container_logs() {
+    local log_dir="container-logs"
+    mkdir -p "${log_dir}"
+    for container in cams-backend-e2e cams-frontend-e2e; do
+        podman logs "${container}" > "${log_dir}/${container}.log" 2>&1 || true
+    done
+    echo -e "${BLUE}📋 Container logs saved to ${log_dir}/${NC}"
+}
+
+# Cleanup on exit
+# shellcheck disable=SC2329
 cleanup() {
     if [ "$CLEANUP_NEEDED" = true ]; then
         echo ""
+        collect_container_logs
         echo -e "${BLUE}🧹 Tearing down services...${NC}"
-        # Suppress errors if containers are already stopped
         pcompose down 2>/dev/null || true
         echo -e "${GREEN}✅ Services stopped${NC}"
     fi
 }
-
-# Register cleanup on exit
 trap cleanup EXIT
 
-# Step 1: Build deps image (hash-based cache via ghcr.io) and service images
-echo -e "${BLUE}📦 Step 1: Building images and starting services...${NC}"
+# ──────────────────────────────────────────────────────
+# Step 1: Build images
+# ──────────────────────────────────────────────────────
+echo -e "${BLUE}📦 Step 1: Building images...${NC}"
 echo ""
 
 REGISTRY="ghcr.io/us-trustee-program/bankruptcy-oversight-support-systems"
-
-# Compute a hash of all package*.json files that feed into Dockerfile.deps
-# A change to any package file produces a new hash → cache miss → rebuild
 DEPS_HASH=$(cat ../../package*.json ../../common/package*.json ../../backend/package*.json ../../user-interface/package*.json package*.json 2>/dev/null | sha256sum | cut -c1-12)
 DEPS_CACHED_IMAGE="${REGISTRY}/e2e-deps:${DEPS_HASH}"
 
-# Check local image first, then ghcr.io cache, then build from scratch.
-# Set FORCE_REBUILD_DEPS=true to skip the cache and rebuild unconditionally.
+# Build or pull deps image
 DEPS_EXISTS=$(podman images -q localhost/e2e_deps:latest 2>/dev/null)
 if [ "${FORCE_REBUILD_DEPS:-false}" = "true" ]; then
-    echo "Force-rebuilding deps image (FORCE_REBUILD_DEPS=true, hash: ${DEPS_HASH})..."
+    echo "Force-rebuilding deps image..."
     podman build -t localhost/e2e_deps:latest -f Dockerfile.deps ../../
-    if [ -n "${GITHUB_TOKEN:-}" ]; then
-        podman tag localhost/e2e_deps:latest "${DEPS_CACHED_IMAGE}"
-        podman push "${DEPS_CACHED_IMAGE}"
-        echo -e "  ${GREEN}✓ Deps image rebuilt and cached: ${DEPS_CACHED_IMAGE}${NC}"
-    fi
 elif [ -n "$DEPS_EXISTS" ]; then
     echo "Using local deps image (hash: ${DEPS_HASH})"
 elif [ -n "${GITHUB_TOKEN:-}" ] && podman pull "${DEPS_CACHED_IMAGE}" 2>/dev/null; then
-    echo -e "  ${GREEN}✓ Pulled deps image from cache: ${DEPS_CACHED_IMAGE}${NC}"
+    echo -e "  ${GREEN}✓ Pulled deps from cache${NC}"
     podman tag "${DEPS_CACHED_IMAGE}" localhost/e2e_deps:latest
 else
-    echo "Building deps image (hash: ${DEPS_HASH}) and pushing to ghcr.io cache..."
+    echo "Building deps image..."
     podman build -t localhost/e2e_deps:latest -f Dockerfile.deps ../../
-    if [ -n "${GITHUB_TOKEN:-}" ]; then
-        podman tag localhost/e2e_deps:latest "${DEPS_CACHED_IMAGE}"
-        podman push "${DEPS_CACHED_IMAGE}"
-        echo -e "  ${GREEN}✓ Deps image cached: ${DEPS_CACHED_IMAGE}${NC}"
-    fi
 fi
 
-# Check if built image exists (compiles common, backend, frontend once)
+# Build or reuse built image
 BUILT_EXISTS=$(podman images -q localhost/e2e_built:latest)
 if [ -z "$BUILT_EXISTS" ]; then
-    echo "Building built image (first time - this will be cached)..."
+    echo "Building compiled image (first time)..."
     podman build -t localhost/e2e_built:latest -f Dockerfile.built ../../
 else
     echo "Using cached built image (run 'npm run podman:rebuild-built' to rebuild)"
 fi
 
-# Build service images (thin layers on top of built — only CMD/WORKDIR)
+# Build service images
 echo "Building service images..."
 podman build -t e2e_backend:latest -f Dockerfile.backend ../../
 podman build -t e2e_frontend:latest -f Dockerfile.frontend ../../
@@ -145,107 +136,43 @@ echo ""
 echo -e "${GREEN}✅ Images built${NC}"
 echo ""
 
-# Tear down any containers/networks left from a previous run before starting fresh
-echo -e "${BLUE}🧹 Tearing down any containers from a previous run...${NC}"
+# ──────────────────────────────────────────────────────
+# Step 2: Start services and wait for readiness
+# ──────────────────────────────────────────────────────
+
+# Clean up previous run
+echo -e "${BLUE}🧹 Cleaning up previous run...${NC}"
 pcompose down 2>/dev/null || true
-podman rm -f cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e 2>/dev/null || true
-podman network rm e2e_cams-e2e 2>/dev/null || true
+podman rm -f cams-backend-e2e cams-frontend-e2e cams-playwright-e2e >/dev/null 2>&1 || true
+rm -rf container-logs/*.log test-results/* playwright-report/*
 echo ""
 
-# Start databases first (mongodb, sqlserver, azurite)
-echo "Starting databases..."
-pcompose up -d azurite mongodb sqlserver > /dev/null
+# Start backend (includes MongoDB, SQL Edge, Azurite — seeds DBs on startup)
+echo -e "${BLUE}⏳ Step 2: Starting backend (databases + API)...${NC}"
+pcompose up -d backend
 CLEANUP_NEEDED=true
 echo ""
-echo -e "${GREEN}✓ Databases starting${NC}"
-echo ""
 
-# Step 2: Wait for databases to be ready
-echo -e "${BLUE}⏳ Step 2: Waiting for databases to be ready...${NC}"
-echo ""
-
-# Just wait a few seconds for databases to initialize
-# SQL Server and MongoDB health checks are defined in podman-compose.yml
-sleep 10
-echo -e "${GREEN}✅ Databases ready${NC}"
-echo ""
-
-# Collect and save logs for all containers (will be used later)
-collect_container_logs() {
-    local log_dir="container-logs"
-    mkdir -p "${log_dir}"
-    for container in cams-mongodb-e2e cams-sqlserver-e2e cams-backend-e2e cams-frontend-e2e; do
-        podman logs "${container}" > "${log_dir}/${container}.log" 2>&1 || true
-    done
-    echo -e "${BLUE}📋 Container logs saved to ${log_dir}/${NC}"
-}
-
-# Step 2.5: Seed databases (always runs to ensure databases exist)
-echo -e "${BLUE}🌱 Seeding E2E databases...${NC}"
-echo ""
-
-# Seed MongoDB
-# Use podman run with explicit network since podman-compose run doesn't connect to networks properly
-echo "Seeding MongoDB..."
-if podman run --rm --network e2e_cams-e2e \
-  -e MONGO_CONNECTION_STRING="mongodb://mongodb:27017/cams-e2e?retrywrites=false" \
-  localhost/e2e_playwright:latest npm run seed; then
-    echo -e "${GREEN}✓ MongoDB seeded${NC}"
-else
-    echo -e "${RED}✗ MongoDB seeding failed${NC}"
-    echo "Tests may fail due to missing data"
+# Verify container is running
+if ! podman ps --filter name=cams-backend-e2e --format "{{.Names}}" | grep -q cams-backend-e2e; then
+    echo -e "${RED}❌ Backend container failed to start${NC}"
+    echo ""
+    echo -e "${BLUE}Build/start logs:${NC}"
+    podman logs cams-backend-e2e 2>&1 | tail -30 || echo "  (no logs available)"
+    exit 1
 fi
-echo ""
 
-# Seed SQL Server (creates CAMS and CAMS_E2E databases + tables)
-echo "Seeding SQL Server..."
-if podman run --rm --network e2e_cams-e2e \
-  -e MSSQL_HOST=sqlserver \
-  -e MSSQL_USER=sa \
-  -e MSSQL_PASS="${MSSQL_PASS}" \
-  -e MSSQL_DATABASE_DXTR=CAMS_E2E \
-  -e MSSQL_ENCRYPT=false \
-  -e MSSQL_TRUST_UNSIGNED_CERT=true \
-  localhost/e2e_playwright:latest npm run seed:sql; then
-    echo -e "${GREEN}✓ SQL Server seeded${NC}"
-else
-    echo -e "${RED}✗ SQL Server seeding failed${NC}"
-    echo "Tests may fail due to missing data"
-fi
-echo ""
-
-echo -e "${GREEN}✅ Databases seeded${NC}"
-echo ""
-
-# Step 2.6: Start application services (backend, frontend)
-echo "Starting application services..."
-pcompose up -d backend frontend > /dev/null
-echo -e "${GREEN}✓ Application services starting${NC}"
-echo ""
-
-# Wait for backend and frontend to be ready
-echo -e "${BLUE}⏳ Waiting for backend and frontend to be ready...${NC}"
-echo ""
-
+# Wait for backend healthcheck (databases start, seed, then Functions host starts)
+echo "Waiting for backend to be ready..."
 APP_WAIT_COUNT=0
 APP_MAX_WAIT=120
 
 while [ $APP_WAIT_COUNT -lt $APP_MAX_WAIT ]; do
-    # Backend is ready when healthcheck returns 200 OK
-    # Frontend is ready when it serves HTTP
     BACKEND_STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:7071/api/healthcheck 2>/dev/null || echo "000")
-    FRONTEND_HTTP=$(curl -s --max-time 3 http://localhost:3000 > /dev/null 2>&1 && echo "ok" || echo "fail")
-
-    if [ "$BACKEND_STATUS" = "200" ] && [ "$FRONTEND_HTTP" = "ok" ]; then
-        echo -e "${GREEN}✅ Backend and frontend are healthy${NC}"
-        echo ""
-        echo -e "${BLUE}⏳ Allowing services to stabilize (5s)...${NC}"
-        sleep 5
-        echo -e "${GREEN}✅ Services ready for testing${NC}"
-        echo ""
+    if [ "$BACKEND_STATUS" = "200" ]; then
+        echo -e "${GREEN}✅ Backend healthy${NC}"
         break
     fi
-
     echo -n "."
     sleep 2
     APP_WAIT_COUNT=$((APP_WAIT_COUNT + 2))
@@ -253,41 +180,38 @@ done
 
 if [ $APP_WAIT_COUNT -ge $APP_MAX_WAIT ]; then
     echo ""
-    echo -e "${RED}❌ Backend or frontend failed to become healthy within ${APP_MAX_WAIT}s${NC}"
+    echo -e "${RED}❌ Backend failed to become healthy within ${APP_MAX_WAIT}s${NC}"
     echo ""
-    echo -e "${BLUE}Backend logs (last 30 lines):${NC}"
-    podman logs --tail 30 cams-backend-e2e 2>&1 | sed 's/^/  /'
-    echo ""
-    echo -e "${BLUE}Frontend logs (last 30 lines):${NC}"
-    podman logs --tail 30 cams-frontend-e2e 2>&1 | sed 's/^/  /'
-    echo ""
+    echo -e "${BLUE}Backend logs (last 50 lines):${NC}"
+    podman logs --tail 50 cams-backend-e2e 2>&1 | sed 's/^/  /'
     exit 1
 fi
-
-# Step 2.7: Warm up SQL Server plan cache and buffer pool
-# The first getCaseDetail call hits 6+ uncompiled queries on a cold SQL Edge instance.
-# Running the key join patterns once here forces SQL Server to compile execution plans
-# and load data pages into the buffer pool before Playwright starts.
-echo -e "${BLUE}🔥 Step 2.7: Warming up SQL Server plan cache...${NC}"
-echo ""
-podman run --rm --network e2e_cams-e2e \
-  -e MSSQL_HOST=sqlserver \
-  -e MSSQL_USER=sa \
-  -e MSSQL_PASS="${MSSQL_PASS}" \
-  -e MSSQL_DATABASE_DXTR=CAMS_E2E \
-  -e MSSQL_ENCRYPT=false \
-  -e MSSQL_TRUST_UNSIGNED_CERT=true \
-  localhost/e2e_playwright:latest npx tsx ./scripts/warmup-sqlserver.ts 2>/dev/null || true
-echo -e "${GREEN}✅ SQL Server warmed up${NC}"
 echo ""
 
+# Start frontend
+echo "Starting frontend..."
+pcompose up -d frontend > /dev/null
+
+# Wait for frontend
+echo "Waiting for frontend..."
+for i in $(seq 1 60); do
+    if curl -s --max-time 3 http://localhost:3000 > /dev/null 2>&1; then
+        echo -e "${GREEN}✅ Frontend healthy${NC}"
+        break
+    fi
+    [ "$i" -eq 60 ] && echo -e "${RED}❌ Frontend failed to start within 60s${NC}" && podman logs --tail 20 cams-frontend-e2e 2>&1 && exit 1
+    sleep 1
+done
+echo ""
+echo -e "${GREEN}✅ All services ready${NC}"
+echo ""
+
+# ──────────────────────────────────────────────────────
 # Step 3: Run tests
+# ──────────────────────────────────────────────────────
 echo -e "${BLUE}🧪 Step 3: Running E2E tests...${NC}"
 echo ""
 
-# Run playwright tests in container and stream output directly (no filtering — the
-# line reporter writes useful progress lines that must not be suppressed).
-# Capture to a temp file so we can parse the summary counts afterward.
 TEST_OUTPUT_FILE=$(mktemp)
 set +e
 pcompose run --rm --no-deps playwright npm run headless 2>&1 | tee "$TEST_OUTPUT_FILE"
@@ -296,17 +220,15 @@ set -e
 TEST_OUTPUT=$(cat "$TEST_OUTPUT_FILE")
 rm -f "$TEST_OUTPUT_FILE"
 
-# Save all container logs now (containers still running, before cleanup)
+# Save logs (containers still running)
 collect_container_logs
 mkdir -p backend-logs
-BACKEND_LOG_FILE="backend-logs/backend.log"
-cp container-logs/cams-backend-e2e.log "$BACKEND_LOG_FILE" 2>/dev/null || true
+cp container-logs/cams-backend-e2e.log backend-logs/backend.log 2>/dev/null || true
 
-# If tests failed, print the last 100 lines of backend logs
 if [ "$TEST_EXIT_CODE" -ne 0 ]; then
     echo ""
     echo -e "${YELLOW}📋 Backend logs (last 100 lines):${NC}"
-    tail -100 "$BACKEND_LOG_FILE"
+    tail -100 backend-logs/backend.log
     echo ""
 fi
 echo -e "${BLUE}📋 Full container logs saved to: container-logs/${NC}"
@@ -321,11 +243,12 @@ else
 fi
 echo ""
 
-# Step 4: Generate and display report summary
+# ──────────────────────────────────────────────────────
+# Step 4: Report
+# ──────────────────────────────────────────────────────
 echo -e "${BLUE}📊 Step 4: Test Report Summary${NC}"
 echo ""
 
-# Parse failed/passed counts from Playwright summary line, e.g. "5 failed, 12 passed"
 FAILED_TESTS=$(echo "$TEST_OUTPUT" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+' | tail -1)
 PASSED_TESTS=$(echo "$TEST_OUTPUT" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' | tail -1)
 FAILED_TESTS=${FAILED_TESTS:-0}
@@ -346,52 +269,22 @@ echo "   - Results:        ./test-results/"
 echo "   - Container logs: ./container-logs/"
 echo "   - Report:         ./playwright-report/"
 echo ""
-echo "To view detailed report:"
-echo "   npm run report"
-echo ""
 
-# Final summary
 echo "=========================================="
 echo -e "${BLUE}🏁 Workflow Complete${NC}"
 echo ""
 
 if [ "$TESTS_PASSED" = true ]; then
     echo -e "${GREEN}✅ E2E testing workflow completed successfully!${NC}"
-    echo ""
 else
     echo -e "${RED}❌ E2E testing workflow completed with failures${NC}"
-    echo ""
 fi
+echo ""
 
-# Open HTML report in browser (optional)
-if [ "$OPEN_REPORT" = true ]; then
-    if [ -f "playwright-report/index.html" ]; then
-        echo "Opening HTML report in browser..."
-        echo ""
-        # Use open command on macOS to open the HTML file directly
-        if command -v open >/dev/null 2>&1; then
-            open playwright-report/index.html
-            echo "✅ Report opened in default browser"
-            echo ""
-        else
-            echo -e "${YELLOW}⚠️  Could not open report automatically${NC}"
-            echo "   View report with: npm run report"
-            echo "   Or open: $(pwd)/playwright-report/index.html"
-            echo ""
-        fi
-    else
-        echo -e "${YELLOW}No HTML report generated${NC}"
-        echo ""
+if [ "$OPEN_REPORT" = true ] && [ -f "playwright-report/index.html" ]; then
+    if command -v open >/dev/null 2>&1; then
+        open playwright-report/index.html
     fi
-else
-    echo "📊 Test report available at: ./playwright-report/index.html"
-    echo "   View with: npm run report"
-    echo ""
 fi
 
-# Exit with proper code so CI pipeline reflects test results
-if [ "$TESTS_PASSED" = true ]; then
-    exit 0
-else
-    exit 1
-fi
+[ "$TESTS_PASSED" = true ] && exit 0 || exit 1
