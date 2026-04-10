@@ -1,9 +1,14 @@
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import './TrusteeSearchModal.scss';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import Modal from '@/lib/components/uswds/modal/Modal';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import Api2 from '@/lib/models/api2';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
+import { formatChapterType } from '@common/cams/trustees';
+import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 
 interface TrusteeSearchModalProps {
   id: string;
@@ -22,14 +27,33 @@ function TrusteeSearchModal_(
   props: TrusteeSearchModalProps,
   ref: React.Ref<TrusteeSearchModalImperative>,
 ) {
-  const { id, dxtrTrusteeName, courtId, onConfirm, onCancel } = props;
+  const { id, courtId, onConfirm, onCancel } = props;
   const modalRef = useRef<ModalRefType>(null);
   const [searchResults, setSearchResults] = useState<TrusteeSearchResult[]>([]);
   const [selectedTrustee, setSelectedTrustee] = useState<TrusteeSearchResult | null>(null);
+  const [courts, setCourts] = useState<CourtDivisionDetails[]>([]);
+  const [selectedCourtId, setSelectedCourtId] = useState<string | undefined>(courtId);
+
+  useEffect(() => {
+    Api2.getCourts()
+      .then((response) => {
+        const seen = new Set<string>();
+        const unique = response.data.filter((c) => {
+          if (seen.has(c.courtId)) return false;
+          seen.add(c.courtId);
+          return true;
+        });
+        setCourts(unique);
+      })
+      .catch(() => {
+        // courts list is optional; search still works without it
+      });
+  }, []);
 
   function show() {
     setSearchResults([]);
     setSelectedTrustee(null);
+    setSelectedCourtId(courtId);
     modalRef.current?.show({});
   }
 
@@ -39,17 +63,32 @@ function TrusteeSearchModal_(
 
   useImperativeHandle(ref, () => ({ show, hide }));
 
+  // Match the selected court by courtId first, then fall back to courtDivisionCode.
+  // order.courtId may be stored in either format depending on the data source.
+  const selectedCourtEntry = selectedCourtId
+    ? (courts.find((c) => c.courtId === selectedCourtId) ??
+      courts.find((c) => c.courtDivisionCode === selectedCourtId))
+    : undefined;
+
   async function handleFilterChange(value: string) {
     if (!value || value.length < 2) {
       setSearchResults([]);
       return;
     }
     try {
-      const response = await Api2.searchTrustees(value, courtId);
+      const response = await Api2.searchTrustees(
+        value,
+        selectedCourtEntry?.courtId ?? selectedCourtId,
+      );
       setSearchResults(response.data);
     } catch {
       setSearchResults([]);
     }
+  }
+
+  function handleCourtSelection(options: ComboOption[]) {
+    setSelectedCourtId(options.length > 0 ? options[0].value : undefined);
+    setSearchResults([]);
   }
 
   function handleSelection(options: ComboOption[]) {
@@ -60,6 +99,15 @@ function TrusteeSearchModal_(
       setSelectedTrustee(null);
     }
   }
+
+  const courtOptions: ComboOption[] = courts.map((c) => ({
+    value: c.courtId,
+    label: c.courtName,
+  }));
+
+  const courtSelection: ComboOption[] = selectedCourtEntry
+    ? courtOptions.filter((o) => o.value === selectedCourtEntry.courtId)
+    : [];
 
   const comboOptions: ComboOption[] = searchResults.map((r) => ({
     value: r.trusteeId,
@@ -82,11 +130,18 @@ function TrusteeSearchModal_(
       ].filter(Boolean)
     : [];
 
+  const appointmentLines =
+    selectedTrustee?.appointments.map((appt) => {
+      const court = appt.courtName ?? appt.courtId;
+      const division = appt.courtDivisionName ? ` (${appt.courtDivisionName})` : '';
+      return `${court}${division}: Chap ${formatChapterType(appt.chapter)} - ${formatAppointmentStatus(appt.status)}`;
+    }) ?? [];
+
   const actionButtonGroup = {
     modalId: `trustee-search-modal-${id}`,
     modalRef,
     submitButton: {
-      label: 'Confirm',
+      label: 'Confirm Appointment',
       disabled: !selectedTrustee,
       onClick: () => {
         if (selectedTrustee) {
@@ -113,10 +168,14 @@ function TrusteeSearchModal_(
       data-testid={`trustee-search-modal-${id}`}
       content={
         <>
-          <div className="dxtr-context">
-            <span className="dxtr-label">DXTR Name: </span>
-            <span className="dxtr-name">{dxtrTrusteeName}</span>
-          </div>
+          <ComboBox
+            id={`trustee-district-combobox-${id}`}
+            label="Trustee District"
+            options={courtOptions}
+            selections={courtSelection}
+            onUpdateSelection={handleCourtSelection}
+            autoComplete="off"
+          />
           <ComboBox
             id={`trustee-search-combobox-${id}`}
             label="Trustee Name"
@@ -124,15 +183,22 @@ function TrusteeSearchModal_(
             onUpdateFilter={handleFilterChange}
             onUpdateSelection={handleSelection}
             autoComplete="off"
-            placeholder="Type a name to search..."
+            placeholder="- Search Trustee name -"
           />
           {selectedTrustee && (
             <div className="trustee-details">
+              <NewTabLink
+                to={`/trustees/${selectedTrustee.trusteeId}`}
+                label={selectedTrustee.name}
+              />
               {addressLines.map((line, i) => (
                 <div key={i}>{line}</div>
               ))}
-              {selectedTrustee.phone && <div className="phone">{selectedTrustee.phone.number}</div>}
-              {selectedTrustee.email && <div className="email">{selectedTrustee.email}</div>}
+              {selectedTrustee.phone && <div>{selectedTrustee.phone.number}</div>}
+              {selectedTrustee.email && <div>{selectedTrustee.email}</div>}
+              {appointmentLines.map((line, i) => (
+                <div key={i}>{line}</div>
+              ))}
             </div>
           )}
         </>
