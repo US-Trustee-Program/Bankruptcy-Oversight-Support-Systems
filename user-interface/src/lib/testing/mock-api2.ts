@@ -38,6 +38,7 @@ import {
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
+import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { Creatable } from '@common/cams/creatable';
 import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
@@ -2354,6 +2355,10 @@ async function getOrders(): Promise<ResponseBody<Order[]>> {
   return get<Order[]>(`/orders`);
 }
 
+async function searchTrustees(_name: string): Promise<ResponseBody<TrusteeSearchResult[]>> {
+  return { data: [] };
+}
+
 async function getTrusteeMatchVerifications(): Promise<ResponseBody<TrusteeMatchVerification[]>> {
   return get<TrusteeMatchVerification[]>(`/trustee-match-verification`);
 }
@@ -2830,6 +2835,7 @@ const MockApi2 = {
   getOfficeAssignees,
   getOffices,
   getOrders,
+  searchTrustees,
   getTrusteeMatchVerifications,
   patchTrusteeVerificationOrderApproval,
   patchTrusteeVerificationOrderRejection,
