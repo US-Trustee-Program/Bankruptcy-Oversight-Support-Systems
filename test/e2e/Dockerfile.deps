@@ -35,13 +35,15 @@ COPY --from=mongodb /usr/bin/mongos /usr/bin/mongos
 # the host's libs. This is arch-agnostic (works on both aarch64 and x86_64).
 COPY --from=sqledge /opt/mssql /opt/mssql
 # Copy all shared libraries from SQL Edge into a dedicated path.
-# SQL Edge depends on OpenSSL 1.1, libldap 2.4, Heimdal Kerberos, etc.
-# which don't exist in Bookworm. Copying the whole arch-specific lib dir
-# and adding it to the linker path avoids chasing individual .so files.
-# The wildcard handles both aarch64-linux-gnu (ARM64) and x86_64-linux-gnu (amd64).
-COPY --from=sqledge /usr/lib/ /opt/mssql-libs/usr/lib/
-RUN find /opt/mssql-libs -type d -name "*linux-gnu*" | head -1 | xargs -I{} ln -sf {} /opt/mssql-libs/native && \
-    ldconfig /opt/mssql-libs/native
+# SQL Edge depends on OpenSSL 1.1, libldap 2.4, Heimdal Kerberos, libsss-nss-idmap, etc.
+# which don't exist in Bookworm. Copy the arch-specific lib directory from the SQL Edge
+# image and register it with ldconfig so sqlservr finds them at runtime.
+# Works on both aarch64 (ARM64) and x86_64 (amd64) — the arch dir is detected at build time.
+COPY --from=sqledge /usr/lib/ /opt/mssql-libs/
+RUN ARCH_LIB_DIR=$(find /opt/mssql-libs -maxdepth 1 -type d -name "*linux-gnu*" | head -1) && \
+    echo "/opt/mssql-libs" >> /etc/ld.so.conf.d/mssql.conf && \
+    echo "${ARCH_LIB_DIR}" >> /etc/ld.so.conf.d/mssql.conf && \
+    ldconfig
 ENV PATH="/opt/mssql/bin:${PATH}"
 
 # Create data/log directories for all embedded services
