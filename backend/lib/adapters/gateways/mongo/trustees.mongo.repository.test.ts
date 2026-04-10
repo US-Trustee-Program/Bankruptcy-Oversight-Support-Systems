@@ -107,7 +107,7 @@ describe('TrusteesMongoRepository', () => {
               city: 'Springfield',
               state: 'IL',
               zipCode: '62704',
-              countryCode: 'US',
+              countryCode: 'US' as const,
             },
             email: 'john.doe@example.com',
             phone: {
@@ -129,7 +129,7 @@ describe('TrusteesMongoRepository', () => {
               city: 'Chicago',
               state: 'IL',
               zipCode: '60601',
-              countryCode: 'US',
+              countryCode: 'US' as const,
             },
             email: 'jane.smith@example.com',
             phone: {
@@ -321,7 +321,7 @@ describe('TrusteesMongoRepository', () => {
             city: 'New York',
             state: 'NY',
             zipCode: '10001',
-            countryCode: 'US',
+            countryCode: 'US' as const,
           },
         },
         documentType: 'TRUSTEE',
@@ -471,7 +471,7 @@ describe('TrusteesMongoRepository', () => {
             city: 'Anytown',
             state: 'NY',
             zipCode: '12345',
-            countryCode: 'US',
+            countryCode: 'US' as const,
           },
           email: 'john.doe@example.com',
           phone: {
@@ -574,7 +574,7 @@ describe('TrusteesMongoRepository', () => {
             city: 'Newtown',
             state: 'CA',
             zipCode: '54321',
-            countryCode: 'US',
+            countryCode: 'US' as const,
           },
           phone: {
             number: '333-555-9876',
@@ -587,7 +587,7 @@ describe('TrusteesMongoRepository', () => {
             city: 'Oldtown',
             state: 'TX',
             zipCode: '12345',
-            countryCode: 'US',
+            countryCode: 'US' as const,
           },
           phone: {
             number: '123-456-7890',
@@ -1144,6 +1144,415 @@ describe('TrusteesMongoRepository', () => {
         leftOperand: { name: 'documentType' },
         rightOperand: 'TRUSTEE',
       });
+    });
+  });
+
+  describe('searchTrusteesByName', () => {
+    test('should search trustees with partial name match using regex', async () => {
+      const mockTrustees = [
+        {
+          id: 'trustee-1',
+          trusteeId: 'trust-001',
+          name: 'John Smith',
+          documentType: 'TRUSTEE',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US' as const,
+            },
+          },
+          createdOn: '2025-01-01T10:00:00Z',
+          createdBy: mockUser,
+          updatedOn: '2025-01-01T10:00:00Z',
+          updatedBy: mockUser,
+        },
+        {
+          id: 'trustee-2',
+          trusteeId: 'trust-002',
+          name: 'Jane Smithson',
+          documentType: 'TRUSTEE',
+          public: {
+            address: {
+              address1: '456 Oak Ave',
+              city: 'Boston',
+              state: 'MA',
+              zipCode: '02101',
+              countryCode: 'US' as const,
+            },
+          },
+          createdOn: '2025-01-02T10:00:00Z',
+          createdBy: mockUser,
+          updatedOn: '2025-01-02T10:00:00Z',
+          updatedBy: mockUser,
+        },
+      ];
+
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockTrustees as TrusteeDocument[]);
+
+      const result = await repository.searchTrusteesByName('smith');
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'REGEX',
+            leftOperand: { name: 'name' },
+            rightOperand: expect.any(RegExp),
+          },
+        ],
+      });
+      expect(result).toEqual(mockTrustees);
+      expect(result).toHaveLength(2);
+    });
+
+    test('should return empty array when no trustees match search', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.searchTrusteesByName('nonexistent');
+
+      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should handle special characters in search query by escaping', async () => {
+      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      await repository.searchTrusteesByName('John (Smith)');
+
+      const callArg = mockAdapter.mock.calls[0][0] as { values: { rightOperand: RegExp }[] };
+      const regexCondition = callArg.values[1];
+      const regex = regexCondition.rightOperand;
+
+      // Should escape special regex characters like ( and )
+      expect(regex.source).toContain('\\(');
+      expect(regex.source).toContain('\\)');
+    });
+
+    test('should handle database errors when searching trustees', async () => {
+      const error = new Error('Database connection failed');
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockRejectedValue(error);
+
+      await expect(repository.searchTrusteesByName('smith')).rejects.toThrow(
+        'Failed to search trustees by name',
+      );
+
+      expect(mockAdapter).toHaveBeenCalled();
+    });
+  });
+
+  describe('searchTrusteesByPhoneticTokens', () => {
+    test('should search trustees by phonetic tokens using $in query', async () => {
+      const mockTokens = ['SMITH', 'SM0', 'sm', 'it', 'th'];
+      const mockTrustees = [
+        {
+          id: 'trustee-1',
+          trusteeId: 'trust-001',
+          name: 'John Smith',
+          phoneticTokens: ['SMITH', 'SM0', 'JOHN', 'JN', 'jo', 'hn', 'sm', 'it', 'th'],
+          documentType: 'TRUSTEE',
+          public: {
+            address: {
+              address1: '123 Main St',
+              city: 'New York',
+              state: 'NY',
+              zipCode: '10001',
+              countryCode: 'US' as const,
+            },
+          },
+          createdOn: '2025-01-01T10:00:00Z',
+          createdBy: mockUser,
+          updatedOn: '2025-01-01T10:00:00Z',
+          updatedBy: mockUser,
+        },
+      ];
+
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(mockTrustees as TrusteeDocument[]);
+
+      const result = await repository.searchTrusteesByPhoneticTokens(mockTokens);
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE',
+          },
+          {
+            condition: 'CONTAINS',
+            leftOperand: { name: 'phoneticTokens' },
+            rightOperand: mockTokens,
+          },
+        ],
+      });
+      expect(result).toEqual(mockTrustees);
+      expect(result).toHaveLength(1);
+    });
+
+    test('should return empty array when no trustees match phonetic tokens', async () => {
+      const mockTokens = ['NONEXISTENT', 'TOKENS'];
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.searchTrusteesByPhoneticTokens(mockTokens);
+
+      expect(result).toEqual([]);
+      expect(result).toHaveLength(0);
+    });
+
+    test('should return empty array when empty token array provided', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([]);
+
+      const result = await repository.searchTrusteesByPhoneticTokens([]);
+
+      expect(result).toEqual([]);
+    });
+
+    test('should handle database errors when searching by phonetic tokens', async () => {
+      const error = new Error('Database connection failed');
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockRejectedValue(error);
+
+      await expect(repository.searchTrusteesByPhoneticTokens(['SMITH'])).rejects.toThrow(
+        'Failed to search trustees by phonetic tokens',
+      );
+
+      expect(mockAdapter).toHaveBeenCalled();
+    });
+  });
+
+  describe('setPhoneticTokens', () => {
+    test('should update phoneticTokens field for trustee', async () => {
+      const trusteeId = 'trust-123';
+      const tokens = ['SMITH', 'SM0', 'JOHN', 'JN', 'jo', 'hn', 'sm', 'it', 'th'];
+
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+
+      await repository.setPhoneticTokens(trusteeId, tokens);
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        {
+          conjunction: 'AND',
+          values: [
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'documentType' },
+              rightOperand: 'TRUSTEE',
+            },
+            {
+              condition: 'EQUALS',
+              leftOperand: { name: 'trusteeId' },
+              rightOperand: trusteeId,
+            },
+          ],
+        },
+        {
+          $set: { phoneticTokens: tokens },
+        },
+      );
+    });
+
+    test('should handle empty tokens array', async () => {
+      const trusteeId = 'trust-123';
+      const tokens: string[] = [];
+
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockResolvedValue({ modifiedCount: 1, matchedCount: 1 });
+
+      await repository.setPhoneticTokens(trusteeId, tokens);
+
+      expect(mockAdapter).toHaveBeenCalledWith(expect.any(Object), {
+        $set: { phoneticTokens: tokens },
+      });
+    });
+
+    test('should handle database errors when setting phonetic tokens', async () => {
+      const error = new Error('Database update failed');
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'updateOne')
+        .mockRejectedValue(error);
+
+      await expect(repository.setPhoneticTokens('trust-123', ['SMITH'])).rejects.toThrow(
+        'Failed to set phonetic tokens for trustee trust-123',
+      );
+
+      expect(mockAdapter).toHaveBeenCalled();
+    });
+  });
+
+  describe('createTrustee - phonetic token generation', () => {
+    test('should generate and store phoneticTokens when creating trustee', async () => {
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue(undefined);
+
+      await repository.createTrustee(sampleTrusteeInput, mockUser);
+
+      expect(mockAdapter).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: 'John Doe',
+          phoneticTokens: expect.arrayContaining([
+            expect.any(String), // Should include bigrams, Soundex, Metaphone
+          ]),
+          documentType: 'TRUSTEE',
+        }),
+      );
+
+      // Verify phoneticTokens array was generated
+      const callArg = mockAdapter.mock.calls[0][0];
+      expect(callArg.phoneticTokens).toBeDefined();
+      expect(Array.isArray(callArg.phoneticTokens)).toBe(true);
+      expect(callArg.phoneticTokens.length).toBeGreaterThan(0);
+    });
+
+    test('should include Soundex and Metaphone codes in phoneticTokens', async () => {
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'insertOne')
+        .mockResolvedValue(undefined);
+
+      const testInput: TrusteeInput = {
+        name: 'Smith',
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'Anytown',
+            state: 'NY',
+            zipCode: '12345',
+            countryCode: 'US' as const,
+          },
+        },
+      };
+
+      await repository.createTrustee(testInput, mockUser);
+
+      const callArg = mockAdapter.mock.calls[0][0];
+      const tokens = callArg.phoneticTokens;
+
+      // Should contain uppercase phonetic codes (Soundex/Metaphone)
+      const hasUppercase = tokens.some((token: string) => /^[A-Z0-9]+$/.test(token));
+      expect(hasUppercase).toBe(true);
+
+      // Should contain lowercase bigrams
+      const hasLowercase = tokens.some((token: string) => /^[a-z]+$/.test(token));
+      expect(hasLowercase).toBe(true);
+    });
+  });
+
+  describe('updateTrustee - phonetic token regeneration', () => {
+    test('should regenerate phoneticTokens when updating trustee', async () => {
+      const trusteeId = 'trustee-123';
+      const updatedTrusteeInput = {
+        id: trusteeId,
+        trusteeId,
+        name: 'Jane Doe Updated',
+        public: {
+          address: {
+            address1: '456 Updated St',
+            city: 'Newtown',
+            state: 'CA',
+            zipCode: '54321',
+            countryCode: 'US' as const,
+          },
+        },
+        documentType: 'TRUSTEE' as const,
+        createdOn: '2025-08-12T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-08-12T10:00:00Z',
+        updatedBy: mockUser,
+      };
+
+      const mockReplaceAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: trusteeId, modifiedCount: 1, upsertedCount: 0 });
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(updatedTrusteeInput);
+
+      await repository.updateTrustee(trusteeId, updatedTrusteeInput, mockUser);
+
+      expect(mockReplaceAdapter).toHaveBeenCalledWith(
+        expect.any(Object),
+        expect.objectContaining({
+          name: 'Jane Doe Updated',
+          phoneticTokens: expect.arrayContaining([expect.any(String)]),
+          updatedOn: expect.any(String),
+          updatedBy: mockUser,
+        }),
+      );
+
+      // Verify phoneticTokens were regenerated
+      const callArg = mockReplaceAdapter.mock.calls[0][1];
+      expect(callArg.phoneticTokens).toBeDefined();
+      expect(Array.isArray(callArg.phoneticTokens)).toBe(true);
+      expect(callArg.phoneticTokens.length).toBeGreaterThan(0);
+    });
+
+    test('should generate different tokens when name changes', async () => {
+      const trusteeId = 'trustee-123';
+
+      // First update with one name
+      const firstUpdate = {
+        id: trusteeId,
+        trusteeId,
+        name: 'Smith',
+        public: {
+          address: {
+            address1: '123 Main St',
+            city: 'New York',
+            state: 'NY',
+            zipCode: '10001',
+            countryCode: 'US' as const,
+          },
+        },
+        documentType: 'TRUSTEE' as const,
+        createdOn: '2025-01-01T10:00:00Z',
+        createdBy: mockUser,
+        updatedOn: '2025-01-01T10:00:00Z',
+        updatedBy: mockUser,
+      };
+
+      const mockReplaceAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue({ id: trusteeId, modifiedCount: 1, upsertedCount: 0 });
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(firstUpdate);
+
+      await repository.updateTrustee(trusteeId, firstUpdate, mockUser);
+
+      const firstCallTokens = mockReplaceAdapter.mock.calls[0][1].phoneticTokens;
+
+      // Second update with different name
+      mockReplaceAdapter.mockClear();
+
+      const secondUpdate = {
+        ...firstUpdate,
+        name: 'Johnson',
+      };
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(secondUpdate);
+
+      await repository.updateTrustee(trusteeId, secondUpdate, mockUser);
+
+      const secondCallTokens = mockReplaceAdapter.mock.calls[0][1].phoneticTokens;
+
+      // Tokens should be different for different names
+      expect(firstCallTokens).not.toEqual(secondCallTokens);
     });
   });
 
