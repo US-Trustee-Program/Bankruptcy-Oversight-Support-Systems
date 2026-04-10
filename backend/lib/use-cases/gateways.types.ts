@@ -324,6 +324,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
   findTrusteeByLegacyTruId(truId: string): Promise<Trustee | null>;
   findTrusteesByName(name: string): Promise<Trustee[]>;
   searchTrusteesByName(name: string): Promise<Trustee[]>;
+  searchTrusteesByPhoneticTokens(tokens: string[]): Promise<Trustee[]>;
   findTrusteeByNameAndState(
     firstName: string,
     lastName: string,
@@ -342,6 +343,7 @@ export interface TrusteesRepository extends Reads<Trustee>, Releasable {
     id: string,
     updates: Partial<TrusteeOversightAssignment>,
   ): Promise<TrusteeOversightAssignment>;
+  setPhoneticTokens(trusteeId: string, tokens: string[]): Promise<void>;
   deleteAll(): Promise<number>;
 }
 
