@@ -443,8 +443,16 @@ async function getTrusteeMatchVerifications() {
   return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, {});
 }
 
-async function patchTrusteeVerificationOrderApproval(id: string, resolvedTrusteeId: string) {
-  return api().patch(`/trustee-match-verification/${id}`, { action: 'approve', resolvedTrusteeId });
+async function patchTrusteeVerificationOrderApproval(
+  id: string,
+  resolvedTrusteeId: string,
+  resolvedTrusteeName?: string,
+) {
+  return api().patch(`/trustee-match-verification/${id}`, {
+    action: 'approve',
+    resolvedTrusteeId,
+    resolvedTrusteeName,
+  });
 }
 
 async function patchTrusteeVerificationOrderRejection(id: string, reason?: string) {
