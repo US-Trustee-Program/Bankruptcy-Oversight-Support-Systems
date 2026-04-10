@@ -1,16 +1,27 @@
 # Backend API Dockerfile for E2E Testing
+#
+# Runs Azure Functions host only. MongoDB, SQL Edge, and Azurite run as
+# separate official containers in the same Podman pod, sharing localhost.
+# Seeds databases on startup before starting the Functions host.
+
 FROM localhost/e2e_built:latest
 
-WORKDIR /app/backend/function-apps/api
-
 # Provide CORS config and host settings for the local Functions host
-# Remove extensionBundle from host.json to avoid download attempts in offline environment
+WORKDIR /app/backend/function-apps/api
 COPY test/e2e/local.settings.backend.json ./local.settings.json
 COPY test/e2e/host.backend.json ./host.json
 
+WORKDIR /app
+
+# Copy e2e seed scripts and fixtures
+COPY test/e2e/scripts/ ./test/e2e/scripts/
+COPY test/e2e/fixtures/ ./test/e2e/fixtures/
+COPY test/e2e/package.json ./test/e2e/package.json
+
+# Copy entrypoint
+COPY test/e2e/scripts/entrypoint-backend.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 7071
 
-# Start Functions Host - connects to external Azurite service via bridge network
-# Use --javascript flag to indicate Node.js/JavaScript functions
-# Use --verbose for detailed logging
-CMD ["func", "start", "--javascript", "--port", "7071", "--verbose"]
+CMD ["/app/entrypoint.sh"]

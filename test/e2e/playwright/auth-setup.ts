@@ -6,7 +6,7 @@ require('dotenv').config({ quiet: true });
 const authFile = 'playwright/.auth/user.json';
 const { OKTA_USER_NAME, OKTA_PASSWORD, TARGET_HOST } = process.env;
 const LOGIN_PATH = '/login';
-const timeoutOption = { timeout: 30000 };
+const timeoutOption = { timeout: 60000 };
 
 test('authenticate', async ({ page }) => {
   const { login } = usingAuthenticationProvider();
