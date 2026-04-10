@@ -47,6 +47,7 @@ import {
 import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
+import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { OversightRoleType } from '@common/cams/roles';
 import {
   BankList,
@@ -432,6 +433,10 @@ async function getOrders() {
   return api().get<Order[]>(`/orders`, {});
 }
 
+async function searchTrustees(name: string) {
+  return api().get<TrusteeSearchResult[]>(`/trustee-search`, { name });
+}
+
 async function getTrusteeMatchVerifications() {
   return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, {});
 }
@@ -613,6 +618,7 @@ export const _Api2 = {
   getOfficeAssignees,
   getOffices,
   getOrders,
+  searchTrustees,
   getTrusteeMatchVerifications,
   patchTrusteeVerificationOrderApproval,
   patchTrusteeVerificationOrderRejection,
