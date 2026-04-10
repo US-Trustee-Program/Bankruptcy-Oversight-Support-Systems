@@ -401,10 +401,6 @@ var baseApplicationSettings = concat(
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
     }
     {
-      name: 'MSSQL_CLIENT_ID'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
-    }
-    {
       name: 'MSSQL_ENCRYPT'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-ENCRYPT)'
     }
