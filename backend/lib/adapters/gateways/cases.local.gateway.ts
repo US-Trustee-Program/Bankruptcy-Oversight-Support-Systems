@@ -165,4 +165,11 @@ export class CasesLocalGateway implements CasesInterface {
       latestSyncDate: transactionsStart,
     };
   }
+
+  public async getAppointmentDatesByCaseIds(
+    _context: ApplicationContext,
+    _caseIds: string[],
+  ): Promise<Map<string, string>> {
+    return new Map();
+  }
 }

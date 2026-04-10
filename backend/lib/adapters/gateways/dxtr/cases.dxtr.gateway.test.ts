@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import CasesDxtrGateway from './cases.dxtr.gateway';
+import CasesDxtrGateway, { parseDxtrDate } from './cases.dxtr.gateway';
 import * as database from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '@common/cams/cases';
@@ -1993,5 +1993,146 @@ describe('Test DXTR Gateway', () => {
 
       expect(debtor).toBeUndefined();
     });
+  });
+});
+
+describe('getAppointmentDatesByCaseIds', () => {
+  let querySpy: ReturnType<typeof vi.spyOn>;
+  let applicationContext: Awaited<ReturnType<typeof createMockApplicationContext>>;
+  let gateway: CasesDxtrGateway;
+
+  beforeEach(async () => {
+    querySpy = vi.spyOn(database, 'executeQuery');
+    applicationContext = await createMockApplicationContext();
+    gateway = new CasesDxtrGateway();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test('returns empty map when caseIds is empty', async () => {
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, []);
+    expect(result).toEqual(new Map());
+    expect(querySpy).not.toHaveBeenCalled();
+  });
+
+  test('returns map of caseId to ISO appointed date', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          { caseId: '081-24-12345', aptDate: '260407' },
+          { caseId: '082-24-67890', aptDate: '250115' },
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, [
+      '081-24-12345',
+      '082-24-67890',
+    ]);
+
+    expect(result.get('081-24-12345')).toBe('2026-04-07');
+    expect(result.get('082-24-67890')).toBe('2025-01-15');
+  });
+
+  test('deduplicates rows — keeps most recent (first) row per caseId', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [
+          { caseId: '081-24-12345', aptDate: '260407' },
+          { caseId: '081-24-12345', aptDate: '250101' }, // older, should be ignored
+        ],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
+
+    expect(result.get('081-24-12345')).toBe('2026-04-07');
+    expect(result.size).toBe(1);
+  });
+
+  test('excludes entries where aptDate is sentinel 000000', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: {
+        recordset: [{ caseId: '081-24-12345', aptDate: '000000' }],
+      },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
+
+    expect(result.size).toBe(0);
+  });
+
+  test('returns empty map when no records returned from DXTR', async () => {
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
+
+    const result = await gateway.getAppointmentDatesByCaseIds(applicationContext, ['081-24-12345']);
+
+    expect(result.size).toBe(0);
+  });
+});
+
+describe('parseDxtrDate', () => {
+  test('converts YYMMDD string to ISO date', () => {
+    expect(parseDxtrDate('260407')).toBe('2026-04-07');
+  });
+
+  test('returns undefined for undefined input', () => {
+    expect(parseDxtrDate(undefined)).toBeUndefined();
+  });
+
+  test('returns undefined for empty string', () => {
+    expect(parseDxtrDate('')).toBeUndefined();
+  });
+
+  test('returns undefined for all-zeros sentinel', () => {
+    expect(parseDxtrDate('000000')).toBeUndefined();
+  });
+
+  test('returns undefined for whitespace-only string', () => {
+    expect(parseDxtrDate('   ')).toBeUndefined();
+  });
+
+  test('trims whitespace before parsing', () => {
+    expect(parseDxtrDate(' 260407 ')).toBe('2026-04-07');
+  });
+
+  test('returns undefined for string shorter than 6 characters', () => {
+    expect(parseDxtrDate('2604')).toBeUndefined();
+  });
+
+  test('returns undefined for string longer than 6 characters', () => {
+    expect(parseDxtrDate('2604071')).toBeUndefined();
+  });
+
+  test('returns undefined for non-numeric string', () => {
+    expect(parseDxtrDate('26040X')).toBeUndefined();
+  });
+
+  test('returns undefined for invalid month (> 12)', () => {
+    expect(parseDxtrDate('261399')).toBeUndefined();
+  });
+
+  test('returns undefined for invalid month (00)', () => {
+    expect(parseDxtrDate('260001')).toBeUndefined();
+  });
+
+  test('returns undefined for invalid day (> 31)', () => {
+    expect(parseDxtrDate('260432')).toBeUndefined();
+  });
+
+  test('returns undefined for invalid day (00)', () => {
+    expect(parseDxtrDate('260400')).toBeUndefined();
   });
 });

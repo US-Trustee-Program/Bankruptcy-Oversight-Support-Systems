@@ -4,6 +4,7 @@ import { LoggerImpl } from '../../lib/adapters/services/logger.service';
 import CaseAssignmentEvent from './events/case-assignment-event';
 import CaseClosedEvent from './events/case-closed-event';
 import BackfillPhoneticTokens from './migrations/backfill-phonetic-tokens';
+import BackfillCaseAppointmentDates from './migrations/backfill-case-appointment-dates';
 import ImportZoomCsv from './migrations/import-zoom-csv';
 import DivisionChangeCleanup from './migrations/division-change-cleanup';
 import MigrateAssignees from './migrations/migrate-assignees';
@@ -78,6 +79,7 @@ dotenv.config();
 
 dataflows.register(
   BackfillPhoneticTokens,
+  BackfillCaseAppointmentDates,
   CaseAssignmentEvent,
   CaseClosedEvent,
   DivisionChangeCleanup,
