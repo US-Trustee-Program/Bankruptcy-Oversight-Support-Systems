@@ -211,6 +211,7 @@ describe('TrusteeMatchVerificationController', () => {
         context,
         'verification-1',
         'trustee-001',
+        undefined,
       );
       expect(response.statusCode).toBe(204);
     });

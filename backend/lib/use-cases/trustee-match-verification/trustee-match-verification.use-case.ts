@@ -63,6 +63,7 @@ export class TrusteeMatchVerificationUseCase {
     context: ApplicationContext,
     id: string,
     resolvedTrusteeId: string,
+    resolvedTrusteeName?: string,
   ): Promise<void> {
     const trace = context.observability.startTrace(context.invocationId);
     try {
@@ -91,8 +92,13 @@ export class TrusteeMatchVerificationUseCase {
 
       const now = new Date().toISOString();
 
-      // 2. Update SyncedCase.trusteeId if needed
-      const syncedCase = await casesRepo.getSyncedCase(verification.caseId);
+      // 2. Update SyncedCase.trusteeId if needed (case may not be synced yet — treat as optional)
+      let syncedCase = null;
+      try {
+        syncedCase = await casesRepo.getSyncedCase(verification.caseId);
+      } catch (e) {
+        if (!(e instanceof NotFoundError)) throw e;
+      }
       if (syncedCase && syncedCase.trusteeId !== resolvedTrusteeId) {
         await casesRepo.syncDxtrCase({ ...syncedCase, trusteeId: resolvedTrusteeId });
       }
@@ -117,6 +123,7 @@ export class TrusteeMatchVerificationUseCase {
       await repo.update(id, {
         status: 'approved',
         resolvedTrusteeId,
+        resolvedTrusteeName,
         updatedBy: userRef,
         updatedOn: now,
       });

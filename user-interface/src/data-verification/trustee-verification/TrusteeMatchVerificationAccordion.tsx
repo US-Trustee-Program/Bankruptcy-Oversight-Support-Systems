@@ -66,7 +66,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   const { divisionCode } = getCaseIdParts(order.caseId);
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
-  const courtName = courtDetails?.courtName ?? order.courtId;
+  const courtName = order.courtName ?? courtDetails?.courtName ?? order.courtId;
 
   const isInactiveStatus =
     order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
@@ -104,14 +104,23 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   async function handleApprove(candidate: CandidateScore) {
     setIsProcessing(true);
     try {
-      await Api2.patchTrusteeVerificationOrderApproval(order.id, candidate.trusteeId);
+      await Api2.patchTrusteeVerificationOrderApproval(
+        order.id,
+        candidate.trusteeId,
+        candidate.trusteeName,
+      );
       onOrderUpdate(
         {
           message: `Trustee ${candidate.trusteeName} appointed to case ${getCaseNumber(order.caseId)}.`,
           type: UswdsAlertStyle.Success,
           timeOut: 8,
         },
-        { ...order, status: 'approved', resolvedTrusteeId: candidate.trusteeId },
+        {
+          ...order,
+          status: 'approved',
+          resolvedTrusteeId: candidate.trusteeId,
+          resolvedTrusteeName: candidate.trusteeName,
+        },
       );
     } catch {
       onOrderUpdate(
@@ -158,14 +167,19 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   async function handleManualMatch(result: TrusteeSearchResult) {
     setIsProcessing(true);
     try {
-      await Api2.patchTrusteeVerificationOrderApproval(order.id, result.trusteeId);
+      await Api2.patchTrusteeVerificationOrderApproval(order.id, result.trusteeId, result.name);
       onOrderUpdate(
         {
           message: `Trustee ${result.name} appointed to case ${getCaseNumber(order.caseId)}.`,
           type: UswdsAlertStyle.Success,
           timeOut: 8,
         },
-        { ...order, status: 'approved', resolvedTrusteeId: result.trusteeId },
+        {
+          ...order,
+          status: 'approved',
+          resolvedTrusteeId: result.trusteeId,
+          resolvedTrusteeName: result.name,
+        },
       );
     } catch {
       onOrderUpdate(
@@ -356,8 +370,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           {viewMode === 'resolved' ? (
             <p className="resolved-statement" data-testid="resolved-statement">
               Trustee{' '}
-              {order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
-                ?.trusteeName ?? order.resolvedTrusteeId}{' '}
+              {order.resolvedTrusteeName ??
+                order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
+                  ?.trusteeName ??
+                order.resolvedTrusteeId}{' '}
               was appointed to case: {caseLink}
             </p>
           ) : (

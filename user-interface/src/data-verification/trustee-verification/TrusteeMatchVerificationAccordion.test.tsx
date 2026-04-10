@@ -167,6 +167,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
         sampleOrderWithCandidates.id,
         'trustee-1',
+        'Jane Smith',
       );
     });
   });
@@ -189,7 +190,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
           type: UswdsAlertStyle.Success,
           timeOut: 8,
         },
-        { ...sampleOrderWithCandidates, status: 'approved', resolvedTrusteeId: 'trustee-1' },
+        {
+          ...sampleOrderWithCandidates,
+          status: 'approved',
+          resolvedTrusteeId: 'trustee-1',
+          resolvedTrusteeName: 'Jane Smith',
+        },
       );
     });
   });
@@ -658,10 +664,15 @@ describe('TrusteeMatchVerificationAccordion', () => {
         expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
           sampleOrder.id,
           'manual-trustee-1',
+          'Manual Match',
         );
         expect(onOrderUpdate).toHaveBeenCalledWith(
           expect.objectContaining({ type: UswdsAlertStyle.Success }),
-          expect.objectContaining({ status: 'approved', resolvedTrusteeId: 'manual-trustee-1' }),
+          expect.objectContaining({
+            status: 'approved',
+            resolvedTrusteeId: 'manual-trustee-1',
+            resolvedTrusteeName: 'Manual Match',
+          }),
         );
       });
     });

@@ -132,9 +132,10 @@ function TrusteeSearchModal_(
 
   const appointmentLines =
     selectedTrustee?.appointments.map((appt) => {
-      const court = appt.courtName ?? appt.courtId;
+      const courtName =
+        courts.find((c) => c.courtId === appt.courtId)?.courtName ?? appt.courtName ?? appt.courtId;
       const division = appt.courtDivisionName ? ` (${appt.courtDivisionName})` : '';
-      return `${court}${division}: Chap ${formatChapterType(appt.chapter)} - ${formatAppointmentStatus(appt.status)}`;
+      return `${courtName}${division}: Chap ${formatChapterType(appt.chapter)} - ${formatAppointmentStatus(appt.status)}`;
     }) ?? [];
 
   const actionButtonGroup = {
