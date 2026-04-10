@@ -76,10 +76,7 @@ function TrusteeSearchModal_(
       return;
     }
     try {
-      const response = await Api2.searchTrustees(
-        value,
-        selectedCourtEntry?.courtId ?? selectedCourtId,
-      );
+      const response = await Api2.searchTrustees(value, selectedCourtEntry?.courtId);
       setSearchResults(response.data);
     } catch {
       setSearchResults([]);

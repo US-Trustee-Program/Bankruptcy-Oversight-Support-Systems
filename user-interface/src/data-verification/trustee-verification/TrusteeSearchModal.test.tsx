@@ -123,7 +123,7 @@ describe('TrusteeSearchModal', () => {
           ref={modalRef}
           id={modalId}
           dxtrTrusteeName="DOE, JOHN"
-          courtId="0881"
+          courtId="0208"
           onConfirm={vi.fn()}
         />
       </BrowserRouter>,
@@ -133,21 +133,21 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', '0881');
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0208');
     });
   });
 
   test('normalizes courtDivisionCode to courtId when searching', async () => {
     const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
 
-    // courtDivisionCode '081' maps to courtId '0881' in COURT_DIVISIONS
+    // courtDivisionCode '061' (Albany) maps to courtId '0206' in COURT_DIVISIONS
     render(
       <BrowserRouter>
         <TrusteeSearchModal
           ref={modalRef}
           id={modalId}
           dxtrTrusteeName="DOE, JOHN"
-          courtId="081"
+          courtId="061"
           onConfirm={vi.fn()}
         />
       </BrowserRouter>,
@@ -157,7 +157,7 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm', '0881');
+      expect(searchSpy).toHaveBeenCalledWith('sm', '0206');
     });
   });
 
