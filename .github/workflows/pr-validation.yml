@@ -5,12 +5,10 @@ on:
     branches:
       - main
     types:
-      - ready_for_review  # When PR moved from draft to ready
-      - labeled           # When run-e2e-tests label is added
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-      - '**/*.md'
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
   workflow_dispatch:
     inputs:
       ref:
@@ -24,34 +22,55 @@ on:
         default: false
 
 concurrency:
-  group: pr-e2e-containerized
-  cancel-in-progress: false  # Queue PRs, don't cancel
+  group: ${{ github.head_ref || github.ref }}-${{ github.workflow }}
 
 jobs:
   run-e2e-tests:
-    # On pull_request: only run if explicitly requested via label or ready_for_review
-    # On workflow_dispatch: always run
-    if: |
-      github.event_name == 'workflow_dispatch' ||
-      github.event.action == 'ready_for_review' ||
-      contains(github.event.pull_request.labels.*.name, 'run-e2e-tests')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Check for relevant changes
+        id: changes
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          echo "Changed files:"
+          echo "$CHANGED"
+          if echo "$CHANGED" | grep -qvE '^docs/|\.md$|^(\.gitignore|renovate\.json|\.mob)$'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip E2E (no relevant changes)
+        if: steps.changes.outputs.relevant == 'false'
+        run: echo "No code, test, CI/CD, or IaC changes detected — skipping E2E."
 
       - name: Setup Node.js
+        if: steps.changes.outputs.relevant == 'true'
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
+        if: steps.changes.outputs.relevant == 'true'
         run: npm ci
 
       - name: Set up E2E environment
+        if: steps.changes.outputs.relevant == 'true'
         working-directory: test/e2e
         run: |
           echo "TARGET_HOST=http://localhost:3000" > .env
@@ -78,17 +97,20 @@ jobs:
           echo "CAMS_BASE_PATH=/api" >> .env
 
       - name: Install podman and podman-compose
+        if: steps.changes.outputs.relevant == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y podman podman-compose
 
       - name: Pull base images from ghcr.io cache
+        if: steps.changes.outputs.relevant == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
         run: test/e2e/scripts/pull-base-images.sh
 
       - name: Run E2E Tests
+        if: steps.changes.outputs.relevant == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_ACTOR: ${{ github.actor }}
@@ -97,7 +119,7 @@ jobs:
 
       - name: Upload Playwright Report
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        if: always()
+        if: steps.changes.outputs.relevant == 'true' && (success() || failure())
         with:
           name: playwright-report
           path: test/e2e/playwright-report/
@@ -105,7 +127,7 @@ jobs:
 
       - name: Upload Container Logs
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-        if: always()
+        if: steps.changes.outputs.relevant == 'true' && (success() || failure())
         with:
           name: container-logs
           path: test/e2e/container-logs/
