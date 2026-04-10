@@ -23,6 +23,7 @@ const sampleResults: TrusteeSearchResult[] = [
     phone: { number: '(212) 555-0100' },
     email: 'john.smith@example.com',
     appointments: [],
+    matchType: 'exact',
   },
   {
     trusteeId: 'trustee-002',
@@ -36,6 +37,7 @@ const sampleResults: TrusteeSearchResult[] = [
     },
     email: 'jane.smithson@example.com',
     appointments: [],
+    matchType: 'phonetic',
   },
 ];
 
@@ -106,7 +108,30 @@ describe('TrusteeSearchModal', () => {
     await expandComboBoxAndType('sm');
 
     await waitFor(() => {
-      expect(searchSpy).toHaveBeenCalledWith('sm');
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+    });
+  });
+
+  test('passes courtId to searchTrustees API when provided', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="081"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', '081');
     });
   });
 
@@ -132,6 +157,24 @@ describe('TrusteeSearchModal', () => {
     await waitFor(() => {
       const listItems = document.querySelectorAll(`#${comboBoxId}-item-list li`);
       expect(listItems.length).toBe(2);
+    });
+  });
+
+  test('shows "similar name" label for phonetic matches in dropdown', async () => {
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('smith');
+
+    await waitFor(() => {
+      const listItems = document.querySelectorAll(`#${comboBoxId}-item-list li`);
+      expect(listItems.length).toBe(2);
+      // First result is exact match - no badge
+      expect(listItems[0].textContent).toBe('John Smith');
+      // Second result is phonetic match - has badge
+      expect(listItems[1].textContent).toBe('Jane Smithson (similar name)');
     });
   });
 

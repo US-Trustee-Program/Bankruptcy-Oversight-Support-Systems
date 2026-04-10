@@ -9,6 +9,7 @@ import { orderType, orderStatusType } from '@/lib/utils/labels';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { TrusteeSearchResult } from '@common/cams/trustee-search';
 
 const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
@@ -576,8 +577,8 @@ describe('TrusteeMatchVerificationAccordion', () => {
   });
 
   describe('manual trustee search flow', () => {
-    const manualSearchMockData = [
-      { trusteeId: 'manual-trustee-1', name: 'Manual Match', appointments: [] },
+    const manualSearchMockData: TrusteeSearchResult[] = [
+      { trusteeId: 'manual-trustee-1', name: 'Manual Match', appointments: [], matchType: 'exact' },
     ];
 
     function setupSearchMocks() {
