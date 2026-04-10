@@ -14,6 +14,7 @@ import {
 } from '@common/cams/trustees';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
 import { normalizeName, escapeRegex } from '../../../use-cases/dataflows/trustee-match.helpers';
+import { generateSearchTokens } from '../../utils/phonetic-helper';
 
 const MODULE_NAME = 'TRUSTEES-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'trustees';
@@ -28,6 +29,7 @@ export type TrusteeDocument = Trustee & {
 type TrusteeDocumentQueryable = TrusteeDocument & {
   'legacy.truIds'?: string[]; // truthful type — callers wrap single values in an array before passing to contains()
   'public.address.state'?: string;
+  phoneticTokens?: string[];
 };
 
 type TrusteeOversightAssignmentDocument = TrusteeOversightAssignment & {
@@ -70,6 +72,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
         ...trustee,
         documentType: 'TRUSTEE',
         trusteeId: crypto.randomUUID(),
+        phoneticTokens: generateSearchTokens(trustee.name),
       },
       user,
     );
@@ -125,6 +128,38 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: `Failed to find trustees by name.`,
+      });
+    }
+  }
+
+  async searchTrusteesByName(name: string): Promise<Trustee[]> {
+    try {
+      const normalized = normalizeName(name);
+      const escaped = escapeRegex(normalized);
+      const doc = using<TrusteeDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE'),
+        doc('name').regex(new RegExp(escaped, 'i')),
+      );
+      return await this.getAdapter<TrusteeDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to search trustees by name.`,
+      });
+    }
+  }
+
+  async searchTrusteesByPhoneticTokens(tokens: string[]): Promise<Trustee[]> {
+    try {
+      const doc = using<TrusteeDocumentQueryable>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE'),
+        doc('phoneticTokens').contains(tokens),
+      );
+      return await this.getAdapter<TrusteeDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to search trustees by phonetic tokens.`,
       });
     }
   }
@@ -227,6 +262,7 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
 
       const updateData = {
         ...input,
+        phoneticTokens: generateSearchTokens(input.name),
         updatedOn: new Date().toISOString(),
         updatedBy: userRef,
       };
@@ -314,6 +350,18 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
           module: MODULE_NAME,
           message: `Failed to update oversight assignment ${id}.`,
         },
+      });
+    }
+  }
+
+  async setPhoneticTokens(trusteeId: string, tokens: string[]): Promise<void> {
+    try {
+      const doc = using<TrusteeDocument>();
+      const query = and(doc('documentType').equals('TRUSTEE'), doc('trusteeId').equals(trusteeId));
+      await this.getAdapter<TrusteeDocument>().updateOne(query, { phoneticTokens: tokens });
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to set phonetic tokens for trustee ${trusteeId}.`,
       });
     }
   }
