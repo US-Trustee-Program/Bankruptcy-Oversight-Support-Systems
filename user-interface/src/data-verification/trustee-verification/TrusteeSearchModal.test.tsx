@@ -6,6 +6,7 @@ import Api2 from '@/lib/models/api2';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { COURT_DIVISIONS } from '@common/cams/test-utilities/courts.mock';
 import TestingUtilities from '@/lib/testing/testing-utilities';
+import * as UseDebounceModule from '@/lib/hooks/UseDebounce';
 
 const modalId = 'test-search';
 const comboBoxId = `trustee-search-combobox-${modalId}`;
@@ -79,6 +80,8 @@ describe('TrusteeSearchModal', () => {
       return 0;
     });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: COURT_DIVISIONS });
+    vi.spyOn(UseDebounceModule, 'default').mockReturnValue(((cb: () => void) =>
+      cb()) as unknown as ReturnType<typeof UseDebounceModule.default>);
   });
 
   afterEach(() => {
@@ -185,11 +188,10 @@ describe('TrusteeSearchModal', () => {
     );
     act(() => modalRef.current?.show());
 
+    // The selection is reflected in the aria-description element (collapsed state)
     await waitFor(() => {
-      const input = document.querySelector(
-        `#${districtComboBoxId}-combo-box-input`,
-      ) as HTMLInputElement;
-      expect(input?.value).toBe('Southern District of New York');
+      const description = document.querySelector(`#${districtComboBoxId}-aria-description`);
+      expect(description?.textContent).toContain('Southern District of New York');
     });
   });
 
