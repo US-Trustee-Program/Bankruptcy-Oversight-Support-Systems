@@ -129,5 +129,10 @@ vitest.config.d.ts
 vitest.config.js
 vitest.config.js.map
 
-# Beads issue tracker (local-only; issues are stored in the remote Dolt repo)
+# Beads issue tracker (local-only; issues are stored in the Dolt remote)
 .beads/
+.dolt/
+.beads-credential-key
+
+# Beads / Dolt files (added by bd init)
+*.db
