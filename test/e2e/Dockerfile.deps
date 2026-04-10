@@ -14,7 +14,7 @@ WORKDIR /app
 
 # Install system dependencies, supervisor, and runtime libs for MongoDB + SQL Edge
 RUN apt-get update && \
-    apt-get install -y curl libicu72 netcat-openbsd libssl3 libcurl4 libnuma1 && \
+    apt-get install -y curl libicu72 netcat-openbsd libssl3 libcurl4 libnuma1 libatomic1 libsqlite3-0 && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
