@@ -119,12 +119,12 @@ export class TrusteeMatchVerificationController {
     // For approved records where the resolved trustee was manually selected (not a candidate),
     // fetch their name so the UI can display it instead of the raw trustee ID.
     let resolvedTrusteeName = verification.resolvedTrusteeName;
-    if (
-      verification.status === 'approved' &&
-      verification.resolvedTrusteeId &&
-      !resolvedTrusteeName &&
-      !enrichedCandidates.find((c) => c.trusteeId === verification.resolvedTrusteeId)
-    ) {
+    const isApprovedWithUnresolvedName =
+      verification.status === 'approved' && verification.resolvedTrusteeId && !resolvedTrusteeName;
+    const notAlreadyInCandidates = !enrichedCandidates.find(
+      (c) => c.trusteeId === verification.resolvedTrusteeId,
+    );
+    if (isApprovedWithUnresolvedName && notAlreadyInCandidates) {
       try {
         const resolved = await trusteesRepo.read(verification.resolvedTrusteeId);
         resolvedTrusteeName = resolved.name;

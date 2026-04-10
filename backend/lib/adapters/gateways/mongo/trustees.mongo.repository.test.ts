@@ -1362,9 +1362,7 @@ describe('TrusteesMongoRepository', () => {
             },
           ],
         },
-        {
-          $set: { phoneticTokens: tokens },
-        },
+        { phoneticTokens: tokens },
       );
     });
 
@@ -1378,9 +1376,7 @@ describe('TrusteesMongoRepository', () => {
 
       await repository.setPhoneticTokens(trusteeId, tokens);
 
-      expect(mockAdapter).toHaveBeenCalledWith(expect.any(Object), {
-        $set: { phoneticTokens: tokens },
-      });
+      expect(mockAdapter).toHaveBeenCalledWith(expect.any(Object), { phoneticTokens: tokens });
     });
 
     test('should handle database errors when setting phonetic tokens', async () => {
