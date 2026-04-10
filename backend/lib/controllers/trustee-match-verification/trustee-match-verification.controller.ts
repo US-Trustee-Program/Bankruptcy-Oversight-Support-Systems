@@ -11,6 +11,7 @@ import HttpStatusCodes from '@common/api/http-status-codes';
 import { CamsRole } from '@common/cams/roles';
 import { CourtsUseCase } from '../../use-cases/courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { getCaseIdParts } from '@common/cams/cases';
 
 const MODULE_NAME = 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER';
 
@@ -75,7 +76,38 @@ export class TrusteeMatchVerificationController {
             }
           }),
         );
-        return { ...verification, matchCandidates: enrichedCandidates };
+        // For approved records where the resolved trustee was manually selected (not a candidate),
+        // fetch their name so the UI can display it instead of the raw trustee ID.
+        let resolvedTrusteeName = verification.resolvedTrusteeName;
+        if (
+          verification.status === 'approved' &&
+          verification.resolvedTrusteeId &&
+          !resolvedTrusteeName &&
+          !enrichedCandidates.find((c) => c.trusteeId === verification.resolvedTrusteeId)
+        ) {
+          try {
+            const resolved = await trusteesRepo.read(verification.resolvedTrusteeId);
+            resolvedTrusteeName = resolved.name;
+          } catch {
+            // name unavailable — UI falls back to trustee ID
+          }
+        }
+
+        // Enrich court name so the UI can display it without needing the USTP courts list.
+        let courtName: string | undefined;
+        try {
+          const { divisionCode } = getCaseIdParts(verification.caseId);
+          courtName = this.findCourt(courts, divisionCode, verification.courtId)?.courtName;
+        } catch {
+          courtName = this.findCourt(courts, undefined, verification.courtId)?.courtName;
+        }
+
+        return {
+          ...verification,
+          matchCandidates: enrichedCandidates,
+          resolvedTrusteeName,
+          courtName,
+        };
       }),
     );
 
@@ -112,6 +144,7 @@ export class TrusteeMatchVerificationController {
     const body = context.request.body as {
       action?: string;
       resolvedTrusteeId?: string;
+      resolvedTrusteeName?: string;
       reason?: string;
     };
     const useCase = new TrusteeMatchVerificationUseCase();
@@ -120,7 +153,12 @@ export class TrusteeMatchVerificationController {
       if (!body.resolvedTrusteeId) {
         throw new BadRequestError(MODULE_NAME, { message: 'Missing resolvedTrusteeId.' });
       }
-      await useCase.approveVerification(context, id, body.resolvedTrusteeId);
+      await useCase.approveVerification(
+        context,
+        id,
+        body.resolvedTrusteeId,
+        body.resolvedTrusteeName,
+      );
       return httpSuccess({ statusCode: HttpStatusCodes.NO_CONTENT });
     } else if (body?.action === 'reject') {
       await useCase.rejectVerification(context, id, body.reason);
