@@ -297,6 +297,7 @@ resource apiMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
       INFO_SHA: 'ProductionSlot'
       MyTaskHub: 'main'
       COSMOS_DATABASE_NAME: cosmosDatabaseName
+      MSSQL_DATABASE_DXTR: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
       AzureWebJobsStorage: apiFunctionStorageAccount.outputs.connectionString
       AzureWebJobsDataflowsStorage: dataflowsStorageConnectionString
     }
