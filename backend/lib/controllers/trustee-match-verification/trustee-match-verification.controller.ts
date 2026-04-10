@@ -48,67 +48,9 @@ export class TrusteeMatchVerificationController {
     const courts = await new CourtsUseCase().getCourts(context);
 
     const enriched = await Promise.all(
-      data.map(async (verification) => {
-        const enrichedCandidates = await Promise.all(
-          verification.matchCandidates.map(async (candidate) => {
-            try {
-              const [trustee, appointments] = await Promise.all([
-                trusteesRepo.read(candidate.trusteeId),
-                appointmentsRepo.getTrusteeAppointments(candidate.trusteeId),
-              ]);
-              const enrichedAppointments = appointments.map((appt) => {
-                const court = this.findCourt(courts, appt.divisionCode, appt.courtId);
-                return {
-                  ...appt,
-                  courtName: court?.courtName,
-                  courtDivisionName: court?.courtDivisionName,
-                };
-              });
-              return {
-                ...candidate,
-                address: trustee.public.address,
-                phone: trustee.public.phone,
-                email: trustee.public.email,
-                appointments: enrichedAppointments,
-              };
-            } catch {
-              return candidate;
-            }
-          }),
-        );
-        // For approved records where the resolved trustee was manually selected (not a candidate),
-        // fetch their name so the UI can display it instead of the raw trustee ID.
-        let resolvedTrusteeName = verification.resolvedTrusteeName;
-        if (
-          verification.status === 'approved' &&
-          verification.resolvedTrusteeId &&
-          !resolvedTrusteeName &&
-          !enrichedCandidates.find((c) => c.trusteeId === verification.resolvedTrusteeId)
-        ) {
-          try {
-            const resolved = await trusteesRepo.read(verification.resolvedTrusteeId);
-            resolvedTrusteeName = resolved.name;
-          } catch {
-            // name unavailable — UI falls back to trustee ID
-          }
-        }
-
-        // Enrich court name so the UI can display it without needing the USTP courts list.
-        let courtName: string | undefined;
-        try {
-          const { divisionCode } = getCaseIdParts(verification.caseId);
-          courtName = this.findCourt(courts, divisionCode, verification.courtId)?.courtName;
-        } catch {
-          courtName = this.findCourt(courts, undefined, verification.courtId)?.courtName;
-        }
-
-        return {
-          ...verification,
-          matchCandidates: enrichedCandidates,
-          resolvedTrusteeName,
-          courtName,
-        };
-      }),
+      data.map((verification) =>
+        this.enrichVerification(verification, trusteesRepo, appointmentsRepo, courts),
+      ),
     );
 
     return httpSuccess({
@@ -117,6 +59,93 @@ export class TrusteeMatchVerificationController {
         data: enriched,
       },
     });
+  }
+
+  private async enrichVerification(
+    verification: TrusteeMatchVerification,
+    trusteesRepo: ReturnType<typeof factory.getTrusteesRepository>,
+    appointmentsRepo: ReturnType<typeof factory.getTrusteeAppointmentsRepository>,
+    courts: CourtDivisionDetails[],
+  ): Promise<TrusteeMatchVerification> {
+    const enrichedCandidates = await Promise.all(
+      verification.matchCandidates.map(async (candidate) => {
+        try {
+          const [trustee, appointments] = await Promise.all([
+            trusteesRepo.read(candidate.trusteeId),
+            appointmentsRepo.getTrusteeAppointments(candidate.trusteeId),
+          ]);
+          const enrichedAppointments = appointments.map((appt) => {
+            const court = this.findCourt(courts, appt.divisionCode, appt.courtId);
+            return {
+              ...appt,
+              courtName: court?.courtName,
+              courtDivisionName: court?.courtDivisionName,
+            };
+          });
+          return {
+            ...candidate,
+            address: trustee.public.address,
+            phone: trustee.public.phone,
+            email: trustee.public.email,
+            appointments: enrichedAppointments,
+          };
+        } catch {
+          return candidate;
+        }
+      }),
+    );
+
+    const resolvedTrusteeName = await this.resolveManualTrusteeName(
+      verification,
+      trusteesRepo,
+      enrichedCandidates,
+    );
+
+    const courtName = this.resolveCourtName(verification, courts);
+
+    return {
+      ...verification,
+      matchCandidates: enrichedCandidates,
+      resolvedTrusteeName,
+      courtName,
+    };
+  }
+
+  private async resolveManualTrusteeName(
+    verification: TrusteeMatchVerification,
+    trusteesRepo: ReturnType<typeof factory.getTrusteesRepository>,
+    enrichedCandidates: Array<{ trusteeId: string }>,
+  ): Promise<string | undefined> {
+    // For approved records where the resolved trustee was manually selected (not a candidate),
+    // fetch their name so the UI can display it instead of the raw trustee ID.
+    let resolvedTrusteeName = verification.resolvedTrusteeName;
+    if (
+      verification.status === 'approved' &&
+      verification.resolvedTrusteeId &&
+      !resolvedTrusteeName &&
+      !enrichedCandidates.find((c) => c.trusteeId === verification.resolvedTrusteeId)
+    ) {
+      try {
+        const resolved = await trusteesRepo.read(verification.resolvedTrusteeId);
+        resolvedTrusteeName = resolved.name;
+      } catch {
+        // name unavailable — UI falls back to trustee ID
+      }
+    }
+    return resolvedTrusteeName;
+  }
+
+  private resolveCourtName(
+    verification: TrusteeMatchVerification,
+    courts: CourtDivisionDetails[],
+  ): string | undefined {
+    // Enrich court name so the UI can display it without needing the USTP courts list.
+    try {
+      const { divisionCode } = getCaseIdParts(verification.caseId);
+      return this.findCourt(courts, divisionCode, verification.courtId)?.courtName;
+    } catch {
+      return this.findCourt(courts, undefined, verification.courtId)?.courtName;
+    }
   }
 
   private findCourt(
