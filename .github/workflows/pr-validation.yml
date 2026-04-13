@@ -24,7 +24,7 @@ on:
         default: false
 
 concurrency:
-  group: pr-e2e-containerized
+  group: ${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: false  # Queue PRs, don't cancel
 
 jobs:
