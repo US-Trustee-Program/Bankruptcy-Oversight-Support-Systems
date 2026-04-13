@@ -119,28 +119,28 @@ jobs:
           echo "dataflowsFunctionName=${dataflowsFunctionName}" >> $GITHUB_OUTPUT
           echo "slotName=${{ vars.SLOT_NAME }}" >> $GITHUB_OUTPUT
 
-      - uses: cloudposse/github-action-secret-outputs@main
+      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
         id: rgApp
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: encode
           in: ${{ steps.build-info.outputs.azResourceGrpApp }}
 
-      - uses: cloudposse/github-action-secret-outputs@main
+      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
         id: rgNetwork
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: encode
           in: ${{ steps.build-info.outputs.azResourceGrpNetwork }}
 
-      - uses: cloudposse/github-action-secret-outputs@main
+      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
         id: rgAppDecode
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
           op: decode
           in: ${{ steps.rgApp.outputs.out }}
 
-      - uses: cloudposse/github-action-secret-outputs@main
+      - uses: cloudposse/github-action-secret-outputs@67ae2f7ee1890986ba0012bacd079a5a36ecb449 # main
         id: rgNetworkDecode
         with:
           secret: ${{ secrets.PGP_SIGNING_PASSPHRASE }}
