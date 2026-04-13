@@ -48,9 +48,15 @@ fi
 # Load .env without bash interpretation so special characters like | in values
 # are treated as literals (bash's `source` would interpret | as a pipe operator,
 # silently truncating values like CAMS_LOGIN_PROVIDER_CONFIG).
+# Strip surrounding single or double quotes from values so that entries like
+#   CAMS_LOGIN_PROVIDER_CONFIG='issuer=...|clientId=...'
+# export the value without the literal quote characters.
 while IFS='=' read -r key value || [[ -n "$key" ]]; do
     [[ -z "${key// }" ]] && continue
     [[ "$key" =~ ^[[:space:]]*# ]] && continue
+    # Strip surrounding single or double quotes
+    value="${value#\'}" ; value="${value%\'}"
+    value="${value#\"}" ; value="${value%\"}"
     export "${key}=${value}"
 done < .env
 
