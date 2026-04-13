@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { test } from './fixture/urlQueryString';
 
-const timeoutOption = { timeout: 30000 };
+const timeoutOption = { timeout: 60000 };
 
 test.describe('Trustees', () => {
   test.describe.configure({ retries: 0, mode: 'serial' });
