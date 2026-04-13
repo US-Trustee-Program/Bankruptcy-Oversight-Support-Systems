@@ -45,10 +45,14 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
-set -a
-# shellcheck disable=SC1091
-source .env
-set +a
+# Load .env without bash interpretation so special characters like | in values
+# are treated as literals (bash's `source` would interpret | as a pipe operator,
+# silently truncating values like CAMS_LOGIN_PROVIDER_CONFIG).
+while IFS='=' read -r key value || [[ -n "$key" ]]; do
+    [[ -z "${key// }" ]] && continue
+    [[ "$key" =~ ^[[:space:]]*# ]] && continue
+    export "${key}=${value}"
+done < .env
 
 POD_NAME="cams-e2e-pod"
 TESTS_PASSED=false
