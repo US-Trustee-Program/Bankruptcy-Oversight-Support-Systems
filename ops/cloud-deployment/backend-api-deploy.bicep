@@ -74,7 +74,6 @@ param idKeyvaultAppConfiguration string
 
 param cosmosDatabaseName string
 param e2eDatabaseName string
-param e2eSqlDatabaseName string
 
 @description('boolean to determine creation and configuration of Application Insights for the Azure Function')
 param deployAppInsights bool = false
@@ -268,7 +267,7 @@ resource apiSlotAppSettings 'Microsoft.Web/sites/slots/config@2023-12-01' = {
       INFO_SHA: gitSha
       MyTaskHub: slotName
       COSMOS_DATABASE_NAME: e2eDatabaseName
-      MSSQL_DATABASE_DXTR: e2eSqlDatabaseName
+      MSSQL_DATABASE_DXTR: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
       AzureWebJobsStorage: apiFunctionSlotStorageAccount.outputs.connectionString
       AzureWebJobsDataflowsStorage: dataflowsSlotStorageConnectionString
     }
