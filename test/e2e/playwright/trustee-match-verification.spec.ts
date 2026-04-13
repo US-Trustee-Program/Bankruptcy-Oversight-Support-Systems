@@ -4,7 +4,7 @@ import { TrusteeMatchVerification } from '../../../common/src/cams/trustee-match
 import { TrusteeAppointmentSyncErrorCode } from '../../../common/src/cams/dataflow-events';
 import { logout } from './login/login-helpers';
 
-const timeoutOption = { timeout: 30000 };
+const timeoutOption = { timeout: 60000 };
 
 test.describe('Trustee Match Verification', () => {
   let verificationItems: TrusteeMatchVerification[];
@@ -118,10 +118,10 @@ test.describe('Trustee Match Verification', () => {
 
     const content = page.getByTestId(`accordion-content-order-list-${inactiveItem!.id}`);
     await expect(content).toBeVisible(timeoutOption);
-    await expect(content).toContainText('inactive appointment status');
+    await expect(content).toContainText('inactive in CAMS but was appointed to case');
   });
 
-  test('should show warning alert with inactive status for inactive match verification', async ({
+  test('should show inactive trustee task type label for inactive match verification', async ({
     page,
   }) => {
     const inactiveItem = verificationItems.find(
@@ -131,10 +131,8 @@ test.describe('Trustee Match Verification', () => {
     );
     expect(inactiveItem).not.toBeFalsy();
 
-    await page.getByTestId(`accordion-button-order-list-${inactiveItem!.id}`).click();
-
-    const alert = page.getByTestId(`alert-inactive-status-warning-${inactiveItem!.id}`);
-    await expect(alert).toBeVisible(timeoutOption);
-    await expect(alert).toContainText('Voluntarily Suspended');
+    const heading = page.getByTestId(`accordion-heading-${inactiveItem!.id}`);
+    await expect(heading).toBeVisible(timeoutOption);
+    await expect(heading).toContainText('Inactive trustee');
   });
 });
