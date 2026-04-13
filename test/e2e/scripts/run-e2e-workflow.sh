@@ -278,6 +278,7 @@ echo ""
 echo -e "${BLUE}🧪 Step 3: Running E2E tests...${NC}"
 echo ""
 
+mkdir -p test-results playwright-report
 TEST_OUTPUT_FILE=$(mktemp)
 set +e
 podman run --rm \
