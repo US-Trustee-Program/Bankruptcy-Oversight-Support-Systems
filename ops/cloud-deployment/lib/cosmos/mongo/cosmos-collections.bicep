@@ -369,6 +369,11 @@ resource trusteesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDataba
             ]
           }
         }
+        {
+          key: {
+            keys: ['phoneticTokens']
+          }
+        }
       ]
     }
   }
