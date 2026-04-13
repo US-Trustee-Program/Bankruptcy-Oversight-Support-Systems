@@ -18,3 +18,17 @@ resource debtorNameSearchWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
     serializedData: loadTextContent('debtor-name-search.json')
   }
 }
+
+resource trusteeMatchingAnalyticsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid('trustee-matching-analytics-workbook', resourceGroup().id)
+  location: location
+  tags: tags
+  kind: 'shared'
+  properties: {
+    displayName: 'Trustee Matching Analytics'
+    description: 'Comprehensive metrics tracking trustee matching performance across all 5 matching scenarios (Stories 1-5).'
+    category: 'workbook'
+    sourceId: appInsightsResourceId
+    serializedData: loadTextContent('trustee-matching-analytics.json')
+  }
+}

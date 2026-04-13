@@ -58,7 +58,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customMetrics\n| where name == \"TrusteeAutoMatchRate\"\n| where timestamp {TimeRange}\n| summarize CurrentRate = avg(value)\n| extend Baseline = 90.0\n| extend Status = iff(CurrentRate >= Baseline, \"✅ On Target\", \"⚠️ Below Baseline\")\n| project Metric = \"Auto-Match Rate\", CurrentRate, Baseline, Status",
+        "query": "app('appi-ustp-cams-dev-1fee48-dataflows').customMetrics\n| where name == \"TrusteeAutoMatchRate\"\n| where timestamp {TimeRange}\n| summarize CurrentRate = avg(value)\n| extend Baseline = 90.0\n| extend Status = iff(CurrentRate >= Baseline, \"✅ On Target\", \"⚠️ Below Baseline\")\n| project Metric = \"Auto-Match Rate\", CurrentRate, Baseline, Status",
         "size": 3,
         "title": "Auto-Match Performance",
         "timeContextFromParameter": "TimeRange",
@@ -97,7 +97,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customMetrics\n| where name == \"DataflowDuration\"\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where timestamp {TimeRange}\n| summarize AvgDurationMs = avg(value)\n| extend AvgDurationSeconds = AvgDurationMs / 1000\n| project Metric = \"Avg Processing Speed\", AvgDurationSeconds\n| extend Unit = \"seconds\"",
+        "query": "app('appi-ustp-cams-dev-1fee48-dataflows').customMetrics\n| where name == \"DataflowDuration\"\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where timestamp {TimeRange}\n| summarize AvgDurationMs = avg(value)\n| extend AvgDurationSeconds = AvgDurationMs / 1000\n| project Metric = \"Avg Processing Speed\", AvgDurationSeconds\n| extend Unit = \"seconds\"",
         "size": 3,
         "title": "Story 1: Auto-Match Processing Time",
         "timeContextFromParameter": "TimeRange",
@@ -175,7 +175,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "traces\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where customDimensions.eventName == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend \n    AutoMatch = todouble(customDimensions[\"details.autoMatchCount\"]),\n    HighConfidence = todouble(customDimensions[\"details.highConfidenceMatchCount\"]),\n    MultipleMatch = todouble(customDimensions[\"details.multipleMatchCount\"]),\n    ImperfectMatch = todouble(customDimensions[\"details.imperfectMatchCount\"]),\n    NoMatch = todouble(customDimensions[\"details.noMatchCount\"])\n| summarize \n    AutoMatchTotal = sum(AutoMatch),\n    HighConfidenceTotal = sum(HighConfidence),\n    MultipleMatchTotal = sum(MultipleMatch),\n    ImperfectMatchTotal = sum(ImperfectMatch),\n    NoMatchTotal = sum(NoMatch)\n| extend Total = AutoMatchTotal + HighConfidenceTotal + MultipleMatchTotal + ImperfectMatchTotal + NoMatchTotal\n| project \n    Story1_AutoMatch = round((AutoMatchTotal / Total) * 100, 1),\n    Story2_HighConfidence = round((HighConfidenceTotal / Total) * 100, 1),\n    Story3_MultipleMatch = round((MultipleMatchTotal / Total) * 100, 1),\n    Story4_InactiveStatus = round((ImperfectMatchTotal / Total) * 100, 1),\n    Story5_NoMatch = round((NoMatchTotal / Total) * 100, 1)",
+        "query": "app('appi-ustp-cams-dev-1fee48-dataflows').traces\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where customDimensions.eventName == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend \n    AutoMatch = todouble(customDimensions[\"details.autoMatchCount\"]),\n    HighConfidence = todouble(customDimensions[\"details.highConfidenceMatchCount\"]),\n    MultipleMatch = todouble(customDimensions[\"details.multipleMatchCount\"]),\n    ImperfectMatch = todouble(customDimensions[\"details.imperfectMatchCount\"]),\n    NoMatch = todouble(customDimensions[\"details.noMatchCount\"])\n| summarize \n    AutoMatchTotal = sum(AutoMatch),\n    HighConfidenceTotal = sum(HighConfidence),\n    MultipleMatchTotal = sum(MultipleMatch),\n    ImperfectMatchTotal = sum(ImperfectMatch),\n    NoMatchTotal = sum(NoMatch)\n| extend Total = AutoMatchTotal + HighConfidenceTotal + MultipleMatchTotal + ImperfectMatchTotal + NoMatchTotal\n| project \n    Story1_AutoMatch = round((AutoMatchTotal / Total) * 100, 1),\n    Story2_HighConfidence = round((HighConfidenceTotal / Total) * 100, 1),\n    Story3_MultipleMatch = round((MultipleMatchTotal / Total) * 100, 1),\n    Story4_InactiveStatus = round((ImperfectMatchTotal / Total) * 100, 1),\n    Story5_NoMatch = round((NoMatchTotal / Total) * 100, 1)",
         "size": 0,
         "title": "Scenario Distribution (%)",
         "timeContextFromParameter": "TimeRange",
@@ -189,7 +189,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "traces\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where customDimensions.eventName == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend \n    AutoMatch = todouble(customDimensions[\"details.autoMatchCount\"]),\n    HighConfidence = todouble(customDimensions[\"details.highConfidenceMatchCount\"]),\n    MultipleMatch = todouble(customDimensions[\"details.multipleMatchCount\"]),\n    ImperfectMatch = todouble(customDimensions[\"details.imperfectMatchCount\"]),\n    NoMatch = todouble(customDimensions[\"details.noMatchCount\"])\n| summarize \n    Story1_AutoMatch = sum(AutoMatch),\n    Story2_HighConfidence = sum(HighConfidence),\n    Story3_MultipleMatch = sum(MultipleMatch),\n    Story4_InactiveStatus = sum(ImperfectMatch),\n    Story5_NoMatch = sum(NoMatch)\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "query": "app('appi-ustp-cams-dev-1fee48-dataflows').traces\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where customDimensions.eventName == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend \n    AutoMatch = todouble(customDimensions[\"details.autoMatchCount\"]),\n    HighConfidence = todouble(customDimensions[\"details.highConfidenceMatchCount\"]),\n    MultipleMatch = todouble(customDimensions[\"details.multipleMatchCount\"]),\n    ImperfectMatch = todouble(customDimensions[\"details.imperfectMatchCount\"]),\n    NoMatch = todouble(customDimensions[\"details.noMatchCount\"])\n| summarize \n    Story1_AutoMatch = sum(AutoMatch),\n    Story2_HighConfidence = sum(HighConfidence),\n    Story3_MultipleMatch = sum(MultipleMatch),\n    Story4_InactiveStatus = sum(ImperfectMatch),\n    Story5_NoMatch = sum(NoMatch)\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
         "size": 0,
         "title": "Scenario Distribution Over Time",
         "timeContextFromParameter": "TimeRange",
@@ -223,7 +223,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customMetrics\n| where name == \"DataflowDuration\"\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where timestamp {TimeRange}\n| extend DurationSeconds = value / 1000\n| summarize AvgDurationSeconds = avg(DurationSeconds) by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "query": "app('appi-ustp-cams-dev-1fee48-dataflows').customMetrics\n| where name == \"DataflowDuration\"\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where timestamp {TimeRange}\n| extend DurationSeconds = value / 1000\n| summarize AvgDurationSeconds = avg(DurationSeconds) by Day = bin(timestamp, 1d)\n| order by Day asc",
         "size": 0,
         "title": "Story 1: Auto-Match Processing Speed Trend",
         "timeContextFromParameter": "TimeRange",
@@ -407,7 +407,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customMetrics\n| where name == \"TrusteeAutoMatchRate\"\n| where timestamp {TimeRange}\n| summarize AutoMatchRate = avg(value) by Day = bin(timestamp, 1d)\n| extend Baseline = 90.0\n| order by Day asc",
+        "query": "app('appi-ustp-cams-dev-1fee48-dataflows').customMetrics\n| where name == \"TrusteeAutoMatchRate\"\n| where timestamp {TimeRange}\n| summarize AutoMatchRate = avg(value) by Day = bin(timestamp, 1d)\n| extend Baseline = 90.0\n| order by Day asc",
         "size": 0,
         "title": "Story 1: Data Quality Trend (Auto-Match Rate Over Time)",
         "timeContextFromParameter": "TimeRange",
@@ -506,7 +506,7 @@
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-1fee48/providers/Microsoft.Insights/components/appi-ustp-cams-dev-1fee48-dataflows"
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-f64e59/providers/Microsoft.Insights/components/appi-ustp-cams-dev-f64e59-webapp"
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
