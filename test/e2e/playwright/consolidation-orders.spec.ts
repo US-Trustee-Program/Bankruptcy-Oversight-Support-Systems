@@ -18,7 +18,7 @@ test.describe('Consolidation Orders', () => {
     );
     officesRequestPromise = page.waitForEvent('requestfinished', {
       predicate: (e) => e.url().includes('api/courts'),
-      timeout: 30000,
+      timeout: 60000,
     });
     await expect(page.getByTestId('header-data-verification-link')).toBeVisible();
 

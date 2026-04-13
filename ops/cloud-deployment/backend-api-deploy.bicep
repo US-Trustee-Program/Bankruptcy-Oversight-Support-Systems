@@ -201,6 +201,7 @@ resource apiFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
         'AzureWebJobsDataflowsStorage'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
+        'MSSQL_DATABASE_DXTR'
       ]
     }
   }
@@ -277,33 +278,6 @@ resource apiSlotAppSettings 'Microsoft.Web/sites/slots/config@2023-12-01' = {
   ]
 }
 
-// config/appsettings deployed as a separate top-level resource so that ARM fully
-// provisions the main app — including its Azure Files content share — before applying
-// configuration. Avoids error 01019 "Invalid values supplied for Azure Files related
-// app settings" that occurs when appSettings are inlined in config/web.
-resource apiMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
-  name: 'appsettings'
-  parent: apiFunctionApp
-  properties: union(
-    apiSlotBaseAppSettingsObject,
-    createApplicationInsights
-      ? {
-          APPLICATIONINSIGHTS_CONNECTION_STRING: apiFunctionAppInsights.outputs.connectionString
-          APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION: 'false'
-          AzureFunctionsJobHost__logging__console__isEnabled: 'false'
-        }
-      : {},
-    {
-      INFO_SHA: 'ProductionSlot'
-      MyTaskHub: 'main'
-      COSMOS_DATABASE_NAME: cosmosDatabaseName
-      MSSQL_DATABASE_DXTR: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
-      AzureWebJobsStorage: apiFunctionStorageAccount.outputs.connectionString
-      AzureWebJobsDataflowsStorage: dataflowsStorageConnectionString
-    }
-  )
-}
-
 var baseApiFunctionAppConfigProperties = {
     numberOfWorkers: 1
     alwaysOn: true
@@ -334,6 +308,32 @@ var baseApiFunctionAppConfigProperties = {
     }
   })
 
+// config/appsettings deployed as a separate top-level resource (not nested in config/web)
+// to avoid error 01019 "Invalid values supplied for Azure Files related app settings"
+// which occurs when appSettings containing storage references race Azure Files initialization.
+resource apiMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
+  name: 'appsettings'
+  parent: apiFunctionApp
+  properties: union(
+    apiSlotBaseAppSettingsObject,
+    createApplicationInsights
+      ? {
+          APPLICATIONINSIGHTS_CONNECTION_STRING: apiFunctionAppInsights.outputs.connectionString
+          APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION: 'false'
+          AzureFunctionsJobHost__logging__console__isEnabled: 'false'
+        }
+      : {},
+    {
+      INFO_SHA: 'ProductionSlot'
+      MyTaskHub: 'main'
+      COSMOS_DATABASE_NAME: cosmosDatabaseName
+      MSSQL_DATABASE_DXTR: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
+      AzureWebJobsStorage: apiFunctionStorageAccount.outputs.connectionString
+      AzureWebJobsDataflowsStorage: dataflowsStorageConnectionString
+    }
+  )
+}
+
 module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
   name: 'appi-${apiFunctionName}-module'
   scope: resourceGroup()
@@ -352,6 +352,9 @@ module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
 }
 
 //TODO: Clear segregation with DXTR vs ACMS variable/secret naming in GitHub and ADO secret libraries
+
+// Flat object form of application settings for use with config/appsettings resources
+// (which require a {KEY: VALUE} object rather than the [{name, value}] array format used by config/web).
 var apiSlotBaseAppSettingsObject = union(
   {
     FUNCTIONS_EXTENSION_VERSION: functionsVersion

@@ -49,5 +49,6 @@ pull_base_image() {
 
 pull_base_image "${REGISTRY}/e2e-base-mongo-7.0"                    "mongo:7.0"
 pull_base_image "${REGISTRY}/e2e-base-azure-sql-edge-latest"         "mcr.microsoft.com/azure-sql-edge:latest"
+pull_base_image "${REGISTRY}/e2e-base-azure-storage-azurite-latest"  "mcr.microsoft.com/azure-storage/azurite:latest"
 
 echo "✅ Base images ready"

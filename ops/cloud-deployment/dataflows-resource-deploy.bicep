@@ -282,6 +282,7 @@ resource dataflowsMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
       INFO_SHA: 'ProductionSlot'
       MyTaskHub: 'main'
       COSMOS_DATABASE_NAME: cosmosDatabaseName
+      MSSQL_DATABASE_DXTR: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
       AzureWebJobsStorage: dataflowsFunctionStorageAccount.outputs.connectionString
       AzureWebJobsDataflowsStorage: dataflowsFunctionStorageAccount.outputs.connectionString
       CAMS_OBJECT_CONTAINER: objectContainerName
@@ -444,10 +445,6 @@ var baseApplicationSettings = concat(
     {
       name: 'MSSQL_DATABASE_DXTR'
       value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
-    }
-    {
-      name: 'MSSQL_CLIENT_ID'
-      value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-CLIENT-ID)'
     }
     {
       name: 'MSSQL_ENCRYPT'
