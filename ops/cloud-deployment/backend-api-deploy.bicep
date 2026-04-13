@@ -306,33 +306,46 @@ var baseApiFunctionAppConfigProperties = {
     cors: {
       allowedOrigins: apiCorsAllowOrigins
     }
-  })
-
-// config/appsettings deployed as a separate top-level resource (not nested in config/web)
-// to avoid error 01019 "Invalid values supplied for Azure Files related app settings"
-// which occurs when appSettings containing storage references race Azure Files initialization.
-resource apiMainAppSettings 'Microsoft.Web/sites/config@2023-12-01' = {
-  name: 'appsettings'
-  parent: apiFunctionApp
-  properties: union(
-    apiSlotBaseAppSettingsObject,
-    createApplicationInsights
-      ? {
-          APPLICATIONINSIGHTS_CONNECTION_STRING: apiFunctionAppInsights.outputs.connectionString
-          APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION: 'false'
-          AzureFunctionsJobHost__logging__console__isEnabled: 'false'
+    // Include appSettings inline in config/web to ensure Key Vault references are resolved
+    // before Function App starts, preventing health check failures during deployment.
+    // Deployment slot keeps separate config/appsettings resource since it works correctly.
+    appSettings: concat(
+      [for item in items(apiSlotBaseAppSettingsObject): { name: item.key, value: item.value }],
+      [
+        {
+          name: 'INFO_SHA'
+          value: 'ProductionSlot'
         }
-      : {},
-    {
-      INFO_SHA: 'ProductionSlot'
-      MyTaskHub: 'main'
-      COSMOS_DATABASE_NAME: cosmosDatabaseName
-      MSSQL_DATABASE_DXTR: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
-      AzureWebJobsStorage: apiFunctionStorageAccount.outputs.connectionString
-      AzureWebJobsDataflowsStorage: dataflowsStorageConnectionString
-    }
-  )
-}
+        {
+          name: 'MyTaskHub'
+          value: 'main'
+        }
+        {
+          name: 'COSMOS_DATABASE_NAME'
+          value: cosmosDatabaseName
+        }
+        {
+          name: 'MSSQL_DATABASE_DXTR'
+          value: '@Microsoft.KeyVault(VaultName=${kvAppConfigName};SecretName=MSSQL-DATABASE-DXTR)'
+        }
+        {
+          name: 'AzureWebJobsStorage'
+          value: apiFunctionStorageAccount.outputs.connectionString
+        }
+        {
+          name: 'AzureWebJobsDataflowsStorage'
+          value: dataflowsStorageConnectionString
+        }
+      ],
+      createApplicationInsights
+        ? [
+            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: apiFunctionAppInsights.outputs.connectionString }
+            { name: 'APPLICATIONINSIGHTS_ENABLE_LOG_AGGREGATION', value: 'false' }
+            { name: 'AzureFunctionsJobHost__logging__console__isEnabled', value: 'false' }
+          ]
+        : []
+    )
+  })
 
 module apiFunctionAppInsights 'lib/app-insights/function-app-insights.bicep' = {
   name: 'appi-${apiFunctionName}-module'
