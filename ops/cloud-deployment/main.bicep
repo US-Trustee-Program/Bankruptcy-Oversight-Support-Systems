@@ -262,7 +262,6 @@ module ustpApiFunction 'backend-api-deploy.bicep' = {
       loginProvider: loginProvider
       cosmosDatabaseName: cosmosDatabaseName
       e2eDatabaseName: e2eDatabaseName
-      e2eSqlDatabaseName: e2eSqlDatabaseName
       kvAppConfigName: kvAppConfigName
       isUstpDeployment: isUstpDeployment
       mssqlRequestTimeout: mssqlRequestTimeout
