@@ -211,6 +211,7 @@ describe('TrusteeMatchVerificationController', () => {
         context,
         'verification-1',
         'trustee-001',
+        undefined,
       );
       expect(response.statusCode).toBe(204);
     });
@@ -300,5 +301,220 @@ describe('TrusteeMatchVerificationController', () => {
     const expectedError = getCamsError(error, 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER');
 
     await expect(controller.handleRequest(context)).rejects.toThrow(expectedError.message);
+  });
+
+  describe('GET - manual trustee name resolution', () => {
+    test('should resolve trustee name when manually selected trustee is not in candidates', async () => {
+      const approvedOrder: TrusteeMatchVerification = {
+        ...sampleOrder,
+        status: 'approved',
+        resolvedTrusteeId: 'manual-trustee-999',
+        matchCandidates: [
+          {
+            trusteeId: 'trustee-001',
+            trusteeName: 'John Doe',
+            totalScore: 88,
+            addressScore: 100,
+            districtDivisionScore: 100,
+            chapterScore: 60,
+          },
+        ],
+      };
+
+      mockVerificationRepo([approvedOrder]);
+      mockEnrichmentRepos();
+
+      const manualTrustee = {
+        trusteeId: 'manual-trustee-999',
+        name: 'Manually Selected Trustee',
+        public: {
+          address: {
+            address1: '789 Manual St',
+            city: 'Seattle',
+            state: 'WA',
+            zipCode: '98101',
+            countryCode: 'US',
+          },
+        },
+      };
+
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockImplementation((id: string) => {
+            if (id === 'manual-trustee-999') {
+              return Promise.resolve(manualTrustee);
+            }
+            return Promise.resolve(mockTrustee);
+          }),
+        }),
+      );
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].resolvedTrusteeId).toBe('manual-trustee-999');
+      expect(response.body.data[0].resolvedTrusteeName).toBe('Manually Selected Trustee');
+    });
+
+    test('should fallback to trusteeId when manual trustee name resolution fails', async () => {
+      const approvedOrder: TrusteeMatchVerification = {
+        ...sampleOrder,
+        status: 'approved',
+        resolvedTrusteeId: 'manual-trustee-999',
+        matchCandidates: [],
+      };
+
+      mockVerificationRepo([approvedOrder]);
+
+      vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn().mockRejectedValue(new Error('Trustee not found')),
+        }),
+      );
+
+      vi.spyOn(factory, 'getTrusteeAppointmentsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          getTrusteeAppointments: vi.fn().mockResolvedValue([]),
+        }),
+      );
+
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].resolvedTrusteeId).toBe('manual-trustee-999');
+      expect(response.body.data[0].resolvedTrusteeName).toBeUndefined();
+    });
+
+    test('should not attempt name resolution when resolvedTrusteeName is already provided', async () => {
+      const approvedOrder: TrusteeMatchVerification = {
+        ...sampleOrder,
+        status: 'approved',
+        resolvedTrusteeId: 'manual-trustee-999',
+        resolvedTrusteeName: 'Already Resolved Name',
+        matchCandidates: [],
+      };
+
+      mockVerificationRepo([approvedOrder]);
+      mockEnrichmentRepos();
+
+      const readSpy = vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          read: vi.fn(),
+        }),
+      );
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].resolvedTrusteeName).toBe('Already Resolved Name');
+
+      // Should not call read for manual trustee
+      const repo = readSpy.mock.results[0].value;
+      expect(repo.read).not.toHaveBeenCalledWith('manual-trustee-999');
+    });
+
+    test('should not attempt name resolution when resolvedTrusteeId is in candidates', async () => {
+      const approvedOrder: TrusteeMatchVerification = {
+        ...sampleOrder,
+        status: 'approved',
+        resolvedTrusteeId: 'trustee-001',
+        matchCandidates: [
+          {
+            trusteeId: 'trustee-001',
+            trusteeName: 'John Doe',
+            totalScore: 88,
+            addressScore: 100,
+            districtDivisionScore: 100,
+            chapterScore: 60,
+          },
+        ],
+      };
+
+      mockVerificationRepo([approvedOrder]);
+      mockEnrichmentRepos();
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].resolvedTrusteeId).toBe('trustee-001');
+      // Should use candidate's trusteeName, not resolve separately
+    });
+  });
+
+  describe('GET - court name enrichment', () => {
+    test('should enrich verification order with court name from court lookup', async () => {
+      const orderWithoutCourtName: TrusteeMatchVerification = {
+        ...sampleOrder,
+        courtName: undefined,
+      };
+
+      mockVerificationRepo([orderWithoutCourtName]);
+      mockEnrichmentRepos();
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].courtName).toBe('Test Court');
+    });
+
+    test('should handle court lookup by divisionCode from caseId', async () => {
+      const orderWithComplexCaseId: TrusteeMatchVerification = {
+        ...sampleOrder,
+        caseId: '081-12-34567',
+        courtId: 'someOtherCourtId',
+        courtName: undefined,
+      };
+
+      mockVerificationRepo([orderWithComplexCaseId]);
+      mockEnrichmentRepos();
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].courtName).toBe('Test Court');
+    });
+
+    test('should fallback to courtId lookup when divisionCode extraction fails', async () => {
+      const orderWithInvalidCaseId: TrusteeMatchVerification = {
+        ...sampleOrder,
+        caseId: 'invalid-case-id',
+        courtId: '081',
+        courtName: undefined,
+      };
+
+      mockVerificationRepo([orderWithInvalidCaseId]);
+      mockEnrichmentRepos();
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].courtName).toBe('Test Court');
+    });
+
+    test('should leave courtName undefined when court lookup fails', async () => {
+      const orderWithUnknownCourt: TrusteeMatchVerification = {
+        ...sampleOrder,
+        courtId: '999',
+        courtName: undefined,
+      };
+
+      mockVerificationRepo([orderWithUnknownCourt]);
+      mockEnrichmentRepos();
+
+      const controller = new TrusteeMatchVerificationController();
+      const response = await controller.handleRequest(context);
+
+      expect(response.body.data).toHaveLength(1);
+      expect(response.body.data[0].courtName).toBeUndefined();
+    });
   });
 });

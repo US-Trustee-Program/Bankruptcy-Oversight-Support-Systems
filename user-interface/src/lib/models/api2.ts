@@ -47,6 +47,7 @@ import {
 import { TrusteeAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
+import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { OversightRoleType } from '@common/cams/roles';
 import {
   BankList,
@@ -432,12 +433,26 @@ async function getOrders() {
   return api().get<Order[]>(`/orders`, {});
 }
 
+async function searchTrustees(name: string, courtId?: string) {
+  const params: Record<string, string> = { name };
+  if (courtId) params.courtId = courtId;
+  return api().get<TrusteeSearchResult[]>(`/trustee-search`, params);
+}
+
 async function getTrusteeMatchVerifications() {
   return api().get<TrusteeMatchVerification[]>(`/trustee-match-verification`, {});
 }
 
-async function patchTrusteeVerificationOrderApproval(id: string, resolvedTrusteeId: string) {
-  return api().patch(`/trustee-match-verification/${id}`, { action: 'approve', resolvedTrusteeId });
+async function patchTrusteeVerificationOrderApproval(
+  id: string,
+  resolvedTrusteeId: string,
+  resolvedTrusteeName?: string,
+) {
+  return api().patch(`/trustee-match-verification/${id}`, {
+    action: 'approve',
+    resolvedTrusteeId,
+    resolvedTrusteeName,
+  });
 }
 
 async function patchTrusteeVerificationOrderRejection(id: string, reason?: string) {
@@ -613,6 +628,7 @@ export const _Api2 = {
   getOfficeAssignees,
   getOffices,
   getOrders,
+  searchTrustees,
   getTrusteeMatchVerifications,
   patchTrusteeVerificationOrderApproval,
   patchTrusteeVerificationOrderRejection,

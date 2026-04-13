@@ -9,6 +9,7 @@ import { orderType, orderStatusType } from '@/lib/utils/labels';
 import MockData from '@common/cams/test-utilities/mock-data';
 import Api2 from '@/lib/models/api2';
 import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { TrusteeSearchResult } from '@common/cams/trustee-search';
 
 const fieldHeaders = ['Court District', 'Order Filed', 'Task Type', 'Task Status'];
 
@@ -106,9 +107,9 @@ describe('TrusteeMatchVerificationAccordion', () => {
     const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
     expect(content.textContent).toContain('John Doe');
 
-    const noMatchLink = screen.getByRole('link', { name: /Search for a trustee/, hidden: true });
-    expect(noMatchLink).toBeInTheDocument();
-    expect(noMatchLink.closest('.search-link-container')).toHaveTextContent(
+    const searchButton = screen.getByRole('button', { name: /Search for a trustee/, hidden: true });
+    expect(searchButton).toBeInTheDocument();
+    expect(searchButton.closest('.search-link-container')).toHaveTextContent(
       'There are no suggested matches in CAMS.',
     );
   });
@@ -121,7 +122,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(screen.getByTestId('candidate-name-trustee-1').textContent).toContain('Jane Smith');
     expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: /Search for a trustee/, hidden: true }),
+      screen.queryByRole('button', { name: /Search for a trustee/, hidden: true }),
     ).not.toBeInTheDocument();
   });
 
@@ -166,6 +167,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
         sampleOrderWithCandidates.id,
         'trustee-1',
+        'Jane Smith',
       );
     });
   });
@@ -188,7 +190,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
           type: UswdsAlertStyle.Success,
           timeOut: 8,
         },
-        { ...sampleOrderWithCandidates, status: 'approved', resolvedTrusteeId: 'trustee-1' },
+        {
+          ...sampleOrderWithCandidates,
+          status: 'approved',
+          resolvedTrusteeId: 'trustee-1',
+          resolvedTrusteeName: 'Jane Smith',
+        },
       );
     });
   });
@@ -223,12 +230,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
       },
     });
 
-    const link = screen.getByRole('link', {
+    const searchButton = screen.getByRole('button', {
       name: /Search for a different trustee\./,
       hidden: true,
     });
-    expect(link).toBeInTheDocument();
-    expect(link.closest('.search-link-container')).toHaveTextContent(
+    expect(searchButton).toBeInTheDocument();
+    expect(searchButton.closest('.search-link-container')).toHaveTextContent(
       'There are no other suggested matches in CAMS.',
     );
   });
@@ -250,8 +257,11 @@ describe('TrusteeMatchVerificationAccordion', () => {
       },
     });
 
-    const link = screen.getByRole('link', { name: /Search for a different trustee/, hidden: true });
-    expect(link).toBeInTheDocument();
+    const searchButton = screen.getByRole('button', {
+      name: /Search for a different trustee/,
+      hidden: true,
+    });
+    expect(searchButton).toBeInTheDocument();
   });
 
   test.each([
@@ -567,6 +577,121 @@ describe('TrusteeMatchVerificationAccordion', () => {
         expect(onOrderUpdate).toHaveBeenCalledWith(
           { message: 'Failed to reject trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
           sampleOrderWithCandidates,
+        );
+      });
+    });
+  });
+
+  describe('manual trustee search flow', () => {
+    const manualSearchMockData: TrusteeSearchResult[] = [
+      { trusteeId: 'manual-trustee-1', name: 'Manual Match', appointments: [], matchType: 'exact' },
+    ];
+
+    function setupSearchMocks() {
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: manualSearchMockData });
+    }
+
+    // Integration helper: opens search modal, searches, selects, and confirms
+    async function searchAndSelectTrustee() {
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        const wrapper = document.getElementById(`trustee-search-modal-${sampleOrder.id}-wrapper`);
+        expect(wrapper).toHaveClass('is-visible');
+      });
+
+      const comboBoxId = `trustee-search-combobox-${sampleOrder.id}`;
+      fireEvent.click(document.getElementById(`${comboBoxId}-expand`)!);
+      fireEvent.change(
+        document.getElementById(`${comboBoxId}-combo-box-input`) as HTMLInputElement,
+        { target: { value: 'manual' } },
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+      });
+      fireEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+      const submitButton = screen.getByTestId(
+        `button-trustee-search-modal-${sampleOrder.id}-submit-button`,
+      );
+      await waitFor(() => expect(submitButton).toBeEnabled());
+      fireEvent.click(submitButton);
+    }
+
+    test('should render search button (not a Link) for no-candidates case', () => {
+      renderWithProps();
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      expect(searchButton).toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: /Search for a trustee/, hidden: true }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('clicking search button opens the TrusteeSearchModal', async () => {
+      renderWithProps();
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        const wrapper = document.getElementById(`trustee-search-modal-${sampleOrder.id}-wrapper`);
+        expect(wrapper).toHaveClass('is-visible');
+      });
+    });
+
+    // Integration test: exercises full search-to-approval flow
+    test('confirming a search result calls approval API and shows success', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+      setupSearchMocks();
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ onOrderUpdate });
+
+      await searchAndSelectTrustee();
+
+      await waitFor(() => {
+        expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
+          sampleOrder.id,
+          'manual-trustee-1',
+          'Manual Match',
+        );
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({ type: UswdsAlertStyle.Success }),
+          expect.objectContaining({
+            status: 'approved',
+            resolvedTrusteeId: 'manual-trustee-1',
+            resolvedTrusteeName: 'Manual Match',
+          }),
+        );
+      });
+    });
+
+    // Integration test: exercises full search-to-approval error flow
+    test('manual search approval failure calls onOrderUpdate with error', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockRejectedValue(
+        new Error('Network error'),
+      );
+      setupSearchMocks();
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ onOrderUpdate });
+
+      await searchAndSelectTrustee();
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({ type: UswdsAlertStyle.Error }),
+          sampleOrder,
         );
       });
     });

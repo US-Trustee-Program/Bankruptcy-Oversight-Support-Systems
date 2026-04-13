@@ -107,7 +107,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
   describe('approveVerification', () => {
     test('happy path: updates synced case, soft-closes old appointment, creates new, marks approved', async () => {
-      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new', 'New Trustee');
 
       expect(mockFindById).toHaveBeenCalledWith('verification-1');
       expect(mockSyncDxtrCase).toHaveBeenCalledWith(
@@ -124,6 +124,7 @@ describe('TrusteeMatchVerificationUseCase', () => {
         expect.objectContaining({
           status: 'approved',
           resolvedTrusteeId: 'trustee-new',
+          resolvedTrusteeName: 'New Trustee',
           updatedBy: expect.objectContaining({ id: expect.any(String) }),
           updatedOn: expect.any(String),
         }),
@@ -198,6 +199,18 @@ describe('TrusteeMatchVerificationUseCase', () => {
 
       expect(mockUpdateCaseAppointment).not.toHaveBeenCalled();
       expect(mockCreateCaseAppointment).not.toHaveBeenCalled();
+    });
+
+    test('skips syncDxtrCase when synced case does not exist', async () => {
+      mockGetSyncedCase.mockRejectedValue(new NotFoundError('REPO', { message: 'Not found' }));
+
+      await useCase.approveVerification(context, 'verification-1', 'trustee-new');
+
+      expect(mockSyncDxtrCase).not.toHaveBeenCalled();
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'verification-1',
+        expect.objectContaining({ status: 'approved' }),
+      );
     });
 
     test('creates new appointment but skips soft-close when no existing appointment', async () => {

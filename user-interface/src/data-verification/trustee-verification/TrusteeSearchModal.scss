@@ -1,0 +1,15 @@
+.trustee-search-modal {
+  .trustee-details {
+    margin-top: 1.5rem;
+  }
+
+  .usa-modal__footer {
+    margin-top: 0;
+  }
+
+  [id^='trustee-search-combobox-']:not(:has(.clear-all-button)) {
+    .selection-label {
+      color: #757575;
+    }
+  }
+}

@@ -306,6 +306,98 @@ async function listSeededData() {
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Delete all documents from a collection one at a time to avoid Cosmos DB RU throttle (error 16500).
+ * Retries individual deletes with exponential backoff when throttled.
+ */
+async function deleteManyInBatches(
+  db: ReturnType<MongoClient['db']>,
+  collectionName: string,
+  filter: Record<string, unknown> = {},
+  delayMs = 100,
+): Promise<number> {
+  const collection = db.collection(collectionName);
+  let totalDeleted = 0;
+
+  while (true) {
+    const doc = await collection.findOne(filter, { projection: { _id: 1 } });
+    if (!doc) break;
+
+    let retryDelay = 500;
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        await collection.deleteOne({ _id: doc._id });
+        totalDeleted++;
+        break;
+      } catch (err: unknown) {
+        const code =
+          err && typeof err === 'object' && 'code' in err
+            ? (err as { code: number }).code
+            : 0;
+        if (code === 16500 && attempt < 5) {
+          await sleep(retryDelay);
+          retryDelay = Math.min(retryDelay * 2, 10000);
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    await sleep(delayMs);
+  }
+
+  return totalDeleted;
+}
+
+async function cleanAllTrusteeData() {
+  const connectionString = process.env.MONGO_CONNECTION_STRING;
+  const dbName = process.env.COSMOS_DATABASE_NAME;
+  if (!connectionString || !dbName) {
+    console.error('MONGO_CONNECTION_STRING and COSMOS_DATABASE_NAME must be set in .env');
+    return;
+  }
+
+  console.log(`  Database: ${dbName}`);
+  console.log('  WARNING: This deletes ALL trustee data regardless of origin.\n');
+
+  const client = new MongoClient(connectionString);
+  try {
+    await client.connect();
+    const db = client.db(dbName);
+
+    const collections = [
+      'trustees',
+      'trustee-appointments',
+      'trustee-professional-ids',
+      'trustee-match-verification',
+    ];
+
+    for (const name of collections) {
+      process.stdout.write(`  Deleting ${name}...`);
+      const count = await deleteManyInBatches(db, name);
+      console.log(` ${count} document(s) deleted`);
+    }
+
+    const stateTypes = [
+      'TRUSTEE_MIGRATION_STATE',
+      'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+      'PHONETIC_BACKFILL_STATE',
+    ];
+    const stateResult = await db
+      .collection('runtime-state')
+      .deleteMany({ documentType: { $in: stateTypes } });
+    console.log(`  Deleted ${stateResult.deletedCount} runtime-state document(s) (${stateTypes.join(', ')})`);
+
+    console.log('\nClean complete.');
+  } finally {
+    await client.close();
+  }
+}
+
 async function cleanSeededData() {
   const connectionString = process.env.MONGO_CONNECTION_STRING;
   const dbName = process.env.COSMOS_DATABASE_NAME;
@@ -382,6 +474,11 @@ async function main() {
       await cleanSeededData();
       break;
 
+    case 'clean-all':
+      console.log('\nCleaning ALL trustee data (trustees, appointments, proIds, verifications, migration state)...');
+      await cleanAllTrusteeData();
+      break;
+
     case 'help':
     default:
       console.log(`
@@ -405,7 +502,13 @@ Commands:
 
   list                     Show all seeded test data currently in MongoDB
 
-  clean                    Delete all seeded test data (trustees, proIds, verifications)
+  clean                    Delete only seeded test data (SEED Test trustees, proIds, TST-/SEED- verifications)
+
+  clean-all                Delete ALL trustee data from every trustee collection regardless of origin:
+                             trustees, trustee-appointments, trustee-professional-ids,
+                             trustee-match-verification, and trustee-related runtime-state entries.
+                           Use this to fully reset the dev Cosmos DB when stale migration data
+                           has accumulated.
 
   help                     Show this message
 
@@ -414,6 +517,7 @@ Examples:
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-match-verification
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts list
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean
+  npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean-all
 `);
       break;
   }

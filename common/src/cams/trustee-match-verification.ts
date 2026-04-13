@@ -19,6 +19,8 @@ export type TrusteeMatchVerification = Auditable & {
   matchCandidates: CandidateScore[];
   status: OrderStatus;
   resolvedTrusteeId?: string;
+  resolvedTrusteeName?: string;
+  courtName?: string;
   orderType: 'trustee-match';
   reason?: string;
   inactiveAppointmentStatus?: AppointmentStatus;
