@@ -55,13 +55,13 @@ async function getPageNeedingBackfill(
   }
 }
 
-export type BackfillResult = {
+type BackfillResult = {
   caseId: string;
   success: boolean;
   error?: string;
 };
 
-export type ProcessBackfillPageResult =
+type ProcessBackfillPageResult =
   | { status: 'error'; error: CamsError }
   | { status: 'empty' }
   | {
