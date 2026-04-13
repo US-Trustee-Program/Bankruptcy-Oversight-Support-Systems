@@ -94,7 +94,7 @@ GHCR_AZURITE="${REGISTRY}/e2e-base-azure-storage-azurite-latest"
 resolve_image() {
     local ghcr_image="$1" upstream="$2"
     if podman image exists "${ghcr_image}" 2>/dev/null || \
-       ([ -n "${GITHUB_TOKEN:-}" ] && podman pull "${ghcr_image}" 2>/dev/null); then
+       ([ -n "${GITHUB_TOKEN:-}" ] && podman pull "${ghcr_image}" >/dev/null 2>&1); then
         echo "${ghcr_image}"
     else
         echo "${upstream}"
