@@ -94,9 +94,11 @@ export class TrusteeMatchVerificationUseCase {
       // Calculate resolution path for telemetry
       const resolutionPath = wasPreselectedConfirmed ? 'accepted' : 'manual-search';
 
-      // Calculate selected candidate rank (1-based index)
-      const selectedCandidateRank =
-        verification.matchCandidates.findIndex((c) => c.trusteeId === resolvedTrusteeId) + 1;
+      // Calculate selected candidate rank (1-based index); undefined if not found in candidates
+      const candidateIdx = verification.matchCandidates.findIndex(
+        (c) => c.trusteeId === resolvedTrusteeId,
+      );
+      const selectedCandidateRank = candidateIdx >= 0 ? candidateIdx + 1 : undefined;
 
       const now = new Date().toISOString();
 
@@ -147,7 +149,9 @@ export class TrusteeMatchVerificationUseCase {
             mismatchReason: verification.mismatchReason,
             wasPreselectedConfirmed: String(wasPreselectedConfirmed),
             resolutionPath,
-            selectedCandidateRank: String(selectedCandidateRank),
+            ...(selectedCandidateRank !== undefined
+              ? { selectedCandidateRank: String(selectedCandidateRank) }
+              : {}),
           },
           measurements: {
             resolutionMs,
