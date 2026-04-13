@@ -12,7 +12,6 @@ import BackfillCaseAppointmentDatesUseCase, {
   BackfillAppointment,
 } from '../../../lib/use-cases/dataflows/backfill-case-appointment-dates';
 import { buildQueueError } from '../../../lib/use-cases/dataflows/queue-types';
-import { CamsError } from '../../../lib/common-errors/cams-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
 
@@ -52,9 +51,10 @@ const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
-type BackfillEvent = BackfillAppointment & {
+// Error objects don't serialize reliably over storage queues; use lastErrorMessage instead.
+type BackfillRetryMessage = BackfillAppointment & {
   retryCount?: number;
-  error?: Error;
+  lastErrorMessage?: string;
 };
 
 /**
@@ -118,125 +118,59 @@ async function handleStart(_ignore: StartMessage, invocationContext: InvocationC
  * handlePage
  *
  * Process a page of appointments using cursor-based pagination.
- * Fetches page, batch-queries DXTR, writes dates, advances cursor.
+ * Delegates all business logic to processBackfillPage; handles queue I/O only.
  */
 async function handlePage(cursor: CursorMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
-  const stateResult = await BackfillCaseAppointmentDatesUseCase.readBackfillState(context);
-  if (stateResult.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(stateResult.error, MODULE_NAME, HANDLE_PAGE),
-    );
-    return;
-  }
-
-  const currentProcessedCount = stateResult.data?.processedCount ?? 0;
-
-  const pageResult = await BackfillCaseAppointmentDatesUseCase.getPageNeedingBackfill(
+  const result = await BackfillCaseAppointmentDatesUseCase.processBackfillPage(
     context,
     cursor.lastId,
     PAGE_SIZE,
   );
 
-  if (pageResult.error || !pageResult.data) {
+  if (result.status === 'error') {
     invocationContext.extraOutputs.set(
       DLQ,
-      buildQueueError(
-        pageResult.error ??
-          new CamsError(MODULE_NAME, { message: 'Unexpected missing data in page result' }),
-        MODULE_NAME,
-        HANDLE_PAGE,
-      ),
+      buildQueueError(result.error, MODULE_NAME, HANDLE_PAGE),
     );
     return;
   }
 
-  const { appointments, lastId: newLastId, hasMore } = pageResult.data;
-
-  const existingState = stateResult.data;
-
-  if (appointments.length === 0) {
+  if (result.status === 'empty') {
     logger.info(MODULE_NAME, `No more appointments to backfill. Migration complete.`);
-
-    await BackfillCaseAppointmentDatesUseCase.updateBackfillState(
-      context,
-      { lastId: cursor.lastId, processedCount: currentProcessedCount, status: 'COMPLETED' },
-      existingState,
-    );
     return;
   }
+
+  const { appointments, failedResults, successCount, processedCount, newLastId, nextCursor } =
+    result;
 
   logger.debug(
     MODULE_NAME,
     `Processing ${appointments.length} appointments. Cursor: ${cursor.lastId ?? 'start'} -> ${newLastId}.`,
   );
 
-  const backfillResult = await BackfillCaseAppointmentDatesUseCase.backfillAppointmentDates(
-    context,
-    appointments,
-  );
-
-  if (backfillResult.error) {
-    await BackfillCaseAppointmentDatesUseCase.updateBackfillState(
-      context,
-      { lastId: cursor.lastId, processedCount: currentProcessedCount, status: 'FAILED' },
-      existingState,
-    );
-
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(backfillResult.error, MODULE_NAME, HANDLE_PAGE),
-    );
-    return;
-  }
-
-  const results = backfillResult.data ?? [];
-  const successCount = results.filter((r) => r.success).length;
-  const failedResults = results.filter((r) => !r.success);
-  const newProcessedCount = currentProcessedCount + successCount;
-
-  const updateResult = await BackfillCaseAppointmentDatesUseCase.updateBackfillState(
-    context,
-    {
-      lastId: newLastId,
-      processedCount: newProcessedCount,
-      status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
-    },
-    existingState,
-  );
-
-  if (updateResult.error) {
-    invocationContext.extraOutputs.set(
-      DLQ,
-      buildQueueError(updateResult.error, MODULE_NAME, HANDLE_PAGE),
-    );
-    return;
-  }
-
   if (failedResults.length > 0) {
     logger.warn(MODULE_NAME, `${failedResults.length} appointments failed to backfill.`);
-    const failedEvents: BackfillEvent[] = failedResults.map((r) => {
+    const failedEvents: BackfillRetryMessage[] = failedResults.map((r) => {
       const original = appointments.find((a) => a.caseId === r.caseId)!;
-      return { ...original, error: new Error(r.error ?? 'Unknown error') };
+      return { ...original, lastErrorMessage: r.error ?? 'Unknown error' };
     });
     invocationContext.extraOutputs.set(DLQ, failedEvents);
   }
 
   logger.debug(
     MODULE_NAME,
-    `Successfully backfilled ${successCount} appointments. Total processed: ${newProcessedCount}.`,
+    `Successfully backfilled ${successCount} appointments. Total processed: ${processedCount}.`,
   );
 
-  if (hasMore) {
-    const nextCursor: CursorMessage = { lastId: newLastId };
+  if (nextCursor) {
     invocationContext.extraOutputs.set(PAGE, nextCursor);
   } else {
     logger.info(
       MODULE_NAME,
-      `Backfill migration complete. Total processed: ${newProcessedCount} appointments.`,
+      `Backfill migration complete. Total processed: ${processedCount} appointments.`,
     );
   }
 }
@@ -246,16 +180,15 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
  *
  * Route failed events to retry queue.
  */
-async function handleError(event: BackfillEvent, invocationContext: InvocationContext) {
+async function handleError(event: BackfillRetryMessage, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   logger.error(
     MODULE_NAME,
-    `Error encountered backfilling appointment for case ${event.caseId}: ${event.error?.message ?? 'Unknown error'}.`,
+    `Error encountered backfilling appointment for case ${event.caseId}: ${event.lastErrorMessage ?? 'Unknown error'}.`,
   );
 
-  const { error: _, ...retryEvent } = event;
-  invocationContext.extraOutputs.set(RETRY, [retryEvent]);
+  invocationContext.extraOutputs.set(RETRY, [event]);
 }
 
 /**
@@ -263,32 +196,29 @@ async function handleError(event: BackfillEvent, invocationContext: InvocationCo
  *
  * Retry backfilling a single appointment with retry limit tracking.
  */
-async function handleRetry(event: BackfillEvent, invocationContext: InvocationContext) {
+async function handleRetry(event: BackfillRetryMessage, invocationContext: InvocationContext) {
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
 
   const RETRY_LIMIT = 3;
-  if (!event.retryCount) {
-    event.retryCount = 1;
-  } else {
-    event.retryCount += 1;
-  }
+  const retryCount = (event.retryCount ?? 0) + 1;
 
-  if (event.retryCount > RETRY_LIMIT) {
+  if (retryCount > RETRY_LIMIT) {
     invocationContext.extraOutputs.set(HARD_STOP, [event]);
     logger.error(MODULE_NAME, `Too many retry attempts for case ${event.caseId}.`);
     return;
   }
 
-  const { retryCount: _r, error: _e, ...appointment } = event;
+  const { retryCount: _r, lastErrorMessage: _e, ...appointment } = event;
+  const updatedEvent: BackfillRetryMessage = { ...appointment, retryCount };
 
   const result = await BackfillCaseAppointmentDatesUseCase.backfillAppointmentDates(context, [
     appointment,
   ]);
 
   if (result.error || result.data?.[0]?.success === false) {
-    event.error = result.error ?? new Error(result.data?.[0]?.error ?? 'Unknown error');
-    invocationContext.extraOutputs.set(DLQ, [event]);
+    const lastErrorMessage = result.error?.message ?? result.data?.[0]?.error ?? 'Unknown error';
+    invocationContext.extraOutputs.set(DLQ, [{ ...updatedEvent, lastErrorMessage }]);
   } else {
     logger.info(MODULE_NAME, `Successfully retried backfill for case ${event.caseId}.`);
   }

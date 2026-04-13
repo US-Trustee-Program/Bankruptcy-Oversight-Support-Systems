@@ -1,4 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
+import { CamsError } from '../../common-errors/cams-error';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
@@ -54,11 +55,24 @@ async function getPageNeedingBackfill(
   }
 }
 
-type BackfillResult = {
+export type BackfillResult = {
   caseId: string;
   success: boolean;
   error?: string;
 };
+
+export type ProcessBackfillPageResult =
+  | { status: 'error'; error: CamsError }
+  | { status: 'empty' }
+  | {
+      status: 'ok';
+      processedCount: number;
+      successCount: number;
+      newLastId: string | null;
+      failedResults: BackfillResult[];
+      appointments: BackfillAppointment[];
+      nextCursor: { lastId: string | null } | null;
+    };
 
 /**
  * Backfills appointedDate for a batch of appointments.
@@ -121,6 +135,83 @@ async function backfillAppointmentDates(
       ),
     };
   }
+}
+
+/**
+ * Coordinates a single backfill page: reads state, fetches the page, backfills dates,
+ * and updates state. Returns a discriminated result the handler uses for queue I/O.
+ */
+async function processBackfillPage(
+  context: ApplicationContext,
+  cursorLastId: string | null,
+  pageSize: number,
+): Promise<ProcessBackfillPageResult> {
+  const stateResult = await readBackfillState(context);
+  if (stateResult.error) return { status: 'error', error: stateResult.error as CamsError };
+
+  const existingState = stateResult.data;
+  const currentProcessedCount = existingState?.processedCount ?? 0;
+
+  const pageResult = await getPageNeedingBackfill(context, cursorLastId, pageSize);
+  if (pageResult.error || !pageResult.data) {
+    return {
+      status: 'error',
+      error:
+        (pageResult.error as CamsError) ??
+        getCamsError(new Error('Unexpected missing data in page result'), MODULE_NAME),
+    };
+  }
+
+  const { appointments, lastId: newLastId, hasMore } = pageResult.data;
+
+  if (appointments.length === 0) {
+    const updateResult = await updateBackfillState(
+      context,
+      { lastId: cursorLastId, processedCount: currentProcessedCount, status: 'COMPLETED' },
+      existingState,
+    );
+    if (updateResult.error) return { status: 'error', error: updateResult.error as CamsError };
+    return { status: 'empty' };
+  }
+
+  const backfillResult = await backfillAppointmentDates(context, appointments);
+  if (backfillResult.error) {
+    const updateResult = await updateBackfillState(
+      context,
+      { lastId: cursorLastId, processedCount: currentProcessedCount, status: 'FAILED' },
+      existingState,
+    );
+    if (updateResult.error) {
+      context.logger.error(MODULE_NAME, 'Failed to update backfill state after batch failure.');
+    }
+    return { status: 'error', error: backfillResult.error as CamsError };
+  }
+
+  const results = backfillResult.data ?? [];
+  const successCount = results.filter((r) => r.success).length;
+  const failedResults = results.filter((r) => !r.success);
+  const newProcessedCount = currentProcessedCount + successCount;
+
+  const updateResult = await updateBackfillState(
+    context,
+    {
+      lastId: newLastId,
+      processedCount: newProcessedCount,
+      status: hasMore ? 'IN_PROGRESS' : 'COMPLETED',
+    },
+    existingState,
+  );
+  if (updateResult.error) return { status: 'error', error: updateResult.error as CamsError };
+
+  return {
+    status: 'ok',
+    processedCount: newProcessedCount,
+    successCount,
+    newLastId,
+    failedResults,
+    appointments,
+    nextCursor: hasMore ? { lastId: newLastId } : null,
+  };
 }
 
 /**
@@ -192,6 +283,7 @@ async function updateBackfillState(
 }
 
 const BackfillCaseAppointmentDatesUseCase = {
+  processBackfillPage,
   getPageNeedingBackfill,
   backfillAppointmentDates,
   readBackfillState,
