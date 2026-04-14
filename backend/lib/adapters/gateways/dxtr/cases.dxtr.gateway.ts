@@ -25,6 +25,20 @@ import { Trustee } from '@common/cams/trustees';
 
 const MODULE_NAME = 'CASES-DXTR-GATEWAY';
 
+export function parseDxtrDate(yymmdd: string | undefined): string | undefined {
+  if (!yymmdd) return undefined;
+  const s = yymmdd.trim();
+  if (s === '' || s === '000000') return undefined;
+  if (s.length !== 6 || !/^[0-9]+$/.test(s)) return undefined;
+  const year = `20${s.substring(0, 2)}`;
+  const month = s.substring(2, 4);
+  const day = s.substring(4, 6);
+  const monthNum = parseInt(month, 10);
+  const dayNum = parseInt(day, 10);
+  if (monthNum < 1 || monthNum > 12 || dayNum < 1 || dayNum > 31) return undefined;
+  return `${year}-${month}-${day}`;
+}
+
 const closedByCourtTxCode = 'CBC';
 const dismissedByCourtTxCode = 'CDC';
 const reopenedDateTxCode = 'OCO';
@@ -1264,7 +1278,8 @@ class CasesDxtrGateway implements CasesInterface {
         P.PY_E_MAIL AS email,
         P.PY_PHONENO AS phone,
         P.PY_FAX_PHONE AS fax,
-        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate
+        FORMAT(TX.TX_DATE AT TIME ZONE 'UTC', 'yyyy-MM-ddTHH:mm:ss.fff') + 'Z' AS latestSyncDate,
+        SUBSTRING(TX.REC, 24, 6) AS aptDate
       FROM AO_TX TX
       JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
       JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
@@ -1300,6 +1315,7 @@ class CasesDxtrGateway implements CasesInterface {
       phone?: string;
       fax?: string;
       latestSyncDate: string;
+      aptDate?: string;
     };
 
     const records = handleQueryResult<TrusteeAppointmentRecord[]>(
@@ -1348,6 +1364,7 @@ class CasesDxtrGateway implements CasesInterface {
         caseId: record.caseId,
         courtId: record.courtId,
         dxtrTrustee,
+        appointedDate: parseDxtrDate(record.aptDate),
       };
     });
 
@@ -1355,6 +1372,68 @@ class CasesDxtrGateway implements CasesInterface {
       events,
       latestSyncDate: records[0].latestSyncDate,
     };
+  }
+
+  async getAppointmentDatesByCaseIds(
+    context: ApplicationContext,
+    caseIds: string[],
+  ): Promise<Map<string, string>> {
+    if (caseIds.length === 0) return new Map();
+
+    const params: DbTableFieldSpec[] = caseIds.map((caseId, idx) => ({
+      name: `caseId${idx}`,
+      type: mssql.VarChar,
+      value: caseId,
+    }));
+
+    const caseIdVars = caseIds.map((_, idx) => `@caseId${idx}`).join(', ');
+
+    const query = `
+      SELECT
+        CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) AS caseId,
+        SUBSTRING(TX.REC, 24, 6) AS aptDate,
+        TX.TX_DATE
+      FROM AO_TX TX
+      JOIN AO_CS C ON TX.CS_CASEID = C.CS_CASEID AND TX.COURT_ID = C.COURT_ID
+      JOIN AO_CS_DIV AS CS_DIV ON C.CS_DIV = CS_DIV.CS_DIV
+      WHERE TX.TX_TYPE = 'A'
+        AND TX.TX_CODE IN ('TR')
+        AND CONCAT(CS_DIV.CS_DIV_ACMS, '-', C.CASE_ID) IN (${caseIdVars})
+      ORDER BY TX.TX_DATE DESC
+    `;
+
+    const queryResult: QueryResults = await executeQuery(
+      context,
+      context.config.dxtrDbConfig,
+      query,
+      params,
+    );
+
+    type AppointmentDateRecord = {
+      caseId: string;
+      aptDate?: string;
+    };
+
+    const records = this.trusteeAppointmentsQueryCallback<AppointmentDateRecord>(
+      context,
+      queryResult,
+    );
+
+    return this.getMostRecentAppointmentDates(records);
+  }
+
+  private getMostRecentAppointmentDates(
+    records: { caseId: string; aptDate?: string }[],
+  ): Map<string, string> {
+    const result = new Map<string, string>();
+    for (const record of records) {
+      if (result.has(record.caseId)) continue;
+      const appointedDate = parseDxtrDate(record.aptDate);
+      if (appointedDate) {
+        result.set(record.caseId, appointedDate);
+      }
+    }
+    return result;
   }
 
   trusteeAppointmentsQueryCallback<T>(

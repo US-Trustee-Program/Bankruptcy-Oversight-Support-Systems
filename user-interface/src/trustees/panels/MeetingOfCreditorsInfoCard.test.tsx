@@ -146,4 +146,11 @@ describe('MeetingOfCreditorsInfoCard', () => {
 
     clipboardMock.restore();
   });
+
+  test('does not render edit button when onEdit is not provided', () => {
+    render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} />);
+    expect(
+      screen.queryByRole('button', { name: 'Edit 341 meeting information' }),
+    ).not.toBeInTheDocument();
+  });
 });

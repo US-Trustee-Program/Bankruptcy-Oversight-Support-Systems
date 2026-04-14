@@ -35,7 +35,7 @@ import {
   TrusteeInput,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
-import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { CaseAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
@@ -2744,6 +2744,12 @@ async function postCaseReload(_caseId: string) {
   return;
 }
 
+async function getCaseTrusteeAppointment(
+  _caseId: string,
+): Promise<ResponseBody<CaseAppointment | null>> {
+  return { data: null };
+}
+
 async function getUpcomingKeyDates(
   _trusteeId: string,
   _appointmentId: string,
@@ -2865,6 +2871,7 @@ const MockApi2 = {
   createTrusteeOversightAssignment,
   getOversightStaff,
   postCaseReload,
+  getCaseTrusteeAppointment,
 };
 
 export default MockApi2;

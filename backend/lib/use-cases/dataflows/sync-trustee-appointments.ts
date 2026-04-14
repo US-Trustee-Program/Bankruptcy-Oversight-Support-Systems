@@ -155,6 +155,7 @@ async function applyResolvedTrustee(
     caseId: event.caseId,
     trusteeId,
     assignedOn: now,
+    appointedDate: event.appointedDate,
   });
   const method = viaFuzzyMatching ? ' (fuzzy match)' : '';
   context.logger.info(

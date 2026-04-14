@@ -20,6 +20,7 @@ describe('Navigation tests', () => {
 
   test.each([
     ['case-overview-link'],
+    ['case-trustee-info-link'],
     ['court-docket-link'],
     ['audit-history-link'],
     ['associated-cases-link'],
@@ -69,5 +70,11 @@ describe('Navigation tests', () => {
     const url = '/case-detail/021-23-07890/associated-cases';
     const result = mapNavState(url);
     expect(result).toEqual(CaseNavState.ASSOCIATED_CASES);
+  });
+
+  test(`mapNavState should return ${CaseNavState.TRUSTEE_INFO} when the url path contains 'trustee' after the case number`, () => {
+    const url = '/case-detail/021-23-07890/trustee';
+    const result = mapNavState(url);
+    expect(result).toEqual(CaseNavState.TRUSTEE_INFO);
   });
 });
