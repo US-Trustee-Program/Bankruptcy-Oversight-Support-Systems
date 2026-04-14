@@ -74,6 +74,22 @@ else
 fi
 
 echo "Using sqlcmd: ${SQLCMD}"
+
+echo "Waiting for SQL firewall rule to propagate..."
+timeout=120
+interval=5
+elapsed=0
+until "${SQLCMD}" -S "${server_fqdn}" -d "${database}" -U "${sa_user}" -P "${sa_password}" -Q "SELECT 1" -l 5 -t 5 &>/dev/null; do
+    if [[ ${elapsed} -ge ${timeout} ]]; then
+        echo "Timed out waiting for SQL firewall to open after ${timeout}s"
+        exit 1
+    fi
+    echo "SQL not yet reachable, retrying in ${interval}s... (${elapsed}s elapsed)"
+    sleep ${interval}
+    elapsed=$((elapsed + interval))
+done
+echo "SQL firewall confirmed open."
+
 echo "Provisioning SQL user '${identity_name}' in database '${database}' on '${server_fqdn}'"
 
 # CREATE USER ... WITH SID = <clientId>, TYPE = E creates a contained database user
