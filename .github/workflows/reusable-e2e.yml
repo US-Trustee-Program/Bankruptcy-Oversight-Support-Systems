@@ -67,8 +67,7 @@ jobs:
           if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
             ./ops/scripts/pipeline/add-cosmos-firewall-rule.sh \
             -g ${{ secrets.AZURE_RG }} \
-            --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
-            --stack-name ${{ inputs.stackName }}
+            --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }}
           fi
 
       - name: Install Application Node Dependencies
@@ -152,6 +151,5 @@ jobs:
             ./ops/scripts/pipeline/add-cosmos-firewall-rule.sh \
             -g ${{ secrets.AZURE_RG }} \
             --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
-            --stack-name ${{ inputs.stackName }} \
             --delete
           fi
