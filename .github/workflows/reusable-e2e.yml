@@ -64,6 +64,13 @@ jobs:
           --stack-name ${{ inputs.stackName }} \
           --server-name ${{ secrets.AZ_SQL_SERVER_NAME }}
 
+          if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
+            ./ops/scripts/pipeline/add-cosmos-firewall-rule.sh \
+            -g ${{ secrets.AZURE_RG }} \
+            --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
+            --stack-name ${{ inputs.stackName }}
+          fi
+
       - name: Install Application Node Dependencies
         run: npm ci
 
@@ -140,3 +147,11 @@ jobs:
           --stack-name ${{ inputs.stackName }} \
           --server-name ${{ secrets.AZ_SQL_SERVER_NAME }} \
           --delete
+
+          if [[ "${{ inputs.ghaEnvironment }}" == "Main-Gov" ]]; then
+            ./ops/scripts/pipeline/add-cosmos-firewall-rule.sh \
+            -g ${{ secrets.AZURE_RG }} \
+            --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }} \
+            --stack-name ${{ inputs.stackName }} \
+            --delete
+          fi
