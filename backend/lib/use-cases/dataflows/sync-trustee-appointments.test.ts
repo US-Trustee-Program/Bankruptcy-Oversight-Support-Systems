@@ -16,6 +16,7 @@ import {
 import * as trusteeMatchHelpers from './trustee-match.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
 import { CamsError } from '../../common-errors/cams-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { CasesInterface } from '../cases/cases.interface';
 
 describe('SyncTrusteeAppointments', () => {
@@ -1103,6 +1104,22 @@ describe('SyncTrusteeAppointments', () => {
         context,
         '2025-01-01T00:00:00Z',
       );
+      expect(events).toEqual(mockEvents);
+      expect(latestSyncDate).toBe(mockLatestSyncDate);
+    });
+
+    test('should default to 2018-01-01 when no runtime state exists in Cosmos', async () => {
+      (mockRuntimeStateRepo.read as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new NotFoundError('RUNTIME-STATE-MONGO-REPOSITORY_ADAPTER', {
+          message: 'No matching item found.',
+        }),
+      );
+
+      const { events, latestSyncDate } =
+        await SyncTrusteeAppointments.getAppointmentEvents(context);
+
+      expect(mockRuntimeStateRepo.read).toHaveBeenCalledWith('TRUSTEE_APPOINTMENTS_SYNC_STATE');
+      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, '2018-01-01');
       expect(events).toEqual(mockEvents);
       expect(latestSyncDate).toBe(mockLatestSyncDate);
     });

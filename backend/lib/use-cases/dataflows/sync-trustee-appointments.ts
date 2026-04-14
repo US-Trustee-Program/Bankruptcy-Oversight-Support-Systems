@@ -180,7 +180,15 @@ async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: 
       };
     } else {
       const runtimeStateRepo = factory.getTrusteeAppointmentsSyncStateRepo(context);
-      syncState = await runtimeStateRepo.read('TRUSTEE_APPOINTMENTS_SYNC_STATE');
+      try {
+        syncState = await runtimeStateRepo.read('TRUSTEE_APPOINTMENTS_SYNC_STATE');
+      } catch (_error) {
+        syncState = {
+          id: randomUUID(),
+          documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+          lastSyncDate: '2018-01-01',
+        };
+      }
     }
 
     const casesGateway = factory.getCasesGateway(context);
