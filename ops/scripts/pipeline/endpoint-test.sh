@@ -180,9 +180,13 @@ if [[ "${expected_git_sha}" != '' ]]; then
   echo "Expect sha ${expected_git_sha}"
   retry=0
   currentGitSha=""
-  while [ "${expected_git_sha}" != "${currentGitSha}" ] && [ ${retry} -le 2 ]; do
+  shaCheck="PENDING"
+  # Retry until both API and webapp SHA checks pass (or max retries reached)
+  while [ ${retry} -le 2 ]; do
     retry=$((retry+1))
     echo "Retry attempt: $retry"
+
+    # Check API SHA
     curl "${targetApiURL}" -s | tee api_response.json || true
     echo "api_response.json contents:"
     cat api_response.json
@@ -194,14 +198,8 @@ except Exception as e:
     print('')" || true)
     echo "Current sha ${currentGitSha}"
     echo "Comparing expected_git_sha: $expected_git_sha with currentGitSha: $currentGitSha"
-    if [[ "${expected_git_sha}" == "${currentGitSha}" ]]; then
-      apiStatusCode=$("${apiCmd[@]}" || true)
-    else
-      apiStatusCode=0 # if version does not match set to a non 200 status code
-      sleep 60
-    fi
 
-    # Check front end SHA meta tag
+    # Check webapp SHA
     shaCheck="OK"
     webStatusCheck=$("${webCmd[@]}" || true)
     echo "webStatusCheck: $webStatusCheck"
@@ -212,6 +210,28 @@ except Exception as e:
         echo "Expected SHA not found in webapp HTML."
         shaCheck="FAILED"
         curl "$targetWebAppURL" -s | grep -i meta || true
+      fi
+    fi
+
+    # Exit loop if both checks pass
+    if [[ "${expected_git_sha}" == "${currentGitSha}" && "$shaCheck" == "OK" ]]; then
+      echo "Both API and webapp SHA checks passed"
+      apiStatusCode=$("${apiCmd[@]}" || true)
+      break
+    fi
+
+    # If not the last retry, sleep and try again
+    if [ ${retry} -le 2 ]; then
+      echo "SHA check incomplete (API: ${currentGitSha}, webapp: ${shaCheck}). Retrying in 60s..."
+      apiStatusCode=0 # Set to non-200 to indicate failure
+      sleep 60
+    else
+      echo "Max retries reached. Final state - API SHA: ${currentGitSha}, webapp SHA check: ${shaCheck}"
+      # Set final status codes
+      if [[ "${expected_git_sha}" == "${currentGitSha}" ]]; then
+        apiStatusCode=$("${apiCmd[@]}" || true)
+      else
+        apiStatusCode=0
       fi
     fi
   done
