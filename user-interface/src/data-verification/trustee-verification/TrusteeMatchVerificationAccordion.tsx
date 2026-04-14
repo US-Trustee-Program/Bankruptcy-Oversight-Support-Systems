@@ -1,6 +1,5 @@
 import './TrusteeMatchVerificationAccordion.scss';
 import { useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
@@ -20,26 +19,30 @@ import TrusteeMatchRejectionModal, {
 import TrusteeMatchConfirmationModal, {
   TrusteeMatchConfirmationModalImperative,
 } from './TrusteeMatchConfirmationModal';
+import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
+import { TrusteeSearchResult } from '@common/cams/trustee-search';
 
 type TrusteeSearchLinkProps = {
   linkLabel: string;
   linkMessage?: string;
   className?: string;
+  onClick: () => void;
 };
 
 function TrusteeSearchLink({
   linkLabel,
   linkMessage,
   className,
+  onClick,
 }: Readonly<TrusteeSearchLinkProps>) {
   const classes = ['search-link-container', className].filter(Boolean).join(' ');
   return (
     <div className={classes}>
       {linkMessage && <span className="link-message">{linkMessage}</span>}
-      <Link to="/trustee/search" className="search-trustee-link">
+      <button type="button" onClick={onClick} className="search-trustee-link">
         <Icon name="search" />
         {linkLabel}
-      </Link>
+      </button>
     </div>
   );
 }
@@ -59,10 +62,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const [isProcessing, setIsProcessing] = useState(false);
   const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
+  const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
 
   const { divisionCode } = getCaseIdParts(order.caseId);
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
-  const courtName = courtDetails?.courtName ?? order.courtId;
+  const courtName = order.courtName ?? courtDetails?.courtName ?? order.courtId;
 
   const isInactiveStatus =
     order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
@@ -97,18 +101,33 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     viewMode = 'no-candidates';
   }
 
+  async function approveTrustee({
+    trusteeId,
+    trusteeName,
+  }: {
+    trusteeId: string;
+    trusteeName: string;
+  }) {
+    await Api2.patchTrusteeVerificationOrderApproval(order.id, trusteeId, trusteeName);
+    onOrderUpdate(
+      {
+        message: `Trustee ${trusteeName} appointed to case ${getCaseNumber(order.caseId)}.`,
+        type: UswdsAlertStyle.Success,
+        timeOut: 8,
+      },
+      {
+        ...order,
+        status: 'approved',
+        resolvedTrusteeId: trusteeId,
+        resolvedTrusteeName: trusteeName,
+      },
+    );
+  }
+
   async function handleApprove(candidate: CandidateScore) {
     setIsProcessing(true);
     try {
-      await Api2.patchTrusteeVerificationOrderApproval(order.id, candidate.trusteeId);
-      onOrderUpdate(
-        {
-          message: `Trustee ${candidate.trusteeName} appointed to case ${getCaseNumber(order.caseId)}.`,
-          type: UswdsAlertStyle.Success,
-          timeOut: 8,
-        },
-        { ...order, status: 'approved', resolvedTrusteeId: candidate.trusteeId },
-      );
+      await approveTrustee({ trusteeId: candidate.trusteeId, trusteeName: candidate.trusteeName });
     } catch {
       onOrderUpdate(
         { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
@@ -145,6 +164,32 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   function openRejection() {
     rejectionModalRef.current?.show();
+  }
+
+  function openSearch() {
+    searchModalRef.current?.show();
+  }
+
+  async function handleManualMatch(result: TrusteeSearchResult) {
+    setIsProcessing(true);
+    try {
+      await approveTrustee({ trusteeId: result.trusteeId, trusteeName: result.name });
+    } catch {
+      onOrderUpdate(
+        { message: 'Failed to confirm trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+        order,
+      );
+    } finally {
+      searchModalRef.current?.hide();
+      setIsProcessing(false);
+    }
+  }
+
+  function getResolvedTrusteeDisplayName(): string {
+    const matchedCandidateName = order.matchCandidates.find(
+      (c) => c.trusteeId === order.resolvedTrusteeId,
+    )?.trusteeName;
+    return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
   }
 
   type TrusteeCandidateRowProps = {
@@ -324,10 +369,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         >
           {viewMode === 'resolved' ? (
             <p className="resolved-statement" data-testid="resolved-statement">
-              Trustee{' '}
-              {order.matchCandidates.find((c) => c.trusteeId === order.resolvedTrusteeId)
-                ?.trusteeName ?? order.resolvedTrusteeId}{' '}
-              was appointed to case: {caseLink}
+              Trustee {getResolvedTrusteeDisplayName()} was appointed to case: {caseLink}
             </p>
           ) : (
             <>
@@ -389,6 +431,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   <TrusteeSearchLink
                     linkMessage="There are no other suggested matches in CAMS."
                     linkLabel="Search for a different trustee"
+                    onClick={openSearch}
                   />
                 </div>
               )}
@@ -411,6 +454,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   <TrusteeSearchLink
                     linkMessage="There are no other suggested matches in CAMS."
                     linkLabel="Search for a different trustee."
+                    onClick={openSearch}
                   />
                 </>
               )}
@@ -419,6 +463,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                   className="no-candidates-message"
                   linkMessage="There are no suggested matches in CAMS."
                   linkLabel="Search for a trustee"
+                  onClick={openSearch}
                 />
               )}
             </>
@@ -430,6 +475,13 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         ref={confirmationModalRef}
         id={order.id}
         onConfirm={handleApprove}
+      />
+      <TrusteeSearchModal
+        ref={searchModalRef}
+        id={order.id}
+        dxtrTrusteeName={order.dxtrTrustee.fullName}
+        courtId={courtDetails?.courtId ?? order.courtId}
+        onConfirm={handleManualMatch}
       />
     </>
   );

@@ -278,6 +278,18 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  searchTrusteesByName(_name: string): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  searchTrusteesByPhoneticTokens(_tokens: string[]): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  setPhoneticTokens(_trusteeId: string, _tokens: string[]): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
   createTrusteeHistory(_ignore: TrusteeHistory): Promise<void> {
     throw new Error('Method not implemented.');
   }

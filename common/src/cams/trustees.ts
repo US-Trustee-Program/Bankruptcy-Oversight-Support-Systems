@@ -92,6 +92,7 @@ export type Trustee = TrusteeData &
   Auditable &
   Identifiable & {
     trusteeId: string;
+    phoneticTokens?: string[];
     legacy?: LegacyAddress & {
       phone?: string;
       email?: string;
