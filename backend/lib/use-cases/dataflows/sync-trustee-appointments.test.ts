@@ -113,6 +113,22 @@ describe('SyncTrusteeAppointments', () => {
       expect(scenarioDistribution.multipleMatchCount).toBe(0);
     });
 
+    test('should pass appointedDate from event to createCaseAppointment', async () => {
+      const events: TrusteeAppointmentSyncEvent[] = [
+        { ...makeEvent('case-001', 'John Doe'), appointedDate: '2026-04-07' },
+      ];
+
+      await SyncTrusteeAppointments.processAppointments(context, events);
+
+      expect(mockAppointmentsRepo.createCaseAppointment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          caseId: 'case-001',
+          trusteeId: 'trustee-123',
+          appointedDate: '2026-04-07',
+        }),
+      );
+    });
+
     test('should skip when existing appointment has the same trusteeId', async () => {
       const existingAppointment: CaseAppointment = {
         id: 'ca-1',

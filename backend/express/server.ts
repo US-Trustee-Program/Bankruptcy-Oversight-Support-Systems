@@ -8,6 +8,7 @@ import { CasesController } from '../lib/controllers/cases/cases.controller';
 import { CaseAssignmentController } from '../lib/controllers/case-assignment/case.assignment.controller';
 import { CaseDocketController } from '../lib/controllers/case-docket/case-docket.controller';
 import { CaseHistoryController } from '../lib/controllers/case-history/case-history.controller';
+import { CaseTrusteeAppointmentController } from '../lib/controllers/cases/case-trustee-appointment.controller';
 import { CaseNotesController } from '../lib/controllers/case-notes/case.notes.controller';
 import { CaseNoteInput } from '@common/cams/cases';
 import { CaseSummaryController } from '../lib/controllers/case-summary/case-summary.controller';
@@ -136,6 +137,19 @@ export function createApp(): Application {
   };
 
   app.get('/api/cases/:id/history', handleCaseHistory);
+
+  const handleCaseTrusteeAppointment = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const context = await ContextCreator.applicationContextCreator(req);
+      const controller = new CaseTrusteeAppointmentController();
+      const camsResponse = await controller.handleRequest(context);
+      sendCamsResponse(res, camsResponse);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  app.get('/api/cases/:caseId/trustee-appointment', handleCaseTrusteeAppointment);
 
   const handleCaseNotes = async (req: Request, res: Response, next: NextFunction) => {
     try {

@@ -5,6 +5,7 @@ import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
 export enum CaseNavState {
   CASE_OVERVIEW,
   TRUSTEE_AND_ASSIGNED_STAFF,
+  TRUSTEE_INFO,
   COURT_DOCKET,
   AUDIT_HISTORY,
   ASSOCIATED_CASES,
@@ -15,6 +16,7 @@ export const mapNavState = createNavStateMapper<CaseNavState>(
   {
     'court-docket': CaseNavState.COURT_DOCKET,
     'trustee-and-assigned-staff': CaseNavState.TRUSTEE_AND_ASSIGNED_STAFF,
+    trustee: CaseNavState.TRUSTEE_INFO,
     'audit-history': CaseNavState.AUDIT_HISTORY,
     'associated-cases': CaseNavState.ASSOCIATED_CASES,
     notes: CaseNavState.CASE_NOTES,
@@ -72,6 +74,18 @@ export default function CaseDetailNavigation({
               end
             >
               Assigned Staff & Trustee
+            </NavLink>
+          </li>
+          <li className="usa-sidenav__item">
+            <NavLink
+              to={`/case-detail/${caseId}/trustee`}
+              data-testid="case-trustee-info-link"
+              className={'usa-sidenav__link ' + setCurrentNav(activeNav, CaseNavState.TRUSTEE_INFO)}
+              onClick={() => setActiveNav(CaseNavState.TRUSTEE_INFO)}
+              title="View trustee contact information"
+              end
+            >
+              Trustee
             </NavLink>
           </li>
           <li className="usa-sidenav__item">

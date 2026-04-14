@@ -55,4 +55,9 @@ export interface CasesInterface {
     context: ApplicationContext,
     transactionsStart: string,
   ): Promise<TrusteeAppointmentsResult>;
+
+  getAppointmentDatesByCaseIds(
+    context: ApplicationContext,
+    caseIds: string[],
+  ): Promise<Map<string, string>>;
 }

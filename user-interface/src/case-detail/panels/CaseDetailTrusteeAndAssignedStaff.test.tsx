@@ -402,6 +402,9 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
     });
 
     test('should render trustee name as link when trusteeId is present', async () => {
+      const user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+
       const trustee = MockData.getTrustee();
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trustee });
 

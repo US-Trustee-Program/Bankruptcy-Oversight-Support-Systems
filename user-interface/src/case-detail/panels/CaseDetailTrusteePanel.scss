@@ -1,0 +1,28 @@
+@import '../../trustees/panels/shared-card-styles.scss';
+
+.case-detail-trustee-panel {
+  h3 {
+    padding-bottom: 1.5rem;
+  }
+
+  .appointed-date {
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+  }
+
+  .record-detail-card-list {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+}
+
+.case-trustee-information {
+  @include trustee-card-styles;
+
+  .usa-card__body {
+    .case-trustee-card-header {
+      @include trustee-card-header;
+    }
+  }
+}

@@ -1,12 +1,12 @@
 import { ApplicationContext } from '../../types/basic';
-import { getCamsErrorWithStack } from '../../../common-errors/error-utilities';
+import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import {
   TrusteeAppointmentsRepository,
   TrusteeDueDateMetricsAggregation,
 } from '../../../use-cases/gateways.types';
 import { BaseMongoRepository } from './utils/base-mongo-repository';
-import QueryBuilder from '../../../query/query-builder';
+import QueryBuilder, { ConditionOrConjunction } from '../../../query/query-builder';
 import {
   CaseAppointment,
   CaseAppointmentInput,
@@ -246,6 +246,43 @@ export class TrusteeAppointmentsMongoRepository
         message: `Failed to retrieve case appointments for case ${caseId}.`,
       });
     }
+  }
+
+  async findByCursor<T>(
+    query: ConditionOrConjunction<T>,
+    options: { limit: number; sortField: keyof T; sortDirection: 'ASCENDING' | 'DESCENDING' },
+  ): Promise<T[]> {
+    try {
+      const sortSpec = QueryBuilder.orderBy<T>([options.sortField, options.sortDirection]);
+      const adapter = this.getAdapter<T>();
+      return await adapter.find(query, sortSpec, options.limit);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME);
+    }
+  }
+
+  async findActiveMissingAppointedDate(
+    lastId: string | null,
+    limit: number,
+  ): Promise<Array<CaseAppointment & { _id: string }>> {
+    type CaseAppointmentQueryable = CaseAppointmentDocument & { _id: string };
+    const doc = using<CaseAppointmentQueryable>();
+    const conditions = [
+      doc('documentType').equals('CASE_APPOINTMENT'),
+      doc('unassignedOn').notExists(),
+      doc('appointedDate').notExists(),
+    ];
+
+    if (lastId) {
+      conditions.push(doc('_id').greaterThan(lastId));
+    }
+
+    const query = and(...conditions);
+    return this.findByCursor<CaseAppointmentQueryable>(query, {
+      limit,
+      sortField: '_id',
+      sortDirection: 'ASCENDING',
+    });
   }
 
   async getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation> {

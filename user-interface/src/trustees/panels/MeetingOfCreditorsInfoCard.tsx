@@ -10,7 +10,7 @@ import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
 
 interface ZoomInfoCardProps {
   zoomInfo?: ZoomInfo;
-  onEdit: () => void;
+  onEdit?: () => void;
 }
 
 export default function MeetingOfCreditorsInfoCard({
@@ -24,15 +24,17 @@ export default function MeetingOfCreditorsInfoCard({
           <div className="usa-card__body">
             <div className="meeting-of-creditors-card-header">
               <h4 data-testid="zoom-info-heading">341 Meeting</h4>
-              <Button
-                id="edit-zoom-info"
-                uswdsStyle={UswdsButtonStyle.Unstyled}
-                aria-label="Edit 341 meeting information"
-                title="Edit 341 meeting information"
-                onClick={onEdit}
-              >
-                <IconLabel icon="edit" label="Edit" />
-              </Button>
+              {onEdit && (
+                <Button
+                  id="edit-zoom-info"
+                  uswdsStyle={UswdsButtonStyle.Unstyled}
+                  aria-label="Edit 341 meeting information"
+                  title="Edit 341 meeting information"
+                  onClick={onEdit}
+                >
+                  <IconLabel icon="edit" label="Edit" />
+                </Button>
+              )}
             </div>
             {!zoomInfo && <div data-testid="zoom-info-empty-message">No information added.</div>}
             {zoomInfo && (
