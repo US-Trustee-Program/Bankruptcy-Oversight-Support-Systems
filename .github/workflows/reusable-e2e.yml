@@ -70,6 +70,35 @@ jobs:
             --account-name ${{ secrets.AZ_COSMOS_MONGO_ACCOUNT_NAME }}
           fi
 
+      - name: Provision E2E SQL Database (Main-Gov)
+        if: ${{ inputs.ghaEnvironment == 'Main-Gov' }}
+        run: |
+          e2eSqlDatabaseName="CAMS_E2E"
+          sqlDbExists=$(az sql db show \
+            -g ${{ secrets.AZURE_RG }} \
+            -s ${{ secrets.AZ_SQL_SERVER_NAME }} \
+            -n "${e2eSqlDatabaseName}" \
+            --query id -o tsv 2>/dev/null || echo "")
+          if [[ -z "${sqlDbExists}" ]]; then
+            echo "Creating E2E SQL database ${e2eSqlDatabaseName}"
+            az sql db create \
+              -g ${{ secrets.AZURE_RG }} \
+              -s ${{ secrets.AZ_SQL_SERVER_NAME }} \
+              -n "${e2eSqlDatabaseName}" \
+              --elastic-pool CAMS-ELASTIC-POOL
+          else
+            echo "E2E SQL database ${e2eSqlDatabaseName} already exists, skipping creation"
+          fi
+
+          echo "Provisioning E2E SQL Database user..."
+          ./ops/scripts/pipeline/az-sql-provision-e2e-db-user.sh \
+            --resource-group "${{ secrets.AZURE_RG }}" \
+            --server-name "${{ secrets.AZ_SQL_SERVER_NAME }}" \
+            --database "${e2eSqlDatabaseName}" \
+            --identity-name "${{ secrets.AZ_SQL_IDENTITY_NAME }}" \
+            --identity-client-id "$(az identity show -g ${{ secrets.AZURE_RG }} -n ${{ secrets.AZ_SQL_IDENTITY_NAME }} --query clientId -o tsv)" \
+            --sa-password "${{ secrets.MSSQL_PASS }}"
+
       - name: Install Application Node Dependencies
         run: npm ci
 
