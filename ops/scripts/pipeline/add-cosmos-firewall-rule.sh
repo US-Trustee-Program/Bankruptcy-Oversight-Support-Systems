@@ -4,18 +4,20 @@
 # Prerequisite:
 #   - curl
 #   - Azure CLI
-# Usage: add-cosmos-firewall-rule.sh -g <resource_group:str> --account-name <cosmos_account:str> --stack-name <stack_name:str> [--delete]
+# Usage: add-cosmos-firewall-rule.sh -g <resource_group:str> --account-name <cosmos_account:str> [--delete]
 
 set -euo pipefail # ensure job step fails in CI pipeline when error occurs
 
+db_rg=
+cosmos_account=
 delete=
 while [[ $# -gt 0 ]]; do
     case $1 in
     -h | --help)
         printf ""
-        printf "Usage: add-cosmos-firewall-rule.sh -g <resource_group:str> --account-name <cosmos_account:str> --stack-name <stack_name:str> [--delete]"
+        printf "Usage: add-cosmos-firewall-rule.sh -g <resource_group:str> --account-name <cosmos_account:str> [--delete]"
         printf ""
-        shift
+        exit 0
         ;;
     -g | --resource-group)
         db_rg="${2}"
@@ -24,11 +26,6 @@ while [[ $# -gt 0 ]]; do
 
     --account-name)
         cosmos_account="${2}"
-        shift 2
-        ;;
-
-    --stack-name)
-        stack_name="${2}"
         shift 2
         ;;
 
@@ -43,12 +40,17 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if [[ -z "${db_rg}" || -z "${cosmos_account}" || -z "${stack_name}" ]]; then
-    printf "Error: Missing parameters. Usage: add-cosmos-firewall-rule.sh -g <resource_group:str> --account-name <cosmos_account:str> --stack-name <stack_name:str>"
+if [[ -z "${db_rg}" || -z "${cosmos_account}" ]]; then
+    printf "Error: Missing parameters. Usage: add-cosmos-firewall-rule.sh -g <resource_group:str> --account-name <cosmos_account:str>"
     exit 1
 fi
 
 agentIp=$(curl -s --retry 3 --retry-delay 30 --retry-all-errors https://api.ipify.org)
+
+if [[ -z "${agentIp}" ]]; then
+    printf "Error: Unable to determine GHA runner IP address."
+    exit 1
+fi
 
 existingIps=$(az cosmosdb show -n "${cosmos_account}" -g "${db_rg}" --query "ipRules[].ipAddressOrRange" -o tsv 2>/dev/null | tr '\n' ',' | sed 's/,$//')
 
