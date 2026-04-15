@@ -14,6 +14,9 @@ function buildInitialAttorneyChecklist(
   bCase: AssignAttorneyModalOpenProps['bCase'],
 ): AttorneyUser[] {
   const attorneys: AttorneyUser[] = [];
+  // A userId uniquely identifies a person — duplicate entries for the same userId
+  // represent the same attorney (e.g. assigned under multiple roles) and are intentionally
+  // collapsed to a single checklist entry. The first occurrence's name is used.
   const seen = new Set<string>();
   bCase.assignments?.forEach((assignment) => {
     if (!seen.has(assignment.userId)) {
