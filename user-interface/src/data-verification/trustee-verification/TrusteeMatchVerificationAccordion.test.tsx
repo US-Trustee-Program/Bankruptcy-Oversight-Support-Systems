@@ -763,4 +763,300 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(heading.textContent).not.toContain('Inactive trustee');
     });
   });
+
+  describe('MULTIPLE_TRUSTEES_MATCH rendering', () => {
+    const multipleCandidatesOrder: TrusteeMatchVerification = {
+      ...sampleOrder,
+      mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+      matchCandidates: [
+        {
+          trusteeId: 'trustee-low',
+          trusteeName: 'Low Score Trustee',
+          totalScore: 50,
+          addressScore: 40,
+          districtDivisionScore: 60,
+          chapterScore: 50,
+          address: {
+            address1: '789 Pine St',
+            city: 'Chicago',
+            state: 'IL',
+            zipCode: '60601',
+            countryCode: 'US',
+          },
+          phone: { number: '555-3333' },
+          email: 'low@example.com',
+          appointments: [
+            MockData.getTrusteeAppointment({
+              courtName: 'Northern District',
+              courtDivisionName: 'Chicago',
+            }),
+          ],
+        },
+        {
+          trusteeId: 'trustee-high',
+          trusteeName: 'High Score Trustee',
+          totalScore: 72,
+          addressScore: 60,
+          districtDivisionScore: 100,
+          chapterScore: 50,
+          address: {
+            address1: '456 Oak Ave',
+            city: 'Boston',
+            state: 'MA',
+            zipCode: '02101',
+            countryCode: 'US',
+          },
+          phone: { number: '555-2222', extension: '42' },
+          email: 'high@example.com',
+          appointments: [
+            MockData.getTrusteeAppointment({
+              courtName: 'District of Massachusetts',
+              courtDivisionName: 'Boston',
+            }),
+          ],
+        },
+        {
+          trusteeId: 'trustee-mid',
+          trusteeName: 'Mid Score Trustee',
+          totalScore: 65,
+          addressScore: 70,
+          districtDivisionScore: 50,
+          chapterScore: 80,
+        },
+      ],
+    };
+
+    test('renders all 3 candidates for MULTIPLE_TRUSTEES_MATCH pending order', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      expect(screen.getByTestId('candidate-name-trustee-low')).toBeInTheDocument();
+      expect(screen.getByTestId('candidate-name-trustee-high')).toBeInTheDocument();
+      expect(screen.getByTestId('candidate-name-trustee-mid')).toBeInTheDocument();
+    });
+
+    test('displays candidates sorted by totalScore descending (highest first)', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const candidateSection = screen.getByTestId('multiple-candidates-info');
+      const names = candidateSection.querySelectorAll('[data-cell="Name"]');
+      expect(names[0].textContent).toContain('High Score Trustee');
+      expect(names[1].textContent).toContain('Mid Score Trustee');
+      expect(names[2].textContent).toContain('Low Score Trustee');
+    });
+
+    test('shows score breakdown for each candidate', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const highScores = screen.getByTestId('candidate-scores-trustee-high');
+      expect(highScores.textContent).toContain('Total: 72');
+      expect(highScores.textContent).toContain('Addr: 60');
+      expect(highScores.textContent).toContain('Dist: 100');
+      expect(highScores.textContent).toContain('Chap: 50');
+
+      const midScores = screen.getByTestId('candidate-scores-trustee-mid');
+      expect(midScores.textContent).toContain('Total: 65');
+      expect(midScores.textContent).toContain('Addr: 70');
+      expect(midScores.textContent).toContain('Dist: 50');
+      expect(midScores.textContent).toContain('Chap: 80');
+    });
+
+    test('shows "Multiple Match" as task type in accordion heading', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
+      expect(heading.textContent).toContain('Multiple Match');
+      expect(heading.textContent).not.toContain('Trustee Mismatch');
+    });
+
+    test('shows multiple-match problem statement', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('Multiple potential trustee matches found for case');
+      expect(content.textContent).toContain(
+        'review the candidates below and select the correct trustee',
+      );
+    });
+
+    test('shows "CAMS Match Candidates" heading instead of "CAMS Strongest Match"', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('CAMS Match Candidates');
+      expect(content.textContent).not.toContain('CAMS Strongest Match');
+    });
+
+    test('no candidate is pre-selected initially', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const radios = screen.getAllByRole('radio', { hidden: true });
+      radios.forEach((radio) => {
+        expect(radio).not.toBeChecked();
+      });
+    });
+
+    test('"Match Trustee" button is disabled when no candidate selected', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const approveButton = screen.getByTestId('approve-selected-button');
+      expect(approveButton).toBeDisabled();
+    });
+
+    test('selecting a radio button enables "Match Trustee" button', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      fireEvent.click(screen.getByTestId('select-candidate-trustee-high'));
+
+      const approveButton = screen.getByTestId('approve-selected-button');
+      expect(approveButton).toBeEnabled();
+    });
+
+    test('selecting a different candidate updates selection', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      fireEvent.click(screen.getByTestId('select-candidate-trustee-high'));
+      expect(screen.getByTestId('select-candidate-trustee-high')).toBeChecked();
+
+      fireEvent.click(screen.getByTestId('select-candidate-trustee-mid'));
+      expect(screen.getByTestId('select-candidate-trustee-mid')).toBeChecked();
+      expect(screen.getByTestId('select-candidate-trustee-high')).not.toBeChecked();
+    });
+
+    test('clicking "Match Trustee" opens confirmation modal for selected candidate', async () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      fireEvent.click(screen.getByTestId('select-candidate-trustee-high'));
+      fireEvent.click(screen.getByTestId('approve-selected-button'));
+
+      await waitFor(() => {
+        const modalSubmit = document.getElementById(
+          `trustee-confirmation-modal-${multipleCandidatesOrder.id}-submit-button`,
+        );
+        expect(modalSubmit).toBeInTheDocument();
+      });
+    });
+
+    test('approval flow calls API with selected trustee ID and name', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ order: multipleCandidatesOrder, onOrderUpdate });
+
+      fireEvent.click(screen.getByTestId('select-candidate-trustee-high'));
+      fireEvent.click(screen.getByTestId('approve-selected-button'));
+
+      const modalSubmit = document.getElementById(
+        `trustee-confirmation-modal-${multipleCandidatesOrder.id}-submit-button`,
+      );
+      fireEvent.click(modalSubmit!);
+
+      await waitFor(() => {
+        expect(Api2.patchTrusteeVerificationOrderApproval).toHaveBeenCalledWith(
+          multipleCandidatesOrder.id,
+          'trustee-high',
+          'High Score Trustee',
+        );
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          expect.objectContaining({ type: UswdsAlertStyle.Success }),
+          expect.objectContaining({
+            status: 'approved',
+            resolvedTrusteeId: 'trustee-high',
+            resolvedTrusteeName: 'High Score Trustee',
+          }),
+        );
+      });
+    });
+
+    test('reject button is rendered and opens rejection modal', async () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      expect(screen.getByTestId('reject-button')).toBeInTheDocument();
+      fireEvent.click(screen.getByTestId('reject-button'));
+
+      await waitFor(() => {
+        expect(
+          document.getElementById(
+            `trustee-rejection-modal-${multipleCandidatesOrder.id}-submit-button`,
+          ),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('"Search for a different trustee" link is rendered with "None of the above?" message', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a different trustee/,
+        hidden: true,
+      });
+      expect(searchButton).toBeInTheDocument();
+      expect(searchButton.closest('.search-link-container')).toHaveTextContent(
+        'None of the above?',
+      );
+    });
+
+    test('readonly mode for rejected MULTIPLE_TRUSTEES_MATCH shows all candidates without radio buttons', () => {
+      renderWithProps({
+        order: { ...multipleCandidatesOrder, status: 'rejected' },
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('High Score Trustee');
+      expect(content.textContent).toContain('Mid Score Trustee');
+      expect(content.textContent).toContain('Low Score Trustee');
+      expect(screen.queryAllByRole('radio', { hidden: true })).toHaveLength(0);
+      expect(screen.queryByTestId('approve-selected-button')).not.toBeInTheDocument();
+    });
+
+    test('shows score breakdown in readonly mode for rejected MULTIPLE_TRUSTEES_MATCH', () => {
+      renderWithProps({
+        order: { ...multipleCandidatesOrder, status: 'rejected' },
+      });
+
+      expect(screen.getByTestId('candidate-scores-trustee-high')).toBeInTheDocument();
+      expect(screen.getByTestId('candidate-scores-trustee-mid')).toBeInTheDocument();
+      expect(screen.getByTestId('candidate-scores-trustee-low')).toBeInTheDocument();
+    });
+
+    test('HIGH_CONFIDENCE_MATCH still renders single pre-selected candidate (regression check)', () => {
+      renderWithProps({
+        order: {
+          ...sampleOrder,
+          mismatchReason: 'HIGH_CONFIDENCE_MATCH',
+          matchCandidates: [
+            {
+              trusteeId: 'trustee-1',
+              trusteeName: 'Jane Smith',
+              totalScore: 95,
+              addressScore: 90,
+              districtDivisionScore: 100,
+              chapterScore: 95,
+            },
+          ],
+        },
+      });
+
+      expect(screen.getByTestId('candidate-info')).toBeInTheDocument();
+      expect(screen.queryByTestId('multiple-candidates-info')).not.toBeInTheDocument();
+      expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
+      expect(screen.queryAllByRole('radio', { hidden: true })).toHaveLength(0);
+    });
+
+    test('NO_TRUSTEE_MATCH still renders no-candidates view (regression check)', () => {
+      renderWithProps({
+        order: {
+          ...sampleOrder,
+          mismatchReason: 'NO_TRUSTEE_MATCH',
+          matchCandidates: [],
+        },
+      });
+
+      expect(screen.queryByTestId('multiple-candidates-info')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('candidate-info')).not.toBeInTheDocument();
+      const searchButton = screen.getByRole('button', {
+        name: /Search for a trustee/,
+        hidden: true,
+      });
+      expect(searchButton).toBeInTheDocument();
+    });
+  });
 });

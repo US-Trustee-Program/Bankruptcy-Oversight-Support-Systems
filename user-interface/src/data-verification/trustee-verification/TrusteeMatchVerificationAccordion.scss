@@ -88,6 +88,41 @@
     }
   }
 
+  .candidate-radio-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    input[type='radio'] {
+      width: 1.25rem;
+      height: 1.25rem;
+      cursor: pointer;
+    }
+  }
+
+  .candidate-scores-cell {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+
+    .score-label {
+      font-weight: 600;
+    }
+  }
+
+  .trustee-data-row.selected {
+    background-color: #f0f0f0;
+  }
+
+  .candidate-selection-fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .multiple-match-actions {
+    margin: 1rem 0 0.5rem;
+  }
+
   .reject-task-link {
     display: inline-flex;
     align-items: center;
