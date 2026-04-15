@@ -49,7 +49,7 @@ export function AssignAttorneyModalView(props: AssignAttorneyModalViewProps) {
           </fieldset>
           <div className="usa-form-group">
             <label className="usa-label" htmlFor="lead-trial-attorney-select">
-              Select Lead Trial Attorney
+              Lead Trial Attorney
             </label>
             <select
               className="usa-select"
