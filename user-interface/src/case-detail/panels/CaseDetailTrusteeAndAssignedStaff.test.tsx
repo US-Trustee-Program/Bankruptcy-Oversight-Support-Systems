@@ -161,7 +161,9 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
         return element?.classList.contains('assignee-name') || false;
       });
       expect(assigneeNames[0]).toHaveTextContent(leadAttorney.name);
-      expect(screen.getByText('Lead Trial Attorney')).toBeInTheDocument();
+      expect(
+        screen.getByText('Lead Trial Attorney', { selector: '.assignee-role' }),
+      ).toBeInTheDocument();
     });
 
     test('should not show unassigned placeholder when leadTrialAttorney is set', () => {
@@ -183,7 +185,9 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       };
       renderWithProps({ caseDetail: caseDetailWithLead });
 
-      expect(screen.getByText('Lead Trial Attorney')).toBeInTheDocument();
+      expect(
+        screen.getByText('Lead Trial Attorney', { selector: '.assignee-role' }),
+      ).toBeInTheDocument();
 
       // TEST_ASSIGNMENT_1 should only appear once total (as Lead, not also as Trial Attorney)
       const assigneeNames = screen.getAllByText((_content, element) => {
