@@ -4,7 +4,6 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import {
   buildFunctionName,
   buildQueueName,
-  buildStartQueueHttpTrigger,
   CursorMessage,
   StartMessage,
 } from '../dataflows-common';
@@ -49,7 +48,6 @@ const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
 const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
-const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
 
 // Error objects don't serialize reliably over storage queues; use lastErrorMessage instead.
 type BackfillRetryMessage = BackfillAppointment & {
@@ -251,13 +249,6 @@ function setup() {
     queueName: RETRY.queueName,
     handler: handleRetry,
     extraOutputs: [DLQ, HARD_STOP],
-  });
-
-  app.http(HTTP_TRIGGER, {
-    route: 'backfill-case-appointment-dates',
-    methods: ['POST'],
-    extraOutputs: [START],
-    handler: buildStartQueueHttpTrigger(MODULE_NAME, START),
   });
 }
 
