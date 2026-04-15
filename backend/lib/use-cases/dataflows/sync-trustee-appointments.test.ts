@@ -776,12 +776,68 @@ describe('SyncTrusteeAppointments', () => {
         );
       });
 
-      test('does NOT upsert for auto-matched outcome', async () => {
+      test('upserts an approved verification doc for auto-matched outcome', async () => {
+        await SyncTrusteeAppointments.processAppointments(context, [
+          makeEvent('case-001', 'John Doe'),
+        ]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-001',
+            status: 'approved',
+            resolvedTrusteeId: 'trustee-123',
+            resolvedTrusteeName: 'John Doe',
+            matchCandidates: [],
+          }),
+        );
+      });
+
+      test('skips upsert for auto-match when verification doc already approved', async () => {
+        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          status: 'approved',
+          resolvedTrusteeId: 'trustee-123',
+          resolvedTrusteeName: 'John Doe',
+        });
+
         await SyncTrusteeAppointments.processAppointments(context, [
           makeEvent('case-001', 'John Doe'),
         ]);
 
         expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+      });
+
+      test('updates existing pending verification doc to approved on auto-match', async () => {
+        const existingDoc = {
+          id: 'existing-doc-id',
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          status: 'pending',
+          mismatchReason: 'NO_TRUSTEE_MATCH',
+          matchCandidates: [],
+          createdOn: '2025-01-01T00:00:00.000Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue(
+          existingDoc,
+        );
+
+        await SyncTrusteeAppointments.processAppointments(context, [
+          makeEvent('case-001', 'John Doe'),
+        ]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: 'existing-doc-id',
+            status: 'approved',
+            resolvedTrusteeId: 'trustee-123',
+            resolvedTrusteeName: 'John Doe',
+          }),
+        );
       });
 
       test('skips upsert when existing doc is resolved', async () => {

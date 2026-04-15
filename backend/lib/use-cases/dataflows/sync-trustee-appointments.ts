@@ -209,6 +209,46 @@ async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: 
 }
 
 /**
+ * Records a TrusteeMatchVerification document with status 'approved' for an auto-matched case,
+ * making it visible in the Data Verification UI under "Verified" trustee matches.
+ * Skips the write if the document already exists with status 'approved'.
+ */
+async function recordAutoMatch(
+  verificationRepo: TrusteeMatchVerificationRepository,
+  event: TrusteeAppointmentSyncEvent,
+  trusteeId: string,
+): Promise<void> {
+  const existing = await verificationRepo.getVerification(event.caseId);
+  if (existing?.status === 'approved') return;
+
+  const doc = existing
+    ? {
+        ...existing,
+        status: 'approved' as const,
+        resolvedTrusteeId: trusteeId,
+        resolvedTrusteeName: event.dxtrTrustee.fullName,
+        updatedOn: new Date().toISOString(),
+        updatedBy: SYSTEM_USER_REFERENCE,
+      }
+    : createAuditRecord<TrusteeMatchVerification>(
+        {
+          documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
+          caseId: event.caseId,
+          courtId: event.courtId,
+          dxtrTrustee: event.dxtrTrustee,
+          matchCandidates: [],
+          orderType: 'trustee-match',
+          status: 'approved',
+          resolvedTrusteeId: trusteeId,
+          resolvedTrusteeName: event.dxtrTrustee.fullName,
+        },
+        SYSTEM_USER_REFERENCE,
+      );
+
+  await verificationRepo.upsertVerification(doc);
+}
+
+/**
  * Upserts a TrusteeMatchVerification document for a non-auto-match outcome.
  * Skips the write if the existing document has already been resolved or dismissed.
  */
@@ -353,6 +393,7 @@ async function processAppointments(
         )
       ) {
         await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo, false);
+        await recordAutoMatch(verificationRepo, event, trusteeId);
         context.logger.info(
           MODULE_NAME,
           `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
