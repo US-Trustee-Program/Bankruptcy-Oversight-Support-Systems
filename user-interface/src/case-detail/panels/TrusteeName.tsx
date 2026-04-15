@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 interface TrusteeNameProps {
   trusteeName: string;
@@ -33,6 +34,7 @@ export function TrusteeName({ trusteeName, trusteeId, openNewTab = false }: Trus
       aria-label={`View trustee profile for ${trusteeName}${openNewTab ? ' (opens in new tab)' : ''}`}
       target={openNewTab ? '_blank' : undefined}
       rel={openNewTab ? 'noopener noreferrer' : undefined}
+      onClick={() => getAppInsights().appInsights.trackEvent({ name: 'Trustee Profile Navigated' })}
     >
       {linkContent}
     </Link>

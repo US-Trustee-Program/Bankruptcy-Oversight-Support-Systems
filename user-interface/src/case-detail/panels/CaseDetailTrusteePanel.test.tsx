@@ -18,6 +18,13 @@ vi.mock('./useCaseAppointment', () => ({
 import { useTrustee } from './useTrustee';
 import { useCaseAppointment } from './useCaseAppointment';
 
+const mockTrackEvent = vi.fn();
+vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
+  getAppInsights: () => ({
+    appInsights: { trackEvent: mockTrackEvent },
+  }),
+}));
+
 const mockUseTrustee = vi.mocked(useTrustee);
 const mockUseCaseAppointment = vi.mocked(useCaseAppointment);
 
@@ -274,6 +281,33 @@ describe('CaseDetailTrusteePanel', () => {
     expect(screen.getByTestId('case-detail-trustee-panel-appointed-date')).toHaveTextContent(
       'Appointed: 04/07/2026',
     );
+  });
+
+  test('fires "Trustee Info Viewed" telemetry event when trustee loads', () => {
+    const trustee = MockData.getTrustee();
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: trustee.trusteeId,
+      loading: false,
+    });
+    mockUseTrustee.mockReturnValue({ trustee, loading: false });
+
+    renderPanel();
+
+    expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Info Viewed' });
+  });
+
+  test('does not fire "Trustee Info Viewed" telemetry when trustee is null', () => {
+    mockUseCaseAppointment.mockReturnValue({
+      appointedDate: null,
+      trusteeId: null,
+      loading: false,
+    });
+    mockUseTrustee.mockReturnValue({ trustee: null, loading: false });
+
+    renderPanel();
+
+    expect(mockTrackEvent).not.toHaveBeenCalledWith({ name: 'Trustee Info Viewed' });
   });
 
   test('does not render appointed date when appointedDate is null', () => {

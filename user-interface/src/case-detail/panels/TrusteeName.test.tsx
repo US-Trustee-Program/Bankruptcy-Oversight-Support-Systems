@@ -1,9 +1,17 @@
 import { BrowserRouter } from 'react-router-dom';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { TrusteeName } from './TrusteeName';
 import { CamsRole } from '@common/cams/roles';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
+
+const mockTrackEvent = vi.fn();
+vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
+  getAppInsights: () => ({
+    appInsights: { trackEvent: mockTrackEvent },
+  }),
+}));
 
 const TRUSTEE_NAME = 'John Doe';
 const TRUSTEE_ID = 'trustee-123';
@@ -12,6 +20,7 @@ describe('TrusteeName', () => {
   let user: ReturnType<typeof MockData.getCamsUser>;
 
   beforeEach(() => {
+    vi.clearAllMocks();
     user = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
   });
@@ -43,6 +52,35 @@ describe('TrusteeName', () => {
 
     expect(screen.queryByTestId('case-detail-trustee-link')).not.toBeInTheDocument();
     expect(screen.getByText(TRUSTEE_NAME)).toBeInTheDocument();
+  });
+
+  describe('telemetry', () => {
+    test('fires "Trustee Profile Navigated" when the link is clicked', async () => {
+      render(
+        <BrowserRouter>
+          <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} />
+        </BrowserRouter>,
+      );
+
+      await userEvent.click(screen.getByTestId('case-detail-trustee-link'));
+
+      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Profile Navigated' });
+    });
+
+    test('does not fire "Trustee Profile Navigated" when name renders as plain text', async () => {
+      const noAccessUser = MockData.getCamsUser({ roles: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
+        MockData.getCamsSession({ user: noAccessUser }),
+      );
+
+      render(
+        <BrowserRouter>
+          <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} />
+        </BrowserRouter>,
+      );
+
+      expect(mockTrackEvent).not.toHaveBeenCalledWith({ name: 'Trustee Profile Navigated' });
+    });
   });
 
   describe('openNewTab', () => {

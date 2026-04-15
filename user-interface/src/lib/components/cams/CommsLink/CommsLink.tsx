@@ -13,6 +13,7 @@ type CommsLinkProps = {
   emailSubject?: string;
   hideIcon?: boolean;
   name?: string;
+  onClick?: () => void;
 };
 
 const NON_DIGITS = /\D/g;
@@ -32,7 +33,7 @@ function toTelephoneUri(number: string, extension?: string) {
 }
 
 function CommsLink(props: Readonly<CommsLinkProps>) {
-  const { contact, mode, label, icon, emailSubject, hideIcon, name } = props;
+  const { contact, mode, label, icon, emailSubject, hideIcon, name, onClick } = props;
   const { email, website, phone } = contact;
   const { number, extension } = phone ?? {};
 
@@ -100,6 +101,7 @@ function CommsLink(props: Readonly<CommsLinkProps>) {
         target={target}
         rel="noopener noreferrer"
         aria-label={ariaLabel}
+        onClick={onClick}
       >
         {linkContent}
       </a>
