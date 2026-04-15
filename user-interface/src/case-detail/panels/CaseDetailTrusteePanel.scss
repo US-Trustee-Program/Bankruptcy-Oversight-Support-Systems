@@ -2,7 +2,7 @@
 
 .case-detail-trustee-panel {
   h3 {
-    padding-bottom: 1.5rem;
+    padding-bottom: 1.25rem;
   }
 
   .appointed-date {
@@ -23,6 +23,9 @@
   .usa-card__body {
     .case-trustee-card-header {
       @include trustee-card-header;
+    }
+    .case-trustee-card-name {
+      margin-bottom: 0.4rem;
     }
   }
 }

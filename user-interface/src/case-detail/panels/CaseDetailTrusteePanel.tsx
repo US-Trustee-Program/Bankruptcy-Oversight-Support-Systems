@@ -81,7 +81,7 @@ export default function CaseDetailTrusteePanel({
           <div className="usa-card__container">
             <div className="usa-card__body">
               <h4>Public Contact Info</h4>
-              <div data-testid="case-trustee-card-name">
+              <div data-testid="case-trustee-card-name" className="case-trustee-card-name">
                 <TrusteeName trusteeName={trustee.name} trusteeId={trusteeId} openNewTab />
               </div>
               <div data-testid="case-trustee-public-contact">
