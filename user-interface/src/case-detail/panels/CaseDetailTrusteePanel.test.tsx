@@ -307,7 +307,7 @@ describe('CaseDetailTrusteePanel', () => {
 
     renderPanel();
 
-    expect(mockTrackEvent).not.toHaveBeenCalledWith({ name: 'Trustee Info Viewed' });
+    expect(mockTrackEvent).not.toHaveBeenCalled();
   });
 
   test('does not render appointed date when appointedDate is null', () => {

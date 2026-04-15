@@ -1,3 +1,4 @@
+import React from 'react';
 import './CommsLink.scss';
 import { ContactInformation } from '@common/cams/contact';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
@@ -13,7 +14,7 @@ type CommsLinkProps = {
   emailSubject?: string;
   hideIcon?: boolean;
   name?: string;
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 };
 
 const NON_DIGITS = /\D/g;

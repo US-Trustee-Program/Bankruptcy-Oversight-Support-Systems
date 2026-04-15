@@ -79,7 +79,7 @@ describe('TrusteeName', () => {
         </BrowserRouter>,
       );
 
-      expect(mockTrackEvent).not.toHaveBeenCalledWith({ name: 'Trustee Profile Navigated' });
+      expect(mockTrackEvent).not.toHaveBeenCalled();
     });
   });
 
