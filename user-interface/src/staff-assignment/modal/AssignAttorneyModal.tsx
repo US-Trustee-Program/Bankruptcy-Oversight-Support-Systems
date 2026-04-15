@@ -80,8 +80,10 @@ function AssignAttorneyModal_(
   }, [store.checkListValues]);
 
   useEffect(() => {
-    controls.modalRef.current?.buttons?.current?.disableSubmitButton(leadTrialAttorney === null);
-  }, [leadTrialAttorney]);
+    controls.modalRef.current?.buttons?.current?.disableSubmitButton(
+      leadTrialAttorney === null || store.checkListValues.length === 0,
+    );
+  }, [leadTrialAttorney, store.checkListValues]);
 
   const viewModel: AssignAttorneyModalViewModel = {
     actionButtonGroup,
