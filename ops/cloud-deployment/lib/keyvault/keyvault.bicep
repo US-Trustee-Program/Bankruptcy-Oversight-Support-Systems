@@ -52,15 +52,15 @@ var roleIdMapping = {
 
 param tags object = {}
 
-@description('Controls whether the key vault is accessible from the public internet. Defaults to Disabled for security.')
+@description('Controls whether the key vault is accessible from the public internet.')
 @allowed([
   'Enabled'
   'Disabled'
 ])
-param publicNetworkAccess string = 'Disabled'
+param publicNetworkAccess string = 'Enabled'
 
 param networkAcls object = {
-  defaultAction: 'Deny'
+  defaultAction: 'Allow'
   bypass: 'AzureServices'
 }
 
