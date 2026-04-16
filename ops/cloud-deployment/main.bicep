@@ -203,10 +203,6 @@ module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
 module ustpWebapp 'frontend-webapp-deploy.bicep' = {
     name: '${stackName}-webapp-module'
     scope: resourceGroup(appResourceGroup)
-    dependsOn: [
-      ustpApiFunction
-      ustpDataflowsFunction
-    ]
     params: {
       deployAppInsights: deployAppInsights
       analyticsWorkspaceId: deployAppInsights ? analyticsWorkspaceId : ''
