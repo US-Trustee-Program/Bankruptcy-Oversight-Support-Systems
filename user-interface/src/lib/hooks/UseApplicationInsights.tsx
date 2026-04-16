@@ -8,6 +8,7 @@ const reactPlugin = new ReactPlugin();
 const appInsights = new ApplicationInsights({
   config: {
     connectionString: appInsightsConnectionString,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     extensions: [reactPlugin as any], // Type cast to resolve nested @microsoft/applicationinsights-core-js conflict
     extensionConfig: {},
     enableAutoRouteTracking: true,
