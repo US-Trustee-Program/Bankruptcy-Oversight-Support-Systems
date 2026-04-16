@@ -844,20 +844,30 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(names[2].textContent).toContain('Low Score Trustee');
     });
 
-    test('shows score breakdown for each candidate', () => {
+    test('does not show score breakdown for candidates', () => {
       renderWithProps({ order: multipleCandidatesOrder });
 
-      const highScores = screen.getByTestId('candidate-scores-trustee-high');
-      expect(highScores.textContent).toContain('Total: 72');
-      expect(highScores.textContent).toContain('Addr: 60');
-      expect(highScores.textContent).toContain('Dist: 100');
-      expect(highScores.textContent).toContain('Chap: 50');
+      expect(screen.queryByTestId('candidate-scores-trustee-high')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('candidate-scores-trustee-mid')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('candidate-scores-trustee-low')).not.toBeInTheDocument();
+    });
 
-      const midScores = screen.getByTestId('candidate-scores-trustee-mid');
-      expect(midScores.textContent).toContain('Total: 65');
-      expect(midScores.textContent).toContain('Addr: 70');
-      expect(midScores.textContent).toContain('Dist: 50');
-      expect(midScores.textContent).toContain('Chap: 80');
+    test('shows description text and candidate count', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('Results are ordered from strongest to weakest match');
+      expect(screen.getByTestId('candidate-count').textContent).toBe('3 matches');
+    });
+
+    test('shows "search here" inline link in description', () => {
+      renderWithProps({ order: multipleCandidatesOrder });
+
+      const searchButton = screen.getByRole('button', {
+        name: /search here/,
+        hidden: true,
+      });
+      expect(searchButton).toBeInTheDocument();
     });
 
     test('shows "Multiple Match" as task type in accordion heading', () => {
@@ -878,55 +888,28 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
-    test('shows "CAMS Match Candidates" heading instead of "CAMS Strongest Match"', () => {
+    test('shows "Potential Matches" heading instead of "CAMS Strongest Match"', () => {
       renderWithProps({ order: multipleCandidatesOrder });
 
       const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
-      expect(content.textContent).toContain('CAMS Match Candidates');
+      expect(content.textContent).toContain('Potential Matches');
       expect(content.textContent).not.toContain('CAMS Strongest Match');
     });
 
-    test('no candidate is pre-selected initially', () => {
+    test('renders per-row "Match Trustee" action buttons (no radio buttons)', () => {
       renderWithProps({ order: multipleCandidatesOrder });
 
-      const radios = screen.getAllByRole('radio', { hidden: true });
-      radios.forEach((radio) => {
-        expect(radio).not.toBeChecked();
-      });
+      expect(screen.queryAllByRole('radio', { hidden: true })).toHaveLength(0);
+      expect(screen.queryByTestId('approve-selected-button')).not.toBeInTheDocument();
+      expect(screen.getByTestId('approve-candidate-trustee-high')).toBeInTheDocument();
+      expect(screen.getByTestId('approve-candidate-trustee-mid')).toBeInTheDocument();
+      expect(screen.getByTestId('approve-candidate-trustee-low')).toBeInTheDocument();
     });
 
-    test('"Match Trustee" button is disabled when no candidate selected', () => {
+    test('clicking per-row "Match Trustee" opens confirmation modal for that candidate', async () => {
       renderWithProps({ order: multipleCandidatesOrder });
 
-      const approveButton = screen.getByTestId('approve-selected-button');
-      expect(approveButton).toBeDisabled();
-    });
-
-    test('selecting a radio button enables "Match Trustee" button', () => {
-      renderWithProps({ order: multipleCandidatesOrder });
-
-      fireEvent.click(screen.getByTestId('select-candidate-trustee-high'));
-
-      const approveButton = screen.getByTestId('approve-selected-button');
-      expect(approveButton).toBeEnabled();
-    });
-
-    test('selecting a different candidate updates selection', () => {
-      renderWithProps({ order: multipleCandidatesOrder });
-
-      fireEvent.click(screen.getByTestId('select-candidate-trustee-high'));
-      expect(screen.getByTestId('select-candidate-trustee-high')).toBeChecked();
-
-      fireEvent.click(screen.getByTestId('select-candidate-trustee-mid'));
-      expect(screen.getByTestId('select-candidate-trustee-mid')).toBeChecked();
-      expect(screen.getByTestId('select-candidate-trustee-high')).not.toBeChecked();
-    });
-
-    test('clicking "Match Trustee" opens confirmation modal for selected candidate', async () => {
-      renderWithProps({ order: multipleCandidatesOrder });
-
-      fireEvent.click(screen.getByTestId('select-candidate-trustee-high'));
-      fireEvent.click(screen.getByTestId('approve-selected-button'));
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-high'));
 
       await waitFor(() => {
         const modalSubmit = document.getElementById(
@@ -936,13 +919,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
-    test('approval flow calls API with selected trustee ID and name', async () => {
+    test('approval flow calls API with clicked candidate trustee ID and name', async () => {
       vi.spyOn(Api2, 'patchTrusteeVerificationOrderApproval').mockResolvedValue(undefined);
       const onOrderUpdate = vi.fn();
       renderWithProps({ order: multipleCandidatesOrder, onOrderUpdate });
 
-      fireEvent.click(screen.getByTestId('select-candidate-trustee-high'));
-      fireEvent.click(screen.getByTestId('approve-selected-button'));
+      fireEvent.click(screen.getByTestId('approve-candidate-trustee-high'));
 
       const modalSubmit = document.getElementById(
         `trustee-confirmation-modal-${multipleCandidatesOrder.id}-submit-button`,
@@ -981,17 +963,21 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
-    test('"Search for a different trustee" link is rendered with "None of the above?" message', () => {
+    test('"search here" inline link opens search modal', async () => {
       renderWithProps({ order: multipleCandidatesOrder });
 
       const searchButton = screen.getByRole('button', {
-        name: /Search for a different trustee/,
+        name: /search here/,
         hidden: true,
       });
-      expect(searchButton).toBeInTheDocument();
-      expect(searchButton.closest('.search-link-container')).toHaveTextContent(
-        'None of the above?',
-      );
+      fireEvent.click(searchButton);
+
+      await waitFor(() => {
+        const wrapper = document.getElementById(
+          `trustee-search-modal-${multipleCandidatesOrder.id}-wrapper`,
+        );
+        expect(wrapper).toHaveClass('is-visible');
+      });
     });
 
     test('readonly mode for rejected MULTIPLE_TRUSTEES_MATCH shows all candidates without radio buttons', () => {
@@ -1007,14 +993,14 @@ describe('TrusteeMatchVerificationAccordion', () => {
       expect(screen.queryByTestId('approve-selected-button')).not.toBeInTheDocument();
     });
 
-    test('shows score breakdown in readonly mode for rejected MULTIPLE_TRUSTEES_MATCH', () => {
+    test('does not show score breakdown in readonly mode for rejected MULTIPLE_TRUSTEES_MATCH', () => {
       renderWithProps({
         order: { ...multipleCandidatesOrder, status: 'rejected' },
       });
 
-      expect(screen.getByTestId('candidate-scores-trustee-high')).toBeInTheDocument();
-      expect(screen.getByTestId('candidate-scores-trustee-mid')).toBeInTheDocument();
-      expect(screen.getByTestId('candidate-scores-trustee-low')).toBeInTheDocument();
+      expect(screen.queryByTestId('candidate-scores-trustee-high')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('candidate-scores-trustee-mid')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('candidate-scores-trustee-low')).not.toBeInTheDocument();
     });
 
     test('HIGH_CONFIDENCE_MATCH still renders single pre-selected candidate (regression check)', () => {

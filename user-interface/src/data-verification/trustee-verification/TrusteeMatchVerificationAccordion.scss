@@ -70,6 +70,26 @@
     }
   }
 
+  .search-trustee-inline-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #005ea2;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+  }
+
+  .candidate-description {
+    margin: 0.5rem 0 0.25rem;
+  }
+
+  .candidate-count {
+    font-weight: 600;
+    margin: 0.25rem 0 0.75rem;
+  }
+
   .search-link-container {
     .link-message {
       vertical-align: text-bottom;
