@@ -216,7 +216,7 @@
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-1fee48/providers/Microsoft.Insights/components/appi-ustp-cams-dev-1fee48-dataflows"
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-f64e59/providers/Microsoft.Insights/components/appi-ustp-cams-dev-f64e59-webapp"
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }

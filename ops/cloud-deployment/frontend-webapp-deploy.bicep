@@ -193,6 +193,15 @@ module searchWorkbooks 'lib/workbooks/search-workbooks.bicep' = if (createApplic
   }
 }
 
+module frontendWorkbooks 'lib/workbooks/frontend-workbooks.bicep' = if (createApplicationInsights) {
+  name: '${webappName}-frontend-workbooks-module'
+  params: {
+    location: location
+    appInsightsResourceId: webappInsights.outputs.id
+    tags: tags
+  }
+}
+
 var applicationSettings = concat(
   [
     {
