@@ -244,6 +244,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
         'AzureWebJobsDataflowsStorage'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
+        'MSSQL_DATABASE_DXTR'
       ]
     }
   }
