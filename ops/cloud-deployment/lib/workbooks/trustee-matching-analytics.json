@@ -171,7 +171,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions[\"moduleName\"]) == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| extend \n    Auto = tolong(customDimensions[\"autoMatchCount\"]),\n    High = tolong(customDimensions[\"highConfidenceMatchCount\"]),\n    Multi = tolong(customDimensions[\"multipleMatchCount\"]),\n    Imperfect = tolong(customDimensions[\"imperfectMatchCount\"]),\n    None = tolong(customDimensions[\"noMatchCount\"])\n| summarize \n    AutoMatch = sum(Auto),\n    HighConfidence = sum(High),\n    MultipleMatch = sum(Multi),\n    ImperfectMatch = sum(Imperfect),\n    NoMatch = sum(None)\n// This is the magic part for Pie Charts\n| evaluate narrow()\n| project Scenario = Column, Count = tolong(Value)\n| where Count > 0",
+        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions[\"moduleName\"]) == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| extend \n    Auto = tolong(customDimensions[\"autoMatchCount\"]),\n    High = tolong(customDimensions[\"highConfidenceMatchCount\"]),\n    Multi = tolong(customDimensions[\"multipleMatchCount\"]),\n    Imperfect = tolong(customDimensions[\"imperfectMatchCount\"]),\n    None = tolong(customDimensions[\"noMatchCount\"])\n| summarize \n    AutoMatch = sum(Auto),\n    HighConfidence = sum(High),\n    MultipleMatch = sum(Multi),\n    InactivePerfectMatch = sum(Imperfect),\n    NoMatch = sum(None)\n// This is the magic part for Pie Charts\n| evaluate narrow()\n| project Scenario = Column, Count = tolong(Value)\n| where Count > 0",
         "size": 3,
         "title": "Scenario Distribution (%)",
         "timeContextFromParameter": "TimeRange",
@@ -186,7 +186,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions[\"moduleName\"]) == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where timestamp {TimeRange}\n| extend \n    AutoMatch = tolong(customDimensions[\"autoMatchCount\"]),\n    HighConfidence = tolong(customDimensions[\"highConfidenceMatchCount\"]),\n    MultipleMatch = tolong(customDimensions[\"multipleMatchCount\"]),\n    ImperfectMatch = tolong(customDimensions[\"imperfectMatchCount\"]),\n    NoMatch = tolong(customDimensions[\"noMatchCount\"])\n| summarize \n    AutoMatch = sum(AutoMatch),\n    HighConfidence = sum(HighConfidence),\n    MultipleMatch = sum(MultipleMatch),\n    InactiveStatus = sum(ImperfectMatch),\n    NoMatch = sum(NoMatch)\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "query": "app('{DataflowsAppInsights:name}').customEvents\n| where name == \"DataflowHandlerComplete\"\n| where tostring(customDimensions[\"moduleName\"]) == \"SYNC-TRUSTEE-APPOINTMENTS\"\n| where timestamp {TimeRange}\n| extend \n    AutoMatch = tolong(customDimensions[\"autoMatchCount\"]),\n    HighConfidence = tolong(customDimensions[\"highConfidenceMatchCount\"]),\n    MultipleMatch = tolong(customDimensions[\"multipleMatchCount\"]),\n    ImperfectMatch = tolong(customDimensions[\"imperfectMatchCount\"]),\n    NoMatch = tolong(customDimensions[\"noMatchCount\"])\n| summarize \n    AutoMatch = sum(AutoMatch),\n    HighConfidence = sum(HighConfidence),\n    MultipleMatch = sum(MultipleMatch),\n    InactivePerfectMatch = sum(ImperfectMatch),\n    NoMatch = sum(NoMatch)\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
         "size": 0,
         "title": "Scenario Distribution Over Time",
         "timeContextFromParameter": "TimeRange",
@@ -220,7 +220,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where name == \"TrusteeMatchVerificationResolved\"\n| where customDimensions.action == \"approve\" or customDimensions.action == \"reject\"\n| where timestamp {TimeRange}\n| extend \n    mismatchReason = tostring(customDimensions.mismatchReason),\n    resolutionPath = tostring(customDimensions.resolutionPath),\n    resolutionMs = todouble(customMeasurements.resolutionMs)\n| extend \n    Scenario = case(\n        mismatchReason == \"HIGH_CONFIDENCE_MATCH\", \"High Confidence\",\n        mismatchReason == \"MULTIPLE_TRUSTEE_MATCH\", \"Multiple Matches\",\n        mismatchReason == \"INACTIVE_PERFECT_MATCH\", \"Inactive Status\",\n        mismatchReason == \"NO_TRUSTEE_MATCH\", \"No Match\",\n        \"Other\"\n    ),\n    ResolutionPath = case(\n        resolutionPath == \"accepted\", \"Accepted\",\n        resolutionPath == \"manual-search\", \"Accepted After Manual Search\",\n        resolutionPath == \"escalated\", \"Rejected\",\n        \"Unknown\"\n    )\n| where Scenario != \"Other\"\n| summarize \n    Median = percentile(resolutionMs, 50) / 1000,\n    Avg = avg(resolutionMs) / 1000,\n    Count = count()\n    by Scenario, ResolutionPath\n| order by Scenario asc, ResolutionPath asc",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where name == \"TrusteeMatchVerificationResolved\"\n| where customDimensions.action == \"approve\" or customDimensions.action == \"reject\"\n| where timestamp {TimeRange}\n| extend \n    mismatchReason = tostring(customDimensions.mismatchReason),\n    resolutionPath = tostring(customDimensions.resolutionPath),\n    resolutionMs = todouble(customMeasurements.resolutionMs)\n| extend \n    Scenario = case(\n        mismatchReason == \"HIGH_CONFIDENCE_MATCH\", \"High Confidence\",\n        mismatchReason == \"MULTIPLE_TRUSTEE_MATCH\", \"Multiple Matches\",\n        mismatchReason == \"INACTIVE_PERFECT_MATCH\", \"Inactive Perfect Match\",\n        mismatchReason == \"NO_TRUSTEE_MATCH\", \"No Match\",\n        \"Other\"\n    ),\n    ResolutionPath = case(\n        resolutionPath == \"accepted\", \"Accepted\",\n        resolutionPath == \"manual-search\", \"Accepted After Manual Search\",\n        resolutionPath == \"escalated\", \"Rejected\",\n        \"Unknown\"\n    )\n| where Scenario != \"Other\"\n| summarize \n    Median = percentile(resolutionMs, 50) / 1000,\n    Avg = avg(resolutionMs) / 1000,\n    Count = count()\n    by Scenario, ResolutionPath\n| order by Scenario asc, ResolutionPath asc",
         "size": 0,
         "title": "Resolution Time by Scenario",
         "timeContextFromParameter": "TimeRange",
@@ -472,6 +472,9 @@
       },
       "name": "candidate-selection-pattern"
     }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-471a3f/providers/Microsoft.Insights/components/appi-ustp-cams-dev-471a3f-webapp"
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
