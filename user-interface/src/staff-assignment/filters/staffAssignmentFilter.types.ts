@@ -2,7 +2,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { ResponseBody } from '@common/api/response';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import { Staff } from '@common/cams/users';
+import { CamsUserReference, Staff } from '@common/cams/users';
 
 export const UNASSIGNED_OPTION = {
   value: 'UNASSIGNED',
