@@ -201,7 +201,8 @@ describe('StaffAssignmentRow tests', () => {
       expect(screen.getByTestId('staff-name-lead')).toHaveTextContent(
         `${leadTrialAttorney.name} (Lead)`,
       );
-      expect(screen.queryAllByText(leadTrialAttorney.name)).toHaveLength(1);
+      expect(screen.getByTestId('staff-name-0')).toHaveTextContent(trialAttorney.name);
+      expect(screen.getByTestId('staff-name-0')).not.toHaveTextContent(leadTrialAttorney.name);
     });
   });
 });
