@@ -60,7 +60,6 @@ export interface TrusteeMatchVerificationAccordionProps {
 export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificationAccordionProps) {
   const { order, hidden, statusType, orderType, fieldHeaders, courts = [], onOrderUpdate } = props;
   const [isProcessing, setIsProcessing] = useState(false);
-  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
@@ -343,6 +342,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     candidates: CandidateScore[];
     showScore?: boolean;
     showScoreBreakdown?: boolean;
+    nameColumnHeader?: string;
     selectedCandidateId?: string | null;
     onSelectCandidate?: (trusteeId: string) => void;
     onApprove?: (candidate: CandidateScore) => void;
@@ -353,6 +353,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     candidates,
     showScore = false,
     showScoreBreakdown = false,
+    nameColumnHeader = 'Name',
     selectedCandidateId,
     onSelectCandidate,
     onApprove,
@@ -382,7 +383,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
       <div className="trustee-data-grid trustee-candidates-grid">
         <div className="trustee-data-header grid-row grid-gap-lg">
           {hasRadio && <div className="trustee-data-cell grid-col-1">Select</div>}
-          <div className="trustee-data-cell grid-col-2">Name</div>
+          <div className="trustee-data-cell grid-col-2">{nameColumnHeader}</div>
           {hasScoreBreakdown && <div className="trustee-data-cell grid-col-2">Scores</div>}
           {!hasScoreBreakdown && showScore && (
             <div className="trustee-data-cell grid-col-1">Score</div>
@@ -516,40 +517,32 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 </div>
               </div>
 
-              <h3>{isMultipleMatch ? 'CAMS Match Candidates' : 'CAMS Strongest Match'}</h3>
+              <h3>{isMultipleMatch ? 'Potential Matches' : 'CAMS Strongest Match'}</h3>
               {viewMode === 'pending-multiple-candidates' && (
                 <div
                   className="trustee-match-candidate-section"
                   data-testid="multiple-candidates-info"
                 >
-                  <CandidateTable
-                    candidates={sortedCandidates}
-                    showScoreBreakdown={true}
-                    selectedCandidateId={selectedCandidateId}
-                    onSelectCandidate={setSelectedCandidateId}
-                    isProcessing={isProcessing}
-                  />
-                  <div className="multiple-match-actions">
+                  <p className="candidate-description">
+                    Results are ordered from strongest to weakest match. If you don&apos;t find the
+                    trustee you&apos;re looking for{' '}
                     <button
                       type="button"
-                      data-testid="approve-selected-button"
-                      onClick={() => {
-                        const selected = order.matchCandidates.find(
-                          (c) => c.trusteeId === selectedCandidateId,
-                        );
-                        if (selected) openConfirmation(selected);
-                      }}
-                      disabled={isProcessing || selectedCandidateId === null}
-                      className="match-trustee-link"
+                      onClick={openSearch}
+                      className="search-trustee-inline-link"
                     >
-                      <Icon name="check" />
-                      Match Trustee
+                      search here
                     </button>
-                  </div>
-                  <TrusteeSearchLink
-                    linkMessage="None of the above?"
-                    linkLabel="Search for a different trustee"
-                    onClick={openSearch}
+                    .
+                  </p>
+                  <p className="candidate-count" data-testid="candidate-count">
+                    {sortedCandidates.length} matches
+                  </p>
+                  <CandidateTable
+                    candidates={sortedCandidates}
+                    nameColumnHeader="Trustee"
+                    onApprove={openConfirmation}
+                    isProcessing={isProcessing}
                   />
                 </div>
               )}
@@ -595,7 +588,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                 <>
                   <CandidateTable
                     candidates={isMultipleMatch ? sortedCandidates : [preselected]}
-                    showScoreBreakdown={isMultipleMatch}
+                    nameColumnHeader={isMultipleMatch ? 'Trustee' : undefined}
                   />
                   <TrusteeSearchLink
                     linkMessage="There are no other suggested matches in CAMS."
