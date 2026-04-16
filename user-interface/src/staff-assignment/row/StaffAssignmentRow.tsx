@@ -14,6 +14,7 @@ import {
 import Internal from './StaffAssignmentRow.internal';
 import { OpenModalButtonRef } from '@/lib/components/uswds/modal/modal-refs';
 import { CaseAssignment } from '@common/cams/assignments';
+import { CamsUserReference } from '@common/cams/users';
 
 export type StaffAssignmentRowOptions = {
   modalId: string;
@@ -69,31 +70,41 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     );
   }
 
-  function buildAssignmentList(assignments: Partial<CaseAssignment>[] | undefined) {
-    const leadTrialAttorney = state.bCase.leadTrialAttorney;
-    const nonLeadAssignments = assignments?.filter((a) => a.userId !== leadTrialAttorney?.id) ?? [];
-    if (nonLeadAssignments.length > 0 || leadTrialAttorney) {
-      const items: React.ReactNode[] = [];
-      if (leadTrialAttorney) {
-        items.push(
-          <span key="lead" data-testid="staff-name-lead">
-            {leadTrialAttorney.name} (Lead)
-            <br />
-          </span>,
-        );
-      }
-      nonLeadAssignments.forEach((attorney, key: number) => {
-        items.push(
-          <span key={key} data-testid={`staff-name-${key}`}>
-            {attorney.name}
-            <br />
-          </span>,
-        );
-      });
-      return items;
-    } else {
+  function buildAssignmentList(
+    assignments: Partial<CaseAssignment>[] | undefined,
+    leadTrialAttorney: CamsUserReference | undefined,
+  ) {
+    const nonLeadAssignments =
+      assignments?.filter((a) => a.userId && a.userId !== leadTrialAttorney?.id) ?? [];
+
+    if (!leadTrialAttorney && nonLeadAssignments.length === 0) {
       return <span className="unassigned">(unassigned)</span>;
     }
+
+    const displayItems: { key: React.Key; label: string; testId: string }[] = [];
+
+    if (leadTrialAttorney) {
+      displayItems.push({
+        key: 'lead',
+        label: `${leadTrialAttorney.name} (Lead)`,
+        testId: 'staff-name-lead',
+      });
+    }
+
+    nonLeadAssignments.forEach((attorney, index) => {
+      displayItems.push({
+        key: index,
+        label: attorney.name ?? '',
+        testId: `staff-name-${index}`,
+      });
+    });
+
+    return displayItems.map((item) => (
+      <span key={item.key} data-testid={item.testId}>
+        {item.label}
+        <br />
+      </span>
+    ));
   }
 
   return (
@@ -109,7 +120,9 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
       <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
         <span className="mobile-title">Assigned Attorney:</span>
         <div className="table-flex-container">
-          <div className="attorney-list-container">{buildAssignmentList(state.assignments)}</div>
+          <div className="attorney-list-container">
+            {buildAssignmentList(state.assignments, state.bCase.leadTrialAttorney)}
+          </div>
           <div className="table-column-toolbar">
             {Actions.contains(bCase, Actions.ManageAssignments) && buildActionButton()}
           </div>
