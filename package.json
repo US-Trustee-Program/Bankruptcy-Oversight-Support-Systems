@@ -10,9 +10,13 @@
     "user-interface",
     "dev-tools",
     "test/bdd",
-    "test/e2e",
-    "test/uswds"
+    "test/e2e"
   ],
+  "overrides": {
+    "@microsoft/applicationinsights-analytics-js": {
+      "@microsoft/applicationinsights-core-js": "$@microsoft/applicationinsights-core-js"
+    }
+  },
   "scripts": {
     "build": "npm run build:backend && npm run build:user-interface",
     "build:api": "npm run build:common && npm run build:api --workspace=backend",

@@ -8,7 +8,7 @@ const reactPlugin = new ReactPlugin();
 const appInsights = new ApplicationInsights({
   config: {
     connectionString: appInsightsConnectionString,
-    extensions: [reactPlugin],
+    extensions: [reactPlugin as any], // Type cast to resolve nested @microsoft/applicationinsights-core-js conflict
     extensionConfig: {},
     enableAutoRouteTracking: true,
     disableAjaxTracking: false,
