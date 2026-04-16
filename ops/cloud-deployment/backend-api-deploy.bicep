@@ -484,3 +484,5 @@ resource sqlIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-3
   name: sqlIdentityName
   scope: resourceGroup(sqlIdentityRG)
 }
+
+output appInsightsId string = createApplicationInsights ? apiFunctionAppInsights.outputs.id : ''
