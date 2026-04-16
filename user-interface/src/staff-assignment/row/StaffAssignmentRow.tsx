@@ -70,13 +70,27 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
   }
 
   function buildAssignmentList(assignments: Partial<CaseAssignment>[] | undefined) {
-    if (assignments && assignments.length > 0) {
-      return state.assignments?.map((attorney, key: number) => (
-        <span key={key} data-testid={`staff-name-${key}`}>
-          {attorney.name}
-          <br />
-        </span>
-      ));
+    const leadTrialAttorney = state.bCase.leadTrialAttorney;
+    const nonLeadAssignments = assignments?.filter((a) => a.userId !== leadTrialAttorney?.id) ?? [];
+    if (nonLeadAssignments.length > 0 || leadTrialAttorney) {
+      const items: React.ReactNode[] = [];
+      if (leadTrialAttorney) {
+        items.push(
+          <span key="lead" data-testid="staff-name-lead">
+            {leadTrialAttorney.name} (Lead)
+            <br />
+          </span>,
+        );
+      }
+      nonLeadAssignments.forEach((attorney, key: number) => {
+        items.push(
+          <span key={key} data-testid={`staff-name-${key}`}>
+            {attorney.name}
+            <br />
+          </span>,
+        );
+      });
+      return items;
     } else {
       return <span className="unassigned">(unassigned)</span>;
     }

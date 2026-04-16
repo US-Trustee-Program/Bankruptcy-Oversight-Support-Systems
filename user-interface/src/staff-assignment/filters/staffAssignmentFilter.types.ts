@@ -2,7 +2,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { ResponseBody } from '@common/api/response';
 import { UstpOfficeDetails } from '@common/cams/offices';
-import { CamsUserReference } from '@common/cams/users';
+import { Staff } from '@common/cams/users';
 
 export const UNASSIGNED_OPTION = {
   value: 'UNASSIGNED',
@@ -15,8 +15,8 @@ interface StaffAssignmentFilterStore {
   setFilterAssigneeCallback(val: ((assignees: ComboOption[]) => void) | null): void;
   focusOnRender: boolean;
   setFocusOnRender(val: boolean): void;
-  officeAssignees: CamsUserReference[];
-  setOfficeAssignees(val: CamsUserReference[]): void;
+  officeAssignees: Staff[];
+  setOfficeAssignees(val: Staff[]): void;
   officeAssigneesError: boolean;
   setOfficeAssigneesError(val: boolean): void;
 }
@@ -30,11 +30,11 @@ type StaffAssignmentFilterViewProps = {
 };
 
 interface StaffAssignmentFilterViewModel {
-  officeAssignees: CamsUserReference[];
+  officeAssignees: Staff[];
   officeAssigneesError: boolean;
   assigneesFilterRef: React.RefObject<ComboBoxRef | null>;
 
-  assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[];
+  assigneesToComboOptions(officeAssignees: Staff[]): ComboOption[];
   handleFilterAssignee(assignees: ComboOption[]): void;
 }
 
@@ -53,13 +53,13 @@ type StaffAssignmentFilterProps = {
 };
 
 interface StaffAssignmentFilterUseCase {
-  assigneesToComboOptions(officeAssignees: CamsUserReference[]): ComboOption[];
+  assigneesToComboOptions(officeAssignees: Staff[]): ComboOption[];
   fetchAssignees(): void;
   focusOnAssigneesFilter(): void;
   getOfficeAssignees(
-    apiFunction: (office: string) => Promise<ResponseBody<CamsUserReference[]>>,
+    apiFunction: (office: string) => Promise<ResponseBody<Staff[]>>,
     offices: UstpOfficeDetails[],
-  ): Promise<CamsUserReference[]>;
+  ): Promise<Staff[]>;
   handleFilterAssignee(val: ComboOption[]): void;
 }
 
