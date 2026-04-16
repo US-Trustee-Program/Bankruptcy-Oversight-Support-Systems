@@ -55,7 +55,7 @@ var keyvaultPrivateDnsZoneName = 'privatelink.vaultcore.usgovcloudapi.net'
 
 @description('Application Configuration network access control settings')
 param kvNetworkAcls object = {
-  defaultAction: 'Deny'
+  defaultAction: 'Allow'
   bypass: 'AzureServices'
   ipRules: []
   virtualNetworkRules: []
