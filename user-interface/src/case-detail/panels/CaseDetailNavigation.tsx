@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
-import useFeatureFlags, { DISPLAY_TRUSTEE_INFO_CASE } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 
 export enum CaseNavState {
   CASE_OVERVIEW,
@@ -40,7 +40,7 @@ export default function CaseDetailNavigation({
 }: CaseDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<CaseNavState>(initiallySelectedNavLink);
   const flags = useFeatureFlags();
-  const showTrusteeTab = !!flags[DISPLAY_TRUSTEE_INFO_CASE];
+  const showTrusteeTab = !!flags[VIEW_TRUSTEE_ON_CASE];
 
   return (
     <>
