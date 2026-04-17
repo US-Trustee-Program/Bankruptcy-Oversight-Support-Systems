@@ -6,6 +6,13 @@ import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities
 import MockData from '@common/cams/test-utilities/mock-data';
 import { mockClipboardWrite, mockClipboardUndefined } from '@/lib/testing/mock-clipboard';
 
+const mockTrackEvent = vi.fn();
+vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
+  getAppInsights: () => ({
+    appInsights: { trackEvent: mockTrackEvent },
+  }),
+}));
+
 describe('MeetingOfCreditorsInfoCard', () => {
   let userEvent: CamsUserEvent;
   const mockOnEdit = vi.fn();
@@ -14,6 +21,24 @@ describe('MeetingOfCreditorsInfoCard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     userEvent = TestingUtilities.setupUserEvent();
+  });
+
+  test('fires "Zoom Link Clicked" telemetry when Zoom link is clicked', async () => {
+    render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} />);
+
+    const zoomLink = screen.getByTestId('zoom-link').querySelector('a')!;
+    await userEvent.click(zoomLink);
+
+    expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Zoom Link Clicked' });
+  });
+
+  test('fires "Zoom Info Copied" telemetry when copy button is clicked', async () => {
+    mockClipboardWrite();
+    render(<MeetingOfCreditorsInfoCard zoomInfo={mockZoomInfo} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Copy Meeting of Creditors info' }));
+
+    expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Zoom Info Copied' });
   });
 
   const mockZoomInfo: ZoomInfo = {

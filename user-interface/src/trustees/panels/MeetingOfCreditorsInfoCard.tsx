@@ -7,6 +7,7 @@ import { copyHTMLToClipboard } from '@/lib/utils/clipBoard';
 import Icon from '@/lib/components/uswds/Icon';
 import { formatPhoneNumber } from '@common/phone-helper';
 import CommsLink from '@/lib/components/cams/CommsLink/CommsLink';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 interface ZoomInfoCardProps {
   zoomInfo?: ZoomInfo;
@@ -44,6 +45,9 @@ export default function MeetingOfCreditorsInfoCard({
                     contact={{ website: zoomInfo.link }}
                     mode="website"
                     label="Zoom Link"
+                    onClick={() =>
+                      getAppInsights().appInsights.trackEvent({ name: 'Zoom Link Clicked' })
+                    }
                   />
                 </div>
                 <div className="zoom-phone" data-testid="zoom-phone">
@@ -72,7 +76,10 @@ export default function MeetingOfCreditorsInfoCard({
                   uswdsStyle={UswdsButtonStyle.Outline}
                   aria-label="Copy Meeting of Creditors info"
                   title="Copy Meeting of Creditors info"
-                  onClick={() => copyHTMLToClipboard('#meeting-of-creditors-info-copy')}
+                  onClick={() => {
+                    getAppInsights().appInsights.trackEvent({ name: 'Zoom Info Copied' });
+                    copyHTMLToClipboard('#meeting-of-creditors-info-copy');
+                  }}
                 >
                   <Icon name="content_copy" />
                   Copy Zoom Info

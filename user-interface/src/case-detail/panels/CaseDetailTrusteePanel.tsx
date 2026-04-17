@@ -1,7 +1,9 @@
 import './CaseDetailTrusteePanel.scss';
+import { useEffect } from 'react';
 import { CaseDetail } from '@common/cams/cases';
 import { useTrustee } from './useTrustee';
 import { useCaseAppointment } from './useCaseAppointment';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import { TrusteeName } from './TrusteeName';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
 import ContactInformationCard from '@/trustees/panels/ContactInformationCard';
@@ -33,6 +35,12 @@ export default function CaseDetailTrusteePanel({
     loading: appointmentLoading,
   } = useCaseAppointment(caseDetail.caseId);
   const { trustee, loading: trusteeLoading } = useTrustee(trusteeId ?? undefined);
+
+  useEffect(() => {
+    if (trustee) {
+      getAppInsights().appInsights.trackEvent({ name: 'Trustee Info Viewed' });
+    }
+  }, [trustee]);
 
   if (appointmentLoading || trusteeLoading) {
     return (
@@ -73,7 +81,7 @@ export default function CaseDetailTrusteePanel({
           <div className="usa-card__container">
             <div className="usa-card__body">
               <h4>Public Contact Info</h4>
-              <div data-testid="case-trustee-card-name">
+              <div data-testid="case-trustee-card-name" className="case-trustee-card-name">
                 <TrusteeName trusteeName={trustee.name} trusteeId={trusteeId} openNewTab />
               </div>
               <div data-testid="case-trustee-public-contact">

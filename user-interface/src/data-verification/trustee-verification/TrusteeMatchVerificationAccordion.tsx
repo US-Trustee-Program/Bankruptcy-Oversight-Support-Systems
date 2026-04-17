@@ -86,10 +86,15 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     legacy?.cityStateZipCountry,
   ].filter(Boolean) as string[];
 
-  const preselected =
-    order.matchCandidates.length > 0
-      ? order.matchCandidates.reduce((best, c) => (c.totalScore > best.totalScore ? c : best))
-      : undefined;
+  // For multiple match scenarios, show all candidates ranked by score
+  // For other scenarios, show only the strongest match
+  const candidatesToShow = isMultipleMatch
+    ? [...order.matchCandidates].sort((a, b) => b.totalScore - a.totalScore)
+    : order.matchCandidates.length > 0
+      ? [order.matchCandidates.reduce((best, c) => (c.totalScore > best.totalScore ? c : best))]
+      : [];
+
+  const preselected = candidatesToShow.length > 0 ? candidatesToShow[0] : undefined;
 
   type ViewMode =
     | 'resolved'
@@ -561,12 +566,17 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
               {viewMode === 'pending-with-candidate' && preselected && (
                 <div className="trustee-match-candidate-section" data-testid="candidate-info">
                   <CandidateTable
-                    candidates={[preselected]}
+                    candidates={candidatesToShow}
+                    showScore={isMultipleMatch}
                     onApprove={openConfirmation}
                     isProcessing={isProcessing}
                   />
                   <TrusteeSearchLink
-                    linkMessage="There are no other suggested matches in CAMS."
+                    linkMessage={
+                      isMultipleMatch
+                        ? 'Multiple matches found with similar scores.'
+                        : 'There are no other suggested matches in CAMS.'
+                    }
                     linkLabel="Search for a different trustee"
                     onClick={openSearch}
                   />
@@ -591,7 +601,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     nameColumnHeader={isMultipleMatch ? 'Trustee' : undefined}
                   />
                   <TrusteeSearchLink
-                    linkMessage="There are no other suggested matches in CAMS."
+                    linkMessage={
+                      isMultipleMatch
+                        ? 'Multiple matches found with similar scores.'
+                        : 'There are no other suggested matches in CAMS.'
+                    }
                     linkLabel="Search for a different trustee."
                     onClick={openSearch}
                   />
