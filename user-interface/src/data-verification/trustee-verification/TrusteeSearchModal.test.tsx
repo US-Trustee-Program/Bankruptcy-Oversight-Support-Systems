@@ -190,8 +190,8 @@ describe('TrusteeSearchModal', () => {
 
     // The selection is reflected in the aria-description element (collapsed state)
     await waitFor(() => {
-      const description = document.querySelector(`#${districtComboBoxId}-aria-description`);
-      expect(description?.textContent).toContain('Southern District of New York');
+      const selectionLabel = document.querySelector(`#${districtComboBoxId} .selection-label`);
+      expect(selectionLabel?.textContent).toBe('Southern District of New York');
     });
   });
 

@@ -225,6 +225,8 @@ module ustpWebapp 'frontend-webapp-deploy.bicep' = {
       oktaUrl: oktaUrl
       slotName: slotName
       isUstpDeployment: isUstpDeployment
+      dataflowsAppInsightsId: deployAppInsights ? ustpDataflowsFunction.outputs.appInsightsId : ''
+      nodeApiAppInsightsId: deployAppInsights ? ustpApiFunction.outputs.appInsightsId : ''
       tags: webappTags
     }
 }
