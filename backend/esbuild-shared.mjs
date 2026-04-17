@@ -14,7 +14,6 @@ export const EXTERNAL_DEPENDENCIES = [
   'mongodb',
   'applicationinsights',
   'dotenv',
-  'express',
   'natural',
   // Only our own code (@common via path aliases) will be bundled
 ];
