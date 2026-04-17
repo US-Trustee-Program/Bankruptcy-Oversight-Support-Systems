@@ -22,6 +22,7 @@
  *   seed-proid               Create trustees WITH proIds, WITHOUT proIds, and an ambiguous duplicate pair
  *   seed-match-verification  Create TrusteeMatchVerification docs for all slice 3 outcomes
  *   seed-auto-match          Create CAMS trustees + appointments matching real DXTR data
+ *   seed-matching-scenarios  Create 24 trustees with appointments covering all matching scenarios
  *   list                     Show seeded test data currently in MongoDB
  *   clean                    Delete all seeded test data from MongoDB
  *   help                     Show this message
@@ -95,6 +96,301 @@ function makeTrusteeInput(name: string, state: string): TrusteeInput {
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Matching scenario trustees (CAMS-721)
+// ---------------------------------------------------------------------------
+
+type MatchingScenarioTrustee = {
+  name: string;
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  address: {
+    address1: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    countryCode: string;
+  };
+  appointments: Array<{
+    courtId: string;
+    divisionCode: string;
+    chapter: AppointmentChapterType;
+    appointmentType: AppointmentType;
+    status: 'active' | 'inactive';
+  }>;
+};
+
+const MATCHING_SCENARIO_TRUSTEES: MatchingScenarioTrustee[] = [
+  // ═══════════════════════════════════════════════════════════════════════
+  // SCENARIO 1: Perfect Auto-Match (5 trustees)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    name: 'SEED Test John Doe',
+    firstName: 'John',
+    middleName: '',
+    lastName: 'Doe',
+    address: { address1: '123 Main St', city: 'New York', state: 'NY', zipCode: '10001', countryCode: 'US' },
+    appointments: [
+      { courtId: '0208', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0208', divisionCode: '2', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Jane Smith',
+    firstName: 'Jane',
+    middleName: 'M',
+    lastName: 'Smith',
+    address: { address1: '456 Oak Ave', city: 'Los Angeles', state: 'CA', zipCode: '90001', countryCode: 'US' },
+    appointments: [
+      { courtId: '0311', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0311', divisionCode: '3', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Robert Johnson',
+    firstName: 'Robert',
+    middleName: 'L',
+    lastName: 'Johnson',
+    address: { address1: '789 Pine Rd', city: 'Chicago', state: 'IL', zipCode: '60601', countryCode: 'US' },
+    appointments: [
+      { courtId: '0867', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0867', divisionCode: '2', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Mary Williams',
+    firstName: 'Mary',
+    middleName: 'A',
+    lastName: 'Williams',
+    address: { address1: '321 Elm St', city: 'Houston', state: 'TX', zipCode: '77001', countryCode: 'US' },
+    appointments: [
+      { courtId: '0209', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0209', divisionCode: '1', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test David Brown',
+    firstName: 'David',
+    middleName: '',
+    lastName: 'Brown',
+    address: { address1: '555 Broadway', city: 'Boston', state: 'MA', zipCode: '02101', countryCode: 'US' },
+    appointments: [
+      { courtId: '0208', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0311', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0867', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SCENARIO 2: Multiple Match (4 trustees - 2 duplicate pairs)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    name: 'SEED Test Michael Anderson',
+    firstName: 'Michael',
+    middleName: 'J',
+    lastName: 'Anderson',
+    address: { address1: '100 Park Ave', city: 'New York', state: 'NY', zipCode: '10002', countryCode: 'US' },
+    appointments: [
+      { courtId: '0208', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Michael Anderson',
+    firstName: 'Michael',
+    middleName: 'P',
+    lastName: 'Anderson',
+    address: { address1: '200 Madison Ave', city: 'New York', state: 'NY', zipCode: '10003', countryCode: 'US' },
+    appointments: [
+      { courtId: '0208', divisionCode: '2', chapter: '7', appointmentType: 'panel', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Sarah Miller',
+    firstName: 'Sarah',
+    middleName: '',
+    lastName: 'Miller',
+    address: { address1: '300 Sunset Blvd', city: 'Los Angeles', state: 'CA', zipCode: '90002', countryCode: 'US' },
+    appointments: [
+      { courtId: '0311', divisionCode: '1', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Sarah Miller',
+    firstName: 'Sarah',
+    middleName: 'K',
+    lastName: 'Miller',
+    address: { address1: '400 Hollywood Blvd', city: 'Los Angeles', state: 'CA', zipCode: '90003', countryCode: 'US' },
+    appointments: [
+      { courtId: '0311', divisionCode: '2', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SCENARIO 3: Imperfect Match (2 trustees)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    name: 'SEED Test Christopher Wilson',
+    firstName: 'Christopher',
+    middleName: '',
+    lastName: 'Wilson',
+    address: { address1: '500 Michigan Ave', city: 'Chicago', state: 'IL', zipCode: '60602', countryCode: 'US' },
+    appointments: [
+      { courtId: '0867', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Elizabeth Martinez',
+    firstName: 'Elizabeth',
+    middleName: 'A',
+    lastName: 'Martinez',
+    address: { address1: '600 Main St', city: 'Houston', state: 'TX', zipCode: '77002', countryCode: 'US' },
+    appointments: [
+      { courtId: '0209', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SCENARIO 4: High Confidence Match (2 trustees)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    name: 'SEED Test Thomas Garcia',
+    firstName: 'Thomas',
+    middleName: 'R',
+    lastName: 'Garcia',
+    address: { address1: '700 Wall St', city: 'New York', state: 'NY', zipCode: '10004', countryCode: 'US' },
+    appointments: [
+      { courtId: '0208', divisionCode: '1', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+      { courtId: '0208', divisionCode: '2', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Jennifer Rodriguez',
+    firstName: 'Jennifer',
+    middleName: 'L',
+    lastName: 'Rodriguez',
+    address: { address1: '800 Wilshire Blvd', city: 'Los Angeles', state: 'CA', zipCode: '90004', countryCode: 'US' },
+    appointments: [
+      { courtId: '0311', divisionCode: '1', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SCENARIO 5: Perfect Match but Inactive Status (2 trustees)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    name: 'SEED Test James Taylor',
+    firstName: 'James',
+    middleName: '',
+    lastName: 'Taylor',
+    address: { address1: '900 State St', city: 'Chicago', state: 'IL', zipCode: '60603', countryCode: 'US' },
+    appointments: [
+      { courtId: '0867', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'inactive' },
+      { courtId: '0867', divisionCode: '2', chapter: '7', appointmentType: 'panel', status: 'inactive' },
+    ],
+  },
+  {
+    name: 'SEED Test Linda Moore',
+    firstName: 'Linda',
+    middleName: 'S',
+    lastName: 'Moore',
+    address: { address1: '1000 Texas Ave', city: 'Houston', state: 'TX', zipCode: '77003', countryCode: 'US' },
+    appointments: [
+      { courtId: '0209', divisionCode: '1', chapter: '13', appointmentType: 'standing', status: 'inactive' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SCENARIO 6: Multi-region trustees (3 trustees)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    name: 'SEED Test Patricia Davis',
+    firstName: 'Patricia',
+    middleName: 'R',
+    lastName: 'Davis',
+    address: { address1: '888 Market St', city: 'San Francisco', state: 'CA', zipCode: '94102', countryCode: 'US' },
+    appointments: [
+      { courtId: '0208', divisionCode: '1', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+      { courtId: '0311', divisionCode: '1', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+      { courtId: '0867', divisionCode: '1', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test William Thompson',
+    firstName: 'William',
+    middleName: 'C',
+    lastName: 'Thompson',
+    address: { address1: '1100 Atlantic Ave', city: 'Boston', state: 'MA', zipCode: '02102', countryCode: 'US' },
+    appointments: [
+      { courtId: '0208', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0208', divisionCode: '1', chapter: '13', appointmentType: 'standing', status: 'active' },
+      { courtId: '0311', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0311', divisionCode: '1', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Barbara White',
+    firstName: 'Barbara',
+    middleName: 'J',
+    lastName: 'White',
+    address: { address1: '1200 Lake Shore Dr', city: 'Chicago', state: 'IL', zipCode: '60604', countryCode: 'US' },
+    appointments: [
+      { courtId: '0867', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0867', divisionCode: '1', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+      { courtId: '0867', divisionCode: '1', chapter: '13', appointmentType: 'standing', status: 'active' },
+      { courtId: '0209', divisionCode: '1', chapter: '7', appointmentType: 'panel', status: 'active' },
+    ],
+  },
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // SCENARIO 7: Additional coverage (4 trustees)
+  // ═══════════════════════════════════════════════════════════════════════
+  {
+    name: 'SEED Test Charles Harris',
+    firstName: 'Charles',
+    middleName: 'D',
+    lastName: 'Harris',
+    address: { address1: '1300 Fifth Ave', city: 'New York', state: 'NY', zipCode: '10005', countryCode: 'US' },
+    appointments: [
+      { courtId: '0208', divisionCode: '3', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0208', divisionCode: '3', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Nancy Clark',
+    firstName: 'Nancy',
+    middleName: 'B',
+    lastName: 'Clark',
+    address: { address1: '1400 Beach Blvd', city: 'Los Angeles', state: 'CA', zipCode: '90005', countryCode: 'US' },
+    appointments: [
+      { courtId: '0311', divisionCode: '2', chapter: '7', appointmentType: 'panel', status: 'active' },
+      { courtId: '0311', divisionCode: '3', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Daniel Lee',
+    firstName: 'Daniel',
+    middleName: 'F',
+    lastName: 'Lee',
+    address: { address1: '1500 Lakeview Ave', city: 'Chicago', state: 'IL', zipCode: '60605', countryCode: 'US' },
+    appointments: [
+      { courtId: '0867', divisionCode: '2', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+      { courtId: '0867', divisionCode: '3', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+  {
+    name: 'SEED Test Susan Lewis',
+    firstName: 'Susan',
+    middleName: 'M',
+    lastName: 'Lewis',
+    address: { address1: '1600 Houston St', city: 'Houston', state: 'TX', zipCode: '77004', countryCode: 'US' },
+    appointments: [
+      { courtId: '0209', divisionCode: '1', chapter: '11', appointmentType: 'case-by-case', status: 'active' },
+      { courtId: '0209', divisionCode: '2', chapter: '13', appointmentType: 'standing', status: 'active' },
+    ],
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Match verification definitions
@@ -295,6 +591,78 @@ async function seedMatchVerifications() {
     console.log(`    note           : ${seed.note}`);
   }
 
+  console.log('\nDone. Run "list" to verify.');
+}
+
+/**
+ * Seed trustees with appointments to test all matching scenarios (CAMS-721).
+ *
+ * Creates 24 trustees with various appointment configurations covering:
+ *  - Perfect auto-match (5 trustees)
+ *  - Multiple match/ambiguous (2 duplicate pairs = 4 trustees)
+ *  - Imperfect match/low confidence (2 trustees)
+ *  - High confidence match (2 trustees)
+ *  - Perfect match but inactive status (2 trustees)
+ *  - Multi-region coverage (3 trustees)
+ *  - Additional court/chapter coverage (4 trustees)
+ *
+ * All trustees use the "SEED Test" prefix for easy identification and cleanup.
+ */
+async function seedMatchingScenarios() {
+  console.log('\nSeeding matching scenario trustees with appointments...');
+  const context = await getContext();
+  const trusteesRepo = factory.getTrusteesRepository(context);
+  const appointmentsRepo = factory.getTrusteeAppointmentsRepository(context);
+
+  let successCount = 0;
+  let appointmentCount = 0;
+
+  for (const seed of MATCHING_SCENARIO_TRUSTEES) {
+    // Create trustee
+    const trusteeInput: TrusteeInput = {
+      name: seed.name,
+      public: {
+        address: {
+          ...seed.address,
+          countryCode: seed.address.countryCode as 'US',
+        },
+      },
+    };
+
+    const trustee = await trusteesRepo.createTrustee(trusteeInput, SEED_SYSTEM_USER);
+
+    // Create appointments
+    for (const appt of seed.appointments) {
+      const appointmentInput: TrusteeAppointmentInput = {
+        chapter: appt.chapter,
+        appointmentType: appt.appointmentType,
+        courtId: appt.courtId,
+        divisionCode: appt.divisionCode,
+        appointedDate: '2020-01-01',
+        status: appt.status,
+        effectiveDate: '2020-01-01',
+      };
+      await appointmentsRepo.createAppointment(trustee.trusteeId, appointmentInput, SEED_SYSTEM_USER);
+      appointmentCount++;
+    }
+
+    console.log(`  Created: ${seed.name}`);
+    console.log(`    trusteeId  : ${trustee.trusteeId}`);
+    console.log(`    appointments: ${seed.appointments.map(a => `${a.courtId}/${a.divisionCode} Ch${a.chapter} (${a.status})`).join(', ')}`);
+
+    successCount++;
+    await sleep(150); // avoid Cosmos RU throttle
+  }
+
+  console.log(`\nCreated ${successCount} trustees with ${appointmentCount} appointments.`);
+  console.log('\nScenario coverage:');
+  console.log('  ✓ Perfect auto-match (5 trustees)');
+  console.log('  ✓ Multiple match (2 duplicate pairs = 4 trustees)');
+  console.log('  ✓ Imperfect match (2 trustees)');
+  console.log('  ✓ High confidence match (2 trustees)');
+  console.log('  ✓ Perfect match but inactive (2 trustees)');
+  console.log('  ✓ Multi-region coverage (3 trustees)');
+  console.log('  ✓ Additional coverage (4 trustees)');
   console.log('\nDone. Run "list" to verify.');
 }
 
@@ -688,6 +1056,10 @@ async function main() {
       break;
     }
 
+    case 'seed-matching-scenarios':
+      await seedMatchingScenarios();
+      break;
+
     case 'list':
       await listSeededData();
       break;
@@ -730,6 +1102,17 @@ Commands:
                            Requires DXTR connection and synced cases already in Cosmos.
                            After seeding, trigger the sync-trustee-appointments dataflow.
 
+  seed-matching-scenarios  Seed 24 trustees with appointments covering all matching scenarios:
+                             • Perfect auto-match (5 trustees)
+                             • Multiple match/ambiguous (2 duplicate pairs = 4 trustees)
+                             • Imperfect match/low confidence (2 trustees)
+                             • High confidence match (2 trustees)
+                             • Perfect match but inactive status (2 trustees)
+                             • Multi-region coverage (3 trustees)
+                             • Additional court/chapter coverage (4 trustees)
+                           All trustees use "SEED Test" prefix for easy cleanup.
+                           Courts: 0208, 0311, 0867, 0209 with multiple divisions/chapters.
+
   list                     Show all seeded test data currently in MongoDB
 
   clean                    Delete only seeded test data (all trustees created by SEED-SCRIPT, their
@@ -748,6 +1131,7 @@ Examples:
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-match-verification
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-auto-match
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-auto-match 10
+  npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-matching-scenarios
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts list
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean
   npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean-all
