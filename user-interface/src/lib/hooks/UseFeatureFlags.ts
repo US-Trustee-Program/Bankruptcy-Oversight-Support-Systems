@@ -14,6 +14,7 @@ export const PHONETIC_SEARCH_ENABLED = 'phonetic-search-enabled';
 export const SHOW_DEBTOR_NAME_COLUMN = 'show-debtor-name-column';
 export const DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES = 'display-chpt7-panel-upcoming-key-dates';
 export const TRUSTEE_VERIFICATION_ENABLED = 'trustee-verification-enabled';
+export const VIEW_TRUSTEE_ON_CASE = 'view-trustee-on-case';
 
 export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
