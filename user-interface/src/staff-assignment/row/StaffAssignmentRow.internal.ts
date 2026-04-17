@@ -62,7 +62,11 @@ function useStateActions(initialState: State): {
           role: CamsRole.TrialAttorney,
         } as CaseAssignment;
       });
-      setState({ ...state, assignments });
+      setState({
+        ...state,
+        assignments,
+        bCase: { ...state.bCase, leadTrialAttorney: props.leadTrialAttorney },
+      });
       globalAlert?.success(message);
     }
   }
