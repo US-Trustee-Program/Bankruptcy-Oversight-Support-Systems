@@ -13,7 +13,7 @@
   "dependencies": {
     "@azure/cosmos": "4.9.2",
     "@azure/identity": "4.13.1",
-    "@types/node": "24.12.0",
+    "@types/node": "24.12.2",
     "tsx": "4.21.0"
   },
   "type": "module",
