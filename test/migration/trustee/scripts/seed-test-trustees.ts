@@ -34,7 +34,7 @@ import { MongoClient } from 'mongodb';
 import { InvocationContext } from '@azure/functions';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import factory from '../../../../backend/lib/factory';
-import { AppointmentChapterType, AppointmentType, TrusteeInput } from '../../../../common/src/cams/trustees';
+import { AppointmentChapterType, AppointmentStatus, AppointmentType, TrusteeInput } from '../../../../common/src/cams/trustees';
 import { TrusteeAppointmentInput } from '../../../../common/src/cams/trustee-appointments';
 import { CamsUserReference } from '../../../../common/src/cams/users';
 import {
@@ -53,7 +53,7 @@ dotenv.config({ path: 'backend/.env' });
 /** All seeded verification case IDs use this division code prefix for easy identification and cleanup. */
 const SEED_CASE_PREFIX = 'TST-';
 
-const SEED_COURT_ID = '091';
+const SEED_COURT_ID = '0208';
 
 const SEED_SYSTEM_USER: CamsUserReference = {
   id: 'SEED-SCRIPT',
@@ -396,62 +396,335 @@ const MATCHING_SCENARIO_TRUSTEES: MatchingScenarioTrustee[] = [
 // Match verification definitions
 // ---------------------------------------------------------------------------
 
+/**
+ * A rich candidate for use in visual/manual UI testing. Includes all fields
+ * rendered by TrusteeMatchVerificationAccordion: address, phone, email, appointments.
+ */
+type RichCandidate = {
+  trusteeId: string;
+  trusteeName: string;
+  totalScore: number;
+  addressScore: number;
+  districtDivisionScore: number;
+  chapterScore: number;
+  address?: {
+    address1: string;
+    address2?: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    countryCode: 'US';
+  };
+  phone?: { number: string; extension?: string };
+  email?: string;
+  appointments?: Array<{
+    id: string;
+    trusteeId: string;
+    chapter: AppointmentChapterType;
+    appointmentType: AppointmentType;
+    courtId: string;
+    courtName: string;
+    courtDivisionName?: string;
+    appointedDate: string;
+    status: AppointmentStatus;
+    effectiveDate: string;
+    createdOn: string;
+    createdBy: { id: string; name: string };
+    updatedOn: string;
+    updatedBy: { id: string; name: string };
+  }>;
+};
+
 type VerificationSeed = {
   caseId: string;
+  courtName: string;
   dxtrFullName: string;
+  dxtrLegacy?: {
+    address1?: string;
+    address2?: string;
+    address3?: string;
+    cityStateZipCountry?: string;
+    phone?: string;
+    email?: string;
+  };
   mismatchReason: TrusteeAppointmentSyncErrorCode;
   status: 'pending' | 'approved' | 'rejected';
-  candidateCount: number;
+  candidates: RichCandidate[];
+  inactiveAppointmentStatus?: string;
   note: string;
 };
 
+const SYS = { id: 'SEED-SCRIPT', name: 'Seed Test Script' };
+const NOW = new Date().toISOString();
+
+function appt(
+  trusteeId: string,
+  courtId: string,
+  courtName: string,
+  courtDivisionName: string | undefined,
+  chapter: AppointmentChapterType,
+  status: AppointmentStatus,
+): RichCandidate['appointments'] {
+  return [
+    {
+      id: `appt-${trusteeId}-${courtId}`,
+      trusteeId,
+      chapter,
+      appointmentType: chapter === '7' ? 'panel' : chapter === '13' ? 'standing' : 'case-by-case',
+      courtId,
+      courtName,
+      courtDivisionName,
+      appointedDate: '2018-01-01',
+      status,
+      effectiveDate: '2018-01-01',
+      createdOn: NOW,
+      createdBy: SYS,
+      updatedOn: NOW,
+      updatedBy: SYS,
+    },
+  ];
+}
+
 const VERIFICATION_SEEDS: VerificationSeed[] = [
+  // ── NO_TRUSTEE_MATCH: no candidates, no DXTR contact info ─────────────────
   {
     caseId: MockData.randomCaseId('TST'),
+    courtName: 'Southern District of New York',
     dxtrFullName: 'Unknown Trustee NoMatch',
     mismatchReason: TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
     status: 'pending',
-    candidateCount: 0,
-    note: 'No CAMS trustee name match — pending manual resolution',
+    candidates: [],
+    note: 'No CAMS trustee name match — no candidates, no DXTR contact info (tests "Not Provided" display)',
   },
+
+  // ── MULTIPLE_TRUSTEES_MATCH: rich candidates for visual testing ────────────
   {
     caseId: MockData.randomCaseId('TST'),
-    dxtrFullName: 'Common Name MultipleMatch',
+    courtName: 'Southern District of New York - White Plains',
+    dxtrFullName: 'Henry Green SR.',
+    dxtrLegacy: {
+      address1: 'P.O. Box 3211',
+      cityStateZipCountry: 'Manhattan, NY 54902',
+      phone: '122-212-1927',
+      email: 'hgreen@greenlaw.com',
+    },
     mismatchReason: TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch,
     status: 'pending',
-    candidateCount: 2,
-    note: 'Multiple name matches (ambiguous) — pending manual resolution',
+    candidates: [
+      {
+        trusteeId: 'seed-hg1',
+        trusteeName: 'Henry Green',
+        totalScore: 92,
+        addressScore: 100,
+        districtDivisionScore: 95,
+        chapterScore: 80,
+        address: { address1: 'P.O. Box 3211', city: 'Manhattan', state: 'NY', zipCode: '54902', countryCode: 'US' },
+        phone: { number: '122-212-1927' },
+        email: 'hgreen@greenlaw.com',
+        appointments: appt('seed-hg1', '0812', 'Eastern District of New York', 'Manhattan', '7', 'inactive'),
+      },
+      {
+        trusteeId: 'seed-hg2',
+        trusteeName: 'Henry Green',
+        totalScore: 88,
+        addressScore: 85,
+        districtDivisionScore: 95,
+        chapterScore: 80,
+        address: { address1: 'P.O. Box 3211', city: 'Manhattan', state: 'NY', zipCode: '54902', countryCode: 'US' },
+        phone: { number: '122-212-1927' },
+        email: 'hgreen@greenlaw.com',
+        appointments: appt('seed-hg2', '0812', 'Eastern District of New York', 'Manhattan', '7', 'active'),
+      },
+      {
+        trusteeId: 'seed-harold',
+        trusteeName: 'Harold Green',
+        totalScore: 75,
+        addressScore: 60,
+        districtDivisionScore: 90,
+        chapterScore: 70,
+        address: { address1: '322 Maple Street', address2: 'Unit 258', city: 'Manhattan', state: 'NY', zipCode: '54902', countryCode: 'US' },
+        phone: { number: '234-567-8901' },
+        email: 'hgreen@greenlaw.com',
+        appointments: [
+          ...appt('seed-harold', '0812', 'Eastern District of New York', 'Manhattan', '7', 'active')!,
+          ...appt('seed-harold', '0813', 'Eastern District of New York', 'Brooklyn', '7', 'active')!,
+        ],
+      },
+      {
+        trusteeId: 'seed-hank',
+        trusteeName: 'Hank Grindle',
+        totalScore: 62,
+        addressScore: 50,
+        districtDivisionScore: 70,
+        chapterScore: 60,
+        address: { address1: '4008 Elm St', address2: 'Unit 3A', city: 'Manhattan', state: 'NY', zipCode: '54902', countryCode: 'US' },
+        phone: { number: '345-678-9012' },
+        email: 'hgreen@greenlaw.com',
+        appointments: appt('seed-hank', '0816', 'Western District of New York', 'Buffalo', '7', 'resigned'),
+      },
+      {
+        trusteeId: 'seed-clementine',
+        trusteeName: 'Clementine Screen',
+        totalScore: 55,
+        addressScore: 45,
+        districtDivisionScore: 60,
+        chapterScore: 55,
+        address: { address1: '902 Seaview Avenue', city: 'Brooklyn', state: 'NY', zipCode: '11209', countryCode: 'US' },
+        phone: { number: '456-789-0123' },
+        email: 'cscreen@example.com',
+        appointments: appt('seed-clementine', '0812', 'Eastern District of New York', 'Manhattan', '7', 'active'),
+      },
+      {
+        trusteeId: 'seed-henrietta',
+        trusteeName: 'Henrietta Greenbaum',
+        totalScore: 48,
+        addressScore: 40,
+        districtDivisionScore: 55,
+        chapterScore: 45,
+        address: { address1: '1450 Broadway', address2: 'Suite 802', city: 'New York', state: 'NY', zipCode: '10018', countryCode: 'US' },
+        phone: { number: '212-555-0177' },
+        email: 'hgreenbaum@example.com',
+        appointments: appt('seed-henrietta', '0813', 'Eastern District of New York', 'Brooklyn', '13', 'active'),
+      },
+      {
+        trusteeId: 'seed-henderson',
+        trusteeName: 'Henderson Grant',
+        totalScore: 38,
+        addressScore: 30,
+        districtDivisionScore: 45,
+        chapterScore: 35,
+        address: { address1: '77 Water St', city: 'New York', state: 'NY', zipCode: '10005', countryCode: 'US' },
+        phone: { number: '646-555-0144' },
+        email: 'hgrant@example.com',
+        appointments: appt('seed-henderson', '0208', 'Southern District of New York', 'Manhattan', '11', 'active'),
+      },
+    ],
+    note: 'Multiple candidates ranked by score — tests Strongest Match / Other Matches heading structure and pagination (6 other matches)',
   },
+
+  // ── IMPERFECT_MATCH: single low-confidence candidate ──────────────────────
   {
     caseId: MockData.randomCaseId('TST'),
+    courtName: 'Eastern District of New York',
     dxtrFullName: 'Alice Imperfect Match',
+    dxtrLegacy: {
+      address1: '55 Test Ave',
+      cityStateZipCountry: 'Brooklyn, NY 11201',
+      phone: '718-555-0101',
+      email: 'aimperfect@example.com',
+    },
     mismatchReason: TrusteeAppointmentSyncErrorCode.ImperfectMatch,
     status: 'pending',
-    candidateCount: 1,
-    note: 'Single low-confidence candidate — pending manual resolution',
+    candidates: [
+      {
+        trusteeId: 'seed-alice-imp',
+        trusteeName: 'Alice Imperfect',
+        totalScore: 55,
+        addressScore: 40,
+        districtDivisionScore: 60,
+        chapterScore: 50,
+        address: { address1: '55 Test Ave', city: 'Brooklyn', state: 'NY', zipCode: '11201', countryCode: 'US' },
+        phone: { number: '718-555-0101' },
+        email: 'aimperfect@example.com',
+        appointments: appt('seed-alice-imp', '0208', 'Southern District of New York', 'Manhattan', '7', 'active'),
+      },
+    ],
+    note: 'Single low-confidence candidate — tests single-match "CAMS Strongest Match" heading',
   },
+
+  // ── HIGH_CONFIDENCE_MATCH: single high-confidence candidate ───────────────
   {
     caseId: MockData.randomCaseId('TST'),
+    courtName: 'District of New Jersey',
     dxtrFullName: 'Bob Highconfidence Match',
+    dxtrLegacy: {
+      address1: '99 Commerce St',
+      cityStateZipCountry: 'Newark, NJ 07102',
+      phone: '973-555-0202',
+      email: 'bhigh@example.com',
+    },
     mismatchReason: TrusteeAppointmentSyncErrorCode.HighConfidenceMatch,
     status: 'pending',
-    candidateCount: 1,
-    note: 'High-confidence but not perfect match — pending manual resolution',
+    candidates: [
+      {
+        trusteeId: 'seed-bob-high',
+        trusteeName: 'Bob High Confidence',
+        totalScore: 82,
+        addressScore: 90,
+        districtDivisionScore: 85,
+        chapterScore: 70,
+        address: { address1: '99 Commerce St', city: 'Newark', state: 'NJ', zipCode: '07102', countryCode: 'US' },
+        phone: { number: '973-555-0202' },
+        email: 'bhigh@example.com',
+        appointments: appt('seed-bob-high', '0312', 'District of New Jersey', undefined, '7', 'active'),
+      },
+    ],
+    note: 'High-confidence but not perfect match — tests single-match heading with rich candidate data',
   },
+
+  // ── PERFECT_MATCH_INACTIVE_STATUS: inactive trustee task ─────────────────
   {
     caseId: MockData.randomCaseId('TST'),
+    courtName: 'Northern District of Ohio',
+    dxtrFullName: 'James Inactive Taylor',
+    dxtrLegacy: {
+      address1: '900 State St',
+      cityStateZipCountry: 'Cleveland, OH 44113',
+      phone: '216-555-0303',
+      email: 'jtaylor@example.com',
+    },
+    mismatchReason: TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus,
+    inactiveAppointmentStatus: 'voluntarily-suspended',
+    status: 'pending',
+    candidates: [
+      {
+        trusteeId: 'seed-james-inactive',
+        trusteeName: 'James Inactive Taylor',
+        totalScore: 100,
+        addressScore: 100,
+        districtDivisionScore: 100,
+        chapterScore: 100,
+        address: { address1: '900 State St', city: 'Cleveland', state: 'OH', zipCode: '44113', countryCode: 'US' },
+        phone: { number: '216-555-0303' },
+        email: 'jtaylor@example.com',
+        appointments: appt('seed-james-inactive', '0867', 'Northern District of Ohio', undefined, '7', 'voluntarily-suspended'),
+      },
+    ],
+    note: 'Perfect match but trustee is inactive — tests "Inactive trustee" task type label and distinct problem statement',
+  },
+
+  // ── Already resolved — upsertMatchVerification should skip ───────────────
+  {
+    caseId: MockData.randomCaseId('TST'),
+    courtName: 'Southern District of New York',
     dxtrFullName: 'Carol Resolved Case',
     mismatchReason: TrusteeAppointmentSyncErrorCode.NoTrusteeMatch,
     status: 'approved',
-    candidateCount: 0,
+    candidates: [],
     note: 'Already resolved (approved) — upsertMatchVerification should skip this doc',
   },
+
+  // ── Already dismissed — upsertMatchVerification should skip ──────────────
   {
     caseId: MockData.randomCaseId('TST'),
+    courtName: 'Eastern District of New York',
     dxtrFullName: 'David Dismissed Case',
+    dxtrLegacy: {
+      phone: '212-555-9999',
+      email: 'dismissed@example.com',
+    },
     mismatchReason: TrusteeAppointmentSyncErrorCode.ImperfectMatch,
     status: 'rejected',
-    candidateCount: 1,
+    candidates: [
+      {
+        trusteeId: 'seed-dismissed',
+        trusteeName: 'David Dismissed',
+        totalScore: 50,
+        addressScore: 40,
+        districtDivisionScore: 55,
+        chapterScore: 50,
+      },
+    ],
     note: 'Dismissed (rejected) — upsertMatchVerification should skip this doc',
   },
 ];
@@ -468,17 +741,6 @@ async function getContext() {
   });
 }
 
-function buildCandidates(count: number) {
-  return Array.from({ length: count }, (_, i) => ({
-    trusteeId: `seed-candidate-${i + 1}`,
-    trusteeName: `Seed Candidate ${i + 1}`,
-    totalScore: 60 + i * 10,
-    addressScore: 20,
-    districtDivisionScore: 20,
-    chapterScore: 20,
-  }));
-}
-
 function buildVerificationDoc(seed: VerificationSeed): TrusteeMatchVerification {
   const now = new Date().toISOString();
   return {
@@ -486,9 +748,14 @@ function buildVerificationDoc(seed: VerificationSeed): TrusteeMatchVerification 
     documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
     caseId: seed.caseId,
     courtId: SEED_COURT_ID,
-    dxtrTrustee: { fullName: seed.dxtrFullName },
+    courtName: seed.courtName,
+    dxtrTrustee: {
+      fullName: seed.dxtrFullName,
+      ...(seed.dxtrLegacy ? { legacy: seed.dxtrLegacy } : {}),
+    },
     mismatchReason: seed.mismatchReason,
-    matchCandidates: buildCandidates(seed.candidateCount),
+    ...(seed.inactiveAppointmentStatus ? { inactiveAppointmentStatus: seed.inactiveAppointmentStatus } : {}),
+    matchCandidates: seed.candidates,
     orderType: 'trustee-match',
     status: seed.status,
     createdOn: now,
@@ -588,6 +855,7 @@ async function seedMatchVerifications() {
     console.log(`  ${seed.caseId}`);
     console.log(`    mismatchReason : ${seed.mismatchReason}`);
     console.log(`    status         : ${statusLabel}`);
+    console.log(`    candidates     : ${seed.candidates.length}`);
     console.log(`    note           : ${seed.note}`);
   }
 
@@ -1018,10 +1286,11 @@ async function cleanSeededData() {
       : { deletedCount: 0 };
     console.log(`  Deleted ${trusteeResult.deletedCount} trustee record(s)`);
 
-    // Delete seeded verification docs (current TST- prefix and legacy SEED- prefix)
+    // Delete ALL trustee-match-verification docs — clean is the right place to reset
+    // the full verification work queue for local testing, regardless of origin.
     const verificationResult = await db
       .collection('trustee-match-verification')
-      .deleteMany({ caseId: { $regex: `^(${SEED_CASE_PREFIX}|SEED-)` } });
+      .deleteMany({});
     console.log(`  Deleted ${verificationResult.deletedCount} TrusteeMatchVerification record(s)`);
 
     console.log('\nClean complete.');
@@ -1086,13 +1355,14 @@ Commands:
                            (3 with proIds: NY-SEED-001, CA-SEED-002, TX-SEED-003)
                            (3 without proIds)
 
-  seed-match-verification  Seed TrusteeMatchVerification documents for all slice 3 outcomes:
-                             TST-xx-xxxxx  NO_TRUSTEE_MATCH        pending
-                             TST-xx-xxxxx  MULTIPLE_TRUSTEES_MATCH pending
-                             TST-xx-xxxxx  IMPERFECT_MATCH         pending
-                             TST-xx-xxxxx  HIGH_CONFIDENCE_MATCH   pending
-                             TST-xx-xxxxx  NO_TRUSTEE_MATCH        approved (skip test)
-                             TST-xx-xxxxx  IMPERFECT_MATCH         rejected (skip test)
+  seed-match-verification  Seed TrusteeMatchVerification documents covering all UI scenarios:
+                             TST-xx-xxxxx  NO_TRUSTEE_MATCH            pending  0 candidates (tests "Not Provided" / no-candidate view)
+                             TST-xx-xxxxx  MULTIPLE_TRUSTEES_MATCH     pending  4 rich candidates (tests Strongest Match / Other Matches headings)
+                             TST-xx-xxxxx  IMPERFECT_MATCH             pending  1 candidate (tests single-match heading)
+                             TST-xx-xxxxx  HIGH_CONFIDENCE_MATCH       pending  1 candidate (tests single-match heading)
+                             TST-xx-xxxxx  PERFECT_MATCH_INACTIVE_STATUS pending 1 candidate (tests "Inactive trustee" task type)
+                             TST-xx-xxxxx  NO_TRUSTEE_MATCH            approved (skip test)
+                             TST-xx-xxxxx  IMPERFECT_MATCH             rejected (skip test)
                            (case IDs are randomly generated on each seed run)
 
   seed-auto-match [N]      Read real DXTR trustee appointment events and create matching
@@ -1115,8 +1385,8 @@ Commands:
 
   list                     Show all seeded test data currently in MongoDB
 
-  clean                    Delete only seeded test data (all trustees created by SEED-SCRIPT, their
-                           appointments, proIds, and TST-/SEED- verification docs)
+  clean                    Delete seeded test data (all trustees created by SEED-SCRIPT, their
+                           appointments and proIds) AND all trustee-match-verification records
 
   clean-all                Delete ALL trustee data from every trustee collection regardless of origin:
                              trustees, trustee-appointments, trustee-professional-ids,

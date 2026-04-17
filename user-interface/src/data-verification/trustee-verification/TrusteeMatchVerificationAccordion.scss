@@ -10,7 +10,18 @@
   }
 
   p.problem-statement {
-    margin: 1.81rem 0 1.81rem 0;
+    margin: 1.5rem 0;
+    font-size: 1rem;
+  }
+
+  p.other-matches-subtext {
+    font-size: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  p.other-matches-count {
+    font-weight: bold;
+    margin: 0 0 1rem;
   }
 
   .trustee-data-grid {
@@ -68,6 +79,17 @@
       font-size: inherit;
       font-family: inherit;
     }
+  }
+
+  .search-trustee-inline-link {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    color: #005ea2;
+    text-decoration: underline;
   }
 
   .search-link-container {

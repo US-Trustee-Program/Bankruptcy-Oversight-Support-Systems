@@ -409,7 +409,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(content.textContent).toContain('555-0002');
   });
 
-  test('should render Branch B with empty phone, email, and no appointments when candidate has no enrichment', () => {
+  test('should render Branch B with "Not Provided" for phone and email when candidate has no enrichment', () => {
     renderWithProps({
       order: {
         ...sampleOrder,
@@ -430,6 +430,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(screen.queryByTestId('approve-candidate-trustee-1')).not.toBeInTheDocument();
     const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
     expect(content.textContent).toContain('Bare Candidate');
+    expect(content.textContent).toContain('Not Provided');
   });
 
   test('should use updatedOn as date fallback when createdOn is absent, and render phone without extension in Branch B', () => {
@@ -483,102 +484,18 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(content.textContent).not.toContain('x555');
   });
 
-  describe('Slice 3 — reject flow', () => {
-    test('renders reject-button alongside approve-button for pending order with candidate', () => {
+  describe('reject flow', () => {
+    test('does not render reject-button for pending order with candidate', () => {
       renderWithProps({ order: sampleOrderWithCandidates });
 
       expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
-      expect(screen.getByTestId('reject-button')).toBeInTheDocument();
+      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
     });
 
     test('reject-button does not appear for non-pending orders (Branch B)', () => {
       renderWithProps({ order: { ...sampleOrderWithCandidates, status: 'rejected' } });
 
       expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
-    });
-
-    test('clicking reject-button opens the rejection modal', async () => {
-      renderWithProps({ order: sampleOrderWithCandidates });
-
-      fireEvent.click(screen.getByTestId('reject-button'));
-
-      await waitFor(() => {
-        expect(
-          document.getElementById(
-            `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-          ),
-        ).toBeInTheDocument();
-      });
-    });
-
-    test('submitting reject with a reason calls patchTrusteeVerificationOrderRejection with reason', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
-      renderWithProps({ order: sampleOrderWithCandidates });
-
-      fireEvent.click(screen.getByTestId('reject-button'));
-      fireEvent.change(
-        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
-        { target: { value: 'Not the right person' } },
-      );
-      const modalSubmit = document.getElementById(
-        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-      );
-      fireEvent.click(modalSubmit!);
-
-      await waitFor(() => {
-        expect(Api2.patchTrusteeVerificationOrderRejection).toHaveBeenCalledWith(
-          sampleOrderWithCandidates.id,
-          'Not the right person',
-        );
-      });
-    });
-
-    test('on reject success calls onOrderUpdate with Warning alert and rejected status', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
-      const onOrderUpdate = vi.fn();
-      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
-
-      fireEvent.click(screen.getByTestId('reject-button'));
-      fireEvent.change(
-        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
-        { target: { value: 'Reject reason' } },
-      );
-      const modalSubmit = document.getElementById(
-        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-      );
-      fireEvent.click(modalSubmit!);
-
-      await waitFor(() => {
-        expect(onOrderUpdate).toHaveBeenCalledWith(
-          { message: 'Trustee match rejected.', type: UswdsAlertStyle.Warning, timeOut: 8 },
-          expect.objectContaining({ status: 'rejected' }),
-        );
-      });
-    });
-
-    test('on reject failure calls onOrderUpdate with error alert and original order', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockRejectedValue(
-        new Error('Network error'),
-      );
-      const onOrderUpdate = vi.fn();
-      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
-
-      fireEvent.click(screen.getByTestId('reject-button'));
-      fireEvent.change(
-        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
-        { target: { value: 'Reject reason' } },
-      );
-      const modalSubmit = document.getElementById(
-        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-      );
-      fireEvent.click(modalSubmit!);
-
-      await waitFor(() => {
-        expect(onOrderUpdate).toHaveBeenCalledWith(
-          { message: 'Failed to reject trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
-          sampleOrderWithCandidates,
-        );
-      });
     });
   });
 
@@ -694,6 +611,103 @@ describe('TrusteeMatchVerificationAccordion', () => {
           sampleOrder,
         );
       });
+    });
+  });
+
+  describe('"Not Provided" for missing contact fields', () => {
+    test('shows "Not Provided" for phone and email when DXTR trustee has no legacy contact info', () => {
+      renderWithProps({
+        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe' } },
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      const matches = content.textContent?.match(/Not Provided/g) ?? [];
+      expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
+
+    test('shows "Not Provided" for phone and email when candidate has no contact info', () => {
+      renderWithProps({
+        order: {
+          ...sampleOrder,
+          matchCandidates: [
+            {
+              trusteeId: 'trustee-no-contact',
+              trusteeName: 'No Contact',
+              totalScore: 80,
+              addressScore: 80,
+              districtDivisionScore: 80,
+              chapterScore: 80,
+            },
+          ],
+        },
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      const matches = content.textContent?.match(/Not Provided/g) ?? [];
+      expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('heading structure', () => {
+    test('no-candidates view shows no CAMS heading above search link', () => {
+      renderWithProps();
+
+      expect(
+        screen.queryByRole('heading', { name: /CAMS Strongest Match/, hidden: true }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: /CAMS Suggested Matches/, hidden: true }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('single-match view shows "CAMS Strongest Match" but no sub-headings', () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      expect(
+        screen.getByRole('heading', { name: 'CAMS Strongest Match', hidden: true }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Other Potential Matches', hidden: true }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('multiple-match view shows "CAMS Strongest Match" and "Other Potential Matches" headings', () => {
+      renderWithProps({
+        order: {
+          ...sampleOrder,
+          mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+          matchCandidates: [
+            {
+              trusteeId: 'trustee-high',
+              trusteeName: 'High Score',
+              totalScore: 90,
+              addressScore: 90,
+              districtDivisionScore: 90,
+              chapterScore: 90,
+            },
+            {
+              trusteeId: 'trustee-low',
+              trusteeName: 'Low Score',
+              totalScore: 70,
+              addressScore: 70,
+              districtDivisionScore: 70,
+              chapterScore: 70,
+            },
+          ],
+        },
+      });
+
+      expect(
+        screen.queryByRole('heading', { name: 'CAMS Suggested Matches', hidden: true }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'CAMS Strongest Match', hidden: true }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Other Potential Matches', hidden: true }),
+      ).toBeInTheDocument();
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('High Score');
     });
   });
 

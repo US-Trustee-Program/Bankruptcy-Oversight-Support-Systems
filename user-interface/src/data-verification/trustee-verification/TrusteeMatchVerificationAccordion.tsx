@@ -170,10 +170,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     confirmationModalRef.current?.show(candidate);
   }
 
-  function openRejection() {
-    rejectionModalRef.current?.show();
-  }
-
   function openSearch() {
     searchModalRef.current?.show();
   }
@@ -202,17 +198,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   type TrusteeCandidateRowProps = {
     candidate: CandidateScore;
-    showScore?: boolean;
     onApprove?: (candidate: CandidateScore) => void;
     isProcessing?: boolean;
   };
 
-  function TrusteeCandidateRow({
-    candidate,
-    showScore = false,
-    onApprove,
-    isProcessing,
-  }: TrusteeCandidateRowProps) {
+  function TrusteeCandidateRow({ candidate, onApprove, isProcessing }: TrusteeCandidateRowProps) {
     const rowAddressLines = candidate.address
       ? [
           candidate.address.address1,
@@ -229,13 +219,8 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           data-cell="Name"
           data-testid={`candidate-name-${candidate.trusteeId}`}
         >
-          {candidate.trusteeName}
+          <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
         </div>
-        {showScore && (
-          <div className="trustee-data-cell grid-col-1" data-cell="Score">
-            {candidate.totalScore}
-          </div>
-        )}
         <div className="trustee-data-cell grid-col-2" data-cell="Address">
           {rowAddressLines.map((line, i, arr) => (
             <span key={i}>
@@ -247,15 +232,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         <div className="trustee-data-cell grid-col-1" data-cell="Phone">
           {candidate.phone
             ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
-            : ''}
+            : 'Not Provided'}
         </div>
         <div className="trustee-data-cell grid-col-2" data-cell="Email">
-          {candidate.email ?? ''}
+          {candidate.email ?? 'Not Provided'}
         </div>
-        <div
-          className={`trustee-data-cell ${showScore ? 'grid-col-2' : 'grid-col-3'}`}
-          data-cell="Trustee Appt."
-        >
+        <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
           {candidate.appointments?.map((appt, i, arr) => (
             <span key={i}>
               {appt.courtName}
@@ -285,35 +267,25 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   type CandidateTableProps = {
     candidates: CandidateScore[];
-    showScore?: boolean;
     onApprove?: (candidate: CandidateScore) => void;
     isProcessing?: boolean;
   };
 
-  function CandidateTable({
-    candidates,
-    showScore = false,
-    onApprove,
-    isProcessing,
-  }: CandidateTableProps) {
+  function CandidateTable({ candidates, onApprove, isProcessing }: CandidateTableProps) {
     return (
       <div className="trustee-data-grid trustee-candidates-grid">
         <div className="trustee-data-header grid-row grid-gap-lg">
           <div className="trustee-data-cell grid-col-2">Name</div>
-          {showScore && <div className="trustee-data-cell grid-col-1">Score</div>}
           <div className="trustee-data-cell grid-col-2">Address</div>
           <div className="trustee-data-cell grid-col-1">Phone</div>
           <div className="trustee-data-cell grid-col-2">Email</div>
-          <div className={`trustee-data-cell ${showScore ? 'grid-col-2' : 'grid-col-3'}`}>
-            Trustee Appointment
-          </div>
+          <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
           <div className="trustee-data-cell grid-col-2">Action</div>
         </div>
         {candidates.map((candidate) => (
           <TrusteeCandidateRow
             key={candidate.trusteeId}
             candidate={candidate}
-            showScore={showScore}
             onApprove={onApprove}
             isProcessing={isProcessing}
           />
@@ -418,61 +390,98 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     ))}
                   </div>
                   <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-                    {legacy?.phone ?? ''}
+                    {legacy?.phone ?? 'Not Provided'}
                   </div>
                   <div className="trustee-data-cell grid-col-2" data-cell="Email">
-                    {legacy?.email ?? ''}
+                    {legacy?.email ?? 'Not Provided'}
                   </div>
                   <div className="trustee-data-cell grid-col-3 no-border"></div>
                   <div className="trustee-data-cell grid-col-2 no-border"></div>
                 </div>
               </div>
 
-              <h3>{isMultipleMatch ? 'CAMS Suggested Matches' : 'CAMS Strongest Match'}</h3>
               {viewMode === 'pending-with-candidate' && preselected && (
                 <div className="trustee-match-candidate-section" data-testid="candidate-info">
-                  <CandidateTable
-                    candidates={candidatesToShow}
-                    showScore={isMultipleMatch}
-                    onApprove={openConfirmation}
-                    isProcessing={isProcessing}
-                  />
-                  <TrusteeSearchLink
-                    linkMessage={
-                      isMultipleMatch
-                        ? 'Multiple matches found with similar scores.'
-                        : 'There are no other suggested matches in CAMS.'
-                    }
-                    linkLabel="Search for a different trustee"
-                    onClick={openSearch}
-                  />
+                  {isMultipleMatch ? (
+                    <>
+                      <h3>CAMS Strongest Match</h3>
+                      <CandidateTable
+                        candidates={[candidatesToShow[0]]}
+                        onApprove={openConfirmation}
+                        isProcessing={isProcessing}
+                      />
+                      <h3>Other Potential Matches</h3>
+                      <p className="other-matches-subtext">
+                        Results are ordered from strongest to weakest match. If you don&apos;t find
+                        the trustee you&apos;re looking for{' '}
+                        <button
+                          type="button"
+                          onClick={openSearch}
+                          className="search-trustee-link search-trustee-inline-link"
+                        >
+                          search here.
+                        </button>
+                      </p>
+                      <p className="other-matches-count">
+                        {candidatesToShow.slice(1).length} matches
+                      </p>
+                      <CandidateTable
+                        candidates={candidatesToShow.slice(1)}
+                        onApprove={openConfirmation}
+                        isProcessing={isProcessing}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <h3>CAMS Strongest Match</h3>
+                      <CandidateTable
+                        candidates={candidatesToShow}
+                        onApprove={openConfirmation}
+                        isProcessing={isProcessing}
+                      />
+                      <TrusteeSearchLink
+                        linkMessage="There are no other suggested matches in CAMS."
+                        linkLabel="Search for a different trustee"
+                        onClick={openSearch}
+                      />
+                    </>
+                  )}
                 </div>
-              )}
-
-              {viewMode === 'pending-with-candidate' && (
-                <button
-                  type="button"
-                  data-testid="reject-button"
-                  onClick={openRejection}
-                  disabled={isProcessing}
-                  className="reject-task-link"
-                >
-                  <Icon name="delete" />
-                  Reject Task
-                </button>
               )}
               {viewMode === 'readonly-with-candidate' && preselected && (
                 <>
-                  <CandidateTable candidates={candidatesToShow} showScore={isMultipleMatch} />
-                  <TrusteeSearchLink
-                    linkMessage={
-                      isMultipleMatch
-                        ? 'Multiple matches found with similar scores.'
-                        : 'There are no other suggested matches in CAMS.'
-                    }
-                    linkLabel="Search for a different trustee."
-                    onClick={openSearch}
-                  />
+                  {isMultipleMatch ? (
+                    <>
+                      <h3>CAMS Strongest Match</h3>
+                      <CandidateTable candidates={[candidatesToShow[0]]} />
+                      <h3>Other Potential Matches</h3>
+                      <p className="other-matches-subtext">
+                        Results are ordered from strongest to weakest match. If you don&apos;t find
+                        the trustee you&apos;re looking for{' '}
+                        <button
+                          type="button"
+                          onClick={openSearch}
+                          className="search-trustee-link search-trustee-inline-link"
+                        >
+                          search here.
+                        </button>
+                      </p>
+                      <p className="other-matches-count">
+                        {candidatesToShow.slice(1).length} matches
+                      </p>
+                      <CandidateTable candidates={candidatesToShow.slice(1)} />
+                    </>
+                  ) : (
+                    <>
+                      <h3>CAMS Strongest Match</h3>
+                      <CandidateTable candidates={candidatesToShow} />
+                      <TrusteeSearchLink
+                        linkMessage="There are no other suggested matches in CAMS."
+                        linkLabel="Search for a different trustee."
+                        onClick={openSearch}
+                      />
+                    </>
+                  )}
                 </>
               )}
               {viewMode === 'no-candidates' && (
