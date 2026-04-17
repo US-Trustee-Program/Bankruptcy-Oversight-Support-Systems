@@ -76,6 +76,9 @@ chmod +x ${GITHOOKS_DIR}/post-commit
 cp ./post-rewrite ${GITHOOKS_DIR}/post-rewrite
 chmod +x ${GITHOOKS_DIR}/post-rewrite
 
+cp ./pre-push ${GITHOOKS_DIR}/pre-push
+chmod +x ${GITHOOKS_DIR}/pre-push
+
 popd || exit
 
 # Set up commit template
