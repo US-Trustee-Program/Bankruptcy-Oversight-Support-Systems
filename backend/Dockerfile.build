@@ -6,13 +6,23 @@ FROM node:22.22.2-slim
 ARG FUNCTION_APP
 WORKDIR /build
 
-# Copy package files for the specific function app (build context is workspace root)
+# Copy root package.json (for overrides) and the function app's package.json
+COPY package.json ./root-package.json
 COPY backend/function-apps/${FUNCTION_APP}/package.json .
 
 # IMPORTANT: Always use root package-lock.json for consistency
 # Individual function apps do NOT have their own package-lock.json files
 # This ensures identical dependency resolution across all environments
 COPY package-lock.json .
+
+# Merge root overrides into the function app package.json so npm ci applies them
+# npm only reads overrides from the root package.json it operates on
+RUN node -e " \
+  const root = JSON.parse(require('fs').readFileSync('root-package.json', 'utf8')); \
+  const app = JSON.parse(require('fs').readFileSync('package.json', 'utf8')); \
+  if (root.overrides) app.overrides = root.overrides; \
+  require('fs').writeFileSync('package.json', JSON.stringify(app, null, 2)); \
+" && rm root-package.json
 
 # Install dependencies (will build native modules for Linux)
 # Use npm ci for reproducible, lockfile-driven installs
