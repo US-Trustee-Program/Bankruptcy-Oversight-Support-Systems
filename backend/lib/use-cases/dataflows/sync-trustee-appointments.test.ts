@@ -16,6 +16,7 @@ import {
 import * as trusteeMatchHelpers from './trustee-match.helpers';
 import { closeDeferred } from '../../deferrable/defer-close';
 import { CamsError } from '../../common-errors/cams-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { CasesInterface } from '../cases/cases.interface';
 
 describe('SyncTrusteeAppointments', () => {
@@ -775,12 +776,68 @@ describe('SyncTrusteeAppointments', () => {
         );
       });
 
-      test('does NOT upsert for auto-matched outcome', async () => {
+      test('upserts an approved verification doc for auto-matched outcome', async () => {
+        await SyncTrusteeAppointments.processAppointments(context, [
+          makeEvent('case-001', 'John Doe'),
+        ]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            documentType: 'TRUSTEE_MATCH_VERIFICATION',
+            caseId: 'case-001',
+            status: 'approved',
+            resolvedTrusteeId: 'trustee-123',
+            resolvedTrusteeName: 'John Doe',
+            matchCandidates: [],
+          }),
+        );
+      });
+
+      test('skips upsert for auto-match when verification doc already approved', async () => {
+        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          status: 'approved',
+          resolvedTrusteeId: 'trustee-123',
+          resolvedTrusteeName: 'John Doe',
+        });
+
         await SyncTrusteeAppointments.processAppointments(context, [
           makeEvent('case-001', 'John Doe'),
         ]);
 
         expect(mockVerificationRepo.upsertVerification).not.toHaveBeenCalled();
+      });
+
+      test('updates existing pending verification doc to approved on auto-match', async () => {
+        const existingDoc = {
+          id: 'existing-doc-id',
+          documentType: 'TRUSTEE_MATCH_VERIFICATION',
+          caseId: 'case-001',
+          status: 'pending',
+          mismatchReason: 'NO_TRUSTEE_MATCH',
+          matchCandidates: [],
+          createdOn: '2025-01-01T00:00:00.000Z',
+          createdBy: { id: 'system', name: 'System' },
+          updatedOn: '2025-01-01T00:00:00.000Z',
+          updatedBy: { id: 'system', name: 'System' },
+        };
+        (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue(
+          existingDoc,
+        );
+
+        await SyncTrusteeAppointments.processAppointments(context, [
+          makeEvent('case-001', 'John Doe'),
+        ]);
+
+        expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: 'existing-doc-id',
+            status: 'approved',
+            resolvedTrusteeId: 'trustee-123',
+            resolvedTrusteeName: 'John Doe',
+          }),
+        );
       });
 
       test('skips upsert when existing doc is resolved', async () => {
@@ -1103,6 +1160,22 @@ describe('SyncTrusteeAppointments', () => {
         context,
         '2025-01-01T00:00:00Z',
       );
+      expect(events).toEqual(mockEvents);
+      expect(latestSyncDate).toBe(mockLatestSyncDate);
+    });
+
+    test('should default to 2018-01-01 when no runtime state exists in Cosmos', async () => {
+      (mockRuntimeStateRepo.read as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new NotFoundError('RUNTIME-STATE-MONGO-REPOSITORY_ADAPTER', {
+          message: 'No matching item found.',
+        }),
+      );
+
+      const { events, latestSyncDate } =
+        await SyncTrusteeAppointments.getAppointmentEvents(context);
+
+      expect(mockRuntimeStateRepo.read).toHaveBeenCalledWith('TRUSTEE_APPOINTMENTS_SYNC_STATE');
+      expect(mockCasesGateway.getTrusteeAppointments).toHaveBeenCalledWith(context, '2018-01-01');
       expect(events).toEqual(mockEvents);
       expect(latestSyncDate).toBe(mockLatestSyncDate);
     });

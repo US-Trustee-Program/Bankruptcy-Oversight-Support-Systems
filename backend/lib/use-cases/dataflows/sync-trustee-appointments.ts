@@ -180,7 +180,15 @@ async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: 
       };
     } else {
       const runtimeStateRepo = factory.getTrusteeAppointmentsSyncStateRepo(context);
-      syncState = await runtimeStateRepo.read('TRUSTEE_APPOINTMENTS_SYNC_STATE');
+      try {
+        syncState = await runtimeStateRepo.read('TRUSTEE_APPOINTMENTS_SYNC_STATE');
+      } catch (_error) {
+        syncState = {
+          id: randomUUID(),
+          documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE',
+          lastSyncDate: '2018-01-01',
+        };
+      }
     }
 
     const casesGateway = factory.getCasesGateway(context);
@@ -198,6 +206,46 @@ async function getAppointmentEvents(context: ApplicationContext, lastSyncDate?: 
     context.logger.camsError(error);
     throw error;
   }
+}
+
+/**
+ * Records a TrusteeMatchVerification document with status 'approved' for an auto-matched case,
+ * making it visible in the Data Verification UI under "Verified" trustee matches.
+ * Skips the write if the document already exists with status 'approved'.
+ */
+async function recordAutoMatch(
+  verificationRepo: TrusteeMatchVerificationRepository,
+  event: TrusteeAppointmentSyncEvent,
+  trusteeId: string,
+): Promise<void> {
+  const existing = await verificationRepo.getVerification(event.caseId);
+  if (existing?.status === 'approved') return;
+
+  const doc = existing
+    ? {
+        ...existing,
+        status: 'approved' as const,
+        resolvedTrusteeId: trusteeId,
+        resolvedTrusteeName: event.dxtrTrustee.fullName,
+        updatedOn: new Date().toISOString(),
+        updatedBy: SYSTEM_USER_REFERENCE,
+      }
+    : createAuditRecord<TrusteeMatchVerification>(
+        {
+          documentType: TRUSTEE_MATCH_VERIFICATION_DOCUMENT_TYPE,
+          caseId: event.caseId,
+          courtId: event.courtId,
+          dxtrTrustee: event.dxtrTrustee,
+          matchCandidates: [],
+          orderType: 'trustee-match',
+          status: 'approved',
+          resolvedTrusteeId: trusteeId,
+          resolvedTrusteeName: event.dxtrTrustee.fullName,
+        },
+        SYSTEM_USER_REFERENCE,
+      );
+
+  await verificationRepo.upsertVerification(doc);
 }
 
 /**
@@ -345,6 +393,7 @@ async function processAppointments(
         )
       ) {
         await applyResolvedTrustee(context, event, trusteeId, casesRepo, appointmentsRepo, false);
+        await recordAutoMatch(verificationRepo, event, trusteeId);
         context.logger.info(
           MODULE_NAME,
           `Perfect match: case ${event.caseId} auto-linked to trustee ${trusteeId}`,
