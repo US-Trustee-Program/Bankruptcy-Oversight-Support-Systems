@@ -18,6 +18,7 @@ import LegacyFormattedContact from '@/lib/components/cams/LegacyFormattedContact
 import { useTrustee } from './useTrustee';
 import { TrusteeZoomInfo } from './TrusteeZoomInfo';
 import { TrusteeName } from './TrusteeName';
+import useFeatureFlags, { VIEW_TRUSTEE_ON_CASE } from '@/lib/hooks/UseFeatureFlags';
 
 export interface CaseDetailTrusteeAndAssignedStaffProps {
   caseDetail: CaseDetail;
@@ -39,6 +40,9 @@ function CaseDetailTrusteeAndAssignedStaff(
 
   const assignmentModalRef = useRef<AssignAttorneyModalRef>(null);
   const openModalButtonRef = useRef<OpenModalButtonRef>(null);
+
+  const featureFlags = useFeatureFlags();
+  const showTrusteeHere = !featureFlags[VIEW_TRUSTEE_ON_CASE];
 
   const { trustee, loading: trusteeLoading } = useTrustee(caseDetail.trusteeId);
 
@@ -109,7 +113,7 @@ function CaseDetailTrusteeAndAssignedStaff(
           </div>
         </div>
         <div className="record-detail-card-list">
-          {caseDetail.trustee && (
+          {showTrusteeHere && caseDetail.trustee && (
             <div className="assigned-staff-information record-detail-card">
               <h3>Trustee</h3>
               <div className="trustee-name">
