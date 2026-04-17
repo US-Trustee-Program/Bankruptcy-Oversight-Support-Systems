@@ -672,7 +672,7 @@ describe('Case Detail screen tests', () => {
     test('should render Trustee panel when navigating to /trustee with flag enabled', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         ...testFeatureFlags,
-        'display-trustee-info-case': true,
+        'view-trustee-on-case': true,
       });
 
       const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
@@ -685,7 +685,7 @@ describe('Case Detail screen tests', () => {
     test('should redirect to case overview when navigating to /trustee with flag disabled', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         ...testFeatureFlags,
-        'display-trustee-info-case': false,
+        'view-trustee-on-case': false,
       });
 
       const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
