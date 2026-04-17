@@ -63,6 +63,15 @@ if [[ "$OSTYPE" == linux* ]]; then
   cp "$FUNCTION_APP_PATH/package.json" "$BUILD_TEMP/"
   cp package-lock.json "$BUILD_TEMP/"
 
+  # Merge root overrides into function app package.json so npm ci applies them
+  # npm only reads overrides from the root package.json it operates on
+  node -e "
+    const root = JSON.parse(require('fs').readFileSync('package.json', 'utf8'));
+    const app = JSON.parse(require('fs').readFileSync('$BUILD_TEMP/package.json', 'utf8'));
+    if (root.overrides) app.overrides = root.overrides;
+    require('fs').writeFileSync('$BUILD_TEMP/package.json', JSON.stringify(app, null, 2));
+  "
+
   # Run npm ci in temp directory with root lockfile
   cd "$BUILD_TEMP" || exit
   npm ci --production --ignore-scripts=false --workspaces=false
