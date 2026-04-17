@@ -461,7 +461,7 @@ describe('TrusteeMatchVerificationController', () => {
       const response = await controller.handleRequest(context);
 
       expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].courtName).toBe('Test Court');
+      expect(response.body.data[0].courtName).toBe('Test Court - Division A');
     });
 
     test('should handle court lookup by divisionCode from caseId', async () => {
@@ -479,7 +479,7 @@ describe('TrusteeMatchVerificationController', () => {
       const response = await controller.handleRequest(context);
 
       expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].courtName).toBe('Test Court');
+      expect(response.body.data[0].courtName).toBe('Test Court - Division A');
     });
 
     test('should fallback to courtId lookup when divisionCode extraction fails', async () => {
@@ -497,7 +497,7 @@ describe('TrusteeMatchVerificationController', () => {
       const response = await controller.handleRequest(context);
 
       expect(response.body.data).toHaveLength(1);
-      expect(response.body.data[0].courtName).toBe('Test Court');
+      expect(response.body.data[0].courtName).toBe('Test Court - Division A');
     });
 
     test('should leave courtName undefined when court lookup fails', async () => {

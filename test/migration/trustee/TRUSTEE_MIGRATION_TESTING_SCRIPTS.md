@@ -97,7 +97,7 @@ Path: `test/migration/trustee/scripts/seed-test-trustees.ts`
 | `seed-match-verification` | Create `TrusteeMatchVerification` docs for all non-auto-match outcomes (no VPN required) |
 | `seed-auto-match [N]` | Read real DXTR events and create matching CAMS trustees + appointments for auto-matching (**requires VPN + DXTR connection**) |
 | `list` | Show all seeded test data currently in MongoDB |
-| `clean` | Delete all seeded data — identifies records by `createdBy.id: 'SEED-SCRIPT'`, so it covers both prefixed and real-name auto-match trustees |
+| `clean` | Delete all seeded trustees (by `createdBy.id: 'SEED-SCRIPT'`), their appointments and proIds, **and all** `trustee-match-verification` records |
 | `clean-all` | Delete **all** trustee data regardless of origin — use to fully reset dev Cosmos DB |
 
 ```bash
@@ -126,7 +126,9 @@ npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
   list
 
-# Remove only seeded test data (all records with createdBy.id = 'SEED-SCRIPT')
+# Remove seeded test data AND all trustee-match-verification records
+# Deletes: all trustees created by SEED-SCRIPT, their appointments and proIds,
+#          and the entire trustee-match-verification collection
 npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
   clean
@@ -410,16 +412,17 @@ npx tsx --tsconfig backend/tsconfig.json \
   seed-match-verification
 ```
 
-**Seeded verification documents:**
+**Seeded verification documents** (case IDs are randomly generated on each seed run):
 
-| caseId | mismatchReason | status | What it tests |
+| mismatchReason | status | candidates | What it tests |
 |---|---|---|---|
-| `SEED-091-11-00001` | `NO_TRUSTEE_MATCH` | `pending` | Normal actionable case |
-| `SEED-091-11-00002` | `MULTIPLE_TRUSTEES_MATCH` | `pending` | Normal actionable case |
-| `SEED-091-11-00003` | `IMPERFECT_MATCH` | `pending` | Normal actionable case |
-| `SEED-091-11-00004` | `HIGH_CONFIDENCE_MATCH` | `pending` | Normal actionable case |
-| `SEED-091-11-00005` | `NO_TRUSTEE_MATCH` | `approved` | `upsertMatchVerification` skips resolved docs |
-| `SEED-091-11-00006` | `IMPERFECT_MATCH` | `rejected` | `upsertMatchVerification` skips dismissed docs |
+| `NO_TRUSTEE_MATCH` | `pending` | 0 | No-candidate view; "Not Provided" for blank DXTR contact fields |
+| `MULTIPLE_TRUSTEES_MATCH` | `pending` | 4 rich | "Strongest Match" / "Other Matches" heading structure; multiple candidates ranked by score |
+| `IMPERFECT_MATCH` | `pending` | 1 | Single-match "CAMS Strongest Match" heading |
+| `HIGH_CONFIDENCE_MATCH` | `pending` | 1 | Single-match "CAMS Strongest Match" heading |
+| `PERFECT_MATCH_INACTIVE_STATUS` | `pending` | 1 | "Inactive trustee" task type label; distinct problem statement |
+| `NO_TRUSTEE_MATCH` | `approved` | 0 | `upsertMatchVerification` skips resolved docs |
+| `IMPERFECT_MATCH` | `rejected` | 1 | `upsertMatchVerification` skips dismissed docs |
 
 **Verify in MongoDB:**
 
@@ -584,7 +587,7 @@ npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-tes
 |---|---|
 | Re-run migration from scratch | `test-trustee-migration-local.ts clean` then `run` |
 | Reset migration state only (keep trustees) | `test-trustee-migration-local.ts reset` |
-| Remove only synthetic seed data | `seed-test-trustees.ts clean` |
+| Remove seeded trustees + all verification records | `seed-test-trustees.ts clean` |
 | Remove all seeded data and restart migration | Both clean commands, then `run` |
 | **Full dev DB reset** (stale data from many runs) | `seed-test-trustees.ts clean-all` then `run` |
 
