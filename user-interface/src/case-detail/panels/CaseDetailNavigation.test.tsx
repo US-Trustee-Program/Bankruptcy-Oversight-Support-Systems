@@ -124,7 +124,7 @@ describe('Navigation tests', () => {
     beforeEach(() => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
-        'display-trustee-info-case': false,
+        'view-trustee-on-case': false,
       });
     });
 

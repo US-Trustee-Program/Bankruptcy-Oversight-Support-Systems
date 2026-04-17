@@ -16,6 +16,11 @@ import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { Consolidation } from '@common/cams/events';
 import { CaseDetail } from '@common/cams/cases';
+import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import { testFeatureFlags } from '@common/feature-flags';
+
+vi.mock('@/lib/hooks/UseFeatureFlags');
+const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const TEST_CASE_ID = '101-23-12345';
 const TEST_TRIAL_ATTORNEY_1 = MockAttorneys.Brian;
@@ -75,6 +80,7 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
   };
 
   beforeEach(() => {
+    mockUseFeatureFlags.mockReturnValue({ ...testFeatureFlags, 'view-trustee-on-case': false });
     vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue(attorneyListResponse);
     vi.spyOn(Api2, 'getOfficeAttorneys').mockResolvedValue(officeAttorneyListResponse);
   });
