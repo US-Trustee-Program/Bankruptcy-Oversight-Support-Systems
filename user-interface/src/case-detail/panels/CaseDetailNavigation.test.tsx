@@ -87,7 +87,7 @@ describe('Navigation tests', () => {
     expect(result).toEqual(CaseNavState.TRUSTEE_INFO);
   });
 
-  describe('display-trustee-info-case flag is enabled', () => {
+  describe('view-trustee-on-case flag is enabled', () => {
     test('should show separate Trustee nav link', () => {
       render(
         <BrowserRouter>
@@ -120,7 +120,7 @@ describe('Navigation tests', () => {
     });
   });
 
-  describe('display-trustee-info-case flag is disabled', () => {
+  describe('view-trustee-on-case flag is disabled', () => {
     beforeEach(() => {
       mockUseFeatureFlags.mockReturnValue({
         ...testFeatureFlags,
