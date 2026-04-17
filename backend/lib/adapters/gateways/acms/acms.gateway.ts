@@ -259,7 +259,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     const query = `
       SELECT
         CONCAT(ACMS.GROUP_DESIGNATOR, '-', RIGHT(CONCAT('0000', ACMS.UST_PROF_CODE), 5)) AS acmsProfessionalId
-      FROM CMMPR ACMS
+      FROM [dbo].[CMMPR] AS ACMS
       WHERE ACMS.PROF_FIRST_NAME = @firstName
         AND ACMS.PROF_LAST_NAME = @lastName
         AND ACMS.PROF_STATE = @state
