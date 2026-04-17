@@ -668,7 +668,7 @@ describe('Case Detail screen tests', () => {
     });
   });
 
-  describe('display-trustee-info-case feature flag', () => {
+  describe('view-trustee-on-case feature flag', () => {
     test('should render Trustee panel when navigating to /trustee with flag enabled', async () => {
       vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
         ...testFeatureFlags,
