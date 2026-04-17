@@ -116,6 +116,16 @@
       "minimumReleaseAge": "0 days"
     }
   ],
+  "customManagers": [
+    {
+      "description": "Track Playwright base image version in Dockerfile.playwright to keep it in sync with @playwright/test npm package",
+      "customType": "regex",
+      "fileMatch": ["test/e2e/Dockerfile\\.playwright"],
+      "matchStrings": ["FROM mcr\\.microsoft\\.com/playwright:v(?<currentValue>[0-9.]+)-noble"],
+      "depNameTemplate": "@playwright/test",
+      "datasourceTemplate": "npm"
+    }
+  ],
   "lockFileMaintenance": {
     "enabled": false
   },
