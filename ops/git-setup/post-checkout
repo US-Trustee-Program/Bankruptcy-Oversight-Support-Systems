@@ -3,8 +3,8 @@
 # Installed by ops/git-setup/set-up-git-hooks.sh
 
 # Run QMD update in background (only if qmd is installed)
-if command -v qmd &> /dev/null; then
-    qmd update cams &>/dev/null &
+if command -v qmd > /dev/null 2>&1; then
+    qmd update cams > /dev/null 2>&1 &
 fi
 
 # --- BEGIN BEADS INTEGRATION v1.0.0 ---
