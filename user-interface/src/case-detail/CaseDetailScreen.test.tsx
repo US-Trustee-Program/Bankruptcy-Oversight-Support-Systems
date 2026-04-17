@@ -10,7 +10,9 @@ import { MockAttorneys } from '@common/cams/test-utilities/attorneys.mock';
 import * as detailHeader from './panels/CaseDetailHeader';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
-import MockApi2 from '@/lib/testing/mock-api2';
+import Api2 from '@/lib/models/api2';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { testFeatureFlags } from '@common/feature-flags';
 
 const caseId = '101-23-12345';
 
@@ -99,19 +101,20 @@ describe('Case Detail screen tests', () => {
 
   test('should getCaseDetails if no prop provided for caseDetail', async () => {
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
+    vi.spyOn(Api2, 'getCaseDetail').mockResolvedValue({ data: defaultTestCaseDetail });
 
     await renderWithRoutes(undefined, basicInfoPath);
 
     const title = await screen.findByTestId('case-detail-heading-title');
-    expect(title.textContent).toContain('Trevor Shields');
+    expect(title.textContent).toContain(defaultTestCaseDetail.debtor.name);
 
     const chapter = await screen.findByTestId('tag-case-chapter');
-    expect(chapter).toHaveTextContent('Voluntary Chapter 15');
+    expect(chapter).toHaveTextContent(defaultTestCaseDetail.chapter);
   });
 
   test('should show global alert if not able to retrieve caseDetail', async () => {
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
-    vi.spyOn(MockApi2, 'getCaseDetail').mockRejectedValue('error');
+    vi.spyOn(Api2, 'getCaseDetail').mockRejectedValue('error');
     const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
 
     await renderWithRoutes(undefined, basicInfoPath);
@@ -123,7 +126,7 @@ describe('Case Detail screen tests', () => {
 
   test('should not show case associations if error throw in getCaseAssociations', async () => {
     const basicInfoPath = `/case-detail/${defaultTestCaseDetail.caseId}/`;
-    vi.spyOn(MockApi2, 'getCaseAssociations').mockRejectedValue('error');
+    vi.spyOn(Api2, 'getCaseAssociations').mockRejectedValue('error');
 
     await renderWithRoutes(undefined, basicInfoPath);
 
@@ -662,6 +665,34 @@ describe('Case Detail screen tests', () => {
 
       const title = screen.getByTestId('case-detail-heading-title');
       expect(title.textContent).toContain('Roger Rabbit');
+    });
+  });
+
+  describe('view-trustee-on-case feature flag', () => {
+    test('should render Trustee panel when navigating to /trustee with flag enabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        ...testFeatureFlags,
+        'view-trustee-on-case': true,
+      });
+
+      const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
+      await renderWithRoutes(defaultTestCaseDetail, trusteePath);
+
+      const trusteePanel = await screen.findByTestId('case-detail-trustee-panel');
+      expect(trusteePanel).toBeInTheDocument();
+    });
+
+    test('should redirect to case overview when navigating to /trustee with flag disabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        ...testFeatureFlags,
+        'view-trustee-on-case': false,
+      });
+
+      const trusteePath = `/case-detail/${defaultTestCaseDetail.caseId}/trustee`;
+      await renderWithRoutes(defaultTestCaseDetail, trusteePath);
+
+      await screen.findByTestId('case-detail');
+      expect(screen.queryByTestId('case-detail-trustee-panel')).not.toBeInTheDocument();
     });
   });
 });
