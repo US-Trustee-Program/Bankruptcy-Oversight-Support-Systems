@@ -22,7 +22,20 @@ test.describe('Case Details', () => {
     expect(page.locator(CASE_NUMBER_SELECTOR)).toBeVisible();
 
     await page.locator('[data-testid="case-trustee-and-assigned-staff-link"]').click();
-    expect(page.locator('.trustee-name')).toBeVisible();
+    await page
+      .locator('[data-testid="case-trustee-and-assigned-staff-link"]')
+      .waitFor({ state: 'visible' });
+
+    await page.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
+  test('trustee panel should not have accessibility issues', async ({ page }) => {
+    expect(page.locator(CASE_NUMBER_SELECTOR)).toBeVisible();
+
+    await page.locator('[data-testid="case-trustee-info-link"]').click();
+    await page.locator('[data-testid="case-detail-trustee-panel"]').waitFor({ state: 'visible' });
 
     await page.waitForTimeout(ANALYZE_DELAY);
     const accessibilityScanResults = await createAxeBuilder(page).analyze();
