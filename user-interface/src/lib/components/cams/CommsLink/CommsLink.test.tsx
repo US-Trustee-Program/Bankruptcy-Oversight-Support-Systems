@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import CommsLink from './CommsLink';
 import { ContactInformation } from '@common/cams/contact';
+import TestingUtilities from '@/lib/testing/testing-utilities';
 
 // Mock the IconLabel component to simplify testing
 import * as IconLabelModule from '@/lib/components/cams/IconLabel/IconLabel';
@@ -556,6 +557,22 @@ describe('CommsLink Component', () => {
       const iconLabel = screen.getByTestId('icon-label');
       expect(iconLabel).toHaveTextContent('Custom Website');
       expect(iconLabel.getAttribute('data-icon')).toBe('custom-icon');
+    });
+  });
+
+  describe('onClick prop', () => {
+    test('calls onClick when website link is clicked', async () => {
+      const userEvent = TestingUtilities.setupUserEvent();
+      const onClick = vi.fn();
+      render(
+        <CommsLink
+          contact={{ website: 'https://example.com' } as Omit<ContactInformation, 'address'>}
+          mode="website"
+          onClick={onClick}
+        />,
+      );
+      await userEvent.click(screen.getByRole('link'));
+      expect(onClick).toHaveBeenCalledTimes(1);
     });
   });
 

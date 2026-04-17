@@ -1,15 +1,15 @@
-# Testing Trustee Migration Enhancements (CAMS-596)
+# Testing Trustee Migration Enhancements (CAMS-596 / CAMS-721)
 
-This guide covers local testing for all three slices of the CAMS-596 trustee migration
-enhancements: active-only filtering, ACMS professional ID import, and Zoom CSV import.
+This guide covers local testing for trustee migration and matching enhancements.
 
 ## What Was Built
 
-| Slice | Name | Key Change |
-|---|---|---|
-| 1 | Active-Only Trustee Filter | Only trustees with at least one `active`-status appointment are migrated from ATS |
-| 2 | ACMS Professional ID Import | Each migrated trustee is linked to their ACMS `GROUP_DESIGNATOR-PROF_CODE` IDs |
-| 3 | Zoom CSV Import | Trustees are enriched with Zoom meeting info (including `accountEmail`) from a TSV file in Blob Storage |
+| Ticket | Slice | Name | Key Change |
+|---|---|---|---|
+| CAMS-596 | 1 | Active-Only Trustee Filter | Only trustees with at least one `active`-status appointment are migrated from ATS |
+| CAMS-596 | 2 | ACMS Professional ID Import | Each migrated trustee is linked to their ACMS `GROUP_DESIGNATOR-PROF_CODE` IDs |
+| CAMS-596 | 3 | Zoom CSV Import | Trustees are enriched with Zoom meeting info (including `accountEmail`) from a TSV file in Blob Storage |
+| CAMS-721 | — | Auto-Match Seeding | Seed CAMS trustees + appointments matching real DXTR data so `sync-trustee-appointments` produces auto-match telemetry for the workbook |
 
 ## Prerequisites
 
@@ -87,18 +87,17 @@ npx tsx --tsconfig backend/tsconfig.json \
 Shows: all distinct STATUS values with counts, trustees with at least one active appointment,
 trustees with no appointments, and total trustee counts.
 
-### Test data seeder (Slices 2 + 3)
+### Test data seeder (Slices 2 + 3 + CAMS-721)
 
 Path: `test/migration/trustee/scripts/seed-test-trustees.ts`
 
-Directly inserts synthetic fixtures into MongoDB. No VPN or ATS connection required.
-
 | Command | Description |
 |---|---|
-| `seed-proid` | Create 3 trustees WITH professional IDs + 3 WITHOUT |
-| `seed-match-verification` | Create `TrusteeMatchVerification` docs for all Slice 3 outcomes |
+| `seed-proid` | Create 3 trustees WITH professional IDs + 3 WITHOUT (no VPN required) |
+| `seed-match-verification` | Create `TrusteeMatchVerification` docs for all non-auto-match outcomes (no VPN required) |
+| `seed-auto-match [N]` | Read real DXTR events and create matching CAMS trustees + appointments for auto-matching (**requires VPN + DXTR connection**) |
 | `list` | Show all seeded test data currently in MongoDB |
-| `clean` | Delete only seeded test data (SEED Test trustees, proIds, TST-/SEED- verifications) |
+| `clean` | Delete all seeded data — identifies records by `createdBy.id: 'SEED-SCRIPT'`, so it covers both prefixed and real-name auto-match trustees |
 | `clean-all` | Delete **all** trustee data regardless of origin — use to fully reset dev Cosmos DB |
 
 ```bash
@@ -107,17 +106,27 @@ npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
   seed-proid
 
-# Seed TrusteeMatchVerification documents for all Slice 3 outcomes
+# Seed TrusteeMatchVerification documents for all non-auto-match outcomes
 npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
   seed-match-verification
+
+# Seed auto-match data from real DXTR events (default: up to 5 cases)
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/seed-test-trustees.ts \
+  seed-auto-match
+
+# Seed auto-match data for up to 10 cases
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/seed-test-trustees.ts \
+  seed-auto-match 10
 
 # List seeded data currently in MongoDB
 npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
   list
 
-# Remove only seeded test data (SEED Test trustees + TST-/SEED- verifications)
+# Remove only seeded test data (all records with createdBy.id = 'SEED-SCRIPT')
 npx tsx --tsconfig backend/tsconfig.json \
   test/migration/trustee/scripts/seed-test-trustees.ts \
   clean
@@ -427,6 +436,103 @@ db['trustee-match-verification'].find({ caseId: /^SEED-/, status: { $ne: 'pendin
 
 ---
 
+## Auto-Match Seeding for Workbook Verification (CAMS-721)
+
+### What to verify
+
+The `trustee-matching-analytics` workbook (`ops/cloud-deployment/lib/workbooks/trustee-matching-analytics.json`)
+is powered by `TRUSTEE_MATCH_AUDIT` telemetry emitted by `sync-trustee-appointments`. For
+auto-match outcomes to appear in the workbook, the sync must run against DXTR cases where the
+CAMS trustee data satisfies `isPerfectMatch()` — an active appointment with matching `courtId`,
+`divisionCode`, and `chapter`.
+
+`seed-auto-match` sets up exactly this condition by reading real DXTR trustee appointment events
+and creating matching CAMS trustees + appointments.
+
+### Prerequisites
+
+- VPN connected (DXTR SQL access required)
+- `backend/.env` contains DXTR database credentials
+- Synced cases already present in Cosmos DB (run the case sync first if needed)
+
+### Testing workflow
+
+**Step 1 — Seed auto-match data:**
+
+```bash
+npx tsx --tsconfig backend/tsconfig.json \
+  test/migration/trustee/scripts/seed-test-trustees.ts \
+  seed-auto-match 5
+```
+
+The script will:
+1. Read `TRUSTEE_APPOINTMENTS_SYNC_STATE` from Cosmos to find `lastSyncDate`
+2. Query DXTR for trustee appointment events since that date
+3. For each event where the synced case exists in Cosmos, create a matching CAMS trustee with an active appointment
+
+If the output says `0 DXTR events found`, the sync is caught up. Reset the sync state to
+reprocess history (see below).
+
+**Step 2 — Trigger `sync-trustee-appointments`:**
+
+Start the dataflows function app and POST to the sync endpoint, or use the Azure portal to
+trigger the function. The sync will find the seeded trustees via exact name match, confirm
+`isPerfectMatch()`, and emit `TRUSTEE_MATCH_AUDIT` telemetry with `matchOutcome: 'auto-matched'`.
+
+**Step 3 — Verify telemetry in App Insights:**
+
+Open the workbook in Azure Portal. Auto-match outcomes should appear in the analytics panels.
+You can also query directly:
+
+```kusto
+traces
+| where message == "TRUSTEE_MATCH_AUDIT"
+| extend audit = parse_json(tostring(customDimensions.data))
+| where audit.matchOutcome == "auto-matched"
+| project timestamp, caseId = audit.caseId, trustee = audit.dxtrTrusteeName, trusteeId = audit.matchedTrusteeId
+| order by timestamp desc
+```
+
+**Verify seeded data in MongoDB:**
+
+```javascript
+// Trustees created by the seed script (covers both prefixed and auto-match)
+db.trustees.find({ 'createdBy.id': 'SEED-SCRIPT' })
+
+// Trustee appointments created by the seed (active, matching DXTR court/chapter)
+db['trustee-appointments'].find({
+  documentType: 'TRUSTEE_APPOINTMENT',
+  status: 'active',
+  'createdBy.id': 'SEED-SCRIPT'
+})
+
+// Case appointments created by the seed (links case → trustee)
+db['trustee-appointments'].find({
+  documentType: 'CASE_APPOINTMENT',
+  'createdBy.id': 'SEED-SCRIPT'
+})
+```
+
+### Resetting the sync state to reprocess DXTR history
+
+If the sync is already caught up and there are no new DXTR events, reset the sync state to an
+earlier date so the next sync run will reprocess historical events:
+
+```javascript
+// In MongoDB shell — set lastSyncDate to reprocess events from the last 30 days
+db['runtime-state'].updateOne(
+  { documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE' },
+  { $set: { lastSyncDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() } }
+)
+
+// Or delete the document entirely to reprocess all history from 2018-01-01
+db['runtime-state'].deleteOne({ documentType: 'TRUSTEE_APPOINTMENTS_SYNC_STATE' })
+```
+
+Then re-run `seed-auto-match` — it will pick up the same date range the sync will use.
+
+---
+
 ## Full End-to-End Testing Workflow
 
 This sequence exercises all three slices together:
@@ -453,15 +559,20 @@ npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-tes
 # 5. Seed match verification scenarios (CAMS-713 Slice 3)
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-match-verification
 
-# 6. Trigger Zoom CSV import and view results (Slice 3)
+# 6. Seed auto-match data from DXTR (CAMS-721)
+#    Requires: VPN + DXTR credentials in backend/.env + synced cases in Cosmos
+npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts seed-auto-match 5
+#    Then trigger sync-trustee-appointments to generate auto-match telemetry for the workbook
+
+# 7. Trigger Zoom CSV import and view results (Slice 3)
 #    Requires: AzureWebJobsStorage in backend/.env
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/run-zoom-csv-import.ts run
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/run-zoom-csv-import.ts report
 
-# 7. Verify everything
+# 8. Verify everything
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts list
 
-# 8. Clean up synthetic seed data when done
+# 9. Clean up synthetic seed data when done
 npx tsx --tsconfig backend/tsconfig.json test/migration/trustee/scripts/seed-test-trustees.ts clean
 ```
 
@@ -499,4 +610,8 @@ cd backend && npm test -- lib/adapters/gateways/ats/ats-mappings.test.ts
 
 # ZoomInfo validation (accountEmail)
 cd common && npm test -- src/cams/trustees-validators.test.ts
+
+# CAMS-721 — Trustee matching / auto-match sync use case
+cd backend && npm test -- lib/use-cases/dataflows/sync-trustee-appointments.test.ts
+cd backend && npm test -- lib/use-cases/dataflows/trustee-match.helpers.test.ts
 ```

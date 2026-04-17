@@ -244,6 +244,7 @@ resource dataflowsFunctionApp 'Microsoft.Web/sites@2023-12-01' = {
         'AzureWebJobsDataflowsStorage'
         'MyTaskHub'
         'COSMOS_DATABASE_NAME'
+        'MSSQL_DATABASE_DXTR'
       ]
     }
   }
@@ -698,3 +699,4 @@ module dataflowWorkbooks 'lib/workbooks/dataflow-workbooks.bicep' = if (createAp
 
 output dataflowsStorageConnectionString string = dataflowsFunctionStorageAccount.outputs.connectionString
 output dataflowsSlotStorageConnectionString string = dataflowsFunctionSlotStorageAccount.outputs.connectionString
+output appInsightsId string = createApplicationInsights ? dataflowsFunctionAppInsights.outputs.id : ''

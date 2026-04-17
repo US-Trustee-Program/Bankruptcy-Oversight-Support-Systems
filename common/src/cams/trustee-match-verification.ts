@@ -15,7 +15,7 @@ export type TrusteeMatchVerification = Auditable & {
   caseId: string;
   courtId: string;
   dxtrTrustee: DxtrTrusteeParty;
-  mismatchReason: TrusteeAppointmentSyncErrorCode;
+  mismatchReason?: TrusteeAppointmentSyncErrorCode;
   matchCandidates: CandidateScore[];
   status: OrderStatus;
   resolvedTrusteeId?: string;

@@ -41,6 +41,7 @@ export class TrusteeMatchVerificationUseCase {
             action: 'reject',
             caseId: verification.caseId,
             mismatchReason: verification.mismatchReason,
+            resolutionPath: 'escalated',
           },
           measurements: {
             resolutionMs,
@@ -90,6 +91,15 @@ export class TrusteeMatchVerificationUseCase {
           : undefined;
       const wasPreselectedConfirmed = preselectedTrusteeId === resolvedTrusteeId;
 
+      // Calculate resolution path for telemetry
+      const resolutionPath = wasPreselectedConfirmed ? 'accepted' : 'manual-search';
+
+      // Calculate selected candidate rank (1-based index); undefined if not found in candidates
+      const candidateIdx = verification.matchCandidates.findIndex(
+        (c) => c.trusteeId === resolvedTrusteeId,
+      );
+      const selectedCandidateRank = candidateIdx >= 0 ? candidateIdx + 1 : undefined;
+
       const now = new Date().toISOString();
 
       // 2. Update SyncedCase.trusteeId if needed (case may not be synced yet — treat as optional)
@@ -138,6 +148,10 @@ export class TrusteeMatchVerificationUseCase {
             caseId: verification.caseId,
             mismatchReason: verification.mismatchReason,
             wasPreselectedConfirmed: String(wasPreselectedConfirmed),
+            resolutionPath,
+            ...(selectedCandidateRank !== undefined
+              ? { selectedCandidateRank: String(selectedCandidateRank) }
+              : {}),
           },
           measurements: {
             resolutionMs,

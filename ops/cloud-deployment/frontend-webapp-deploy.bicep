@@ -107,6 +107,12 @@ param privateDnsZoneResourceGroup string = virtualNetworkResourceGroupName
 @description('DNS Zone Subscription ID. USTP uses a different subscription for prod deployment.')
 param privateDnsZoneSubscriptionId string = subscription().subscriptionId
 
+@description('Resource ID of the Application Insights instance for dataflows')
+param dataflowsAppInsightsId string = ''
+
+@description('Resource ID of the Application Insights instance for node-api')
+param nodeApiAppInsightsId string = ''
+
 param tags object = {}
 
 var createApplicationInsights = deployAppInsights && !empty(analyticsWorkspaceId)
@@ -186,6 +192,17 @@ module webappInsights 'lib/app-insights/webapp-insights.bicep' = {
 
 module searchWorkbooks 'lib/workbooks/search-workbooks.bicep' = if (createApplicationInsights) {
   name: '${webappName}-search-workbooks-module'
+  params: {
+    location: location
+    appInsightsResourceId: webappInsights.outputs.id
+    dataflowsAppInsightsResourceId: dataflowsAppInsightsId
+    nodeApiAppInsightsResourceId: nodeApiAppInsightsId
+    tags: tags
+  }
+}
+
+module frontendWorkbooks 'lib/workbooks/frontend-workbooks.bicep' = if (createApplicationInsights) {
+  name: '${webappName}-frontend-workbooks-module'
   params: {
     location: location
     appInsightsResourceId: webappInsights.outputs.id
