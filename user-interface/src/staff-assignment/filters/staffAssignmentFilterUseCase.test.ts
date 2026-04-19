@@ -12,14 +12,15 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 import Api2 from '@/lib/models/api2';
 import MockApi2 from '@/lib/testing/mock-api2';
 import { MockInstance } from 'vitest';
-import { CamsUserReference } from '@common/cams/users';
+import { Staff } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
 import { ResponseBody } from '@common/api/response';
 
 describe('staff assignment filter use case tests', () => {
   let mockFeatureFlags: FeatureFlagSet;
-  let setOfficeAssigneesSpy: MockInstance<(val: CamsUserReference[]) => void>;
+  let setOfficeAssigneesSpy: MockInstance<(val: Staff[]) => void>;
   let setOfficeAssigneesErrorSpy: MockInstance<(val: boolean) => void>;
-  const assignees = MockData.buildArray(MockData.getCamsUserReference, 5);
+  const assignees = MockData.buildArray(MockData.getStaffAssignee, 5);
   const mockStore: StaffAssignmentFilterStore = {
     officeAssignees: assignees,
     setOfficeAssignees: vi.fn(),
@@ -87,15 +88,30 @@ describe('staff assignment filter use case tests', () => {
     expect(comboOptions).toEqual(expectedComboOptions);
   });
 
+  test('assigneesToComboOptions should place lead attorneys first with "(Lead)" label', () => {
+    const lead = MockData.getStaffAssignee({
+      id: 'lead-1',
+      name: 'Zelda',
+      roles: [CamsRole.LeadTrialAttorney],
+    });
+    const nonLead = MockData.getStaffAssignee({ id: 'non-lead-1', name: 'Aaron' });
+
+    const comboOptions = useCase.assigneesToComboOptions([nonLead, lead]);
+
+    expect(comboOptions[0]).toEqual({ label: '(unassigned)', value: 'UNASSIGNED', divider: true });
+    expect(comboOptions[1]).toEqual({ label: 'Zelda (Lead)', value: 'lead-1' });
+    expect(comboOptions[2]).toEqual({ label: 'Aaron', value: 'non-lead-1' });
+  });
+
   test('getOfficeAssignees should return a unique and sorted array of assignees', async () => {
-    const user1 = MockData.getCamsUserReference({ id: 'user-1', name: 'alfred' });
-    const user2 = MockData.getCamsUserReference({ id: 'user-2', name: 'boe' });
-    const user3 = MockData.getCamsUserReference({ id: 'user-3', name: 'frankie' });
+    const user1 = MockData.getStaffAssignee({ id: 'user-1', name: 'alfred' });
+    const user2 = MockData.getStaffAssignee({ id: 'user-2', name: 'boe' });
+    const user3 = MockData.getStaffAssignee({ id: 'user-3', name: 'frankie' });
     const mockStaff = [user3, user1, user2, user2, user1];
     const expectedAssignees = [user1, user2, user3];
 
     const offices: UstpOfficeDetails[] = [MockData.getOfficeWithStaff(mockStaff)];
-    const callback = async (_officeCode: string): Promise<ResponseBody<CamsUserReference[]>> => {
+    const callback = async (_officeCode: string): Promise<ResponseBody<Staff[]>> => {
       return Promise.resolve({ data: mockStaff });
     };
 
