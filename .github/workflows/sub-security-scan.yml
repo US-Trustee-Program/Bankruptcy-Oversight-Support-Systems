@@ -1,11 +1,25 @@
 name: Security
 
-on: workflow_call
+on:
+  workflow_call:
+    secrets:
+      SNYK_OAUTH_CLIENT_ID:
+        required: true
+      SNYK_OAUTH_CLIENT_SECRET:
+        required: true
+      AZ_SECURITY_SCAN_STORAGE_NAME:
+        required: true
+      AZURE_CREDENTIALS:
+        required: false
 
 jobs:
   sca-scan:
     name: SCA Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      id-token: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -35,20 +49,18 @@ jobs:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
         if: always()
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ vars.AZ_SECURITY_SCAN_CLIENT_ID }}
+          tenant-id: ${{ vars.AZ_TENANT_ID }}
+          subscription-id: ${{ vars.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Upload raw SARIF to Azure Storage
         if: always()
         run: |
           if [ -f snyk-sca.sarif ]; then
-            ACCOUNT_KEY=$(az storage account keys list \
-              -n "$ACCOUNT_NAME" \
-              -g "$RESOURCE_GROUP" \
-              --query '[0].value' -o tsv)
             az storage blob upload \
               --account-name "$ACCOUNT_NAME" \
-              --account-key "$ACCOUNT_KEY" \
+              --auth-mode login \
               -f snyk-sca.sarif \
               -c security-scan-results \
               -n "snyk-sca-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.sarif" \
@@ -56,7 +68,6 @@ jobs:
           fi
         env:
           ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
-          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
 
       - name: Sanitize SARIF for GitHub upload
         if: always()
@@ -80,6 +91,9 @@ jobs:
   sast-scan:
     name: SAST Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
@@ -105,20 +119,18 @@ jobs:
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
         if: always()
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ vars.AZ_SECURITY_SCAN_CLIENT_ID }}
+          tenant-id: ${{ vars.AZ_TENANT_ID }}
+          subscription-id: ${{ vars.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
       - name: Upload raw SARIF to Azure Storage
         if: always()
         run: |
           if [ -f snyk-code.sarif ]; then
-            ACCOUNT_KEY=$(az storage account keys list \
-              -n "$ACCOUNT_NAME" \
-              -g "$RESOURCE_GROUP" \
-              --query '[0].value' -o tsv)
             az storage blob upload \
               --account-name "$ACCOUNT_NAME" \
-              --account-key "$ACCOUNT_KEY" \
+              --auth-mode login \
               -f snyk-code.sarif \
               -c security-scan-results \
               -n "snyk-code-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.sarif" \
@@ -126,19 +138,14 @@ jobs:
           fi
         env:
           ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
-          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
 
       - name: Download SAST baseline
         id: baseline
         if: always()
         run: |
-          ACCOUNT_KEY=$(az storage account keys list \
-            -n "$ACCOUNT_NAME" \
-            -g "$RESOURCE_GROUP" \
-            --query '[0].value' -o tsv)
           if az storage blob download \
             --account-name "$ACCOUNT_NAME" \
-            --account-key "$ACCOUNT_KEY" \
+            --auth-mode login \
             -c snyk-baseline \
             -n snyk-code-baseline.txt \
             -f snyk-code-baseline.txt 2>/dev/null; then
@@ -149,7 +156,6 @@ jobs:
           fi
         env:
           ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
-          RESOURCE_GROUP: ${{ secrets.AZ_SECURITY_SCAN_RG }}
 
       - name: Compare against baseline
         id: baseline-compare
