@@ -70,6 +70,26 @@
     }
   }
 
+  .search-trustee-inline-link {
+    background: none;
+    border: none;
+    padding: 0;
+    color: #005ea2;
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+  }
+
+  .candidate-description {
+    margin: 0.5rem 0 0.25rem;
+  }
+
+  .candidate-count {
+    font-weight: 600;
+    margin: 0.25rem 0 0.75rem;
+  }
+
   .search-link-container {
     .link-message {
       vertical-align: text-bottom;
@@ -86,6 +106,41 @@
         height: 1.275rem;
       }
     }
+  }
+
+  .candidate-radio-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    input[type='radio'] {
+      width: 1.25rem;
+      height: 1.25rem;
+      cursor: pointer;
+    }
+  }
+
+  .candidate-scores-cell {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+
+    .score-label {
+      font-weight: 600;
+    }
+  }
+
+  .trustee-data-row.selected {
+    background-color: #f0f0f0;
+  }
+
+  .candidate-selection-fieldset {
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .multiple-match-actions {
+    margin: 1rem 0 0.5rem;
   }
 
   .reject-task-link {
