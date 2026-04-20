@@ -1286,11 +1286,11 @@ async function cleanSeededData() {
       : { deletedCount: 0 };
     console.log(`  Deleted ${trusteeResult.deletedCount} trustee record(s)`);
 
-    // Delete ALL trustee-match-verification docs — clean is the right place to reset
-    // the full verification work queue for local testing, regardless of origin.
+    // Delete only seeded verification docs (identified by the TST- caseId prefix).
+    // Use clean-all to wipe the entire collection regardless of origin.
     const verificationResult = await db
       .collection('trustee-match-verification')
-      .deleteMany({});
+      .deleteMany({ caseId: { $regex: `^${SEED_CASE_PREFIX}` } });
     console.log(`  Deleted ${verificationResult.deletedCount} TrusteeMatchVerification record(s)`);
 
     console.log('\nClean complete.');
@@ -1386,7 +1386,7 @@ Commands:
   list                     Show all seeded test data currently in MongoDB
 
   clean                    Delete seeded test data (all trustees created by SEED-SCRIPT, their
-                           appointments and proIds) AND all trustee-match-verification records
+                           appointments and proIds) and TST- prefixed verification records
 
   clean-all                Delete ALL trustee data from every trustee collection regardless of origin:
                              trustees, trustee-appointments, trustee-professional-ids,
