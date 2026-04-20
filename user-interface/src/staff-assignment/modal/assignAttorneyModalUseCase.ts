@@ -1,5 +1,4 @@
 import { AttorneyUser, CamsUserReference } from '@common/cams/users';
-import { deepEqual } from '@common/object-equality';
 import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
 import { CamsRole, AssignableRole } from '@common/cams/roles';
@@ -15,8 +14,15 @@ function buildInitialAttorneyChecklist(
   bCase: AssignAttorneyModalOpenProps['bCase'],
 ): AttorneyUser[] {
   const attorneys: AttorneyUser[] = [];
+  // A userId uniquely identifies a person — duplicate entries for the same userId
+  // represent the same attorney (e.g. assigned under multiple roles) and are intentionally
+  // collapsed to a single checklist entry. The first occurrence's name is used.
+  const seen = new Set<string>();
   bCase.assignments?.forEach((assignment) => {
-    attorneys.push({ id: assignment.userId, name: assignment.name } as AttorneyUser);
+    if (!seen.has(assignment.userId)) {
+      seen.add(assignment.userId);
+      attorneys.push({ id: assignment.userId, name: assignment.name } as AttorneyUser);
+    }
   });
   const lta = bCase.leadTrialAttorney;
   if (lta && !attorneys.find((a) => a.id === lta.id)) {
@@ -182,13 +188,6 @@ const assignAttorneyModalUseCase = (
           (theAttorney) => theAttorney.id !== attorney.id,
         );
       }
-      const isTheSame =
-        localCheckListValues &&
-        !!store.bCase.assignments &&
-        deepEqual(localCheckListValues, store.bCase.assignments);
-
-      controls.modalRef.current?.buttons?.current?.disableSubmitButton(isTheSame);
-
       store.setCheckListValues(localCheckListValues);
     },
 

@@ -364,6 +364,59 @@ describe('Test Assign Attorney Modal Component', () => {
     });
   });
 
+  test('should disable submit when multiple attorneys are checked but lead attorney is cleared', async () => {
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef);
+
+    const bCase: CaseBasics = MockData.getCaseBasics({
+      override: { caseId: '081-23-00005', caseTitle: 'Test Case', dateFiled: '2024-01-01' },
+    });
+    bCase.assignments = [];
+
+    act(() => modalRef.current?.show({ bCase, callback }));
+    await userEvent.click(screen.getByTestId('open-modal-button'));
+
+    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
+    await waitFor(() => expect(submitButton).toBeDisabled());
+
+    const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[0].id}-checkbox`);
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[1].id}-checkbox`);
+
+    await waitFor(() => expect(submitButton).toBeEnabled());
+
+    const leadSelect = screen.getByLabelText('Lead Trial Attorney');
+    await userEvent.selectOptions(leadSelect, '');
+
+    await waitFor(() => expect(submitButton).toBeDisabled());
+  });
+
+  test('should enable submit when lead attorney is selected from dropdown with multiple attorneys checked', async () => {
+    const modalRef = React.createRef<AssignAttorneyModalRef>();
+    renderWithProps(modalRef);
+
+    const bCase: CaseBasics = MockData.getCaseBasics({
+      override: { caseId: '081-23-00006', caseTitle: 'Test Case', dateFiled: '2024-01-01' },
+    });
+    bCase.assignments = [];
+
+    act(() => modalRef.current?.show({ bCase, callback }));
+    await userEvent.click(screen.getByTestId('open-modal-button'));
+
+    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
+    const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
+
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[0].id}-checkbox`);
+    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[1].id}-checkbox`);
+
+    const leadSelect = screen.getByLabelText('Lead Trial Attorney');
+    await userEvent.selectOptions(leadSelect, '');
+    await waitFor(() => expect(submitButton).toBeDisabled());
+
+    await userEvent.selectOptions(leadSelect, sortedAttorneys[0].id);
+    await waitFor(() => expect(submitButton).toBeEnabled());
+  });
+
   test('should display error alert when call to getAttorneys throws an error', async () => {
     const error = new Error('API Rejection');
     vi.spyOn(Api2, 'getOfficeAttorneys').mockRejectedValue(error);
