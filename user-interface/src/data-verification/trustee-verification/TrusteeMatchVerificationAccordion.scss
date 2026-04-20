@@ -17,7 +17,7 @@
 
   p.other-matches-count {
     font-weight: bold;
-    margin: 0 0 1rem;
+    margin: 0 0 0.75rem;
   }
 
   .trustee-data-grid {
@@ -93,6 +93,10 @@
     svg {
       width: 1.275rem;
       height: 1.275rem;
+    }
+
+    &:hover {
+      color: #1a4480;
     }
   }
 
