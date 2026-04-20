@@ -648,6 +648,121 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
+  describe('"Not Provided" for missing address', () => {
+    test('shows "Not Provided" in address cell when DXTR trustee has no legacy address', () => {
+      renderWithProps({
+        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe' } },
+      });
+
+      const addressCell = screen
+        .getByTestId(`accordion-content-${sampleOrder.id}`)
+        .querySelector('[data-cell="Address"]');
+      expect(addressCell?.textContent).toBe('Not Provided');
+    });
+
+    test('shows "Not Provided" in address cell when candidate has no address', () => {
+      renderWithProps({
+        order: {
+          ...sampleOrder,
+          matchCandidates: [
+            {
+              trusteeId: 'trustee-no-addr',
+              trusteeName: 'No Address',
+              totalScore: 80,
+              addressScore: 80,
+              districtDivisionScore: 80,
+              chapterScore: 80,
+            },
+          ],
+        },
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      const addressCells = content.querySelectorAll('[data-cell="Address"]');
+      const candidateAddressCell = Array.from(addressCells).find(
+        (el) => el.textContent === 'Not Provided',
+      );
+      expect(candidateAddressCell).toBeInTheDocument();
+    });
+  });
+
+  describe('Other Potential Matches pagination', () => {
+    function makeMultipleMatchOrder(totalCandidates: number): TrusteeMatchVerification {
+      return {
+        ...sampleOrder,
+        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+        matchCandidates: Array.from({ length: totalCandidates }, (_, i) => ({
+          trusteeId: `trustee-${i + 1}`,
+          trusteeName: `Candidate ${i + 1}`,
+          totalScore: 100 - i,
+          addressScore: 90,
+          districtDivisionScore: 90,
+          chapterScore: 90,
+        })),
+      };
+    }
+
+    test('does not show pagination when other matches are 5 or fewer', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(6) }); // 1 strongest + 5 others
+
+      expect(screen.queryByTestId('pagination-button-other-matches-next')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('pagination-button-other-matches-previous'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('shows pagination when other matches exceed 5', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) }); // 1 strongest + 6 others
+
+      expect(screen.getByTestId('pagination-button-other-matches-next')).toBeInTheDocument();
+    });
+
+    test('page 1 shows first 5 other matches and not the 6th', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('Candidate 2'); // first other match
+      expect(content.textContent).toContain('Candidate 6'); // 5th other match
+      expect(content.textContent).not.toContain('Candidate 7'); // 6th other match (page 2)
+    });
+
+    test('clicking next shows the next page of other matches', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) });
+
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('Candidate 7');
+      expect(content.textContent).not.toContain('Candidate 2');
+    });
+
+    test('previous button is not shown on the first page', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) });
+
+      expect(
+        screen.queryByTestId('pagination-button-other-matches-previous'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('next button is not shown on the last page', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) });
+
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+
+      expect(screen.queryByTestId('pagination-button-other-matches-next')).not.toBeInTheDocument();
+    });
+
+    test('clicking a page number navigates to that page', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(12) }); // 1 strongest + 11 others = 3 pages
+
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-page-3'));
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('Candidate 12'); // last candidate on page 3
+      expect(content.textContent).not.toContain('Candidate 2');
+    });
+  });
+
   describe('heading structure', () => {
     test('no-candidates view shows no CAMS heading above search link', () => {
       renderWithProps();
