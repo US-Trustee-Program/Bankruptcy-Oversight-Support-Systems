@@ -5,7 +5,8 @@ import {
   UNASSIGNED_OPTION,
 } from './staffAssignmentFilter.types';
 import { ResponseBody } from '@common/api/response';
-import { CamsUserReference } from '@common/cams/users';
+import { Staff } from '@common/cams/users';
+import { CamsRole } from '@common/cams/roles';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
@@ -15,16 +16,22 @@ const staffAssignmentFilterUseCase = (
   store: StaffAssignmentFilterStore,
   controls: StaffAssignmentFilterControls,
 ): StaffAssignmentFilterUseCase => {
-  const assigneesToComboOptions = (officeAssignees: CamsUserReference[]): ComboOption[] => {
-    const comboOptions: ComboOption[] = [];
+  const assigneesToComboOptions = (officeAssignees: Staff[]): ComboOption[] => {
+    const leads: ComboOption[] = [];
+    const nonLeads: ComboOption[] = [];
     officeAssignees.forEach((assignee) => {
-      comboOptions.push({
+      const isLead = assignee.roles?.includes(CamsRole.LeadTrialAttorney) ?? false;
+      const option: ComboOption = {
         value: assignee.id,
-        label: assignee.name,
-      });
+        label: isLead ? `${assignee.name} (Lead)` : assignee.name,
+      };
+      if (isLead) {
+        leads.push(option);
+      } else {
+        nonLeads.push(option);
+      }
     });
-    comboOptions.unshift(UNASSIGNED_OPTION);
-    return comboOptions;
+    return [UNASSIGNED_OPTION, ...leads, ...nonLeads];
   };
 
   const fetchAssignees = async () => {
@@ -46,10 +53,10 @@ const staffAssignmentFilterUseCase = (
   };
 
   const getOfficeAssignees = async (
-    apiFunction: (office: string) => Promise<ResponseBody<CamsUserReference[]>>,
+    apiFunction: (office: string) => Promise<ResponseBody<Staff[]>>,
     offices: UstpOfficeDetails[],
-  ): Promise<CamsUserReference[]> => {
-    const assigneeMap: Map<string, CamsUserReference> = new Map();
+  ): Promise<Staff[]> => {
+    const assigneeMap: Map<string, Staff> = new Map();
     for (const office of offices) {
       const assignees = await apiFunction(office.officeCode);
       assignees.data.forEach((assignee) => {

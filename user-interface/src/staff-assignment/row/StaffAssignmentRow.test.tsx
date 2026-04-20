@@ -170,4 +170,39 @@ describe('StaffAssignmentRow tests', () => {
     expect(screen.getByTestId('staff-name-0')).toBeInTheDocument();
     expect(screen.getByTestId('staff-name-0')).toHaveTextContent(assignments[0].name);
   });
+
+  test('should show "(Lead)" label next to lead trial attorney', async () => {
+    const leadTrialAttorney = MockData.getCamsUserReference();
+    const trialAttorney = MockData.getAttorneyAssignment();
+    const assignments = [trialAttorney];
+
+    renderWithProps({ bCase: { ...bCase, assignments, leadTrialAttorney } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staff-name-lead')).toHaveTextContent(
+        `${leadTrialAttorney.name} (Lead)`,
+      );
+      expect(screen.getByTestId('staff-name-0')).not.toHaveTextContent('(Lead)');
+    });
+  });
+
+  test('should not show lead attorney twice when they also appear in assignments', async () => {
+    const leadTrialAttorney = MockData.getCamsUserReference();
+    const leadAssignment = MockData.getAttorneyAssignment({
+      userId: leadTrialAttorney.id,
+      name: leadTrialAttorney.name,
+    });
+    const trialAttorney = MockData.getAttorneyAssignment();
+    const assignments = [leadAssignment, trialAttorney];
+
+    renderWithProps({ bCase: { ...bCase, assignments, leadTrialAttorney } });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staff-name-lead')).toHaveTextContent(
+        `${leadTrialAttorney.name} (Lead)`,
+      );
+      expect(screen.getByTestId('staff-name-0')).toHaveTextContent(trialAttorney.name);
+      expect(screen.getByTestId('staff-name-0')).not.toHaveTextContent(leadTrialAttorney.name);
+    });
+  });
 });
