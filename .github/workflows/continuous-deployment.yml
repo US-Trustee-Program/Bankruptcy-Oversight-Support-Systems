@@ -67,7 +67,10 @@ jobs:
   security-scan:
     name: Security
     uses: ./.github/workflows/sub-security-scan.yml
-    secrets: inherit # pragma: allowlist secret
+    secrets:
+      SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }} # pragma: allowlist secret
+      SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }} # pragma: allowlist secret
+      AZ_SECURITY_SCAN_STORAGE_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }} # pragma: allowlist secret
 
   build:
     name: Build

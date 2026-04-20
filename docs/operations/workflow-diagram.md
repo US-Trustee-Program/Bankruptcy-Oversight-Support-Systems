@@ -2,8 +2,8 @@
 
 ## Summary
 - **Total Workflows**: 27
-- **Main Workflows**: 12
-- **Reusable Workflows**: 15
+- **Main Workflows**: 11
+- **Reusable Workflows**: 16
 
 ## Legend
 
@@ -125,7 +125,7 @@ flowchart LR
     reusable_typecheck_yml["reusable-typecheck.yml"]
     reusable_typecheck_yml_typecheck["TypeScript"]
     continuous_deployment_yml_security_scan["Security"]
-    sub_security_scan_yml["Security"]
+    sub_security_scan_yml["sub-security-scan.yml"]
     sub_security_scan_yml_sca_scan["SCA Scan"]
     sub_security_scan_yml_sast_scan["SAST Scan"]
     continuous_deployment_yml_build["Build"]
@@ -262,7 +262,7 @@ flowchart LR
     class reusable_typecheck_yml reusable
     class reusable_typecheck_yml_typecheck job
     class continuous_deployment_yml_security_scan job
-    class sub_security_scan_yml mainWorkflow
+    class sub_security_scan_yml reusable
     class sub_security_scan_yml_sca_scan job
     class sub_security_scan_yml_sast_scan job
     class continuous_deployment_yml_build job
@@ -314,6 +314,10 @@ This diagram shows the explicit and implicit dependencies between jobs in the co
 ```mermaid
 flowchart LR
     subgraph "External Inputs"
+        Secrets["Secrets"]
+        Secrets_AZ_SECURITY_SCAN_STORAGE_NAME["AZ_SECURITY_SCAN_STORAGE_NAME"]
+        Secrets_SNYK_OAUTH_CLIENT_ID["SNYK_OAUTH_CLIENT_ID"]
+        Secrets_SNYK_OAUTH_CLIENT_SECRET["SNYK_OAUTH_CLIENT_SECRET"]
         Variables["Variables"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
@@ -342,7 +346,9 @@ flowchart LR
         subgraph typecheck_subgraph["typecheck"]
             typecheck_vars["NODE_VERSION"]
         end
-        security_scan["Security"]
+        subgraph security_scan_subgraph["Security"]
+            security_scan_vars["AZ_SECURITY_SCAN_STORAGE_NAME<br/>SNYK_OAUTH_CLIENT_ID<br/>SNYK_OAUTH_CLIENT_SECRET"]
+        end
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
@@ -354,11 +360,17 @@ flowchart LR
         end
     end
 
+        Secrets --> Secrets_AZ_SECURITY_SCAN_STORAGE_NAME
+        Secrets --> Secrets_SNYK_OAUTH_CLIENT_ID
+        Secrets --> Secrets_SNYK_OAUTH_CLIENT_SECRET
         Variables --> Variables_CAMS_BASE_PATH
         Variables --> Variables_CAMS_LAUNCH_DARKLY_ENV
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
         Variables --> Variables_NODE_VERSION
+    Secrets_AZ_SECURITY_SCAN_STORAGE_NAME -.-> security_scan_subgraph
+    Secrets_SNYK_OAUTH_CLIENT_ID -.-> security_scan_subgraph
+    Secrets_SNYK_OAUTH_CLIENT_SECRET -.-> security_scan_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
     Variables_CAMS_SERVER_PORT -.-> build_subgraph
@@ -374,7 +386,7 @@ flowchart LR
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
     knip_subgraph ==>|"needs"| deploy_subgraph
-    security_scan ==>|"needs"| deploy_subgraph
+    security_scan_subgraph ==>|"needs"| deploy_subgraph
     setup ==>|"needs"| build_subgraph
     setup ==>|"needs"| deploy_code_slot_subgraph
     setup ==>|"needs"| deploy_subgraph
@@ -388,13 +400,14 @@ flowchart LR
     classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
     class continuous_deployment_workflow mainWorkflow
+    class Secrets external
     class Variables external
     class accessibility_test_subgraph jobSubgraph
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class knip_subgraph jobSubgraph
-    class security_scan job
+    class security_scan_subgraph jobSubgraph
     class setup job
     class typecheck_subgraph jobSubgraph
     class unit_test_backend_subgraph jobSubgraph
@@ -581,33 +594,6 @@ flowchart LR
     class reusable_dast_yml_zap_dast_scan job
 ```
 
-### Workflow_call Triggered Workflows
-
-Workflows triggered by `workflow_call`:
-- **Security** (`sub-security-scan.yml`)
-
-```mermaid
-flowchart LR
-    trigger_workflow_call(["workflow_call"])
-    sub_security_scan_yml["Security"]
-    sub_security_scan_yml_sca_scan["SCA Scan"]
-    sub_security_scan_yml_sast_scan["SAST Scan"]
-
-    trigger_workflow_call --> sub_security_scan_yml
-    sub_security_scan_yml --> sub_security_scan_yml_sca_scan
-    sub_security_scan_yml --> sub_security_scan_yml_sast_scan
-
-    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
-    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
-    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
-    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
-
-    class trigger_workflow_call trigger
-    class sub_security_scan_yml mainWorkflow
-    class sub_security_scan_yml_sca_scan job
-    class sub_security_scan_yml_sast_scan job
-```
-
 ### Workflow_dispatch Triggered Workflows
 
 The `workflow_dispatch` trigger allows manual execution of workflows. Each workflow is shown individually below:
@@ -690,7 +676,7 @@ flowchart LR
     reusable_typecheck_yml["reusable-typecheck.yml"]
     reusable_typecheck_yml_typecheck["TypeScript"]
     continuous_deployment_yml_security_scan["Security"]
-    sub_security_scan_yml["Security"]
+    sub_security_scan_yml["sub-security-scan.yml"]
     sub_security_scan_yml_sca_scan["SCA Scan"]
     sub_security_scan_yml_sast_scan["SAST Scan"]
     continuous_deployment_yml_build["Build"]
@@ -827,7 +813,7 @@ flowchart LR
     class reusable_typecheck_yml reusable
     class reusable_typecheck_yml_typecheck job
     class continuous_deployment_yml_security_scan job
-    class sub_security_scan_yml mainWorkflow
+    class sub_security_scan_yml reusable
     class sub_security_scan_yml_sca_scan job
     class sub_security_scan_yml_sast_scan job
     class continuous_deployment_yml_build job
@@ -879,6 +865,10 @@ This diagram shows the explicit and implicit dependencies between jobs in the co
 ```mermaid
 flowchart LR
     subgraph "External Inputs"
+        Secrets["Secrets"]
+        Secrets_AZ_SECURITY_SCAN_STORAGE_NAME["AZ_SECURITY_SCAN_STORAGE_NAME"]
+        Secrets_SNYK_OAUTH_CLIENT_ID["SNYK_OAUTH_CLIENT_ID"]
+        Secrets_SNYK_OAUTH_CLIENT_SECRET["SNYK_OAUTH_CLIENT_SECRET"]
         Variables["Variables"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
@@ -907,7 +897,9 @@ flowchart LR
         subgraph typecheck_subgraph["typecheck"]
             typecheck_vars["NODE_VERSION"]
         end
-        security_scan["Security"]
+        subgraph security_scan_subgraph["Security"]
+            security_scan_vars["AZ_SECURITY_SCAN_STORAGE_NAME<br/>SNYK_OAUTH_CLIENT_ID<br/>SNYK_OAUTH_CLIENT_SECRET"]
+        end
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
         end
@@ -919,11 +911,17 @@ flowchart LR
         end
     end
 
+        Secrets --> Secrets_AZ_SECURITY_SCAN_STORAGE_NAME
+        Secrets --> Secrets_SNYK_OAUTH_CLIENT_ID
+        Secrets --> Secrets_SNYK_OAUTH_CLIENT_SECRET
         Variables --> Variables_CAMS_BASE_PATH
         Variables --> Variables_CAMS_LAUNCH_DARKLY_ENV
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
         Variables --> Variables_NODE_VERSION
+    Secrets_AZ_SECURITY_SCAN_STORAGE_NAME -.-> security_scan_subgraph
+    Secrets_SNYK_OAUTH_CLIENT_ID -.-> security_scan_subgraph
+    Secrets_SNYK_OAUTH_CLIENT_SECRET -.-> security_scan_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
     Variables_CAMS_SERVER_PORT -.-> build_subgraph
@@ -939,7 +937,7 @@ flowchart LR
     build_subgraph ==>|"needs"| deploy_subgraph
     deploy_subgraph ==>|"needs"| deploy_code_slot_subgraph
     knip_subgraph ==>|"needs"| deploy_subgraph
-    security_scan ==>|"needs"| deploy_subgraph
+    security_scan_subgraph ==>|"needs"| deploy_subgraph
     setup ==>|"needs"| build_subgraph
     setup ==>|"needs"| deploy_code_slot_subgraph
     setup ==>|"needs"| deploy_subgraph
@@ -953,13 +951,14 @@ flowchart LR
     classDef mainWorkflow fill:#f3e5f5,fill-opacity:0.15,stroke:#f3e5f5,stroke-width:1px,color:#ffffff
     classDef jobSubgraph fill:#f1f8e9,stroke:#33691e,stroke-width:2px,color:#000000
     class continuous_deployment_workflow mainWorkflow
+    class Secrets external
     class Variables external
     class accessibility_test_subgraph jobSubgraph
     class build_subgraph jobSubgraph
     class deploy_subgraph jobSubgraph
     class deploy_code_slot_subgraph jobSubgraph
     class knip_subgraph jobSubgraph
-    class security_scan job
+    class security_scan_subgraph jobSubgraph
     class setup job
     class typecheck_subgraph jobSubgraph
     class unit_test_backend_subgraph jobSubgraph
@@ -1305,8 +1304,6 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    trigger_workflow_call(["workflow_call"])
-    sub_security_scan_yml["Security"]
     trigger_workflow_dispatch(["workflow_dispatch"])
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
     e2e_test_yml["Stand Alone E2E Test Runs"]
@@ -1332,7 +1329,6 @@ flowchart LR
     trigger_workflow_run(["workflow_run"])
     slack_notification_yml["slack-notification"]
 
-    trigger_workflow_call --> sub_security_scan_yml
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
     trigger_workflow_dispatch --> e2e_test_yml
     trigger_workflow_dispatch --> azure_remove_branch_yml
@@ -1355,14 +1351,12 @@ flowchart LR
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
     classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
 
-    class trigger_workflow_call trigger
     class trigger_workflow_dispatch trigger
     class trigger_delete trigger
     class trigger_schedule trigger
     class trigger_pull_request trigger
     class trigger_push trigger
     class trigger_workflow_run trigger
-    class sub_security_scan_yml mainWorkflow
     class deploy_security_scan_storage_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
@@ -1379,9 +1373,6 @@ flowchart LR
 ## Workflow Details
 
 ### Main Workflows
-- **Security** (`sub-security-scan.yml`)
-  - Triggers: workflow_call
-  - Jobs: 2
 - **Deploy Security Scan Storage** (`deploy-security-scan-storage.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 1
@@ -1419,6 +1410,8 @@ flowchart LR
 ### Reusable Workflows
 - **Provision and Configure Cloud Resources** (`sub-deploy.yml`)
   - Jobs: 3
+- **Security** (`sub-security-scan.yml`)
+  - Jobs: 2
 - **Knip Unused Code Check** (`reusable-knip.yml`)
   - Jobs: 1
 - **Azure Deployment - Supporting Infrastructure** (`reusable-infrastructure-deploy.yml`)
