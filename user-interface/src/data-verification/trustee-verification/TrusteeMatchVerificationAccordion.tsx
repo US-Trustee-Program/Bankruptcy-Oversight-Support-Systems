@@ -1,5 +1,6 @@
 import './TrusteeMatchVerificationAccordion.scss';
 import { useRef, useState } from 'react';
+import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
@@ -28,6 +29,84 @@ type TrusteeSearchLinkProps = {
   className?: string;
   onClick: () => void;
 };
+
+type OtherMatchesPaginationProps = {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+};
+
+function OtherMatchesPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: OtherMatchesPaginationProps) {
+  const pages: (number | '...')[] = [];
+
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else if (currentPage < 5) {
+    pages.push(1, 2, 3, 4, 5, '...', totalPages);
+  } else if (currentPage > totalPages - 4) {
+    pages.push(
+      1,
+      '...',
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    );
+  } else {
+    pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+  }
+
+  return (
+    <nav aria-label="Other matches pagination" className="usa-pagination">
+      <ul className="usa-pagination__list">
+        {currentPage > 1 && (
+          <li className="usa-pagination__item usa-pagination__arrow">
+            <PaginationButton
+              id="other-matches-previous"
+              isPrevious
+              onClick={() => onPageChange(currentPage - 1)}
+            />
+          </li>
+        )}
+        {pages.map((p, i) =>
+          p === '...' ? (
+            <li
+              key={`ellipsis-${i}`}
+              className="usa-pagination__item usa-pagination__overflow"
+              aria-label="ellipsis indicating non-visible pages"
+            >
+              <span>…</span>
+            </li>
+          ) : (
+            <li key={p} className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`other-matches-page-${p}`}
+                isCurrent={currentPage === p}
+                onClick={() => onPageChange(p as number)}
+              >
+                {p}
+              </PaginationButton>
+            </li>
+          ),
+        )}
+        {currentPage < totalPages && (
+          <li className="usa-pagination__item usa-pagination__arrow">
+            <PaginationButton
+              id="other-matches-next"
+              isNext
+              onClick={() => onPageChange(currentPage + 1)}
+            />
+          </li>
+        )}
+      </ul>
+    </nav>
+  );
+}
 
 function TrusteeSearchLink({
   linkLabel,
@@ -60,6 +139,8 @@ export interface TrusteeMatchVerificationAccordionProps {
 export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificationAccordionProps) {
   const { order, hidden, statusType, orderType, fieldHeaders, courts = [], onOrderUpdate } = props;
   const [isProcessing, setIsProcessing] = useState(false);
+  const [otherMatchesPage, setOtherMatchesPage] = useState(1);
+  const OTHER_MATCHES_PAGE_SIZE = 5;
   const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
@@ -222,12 +303,14 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
           <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
         </div>
         <div className="trustee-data-cell grid-col-2" data-cell="Address">
-          {rowAddressLines.map((line, i, arr) => (
-            <span key={i}>
-              {line}
-              {i < arr.length - 1 && <br />}
-            </span>
-          ))}
+          {rowAddressLines.length > 0
+            ? rowAddressLines.map((line, i, arr) => (
+                <span key={i}>
+                  {line}
+                  {i < arr.length - 1 && <br />}
+                </span>
+              ))
+            : 'Not Provided'}
         </div>
         <div className="trustee-data-cell grid-col-1" data-cell="Phone">
           {candidate.phone
@@ -382,12 +465,14 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     {order.dxtrTrustee.fullName}
                   </div>
                   <div className="trustee-data-cell grid-col-2" data-cell="Address">
-                    {addressLines.map((line, i) => (
-                      <span key={i}>
-                        {line}
-                        {i < addressLines.length - 1 && <br />}
-                      </span>
-                    ))}
+                    {addressLines.length > 0
+                      ? addressLines.map((line, i) => (
+                          <span key={i}>
+                            {line}
+                            {i < addressLines.length - 1 && <br />}
+                          </span>
+                        ))
+                      : 'Not Provided'}
                   </div>
                   <div className="trustee-data-cell grid-col-1" data-cell="Phone">
                     {legacy?.phone ?? 'Not Provided'}
@@ -426,10 +511,24 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                         {candidatesToShow.slice(1).length} matches
                       </p>
                       <CandidateTable
-                        candidates={candidatesToShow.slice(1)}
+                        candidates={candidatesToShow
+                          .slice(1)
+                          .slice(
+                            (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
+                            otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
+                          )}
                         onApprove={openConfirmation}
                         isProcessing={isProcessing}
                       />
+                      {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
+                        <OtherMatchesPagination
+                          currentPage={otherMatchesPage}
+                          totalPages={Math.ceil(
+                            candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
+                          )}
+                          onPageChange={setOtherMatchesPage}
+                        />
+                      )}
                     </>
                   ) : (
                     <>
@@ -469,7 +568,23 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                       <p className="other-matches-count">
                         {candidatesToShow.slice(1).length} matches
                       </p>
-                      <CandidateTable candidates={candidatesToShow.slice(1)} />
+                      <CandidateTable
+                        candidates={candidatesToShow
+                          .slice(1)
+                          .slice(
+                            (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
+                            otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
+                          )}
+                      />
+                      {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
+                        <OtherMatchesPagination
+                          currentPage={otherMatchesPage}
+                          totalPages={Math.ceil(
+                            candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
+                          )}
+                          onPageChange={setOtherMatchesPage}
+                        />
+                      )}
                     </>
                   ) : (
                     <>
