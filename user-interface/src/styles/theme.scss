@@ -1,5 +1,13 @@
 $cams-theme-background: white;
 
+a {
+  color: #005ea2;
+
+  &:hover {
+    color: #1a4480;
+  }
+}
+
 /* If we change the size of any H tags, we need to make sure we change the alignment of the
    Icon Buttons that are used often in H1 and H3 tags. Icon Button classes for those are
    defined below.
