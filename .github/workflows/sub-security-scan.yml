@@ -9,8 +9,6 @@ on:
         required: true
       AZ_SECURITY_SCAN_STORAGE_NAME:
         required: true
-      AZURE_CREDENTIALS:
-        required: false
 
 jobs:
   sca-scan:
