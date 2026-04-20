@@ -16,6 +16,7 @@ jobs:
   sca-scan:
     name: SCA Scan
     runs-on: ubuntu-latest
+    environment: security-scan
     permissions:
       contents: read
       security-events: write
@@ -91,6 +92,7 @@ jobs:
   sast-scan:
     name: SAST Scan
     runs-on: ubuntu-latest
+    environment: security-scan
     permissions:
       contents: read
       id-token: write
