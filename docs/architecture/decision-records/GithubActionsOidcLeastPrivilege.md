@@ -40,7 +40,19 @@ With secrets and variables moved to Key Vault, GitHub environments become lightw
 
 ### Key Vault RBAC for Per-Workflow Least Privilege
 
-A single Key Vault per deployment environment (`Main-Gov`, `Develop`) holds all configuration and secrets for that environment. Each workflow's federated identity is granted Key Vault Secrets User access only to the specific secrets it requires, enforced via Azure RBAC. This provides per-workflow least privilege without any additional GitHub infrastructure.
+Each workflow's federated identity is granted Key Vault Secrets User access only to the specific secrets it requires, enforced via Azure RBAC. This provides per-workflow least privilege without any additional GitHub infrastructure.
+
+### Key Vault Structure
+
+Three approaches were considered for organizing Key Vaults:
+
+1. **One vault per environment + one shared vault**: Each federated identity accesses two vaults — a shared vault for common values and an environment-specific vault. Adds complexity to every workflow (two vault lookups) and doesn't clearly bound blast radius.
+
+2. **Single vault with prefixed secret names**: One vault containing `MAIN_SLOT_NAME`, `DEVELOP_SLOT_NAME`, etc. Workflows must contain branching logic to select the right secret. Couples environment concerns into workflow code and makes RBAC scoping harder.
+
+3. **Two vaults, one per environment (main, branch)**: Each federated identity accesses exactly one vault — the one that matches its environment. All secrets use identical names across both vaults. No workflow branching logic needed.
+
+Option 3 is chosen. The `deploy-main` identity accesses the main vault; `deploy-branch` accesses the develop vault. Values that differ between environments naturally have different values in each vault. Values that are the same are duplicated — a deliberate tradeoff accepted because vault changes are rare and deliberate, the CI/CD code remains simple, and a compromise of one vault cannot affect the other.
 
 ## Decision
 
@@ -85,7 +97,9 @@ Each GitHub environment maps to one Azure federated credential on a dedicated ap
 
 ### Key Vault Migration
 
-All Azure resource names, configuration values, and application secrets currently stored in GitHub environment secrets and variables are migrated to the Azure Key Vault for each environment. Each workflow's federated identity is granted Key Vault Secrets User access to only the secrets it needs.
+All Azure resource names, configuration values, and application secrets currently stored in GitHub environment secrets and variables are migrated to the two Key Vaults (main and branch). Secret names are identical across both vaults. Each workflow's federated identity is granted Key Vault Secrets User access to only the secrets it needs within its vault.
+
+This infrastructure is a Flexion CI/CD concern only — it has no bearing on USTP environments or the USTP deployment pipeline. The Key Vaults and associated app registrations must be provisioned and managed via Bicep templates that are separate from the main CAMS Bicep module, so they are never inadvertently deployed to USTP.
 
 Secrets that must remain in GitHub Actions (no Azure dependency):
 
@@ -109,6 +123,8 @@ Accepted
 - Long-lived `AZURE_CREDENTIALS` secrets are eliminated from all workflows
 - Each workflow's Azure access is bounded to the duration of the run and scoped to its minimum required permissions
 - GitHub environments contain no secrets or variables; all environment-specific configuration lives in Azure Key Vault
-- Adding a new workflow that requires Azure access requires: creating a GitHub environment (no values), creating an Azure app registration with a federated credential, and granting Key Vault Secrets User access to the specific secrets needed
+- Two Key Vaults are maintained (main and branch) with identical secret names; any change to a vault secret is a two-step operation — update main vault, then branch vault
+- A compromise of one vault cannot affect the other environment
+- Adding a new workflow that requires Azure access requires: creating a GitHub environment (no values), creating an Azure app registration with a federated credential, and granting Key Vault Secrets User access to the specific secrets needed in each vault
 - The `PGP_SIGNING_PASSPHRASE` encrypted-input pattern is no longer needed once Key Vault migration is complete
 - Non-deployment workflows (security scan, DAST) that previously had no GitHub environment can now be given stable OIDC subjects without branch constraints
