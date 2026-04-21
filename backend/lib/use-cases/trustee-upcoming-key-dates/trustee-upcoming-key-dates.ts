@@ -19,6 +19,9 @@ function buildFields(input: TrusteeUpcomingKeyDatesInput): Partial<TrusteeUpcomi
       (fields as Record<string, string>)[field] = input[field]!;
     }
   }
+  if (input.lastAuditFiscalYear !== null) {
+    fields.lastAuditFiscalYear = input.lastAuditFiscalYear;
+  }
   return fields;
 }
 
@@ -39,6 +42,12 @@ function diffFields(
         (after as Record<string, string>)[field] = incomingValue;
       }
     }
+  }
+  const existingFiscalYear = existing?.lastAuditFiscalYear ?? null;
+  const incomingFiscalYear = input.lastAuditFiscalYear ?? null;
+  if (existingFiscalYear !== incomingFiscalYear) {
+    if (existingFiscalYear !== null) before.lastAuditFiscalYear = existingFiscalYear;
+    if (incomingFiscalYear !== null) after.lastAuditFiscalYear = incomingFiscalYear;
   }
   return { before, after };
 }
