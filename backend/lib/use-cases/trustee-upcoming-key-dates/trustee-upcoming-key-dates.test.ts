@@ -44,6 +44,7 @@ function buildMockInput(
     tirReview: null,
     upcomingFieldExam: null,
     upcomingIndependentAuditRequired: null,
+    lastAuditFiscalYear: null,
     ...overrides,
   };
 }

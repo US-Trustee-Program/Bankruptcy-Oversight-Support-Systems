@@ -44,6 +44,7 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tirReview: '1900-11-01',
   upcomingFieldExam: '2029-08-01',
   upcomingIndependentAuditRequired: '2032-08-01',
+  lastAuditFiscalYear: 2022,
 };
 
 function renderComponent() {
@@ -312,6 +313,123 @@ describe('PastKeyDatesForm', () => {
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
+    });
+  });
+
+  test('renders Last Audit Fiscal Year dropdown', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('last-audit-fiscal-year')).toBeInTheDocument();
+  });
+
+  test('pre-populates Last Audit Fiscal Year from API response', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('2022');
+    });
+  });
+
+  test('shows empty selection when lastAuditFiscalYear is absent', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('last-audit-fiscal-year')).toHaveValue('');
+    });
+  });
+
+  test('save includes lastAuditFiscalYear in PUT payload', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByTestId('last-audit-fiscal-year'), {
+      target: { value: '2023' },
+    });
+    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+    await waitFor(() =>
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ lastAuditFiscalYear: 2023 }),
+      ),
+    );
+  });
+
+  test('save sends lastAuditFiscalYear null when not selected', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
+
+    await waitFor(() =>
+      expect(putSpy).toHaveBeenCalledWith(
+        'trustee-001',
+        'appointment-001',
+        expect.objectContaining({ lastAuditFiscalYear: null }),
+      ),
+    );
+  });
+
+  test('renders updated label for Background Question', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Last Update to Background Questionnaire')).toBeInTheDocument();
+    });
+  });
+
+  test('renders updated label for Field Exam', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Field Exam Report Date')).toBeInTheDocument();
+    });
+  });
+
+  test('renders updated label for Audit', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Audit Report Date')).toBeInTheDocument();
+    });
+  });
+
+  test('renders updated label for TPR Submission', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('Trustee Interim Report Letter Date')).toBeInTheDocument();
     });
   });
 

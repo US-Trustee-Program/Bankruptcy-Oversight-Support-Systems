@@ -224,6 +224,7 @@ export default function UpcomingKeyDatesForm() {
       tirReview: form.tirReview ? isoToSentinel(form.tirReview) : null,
       upcomingFieldExam: form.upcomingFieldExam || null,
       upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
+      lastAuditFiscalYear: null,
     };
 
     const result = validateTrusteeUpcomingKeyDates(isoInput);

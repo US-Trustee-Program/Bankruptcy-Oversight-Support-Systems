@@ -35,6 +35,7 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   updatedOn: '2026-01-01T00:00:00.000Z',
   pastFieldExam: '2026-06-15',
   pastAudit: '2026-08-01',
+  lastAuditFiscalYear: 2024,
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '1900-09-15',
@@ -74,7 +75,7 @@ describe('UpcomingKeyDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(7);
+    expect(noDateElements.length).toBe(8);
   });
 
   test('renders all field labels', async () => {
@@ -128,7 +129,54 @@ describe('UpcomingKeyDates', () => {
     const items = list.querySelectorAll('li');
     expect(items[0]).toHaveAttribute('data-testid', 'field-exam-row');
     expect(items[1]).toHaveAttribute('data-testid', 'audit-row');
-    expect(items[2]).toHaveAttribute('data-testid', 'tpr-review-period-row');
+    expect(items[2]).toHaveAttribute('data-testid', 'audit-req-by-row');
+    expect(items[3]).toHaveAttribute('data-testid', 'tpr-review-period-row');
+  });
+
+  test('renders Audit req by as calculated year when lastAuditFiscalYear is set', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('audit-req-by-row')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('2027');
+  });
+
+  test('renders Audit req by as No date added when lastAuditFiscalYear is absent', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: { ...populatedDocument, lastAuditFiscalYear: undefined },
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('audit-req-by-row')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('audit-req-by-row')).toHaveTextContent('No date added');
+  });
+
+  test('Audit req by row appears before TPR Review Period row', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upcoming-key-dates-list')).toBeInTheDocument();
+    });
+
+    const list = screen.getByTestId('upcoming-key-dates-list');
+    const items = Array.from(list.querySelectorAll('li'));
+    const auditReqByIndex = items.findIndex(
+      (el) => el.getAttribute('data-testid') === 'audit-req-by-row',
+    );
+    const tprIndex = items.findIndex(
+      (el) => el.getAttribute('data-testid') === 'tpr-review-period-row',
+    );
+    expect(auditReqByIndex).toBeLessThan(tprIndex);
   });
 
   test('shows "No date added" for TPR Review Period when only start is defined', async () => {
@@ -206,7 +254,7 @@ describe('UpcomingKeyDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(7);
+    expect(noDateElements.length).toBe(8);
   });
 
   test('Edit button navigates to edit route', async () => {

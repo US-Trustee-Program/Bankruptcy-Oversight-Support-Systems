@@ -51,6 +51,7 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
   const backgroundQuestion = formatDateOrDefault(data?.pastBackgroundQuestion);
   const fieldExam = formatDateOrDefault(data?.pastFieldExam);
   const audit = formatDateOrDefault(data?.pastAudit);
+  const lastAuditFiscalYear = data?.lastAuditFiscalYear?.toString() ?? NO_DATE;
   const tprSubmission = formatDateOrDefault(data?.pastTprSubmission);
 
   if (isLoading) {
@@ -68,13 +69,18 @@ export default function PastKeyDates(props: Readonly<PastKeyDatesProps>) {
       listTestId="past-key-dates-list"
       fields={[
         {
-          label: 'Background Question',
+          label: 'Last Update to Background Questionnaire',
           value: backgroundQuestion,
           testId: 'past-background-question-row',
         },
-        { label: 'Field Exam', value: fieldExam, testId: 'past-field-exam-row' },
-        { label: 'Audit', value: audit, testId: 'past-audit-row' },
-        { label: 'TPR Submission', value: tprSubmission, testId: 'past-tpr-submission-row' },
+        { label: 'Field Exam Report Date', value: fieldExam, testId: 'past-field-exam-row' },
+        { label: 'Audit Report Date', value: audit, testId: 'past-audit-row' },
+        {
+          label: "Last Audit's Fiscal Year",
+          value: lastAuditFiscalYear,
+          testId: 'past-last-audit-fiscal-year-row',
+        },
+        { label: 'TIR Letter', value: tprSubmission, testId: 'past-tpr-submission-row' },
       ]}
     />
   );

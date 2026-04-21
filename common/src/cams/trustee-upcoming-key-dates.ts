@@ -207,6 +207,7 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tirReview?: string;
     upcomingFieldExam?: string;
     upcomingIndependentAuditRequired?: string;
+    lastAuditFiscalYear?: number;
   };
 
 export type TrusteeUpcomingKeyDatesInput = {
@@ -226,6 +227,7 @@ export type TrusteeUpcomingKeyDatesInput = {
   tirReview: string | null;
   upcomingFieldExam: string | null;
   upcomingIndependentAuditRequired: string | null;
+  lastAuditFiscalYear: number | null;
 };
 
 export type TrusteeUpcomingKeyDatesHistory = AbstractTrusteeHistory<
@@ -415,6 +417,11 @@ function startOfMonthIso(date: Date): string {
   const yyyy = String(date.getFullYear()).padStart(4, '0');
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   return `${yyyy}-${mm}-01`;
+}
+
+export function calculateAuditReqBy(lastAuditFiscalYear: number | null | undefined): number | null {
+  if (lastAuditFiscalYear == null) return null;
+  return lastAuditFiscalYear + 3;
 }
 
 export function calculateNextAuditDate(
