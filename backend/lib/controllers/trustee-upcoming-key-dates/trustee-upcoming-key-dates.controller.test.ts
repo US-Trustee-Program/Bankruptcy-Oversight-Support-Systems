@@ -147,8 +147,14 @@ describe('TrusteeUpcomingKeyDatesController', () => {
         tirReviewPeriodEnd: null,
         tirSubmission: null,
         tirReview: null,
-        upcomingFieldExam: null,
-        upcomingIndependentAuditRequired: null,
+        upcomingExamOrAuditYear: null,
+        upcomingExamOrAuditType: null,
+        tirFrequency: null,
+        tirReviewPeriodStart2: null,
+        tirReviewPeriodEnd2: null,
+        tirSubmission2: null,
+        tirReview2: null,
+        lastAuditFiscalYear: null,
         ...overrides,
       };
     }

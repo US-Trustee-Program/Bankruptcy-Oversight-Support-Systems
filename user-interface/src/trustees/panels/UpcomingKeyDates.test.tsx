@@ -33,8 +33,9 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   createdOn: '2026-01-01T00:00:00.000Z',
   updatedBy: SYSTEM_USER_REFERENCE,
   updatedOn: '2026-01-01T00:00:00.000Z',
-  pastFieldExam: '2026-06-15',
-  pastAudit: '2026-08-01',
+  upcomingExamOrAuditYear: 2029,
+  upcomingExamOrAuditType: 'Field Exam',
+  tirFrequency: 'ANNUAL',
   lastAuditFiscalYear: 2024,
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
@@ -44,8 +45,6 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
   tirReview: '1900-11-01',
-  upcomingFieldExam: '2029-08-01',
-  upcomingIndependentAuditRequired: '2032-08-01',
 };
 
 function renderComponent(props?: Partial<UpcomingKeyDatesProps>) {
@@ -75,7 +74,7 @@ describe('UpcomingKeyDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(8);
+    expect(noDateElements.length).toBe(7);
   });
 
   test('renders all field labels', async () => {
@@ -87,15 +86,13 @@ describe('UpcomingKeyDates', () => {
       expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Field Exam:')).toBeInTheDocument();
-    expect(screen.getByText('Audit:')).toBeInTheDocument();
-    expect(screen.getByText('TPR Review Period:')).toBeInTheDocument();
-    expect(screen.getByText('TPR Due:')).toBeInTheDocument();
+    expect(screen.getByText('Upcoming Exam / Audit:')).toBeInTheDocument();
+    expect(screen.getByText('Audit Required by:')).toBeInTheDocument();
+    expect(screen.getByText('Trustee Performance Review Period:')).toBeInTheDocument();
+    expect(screen.getByText('Trustee Performance Review Due:')).toBeInTheDocument();
     expect(screen.getByText('TIR Review Period:')).toBeInTheDocument();
     expect(screen.getByText('TIR Submission:')).toBeInTheDocument();
-    expect(screen.getByText('TIR Review:')).toBeInTheDocument();
-    expect(screen.queryByText('Next Field Exam / Independent Audit:')).not.toBeInTheDocument();
-    expect(screen.queryByText('Next Independent Audit Required:')).not.toBeInTheDocument();
+    expect(screen.getByText('TIR Due:')).toBeInTheDocument();
   });
 
   test('renders correctly formatted values when API returns populated document', async () => {
@@ -107,8 +104,7 @@ describe('UpcomingKeyDates', () => {
       expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('field-exam-row')).toHaveTextContent('08/01/2029');
-    expect(screen.getByTestId('audit-row')).toHaveTextContent('08/01/2032');
+    expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('2029');
     expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('04/01 - 03/31');
     expect(screen.getByTestId('tpr-due-row')).toHaveTextContent('09/15 EVEN');
     expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent('07/01 - 06/30');
@@ -116,7 +112,39 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('tir-review-row')).toHaveTextContent('11/01');
   });
 
-  test('Field Exam and Audit rows appear before TPR rows', async () => {
+  test('exam/audit row uses type as label when upcomingExamOrAuditType is set', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upcoming-exam-audit-row')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Field Exam:')).toBeInTheDocument();
+    expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('2029');
+  });
+
+  test('exam/audit row uses "Upcoming Exam / Audit" label when type is absent', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: {
+        ...populatedDocument,
+        upcomingExamOrAuditType: undefined,
+        upcomingExamOrAuditYear: undefined,
+      },
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('upcoming-exam-audit-row')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Upcoming Exam / Audit:')).toBeInTheDocument();
+    expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('No date added');
+  });
+
+  test('upcoming-exam-audit-row appears at index 0', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
@@ -127,10 +155,63 @@ describe('UpcomingKeyDates', () => {
 
     const list = screen.getByTestId('upcoming-key-dates-list');
     const items = list.querySelectorAll('li');
-    expect(items[0]).toHaveAttribute('data-testid', 'field-exam-row');
-    expect(items[1]).toHaveAttribute('data-testid', 'audit-row');
-    expect(items[2]).toHaveAttribute('data-testid', 'audit-req-by-row');
-    expect(items[3]).toHaveAttribute('data-testid', 'tpr-review-period-row');
+    expect(items[0]).toHaveAttribute('data-testid', 'upcoming-exam-audit-row');
+    expect(items[1]).toHaveAttribute('data-testid', 'audit-req-by-row');
+    expect(items[2]).toHaveAttribute('data-testid', 'tpr-review-period-row');
+  });
+
+  test('TIR Review Period shows both ranges joined with " & " for semi-annual', async () => {
+    const semiAnnualDoc: TrusteeUpcomingKeyDates = {
+      ...populatedDocument,
+      tirFrequency: 'SEMI_ANNUAL',
+      tirReviewPeriodStart: '1900-01-01',
+      tirReviewPeriodEnd: '1900-06-30',
+      tirReviewPeriodStart2: '1900-07-01',
+      tirReviewPeriodEnd2: '1900-12-31',
+      tirSubmission2: '1900-07-30',
+      tirReview2: '1900-09-28',
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: semiAnnualDoc });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tir-review-period-row')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('tir-review-period-row')).toHaveTextContent(
+      '01/01 - 06/30 & 07/01 - 12/31',
+    );
+  });
+
+  test('TIR Submission shows both dates joined with " & " for semi-annual', async () => {
+    const semiAnnualDoc: TrusteeUpcomingKeyDates = {
+      ...populatedDocument,
+      tirFrequency: 'SEMI_ANNUAL',
+      tirSubmission: '1900-10-15',
+      tirSubmission2: '1900-04-15',
+    };
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: semiAnnualDoc });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tir-submission-row')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('tir-submission-row')).toHaveTextContent('10/15 & 04/15');
+  });
+
+  test('TIR Due row is labeled "TIR Due"', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tir-review-row')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('TIR Due:')).toBeInTheDocument();
   });
 
   test('renders Audit req by as calculated year when lastAuditFiscalYear is set', async () => {
@@ -177,20 +258,6 @@ describe('UpcomingKeyDates', () => {
       (el) => el.getAttribute('data-testid') === 'tpr-review-period-row',
     );
     expect(auditReqByIndex).toBeLessThan(tprIndex);
-  });
-
-  test('shows "No date added" for TPR Review Period when only start is defined', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
-      data: { ...populatedDocument, tprReviewPeriodEnd: undefined },
-    });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('tpr-review-period-row')).toBeInTheDocument();
-    });
-
-    expect(screen.getByTestId('tpr-review-period-row')).toHaveTextContent('No date added');
   });
 
   test('shows "No date added" for TIR Review Period when only start is defined', async () => {
@@ -254,7 +321,7 @@ describe('UpcomingKeyDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(8);
+    expect(noDateElements.length).toBe(7);
   });
 
   test('Edit button navigates to edit route', async () => {
