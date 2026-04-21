@@ -13,10 +13,9 @@
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations)
 #   - The security scan storage account already exists
-#   - jq installed
 #
-# Re-running this script with EXISTING_APP_ID set will update the federated credential
-# subject in place without recreating the app registration or role assignment.
+# This script is idempotent — re-running it will update existing resources in place
+# rather than creating duplicates.
 
 set -euo pipefail
 
@@ -31,8 +30,6 @@ GITHUB_WORKFLOW="Continuous Deployment"
 GITHUB_ENVIRONMENT="security-scan"
 APP_NAME="cams-security-scan-oidc"
 CREDENTIAL_NAME="gha-security-scan"
-# Set to an existing app (client) ID to update rather than create. Leave blank to create new.
-EXISTING_APP_ID="${EXISTING_APP_ID:-}"
 # ---------------------------------------------------------------------------
 
 SUBJECT="repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:${GITHUB_WORKFLOW}:environment:${GITHUB_ENVIRONMENT}"
@@ -50,48 +47,43 @@ STORAGE_ID=$(az storage account show \
   --query id -o tsv)
 echo "    Storage ID: $STORAGE_ID"
 
-if [[ -n "$EXISTING_APP_ID" ]]; then
-  APP_ID="$EXISTING_APP_ID"
-  echo "==> Using existing app registration: $APP_ID"
-
-  echo "==> Updating federated identity credential..."
-  CREDENTIAL_ID=$(az ad app federated-credential list \
-    --id "$APP_ID" \
-    --query "[?name=='${CREDENTIAL_NAME}'].id" -o tsv)
-
-  if [[ -n "$CREDENTIAL_ID" ]]; then
-    az ad app federated-credential update \
-      --id "$APP_ID" \
-      --federated-credential-id "$CREDENTIAL_ID" \
-      --parameters "{
-        \"name\": \"${CREDENTIAL_NAME}\",
-        \"issuer\": \"https://token.actions.githubusercontent.com\",
-        \"subject\": \"${SUBJECT}\",
-        \"audiences\": [\"api://AzureADTokenExchange\"]
-      }"
-    echo "    Federated credential updated (subject: $SUBJECT)"
-  else
-    echo "    No existing credential named '${CREDENTIAL_NAME}' found — creating..."
-    az ad app federated-credential create \
-      --id "$APP_ID" \
-      --parameters "{
-        \"name\": \"${CREDENTIAL_NAME}\",
-        \"issuer\": \"https://token.actions.githubusercontent.com\",
-        \"subject\": \"${SUBJECT}\",
-        \"audiences\": [\"api://AzureADTokenExchange\"]
-      }"
-    echo "    Federated credential created (subject: $SUBJECT)"
-  fi
-else
-  echo "==> Creating app registration: $APP_NAME"
+echo "==> Looking up app registration: $APP_NAME"
+APP_ID=$(az ad app list --display-name "$APP_NAME" --query "[0].appId" -o tsv)
+if [[ -z "$APP_ID" ]]; then
+  echo "    Not found — creating..."
   APP_ID=$(az ad app create --display-name "$APP_NAME" --query appId -o tsv)
-  echo "    App (client) ID: $APP_ID"
+  echo "    Created app (client) ID: $APP_ID"
+else
+  echo "    Found existing app (client) ID: $APP_ID"
+fi
 
-  echo "==> Creating service principal for app..."
+echo "==> Looking up service principal for app..."
+SP_ID=$(az ad sp show --id "$APP_ID" --query id -o tsv 2>/dev/null || true)
+if [[ -z "$SP_ID" ]]; then
+  echo "    Not found — creating..."
   SP_ID=$(az ad sp create --id "$APP_ID" --query id -o tsv)
-  echo "    Service principal object ID: $SP_ID"
+  echo "    Created service principal object ID: $SP_ID"
+else
+  echo "    Found existing service principal object ID: $SP_ID"
+fi
 
-  echo "==> Adding federated identity credential..."
+echo "==> Updating federated identity credential..."
+CREDENTIAL_ID=$(az ad app federated-credential list \
+  --id "$APP_ID" \
+  --query "[?name=='${CREDENTIAL_NAME}'].id" -o tsv)
+
+if [[ -n "$CREDENTIAL_ID" ]]; then
+  az ad app federated-credential update \
+    --id "$APP_ID" \
+    --federated-credential-id "$CREDENTIAL_ID" \
+    --parameters "{
+      \"name\": \"${CREDENTIAL_NAME}\",
+      \"issuer\": \"https://token.actions.githubusercontent.com\",
+      \"subject\": \"${SUBJECT}\",
+      \"audiences\": [\"api://AzureADTokenExchange\"]
+    }"
+  echo "    Federated credential updated (subject: $SUBJECT)"
+else
   az ad app federated-credential create \
     --id "$APP_ID" \
     --parameters "{
@@ -101,21 +93,29 @@ else
       \"audiences\": [\"api://AzureADTokenExchange\"]
     }"
   echo "    Federated credential created (subject: $SUBJECT)"
+fi
 
-  echo "==> Assigning Storage Blob Data Contributor scoped to storage account..."
+echo "==> Checking Storage Blob Data Contributor role assignment..."
+EXISTING_ROLE=$(az role assignment list \
+  --assignee "$SP_ID" \
+  --role "Storage Blob Data Contributor" \
+  --scope "$STORAGE_ID" \
+  --query "[0].id" -o tsv 2>/dev/null || true)
+
+if [[ -z "$EXISTING_ROLE" ]]; then
   az role assignment create \
     --assignee-object-id "$SP_ID" \
     --assignee-principal-type ServicePrincipal \
     --role "Storage Blob Data Contributor" \
     --scope "$STORAGE_ID"
   echo "    Role assigned."
+else
+  echo "    Role already assigned — skipping."
 fi
 
 echo ""
 echo "==> Done."
-if [[ -z "$EXISTING_APP_ID" ]]; then
-  echo "    Add the following as GitHub Actions repository secrets (not variables):"
-  echo "    AZ_SECURITY_SCAN_CLIENT_ID = $APP_ID"
-  echo "    AZ_TENANT_ID               = $TENANT_ID"
-  echo "    AZ_SUBSCRIPTION_ID         = $SUBSCRIPTION_ID"
-fi
+echo "    Ensure the following are set as GitHub Actions repository secrets:"
+echo "    AZ_SECURITY_SCAN_CLIENT_ID = $APP_ID"
+echo "    AZ_TENANT_ID               = $TENANT_ID"
+echo "    AZ_SUBSCRIPTION_ID         = $SUBSCRIPTION_ID"
