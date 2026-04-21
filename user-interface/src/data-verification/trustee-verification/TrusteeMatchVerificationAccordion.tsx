@@ -1,5 +1,5 @@
 import './TrusteeMatchVerificationAccordion.scss';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
@@ -149,9 +149,15 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   const courtDetails = courts.find((c) => c.courtDivisionCode === divisionCode);
   const courtName = order.courtName ?? courtDetails?.courtName ?? order.courtId;
 
+  const isMultipleMatch =
+    order.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch;
   const isInactiveStatus =
     order.mismatchReason === TrusteeAppointmentSyncErrorCode.PerfectMatchInactiveStatus;
-  const taskTypeLabel = isInactiveStatus ? 'Inactive trustee' : orderType.get(order.orderType);
+  const taskTypeLabel = isMultipleMatch
+    ? 'Multiple Match'
+    : isInactiveStatus
+      ? 'Inactive trustee'
+      : orderType.get(order.orderType);
 
   const { legacy } = order.dxtrTrustee;
   const addressLines = [
@@ -160,9 +166,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     legacy?.address3,
     legacy?.cityStateZipCountry,
   ].filter(Boolean) as string[];
-
-  const isMultipleMatch =
-    order.mismatchReason === TrusteeAppointmentSyncErrorCode.MultipleTrusteesMatch;
 
   // For multiple match scenarios, show all candidates ranked by score
   // For other scenarios, show only the strongest match
@@ -189,6 +192,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   } else {
     viewMode = 'no-candidates';
   }
+
+  const otherMatchesCount = isMultipleMatch ? candidatesToShow.slice(1).length : 0;
+  useEffect(() => {
+    setOtherMatchesPage(1);
+  }, [order.id, otherMatchesCount]);
 
   async function approveTrustee({
     trusteeId,
@@ -302,6 +310,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         >
           <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
         </div>
+
         <div className="trustee-data-cell grid-col-2" data-cell="Address">
           {rowAddressLines.length > 0
             ? rowAddressLines.map((line, i, arr) => (
@@ -350,6 +359,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   type CandidateTableProps = {
     candidates: CandidateScore[];
+
     onApprove?: (candidate: CandidateScore) => void;
     isProcessing?: boolean;
   };
@@ -436,7 +446,12 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             </p>
           ) : (
             <>
-              {isInactiveStatus ? (
+              {isMultipleMatch ? (
+                <p className="problem-statement">
+                  Multiple potential trustee matches found for case: {caseLink}. Please review the
+                  candidates below and select the correct trustee.
+                </p>
+              ) : isInactiveStatus ? (
                 <p className="problem-statement">
                   Trustee is inactive in CAMS but was appointed to case: {caseLink}
                 </p>
@@ -507,7 +522,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                           search here.
                         </button>
                       </p>
-                      <p className="other-matches-count">
+                      <p className="other-matches-count" data-testid="other-matches-count">
                         {candidatesToShow.slice(1).length} matches
                       </p>
                       <CandidateTable
@@ -565,7 +580,7 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                           search here.
                         </button>
                       </p>
-                      <p className="other-matches-count">
+                      <p className="other-matches-count" data-testid="other-matches-count">
                         {candidatesToShow.slice(1).length} matches
                       </p>
                       <CandidateTable

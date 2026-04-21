@@ -71,6 +71,28 @@ describe('StaffAssignmentRowInternal', () => {
     });
   });
 
+  test('should update leadTrialAttorney on successful assignment update', async () => {
+    const { state, actions } = Internal.useStateActions(initialState);
+
+    const leadAttorney = MockData.getAttorneyUser();
+
+    actions.updateAssignmentsCallback({
+      status: 'success',
+      apiResult: {},
+      bCase,
+      leadTrialAttorney: { id: leadAttorney.id, name: leadAttorney.name },
+      previouslySelectedList: [],
+      selectedAttorneyList: [{ id: leadAttorney.id, name: leadAttorney.name }],
+    });
+
+    await waitFor(() => {
+      expect(state.bCase.leadTrialAttorney).toEqual({
+        id: leadAttorney.id,
+        name: leadAttorney.name,
+      });
+    });
+  });
+
   test('should handle failed assignment update', async () => {
     const errorMessage = 'failed';
 

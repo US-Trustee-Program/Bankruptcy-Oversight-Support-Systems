@@ -525,6 +525,28 @@ describe('assignAttorneyModalUseCase tests', () => {
     );
   });
 
+  test('show should deduplicate assignments with the same userId', () => {
+    const duplicateAssignment = { userId: 'att-1', name: 'Attorney One' };
+    const localSetCheckListValues = vi.fn();
+    const localUseCase = buildLocalUseCase({
+      setBCase: vi.fn(),
+      setCheckListValues: localSetCheckListValues,
+      setPreviouslySelectedList: vi.fn(),
+      setSubmissionCallback: vi.fn(),
+    });
+
+    localUseCase.show({
+      bCase: {
+        caseId: 'c1',
+        assignments: [duplicateAssignment, duplicateAssignment],
+      },
+      callback: vi.fn(),
+    } as never);
+
+    const calledWith = localSetCheckListValues.mock.calls[0][0];
+    expect(calledWith.filter((a: { id: string }) => a.id === 'att-1')).toHaveLength(1);
+  });
+
   test('show should call setSubmissionCallback when a callback is provided', () => {
     const mockCallback = vi.fn();
     const localSetSubmissionCallback = vi.fn();
