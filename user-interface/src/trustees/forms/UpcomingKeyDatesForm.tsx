@@ -33,6 +33,7 @@ type FormState = {
   tirReview: string;
   upcomingFieldExam: string;
   upcomingIndependentAuditRequired: string;
+  lastAuditFiscalYear: number | null;
 };
 
 const EMPTY_FORM: FormState = {
@@ -50,6 +51,7 @@ const EMPTY_FORM: FormState = {
   tirReview: '',
   upcomingFieldExam: '',
   upcomingIndependentAuditRequired: '',
+  lastAuditFiscalYear: null,
 };
 
 export default function UpcomingKeyDatesForm() {
@@ -135,6 +137,7 @@ export default function UpcomingKeyDatesForm() {
             tirReview: data.tirReview ?? '',
             upcomingFieldExam: data.upcomingFieldExam ?? '',
             upcomingIndependentAuditRequired: data.upcomingIndependentAuditRequired ?? '',
+            lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
           });
         }
       })
@@ -224,7 +227,7 @@ export default function UpcomingKeyDatesForm() {
       tirReview: form.tirReview ? isoToSentinel(form.tirReview) : null,
       upcomingFieldExam: form.upcomingFieldExam || null,
       upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
-      lastAuditFiscalYear: null,
+      lastAuditFiscalYear: form.lastAuditFiscalYear,
     };
 
     const result = validateTrusteeUpcomingKeyDates(isoInput);
