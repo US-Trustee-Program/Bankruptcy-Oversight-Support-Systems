@@ -114,6 +114,10 @@ function validateDateFields(): ValidatorFunction {
       'tirReviewPeriodEnd',
       'tirSubmission',
       'tirReview',
+      'tirReviewPeriodStart2',
+      'tirReviewPeriodEnd2',
+      'tirSubmission2',
+      'tirReview2',
     ];
 
     sentinelFields.forEach((field) => {
@@ -129,8 +133,6 @@ function validateDateFields(): ValidatorFunction {
       'pastFieldExam',
       'pastAudit',
       'pastTprSubmission',
-      'upcomingFieldExam',
-      'upcomingIndependentAuditRequired',
     ];
 
     fullDateFields.forEach((field) => {
@@ -158,6 +160,12 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'tirReviewPeriodEnd',
       'TIR Review Period Start',
       'TIR Review Period End',
+    ),
+    requirePair(
+      'tirReviewPeriodStart2',
+      'tirReviewPeriodEnd2',
+      'TIR Review Period 2 Start',
+      'TIR Review Period 2 End',
     ),
     requirePair('tprDue', 'tprDueYearType', 'TPR Due', 'TPR Due Year Type'),
   ],
@@ -205,8 +213,13 @@ export type TrusteeUpcomingKeyDates = Auditable &
     tirReviewPeriodEnd?: string;
     tirSubmission?: string;
     tirReview?: string;
-    upcomingFieldExam?: string;
-    upcomingIndependentAuditRequired?: string;
+    upcomingExamOrAuditYear?: number;
+    upcomingExamOrAuditType?: 'Field Exam' | 'Audit';
+    tirFrequency?: 'ANNUAL' | 'SEMI_ANNUAL';
+    tirReviewPeriodStart2?: string;
+    tirReviewPeriodEnd2?: string;
+    tirSubmission2?: string;
+    tirReview2?: string;
     lastAuditFiscalYear?: number;
   };
 
@@ -225,8 +238,13 @@ export type TrusteeUpcomingKeyDatesInput = {
   tirReviewPeriodEnd: string | null;
   tirSubmission: string | null;
   tirReview: string | null;
-  upcomingFieldExam: string | null;
-  upcomingIndependentAuditRequired: string | null;
+  upcomingExamOrAuditYear: number | null;
+  upcomingExamOrAuditType: 'Field Exam' | 'Audit' | null;
+  tirFrequency: 'ANNUAL' | 'SEMI_ANNUAL' | null;
+  tirReviewPeriodStart2: string | null;
+  tirReviewPeriodEnd2: string | null;
+  tirSubmission2: string | null;
+  tirReview2: string | null;
   lastAuditFiscalYear: number | null;
 };
 
@@ -250,8 +268,10 @@ type DateField =
   | 'tirReviewPeriodEnd'
   | 'tirSubmission'
   | 'tirReview'
-  | 'upcomingFieldExam'
-  | 'upcomingIndependentAuditRequired';
+  | 'tirReviewPeriodStart2'
+  | 'tirReviewPeriodEnd2'
+  | 'tirSubmission2'
+  | 'tirReview2';
 
 export const DATE_FIELDS: DateField[] = [
   'pastBackgroundQuestion',
@@ -265,13 +285,15 @@ export const DATE_FIELDS: DateField[] = [
   'tirReviewPeriodEnd',
   'tirSubmission',
   'tirReview',
-  'upcomingFieldExam',
-  'upcomingIndependentAuditRequired',
+  'tirReviewPeriodStart2',
+  'tirReviewPeriodEnd2',
+  'tirSubmission2',
+  'tirReview2',
 ];
 
-type TextField = 'tprDueYearType';
+type TextField = 'tprDueYearType' | 'tirFrequency';
 
-export const TEXT_FIELDS: TextField[] = ['tprDueYearType'];
+export const TEXT_FIELDS: TextField[] = ['tprDueYearType', 'tirFrequency'];
 
 export function isoToMMDDYYYY(iso: string): string {
   const [year, month, day] = iso.split('-');

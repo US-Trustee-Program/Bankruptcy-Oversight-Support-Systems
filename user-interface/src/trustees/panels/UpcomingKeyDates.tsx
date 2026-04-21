@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
-  isoToMMDDYYYY,
   isoToMMDD,
   isoRangeToMMDD,
   calculateAuditReqBy,
@@ -50,12 +49,14 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
     });
   }
 
-  const fieldExam = data?.upcomingFieldExam ? isoToMMDDYYYY(data.upcomingFieldExam) : NO_DATE;
-  const audit = data?.upcomingIndependentAuditRequired
-    ? isoToMMDDYYYY(data.upcomingIndependentAuditRequired)
+  const upcomingExamOrAuditLabel = data?.upcomingExamOrAuditType ?? 'Upcoming Exam / Audit';
+  const upcomingExamOrAuditValue = data?.upcomingExamOrAuditYear
+    ? String(data.upcomingExamOrAuditYear)
     : NO_DATE;
+
   const auditReqByYear = calculateAuditReqBy(data?.lastAuditFiscalYear);
   const auditReqBy = auditReqByYear !== null ? String(auditReqByYear) : NO_DATE;
+
   const tprReviewPeriod =
     data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
       ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
@@ -64,12 +65,35 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
     data?.tprDue && data?.tprDueYearType
       ? `${isoToMMDD(data.tprDue)} ${data.tprDueYearType}`
       : NO_DATE;
-  const tirReviewPeriod =
-    data?.tirReviewPeriodStart && data?.tirReviewPeriodEnd
-      ? isoRangeToMMDD(data.tirReviewPeriodStart, data.tirReviewPeriodEnd)
-      : NO_DATE;
-  const tirSubmission = data?.tirSubmission ? isoToMMDD(data.tirSubmission) : NO_DATE;
-  const tirReview = data?.tirReview ? isoToMMDD(data.tirReview) : NO_DATE;
+
+  let tirReviewPeriod = NO_DATE;
+  if (data?.tirReviewPeriodStart && data?.tirReviewPeriodEnd) {
+    const period1 = isoRangeToMMDD(data.tirReviewPeriodStart, data.tirReviewPeriodEnd);
+    if (data.tirReviewPeriodStart2 && data.tirReviewPeriodEnd2) {
+      const period2 = isoRangeToMMDD(data.tirReviewPeriodStart2, data.tirReviewPeriodEnd2);
+      tirReviewPeriod = `${period1} & ${period2}`;
+    } else {
+      tirReviewPeriod = period1;
+    }
+  }
+
+  let tirSubmission = NO_DATE;
+  if (data?.tirSubmission) {
+    if (data.tirSubmission2) {
+      tirSubmission = `${isoToMMDD(data.tirSubmission)} & ${isoToMMDD(data.tirSubmission2)}`;
+    } else {
+      tirSubmission = isoToMMDD(data.tirSubmission);
+    }
+  }
+
+  let tirReview = NO_DATE;
+  if (data?.tirReview) {
+    if (data.tirReview2) {
+      tirReview = `${isoToMMDD(data.tirReview)} & ${isoToMMDD(data.tirReview2)}`;
+    } else {
+      tirReview = isoToMMDD(data.tirReview);
+    }
+  }
 
   if (isLoading) {
     return <LoadingSpinner id="upcoming-key-dates-loading" />;
@@ -85,14 +109,25 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
       testId="upcoming-key-dates-card"
       listTestId="upcoming-key-dates-list"
       fields={[
-        { label: 'Field Exam', value: fieldExam, testId: 'field-exam-row' },
-        { label: 'Audit', value: audit, testId: 'audit-row' },
+        {
+          label: upcomingExamOrAuditLabel,
+          value: upcomingExamOrAuditValue,
+          testId: 'upcoming-exam-audit-row',
+        },
         { label: 'Audit Required by', value: auditReqBy, testId: 'audit-req-by-row' },
-        { label: 'TPR Review Period', value: tprReviewPeriod, testId: 'tpr-review-period-row' },
-        { label: 'TPR Due', value: tprDue, testId: 'tpr-due-row' },
+        {
+          label: 'Trustee Performance Review Period',
+          value: tprReviewPeriod,
+          testId: 'tpr-review-period-row',
+        },
+        {
+          label: 'Trustee Performance Review Due',
+          value: tprDue,
+          testId: 'tpr-due-row',
+        },
         { label: 'TIR Review Period', value: tirReviewPeriod, testId: 'tir-review-period-row' },
         { label: 'TIR Submission', value: tirSubmission, testId: 'tir-submission-row' },
-        { label: 'TIR Review', value: tirReview, testId: 'tir-review-row' },
+        { label: 'TIR Due', value: tirReview, testId: 'tir-review-row' },
       ]}
     />
   );
