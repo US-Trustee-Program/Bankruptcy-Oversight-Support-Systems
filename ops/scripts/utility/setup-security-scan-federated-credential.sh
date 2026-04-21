@@ -114,7 +114,7 @@ fi
 echo ""
 echo "==> Done."
 if [[ -z "$EXISTING_APP_ID" ]]; then
-  echo "    Add the following as GitHub Actions repository variables (not secrets):"
+  echo "    Add the following as GitHub Actions repository secrets (not variables):"
   echo "    AZ_SECURITY_SCAN_CLIENT_ID = $APP_ID"
   echo "    AZ_TENANT_ID               = $TENANT_ID"
   echo "    AZ_SUBSCRIPTION_ID         = $SUBSCRIPTION_ID"
