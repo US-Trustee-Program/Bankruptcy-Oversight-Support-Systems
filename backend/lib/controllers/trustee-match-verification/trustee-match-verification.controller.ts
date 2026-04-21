@@ -101,7 +101,7 @@ export class TrusteeMatchVerificationController {
       enrichedCandidates,
     );
 
-    const courtName = this.resolveCourtName(verification, courts);
+    const courtName = this.resolveCourtName(verification, courts) ?? verification.courtName;
 
     return {
       ...verification,
@@ -140,11 +140,20 @@ export class TrusteeMatchVerificationController {
     courts: CourtDivisionDetails[],
   ): string | undefined {
     // Enrich court name so the UI can display it without needing the USTP courts list.
+    // Includes division name (e.g. "Southern District of New York - Manhattan").
     try {
       const { divisionCode } = getCaseIdParts(verification.caseId);
-      return this.findCourt(courts, divisionCode, verification.courtId)?.courtName;
+      const court = this.findCourt(courts, divisionCode, verification.courtId);
+      if (!court) return undefined;
+      return court.courtDivisionName
+        ? `${court.courtName} - ${court.courtDivisionName}`
+        : court.courtName;
     } catch {
-      return this.findCourt(courts, undefined, verification.courtId)?.courtName;
+      const court = this.findCourt(courts, undefined, verification.courtId);
+      if (!court) return undefined;
+      return court.courtDivisionName
+        ? `${court.courtName} - ${court.courtDivisionName}`
+        : court.courtName;
     }
   }
 

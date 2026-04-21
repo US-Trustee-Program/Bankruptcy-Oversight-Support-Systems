@@ -5,16 +5,24 @@
 }
 
 .trustee-match-content {
-  a {
-    color: #005ea2;
+  p.problem-statement {
+    margin: 1.5rem 0;
+    font-size: 1rem;
   }
 
-  p.problem-statement {
-    margin: 1.81rem 0 1.81rem 0;
+  p.other-matches-subtext {
+    font-size: 1rem;
+    margin: 1.5rem 0;
+  }
+
+  p.other-matches-count {
+    font-weight: bold;
+    margin: 0 0 0.75rem;
   }
 
   .trustee-data-grid {
     margin-bottom: 1.5rem;
+    overflow-x: auto;
 
     .trustee-data-header {
       font-weight: bold;
@@ -70,24 +78,26 @@
     }
   }
 
-  .search-trustee-inline-link {
+  .search-trustee-link {
     background: none;
     border: none;
     padding: 0;
-    color: #005ea2;
-    text-decoration: underline;
     cursor: pointer;
     font-size: inherit;
     font-family: inherit;
-  }
+    color: #005ea2;
+    text-decoration: underline;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    svg {
+      width: 1.275rem;
+      height: 1.275rem;
+    }
 
-  .candidate-description {
-    margin: 0.5rem 0 0.25rem;
-  }
-
-  .candidate-count {
-    font-weight: 600;
-    margin: 0.25rem 0 0.75rem;
+    &:hover {
+      color: #1a4480;
+    }
   }
 
   .search-link-container {
@@ -98,13 +108,6 @@
     }
     .search-trustee-link {
       margin-top: 0.5rem;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      svg {
-        width: 1.275rem;
-        height: 1.275rem;
-      }
     }
   }
 

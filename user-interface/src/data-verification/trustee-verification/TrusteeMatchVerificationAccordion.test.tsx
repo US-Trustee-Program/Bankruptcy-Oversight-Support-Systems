@@ -409,7 +409,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(content.textContent).toContain('555-0002');
   });
 
-  test('should render Branch B with empty phone, email, and no appointments when candidate has no enrichment', () => {
+  test('should render Branch B with "Not Provided" for phone and email when candidate has no enrichment', () => {
     renderWithProps({
       order: {
         ...sampleOrder,
@@ -430,6 +430,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(screen.queryByTestId('approve-candidate-trustee-1')).not.toBeInTheDocument();
     const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
     expect(content.textContent).toContain('Bare Candidate');
+    expect(content.textContent).toContain('Not Provided');
   });
 
   test('should use updatedOn as date fallback when createdOn is absent, and render phone without extension in Branch B', () => {
@@ -483,102 +484,18 @@ describe('TrusteeMatchVerificationAccordion', () => {
     expect(content.textContent).not.toContain('x555');
   });
 
-  describe('Slice 3 — reject flow', () => {
-    test('renders reject-button alongside approve-button for pending order with candidate', () => {
+  describe('reject flow', () => {
+    test('does not render reject-button for pending order with candidate', () => {
       renderWithProps({ order: sampleOrderWithCandidates });
 
       expect(screen.getByTestId('approve-candidate-trustee-1')).toBeInTheDocument();
-      expect(screen.getByTestId('reject-button')).toBeInTheDocument();
+      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
     });
 
     test('reject-button does not appear for non-pending orders (Branch B)', () => {
       renderWithProps({ order: { ...sampleOrderWithCandidates, status: 'rejected' } });
 
       expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
-    });
-
-    test('clicking reject-button opens the rejection modal', async () => {
-      renderWithProps({ order: sampleOrderWithCandidates });
-
-      fireEvent.click(screen.getByTestId('reject-button'));
-
-      await waitFor(() => {
-        expect(
-          document.getElementById(
-            `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-          ),
-        ).toBeInTheDocument();
-      });
-    });
-
-    test('submitting reject with a reason calls patchTrusteeVerificationOrderRejection with reason', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
-      renderWithProps({ order: sampleOrderWithCandidates });
-
-      fireEvent.click(screen.getByTestId('reject-button'));
-      fireEvent.change(
-        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
-        { target: { value: 'Not the right person' } },
-      );
-      const modalSubmit = document.getElementById(
-        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-      );
-      fireEvent.click(modalSubmit!);
-
-      await waitFor(() => {
-        expect(Api2.patchTrusteeVerificationOrderRejection).toHaveBeenCalledWith(
-          sampleOrderWithCandidates.id,
-          'Not the right person',
-        );
-      });
-    });
-
-    test('on reject success calls onOrderUpdate with Warning alert and rejected status', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
-      const onOrderUpdate = vi.fn();
-      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
-
-      fireEvent.click(screen.getByTestId('reject-button'));
-      fireEvent.change(
-        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
-        { target: { value: 'Reject reason' } },
-      );
-      const modalSubmit = document.getElementById(
-        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-      );
-      fireEvent.click(modalSubmit!);
-
-      await waitFor(() => {
-        expect(onOrderUpdate).toHaveBeenCalledWith(
-          { message: 'Trustee match rejected.', type: UswdsAlertStyle.Warning, timeOut: 8 },
-          expect.objectContaining({ status: 'rejected' }),
-        );
-      });
-    });
-
-    test('on reject failure calls onOrderUpdate with error alert and original order', async () => {
-      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockRejectedValue(
-        new Error('Network error'),
-      );
-      const onOrderUpdate = vi.fn();
-      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
-
-      fireEvent.click(screen.getByTestId('reject-button'));
-      fireEvent.change(
-        screen.getByTestId(`rejection-reason-input-${sampleOrderWithCandidates.id}`),
-        { target: { value: 'Reject reason' } },
-      );
-      const modalSubmit = document.getElementById(
-        `trustee-rejection-modal-${sampleOrderWithCandidates.id}-submit-button`,
-      );
-      fireEvent.click(modalSubmit!);
-
-      await waitFor(() => {
-        expect(onOrderUpdate).toHaveBeenCalledWith(
-          { message: 'Failed to reject trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
-          sampleOrderWithCandidates,
-        );
-      });
     });
   });
 
@@ -694,6 +611,218 @@ describe('TrusteeMatchVerificationAccordion', () => {
           sampleOrder,
         );
       });
+    });
+  });
+
+  describe('"Not Provided" for missing contact fields', () => {
+    test('shows "Not Provided" for phone and email when DXTR trustee has no legacy contact info', () => {
+      renderWithProps({
+        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe' } },
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      const matches = content.textContent?.match(/Not Provided/g) ?? [];
+      expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
+
+    test('shows "Not Provided" for phone and email when candidate has no contact info', () => {
+      renderWithProps({
+        order: {
+          ...sampleOrder,
+          matchCandidates: [
+            {
+              trusteeId: 'trustee-no-contact',
+              trusteeName: 'No Contact',
+              totalScore: 80,
+              addressScore: 80,
+              districtDivisionScore: 80,
+              chapterScore: 80,
+            },
+          ],
+        },
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      const matches = content.textContent?.match(/Not Provided/g) ?? [];
+      expect(matches.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('"Not Provided" for missing address', () => {
+    test('shows "Not Provided" in address cell when DXTR trustee has no legacy address', () => {
+      renderWithProps({
+        order: { ...sampleOrder, dxtrTrustee: { fullName: 'John Doe' } },
+      });
+
+      const addressCell = screen
+        .getByTestId(`accordion-content-${sampleOrder.id}`)
+        .querySelector('[data-cell="Address"]');
+      expect(addressCell?.textContent).toBe('Not Provided');
+    });
+
+    test('shows "Not Provided" in address cell when candidate has no address', () => {
+      renderWithProps({
+        order: {
+          ...sampleOrder,
+          matchCandidates: [
+            {
+              trusteeId: 'trustee-no-addr',
+              trusteeName: 'No Address',
+              totalScore: 80,
+              addressScore: 80,
+              districtDivisionScore: 80,
+              chapterScore: 80,
+            },
+          ],
+        },
+      });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      const addressCells = content.querySelectorAll('[data-cell="Address"]');
+      const candidateAddressCell = Array.from(addressCells).find(
+        (el) => el.textContent === 'Not Provided',
+      );
+      expect(candidateAddressCell).toBeInTheDocument();
+    });
+  });
+
+  describe('Other Potential Matches pagination', () => {
+    function makeMultipleMatchOrder(totalCandidates: number): TrusteeMatchVerification {
+      return {
+        ...sampleOrder,
+        mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+        matchCandidates: Array.from({ length: totalCandidates }, (_, i) => ({
+          trusteeId: `trustee-${i + 1}`,
+          trusteeName: `Candidate ${i + 1}`,
+          totalScore: 100 - i,
+          addressScore: 90,
+          districtDivisionScore: 90,
+          chapterScore: 90,
+        })),
+      };
+    }
+
+    test('does not show pagination when other matches are 5 or fewer', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(6) }); // 1 strongest + 5 others
+
+      expect(screen.queryByTestId('pagination-button-other-matches-next')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('pagination-button-other-matches-previous'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('shows pagination when other matches exceed 5', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) }); // 1 strongest + 6 others
+
+      expect(screen.getByTestId('pagination-button-other-matches-next')).toBeInTheDocument();
+    });
+
+    test('page 1 shows first 5 other matches and not the 6th', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) });
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('Candidate 2'); // first other match
+      expect(content.textContent).toContain('Candidate 6'); // 5th other match
+      expect(content.textContent).not.toContain('Candidate 7'); // 6th other match (page 2)
+    });
+
+    test('clicking next shows the next page of other matches', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) });
+
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('Candidate 7');
+      expect(content.textContent).not.toContain('Candidate 2');
+    });
+
+    test('previous button is not shown on the first page', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) });
+
+      expect(
+        screen.queryByTestId('pagination-button-other-matches-previous'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('next button is not shown on the last page', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(7) });
+
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+
+      expect(screen.queryByTestId('pagination-button-other-matches-next')).not.toBeInTheDocument();
+    });
+
+    test('clicking a page number navigates to that page', () => {
+      renderWithProps({ order: makeMultipleMatchOrder(12) }); // 1 strongest + 11 others = 3 pages
+
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-page-3'));
+
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('Candidate 12'); // last candidate on page 3
+      expect(content.textContent).not.toContain('Candidate 2');
+    });
+  });
+
+  describe('heading structure', () => {
+    test('no-candidates view shows no CAMS heading above search link', () => {
+      renderWithProps();
+
+      expect(
+        screen.queryByRole('heading', { name: /CAMS Strongest Match/, hidden: true }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: /CAMS Suggested Matches/, hidden: true }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('single-match view shows "CAMS Strongest Match" but no sub-headings', () => {
+      renderWithProps({ order: sampleOrderWithCandidates });
+
+      expect(
+        screen.getByRole('heading', { name: 'CAMS Strongest Match', hidden: true }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', { name: 'Other Potential Matches', hidden: true }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('multiple-match view shows "CAMS Strongest Match" and "Other Potential Matches" headings', () => {
+      renderWithProps({
+        order: {
+          ...sampleOrder,
+          mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+          matchCandidates: [
+            {
+              trusteeId: 'trustee-high',
+              trusteeName: 'High Score',
+              totalScore: 90,
+              addressScore: 90,
+              districtDivisionScore: 90,
+              chapterScore: 90,
+            },
+            {
+              trusteeId: 'trustee-low',
+              trusteeName: 'Low Score',
+              totalScore: 70,
+              addressScore: 70,
+              districtDivisionScore: 70,
+              chapterScore: 70,
+            },
+          ],
+        },
+      });
+
+      expect(
+        screen.queryByRole('heading', { name: 'CAMS Suggested Matches', hidden: true }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'CAMS Strongest Match', hidden: true }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('heading', { name: 'Other Potential Matches', hidden: true }),
+      ).toBeInTheDocument();
+      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
+      expect(content.textContent).toContain('High Score');
     });
   });
 
@@ -837,7 +966,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
     test('displays candidates sorted by totalScore descending (highest first)', () => {
       renderWithProps({ order: multipleCandidatesOrder });
 
-      const candidateSection = screen.getByTestId('multiple-candidates-info');
+      const candidateSection = screen.getByTestId('candidate-info');
       const names = candidateSection.querySelectorAll('[data-cell="Name"]');
       expect(names[0].textContent).toContain('High Score Trustee');
       expect(names[1].textContent).toContain('Mid Score Trustee');
@@ -857,7 +986,7 @@ describe('TrusteeMatchVerificationAccordion', () => {
 
       const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
       expect(content.textContent).toContain('Results are ordered from strongest to weakest match');
-      expect(screen.getByTestId('candidate-count').textContent).toBe('3 matches');
+      expect(screen.getByTestId('other-matches-count').textContent).toBe('2 matches');
     });
 
     test('shows "search here" inline link in description', () => {
@@ -888,12 +1017,12 @@ describe('TrusteeMatchVerificationAccordion', () => {
       );
     });
 
-    test('shows "Potential Matches" heading instead of "CAMS Strongest Match"', () => {
+    test('shows both "CAMS Strongest Match" and "Other Potential Matches" headings', () => {
       renderWithProps({ order: multipleCandidatesOrder });
 
       const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
-      expect(content.textContent).toContain('Potential Matches');
-      expect(content.textContent).not.toContain('CAMS Strongest Match');
+      expect(content.textContent).toContain('CAMS Strongest Match');
+      expect(content.textContent).toContain('Other Potential Matches');
     });
 
     test('renders per-row "Match Trustee" action buttons (no radio buttons)', () => {
@@ -948,19 +1077,10 @@ describe('TrusteeMatchVerificationAccordion', () => {
       });
     });
 
-    test('reject button is rendered and opens rejection modal', async () => {
+    test('reject button is not rendered for multiple match order', () => {
       renderWithProps({ order: multipleCandidatesOrder });
 
-      expect(screen.getByTestId('reject-button')).toBeInTheDocument();
-      fireEvent.click(screen.getByTestId('reject-button'));
-
-      await waitFor(() => {
-        expect(
-          document.getElementById(
-            `trustee-rejection-modal-${multipleCandidatesOrder.id}-submit-button`,
-          ),
-        ).toBeInTheDocument();
-      });
+      expect(screen.queryByTestId('reject-button')).not.toBeInTheDocument();
     });
 
     test('"search here" inline link opens search modal', async () => {
