@@ -5,6 +5,7 @@ import {
   isoToMMDDYYYY,
   isoToMMDD,
   isoRangeToMMDD,
+  calculateAuditReqBy,
 } from '@common/cams/trustee-upcoming-key-dates';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -53,6 +54,8 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
   const audit = data?.upcomingIndependentAuditRequired
     ? isoToMMDDYYYY(data.upcomingIndependentAuditRequired)
     : NO_DATE;
+  const auditReqByYear = calculateAuditReqBy(data?.lastAuditFiscalYear);
+  const auditReqBy = auditReqByYear !== null ? String(auditReqByYear) : NO_DATE;
   const tprReviewPeriod =
     data?.tprReviewPeriodStart && data?.tprReviewPeriodEnd
       ? isoRangeToMMDD(data.tprReviewPeriodStart, data.tprReviewPeriodEnd)
@@ -84,6 +87,7 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
       fields={[
         { label: 'Field Exam', value: fieldExam, testId: 'field-exam-row' },
         { label: 'Audit', value: audit, testId: 'audit-row' },
+        { label: 'Audit req by', value: auditReqBy, testId: 'audit-req-by-row' },
         { label: 'TPR Review Period', value: tprReviewPeriod, testId: 'tpr-review-period-row' },
         { label: 'TPR Due', value: tprDue, testId: 'tpr-due-row' },
         { label: 'TIR Review Period', value: tirReviewPeriod, testId: 'tir-review-period-row' },

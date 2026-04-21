@@ -14,6 +14,7 @@ import {
   calculateTirSubmission,
   calculateTirReview,
   calculateNextAuditDate,
+  calculateAuditReqBy,
   validateMonthDay,
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
@@ -445,6 +446,7 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tirReview: null,
       upcomingFieldExam: null,
       upcomingIndependentAuditRequired: null,
+      lastAuditFiscalYear: null,
     };
   }
 
@@ -576,5 +578,23 @@ describe('validateTprDuePair', () => {
   test('returns date error when tprDueYearType is set but tprDue is absent', () => {
     const result = validateTprDuePair('', 'EVEN');
     expect(result).toBe('Must be a valid date mm/dd.');
+  });
+});
+
+describe('calculateAuditReqBy', () => {
+  test('returns null when input is null', () => {
+    expect(calculateAuditReqBy(null)).toBeNull();
+  });
+
+  test('returns null when input is undefined', () => {
+    expect(calculateAuditReqBy(undefined)).toBeNull();
+  });
+
+  test('returns year + 3 for a valid year', () => {
+    expect(calculateAuditReqBy(2024)).toBe(2027);
+  });
+
+  test('returns correct value for a recent year', () => {
+    expect(calculateAuditReqBy(2022)).toBe(2025);
   });
 });
