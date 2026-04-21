@@ -6,15 +6,14 @@
 #          Storage Blob Data Contributor only on the security scan storage account — no broader
 #          subscription or resource group access.
 #
-# The subject claim uses a dedicated GitHub environment ("security-scan") so the credential
-# is scoped to this workflow and works from any branch. The subject format is:
-#   repo:ORG/REPO:environment:security-scan
+# The subject claim includes repo, workflow, and environment per the repo OIDC customization
+# template (include_claim_keys: ["repo", "workflow", "environment"]). The subject format is:
+#   repo:ORG/REPO:workflow:CALLER-WORKFLOW-NAME:environment:security-scan
 #
 # Prerequisites:
 #   - az CLI logged in as an Entra ID admin (can create app registrations)
 #   - The security scan storage account already exists
 #   - jq installed
-#   - A "security-scan" environment created in the GitHub repository settings
 #
 # Re-running this script with EXISTING_APP_ID set will update the federated credential
 # subject in place without recreating the app registration or role assignment.
@@ -28,6 +27,7 @@ STORAGE_ACCOUNT_NAME="${AZ_SECURITY_SCAN_STORAGE_NAME:?Set AZ_SECURITY_SCAN_STOR
 RESOURCE_GROUP="${AZ_SECURITY_SCAN_RG:?Set AZ_SECURITY_SCAN_RG}"
 GITHUB_ORG="US-Trustee-Program"
 GITHUB_REPO="Bankruptcy-Oversight-Support-Systems"
+GITHUB_WORKFLOW="Continuous Deployment"
 GITHUB_ENVIRONMENT="security-scan"
 APP_NAME="cams-security-scan-oidc"
 CREDENTIAL_NAME="gha-security-scan"
@@ -35,7 +35,7 @@ CREDENTIAL_NAME="gha-security-scan"
 EXISTING_APP_ID="${EXISTING_APP_ID:-}"
 # ---------------------------------------------------------------------------
 
-SUBJECT="repo:${GITHUB_ORG}/${GITHUB_REPO}:environment:${GITHUB_ENVIRONMENT}"
+SUBJECT="repo:${GITHUB_ORG}/${GITHUB_REPO}:workflow:${GITHUB_WORKFLOW}:environment:${GITHUB_ENVIRONMENT}"
 
 echo "==> Looking up subscription and tenant..."
 SUBSCRIPTION_ID=$(az account show --query id -o tsv)
