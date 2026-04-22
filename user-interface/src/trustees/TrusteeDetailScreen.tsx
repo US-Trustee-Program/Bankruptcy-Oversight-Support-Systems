@@ -30,6 +30,7 @@ import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditors
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
+  TRUSTEE_SOFTWARE_BANK_DISPLAY,
 } from '@/lib/hooks/UseFeatureFlags';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
@@ -64,6 +65,8 @@ export default function TrusteeDetailScreen() {
   const navigate = useNavigate();
   const globalAlert = useGlobalAlert();
   const featureFlags = useFeatureFlags();
+  const showSoftwareBankInfo = !!featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY];
+
   function openEditPublicProfile() {
     navigate(`/trustees/${trusteeId}/contact/edit/public`);
   }
@@ -160,6 +163,7 @@ export default function TrusteeDetailScreen() {
               onEditAssistant={openEditAssistant}
               onEditOtherInformation={openEditOtherInformation}
               onEditZoomInfo={openEditZoomInfo}
+              showSoftwareBankInfo={showSoftwareBankInfo}
             />
           </div>
         </div>
@@ -200,6 +204,7 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'other/edit',
+      disabled: !featureFlags[TRUSTEE_SOFTWARE_BANK_DISPLAY],
       subHeading: 'Edit Other Trustee Information',
       content: (
         <TrusteeOtherInfoForm
