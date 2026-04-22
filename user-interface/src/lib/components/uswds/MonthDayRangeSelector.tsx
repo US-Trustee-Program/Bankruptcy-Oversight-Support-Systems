@@ -14,6 +14,7 @@ type MonthDayRangeSelectorProps = {
   onValidationChange?: (isValid: boolean) => void;
   externalError?: string;
   submitted?: boolean;
+  hideClear?: boolean;
 };
 
 export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps) {
@@ -27,6 +28,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
     onValidationChange,
     externalError,
     submitted,
+    hideClear,
   } = props;
 
   const [internalError, setInternalError] = useState('');
@@ -71,7 +73,7 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
         <label className="usa-label" htmlFor={`${id}-start-month`} data-testid={`${id}-label`}>
           {label}
         </label>
-        {hasValue && (
+        {hasValue && !hideClear && (
           <Button
             id={`${id}-clear`}
             uswdsStyle={UswdsButtonStyle.Unstyled}

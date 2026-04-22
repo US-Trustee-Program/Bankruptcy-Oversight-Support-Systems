@@ -530,25 +530,17 @@ describe('UpcomingKeyDatesForm', () => {
       expect(screen.queryByTestId('tpr-due-error')).not.toBeInTheDocument();
     });
 
-    test('clear button saves null for both tprDue and tprDueYearType', async () => {
+    test('no clear buttons are shown for TPR fields', async () => {
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
-      const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
       renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('button-tpr-due-clear')).toBeInTheDocument();
+        expect(screen.getByTestId('edit-upcoming-key-dates')).toBeInTheDocument();
       });
 
-      await userEvent.click(screen.getByTestId('button-tpr-due-clear'));
-      await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
-
-      await waitFor(() => expect(putSpy).toHaveBeenCalled());
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        expect.objectContaining({ tprDue: null, tprDueYearType: null }),
-      );
+      expect(screen.queryByTestId('button-tpr-due-clear')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('button-tpr-review-period-clear')).not.toBeInTheDocument();
     });
   });
 });
