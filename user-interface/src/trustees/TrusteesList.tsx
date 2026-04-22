@@ -93,61 +93,66 @@ export default function TrusteesList() {
           {trustees.map((trustee) => {
             const rows = trustee.appointments.length === 0 ? [null] : trustee.appointments;
 
-            return rows.map((appt, idx) => (
-              <div
-                key={`${trustee.trusteeId}-${idx}`}
-                className={`trustees-list-row grid-row grid-gap-lg${idx === 0 ? ' trustee-group-start' : ''}`}
-                role="row"
-              >
-                <div
-                  className="trustees-list-cell grid-col"
-                  role="cell"
-                  data-cell={COLUMN_HEADERS[0]}
-                >
-                  {idx === 0 ? (
-                    <NavLink
-                      to={`/trustees/${trustee.trusteeId}`}
-                      data-testid={`trustee-link-${trustee.trusteeId}`}
-                      className="usa-link"
-                    >
-                      {trustee.name}
-                    </NavLink>
-                  ) : (
-                    <span className="trustee-name-repeat" aria-hidden="true">
-                      {trustee.name}
-                    </span>
-                  )}
+            return rows.map((appt, idx) => {
+              const isGroupEnd = idx === rows.length - 1;
+              const classes = [
+                'trustees-list-row grid-row grid-gap-lg',
+                idx === 0 ? 'trustee-group-start' : '',
+                isGroupEnd ? 'trustee-group-end' : '',
+              ]
+                .filter(Boolean)
+                .join(' ');
+
+              return (
+                <div key={`${trustee.trusteeId}-${idx}`} className={classes} role="row">
+                  <div
+                    className="trustees-list-cell grid-col"
+                    role="cell"
+                    data-cell={COLUMN_HEADERS[0]}
+                  >
+                    {idx === 0 ? (
+                      <NavLink
+                        to={`/trustees/${trustee.trusteeId}`}
+                        data-testid={`trustee-link-${trustee.trusteeId}`}
+                        className="usa-link"
+                      >
+                        {trustee.name}
+                      </NavLink>
+                    ) : (
+                      <span className="trustee-name-repeat" aria-hidden="true"></span>
+                    )}
+                  </div>
+                  <div
+                    className="trustees-list-cell grid-col"
+                    role="cell"
+                    data-cell={COLUMN_HEADERS[1]}
+                  >
+                    {appt ? formatDistrict(appt) : ''}
+                  </div>
+                  <div
+                    className="trustees-list-cell grid-col"
+                    role="cell"
+                    data-cell={COLUMN_HEADERS[2]}
+                  >
+                    {appt ? formatChapterType(appt.chapter) : ''}
+                  </div>
+                  <div
+                    className="trustees-list-cell grid-col"
+                    role="cell"
+                    data-cell={COLUMN_HEADERS[3]}
+                  >
+                    {appt ? formatAppointmentType(appt.appointmentType) : ''}
+                  </div>
+                  <div
+                    className="trustees-list-cell grid-col"
+                    role="cell"
+                    data-cell={COLUMN_HEADERS[4]}
+                  >
+                    {appt ? formatAppointmentStatus(appt.status) : ''}
+                  </div>
                 </div>
-                <div
-                  className="trustees-list-cell grid-col"
-                  role="cell"
-                  data-cell={COLUMN_HEADERS[1]}
-                >
-                  {appt ? formatDistrict(appt) : ''}
-                </div>
-                <div
-                  className="trustees-list-cell grid-col"
-                  role="cell"
-                  data-cell={COLUMN_HEADERS[2]}
-                >
-                  {appt ? formatChapterType(appt.chapter) : ''}
-                </div>
-                <div
-                  className="trustees-list-cell grid-col"
-                  role="cell"
-                  data-cell={COLUMN_HEADERS[3]}
-                >
-                  {appt ? formatAppointmentType(appt.appointmentType) : ''}
-                </div>
-                <div
-                  className="trustees-list-cell grid-col"
-                  role="cell"
-                  data-cell={COLUMN_HEADERS[4]}
-                >
-                  {appt ? formatAppointmentStatus(appt.status) : ''}
-                </div>
-              </div>
-            ));
+              );
+            });
           })}
         </div>
       </div>

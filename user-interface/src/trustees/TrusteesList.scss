@@ -18,17 +18,20 @@
 
     .trustees-list-cell {
       padding: 0.5rem 0.5rem 0.5rem 0;
-      border-bottom: 1px solid #dcdee0;
       word-wrap: break-word;
     }
 
     &.trustee-group-start .trustees-list-cell {
-      border-top: 2px solid #1b1b1b;
+      border-top: 1px solid #1b1b1b;
+    }
+
+    &.trustee-group-end .trustees-list-cell {
+      border-bottom: 1px solid #1b1b1b;
+      padding-bottom: 0.75rem;
     }
 
     .trustee-name-repeat {
-      color: #71767a;
-      font-style: italic;
+      display: none;
     }
   }
 }
@@ -61,10 +64,6 @@
           font-weight: 700;
           white-space: nowrap;
         }
-      }
-
-      .trustee-name-repeat {
-        display: none;
       }
     }
   }
