@@ -89,6 +89,76 @@ $input-max-width: 20.75rem;
 
 
 
+  .exam-audit-group {
+    max-width: $input-max-width;
+    margin-top: 1.5rem;
+
+    > .usa-label {
+      margin-bottom: 0;
+    }
+
+    &__row {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+
+      .usa-form-group {
+        flex: 1;
+        min-width: 0;
+        max-width: none;
+        margin-top: 0;
+
+        select {
+          margin-top: 0;
+          width: 100%;
+        }
+
+        .usa-hint {
+          padding-bottom: 0.5rem;
+        }
+      }
+    }
+  }
+
+  .tir-period-group {
+    max-width: $input-max-width;
+    margin-top: 1.5rem;
+
+    > .usa-label {
+      margin-bottom: 0;
+    }
+
+    &__row {
+      display: flex;
+      gap: 1rem;
+      align-items: flex-end;
+
+      .usa-form-group {
+        max-width: none;
+        margin-top: 0;
+
+        select {
+          margin-top: 0;
+          width: 100%;
+        }
+
+        .usa-hint {
+          padding-bottom: 0.5rem;
+        }
+
+        &:first-child {
+          flex: 0 0 auto;
+          width: 9rem;
+        }
+
+        &:last-child {
+          flex: 1;
+          min-width: 0;
+        }
+      }
+    }
+  }
+
   .usa-button-group {
     padding-top: 2.5rem;
     gap: 1rem;
