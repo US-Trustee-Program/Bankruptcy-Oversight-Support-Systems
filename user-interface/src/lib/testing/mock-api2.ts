@@ -33,6 +33,7 @@ import {
   Trustee,
   TrusteeHistory,
   TrusteeInput,
+  TrusteeListItem,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { CaseAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
@@ -2476,7 +2477,7 @@ async function patchTrustee(id: string, trustee: Partial<TrusteeInput>) {
 }
 
 async function getTrustees() {
-  return get<Trustee[]>('/trustees');
+  return get<TrusteeListItem[]>('/trustees');
 }
 
 async function getTrustee(id: string) {

@@ -162,13 +162,57 @@ describe('TrusteesUseCase tests', () => {
       vi.restoreAllMocks();
     });
 
-    test('should return list of trustees', async () => {
-      const mockTrustees = [MockData.getTrustee(), MockData.getTrustee()];
-      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue(mockTrustees);
+    test('should return TrusteeListItem[] with appointments attached per trustee', async () => {
+      const trustee1 = MockData.getTrustee({ trusteeId: 'trustee-1', name: 'Bravo' });
+      const trustee2 = MockData.getTrustee({ trusteeId: 'trustee-2', name: 'Alpha' });
+      const appt1 = MockData.getTrusteeAppointment({ trusteeId: 'trustee-1' });
+      const appt2 = MockData.getTrusteeAppointment({ trusteeId: 'trustee-2' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
+        trustee1,
+        trustee2,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt1,
+        appt2,
+      ]);
 
       const result = await trusteesUseCase.listTrustees(context);
 
-      expect(result).toEqual(mockTrustees);
+      expect(result).toHaveLength(2);
+      const alpha = result.find((r) => r.trusteeId === 'trustee-2');
+      const bravo = result.find((r) => r.trusteeId === 'trustee-1');
+      expect(alpha?.appointments).toEqual([appt2]);
+      expect(bravo?.appointments).toEqual([appt1]);
+    });
+
+    test('should give trustees with no matching appointments an empty appointments array', async () => {
+      const trustee = MockData.getTrustee({ trusteeId: 'trustee-no-appts' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].appointments).toEqual([]);
+    });
+
+    test('should return trustees sorted by name ascending (case-insensitive)', async () => {
+      const trusteeC = MockData.getTrustee({ trusteeId: 'id-c', name: 'charlie' });
+      const trusteeA = MockData.getTrustee({ trusteeId: 'id-a', name: 'Alice' });
+      const trusteeB = MockData.getTrustee({ trusteeId: 'id-b', name: 'bob' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
+        trusteeC,
+        trusteeA,
+        trusteeB,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result.map((r) => r.name)).toEqual(['Alice', 'bob', 'charlie']);
     });
 
     test('should handle repository error during list operation', async () => {
