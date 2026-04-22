@@ -1,6 +1,7 @@
-import { LOGIN_SUCCESS_PATH } from '@/login/login-library';
+import { LOGIN_SUCCESS_PATH, CASE_SEARCH_PATH } from '@/login/login-library';
 import { useEffect } from 'react';
 import useCamsNavigator from '../hooks/UseCamsNavigator';
+import useFeatureFlags, { CASE_SEARCH_LANDING_PAGE } from '@/lib/hooks/UseFeatureFlags';
 
 type GoHomeProps = {
   path?: string;
@@ -18,8 +19,17 @@ type GoHomeProps = {
  */
 export function GoHome(props: GoHomeProps) {
   const navigator = useCamsNavigator();
+  const flags = useFeatureFlags();
+
   useEffect(() => {
-    navigator.navigateTo(props.path ?? LOGIN_SUCCESS_PATH);
+    if (props.path) {
+      navigator.navigateTo(props.path);
+      return;
+    }
+
+    const destination = flags[CASE_SEARCH_LANDING_PAGE] ? CASE_SEARCH_PATH : LOGIN_SUCCESS_PATH;
+
+    navigator.navigateTo(destination);
   }, []);
   return <></>;
 }
