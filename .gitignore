@@ -136,3 +136,6 @@ vitest.config.js.map
 
 # Beads / Dolt files (added by bd init)
 *.db
+
+# Temp directory for local work
+temp
