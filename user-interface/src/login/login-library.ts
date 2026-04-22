@@ -1,6 +1,7 @@
 import { keyValuesToRecord } from '@common/cams/utilities';
 import getAppConfiguration from '@/configuration/appConfiguration';
 
+export const CASE_SEARCH_PATH = '/search';
 export const LOGIN_PATH = '/login';
 export const LOGIN_CONTINUE_PATH = '/login-continue';
 export const LOGIN_SUCCESS_PATH = '/my-cases';
