@@ -6,6 +6,8 @@ import TrusteeDetailNavigation, {
   TrusteeDetailNavigationProps,
   mapTrusteeDetailNavState,
 } from './TrusteeDetailNavigation';
+import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
+import { TRUSTEE_ASSIGNED_STAFF_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 vi.mock('@/lib/utils/navigation', () => ({
   setCurrentNav: vi.fn((activeNav, currentNav) => (activeNav === currentNav ? 'usa-current' : '')),
@@ -20,6 +22,16 @@ vi.mock('@/lib/utils/navigation', () => ({
 }));
 
 describe('TrusteeDetailNavigation', () => {
+  beforeEach(() => {
+    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+      [TRUSTEE_ASSIGNED_STAFF_ENABLED]: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   function renderWithRouter(props: TrusteeDetailNavigationProps) {
     return render(
       <BrowserRouter>
@@ -160,6 +172,65 @@ describe('TrusteeDetailNavigation', () => {
     const links = screen.getAllByRole('link');
     links.forEach((link) => {
       expect(link).toHaveClass('usa-sidenav__link');
+    });
+  });
+
+  describe('Feature Flag: TRUSTEE_ASSIGNED_STAFF_ENABLED', () => {
+    test('should show Assigned Staff nav link when flag is enabled', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [TRUSTEE_ASSIGNED_STAFF_ENABLED]: true,
+      });
+
+      renderWithRouter(defaultProps);
+
+      expect(screen.getByTestId('trustee-assigned-staff-nav-link')).toBeInTheDocument();
+      expect(screen.getByText('Assigned Staff')).toBeInTheDocument();
+    });
+
+    test('should hide Assigned Staff nav link when flag is disabled', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [TRUSTEE_ASSIGNED_STAFF_ENABLED]: false,
+      });
+
+      renderWithRouter(defaultProps);
+
+      expect(screen.queryByTestId('trustee-assigned-staff-nav-link')).not.toBeInTheDocument();
+      expect(screen.queryByText('Assigned Staff')).not.toBeInTheDocument();
+    });
+
+    test('should render 5 nav items when flag is enabled', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [TRUSTEE_ASSIGNED_STAFF_ENABLED]: true,
+      });
+
+      renderWithRouter(defaultProps);
+
+      const listItems = screen.getAllByRole('listitem');
+      expect(listItems).toHaveLength(5);
+    });
+
+    test('should render 4 nav items when flag is disabled', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [TRUSTEE_ASSIGNED_STAFF_ENABLED]: false,
+      });
+
+      renderWithRouter(defaultProps);
+
+      const listItems = screen.getAllByRole('listitem');
+      expect(listItems).toHaveLength(4);
+    });
+
+    test('should still show all other nav links when Assigned Staff is hidden', () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [TRUSTEE_ASSIGNED_STAFF_ENABLED]: false,
+      });
+
+      renderWithRouter(defaultProps);
+
+      expect(screen.getByTestId('trustee-profile-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-appointments-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-notes-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
     });
   });
 });

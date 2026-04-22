@@ -8,7 +8,10 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import {
+  DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
+  TRUSTEE_ASSIGNED_STAFF_ENABLED,
+} from '@/lib/hooks/UseFeatureFlags';
 
 const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
@@ -86,6 +89,7 @@ describe('TrusteeDetailScreen', () => {
     vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
     vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
       [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+      [TRUSTEE_ASSIGNED_STAFF_ENABLED]: true,
     });
   });
 
@@ -556,6 +560,39 @@ describe('TrusteeDetailScreen', () => {
       });
 
       renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/my-cases');
+      });
+    });
+  });
+
+  describe('assigned-staff route', () => {
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+    });
+
+    test('should render TrusteeAssignedStaff when TRUSTEE_ASSIGNED_STAFF_ENABLED flag is enabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+        [TRUSTEE_ASSIGNED_STAFF_ENABLED]: true,
+      });
+
+      renderWithRouter(['/trustees/123/assigned-staff']);
+
+      await waitFor(() => {
+        expect(document.querySelector('.trustee-assigned-staff-container')).toBeInTheDocument();
+      });
+    });
+
+    test('should redirect home when TRUSTEE_ASSIGNED_STAFF_ENABLED flag is disabled', async () => {
+      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
+        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+        [TRUSTEE_ASSIGNED_STAFF_ENABLED]: false,
+      });
+
+      renderWithRouter(['/trustees/123/assigned-staff']);
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/my-cases');
