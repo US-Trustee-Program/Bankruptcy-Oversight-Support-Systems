@@ -39,7 +39,7 @@ export abstract class AbstractMssqlClient {
       const result = (await request.query(query)) as IResult<T>;
 
       return {
-        results: result.recordset,
+        results: result,
         message: '',
         success: true,
       };

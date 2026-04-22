@@ -117,7 +117,7 @@ describe('ATS Gateway', () => {
     });
 
     test('should build correct query for first page of trustees', async () => {
-      mockExecuteQuery.mockResolvedValue({ results: [] });
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
 
       await gateway.getTrusteesPage(context, null, 50);
 
@@ -136,7 +136,7 @@ describe('ATS Gateway', () => {
     });
 
     test('should build correct query for subsequent pages of trustees', async () => {
-      mockExecuteQuery.mockResolvedValue({ results: [] });
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [] } });
 
       await gateway.getTrusteesPage(context, 100, 50);
 
@@ -167,17 +167,19 @@ describe('ATS Gateway', () => {
     test('should query appointments for a specific trustee and return clean CAMS types', async () => {
       // Gateway queries raw ATS data
       mockExecuteQuery.mockResolvedValue({
-        results: [
-          {
-            TRU_ID: 123,
-            DISTRICT: 'Middle',
-            STATE: 'Louisiana',
-            CHAPTER: '7',
-            STATUS: 'PA',
-            DATE_APPOINTED: new Date('2023-01-15'),
-            EFFECTIVE_DATE: new Date('2023-01-15'),
-          },
-        ],
+        results: {
+          recordset: [
+            {
+              TRU_ID: 123,
+              DISTRICT: 'Middle',
+              STATE: 'Louisiana',
+              CHAPTER: '7',
+              STATUS: 'PA',
+              DATE_APPOINTED: new Date('2023-01-15'),
+              EFFECTIVE_DATE: new Date('2023-01-15'),
+            },
+          ],
+        },
       });
 
       // Gateway returns TrusteeAppointmentsResult with clean CAMS types
@@ -201,7 +203,7 @@ describe('ATS Gateway', () => {
 
     test('should get total trustee count', async () => {
       mockExecuteQuery.mockResolvedValue({
-        results: [{ totalCount: 1234 }],
+        results: { recordset: [{ totalCount: 1234 }] },
       });
 
       const count = await gateway.getTrusteeCount(context);
@@ -215,7 +217,7 @@ describe('ATS Gateway', () => {
     });
 
     test('should test database connection', async () => {
-      mockExecuteQuery.mockResolvedValue({ results: [{ test: 1 }] });
+      mockExecuteQuery.mockResolvedValue({ results: { recordset: [{ test: 1 }] } });
 
       const result = await gateway.testConnection(context);
 
@@ -269,17 +271,19 @@ describe('ATS Gateway', () => {
     test('should skip appointments with SKIP classification', async () => {
       // Return an appointment that will be classified as SKIP (test data)
       mockExecuteQuery.mockResolvedValue({
-        results: [
-          {
-            TRU_ID: 17120,
-            DISTRICT: 'test',
-            STATE: 'testt',
-            CHAPTER: '7',
-            STATUS: 'NP',
-            DATE_APPOINTED: new Date('2023-01-15'),
-            EFFECTIVE_DATE: new Date('2023-01-15'),
-          },
-        ],
+        results: {
+          recordset: [
+            {
+              TRU_ID: 17120,
+              DISTRICT: 'test',
+              STATE: 'testt',
+              CHAPTER: '7',
+              STATUS: 'NP',
+              DATE_APPOINTED: new Date('2023-01-15'),
+              EFFECTIVE_DATE: new Date('2023-01-15'),
+            },
+          ],
+        },
       });
 
       const result = await gateway.getTrusteeAppointments(context, 17120);
@@ -291,17 +295,19 @@ describe('ATS Gateway', () => {
     test('should filter out UNCLEANSABLE appointments', async () => {
       // Return an appointment with unmappable data
       mockExecuteQuery.mockResolvedValue({
-        results: [
-          {
-            TRU_ID: 999,
-            DISTRICT: 'Invalid District',
-            STATE: 'Invalid State',
-            CHAPTER: '7',
-            STATUS: 'PA',
-            DATE_APPOINTED: new Date('2023-01-15'),
-            EFFECTIVE_DATE: new Date('2023-01-15'),
-          },
-        ],
+        results: {
+          recordset: [
+            {
+              TRU_ID: 999,
+              DISTRICT: 'Invalid District',
+              STATE: 'Invalid State',
+              CHAPTER: '7',
+              STATUS: 'PA',
+              DATE_APPOINTED: new Date('2023-01-15'),
+              EFFECTIVE_DATE: new Date('2023-01-15'),
+            },
+          ],
+        },
       });
 
       const loggerWarnSpy = vi.spyOn(context.logger, 'warn');
@@ -318,17 +324,19 @@ describe('ATS Gateway', () => {
       // Note: Multi-expansion happens when one ATS record maps to multiple court IDs
       // This is handled in the cleansing pipeline based on regional patterns
       mockExecuteQuery.mockResolvedValue({
-        results: [
-          {
-            TRU_ID: 456,
-            DISTRICT: 'Middle',
-            STATE: 'Louisiana',
-            CHAPTER: '12', // Chapter 12 expands to both chapter 12 and 12CBC
-            STATUS: 'PA',
-            DATE_APPOINTED: new Date('2023-01-15'),
-            EFFECTIVE_DATE: new Date('2023-01-15'),
-          },
-        ],
+        results: {
+          recordset: [
+            {
+              TRU_ID: 456,
+              DISTRICT: 'Middle',
+              STATE: 'Louisiana',
+              CHAPTER: '12', // Chapter 12 expands to both chapter 12 and 12CBC
+              STATUS: 'PA',
+              DATE_APPOINTED: new Date('2023-01-15'),
+              EFFECTIVE_DATE: new Date('2023-01-15'),
+            },
+          ],
+        },
       });
 
       const loggerDebugSpy = vi.spyOn(context.logger, 'debug');
@@ -356,17 +364,19 @@ describe('ATS Gateway', () => {
       const freshGateway = new AtsGatewayImpl(context);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       vi.spyOn(freshGateway as any, 'executeQuery').mockResolvedValue({
-        results: [
-          {
-            TRU_ID: 123,
-            DISTRICT: 'Middle',
-            STATE: 'Louisiana',
-            CHAPTER: '7',
-            STATUS: 'PA',
-            DATE_APPOINTED: new Date('2023-01-15'),
-            EFFECTIVE_DATE: new Date('2023-01-15'),
-          },
-        ],
+        results: {
+          recordset: [
+            {
+              TRU_ID: 123,
+              DISTRICT: 'Middle',
+              STATE: 'Louisiana',
+              CHAPTER: '7',
+              STATUS: 'PA',
+              DATE_APPOINTED: new Date('2023-01-15'),
+              EFFECTIVE_DATE: new Date('2023-01-15'),
+            },
+          ],
+        },
       });
 
       await freshGateway.getTrusteeAppointments(context, 123);
