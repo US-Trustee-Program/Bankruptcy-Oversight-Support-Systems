@@ -116,9 +116,9 @@ describe('UpcomingKeyDatesForm', () => {
       });
 
       expect(screen.getByTestId('tpr-review-period-label')).toHaveTextContent(
-        'Trustee Performance Review Period',
+        'Trustee Performance Review (TPR) Period',
       );
-      expect(screen.getByText('Trustee Performance Review Due')).toBeInTheDocument();
+      expect(screen.getByText('Trustee Performance Review (TPR) Due')).toBeInTheDocument();
     });
 
     test('year dropdown shows current year through current year + 10', async () => {
