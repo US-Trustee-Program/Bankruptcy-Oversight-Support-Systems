@@ -420,26 +420,13 @@ export default function UpcomingKeyDatesForm() {
         }
         externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
         submitted={submitted}
+        hideClear
       />
       <div className="tpr-due-group">
         <div className="tpr-due-group__header">
           <label className="usa-label" htmlFor="tpr-due-month">
             Trustee Performance Review (TPR) Due
           </label>
-          {(form.tprDue || form.tprDueYearType) && (
-            <Button
-              id="tpr-due-clear"
-              uswdsStyle={UswdsButtonStyle.Unstyled}
-              onClick={() => {
-                setSubmitted(false);
-                setForm((prev) => ({ ...prev, tprDue: '', tprDueYearType: '' }));
-                setErrors((prev) => ({ ...prev, tprDue: '', tprDueYearType: '' }));
-              }}
-              aria-label="Clear TPR Due"
-            >
-              Clear
-            </Button>
-          )}
         </div>
         <div
           className="tpr-due-group__row"

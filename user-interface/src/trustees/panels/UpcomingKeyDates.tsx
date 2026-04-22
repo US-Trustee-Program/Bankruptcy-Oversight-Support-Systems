@@ -49,7 +49,7 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
     });
   }
 
-  const upcomingExamOrAuditLabel = data?.upcomingExamOrAuditType ?? 'Upcoming Exam / Audit';
+  const upcomingExamOrAuditLabel = data?.upcomingExamOrAuditType ?? 'Field Exam / Audit';
   const upcomingExamOrAuditValue = data?.upcomingExamOrAuditYear
     ? String(data.upcomingExamOrAuditYear)
     : NO_DATE;

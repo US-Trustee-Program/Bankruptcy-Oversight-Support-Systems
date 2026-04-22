@@ -190,6 +190,7 @@ export default function PastKeyDatesForm() {
         <label className="usa-label" htmlFor="last-audit-fiscal-year">
           Last Audit&apos;s Fiscal Year
         </label>
+        <span className="usa-hint">The fiscal year of the TIR data audited</span>
         <select
           className="usa-select"
           id="last-audit-fiscal-year"
