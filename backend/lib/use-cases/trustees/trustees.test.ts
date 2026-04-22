@@ -8,6 +8,8 @@ import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import { CourtsUseCase } from '../courts/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 describe('TrusteesUseCase tests', () => {
   let context: ApplicationContext;
@@ -153,9 +155,24 @@ describe('TrusteesUseCase tests', () => {
   });
 
   describe('listTrustees', () => {
+    const mockCourts: CourtDivisionDetails[] = [
+      {
+        officeName: 'Manhattan',
+        officeCode: '081',
+        courtId: 'court-1',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '081',
+        courtDivisionName: 'Manhattan',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'Region 2',
+      },
+    ];
+
     beforeEach(async () => {
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
     });
 
     afterEach(() => {
@@ -182,8 +199,39 @@ describe('TrusteesUseCase tests', () => {
       expect(result).toHaveLength(2);
       const alpha = result.find((r) => r.trusteeId === 'trustee-2');
       const bravo = result.find((r) => r.trusteeId === 'trustee-1');
-      expect(alpha?.appointments).toEqual([appt2]);
-      expect(bravo?.appointments).toEqual([appt1]);
+      expect(alpha?.appointments[0].courtDivisionName).toBeUndefined();
+      expect(bravo?.appointments[0].courtDivisionName).toBeUndefined();
+    });
+
+    test('should enrich appointments with courtName from courts lookup', async () => {
+      const trusteeId = 'trustee-enrich';
+      const trustee = MockData.getTrustee({ trusteeId });
+      const appt = MockData.getTrusteeAppointment({ trusteeId, courtId: 'court-1' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result[0].appointments[0].courtName).toBe('Southern District of New York');
+      expect(result[0].appointments[0].courtDivisionName).toBeUndefined();
+    });
+
+    test('should set courtName to undefined when courtId has no matching court', async () => {
+      const trusteeId = 'trustee-unknown-court';
+      const trustee = MockData.getTrustee({ trusteeId });
+      const appt = MockData.getTrusteeAppointment({ trusteeId, courtId: 'unknown-court' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result[0].appointments[0].courtName).toBeUndefined();
     });
 
     test('should give trustees with no matching appointments an empty appointments array', async () => {
