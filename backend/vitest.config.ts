@@ -4,8 +4,8 @@ import { coverageConfigDefaults } from 'vitest/config';
 import path from 'path';
 import os from 'os';
 
-const maxForks = process.env.VITEST_MAX_FORKS
-  ? parseInt(process.env.VITEST_MAX_FORKS, 10)
+const maxWorkers = process.env.VITEST_MAX_WORKERS
+  ? parseInt(process.env.VITEST_MAX_WORKERS, 10)
   : os.availableParallelism();
 
 export default defineConfig({
@@ -15,10 +15,7 @@ export default defineConfig({
     },
   },
   test: {
-    pool: 'forks',
-    poolOptions: {
-      forks: { maxForks },
-    },
+    maxWorkers,
     globals: true,
     environment: 'node',
     restoreMocks: true,
