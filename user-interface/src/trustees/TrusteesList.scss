@@ -1,5 +1,71 @@
 .trustees-list {
-  .trustee-name {
-    min-width: 220px;
+  .trustees-list-grid {
+    overflow-x: auto;
+  }
+
+  .trustees-list-header {
+    font-weight: bold;
+    font-size: 0.875rem;
+
+    .trustees-list-cell {
+      padding: 0.5rem 0.5rem 0.5rem 0;
+      border-bottom: 2px solid #1b1b1b;
+    }
+  }
+
+  .trustees-list-row {
+    font-size: 0.875rem;
+
+    .trustees-list-cell {
+      padding: 0.5rem 0.5rem 0.5rem 0;
+      border-bottom: 1px solid #dcdee0;
+      word-wrap: break-word;
+    }
+
+    &.trustee-group-start .trustees-list-cell {
+      border-top: 2px solid #1b1b1b;
+    }
+
+    .trustee-name-repeat {
+      color: #71767a;
+      font-style: italic;
+    }
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  .trustees-list {
+    .trustees-list-header {
+      display: none;
+    }
+
+    .trustees-list-row {
+      display: block;
+
+      &.trustee-group-start {
+        margin-top: 1rem;
+      }
+
+      .trustees-list-cell[data-cell] {
+        display: block;
+        width: 100%;
+        min-height: 1.75rem;
+        padding: 0.25rem 0.375rem 0.25rem 40%;
+        position: relative;
+
+        &::before {
+          content: attr(data-cell) ':';
+          position: absolute;
+          left: 0;
+          top: 0.25rem;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+      }
+
+      .trustee-name-repeat {
+        display: none;
+      }
+    }
   }
 }
