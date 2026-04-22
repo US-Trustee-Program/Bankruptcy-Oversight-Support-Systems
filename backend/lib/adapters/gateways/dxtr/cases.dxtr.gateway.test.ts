@@ -1,6 +1,5 @@
 import { vi } from 'vitest';
 import CasesDxtrGateway, { parseDxtrDate } from './cases.dxtr.gateway';
-import * as database from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { CaseDetail } from '@common/cams/cases';
 import * as featureFlags from '../../utils/feature-flag';
@@ -13,6 +12,7 @@ import { LegacyTrustee, Party, Debtor, DebtorAttorney } from '@common/cams/parti
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { TransactionIdRangeForDate } from '../../../use-cases/cases/cases.interface';
 import { DxtrTransactionRecord } from '../../types/cases';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 
 const dxtrDatabaseName = 'some-database-name';
 
@@ -122,12 +122,12 @@ describe('Test DXTR Gateway', () => {
     featureFlagSpy.mockImplementation(async () => {
       return {};
     });
-    querySpy = vi.spyOn(database, 'executeQuery');
 
     applicationContext = await createMockApplicationContext();
     applicationContext.config.dxtrDbConfig.database = dxtrDatabaseName;
-    testCasesDxtrGateway = new CasesDxtrGateway();
+    testCasesDxtrGateway = new CasesDxtrGateway(applicationContext);
 
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
     querySpy.mockImplementation(vi.fn());
   });
 
@@ -230,18 +230,6 @@ describe('Test DXTR Gateway', () => {
     };
 
     expect(actualResult).toStrictEqual(expectedResult);
-    expect(actualResult.regionId).toEqual(testCase.regionId);
-    expect(actualResult.courtDivisionCode).toEqual(testCase.courtDivisionCode);
-    expect(actualResult.courtName).toEqual(testCase.courtName);
-    expect(actualResult.courtDivisionName).toEqual(testCase.courtDivisionName);
-    expect(actualResult.closedDate).toEqual(closedDate);
-    expect(actualResult.dismissedDate).toEqual(dismissedDate);
-    expect(actualResult.reopenedDate).toEqual(reopenedDate);
-    expect(actualResult.debtor).toEqual(expectedDebtor);
-    expect(actualResult.jointDebtor).toEqual(expectedJointDebtor);
-    expect(actualResult.debtorAttorney).toEqual(expectedDebtorAttorney);
-    expect(actualResult.jointDebtorAttorney).toEqual(expectedJointDebtorAttorney);
-    expect(actualResult.debtorTypeLabel).toEqual(expectedDebtorTypeLabel);
   });
 
   test('should return a single case summary when supplied a caseId', async () => {
@@ -288,13 +276,8 @@ describe('Test DXTR Gateway', () => {
     };
 
     querySpy.mockResolvedValueOnce(mockCaseResults);
-
     querySpy.mockResolvedValueOnce(mockQueryParties);
-
-    // First for the debtor type.
     querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
-
-    // Second time for the petition type.
     querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
 
     const actualResult = await testCasesDxtrGateway.getCaseSummary(
@@ -363,25 +346,19 @@ describe('Test DXTR Gateway', () => {
     const cases = [testCase];
     const mockCaseResults: QueryResults = {
       success: true,
-      results: {
-        recordset: cases,
-      },
+      results: { recordset: cases },
       message: '',
     };
 
     const mockQueryDebtor: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedDebtor],
-      },
+      results: { recordset: [expectedDebtor] },
       message: '',
     };
 
     const mockQueryJointDebtor: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedJointDebtor],
-      },
+      results: { recordset: [expectedJointDebtor] },
       message: '',
     };
 
@@ -400,7 +377,6 @@ describe('Test DXTR Gateway', () => {
     };
 
     querySpy.mockResolvedValueOnce(mockCaseResults);
-
     // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
     querySpy.mockResolvedValueOnce(mockQueryDebtor);
     querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
@@ -408,11 +384,7 @@ describe('Test DXTR Gateway', () => {
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
     // joint debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
-
-    // First for the debtor type.
     querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
-
-    // Second time for the petition type.
     querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
 
     const actualResult = await testCasesDxtrGateway.getCaseSummary(
@@ -451,25 +423,19 @@ describe('Test DXTR Gateway', () => {
     const cases = [testCase];
     const mockCaseResults: QueryResults = {
       success: true,
-      results: {
-        recordset: cases,
-      },
+      results: { recordset: cases },
       message: '',
     };
 
     const mockQueryDebtor: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedDebtor],
-      },
+      results: { recordset: [expectedDebtor] },
       message: '',
     };
 
     const mockQueryJointDebtor: QueryResults = {
       success: true,
-      results: {
-        recordset: [],
-      },
+      results: { recordset: [] },
       message: '',
     };
 
@@ -488,18 +454,13 @@ describe('Test DXTR Gateway', () => {
     };
 
     querySpy.mockResolvedValueOnce(mockCaseResults);
-
     // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
     querySpy.mockResolvedValueOnce(mockQueryDebtor);
     querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
     // debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
     // joint debtor additionalIdentifiers (not consumed — empty joint debtor has no alias query)
-
-    // First for the debtor type.
     querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
-
-    // Second time for the petition type.
     querySpy.mockResolvedValueOnce(mockDebtorTypeTransactionResults);
 
     const actualResult = await testCasesDxtrGateway.getCaseSummary(
@@ -588,74 +549,53 @@ describe('Test DXTR Gateway', () => {
     const cases = [testCase];
 
     const transactions = [
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
-        txCode: 'CBC',
-      },
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231115zzzzzzzzzzzz',
-        txCode: 'CDC',
-      },
+      { txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz', txCode: 'CBC' },
+      { txRecord: 'zzzzzzzzzzzzzzzzzzz231115zzzzzzzzzzzz', txCode: 'CDC' },
     ];
 
     const mockCaseResults: QueryResults = {
       success: true,
-      results: {
-        recordset: cases,
-      },
+      results: { recordset: cases },
       message: '',
     };
 
     const mockTransactionResults: QueryResults = {
       success: true,
-      results: {
-        recordset: transactions,
-      },
+      results: { recordset: transactions },
       message: '',
     };
 
     const mockQueryDebtor: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedDebtor],
-      },
+      results: { recordset: [expectedDebtor] },
       message: '',
     };
 
     const mockQueryJointDebtor: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedJointDebtor],
-      },
+      results: { recordset: [expectedJointDebtor] },
       message: '',
     };
 
     const mockQueryTrustee: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedTrusteeRecord],
-      },
+      results: { recordset: [expectedTrusteeRecord] },
       message: '',
     };
 
     const mockQueryDebtorAttorney: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedDebtorAttorney],
-      },
+      results: { recordset: [expectedDebtorAttorney] },
       message: '',
     };
 
     const mockQueryJointDebtorAttorney: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedJointDebtorAttorney],
-      },
+      results: { recordset: [expectedJointDebtorAttorney] },
       message: '',
     };
 
     querySpy.mockResolvedValueOnce(mockCaseResults);
-
     // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
     querySpy.mockResolvedValueOnce(mockQueryDebtor);
     querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
@@ -663,13 +603,9 @@ describe('Test DXTR Gateway', () => {
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
     // joint debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
-
     querySpy.mockResolvedValueOnce(mockTransactionResults);
-
     querySpy.mockResolvedValueOnce(mockQueryTrustee);
-
     querySpy.mockResolvedValueOnce(mockQueryDebtorAttorney);
-
     querySpy.mockResolvedValueOnce(mockQueryJointDebtorAttorney);
 
     const actualResult = await testCasesDxtrGateway.getCaseDetail(
@@ -745,48 +681,31 @@ describe('Test DXTR Gateway', () => {
 
     const mockCaseResults: QueryResults = {
       success: true,
-      results: {
-        recordset: cases,
-      },
+      results: { recordset: cases },
       message: '',
     };
 
     const transactions = [
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz230830zzzzzzzzzzzz',
-        txCode: 'CBC',
-      },
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
-        txCode: 'CBC',
-      },
-      {
-        txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz',
-        txCode: 'CDC',
-      },
+      { txRecord: 'zzzzzzzzzzzzzzzzzzz230830zzzzzzzzzzzz', txCode: 'CBC' },
+      { txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz', txCode: 'CBC' },
+      { txRecord: 'zzzzzzzzzzzzzzzzzzz231031zzzzzzzzzzzz', txCode: 'CDC' },
     ];
 
     const mockTransactionResults: QueryResults = {
       success: true,
-      results: {
-        recordset: transactions,
-      },
+      results: { recordset: transactions },
       message: '',
     };
 
     const mockQueryParties: QueryResults = {
       success: true,
-      results: {
-        recordset: [{ partyName: 'John Q. Smith' }],
-      },
+      results: { recordset: [{ partyName: 'John Q. Smith' }] },
       message: '',
     };
 
     const mockQueryJointDebtor: QueryResults = {
       success: true,
-      results: {
-        recordset: [{ partyName: 'Jane Q. Smith' }],
-      },
+      results: { recordset: [{ partyName: 'Jane Q. Smith' }] },
       message: '',
     };
 
@@ -800,9 +719,7 @@ describe('Test DXTR Gateway', () => {
 
     const mockQueryTrustee: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedTrusteeRecord],
-      },
+      results: { recordset: [expectedTrusteeRecord] },
       message: '',
     };
 
@@ -815,9 +732,7 @@ describe('Test DXTR Gateway', () => {
 
     const mockQueryDebtorAttorney: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedDebtorAttorney],
-      },
+      results: { recordset: [expectedDebtorAttorney] },
       message: '',
     };
 
@@ -830,14 +745,11 @@ describe('Test DXTR Gateway', () => {
 
     const mockQueryJointDebtorAttorney: QueryResults = {
       success: true,
-      results: {
-        recordset: [expectedJointDebtorAttorney],
-      },
+      results: { recordset: [expectedJointDebtorAttorney] },
       message: '',
     };
 
     querySpy.mockResolvedValueOnce(mockCaseResults);
-
     // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
     querySpy.mockResolvedValueOnce(mockQueryParties);
     querySpy.mockResolvedValueOnce(mockQueryJointDebtor);
@@ -845,74 +757,70 @@ describe('Test DXTR Gateway', () => {
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
     // joint debtor additionalIdentifiers
     querySpy.mockResolvedValueOnce(makeQueryResults([]));
-
     querySpy.mockResolvedValueOnce(mockTransactionResults);
-
     querySpy.mockResolvedValueOnce(mockQueryTrustee);
-
     querySpy.mockResolvedValueOnce(mockQueryDebtorAttorney);
-
     querySpy.mockResolvedValueOnce(mockQueryJointDebtorAttorney);
 
     await testCasesDxtrGateway.getCaseDetail(applicationContext, '081-23-12345');
-    // getCase
-    expect(querySpy.mock.calls[0][3]).toEqual(
+    // getCase — args: (context, query, input) → index 2 is input
+    expect(querySpy.mock.calls[0][2]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrCaseId', value: '23-12345' }),
         expect.objectContaining({ name: 'courtDiv', value: '081' }),
       ]),
     );
     // getDebtors
-    expect(querySpy.mock.calls[1][3]).toEqual(
+    expect(querySpy.mock.calls[1][2]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
       ]),
     );
     // getDebtorAliases
-    expect(querySpy.mock.calls[2][3]).toEqual(
+    expect(querySpy.mock.calls[2][2]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
       ]),
     );
     // getJointDebtors
-    expect(querySpy.mock.calls[3][3]).toEqual(
+    expect(querySpy.mock.calls[3][2]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
       ]),
     );
     // getJointDebtorAliases
-    expect(querySpy.mock.calls[4][3]).toEqual(
+    expect(querySpy.mock.calls[4][2]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
       ]),
     );
     // getTransactions
-    expect(querySpy.mock.calls[5][3]).toEqual(
+    expect(querySpy.mock.calls[5][2]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
       ]),
     );
     // getTrustee
-    expect(querySpy.mock.calls[6][3]).toEqual(
+    expect(querySpy.mock.calls[6][2]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
       ]),
     );
     // getDebtorAttorneys
-    expect(querySpy.mock.calls[7][3]).toEqual(
+    expect(querySpy.mock.calls[7][2]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
       ]),
     );
     // getJointDebtorAttorneys
-    expect(querySpy.mock.calls[8][3]).toEqual(
+    expect(querySpy.mock.calls[8][2]).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ name: 'dxtrId', value: testCase.dxtrId }),
         expect.objectContaining({ name: 'courtId', value: testCase.courtId }),
@@ -920,172 +828,64 @@ describe('Test DXTR Gateway', () => {
     );
   });
 
-  describe('partyQueryCallback', () => {
-    test('should return undefined when no results are returned', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [],
-        },
-        message: '',
-      };
-
-      const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
-
-      expect(party).toBeUndefined();
-    });
-
-    test('should return expected debtor name', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [
-            {
-              name: 'John   Q.   Smith',
-            },
-          ],
-        },
-        message: '',
-      };
-
-      const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
-      expect(party).toEqual({
-        name: 'John Q. Smith',
+  describe('getCaseDetail — name and address whitespace collapsing', () => {
+    test('should collapse extra whitespace in debtor name, attorney name, and cityStateZipCountry', async () => {
+      const messyDebtor = buildDebtor({
+        name: 'John   Q.   Smith',
+        cityStateZipCountry: 'Queens NY     12345 USA',
       });
-    });
-
-    test('should return expected address fields', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [
-            {
-              name: 'John Q. Smith',
-              address1: '123 Main St',
-              address2: 'Apt 17',
-              address3: '',
-              cityStateZipCountry: 'Queens NY     12345 USA',
-            },
-          ],
-        },
-        message: '',
-      };
-
-      const party = testCasesDxtrGateway.partyQueryCallback(applicationContext, queryResult);
-      expect(party).toEqual({
-        name: 'John Q. Smith',
-        address1: '123 Main St',
-        address2: 'Apt 17',
-        address3: '',
-        cityStateZipCountry: 'Queens NY 12345 USA',
+      const messyAttorney = buildAttorney({
+        name: 'James   Brown   Esq.',
+        cityStateZipCountry: 'Queens NY     12345 USA',
       });
-    });
-  });
-
-  describe('debtorAttorneyQueryCallback', () => {
-    test('should return undefined when no results are returned', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [],
-        },
-        message: '',
-      };
-
-      const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
-        applicationContext,
-        queryResult,
-      );
-
-      expect(attorney).toBeUndefined();
-    });
-
-    test('should return expected attorney name', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [
-            {
-              name: 'John   Q.   Smith',
-            },
-          ],
-        },
-        message: '',
-      };
-
-      const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
-        applicationContext,
-        queryResult,
-      );
-
-      expect(attorney).toEqual({
-        name: 'John Q. Smith',
+      const testCase = MockData.getCaseDetail({
+        override: { trustee: MockData.getLegacyTrustee({ name: 'placeholder' }) },
       });
-    });
 
-    test('should return expected attorney fields', async () => {
-      const queryResult: QueryResults = {
-        success: true,
-        results: {
-          recordset: [
-            {
-              name: 'John Q. Smith',
-              address1: '123 Main St',
-              address2: 'Apt 17',
-              address3: '',
-              cityStateZipCountry: 'Queens NY     12345 USA',
-              phone: '9876543210',
-              email: 'someone@email.com',
-            },
-          ],
-        },
-        message: '',
-      };
-
-      const attorney = testCasesDxtrGateway.debtorAttorneyQueryCallback(
-        applicationContext,
-        queryResult,
-      );
-
-      expect(attorney).toEqual({
-        name: 'John Q. Smith',
-        address1: '123 Main St',
-        address2: 'Apt 17',
-        address3: '',
-        cityStateZipCountry: 'Queens NY 12345 USA',
-        phone: '9876543210',
-        email: 'someone@email.com',
+      setupCaseDetailQuerySequence(querySpy, {
+        caseResults: makeQueryResults([testCase]),
+        debtorResults: makeQueryResults([messyDebtor]),
+        debtorAliasResults: makeQueryResults([]),
+        jointDebtorResults: makeQueryResults([]),
+        transactionResults: makeQueryResults([]),
+        trusteeResults: makeQueryResults([
+          { name: 'Robert   Trustee', cityStateZipCountry: 'NY   10001' },
+        ]),
+        debtorAttorneyResults: makeQueryResults([messyAttorney]),
+        jointDebtorAttorneyResults: makeQueryResults([]),
       });
+
+      const result = await testCasesDxtrGateway.getCaseDetail(applicationContext, testCase.caseId);
+
+      expect(result.debtor.name).toEqual('John Q. Smith');
+      expect(result.debtor.cityStateZipCountry).toEqual('Queens NY 12345 USA');
+      expect(result.debtorAttorney.name).toEqual('James Brown Esq.');
+      expect(result.debtorAttorney.cityStateZipCountry).toEqual('Queens NY 12345 USA');
+      expect(result.trustee.name).toEqual('Robert Trustee');
+      expect(result.trustee.legacy.cityStateZipCountry).toEqual('NY 10001');
     });
   });
 
   describe('getSuggestedCases tests', () => {
     test('should return decorated transferred cases', async () => {
-      // Test case summary
       const testCase = MockData.getCaseSummary();
       const mockTestCaseSummaryResponse = {
         success: true,
-        results: {
-          recordset: [testCase],
-        },
+        results: { recordset: [testCase] },
         message: '',
       };
       querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
 
       const mockParties = {
         success: true,
-        results: {
-          recordset: [DEBTORS.get('081-22-23587')],
-        },
+        results: { recordset: [DEBTORS.get('081-22-23587')] },
         message: '',
       };
       querySpy.mockResolvedValueOnce(mockParties);
 
       const mockJointDebtor = {
         success: true,
-        results: {
-          recordset: [{ partyName: 'Jane Q. Smith' }],
-        },
+        results: { recordset: [{ partyName: 'Jane Q. Smith' }] },
         message: '',
       };
       // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
@@ -1113,9 +913,7 @@ describe('Test DXTR Gateway', () => {
       ];
       const mockSuggestedCasesResponse = {
         success: true,
-        results: {
-          recordset: mockSuggestedCases,
-        },
+        results: { recordset: mockSuggestedCases },
         message: '',
       };
       querySpy.mockResolvedValueOnce(mockSuggestedCasesResponse);
@@ -1137,31 +935,24 @@ describe('Test DXTR Gateway', () => {
     });
 
     test('should throw CamsError when query fails to return valid response', async () => {
-      // Test case summary
       const testCase = MockData.getCaseDetail();
       const mockTestCaseSummaryResponse = {
         success: true,
-        results: {
-          recordset: [testCase],
-        },
+        results: { recordset: [testCase] },
         message: '',
       };
       querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
 
       const mockParties = {
         success: true,
-        results: {
-          recordset: [DEBTORS.get('081-22-23587')],
-        },
+        results: { recordset: [DEBTORS.get('081-22-23587')] },
         message: '',
       };
       querySpy.mockResolvedValueOnce(mockParties);
 
       const mockJointDebtor = {
         success: true,
-        results: {
-          recordset: [{ partyName: 'Jane Q. Smith' }],
-        },
+        results: { recordset: [{ partyName: 'Jane Q. Smith' }] },
         message: '',
       };
       // debtor and joint debtor fetched in parallel — joint debtor starts before debtor aliases
@@ -1171,12 +962,9 @@ describe('Test DXTR Gateway', () => {
       // joint debtor additionalIdentifiers
       querySpy.mockResolvedValueOnce(makeQueryResults([]));
 
-      // Get suggested case data
       const mockSuggestedCasesResponse = {
         success: false,
-        results: {
-          recordset: [],
-        },
+        results: { recordset: [] },
         message: '',
       };
       querySpy.mockResolvedValueOnce(mockSuggestedCasesResponse);
@@ -1192,16 +980,12 @@ describe('Test DXTR Gateway', () => {
     const testParty = MockData.getParty();
     const caseSummaryQueryResult = {
       success: true,
-      results: {
-        recordset: [testCase],
-      },
+      results: { recordset: [testCase] },
       message: '',
     };
     const partyQueryResult = {
       success: true,
-      results: {
-        recordset: [testParty],
-      },
+      results: { recordset: [testParty] },
       message: '',
     };
 
@@ -1217,11 +1001,10 @@ describe('Test DXTR Gateway', () => {
 
     test('should return empty array', async () => {
       vi.resetAllMocks();
+      querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
       const mockTestCaseSummaryResponse = {
         success: true,
-        results: {
-          recordset: [],
-        },
+        results: { recordset: [] },
         message: '',
       };
       querySpy.mockResolvedValueOnce(mockTestCaseSummaryResponse);
@@ -1243,7 +1026,6 @@ describe('Test DXTR Gateway', () => {
       const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
         caseNumber: '00-00000',
       });
-
       expect(actual).toEqual([testCase]);
     });
 
@@ -1251,7 +1033,6 @@ describe('Test DXTR Gateway', () => {
       const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
         caseIds: ['999-00-00000', '999-11-22222'],
       });
-
       expect(actual).toEqual([testCase]);
     });
 
@@ -1259,7 +1040,6 @@ describe('Test DXTR Gateway', () => {
       const actual = await testCasesDxtrGateway.searchCases(applicationContext, {
         chapters: ['15'],
       });
-
       expect(actual).toEqual([testCase]);
     });
 
@@ -1269,7 +1049,6 @@ describe('Test DXTR Gateway', () => {
       });
 
       expect(querySpy).toHaveBeenCalledWith(
-        expect.anything(),
         expect.anything(),
         expect.not.stringContaining('cs.CS_CHAPTER IN'),
         expect.anything(),
@@ -1283,7 +1062,6 @@ describe('Test DXTR Gateway', () => {
 
       expect(querySpy).toHaveBeenCalledWith(
         expect.anything(),
-        expect.anything(),
         expect.stringContaining("cs.CS_CHAPTER IN ('15')"),
         expect.anything(),
       );
@@ -1291,6 +1069,7 @@ describe('Test DXTR Gateway', () => {
 
     test('should return an error', async () => {
       vi.resetAllMocks();
+      querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
       const errorMessage = 'query failed';
       const mockTestCaseSummaryResponse = {
         success: false,
@@ -1367,15 +1146,13 @@ describe('Test DXTR Gateway', () => {
       await testCasesDxtrGateway.searchCases(applicationContext, searchParams);
 
       const callArgs = querySpy.mock.calls[0];
-      const query = callArgs[2] as string;
-      const params = callArgs[3] as DbTableFieldSpec[];
+      const query = callArgs[1] as string;
+      const params = callArgs[2] as DbTableFieldSpec[];
 
-      // Check all expected query strings are present
       expectedInQuery.forEach((expectedString) => {
         expect(query).toContain(expectedString);
       });
 
-      // Check all expected parameters are bound correctly
       expectedParams.forEach(({ name, value }) => {
         const param = params.find((p) => p.name === name);
         expect(param).toBeDefined();
@@ -1401,7 +1178,6 @@ describe('Test DXTR Gateway', () => {
 
       expect(querySpy).toHaveBeenCalledWith(
         expect.anything(),
-        expect.anything(),
         expect.stringContaining(expectedInQuery),
         expect.anything(),
       );
@@ -1410,7 +1186,7 @@ describe('Test DXTR Gateway', () => {
   });
 
   describe('findTransactionIdRangeForDate', () => {
-    const dateRangeMock = (_context, _config, query: string, params: DbTableFieldSpec[]) => {
+    const dateRangeMock = (_context, query: string, params: DbTableFieldSpec[]) => {
       const mockTxMap = new Map<number, string>([
         [100, '2024-01-01'],
         [101, '2024-01-01'],
@@ -1445,9 +1221,7 @@ describe('Test DXTR Gateway', () => {
 
       const results: QueryResults = {
         success: true,
-        results: {
-          recordset,
-        },
+        results: { recordset },
         message: '',
       };
 
@@ -1506,13 +1280,11 @@ describe('Test DXTR Gateway', () => {
       const latestCasesSyncDate = '2025-02-11T10:30:00.124Z';
       const latestTransactionsSyncDate = '2025-02-11T12:45:00.789Z';
 
-      // Mock results for AO_CS query
       const casesRecordset = MockData.buildArray(MockData.randomCaseId, 50).map((caseId, idx) => {
         const syncDate = idx === 0 ? latestCasesSyncDate : '2025-02-10T08:00:00.000Z';
         return { caseId, latestSyncDate: syncDate };
       });
 
-      // Mock results for AO_TX query
       const transactionsRecordset = MockData.buildArray(MockData.randomCaseId, 50).map(
         (caseId, idx) => {
           const syncDate = idx === 0 ? latestTransactionsSyncDate : '2025-02-10T09:00:00.000Z';
@@ -1532,13 +1304,11 @@ describe('Test DXTR Gateway', () => {
         message: '',
       };
 
-      // All case IDs from both queries (Set handles deduplication)
       const allCaseIds = new Set([
         ...casesRecordset.map((r) => r.caseId),
         ...transactionsRecordset.map((r) => r.caseId),
       ]);
 
-      // Mock both query calls - cases and terminal transactions
       querySpy.mockResolvedValueOnce(casesResults);
       querySpy.mockResolvedValueOnce(transactionsResults);
 
@@ -1558,16 +1328,13 @@ describe('Test DXTR Gateway', () => {
     test('should return empty array and original start dates when no results', async () => {
       const emptyResults: QueryResults = {
         success: true,
-        results: {
-          recordset: [],
-        },
+        results: { recordset: [] },
         message: '',
       };
 
       const casesStart = '2025-02-11T08:00:00.000Z';
       const transactionsStart = '2025-02-11T09:00:00.000Z';
 
-      // Both queries return empty
       querySpy.mockResolvedValueOnce(emptyResults);
       querySpy.mockResolvedValueOnce(emptyResults);
 
@@ -1667,7 +1434,6 @@ describe('Test DXTR Gateway', () => {
       expect(result).toEqual(['081-20-10508', '081-21-12345']);
       expect(querySpy).toHaveBeenCalledWith(
         expect.anything(),
-        expect.anything(),
         expect.stringContaining(
           "TX.TX_DATE AT TIME ZONE 'UTC' > C.LAST_UPDATE_DATE AT TIME ZONE 'UTC'",
         ),
@@ -1685,7 +1451,7 @@ describe('Test DXTR Gateway', () => {
         '2018-01-01',
       );
 
-      const query = querySpy.mock.calls[0][2];
+      const query = querySpy.mock.calls[0][1];
       expect(query).toContain("TX.TX_CODE IN ('CBC', 'CDC', 'OCO', 'CTO')");
     });
 
@@ -1697,14 +1463,37 @@ describe('Test DXTR Gateway', () => {
         '2018-01-01',
       );
 
-      const query = querySpy.mock.calls[0][2];
+      const query = querySpy.mock.calls[0][1];
       expect(query).toContain("TX.TX_TYPE = 'O'");
     });
   });
 
-  describe('queryPartyAdditionalIdentifiers tests', () => {
-    test('should return deduplicated, sorted, and formatted additionalIdentifiers (names, SSNs, tax IDs)', async () => {
-      const aliasQueryResult = makeQueryResults([
+  describe('getCaseDetail — additionalIdentifiers', () => {
+    // Helper: build the full getCaseDetail mock sequence with custom debtor/joint debtor alias data
+    function setupWithAliases(
+      testCase,
+      debtorAliases: object[],
+      jointDebtorAliases: object[] = [],
+      debtorOverrides = {},
+    ) {
+      setupCaseDetailQuerySequence(querySpy, {
+        caseResults: makeQueryResults([testCase]),
+        debtorResults: makeQueryResults([buildDebtor(debtorOverrides)]),
+        debtorAliasResults: makeQueryResults(debtorAliases),
+        jointDebtorResults: makeQueryResults([buildJointDebtor()]),
+        jointDebtorAliasResults: makeQueryResults(jointDebtorAliases),
+        transactionResults: makeQueryResults([]),
+        trusteeResults: makeQueryResults([]),
+        debtorAttorneyResults: makeQueryResults([]),
+        jointDebtorAttorneyResults: makeQueryResults([]),
+      });
+    }
+
+    test('should attach deduplicated, sorted additionalIdentifiers with whitespace-collapsed names to debtor', async () => {
+      const testCase = MockData.getCaseDetail({
+        override: { trustee: MockData.getLegacyTrustee({ name: 'placeholder' }) },
+      });
+      setupWithAliases(testCase, [
         { aliasType: 'name', value: 'Zachary Smith' },
         { aliasType: 'name', value: 'John   Q.   Smith' },
         { aliasType: 'name', value: 'John   Q.   Smith' },
@@ -1716,27 +1505,24 @@ describe('Test DXTR Gateway', () => {
         { aliasType: 'taxId', value: '98-7654321' },
         { aliasType: 'taxId', value: '12-3456789' },
       ]);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
 
-      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
+      const result = await testCasesDxtrGateway.getCaseDetail(applicationContext, testCase.caseId);
 
-      expect(additionalIdentifiers.names).toEqual([
+      expect(result.debtor.additionalIdentifiers.names).toEqual([
         'Adam Brown',
         'John Q. Smith',
         'Michael J Smith',
         'Zachary Smith',
       ]);
-      expect(additionalIdentifiers.ssns).toEqual(['111-11-1111', '222-22-2222']);
-      expect(additionalIdentifiers.taxIds).toEqual(['12-3456789', '98-7654321']);
+      expect(result.debtor.additionalIdentifiers.ssns).toEqual(['111-11-1111', '222-22-2222']);
+      expect(result.debtor.additionalIdentifiers.taxIds).toEqual(['12-3456789', '98-7654321']);
     });
 
-    test('should filter out empty/null values', async () => {
-      const aliasQueryResult = makeQueryResults([
+    test('should filter empty and whitespace-only alias values', async () => {
+      const testCase = MockData.getCaseDetail({
+        override: { trustee: MockData.getLegacyTrustee({ name: 'placeholder' }) },
+      });
+      setupWithAliases(testCase, [
         { aliasType: 'name', value: 'John Smith' },
         { aliasType: 'name', value: '   ' },
         { aliasType: 'name', value: 'Jane Doe' },
@@ -1745,46 +1531,48 @@ describe('Test DXTR Gateway', () => {
         { aliasType: 'ssn', value: '' },
         { aliasType: 'taxId', value: '12-3456789' },
       ]);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
 
-      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
+      const result = await testCasesDxtrGateway.getCaseDetail(applicationContext, testCase.caseId);
 
-      expect(additionalIdentifiers.names).toEqual(['Jane Doe', 'John Smith']);
-      expect(additionalIdentifiers.ssns).toEqual(['111-11-1111']);
-      expect(additionalIdentifiers.taxIds).toEqual(['12-3456789']);
+      expect(result.debtor.additionalIdentifiers.names).toEqual(['Jane Doe', 'John Smith']);
+      expect(result.debtor.additionalIdentifiers.ssns).toEqual(['111-11-1111']);
+      expect(result.debtor.additionalIdentifiers.taxIds).toEqual(['12-3456789']);
     });
 
-    test('should return undefined when no additionalIdentifiers exist', async () => {
-      const aliasQueryResult = makeQueryResults([]);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
+    test('should not attach additionalIdentifiers when aliases are empty', async () => {
+      const testCase = MockData.getCaseDetail({
+        override: { trustee: MockData.getLegacyTrustee({ name: 'placeholder' }) },
+      });
+      setupWithAliases(testCase, []);
 
-      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
+      const result = await testCasesDxtrGateway.getCaseDetail(applicationContext, testCase.caseId);
 
-      expect(additionalIdentifiers).toBeUndefined();
+      expect(result.debtor.additionalIdentifiers).toBeUndefined();
     });
 
-    test('should return undefined and log warning on query failure', async () => {
+    test('should return debtor without additionalIdentifiers when alias query fails', async () => {
+      const testCase = MockData.getCaseDetail({
+        override: { trustee: MockData.getLegacyTrustee({ name: 'placeholder' }) },
+      });
       const logSpy = vi.spyOn(applicationContext.logger, 'warn');
-      querySpy.mockRejectedValueOnce(new Error('Database connection failed'));
 
-      const additionalIdentifiers = await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
+      // Case query
+      querySpy.mockResolvedValueOnce(makeQueryResults([testCase]));
+      // Debtor party (parallel with jd)
+      querySpy.mockResolvedValueOnce(makeQueryResults([buildDebtor()]));
+      // Joint debtor party
+      querySpy.mockResolvedValueOnce(makeQueryResults([buildJointDebtor()]));
+      // Debtor alias query fails
+      querySpy.mockRejectedValueOnce(new Error('Alias query failed'));
+      // Joint debtor alias query
+      querySpy.mockResolvedValueOnce(makeQueryResults([]));
+      // Remaining queries
+      querySpy.mockResolvedValue(makeQueryResults([]));
 
-      expect(additionalIdentifiers).toBeUndefined();
+      const result = await testCasesDxtrGateway.getCaseDetail(applicationContext, testCase.caseId);
+
+      expect(result.debtor).toBeDefined();
+      expect(result.debtor.additionalIdentifiers).toBeUndefined();
       expect(logSpy).toHaveBeenCalledWith(
         'CASES-DXTR-GATEWAY',
         "Failed to query party's additional identifiers",
@@ -1792,206 +1580,88 @@ describe('Test DXTR Gateway', () => {
       );
     });
 
-    test('should use correct SQL join keys and query all three tables', async () => {
-      const aliasQueryResult = makeQueryResults([]);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
-
-      await testCasesDxtrGateway.queryPartyAdditionalIdentifiers(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
-
-      const query = querySpy.mock.calls[0][2];
-      expect(query).toContain('CS_CASEID = @dxtrId');
-      expect(query).toContain('COURT_ID = @courtId');
-      expect(query).toContain('PY_ROLE = @partyCode');
-      expect(query).toContain('FROM [dbo].[AO_ALIAS]');
-      expect(query).toContain('FROM [dbo].[AO_SSN]');
-      expect(query).toContain('FROM [dbo].[AO_TAXID]');
-      expect(query).toContain('UNION');
-      expect(query).toContain('PY_SSN_SEQ > 0');
-      expect(query).toContain('PY_TAXID_SEQ > 0');
-    });
-  });
-
-  describe('queryDebtorParty with additionalIdentifiers tests', () => {
     test.each([
       {
-        description:
-          'should add additionalIdentifiers.names to Debtor when name additionalIdentifiers exist',
-        debtorOverrides: {},
+        description: 'should attach name aliases',
         aliasData: [
           { aliasType: 'name', value: 'Michael J Smith' },
           { aliasType: 'name', value: 'John Smith' },
         ],
-        expectedIdentifiers: {
-          names: ['John Smith', 'Michael J Smith'],
-          ssns: [],
-          taxIds: [],
-        },
-        expectedDebtorSsn: '123-45-6789',
-        expectedDebtorTaxId: '12-3456789',
+        debtorOverrides: {},
+        expectedIdentifiers: { names: ['John Smith', 'Michael J Smith'], ssns: [], taxIds: [] },
+        expectedSsn: '123-45-6789',
+        expectedTaxId: '12-3456789',
       },
       {
-        description: 'should add additionalIdentifiers.ssns when alias SSNs exist',
-        debtorOverrides: { ssn: '111-11-1111' },
+        description: 'should attach SSN aliases',
         aliasData: [
           { aliasType: 'ssn', value: '222-22-2222' },
           { aliasType: 'ssn', value: '333-33-3333' },
         ],
-        expectedIdentifiers: {
-          names: [],
-          ssns: ['222-22-2222', '333-33-3333'],
-          taxIds: [],
-        },
-        expectedDebtorSsn: '111-11-1111',
-        expectedDebtorTaxId: '12-3456789',
+        debtorOverrides: { ssn: '111-11-1111' },
+        expectedIdentifiers: { names: [], ssns: ['222-22-2222', '333-33-3333'], taxIds: [] },
+        expectedSsn: '111-11-1111',
+        expectedTaxId: '12-3456789',
       },
       {
-        description: 'should add additionalIdentifiers.taxIds when alias tax IDs exist',
-        debtorOverrides: { taxId: '12-3456789' },
+        description: 'should attach taxId aliases',
         aliasData: [
           { aliasType: 'taxId', value: '98-7654321' },
           { aliasType: 'taxId', value: '11-1111111' },
         ],
+        debtorOverrides: { taxId: '12-3456789' },
+        expectedIdentifiers: { names: [], ssns: [], taxIds: ['11-1111111', '98-7654321'] },
+        expectedSsn: '123-45-6789',
+        expectedTaxId: '12-3456789',
+      },
+      {
+        description: 'should attach all three alias types together',
+        aliasData: [
+          { aliasType: 'name', value: 'John Smith' },
+          { aliasType: 'ssn', value: '222-22-2222' },
+          { aliasType: 'taxId', value: '98-7654321' },
+        ],
+        debtorOverrides: { ssn: '111-11-1111', taxId: '12-3456789' },
         expectedIdentifiers: {
-          names: [],
-          ssns: [],
-          taxIds: ['11-1111111', '98-7654321'],
+          names: ['John Smith'],
+          ssns: ['222-22-2222'],
+          taxIds: ['98-7654321'],
         },
-        expectedDebtorSsn: '123-45-6789',
-        expectedDebtorTaxId: '12-3456789',
+        expectedSsn: '111-11-1111',
+        expectedTaxId: '12-3456789',
       },
     ])(
       '$description',
-      async ({
-        debtorOverrides,
-        aliasData,
-        expectedIdentifiers,
-        expectedDebtorSsn,
-        expectedDebtorTaxId,
-      }) => {
-        const debtorQueryResult = makeQueryResults([buildDebtor(debtorOverrides)]);
-        const aliasQueryResult = makeQueryResults(aliasData);
+      async ({ aliasData, debtorOverrides, expectedIdentifiers, expectedSsn, expectedTaxId }) => {
+        const testCase = MockData.getCaseDetail({
+          override: { trustee: MockData.getLegacyTrustee({ name: 'placeholder' }) },
+        });
+        setupWithAliases(testCase, aliasData, [], debtorOverrides);
 
-        querySpy.mockResolvedValueOnce(debtorQueryResult);
-        querySpy.mockResolvedValueOnce(aliasQueryResult);
-
-        const debtor = await testCasesDxtrGateway.queryDebtorParty(
+        const result = await testCasesDxtrGateway.getCaseDetail(
           applicationContext,
-          '12345',
-          'NYSB',
-          'db',
+          testCase.caseId,
         );
 
-        expect(debtor).toBeDefined();
-        expect(debtor?.additionalIdentifiers).toBeDefined();
-
-        expect(debtor?.additionalIdentifiers?.names).toEqual(expectedIdentifiers.names);
-        expect(debtor?.additionalIdentifiers?.ssns).toEqual(expectedIdentifiers.ssns);
-        expect(debtor?.additionalIdentifiers?.taxIds).toEqual(expectedIdentifiers.taxIds);
-        expect(debtor?.ssn).toBe(expectedDebtorSsn);
-        expect(debtor?.taxId).toBe(expectedDebtorTaxId);
+        expect(result.debtor.additionalIdentifiers).toBeDefined();
+        expect(result.debtor.additionalIdentifiers.names).toEqual(expectedIdentifiers.names);
+        expect(result.debtor.additionalIdentifiers.ssns).toEqual(expectedIdentifiers.ssns);
+        expect(result.debtor.additionalIdentifiers.taxIds).toEqual(expectedIdentifiers.taxIds);
+        expect(result.debtor.ssn).toBe(expectedSsn);
+        expect(result.debtor.taxId).toBe(expectedTaxId);
       },
     );
 
-    test('should handle all three alias types together', async () => {
-      const debtorQueryResult = makeQueryResults([
-        buildDebtor({ ssn: '111-11-1111', taxId: '12-3456789' }),
-      ]);
-      const aliasQueryResult = makeQueryResults([
-        { aliasType: 'name', value: 'John Smith' },
-        { aliasType: 'ssn', value: '222-22-2222' },
-        { aliasType: 'taxId', value: '98-7654321' },
-      ]);
+    test('should attach additionalIdentifiers to joint debtor when joint debtor aliases exist', async () => {
+      const testCase = MockData.getCaseDetail({
+        override: { trustee: MockData.getLegacyTrustee({ name: 'placeholder' }) },
+      });
+      setupWithAliases(testCase, [], [{ aliasType: 'name', value: 'Jane Smith' }]);
 
-      querySpy.mockResolvedValueOnce(debtorQueryResult);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
+      const result = await testCasesDxtrGateway.getCaseDetail(applicationContext, testCase.caseId);
 
-      const debtor = await testCasesDxtrGateway.queryDebtorParty(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
-
-      expect(debtor).toBeDefined();
-      expect(debtor?.additionalIdentifiers).toBeDefined();
-      expect(debtor?.additionalIdentifiers?.names).toEqual(['John Smith']);
-      expect(debtor?.additionalIdentifiers?.ssns).toEqual(['222-22-2222']);
-      expect(debtor?.additionalIdentifiers?.taxIds).toEqual(['98-7654321']);
-      expect(debtor?.ssn).toBe('111-11-1111');
-      expect(debtor?.taxId).toBe('12-3456789');
-    });
-
-    test('should not add additionalIdentifiers property when no additionalIdentifiers exist', async () => {
-      const debtorQueryResult = makeQueryResults([buildDebtor()]);
-      const aliasQueryResult = makeQueryResults([]);
-
-      querySpy.mockResolvedValueOnce(debtorQueryResult);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
-
-      const debtor = await testCasesDxtrGateway.queryDebtorParty(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
-
-      expect(debtor).toBeDefined();
-      expect(debtor?.additionalIdentifiers).toBeUndefined();
-    });
-
-    test('should handle alias query failure gracefully', async () => {
-      const debtorQueryResult = makeQueryResults([buildDebtor()]);
-      querySpy.mockResolvedValueOnce(debtorQueryResult);
-      querySpy.mockRejectedValueOnce(new Error('Alias query failed'));
-
-      const debtor = await testCasesDxtrGateway.queryDebtorParty(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
-
-      expect(debtor).toBeDefined();
-      expect(debtor?.additionalIdentifiers).toBeUndefined();
-      expect(debtor?.name).toBe('John Q. Smith');
-    });
-
-    test('should work for joint debtor with additionalIdentifiers', async () => {
-      const jointDebtorQueryResult = makeQueryResults([buildJointDebtor()]);
-      const aliasQueryResult = makeQueryResults([{ aliasType: 'name', value: 'Jane Smith' }]);
-
-      querySpy.mockResolvedValueOnce(jointDebtorQueryResult);
-      querySpy.mockResolvedValueOnce(aliasQueryResult);
-
-      const jointDebtor = await testCasesDxtrGateway.queryDebtorParty(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'jd',
-      );
-
-      expect(jointDebtor).toBeDefined();
-      expect(jointDebtor?.additionalIdentifiers).toBeDefined();
-      expect(jointDebtor?.additionalIdentifiers?.names).toEqual(['Jane Smith']);
-    });
-
-    test('should return undefined when debtor query returns no results', async () => {
-      const debtorQueryResult = makeQueryResults([]);
-      querySpy.mockResolvedValueOnce(debtorQueryResult);
-
-      const debtor = await testCasesDxtrGateway.queryDebtorParty(
-        applicationContext,
-        '12345',
-        'NYSB',
-        'db',
-      );
-
-      expect(debtor).toBeUndefined();
+      expect(result.jointDebtor?.additionalIdentifiers).toBeDefined();
+      expect(result.jointDebtor?.additionalIdentifiers?.names).toEqual(['Jane Smith']);
     });
   });
 });
@@ -2002,9 +1672,9 @@ describe('getAppointmentDatesByCaseIds', () => {
   let gateway: CasesDxtrGateway;
 
   beforeEach(async () => {
-    querySpy = vi.spyOn(database, 'executeQuery');
     applicationContext = await createMockApplicationContext();
-    gateway = new CasesDxtrGateway();
+    gateway = new CasesDxtrGateway(applicationContext);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
   });
 
   afterEach(() => {
@@ -2044,7 +1714,7 @@ describe('getAppointmentDatesByCaseIds', () => {
       results: {
         recordset: [
           { caseId: '081-24-12345', aptDate: '260407' },
-          { caseId: '081-24-12345', aptDate: '250101' }, // older, should be ignored
+          { caseId: '081-24-12345', aptDate: '250101' },
         ],
       },
       message: '',

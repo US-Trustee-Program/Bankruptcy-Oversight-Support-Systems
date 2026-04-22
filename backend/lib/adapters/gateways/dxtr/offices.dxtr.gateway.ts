@@ -2,7 +2,7 @@ import * as mssql from 'mssql';
 import { CamsError } from '../../../common-errors/cams-error';
 import { ApplicationContext } from '../../types/basic';
 import { QueryResults } from '../../types/database';
-import { executeQuery } from '../../utils/database';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { OfficesGateway } from '../../../use-cases/offices/offices.types';
 import { CamsUserReference } from '@common/cams/users';
 import { UstpDivision, UstpGroup, UstpOfficeDetails } from '@common/cams/offices';
@@ -73,7 +73,11 @@ function toUstpOfficeDetails(flatOfficeDetails: DxtrFlatOfficeDetails[]): UstpOf
   return [...ustpOfficeDetailsMap.values()];
 }
 
-export default class OfficesDxtrGateway implements OfficesGateway {
+export default class OfficesDxtrGateway extends AbstractMssqlClient implements OfficesGateway {
+  constructor(context: ApplicationContext) {
+    super(context.config.dxtrDbConfig, MODULE_NAME);
+  }
+
   getOfficeName(id: string): string {
     return getOfficeName(id);
   }
@@ -97,11 +101,7 @@ export default class OfficesDxtrGateway implements OfficesGateway {
     WHERE b.CAMS = 'Y'
     ORDER BY a.STATE, c.COURT_NAME, b.OFFICE_NAME_DISPLAY`;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query);
 
     if (queryResult.success) {
       const flatOfficeDetails = (queryResult.results as mssql.IResult<DxtrFlatOfficeDetails>)

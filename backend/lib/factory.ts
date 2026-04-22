@@ -2,11 +2,9 @@ import { CasesInterface } from './use-cases/cases/cases.interface';
 import { ApplicationContext } from './adapters/types/basic';
 import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
 import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
-import { IDbConfig } from './adapters/types/database';
 import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
 import { DxtrCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.dxtr.gateway';
 import { MockCaseDocketGateway } from './adapters/gateways/dxtr/case-docket.mock.gateway';
-import { ConnectionPool, config } from 'mssql';
 import {
   AcmsGateway,
   ArchivedCasesRepository,
@@ -132,7 +130,7 @@ const getCasesGateway = (context: ApplicationContext): CasesInterface => {
     if (context.config.get('dbMock')) {
       casesGateway = new CasesLocalGateway();
     } else {
-      casesGateway = new CasesDxtrGateway();
+      casesGateway = new CasesDxtrGateway(context);
     }
   }
   return casesGateway;
@@ -168,14 +166,8 @@ const getTrusteeNotesRepository = (context: ApplicationContext): TrusteeNotesRep
 const getCaseDocketUseCase = (context: ApplicationContext): CaseDocketUseCase => {
   const gateway = context.config.get('dbMock')
     ? new MockCaseDocketGateway()
-    : new DxtrCaseDocketGateway();
+    : new DxtrCaseDocketGateway(context);
   return new CaseDocketUseCase(gateway);
-};
-
-const getSqlConnection = (databaseConfig: IDbConfig) => {
-  // Reference https://github.com/tediousjs/node-mssql#readme
-  // TODO We may want to refactor this to use non ConnectionPool connection object since we have moved to function app.
-  return new ConnectionPool(databaseConfig as config);
 };
 
 const getOrdersGateway = (context: ApplicationContext): OrdersGateway => {
@@ -183,7 +175,7 @@ const getOrdersGateway = (context: ApplicationContext): OrdersGateway => {
     if (context.config.get('dbMock')) {
       ordersGateway = new MockOrdersGateway();
     } else {
-      ordersGateway = new DxtrOrdersGateway();
+      ordersGateway = new DxtrOrdersGateway(context);
     }
   }
   return ordersGateway;
@@ -193,7 +185,7 @@ const getOfficesGateway = (context: ApplicationContext): OfficesGateway => {
   if (context.config.get('dbMock')) {
     return new MockOfficesGateway();
   } else {
-    return new OfficesDxtrGateway();
+    return new OfficesDxtrGateway(context);
   }
 };
 
@@ -527,7 +519,6 @@ const factory = {
   getAssignmentRepository,
   getCaseNotesRepository,
   getCaseDocketUseCase,
-  getSqlConnection,
   getOrdersGateway,
   getOfficeAssigneesRepository,
   getOfficesGateway,

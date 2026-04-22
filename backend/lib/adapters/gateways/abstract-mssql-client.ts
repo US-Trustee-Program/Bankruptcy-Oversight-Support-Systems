@@ -5,7 +5,7 @@ import { ApplicationContext } from '../types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 
 export abstract class AbstractMssqlClient {
-  private static connectionPools: Map<string, ConnectionPool> = new Map();
+  private static readonly connectionPools: Map<string, ConnectionPool> = new Map();
   private readonly moduleName: string;
   private readonly poolKey: string;
 
@@ -31,20 +31,18 @@ export abstract class AbstractMssqlClient {
       }
       const request = connectionPool.request();
 
-      if (typeof input != 'undefined') {
+      if (input !== undefined) {
         input.forEach((item) => {
           request.input(item.name, item.type, item.value);
         });
       }
       const result = (await request.query(query)) as IResult<T>;
 
-      const queryResults: QueryResults = {
+      return {
         results: result.recordset,
         message: '',
         success: true,
       };
-
-      return queryResults;
     } catch (error) {
       const unknownError =
         error instanceof Error

@@ -1,9 +1,9 @@
 import * as mssql from 'mssql';
 
-import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { decomposeCaseId } from './dxtr.gateway.helper';
 import { ApplicationContext } from '../../types/basic';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { CaseDocketGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import { NotFoundError } from '../../../common-errors/not-found-error';
@@ -68,7 +68,10 @@ export function documentSorter(a: DxtrCaseDocketEntryDocument, b: DxtrCaseDocket
   }
 }
 
-export class DxtrCaseDocketGateway implements CaseDocketGateway {
+export class DxtrCaseDocketGateway extends AbstractMssqlClient implements CaseDocketGateway {
+  constructor(context: ApplicationContext) {
+    super(context.config.dxtrDbConfig, MODULE_NAME);
+  }
   async getCaseDocket(context: ApplicationContext, caseId: string): Promise<CaseDocket> {
     const documents = await this._getCaseDocketDocuments(context, caseId);
     const dxtrDocumentMap = new Map<number, DxtrCaseDocketEntryDocument[]>();
@@ -123,12 +126,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
     ORDER BY DE_SEQNO
     `;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      input,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, input);
 
     if (queryResult.success) {
       const recordset = (queryResult.results as mssql.IResult<CaseDocket>).recordset;
@@ -327,12 +325,7 @@ export class DxtrCaseDocketGateway implements CaseDocketGateway {
       AND DC.COURT_STATUS != 'unk'
     `;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      input,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, input);
 
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<DxtrCaseDocketEntryDocument>).recordset;
