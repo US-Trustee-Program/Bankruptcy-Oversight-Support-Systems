@@ -55,6 +55,7 @@ param makeRoleAssignment bool = true
 
 param tags object = {}
 
+// 'Disabled' was attempted and reverted (c7006f8ff) — private endpoint constraints block portal and pipeline access. RBAC (enableRbacAuthorization) is enforced as the primary access control.
 @description('Controls whether the key vault is accessible from the public internet.')
 @allowed([
   'Enabled'
