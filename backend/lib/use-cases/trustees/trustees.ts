@@ -92,6 +92,14 @@ export class TrusteesUseCase {
     return courts.find((c) => c.courtId === courtId)?.courtName;
   }
 
+  private findCourtDivisionName(
+    courts: CourtDivisionDetails[],
+    divisionCode: string | undefined,
+  ): string | undefined {
+    if (!divisionCode) return undefined;
+    return courts.find((c) => c.courtDivisionCode === divisionCode)?.courtDivisionName;
+  }
+
   private checkValidation(validatorResult: ValidatorResult) {
     if (!validatorResult.valid) {
       const validationErrors = flatten(validatorResult.reasonMap || {});
@@ -161,7 +169,7 @@ export class TrusteesUseCase {
       const enrichedAppointments = allAppointments.map((appt) => ({
         ...appt,
         courtName: this.findCourtName(courts, appt.courtId),
-        courtDivisionName: undefined,
+        courtDivisionName: this.findCourtDivisionName(courts, appt.divisionCode),
       }));
 
       const appointmentsByTrusteeId = new Map<string, TrusteeAppointment[]>();

@@ -199,14 +199,18 @@ describe('TrusteesUseCase tests', () => {
       expect(result).toHaveLength(2);
       const alpha = result.find((r) => r.trusteeId === 'trustee-2');
       const bravo = result.find((r) => r.trusteeId === 'trustee-1');
-      expect(alpha?.appointments[0].courtDivisionName).toBeUndefined();
-      expect(bravo?.appointments[0].courtDivisionName).toBeUndefined();
+      expect(alpha?.appointments).toHaveLength(1);
+      expect(bravo?.appointments).toHaveLength(1);
     });
 
-    test('should enrich appointments with courtName from courts lookup', async () => {
+    test('should enrich appointments with courtName and courtDivisionName from courts lookup', async () => {
       const trusteeId = 'trustee-enrich';
       const trustee = MockData.getTrustee({ trusteeId });
-      const appt = MockData.getTrusteeAppointment({ trusteeId, courtId: 'court-1' });
+      const appt = MockData.getTrusteeAppointment({
+        trusteeId,
+        courtId: 'court-1',
+        divisionCode: '081',
+      });
 
       vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
       vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
@@ -216,7 +220,7 @@ describe('TrusteesUseCase tests', () => {
       const result = await trusteesUseCase.listTrustees(context);
 
       expect(result[0].appointments[0].courtName).toBe('Southern District of New York');
-      expect(result[0].appointments[0].courtDivisionName).toBeUndefined();
+      expect(result[0].appointments[0].courtDivisionName).toBe('Manhattan');
     });
 
     test('should set courtName to undefined when courtId has no matching court', async () => {
