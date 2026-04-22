@@ -11,6 +11,8 @@ import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@commo
 import { BadRequestError } from '../../common-errors/bad-request';
 import { Trustee, TrusteeHistory, TrusteeInput, TrusteeListItem } from '@common/cams/trustees';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { CourtsUseCase } from '../courts/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import {
   trusteeName,
   companyName,
@@ -77,11 +79,17 @@ export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
   private readonly trusteeAssistantsRepository: TrusteeAssistantsRepository;
   private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
+  private readonly courtsUseCase: CourtsUseCase;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = factory.getTrusteesRepository(context);
     this.trusteeAssistantsRepository = factory.getTrusteeAssistantsRepository(context);
     this.trusteeAppointmentsRepository = factory.getTrusteeAppointmentsRepository(context);
+    this.courtsUseCase = new CourtsUseCase();
+  }
+
+  private findCourtName(courts: CourtDivisionDetails[], courtId: string): string | undefined {
+    return courts.find((c) => c.courtId === courtId)?.courtName;
   }
 
   private checkValidation(validatorResult: ValidatorResult) {
@@ -141,13 +149,23 @@ export class TrusteesUseCase {
 
   async listTrustees(context: ApplicationContext): Promise<TrusteeListItem[]> {
     try {
-      const trustees = await this.trusteesRepository.listTrustees();
+      const [trustees, courts] = await Promise.all([
+        this.trusteesRepository.listTrustees(),
+        this.courtsUseCase.getCourts(context),
+      ]);
+
       const trusteeIds = trustees.map((t) => t.trusteeId);
       const allAppointments =
         await this.trusteeAppointmentsRepository.getAppointmentsByTrusteeIds(trusteeIds);
 
+      const enrichedAppointments = allAppointments.map((appt) => ({
+        ...appt,
+        courtName: this.findCourtName(courts, appt.courtId),
+        courtDivisionName: undefined,
+      }));
+
       const appointmentsByTrusteeId = new Map<string, TrusteeAppointment[]>();
-      for (const appt of allAppointments) {
+      for (const appt of enrichedAppointments) {
         const existing = appointmentsByTrusteeId.get(appt.trusteeId) ?? [];
         existing.push(appt);
         appointmentsByTrusteeId.set(appt.trusteeId, existing);
