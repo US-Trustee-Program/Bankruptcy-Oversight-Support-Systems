@@ -2,7 +2,7 @@ import { vi, Mocked, MockedClass } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesController } from './trustees.controller';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
-import { TrusteeInput } from '@common/cams/trustees';
+import { TrusteeInput, TrusteeListItem } from '@common/cams/trustees';
 import { TrusteeDocument } from '../../adapters/gateways/mongo/trustees.mongo.repository';
 import { CamsUserReference } from '@common/cams/users';
 import { CamsRole } from '@common/cams/roles';
@@ -204,7 +204,7 @@ describe('TrusteesController', () => {
     });
 
     test('should return list of trustees for GET requests', async () => {
-      const mockTrustees = [sampleTrusteeDocument];
+      const mockTrustees: TrusteeListItem[] = [{ ...sampleTrusteeDocument, appointments: [] }];
       mockUseCase.listTrustees.mockResolvedValue(mockTrustees);
       context.request.url = '/api/trustees';
 

@@ -102,6 +102,22 @@ export class TrusteeAppointmentsMongoRepository
     }
   }
 
+  async getAppointmentsByTrusteeIds(trusteeIds: string[]): Promise<TrusteeAppointment[]> {
+    if (trusteeIds.length === 0) return [];
+    try {
+      const doc = using<TrusteeAppointmentDocument>();
+      const query = and(
+        doc('documentType').equals('TRUSTEE_APPOINTMENT'),
+        doc('trusteeId').contains(trusteeIds),
+      );
+      return await this.getAdapter<TrusteeAppointmentDocument>().find(query);
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: 'Failed to retrieve appointments for multiple trustees.',
+      });
+    }
+  }
+
   async createAppointment(
     trusteeId: string,
     appointmentInput: TrusteeAppointmentInput,

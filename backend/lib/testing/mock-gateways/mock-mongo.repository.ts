@@ -346,6 +346,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getAppointmentsByTrusteeIds(_ignore: any): Promise<any[]> {
+    throw new Error('Method not implemented.');
+  }
+
   getChapter7DueDateMetricsAggregation(): Promise<any> {
     throw new Error('Method not implemented.');
   }
