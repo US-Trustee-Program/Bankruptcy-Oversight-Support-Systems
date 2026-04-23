@@ -9,7 +9,7 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
-export const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
+const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
   const uniqueDistricts = new Map<string, CourtDivisionDetails>();
 
   districts.forEach((district) => {
@@ -26,7 +26,7 @@ export const districtsToComboOptions = (districts: CourtDivisionDetails[]): Comb
     .sort((a, b) => a.label.localeCompare(b.label));
 };
 
-export const getDefaultDistrictsFromSession = (
+const getDefaultDistrictsFromSession = (
   session: CamsSession | null,
   allDistricts: CourtDivisionDetails[],
 ): ComboOption[] => {
