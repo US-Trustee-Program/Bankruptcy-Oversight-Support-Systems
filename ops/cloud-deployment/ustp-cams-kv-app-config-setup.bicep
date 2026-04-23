@@ -28,6 +28,8 @@ param deployedAt string = utcNow()
 
 param deployDns bool = true
 
+param makeRoleAssignment bool = true
+
 param location string = resourceGroup().location
 
 @description('Target resource group to provision App Configuration Keyvault')
@@ -88,6 +90,7 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
     keyVaultName: kvName
     objectId: appConfigIdentity.outputs.principalId
     roleName: 'Key Vault Secrets User'
+    makeRoleAssignment: makeRoleAssignment
     networkAcls: kvNetworkAcls
     tags: tags
   }
