@@ -8,6 +8,7 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 import path from 'path';
 import svgr from 'vite-plugin-svgr';
 import { fileURLToPath } from 'node:url';
+import { createReadStream, existsSync } from 'node:fs';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -44,6 +45,23 @@ export default defineConfig({
     // svgr options: https://react-svgr.com/docs/options/
     svgr({ svgrOptions: { icon: true } }),
     viteTsconfigPaths(),
+    {
+      name: 'serve-uswds-img',
+      configureServer(server) {
+        const uswdsImgDir = fileURLToPath(
+          new URL('../node_modules/@uswds/uswds/dist/img/', import.meta.url),
+        );
+        server.middlewares.use('/assets/styles/img', (req, res, next) => {
+          const filePath = path.join(uswdsImgDir, req.url ?? '');
+          if (existsSync(filePath)) {
+            if (filePath.endsWith('.svg')) res.setHeader('Content-Type', 'image/svg+xml');
+            createReadStream(filePath).pipe(res);
+          } else {
+            next();
+          }
+        });
+      },
+    },
   ],
   envPrefix: 'CAMS_',
   resolve: {
