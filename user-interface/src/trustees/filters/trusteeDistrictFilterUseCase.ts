@@ -35,9 +35,10 @@ const trusteeDistrictFilterUseCase = (
   };
 
   /**
-   * Fetch all districts from the courts API
+   * Fetch all districts from the courts API.
+   * Pass onDefault to receive the initial defaults immediately (avoids stale closure on first load).
    */
-  const fetchDistricts = async () => {
+  const fetchDistricts = async (onDefault?: (districts: ComboOption[]) => void) => {
     try {
       const courtsResponse = await Api2.getCourts();
       const districts = courtsResponse.data;
@@ -50,9 +51,11 @@ const trusteeDistrictFilterUseCase = (
       store.setDefaultDistricts(defaultDistricts);
       store.setSelectedDistricts(defaultDistricts);
 
-      // Trigger callback with default selection
-      if (store.filterDistrictCallback && defaultDistricts.length > 0) {
-        store.filterDistrictCallback(defaultDistricts);
+      if (defaultDistricts.length > 0) {
+        const callback = onDefault ?? store.filterDistrictCallback;
+        if (callback) {
+          callback(defaultDistricts);
+        }
       }
     } catch (_e) {
       store.setDistrictsError(true);
@@ -136,19 +139,14 @@ const trusteeDistrictFilterUseCase = (
   };
 
   /**
-   * Remove a single district pill from the selection
+   * Remove a single district pill from the selection.
+   * When the last pill is removed, clear the filter entirely (show all trustees).
    */
   const handleRemovePill = (district: ComboOption) => {
     const updatedDistricts = store.selectedDistricts.filter((d) => d.value !== district.value);
-
-    // If all districts removed, return to default
-    if (updatedDistricts.length === 0) {
-      handleClearAll();
-    } else {
-      store.setSelectedDistricts(updatedDistricts);
-      if (store.filterDistrictCallback) {
-        store.filterDistrictCallback(updatedDistricts);
-      }
+    store.setSelectedDistricts(updatedDistricts);
+    if (store.filterDistrictCallback) {
+      store.filterDistrictCallback(updatedDistricts);
     }
   };
 
