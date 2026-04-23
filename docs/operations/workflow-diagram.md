@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 27
-- **Main Workflows**: 11
+- **Total Workflows**: 28
+- **Main Workflows**: 12
 - **Reusable Workflows**: 16
 
 ## Legend
@@ -1376,6 +1376,7 @@ flowchart LR
     class trigger_push trigger
     class trigger_workflow_run trigger
     class deploy_security_scan_storage_yml mainWorkflow
+    class document_story_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
     class prune_e2e_image_cache_yml mainWorkflow
@@ -1393,6 +1394,8 @@ flowchart LR
 ### Main Workflows
 - **Deploy Security Scan Storage** (`deploy-security-scan-storage.yml`)
   - Triggers: workflow_dispatch
+  - Jobs: 1
+- **Document User Story** (`document-story.yml`)
   - Jobs: 1
 - **Stand Alone E2E Test Runs** (`e2e-test.yml`)
   - Triggers: workflow_dispatch
