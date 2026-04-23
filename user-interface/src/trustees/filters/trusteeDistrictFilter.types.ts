@@ -4,8 +4,6 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 import { CamsSession } from '@common/cams/session';
 
 export interface TrusteeDistrictFilterStore {
-  filterDistrictCallback: ((districts: ComboOption[]) => void) | null;
-  setFilterDistrictCallback(val: ((districts: ComboOption[]) => void) | null): void;
   districts: CourtDivisionDetails[];
   setDistricts(val: CourtDivisionDetails[]): void;
   districtsError: boolean;
@@ -51,7 +49,7 @@ export type TrusteeDistrictFilterProps = {
 
 export interface TrusteeDistrictFilterUseCase {
   districtsToComboOptions(districts: CourtDivisionDetails[]): ComboOption[];
-  fetchDistricts(onDefault?: (districts: ComboOption[]) => void): Promise<void>;
+  fetchDistricts(): Promise<void>;
   focusOnDistrictFilter(): void;
   getDefaultDistrictsFromSession(
     session: CamsSession | null,
