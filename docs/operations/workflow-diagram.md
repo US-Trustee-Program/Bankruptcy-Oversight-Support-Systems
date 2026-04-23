@@ -316,11 +316,8 @@ flowchart LR
     subgraph "External Inputs"
         Secrets["Secrets"]
         Secrets_AZ_SECURITY_SCAN_CLIENT_ID["AZ_SECURITY_SCAN_CLIENT_ID"]
-        Secrets_AZ_SECURITY_SCAN_STORAGE_NAME["AZ_SECURITY_SCAN_STORAGE_NAME"]
         Secrets_AZ_SUBSCRIPTION_ID["AZ_SUBSCRIPTION_ID"]
         Secrets_AZ_TENANT_ID["AZ_TENANT_ID"]
-        Secrets_SNYK_OAUTH_CLIENT_ID["SNYK_OAUTH_CLIENT_ID"]
-        Secrets_SNYK_OAUTH_CLIENT_SECRET["SNYK_OAUTH_CLIENT_SECRET"]
         Variables["Variables"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
@@ -350,7 +347,7 @@ flowchart LR
             typecheck_vars["NODE_VERSION"]
         end
         subgraph security_scan_subgraph["Security"]
-            security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SECURITY_SCAN_STORAGE_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>SNYK_OAUTH_CLIENT_ID<br/>SNYK_OAUTH_CLIENT_SECRET"]
+            security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
@@ -364,22 +361,16 @@ flowchart LR
     end
 
         Secrets --> Secrets_AZ_SECURITY_SCAN_CLIENT_ID
-        Secrets --> Secrets_AZ_SECURITY_SCAN_STORAGE_NAME
         Secrets --> Secrets_AZ_SUBSCRIPTION_ID
         Secrets --> Secrets_AZ_TENANT_ID
-        Secrets --> Secrets_SNYK_OAUTH_CLIENT_ID
-        Secrets --> Secrets_SNYK_OAUTH_CLIENT_SECRET
         Variables --> Variables_CAMS_BASE_PATH
         Variables --> Variables_CAMS_LAUNCH_DARKLY_ENV
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
         Variables --> Variables_NODE_VERSION
     Secrets_AZ_SECURITY_SCAN_CLIENT_ID -.-> security_scan_subgraph
-    Secrets_AZ_SECURITY_SCAN_STORAGE_NAME -.-> security_scan_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> security_scan_subgraph
     Secrets_AZ_TENANT_ID -.-> security_scan_subgraph
-    Secrets_SNYK_OAUTH_CLIENT_ID -.-> security_scan_subgraph
-    Secrets_SNYK_OAUTH_CLIENT_SECRET -.-> security_scan_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
     Variables_CAMS_SERVER_PORT -.-> build_subgraph
@@ -876,11 +867,8 @@ flowchart LR
     subgraph "External Inputs"
         Secrets["Secrets"]
         Secrets_AZ_SECURITY_SCAN_CLIENT_ID["AZ_SECURITY_SCAN_CLIENT_ID"]
-        Secrets_AZ_SECURITY_SCAN_STORAGE_NAME["AZ_SECURITY_SCAN_STORAGE_NAME"]
         Secrets_AZ_SUBSCRIPTION_ID["AZ_SUBSCRIPTION_ID"]
         Secrets_AZ_TENANT_ID["AZ_TENANT_ID"]
-        Secrets_SNYK_OAUTH_CLIENT_ID["SNYK_OAUTH_CLIENT_ID"]
-        Secrets_SNYK_OAUTH_CLIENT_SECRET["SNYK_OAUTH_CLIENT_SECRET"]
         Variables["Variables"]
         Variables_CAMS_BASE_PATH["CAMS_BASE_PATH"]
         Variables_CAMS_LAUNCH_DARKLY_ENV["CAMS_LAUNCH_DARKLY_ENV"]
@@ -910,7 +898,7 @@ flowchart LR
             typecheck_vars["NODE_VERSION"]
         end
         subgraph security_scan_subgraph["Security"]
-            security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SECURITY_SCAN_STORAGE_NAME<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID<br/>SNYK_OAUTH_CLIENT_ID<br/>SNYK_OAUTH_CLIENT_SECRET"]
+            security_scan_vars["AZ_SECURITY_SCAN_CLIENT_ID<br/>AZ_SUBSCRIPTION_ID<br/>AZ_TENANT_ID"]
         end
         subgraph build_subgraph["Build"]
             build_vars["CAMS_BASE_PATH<br/>CAMS_LAUNCH_DARKLY_ENV<br/>CAMS_SERVER_PORT<br/>CAMS_SERVER_PROTOCOL<br/>NODE_VERSION<br/>apiFunctionName<br/>azResourceGrpAppEncrypted<br/>dataflowsFunctionName<br/>ghaEnvironment<br/>slotName<br/>webappName"]
@@ -924,22 +912,16 @@ flowchart LR
     end
 
         Secrets --> Secrets_AZ_SECURITY_SCAN_CLIENT_ID
-        Secrets --> Secrets_AZ_SECURITY_SCAN_STORAGE_NAME
         Secrets --> Secrets_AZ_SUBSCRIPTION_ID
         Secrets --> Secrets_AZ_TENANT_ID
-        Secrets --> Secrets_SNYK_OAUTH_CLIENT_ID
-        Secrets --> Secrets_SNYK_OAUTH_CLIENT_SECRET
         Variables --> Variables_CAMS_BASE_PATH
         Variables --> Variables_CAMS_LAUNCH_DARKLY_ENV
         Variables --> Variables_CAMS_SERVER_PORT
         Variables --> Variables_CAMS_SERVER_PROTOCOL
         Variables --> Variables_NODE_VERSION
     Secrets_AZ_SECURITY_SCAN_CLIENT_ID -.-> security_scan_subgraph
-    Secrets_AZ_SECURITY_SCAN_STORAGE_NAME -.-> security_scan_subgraph
     Secrets_AZ_SUBSCRIPTION_ID -.-> security_scan_subgraph
     Secrets_AZ_TENANT_ID -.-> security_scan_subgraph
-    Secrets_SNYK_OAUTH_CLIENT_ID -.-> security_scan_subgraph
-    Secrets_SNYK_OAUTH_CLIENT_SECRET -.-> security_scan_subgraph
     Variables_CAMS_BASE_PATH -.-> build_subgraph
     Variables_CAMS_LAUNCH_DARKLY_ENV -.-> build_subgraph
     Variables_CAMS_SERVER_PORT -.-> build_subgraph
