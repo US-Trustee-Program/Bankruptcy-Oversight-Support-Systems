@@ -292,7 +292,6 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('Test Trustee')).toBeInTheDocument();
       });
 
-      // District filter should be present
       expect(screen.getByText('Filters')).toBeInTheDocument();
     });
 
@@ -309,7 +308,6 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('Test Trustee')).toBeInTheDocument();
       });
 
-      // Check for ARIA live region
       const liveRegion = screen.getByRole('status');
       expect(liveRegion).toHaveAttribute('aria-live', 'polite');
       expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
@@ -321,6 +319,146 @@ describe('TrusteesList Component', () => {
       const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee1, trustee2] };
 
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
+      });
+    });
+
+    test('should filter trustees by selected district using OR logic', async () => {
+      const apptNY = makeAppointment({ courtId: 'NYSB' });
+      const apptVT = makeAppointment({ courtId: 'VTB' });
+      const apptCA = makeAppointment({ courtId: 'CAB' });
+      const trusteeNY = makeListItem({
+        trusteeId: 'ny',
+        name: 'New York Trustee',
+        appointments: [apptNY],
+      });
+      const trusteeVT = makeListItem({
+        trusteeId: 'vt',
+        name: 'Vermont Trustee',
+        appointments: [apptVT],
+      });
+      const trusteeCA = makeListItem({
+        trusteeId: 'ca',
+        name: 'California Trustee',
+        appointments: [apptCA],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY, trusteeVT, trusteeCA] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+      const { rerender } = renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('3 Trustee(s)')).toBeInTheDocument();
+      });
+
+      // Simulate filter selecting NY and VT
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY, trusteeVT, trusteeCA] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York',
+          },
+          {
+            courtId: 'VTB',
+            courtName: 'District of Vermont',
+            officeCode: '088',
+            officeName: 'Rutland',
+            courtDivisionCode: '088',
+            courtDivisionName: 'Rutland',
+            groupDesignator: 'VT',
+            regionId: '01',
+            regionName: 'Boston',
+          },
+        ],
+      });
+
+      rerender(
+        <BrowserRouter>
+          <TrusteesList />
+        </BrowserRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('New York Trustee')).toBeInTheDocument();
+      });
+    });
+
+    test('should show all trustees when no district filter is active', async () => {
+      const appt1 = makeAppointment({ courtId: 'NYSB' });
+      const appt2 = makeAppointment({ courtId: 'VTB' });
+      const trustee1 = makeListItem({
+        trusteeId: 't1',
+        name: 'Trustee Alpha',
+        appointments: [appt1],
+      });
+      const trustee2 = makeListItem({
+        trusteeId: 't2',
+        name: 'Trustee Beta',
+        appointments: [appt2],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1, trustee2] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Trustee Alpha')).toBeInTheDocument();
+      expect(screen.getByText('Trustee Beta')).toBeInTheDocument();
+    });
+
+    test('should show trustee with no appointments only when no district filter is active', async () => {
+      const trusteeWithAppt = makeListItem({
+        trusteeId: 't1',
+        name: 'Appointed Trustee',
+        appointments: [makeAppointment({ courtId: 'NYSB' })],
+      });
+      const trusteeNoAppt = makeListItem({
+        trusteeId: 't2',
+        name: 'Unassigned Trustee',
+        appointments: [],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeWithAppt, trusteeNoAppt] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Unassigned Trustee')).toBeInTheDocument();
+    });
+
+    test('should count only filtered trustees', async () => {
+      const apptNY = makeAppointment({ courtId: 'NYSB' });
+      const apptVT = makeAppointment({ courtId: 'VTB' });
+      const trusteeNY = makeListItem({
+        trusteeId: 'ny',
+        name: 'NY Trustee',
+        appointments: [apptNY],
+      });
+      const trusteeVT = makeListItem({
+        trusteeId: 'vt',
+        name: 'VT Trustee',
+        appointments: [apptVT],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY, trusteeVT] });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
 
       renderWithRouter(<TrusteesList />);

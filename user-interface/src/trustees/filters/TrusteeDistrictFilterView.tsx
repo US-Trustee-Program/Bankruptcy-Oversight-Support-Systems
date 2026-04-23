@@ -47,16 +47,15 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             <div className="filter-control">
               <ComboBox
                 id="district-filter"
-                label="District"
+                label="District (Division)"
                 options={viewModel.districtsToComboOptions(viewModel.districts)}
                 selections={viewModel.selectedDistricts}
                 onUpdateSelection={viewModel.handleFilterChange}
-                ariaDescription="Filter trustees by district"
                 multiSelect={true}
                 wrapPills={true}
                 pluralLabel="districts"
                 singularLabel="district"
-                placeholder="Select districts..."
+                placeholder="- Select one or more -"
                 ref={viewModel.districtFilterRef}
               />
             </div>
