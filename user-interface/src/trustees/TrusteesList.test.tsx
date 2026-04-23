@@ -277,4 +277,57 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('Pool')).toBeInTheDocument();
     expect(screen.getByText('Voluntarily Suspended')).toBeInTheDocument();
   });
+
+  describe('District Filtering', () => {
+    test('should render district filter component', async () => {
+      const trustee = makeListItem({ trusteeId: 'trustee-1', name: 'Test Trustee' });
+      const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Trustee')).toBeInTheDocument();
+      });
+
+      // District filter should be present
+      expect(screen.getByText('Filters')).toBeInTheDocument();
+    });
+
+    test('should include ARIA live region for filter announcements', async () => {
+      const trustee = makeListItem({ trusteeId: 'trustee-1', name: 'Test Trustee' });
+      const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Trustee')).toBeInTheDocument();
+      });
+
+      // Check for ARIA live region
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+      expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
+    });
+
+    test('should display trustee count', async () => {
+      const trustee1 = makeListItem({ trusteeId: 'trustee-1', name: 'Trustee One' });
+      const trustee2 = makeListItem({ trusteeId: 'trustee-2', name: 'Trustee Two' });
+      const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee1, trustee2] };
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
+      });
+    });
+  });
 });
