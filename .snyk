@@ -29,10 +29,10 @@ ignore:
         reason: >-
           Transitive dependency via launchdarkly-js-sdk-common, @azure/msal-node,
           and njwt. No fixed version available from upstream packages.
-        expires: 2026-07-23T00:00:00.000Z
+        expires: 2026-05-23T00:00:00.000Z
   SNYK-JS-FASTXMLBUILDER-16133760:
     - '*':
         reason: >-
           Transitive dependency via @azure/storage-blob > @azure/core-xml >
           fast-xml-parser. No fixed version of fast-xml-builder available upstream.
-        expires: 2026-07-23T00:00:00.000Z
+        expires: 2026-05-23T00:00:00.000Z
