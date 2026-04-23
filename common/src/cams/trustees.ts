@@ -8,6 +8,7 @@ import { NullableOptionalFields } from '../api/common';
 import { TrusteeAssistant } from './trustee-assistants';
 import { AbstractTrusteeHistory } from './trustee-history-base';
 import { TrusteeUpcomingKeyDatesHistory } from './trustee-upcoming-key-dates';
+import type { TrusteeAppointment } from './trustee-appointments';
 
 export type AppointmentChapterType = '7' | '11' | '11-subchapter-v' | '12' | '13';
 
@@ -100,6 +101,10 @@ export type Trustee = TrusteeData &
       addresses?: LegacyAddress[];
     };
   };
+
+export type TrusteeListItem = Trustee & {
+  appointments: TrusteeAppointment[];
+};
 
 // this is needed to map migrated ChapterDetails to our migrated Trustees
 export type TrusteeInput = TrusteeCore &

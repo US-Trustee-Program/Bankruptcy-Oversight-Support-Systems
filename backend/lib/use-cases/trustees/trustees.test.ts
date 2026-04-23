@@ -8,6 +8,8 @@ import { getCamsUserReference } from '@common/cams/session';
 import { BadRequestError } from '../../common-errors/bad-request';
 import { CamsError } from '../../common-errors/cams-error';
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
+import { CourtsUseCase } from '../courts/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 describe('TrusteesUseCase tests', () => {
   let context: ApplicationContext;
@@ -153,22 +155,116 @@ describe('TrusteesUseCase tests', () => {
   });
 
   describe('listTrustees', () => {
+    const mockCourts: CourtDivisionDetails[] = [
+      {
+        officeName: 'Manhattan',
+        officeCode: '081',
+        courtId: 'court-1',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '081',
+        courtDivisionName: 'Manhattan',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'Region 2',
+      },
+    ];
+
     beforeEach(async () => {
       context = await createMockApplicationContext();
       trusteesUseCase = new TrusteesUseCase(context);
+      vi.spyOn(CourtsUseCase.prototype, 'getCourts').mockResolvedValue(mockCourts);
     });
 
     afterEach(() => {
       vi.restoreAllMocks();
     });
 
-    test('should return list of trustees', async () => {
-      const mockTrustees = [MockData.getTrustee(), MockData.getTrustee()];
-      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue(mockTrustees);
+    test('should return TrusteeListItem[] with appointments attached per trustee', async () => {
+      const trustee1 = MockData.getTrustee({ trusteeId: 'trustee-1', name: 'Bravo' });
+      const trustee2 = MockData.getTrustee({ trusteeId: 'trustee-2', name: 'Alpha' });
+      const appt1 = MockData.getTrusteeAppointment({ trusteeId: 'trustee-1' });
+      const appt2 = MockData.getTrusteeAppointment({ trusteeId: 'trustee-2' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
+        trustee1,
+        trustee2,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt1,
+        appt2,
+      ]);
 
       const result = await trusteesUseCase.listTrustees(context);
 
-      expect(result).toEqual(mockTrustees);
+      expect(result).toHaveLength(2);
+      const alpha = result.find((r) => r.trusteeId === 'trustee-2');
+      const bravo = result.find((r) => r.trusteeId === 'trustee-1');
+      expect(alpha?.appointments).toHaveLength(1);
+      expect(bravo?.appointments).toHaveLength(1);
+    });
+
+    test('should enrich appointments with courtName and courtDivisionName from courts lookup', async () => {
+      const trusteeId = 'trustee-enrich';
+      const trustee = MockData.getTrustee({ trusteeId });
+      const appt = MockData.getTrusteeAppointment({
+        trusteeId,
+        courtId: 'court-1',
+        divisionCode: '081',
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result[0].appointments[0].courtName).toBe('Southern District of New York');
+      expect(result[0].appointments[0].courtDivisionName).toBe('Manhattan');
+    });
+
+    test('should set courtName to undefined when courtId has no matching court', async () => {
+      const trusteeId = 'trustee-unknown-court';
+      const trustee = MockData.getTrustee({ trusteeId });
+      const appt = MockData.getTrusteeAppointment({ trusteeId, courtId: 'unknown-court' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([
+        appt,
+      ]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result[0].appointments[0].courtName).toBeUndefined();
+    });
+
+    test('should give trustees with no matching appointments an empty appointments array', async () => {
+      const trustee = MockData.getTrustee({ trusteeId: 'trustee-no-appts' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([trustee]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].appointments).toEqual([]);
+    });
+
+    test('should return trustees sorted by name ascending (case-insensitive)', async () => {
+      const trusteeC = MockData.getTrustee({ trusteeId: 'id-c', name: 'charlie' });
+      const trusteeA = MockData.getTrustee({ trusteeId: 'id-a', name: 'Alice' });
+      const trusteeB = MockData.getTrustee({ trusteeId: 'id-b', name: 'bob' });
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
+        trusteeC,
+        trusteeA,
+        trusteeB,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'getAppointmentsByTrusteeIds').mockResolvedValue([]);
+
+      const result = await trusteesUseCase.listTrustees(context);
+
+      expect(result.map((r) => r.name)).toEqual(['Alice', 'bob', 'charlie']);
     });
 
     test('should handle repository error during list operation', async () => {

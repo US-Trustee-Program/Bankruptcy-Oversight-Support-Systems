@@ -33,6 +33,7 @@ import {
   Trustee,
   TrusteeHistory,
   TrusteeInput,
+  TrusteeListItem,
   TrusteeOversightAssignment,
 } from '@common/cams/trustees';
 import { CaseAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
@@ -1955,6 +1956,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
             phone: '(694) 876-7057 x45546',
             email: 'Maurice.Windler@gmail.com',
           },
+          appointments: [],
         },
         {
           id: 'trustee-002',
@@ -1973,6 +1975,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
             phone: '963-363-4964 x4002',
             email: 'Arnaldo_Runolfsson@yahoo.com',
           },
+          appointments: [],
         },
         {
           id: 'trustee-003',
@@ -1991,6 +1994,7 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
             phone: '(203) 424-9970',
             email: 'Lawrence_Auer9@hotmail.com',
           },
+          appointments: [],
         },
       ],
     };
@@ -2476,7 +2480,7 @@ async function patchTrustee(id: string, trustee: Partial<TrusteeInput>) {
 }
 
 async function getTrustees() {
-  return get<Trustee[]>('/trustees');
+  return get<TrusteeListItem[]>('/trustees');
 }
 
 async function getTrustee(id: string) {
