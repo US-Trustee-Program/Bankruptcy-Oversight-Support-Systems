@@ -1,0 +1,130 @@
+@use 'uswds-core' as *;
+
+.trustee-district-filter {
+  max-width: 1240px;
+  margin-bottom: units(3);
+
+  .filter-header {
+    background-color: color('base-lightest');
+    border: 1px solid color('base-lighter');
+    border-radius: radius('md');
+    padding: units(1.5) units(2.5);
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: units(3);
+  }
+
+  .filter-toggle-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: units(1);
+    padding: 0;
+    font-weight: fw('bold');
+    font-size: size('sans', 'md');
+    color: color('ink');
+    cursor: pointer;
+    background: none;
+    border: none;
+    width: 100%;
+
+
+    &:hover {
+      color: color('primary');
+    }
+
+    &:focus {
+      outline: units(0.5) solid color('primary');
+      outline-offset: units(0.5);
+    }
+
+    .usa-icon {
+      width: units(2.5);
+      height: units(2.5);
+    }
+  }
+
+  .filter-content {
+    margin-top: units(2);
+    animation: slideDown 0.2s ease-out;
+
+    .filter-control {
+      max-width: units('tablet');
+    }
+  }
+
+  .filter-pills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: units(1);
+    margin-top: units(2);
+
+    .filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: units(0.5);
+      background-color: color('primary-lighter');
+      color: color('primary-darker');
+      padding: units(0.5) units(1.5);
+      border-radius: radius('pill');
+      font-size: size('sans', 'sm');
+      font-weight: fw('bold');
+
+      .usa-tag__remove-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        margin: 0 0 0 units(0.5);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: color('primary-dark');
+
+        &:hover {
+          color: color('primary-darker');
+        }
+
+        &:focus {
+          outline: units(0.5) solid color('primary');
+          outline-offset: units(0.5);
+          border-radius: radius('pill');
+        }
+
+        .usa-icon {
+          width: units(2);
+          height: units(2);
+        }
+      }
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  // Mobile responsive
+  @media (max-width: units('tablet')) {
+    .filter-content {
+      .filter-control {
+        max-width: 100%;
+      }
+    }
+
+    .filter-pills-container {
+      .filter-pill {
+        font-size: size('sans', 'xs');
+        padding: units(0.5) units(1);
+      }
+    }
+  }
+}
