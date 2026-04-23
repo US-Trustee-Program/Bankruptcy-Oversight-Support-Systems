@@ -1,11 +1,18 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import { TrusteesRepository, TrusteeAssistantsRepository } from '../gateways.types';
+import {
+  TrusteesRepository,
+  TrusteeAssistantsRepository,
+  TrusteeAppointmentsRepository,
+} from '../gateways.types';
 import { getCamsUserReference } from '@common/cams/session';
 import { getCamsErrorWithStack } from '../../common-errors/error-utilities';
 import factory from '../../factory';
 import { ValidationSpec, validateObject, flatten, ValidatorResult } from '@common/cams/validation';
 import { BadRequestError } from '../../common-errors/bad-request';
-import { Trustee, TrusteeHistory, TrusteeInput } from '@common/cams/trustees';
+import { Trustee, TrusteeHistory, TrusteeInput, TrusteeListItem } from '@common/cams/trustees';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { CourtsUseCase } from '../courts/courts';
+import { CourtDivisionDetails } from '@common/cams/courts';
 import {
   trusteeName,
   companyName,
@@ -71,10 +78,26 @@ const trusteeSpec: ValidationSpec<TrusteeInput> = {
 export class TrusteesUseCase {
   private readonly trusteesRepository: TrusteesRepository;
   private readonly trusteeAssistantsRepository: TrusteeAssistantsRepository;
+  private readonly trusteeAppointmentsRepository: TrusteeAppointmentsRepository;
+  private readonly courtsUseCase: CourtsUseCase;
 
   constructor(context: ApplicationContext) {
     this.trusteesRepository = factory.getTrusteesRepository(context);
     this.trusteeAssistantsRepository = factory.getTrusteeAssistantsRepository(context);
+    this.trusteeAppointmentsRepository = factory.getTrusteeAppointmentsRepository(context);
+    this.courtsUseCase = new CourtsUseCase();
+  }
+
+  private findCourtName(courts: CourtDivisionDetails[], courtId: string): string | undefined {
+    return courts.find((c) => c.courtId === courtId)?.courtName;
+  }
+
+  private findCourtDivisionName(
+    courts: CourtDivisionDetails[],
+    divisionCode: string | undefined,
+  ): string | undefined {
+    if (!divisionCode) return undefined;
+    return courts.find((c) => c.courtDivisionCode === divisionCode)?.courtDivisionName;
   }
 
   private checkValidation(validatorResult: ValidatorResult) {
@@ -132,13 +155,39 @@ export class TrusteesUseCase {
     }
   }
 
-  async listTrustees(context: ApplicationContext): Promise<Trustee[]> {
+  async listTrustees(context: ApplicationContext): Promise<TrusteeListItem[]> {
     try {
-      // Retrieve trustees list from repository
-      const trustees = await this.trusteesRepository.listTrustees();
+      const [trustees, courts] = await Promise.all([
+        this.trusteesRepository.listTrustees(),
+        this.courtsUseCase.getCourts(context),
+      ]);
 
-      context.logger.info(MODULE_NAME, `Retrieved ${trustees.length} trustees`);
-      return trustees;
+      const trusteeIds = trustees.map((t) => t.trusteeId);
+      const allAppointments =
+        await this.trusteeAppointmentsRepository.getAppointmentsByTrusteeIds(trusteeIds);
+
+      const enrichedAppointments = allAppointments.map((appt) => ({
+        ...appt,
+        courtName: this.findCourtName(courts, appt.courtId),
+        courtDivisionName: this.findCourtDivisionName(courts, appt.divisionCode),
+      }));
+
+      const appointmentsByTrusteeId = new Map<string, TrusteeAppointment[]>();
+      for (const appt of enrichedAppointments) {
+        const existing = appointmentsByTrusteeId.get(appt.trusteeId) ?? [];
+        existing.push(appt);
+        appointmentsByTrusteeId.set(appt.trusteeId, existing);
+      }
+
+      const listItems: TrusteeListItem[] = trustees.map((trustee) => ({
+        ...trustee,
+        appointments: appointmentsByTrusteeId.get(trustee.trusteeId) ?? [],
+      }));
+
+      listItems.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+
+      context.logger.info(MODULE_NAME, `Retrieved ${listItems.length} trustees`);
+      return listItems;
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         camsStackInfo: { module: MODULE_NAME, message: 'Failed to retrieve trustees list.' },

@@ -27,8 +27,8 @@ test.describe('Trustees', () => {
     const trusteesTable = page.getByTestId('trustees-table');
     await expect(trusteesTable).toBeVisible(timeoutOption);
 
-    // Verify table headers are present
-    await expect(page.locator('th:has-text("Name")')).toBeVisible();
+    // Verify table headers are present (now using div with role="columnheader")
+    await expect(page.locator('[role="columnheader"]:has-text("Name")')).toBeVisible();
   });
 
   test('should navigate to trustee detail page when clicking on a trustee name', async ({

@@ -367,6 +367,7 @@ export type TrusteeDueDateMetricsAggregation = {
 export interface TrusteeAppointmentsRepository extends Releasable {
   read(trusteeId: string, appointmentId: string): Promise<TrusteeAppointment>;
   getTrusteeAppointments(trusteeId: string): Promise<TrusteeAppointment[]>;
+  getAppointmentsByTrusteeIds(trusteeIds: string[]): Promise<TrusteeAppointment[]>;
   createAppointment(
     trusteeId: string,
     appointmentInput: TrusteeAppointmentInput,
