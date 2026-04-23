@@ -1,4 +1,12 @@
 .trustees-list {
+  .trustees-list-count {
+    font-size: 1rem;
+    font-family: 'Source Sans Pro', sans-serif;
+    font-weight: bold;
+    line-height: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
   .trustees-list-grid {
     overflow-x: auto;
   }
@@ -6,11 +14,12 @@
   // Mobile default — stacked with inline labels
   .trustees-list-header {
     display: none;
+    padding: 0 1rem 0.5rem 1rem;
   }
 
   .trustee-group {
     border-bottom: 1px solid #1b1b1b;
-    padding: 0.625rem 0;
+    padding: 0.625rem 1rem;
     margin-top: 1rem;
   }
 
