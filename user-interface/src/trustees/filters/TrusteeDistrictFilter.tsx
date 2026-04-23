@@ -19,7 +19,7 @@ const TrusteeDistrictFilter_ = (
 ) => {
   const store: TrusteeDistrictFilterStore = useTrusteeDistrictFilterStoreReact();
   const controls: TrusteeDistrictFilterControls = useTrusteeDistrictFilterControlsReact();
-  const useCase = trusteeDistrictFilterUseCase(store, controls);
+  const useCase = trusteeDistrictFilterUseCase(store, controls, props.handleFilterDistrict);
   const globalAlert = useGlobalAlert();
 
   useImperativeHandle(ref, () => {
@@ -36,8 +36,7 @@ const TrusteeDistrictFilter_ = (
   }, [store.districtsError, globalAlert]);
 
   useEffect(() => {
-    store.setFilterDistrictCallback(() => props.handleFilterDistrict);
-    useCase.fetchDistricts(props.handleFilterDistrict);
+    useCase.fetchDistricts();
   }, []);
 
   const viewModel: TrusteeDistrictFilterViewModel = {
@@ -64,10 +63,7 @@ function useTrusteeDistrictFilterStoreReact() {
   const [districtsError, setDistrictsError] = useState<boolean>(false);
   const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
   const [defaultDistricts, setDefaultDistricts] = useState<ComboOption[]>([]);
-  const [isExpanded, setIsExpanded] = useState<boolean>(false); // Start collapsed
-  const [filterDistrictCallback, setFilterDistrictCallback] = useState<
-    ((districts: ComboOption[]) => void) | null
-  >(null);
+  const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   return {
     districts,
@@ -80,8 +76,6 @@ function useTrusteeDistrictFilterStoreReact() {
     setDefaultDistricts,
     isExpanded,
     setIsExpanded,
-    filterDistrictCallback,
-    setFilterDistrictCallback,
   };
 }
 

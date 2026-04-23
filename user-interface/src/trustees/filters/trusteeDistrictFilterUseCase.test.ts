@@ -50,6 +50,8 @@ describe('trustee district filter use case tests', () => {
     },
   ];
 
+  const mockOnFilterDistrict = vi.fn();
+
   const mockStore: TrusteeDistrictFilterStore = {
     districts: mockDistricts,
     setDistricts: vi.fn(),
@@ -61,8 +63,6 @@ describe('trustee district filter use case tests', () => {
     setDefaultDistricts: vi.fn(),
     isExpanded: false,
     setIsExpanded: vi.fn(),
-    filterDistrictCallback: null,
-    setFilterDistrictCallback: vi.fn(),
   };
 
   const comboBoxRef = {
@@ -80,12 +80,12 @@ describe('trustee district filter use case tests', () => {
     districtFilterRef: comboBoxRef,
   };
 
-  const useCase = trusteeDistrictFilterUseCase(mockStore, mockControls);
+  const useCase = trusteeDistrictFilterUseCase(mockStore, mockControls, mockOnFilterDistrict);
 
   beforeEach(() => {
-    // Reset the vi.fn() mocks before creating spies on them
     mockStore.setSelectedDistricts = vi.fn();
     setSelectedDistrictsSpy = vi.spyOn(mockStore, 'setSelectedDistricts');
+    mockOnFilterDistrict.mockReset();
   });
 
   afterEach(() => {
@@ -358,30 +358,16 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('handleClearAll', () => {
-    test('should reset selected districts to default districts', () => {
+    test('should reset selected districts to default districts and notify', () => {
       const defaultDistricts: ComboOption[] = [
         { value: 'NYSB', label: 'Southern District of New York' },
       ];
       mockStore.defaultDistricts = defaultDistricts;
-      const callback = vi.fn();
-      mockStore.filterDistrictCallback = callback;
 
       useCase.handleClearAll();
 
       expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(defaultDistricts);
-      expect(callback).toHaveBeenCalledWith(defaultDistricts);
-    });
-
-    test('should not call callback if callback is null', () => {
-      const defaultDistricts: ComboOption[] = [
-        { value: 'NYSB', label: 'Southern District of New York' },
-      ];
-      mockStore.defaultDistricts = defaultDistricts;
-      mockStore.filterDistrictCallback = null;
-
-      useCase.handleClearAll();
-
-      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(defaultDistricts);
+      expect(mockOnFilterDistrict).toHaveBeenCalledWith(defaultDistricts);
     });
   });
 
@@ -392,14 +378,12 @@ describe('trustee district filter use case tests', () => {
         { value: 'VTB', label: 'District of Vermont' },
       ];
       mockStore.selectedDistricts = districts;
-      const callback = vi.fn();
-      mockStore.filterDistrictCallback = callback;
 
       const districtToRemove = districts[0];
       useCase.handleRemovePill(districtToRemove);
 
       expect(setSelectedDistrictsSpy).toHaveBeenCalledWith([districts[1]]);
-      expect(callback).toHaveBeenCalledWith([districts[1]]);
+      expect(mockOnFilterDistrict).toHaveBeenCalledWith([districts[1]]);
     });
 
     test('should clear selection entirely when removing last district', () => {
@@ -407,14 +391,12 @@ describe('trustee district filter use case tests', () => {
       const defaultDistricts: ComboOption[] = [{ value: 'VTB', label: 'District of Vermont' }];
       mockStore.selectedDistricts = districts;
       mockStore.defaultDistricts = defaultDistricts;
-      const callback = vi.fn();
-      mockStore.filterDistrictCallback = callback;
 
       useCase.handleRemovePill(districts[0]);
 
       // Should clear to empty (show all trustees), not restore defaults
       expect(setSelectedDistrictsSpy).toHaveBeenCalledWith([]);
-      expect(callback).toHaveBeenCalledWith([]);
+      expect(mockOnFilterDistrict).toHaveBeenCalledWith([]);
     });
   });
 
@@ -443,24 +425,11 @@ describe('trustee district filter use case tests', () => {
       const newDistricts: ComboOption[] = [
         { value: 'NYSB', label: 'Southern District of New York' },
       ];
-      const callback = vi.fn();
-      mockStore.filterDistrictCallback = callback;
 
       useCase.handleFilterChange(newDistricts);
 
       expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(newDistricts);
-      expect(callback).toHaveBeenCalledWith(newDistricts);
-    });
-
-    test('should not call callback if callback is null', () => {
-      const newDistricts: ComboOption[] = [
-        { value: 'NYSB', label: 'Southern District of New York' },
-      ];
-      mockStore.filterDistrictCallback = null;
-
-      useCase.handleFilterChange(newDistricts);
-
-      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(newDistricts);
+      expect(mockOnFilterDistrict).toHaveBeenCalledWith(newDistricts);
     });
   });
 
@@ -480,95 +449,51 @@ describe('trustee district filter use case tests', () => {
       mockStore.setDistrictsError = vi.fn();
       mockStore.setDefaultDistricts = vi.fn();
       mockStore.setSelectedDistricts = vi.fn();
-      mockStore.filterDistrictCallback = null;
     });
 
-    test('should call onDefault callback with defaults when provided', async () => {
+    test('should not call onFilterDistrict when session has no matching offices', async () => {
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-      const onDefault = vi.fn();
-
-      await useCase.fetchDistricts(onDefault);
-
-      // No default districts (null session), so onDefault not called
-      expect(onDefault).not.toHaveBeenCalled();
-    });
-
-    test('should call onDefault with defaults when user has matching offices', async () => {
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
-      const session: CamsSession = {
-        ...MockData.getCamsSession(),
-        user: {
-          ...MockData.getCamsSession().user,
-          offices: [
-            {
-              officeCode: '081',
-              officeName: 'Manhattan',
-              idpGroupName: 'Manhattan',
-              regionId: '02',
-              regionName: 'New York Region',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [
-                    {
-                      divisionCode: '081',
-                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
-                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      };
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-      const onDefault = vi.fn();
-
-      await useCase.fetchDistricts(onDefault);
-
-      expect(onDefault).toHaveBeenCalledWith([
-        { value: 'NYSB', label: 'Southern District of New York' },
-      ]);
-    });
-
-    test('should fall back to filterDistrictCallback when onDefault not provided', async () => {
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
-      const session: CamsSession = {
-        ...MockData.getCamsSession(),
-        user: {
-          ...MockData.getCamsSession().user,
-          offices: [
-            {
-              officeCode: '081',
-              officeName: 'Manhattan',
-              idpGroupName: 'Manhattan',
-              regionId: '02',
-              regionName: 'New York Region',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [
-                    {
-                      divisionCode: '081',
-                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
-                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
-                    },
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      };
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-      const storeCallback = vi.fn();
-      mockStore.filterDistrictCallback = storeCallback;
 
       await useCase.fetchDistricts();
 
-      expect(storeCallback).toHaveBeenCalledWith([
+      expect(mockOnFilterDistrict).not.toHaveBeenCalled();
+    });
+
+    test('should call onFilterDistrict with defaults when user has matching offices', async () => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
+      const session: CamsSession = {
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+
+      await useCase.fetchDistricts();
+
+      expect(mockOnFilterDistrict).toHaveBeenCalledWith([
         { value: 'NYSB', label: 'Southern District of New York' },
       ]);
     });
