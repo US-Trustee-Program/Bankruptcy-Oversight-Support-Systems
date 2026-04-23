@@ -36,10 +36,8 @@ const TrusteeDistrictFilter_ = (
   }, [store.districtsError, globalAlert]);
 
   useEffect(() => {
-    useCase.fetchDistricts();
-    if (props.handleFilterDistrict) {
-      store.setFilterDistrictCallback(() => props.handleFilterDistrict);
-    }
+    store.setFilterDistrictCallback(() => props.handleFilterDistrict);
+    useCase.fetchDistricts(props.handleFilterDistrict);
   }, []);
 
   const viewModel: TrusteeDistrictFilterViewModel = {

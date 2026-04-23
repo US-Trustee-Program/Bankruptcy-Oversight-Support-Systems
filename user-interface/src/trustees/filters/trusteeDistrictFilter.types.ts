@@ -51,7 +51,7 @@ export type TrusteeDistrictFilterProps = {
 
 export interface TrusteeDistrictFilterUseCase {
   districtsToComboOptions(districts: CourtDivisionDetails[]): ComboOption[];
-  fetchDistricts(): void;
+  fetchDistricts(onDefault?: (districts: ComboOption[]) => void): void;
   focusOnDistrictFilter(): void;
   getDefaultDistrictsFromSession(
     session: CamsSession | null,
