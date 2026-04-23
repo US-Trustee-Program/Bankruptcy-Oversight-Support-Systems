@@ -235,6 +235,65 @@ describe('TrusteeAppointmentsMongoRepository', () => {
     });
   });
 
+  describe('getAppointmentsByTrusteeIds', () => {
+    const trusteeAppointment1: TrusteeAppointmentDocument = {
+      ...sampleAppointment,
+      id: 'appt-1',
+      trusteeId: 'trustee-1',
+      documentType: 'TRUSTEE_APPOINTMENT',
+    };
+    const trusteeAppointment2: TrusteeAppointmentDocument = {
+      ...sampleAppointment,
+      id: 'appt-2',
+      trusteeId: 'trustee-2',
+      documentType: 'TRUSTEE_APPOINTMENT',
+    };
+
+    test('should return appointments for multiple trustee IDs', async () => {
+      const mockAdapter = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue([trusteeAppointment1, trusteeAppointment2]);
+
+      const result = await repository.getAppointmentsByTrusteeIds(['trustee-1', 'trustee-2']);
+
+      expect(mockAdapter).toHaveBeenCalledWith({
+        conjunction: 'AND',
+        values: [
+          {
+            condition: 'EQUALS',
+            leftOperand: { name: 'documentType' },
+            rightOperand: 'TRUSTEE_APPOINTMENT',
+          },
+          {
+            condition: 'CONTAINS',
+            leftOperand: { name: 'trusteeId' },
+            rightOperand: ['trustee-1', 'trustee-2'],
+          },
+        ],
+      });
+      expect(result).toHaveLength(2);
+      expect(result[0].trusteeId).toBe('trustee-1');
+      expect(result[1].trusteeId).toBe('trustee-2');
+    });
+
+    test('should return empty array when trusteeIds is empty (no DB call)', async () => {
+      const mockAdapter = vi.spyOn(MongoCollectionAdapter.prototype, 'find');
+
+      const result = await repository.getAppointmentsByTrusteeIds([]);
+
+      expect(mockAdapter).not.toHaveBeenCalled();
+      expect(result).toEqual([]);
+    });
+
+    test('should throw CAMS error when repository fails', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('Database error'),
+      );
+
+      await expect(repository.getAppointmentsByTrusteeIds(['trustee-1'])).rejects.toThrow();
+    });
+  });
+
   describe('createAppointment', () => {
     const trusteeId = 'trustee-123';
     const appointmentInput: TrusteeAppointmentInput = {

@@ -1,6 +1,6 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import { TrusteesUseCase } from '../../use-cases/trustees/trustees';
-import { Trustee, TrusteeInput } from '@common/cams/trustees';
+import { Trustee, TrusteeInput, TrusteeListItem } from '@common/cams/trustees';
 import { CamsHttpResponseInit, httpSuccess } from '../../adapters/utils/http-response';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
@@ -19,7 +19,7 @@ export class TrusteesController implements CamsController {
 
   public async handleRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<Trustee | Trustee[]>> {
+  ): Promise<CamsHttpResponseInit<Trustee | Trustee[] | TrusteeListItem[]>> {
     // Check feature flag
     if (!context.featureFlags['trustee-management']) {
       return {
@@ -91,7 +91,7 @@ export class TrusteesController implements CamsController {
 
   private async handleGetRequest(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<Trustee | Trustee[]>> {
+  ): Promise<CamsHttpResponseInit<Trustee | TrusteeListItem[]>> {
     const trusteeId = context.request.params['id'];
 
     if (trusteeId) {
@@ -120,7 +120,7 @@ export class TrusteesController implements CamsController {
 
   private async listTrustees(
     context: ApplicationContext,
-  ): Promise<CamsHttpResponseInit<Trustee[]>> {
+  ): Promise<CamsHttpResponseInit<TrusteeListItem[]>> {
     const trustees = await this.useCase.listTrustees(context);
 
     return httpSuccess({
