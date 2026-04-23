@@ -80,7 +80,7 @@ describe('TrusteeDistrictFilter Component', () => {
 
     const toggleButton = screen.getByRole('button', { name: /filters/i });
     expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByLabelText('District')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('District (Division)')).not.toBeInTheDocument();
   });
 
   test('should expand filter when toggle button clicked', async () => {
@@ -99,7 +99,7 @@ describe('TrusteeDistrictFilter Component', () => {
     expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
 
     await waitFor(() => {
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
+      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
     });
   });
 
@@ -128,10 +128,10 @@ describe('TrusteeDistrictFilter Component', () => {
     await user.click(toggleButton);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
+      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
     });
 
-    const combobox = screen.getByLabelText('District');
+    const combobox = screen.getByLabelText('District (Division)');
     await user.click(combobox);
 
     // Should show 2 unique districts (NYSB and VTB), not 3 divisions
@@ -213,10 +213,10 @@ describe('TrusteeDistrictFilter Component', () => {
     await user.click(toggleButton);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
+      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
     });
 
-    const combobox = screen.getByLabelText('District');
+    const combobox = screen.getByLabelText('District (Division)');
     await user.click(combobox);
 
     await waitFor(() => {
@@ -248,11 +248,11 @@ describe('TrusteeDistrictFilter Component', () => {
     await user.click(toggleButton);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('District')).toBeInTheDocument();
+      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
     });
 
     // Select a district
-    const combobox = screen.getByLabelText('District');
+    const combobox = screen.getByLabelText('District (Division)');
     await user.click(combobox);
 
     await waitFor(() => {
