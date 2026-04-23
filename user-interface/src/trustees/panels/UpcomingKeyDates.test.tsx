@@ -86,7 +86,7 @@ describe('UpcomingKeyDates', () => {
       expect(screen.getByTestId('upcoming-key-dates-card')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Upcoming Exam / Audit:')).toBeInTheDocument();
+    expect(screen.getByText('Field Exam / Audit:')).toBeInTheDocument();
     expect(screen.getByText('Audit Required by:')).toBeInTheDocument();
     expect(screen.getByText('Trustee Performance Review Period:')).toBeInTheDocument();
     expect(screen.getByText('Trustee Performance Review Due:')).toBeInTheDocument();
@@ -125,7 +125,7 @@ describe('UpcomingKeyDates', () => {
     expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('2029');
   });
 
-  test('exam/audit row uses "Upcoming Exam / Audit" label when type is absent', async () => {
+  test('exam/audit row uses "Field Exam / Audit" label when type is absent', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
       data: {
         ...populatedDocument,
@@ -140,7 +140,7 @@ describe('UpcomingKeyDates', () => {
       expect(screen.getByTestId('upcoming-exam-audit-row')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Upcoming Exam / Audit:')).toBeInTheDocument();
+    expect(screen.getByText('Field Exam / Audit:')).toBeInTheDocument();
     expect(screen.getByTestId('upcoming-exam-audit-row')).toHaveTextContent('No date added');
   });
 

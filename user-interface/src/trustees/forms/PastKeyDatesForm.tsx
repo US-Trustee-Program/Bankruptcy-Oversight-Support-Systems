@@ -4,7 +4,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
-  calculateNextAuditDate,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
 
@@ -21,8 +20,6 @@ type PastKeyDatesFormState = {
   pastFieldExam: string;
   pastAudit: string;
   pastTprSubmission: string;
-  upcomingFieldExam: string;
-  upcomingIndependentAuditRequired: string;
   lastAuditFiscalYear: number | '';
 };
 
@@ -31,19 +28,8 @@ const EMPTY_FORM: PastKeyDatesFormState = {
   pastFieldExam: '',
   pastAudit: '',
   pastTprSubmission: '',
-  upcomingFieldExam: '',
-  upcomingIndependentAuditRequired: '',
   lastAuditFiscalYear: '',
 };
-
-function computeNextDates(pastFieldExam: string, pastAudit: string) {
-  return {
-    upcomingFieldExam:
-      calculateNextAuditDate(pastFieldExam || undefined, pastAudit || undefined, 3) ?? '',
-    upcomingIndependentAuditRequired:
-      calculateNextAuditDate(pastFieldExam || undefined, pastAudit || undefined, 6) ?? '',
-  };
-}
 
 function buildUpcomingKeyDatesInput(
   ids: { trusteeId: string; appointmentId: string },
@@ -73,8 +59,17 @@ function buildUpcomingKeyDatesInput(
       : null,
     tirSubmission: original?.tirSubmission ? isoToSentinel(original.tirSubmission) : null,
     tirReview: original?.tirReview ? isoToSentinel(original.tirReview) : null,
-    upcomingFieldExam: form.upcomingFieldExam || null,
-    upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
+    tirReviewPeriodStart2: original?.tirReviewPeriodStart2
+      ? isoToSentinel(original.tirReviewPeriodStart2)
+      : null,
+    tirReviewPeriodEnd2: original?.tirReviewPeriodEnd2
+      ? isoToSentinel(original.tirReviewPeriodEnd2)
+      : null,
+    tirSubmission2: original?.tirSubmission2 ? isoToSentinel(original.tirSubmission2) : null,
+    tirReview2: original?.tirReview2 ? isoToSentinel(original.tirReview2) : null,
+    upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
+    upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
+    tirFrequency: original?.tirFrequency ?? null,
     lastAuditFiscalYear: form.lastAuditFiscalYear || null,
   };
 }
@@ -103,8 +98,6 @@ export default function PastKeyDatesForm() {
             pastFieldExam: data.pastFieldExam ?? '',
             pastAudit: data.pastAudit ?? '',
             pastTprSubmission: data.pastTprSubmission ?? '',
-            upcomingFieldExam: data.upcomingFieldExam ?? '',
-            upcomingIndependentAuditRequired: data.upcomingIndependentAuditRequired ?? '',
             lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
           });
         }
@@ -125,14 +118,7 @@ export default function PastKeyDatesForm() {
 
   function handleChange(field: 'pastFieldExam' | 'pastAudit') {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
-      const value = ev.target.value;
-      const pastFieldExam = field === 'pastFieldExam' ? value : form.pastFieldExam;
-      const pastAudit = field === 'pastAudit' ? value : form.pastAudit;
-      setForm((prev) => ({
-        ...prev,
-        [field]: value,
-        ...computeNextDates(pastFieldExam, pastAudit),
-      }));
+      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
     };
   }
 

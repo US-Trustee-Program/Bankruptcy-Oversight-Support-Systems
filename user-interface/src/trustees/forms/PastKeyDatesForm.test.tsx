@@ -42,8 +42,6 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
   tirReview: '1900-11-01',
-  upcomingFieldExam: '2029-08-01',
-  upcomingIndependentAuditRequired: '2032-08-01',
   lastAuditFiscalYear: 2022,
 };
 
@@ -151,7 +149,7 @@ describe('PastKeyDatesForm', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/trustees/trustee-001/appointments');
   });
 
-  test('changing background question does not recompute upcoming dates', async () => {
+  test('changing background question saves updated value', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -170,15 +168,12 @@ describe('PastKeyDatesForm', () => {
       expect(putSpy).toHaveBeenCalledWith(
         'trustee-001',
         'appointment-001',
-        expect.objectContaining({
-          upcomingFieldExam: '2029-08-01',
-          upcomingIndependentAuditRequired: '2032-08-01',
-        }),
+        expect.objectContaining({ pastBackgroundQuestion: '2020-01-15' }),
       ),
     );
   });
 
-  test('changing tpr submission does not recompute upcoming dates', async () => {
+  test('changing tpr submission saves updated value', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
     const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -197,60 +192,7 @@ describe('PastKeyDatesForm', () => {
       expect(putSpy).toHaveBeenCalledWith(
         'trustee-001',
         'appointment-001',
-        expect.objectContaining({
-          upcomingFieldExam: '2029-08-01',
-          upcomingIndependentAuditRequired: '2032-08-01',
-        }),
-      ),
-    );
-  });
-
-  test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when pastFieldExam changes', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
-    });
-
-    fireEvent.change(screen.getByTestId('past-field-exam'), { target: { value: '2025-03-31' } });
-    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
-
-    await waitFor(() =>
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        expect.objectContaining({
-          upcomingFieldExam: '2028-03-01',
-          upcomingIndependentAuditRequired: '2031-03-01',
-        }),
-      ),
-    );
-  });
-
-  test('auto-calculates upcomingFieldExam and upcomingIndependentAuditRequired when pastAudit changes', async () => {
-    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
-    const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('edit-past-key-dates')).toBeInTheDocument();
-    });
-
-    fireEvent.change(screen.getByTestId('past-audit'), { target: { value: '2024-06-15' } });
-    await userEvent.click(screen.getByTestId('button-save-past-key-dates'));
-
-    await waitFor(() =>
-      expect(putSpy).toHaveBeenCalledWith(
-        'trustee-001',
-        'appointment-001',
-        expect.objectContaining({
-          upcomingFieldExam: '2027-06-01',
-          upcomingIndependentAuditRequired: '2030-06-01',
-        }),
+        expect.objectContaining({ pastTprSubmission: '2019-06-30' }),
       ),
     );
   });
