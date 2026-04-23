@@ -197,6 +197,7 @@ module kvSetup './ustp-cams-kv-app-config-setup.bicep' = {
     privateDnsZoneResourceGroup: privateDnsZoneResourceGroup
     privateDnsZoneSubscriptionId: privateDnsZoneSubscriptionId
     managedIdentityName: idKeyvaultAppConfiguration
+    makeRoleAssignment: !isUstpDeployment
   }
 }
 
