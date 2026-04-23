@@ -80,7 +80,7 @@ export default function TrusteesList() {
 
   return (
     <div className="trustees-list">
-      <p>{trustees.length} Trustee(s)</p>
+      <p className="trustees-list-count">{trustees.length} Trustee(s)</p>
       <div
         className="trustees-list-grid"
         role="table"
