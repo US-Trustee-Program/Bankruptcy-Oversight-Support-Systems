@@ -276,8 +276,8 @@ describe('trustee district filter use case tests', () => {
       );
     });
 
-    test('should sort default districts alphabetically', () => {
-      const session: CamsSession = {
+    test('should sort default districts alphabetically and return empty for groups with no divisions', () => {
+      const sessionWithDivisions: CamsSession = {
         ...MockData.getCamsSession(),
         user: {
           ...MockData.getCamsSession().user,
@@ -294,25 +294,13 @@ describe('trustee district filter use case tests', () => {
                   divisions: [
                     {
                       divisionCode: '081',
-                      court: {
-                        courtId: 'NYSB',
-                        courtName: 'Southern District of New York',
-                      },
-                      courtOffice: {
-                        courtOfficeCode: '081',
-                        courtOfficeName: 'Manhattan',
-                      },
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
                     },
                     {
                       divisionCode: '088',
-                      court: {
-                        courtId: 'VTB',
-                        courtName: 'District of Vermont',
-                      },
-                      courtOffice: {
-                        courtOfficeCode: '088',
-                        courtOfficeName: 'Rutland',
-                      },
+                      court: { courtId: 'VTB', courtName: 'District of Vermont' },
+                      courtOffice: { courtOfficeCode: '088', courtOfficeName: 'Rutland' },
                     },
                   ],
                 },
@@ -322,14 +310,11 @@ describe('trustee district filter use case tests', () => {
         },
       };
 
-      const defaultDistricts = useCase.getDefaultDistrictsFromSession(session, mockDistricts);
+      const sorted = useCase.getDefaultDistrictsFromSession(sessionWithDivisions, mockDistricts);
+      expect(sorted[0].label).toBe('District of Vermont');
+      expect(sorted[1].label).toBe('Southern District of New York');
 
-      expect(defaultDistricts[0].label).toBe('District of Vermont');
-      expect(defaultDistricts[1].label).toBe('Southern District of New York');
-    });
-
-    test('should handle office groups with no divisions', () => {
-      const session: CamsSession = {
+      const sessionNoDivisions: CamsSession = {
         ...MockData.getCamsSession(),
         user: {
           ...MockData.getCamsSession().user,
@@ -340,20 +325,14 @@ describe('trustee district filter use case tests', () => {
               idpGroupName: 'Manhattan',
               regionId: '02',
               regionName: 'New York Region',
-              groups: [
-                {
-                  groupDesignator: 'NY',
-                  divisions: [],
-                },
-              ],
+              groups: [{ groupDesignator: 'NY', divisions: [] }],
             },
           ],
         },
       };
 
-      const defaultDistricts = useCase.getDefaultDistrictsFromSession(session, mockDistricts);
-
-      expect(defaultDistricts).toEqual([]);
+      const empty = useCase.getDefaultDistrictsFromSession(sessionNoDivisions, mockDistricts);
+      expect(empty).toEqual([]);
     });
   });
 
