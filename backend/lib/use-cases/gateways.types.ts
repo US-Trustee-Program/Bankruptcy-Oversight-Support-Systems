@@ -354,11 +354,12 @@ export type TrusteeDueDateMetricsAggregation = {
   noneCount: number;
   tprReviewPeriodCount: number;
   pastFieldExamCount: number;
-  pastIndependentAuditCount: number;
+  pastAuditCount: number;
   tirReviewPeriodCount: number;
   tprDueDateCount: number;
-  upcomingFieldExamCount: number;
-  upcomingIndependentAuditRequiredCount: number;
+  upcomingExamOrAuditYearCount: number;
+  lastAuditFiscalYearCount: number;
+  tirFrequencyCount: number;
   tirSubmissionCount: number;
   tirReviewDueDateCount: number;
 };

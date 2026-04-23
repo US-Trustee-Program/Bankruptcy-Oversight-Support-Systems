@@ -288,7 +288,7 @@ export class TrusteeAppointmentsMongoRepository
   async getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation> {
     try {
       // Total number of required field groups for completeness calculation
-      const TOTAL_REQUIRED_FIELDS = 9;
+      const TOTAL_REQUIRED_FIELDS = 8;
 
       const pipeline = [
         // Stage 1: Filter to Chapter 7 appointments only
@@ -346,10 +346,9 @@ export class TrusteeAppointmentsMongoRepository
               ],
             },
             hasTprDue: { $ifNull: ['$keyDoc.tprDue', false] },
-            hasUpcomingFieldExam: { $ifNull: ['$keyDoc.upcomingFieldExam', false] },
-            hasUpcomingIndependentAuditRequired: {
-              $ifNull: ['$keyDoc.upcomingIndependentAuditRequired', false],
-            },
+            hasUpcomingExamOrAuditYear: { $ifNull: ['$keyDoc.upcomingExamOrAuditYear', false] },
+            hasLastAuditFiscalYear: { $ifNull: ['$keyDoc.lastAuditFiscalYear', false] },
+            hasTirFrequency: { $ifNull: ['$keyDoc.tirFrequency', false] },
             hasTirSubmission: { $ifNull: ['$keyDoc.tirSubmission', false] },
             hasTirReview: { $ifNull: ['$keyDoc.tirReview', false] },
           },
@@ -365,8 +364,7 @@ export class TrusteeAppointmentsMongoRepository
                 { $cond: ['$hasPastAudit', 1, 0] },
                 { $cond: ['$hasTirReviewPeriod', 1, 0] },
                 { $cond: ['$hasTprDue', 1, 0] },
-                { $cond: ['$hasUpcomingFieldExam', 1, 0] },
-                { $cond: ['$hasUpcomingIndependentAuditRequired', 1, 0] },
+                { $cond: ['$hasUpcomingExamOrAuditYear', 1, 0] },
                 { $cond: ['$hasTirSubmission', 1, 0] },
                 { $cond: ['$hasTirReview', 1, 0] },
               ],
@@ -410,7 +408,7 @@ export class TrusteeAppointmentsMongoRepository
             pastFieldExamCount: {
               $sum: { $cond: ['$hasPastFieldExam', 1, 0] },
             },
-            pastIndependentAuditCount: {
+            pastAuditCount: {
               $sum: { $cond: ['$hasPastAudit', 1, 0] },
             },
             tirReviewPeriodCount: {
@@ -419,11 +417,14 @@ export class TrusteeAppointmentsMongoRepository
             tprDueDateCount: {
               $sum: { $cond: ['$hasTprDue', 1, 0] },
             },
-            upcomingFieldExamCount: {
-              $sum: { $cond: ['$hasUpcomingFieldExam', 1, 0] },
+            upcomingExamOrAuditYearCount: {
+              $sum: { $cond: ['$hasUpcomingExamOrAuditYear', 1, 0] },
             },
-            upcomingIndependentAuditRequiredCount: {
-              $sum: { $cond: ['$hasUpcomingIndependentAuditRequired', 1, 0] },
+            lastAuditFiscalYearCount: {
+              $sum: { $cond: ['$hasLastAuditFiscalYear', 1, 0] },
+            },
+            tirFrequencyCount: {
+              $sum: { $cond: ['$hasTirFrequency', 1, 0] },
             },
             tirSubmissionCount: {
               $sum: { $cond: ['$hasTirSubmission', 1, 0] },
@@ -444,11 +445,12 @@ export class TrusteeAppointmentsMongoRepository
             noneCount: 1,
             tprReviewPeriodCount: 1,
             pastFieldExamCount: 1,
-            pastIndependentAuditCount: 1,
+            pastAuditCount: 1,
             tirReviewPeriodCount: 1,
             tprDueDateCount: 1,
-            upcomingFieldExamCount: 1,
-            upcomingIndependentAuditRequiredCount: 1,
+            upcomingExamOrAuditYearCount: 1,
+            lastAuditFiscalYearCount: 1,
+            tirFrequencyCount: 1,
             tirSubmissionCount: 1,
             tirReviewDueDateCount: 1,
           },
@@ -471,11 +473,12 @@ export class TrusteeAppointmentsMongoRepository
           noneCount: 0,
           tprReviewPeriodCount: 0,
           pastFieldExamCount: 0,
-          pastIndependentAuditCount: 0,
+          pastAuditCount: 0,
           tirReviewPeriodCount: 0,
           tprDueDateCount: 0,
-          upcomingFieldExamCount: 0,
-          upcomingIndependentAuditRequiredCount: 0,
+          upcomingExamOrAuditYearCount: 0,
+          lastAuditFiscalYearCount: 0,
+          tirFrequencyCount: 0,
           tirSubmissionCount: 0,
           tirReviewDueDateCount: 0,
         };
