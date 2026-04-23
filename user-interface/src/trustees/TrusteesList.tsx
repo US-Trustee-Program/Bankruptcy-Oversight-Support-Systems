@@ -105,7 +105,7 @@ export default function TrusteesList() {
             const rows = trustee.appointments.length === 0 ? [null] : trustee.appointments;
 
             return (
-              <div key={trustee.trusteeId} className="trustee-group">
+              <div key={trustee.trusteeId} className="trustee-group" role="rowgroup">
                 {rows.map((appt, idx) => (
                   <div key={`${trustee.trusteeId}-${idx}`} className="trustees-list-row" role="row">
                     <div
