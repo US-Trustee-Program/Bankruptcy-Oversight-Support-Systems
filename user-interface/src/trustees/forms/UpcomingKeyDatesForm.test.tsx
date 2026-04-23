@@ -4,7 +4,10 @@ import { BrowserRouter } from 'react-router-dom';
 import UpcomingKeyDatesForm from './UpcomingKeyDatesForm';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
-import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
+import {
+  TrusteeUpcomingKeyDates,
+  TrusteeUpcomingKeyDatesInput,
+} from '@common/cams/trustee-upcoming-key-dates';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 
 const mockUseNavigate = vi.hoisted(() => vi.fn());
@@ -277,7 +280,7 @@ describe('UpcomingKeyDatesForm', () => {
       await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
       await waitFor(() => expect(putSpy).toHaveBeenCalled());
-      const payload = putSpy.mock.calls[0][2];
+      const payload = putSpy.mock.calls[0][2] as TrusteeUpcomingKeyDatesInput;
       // tirReviewPeriodEnd = 1900-06-30; submission = +30 = 1900-07-30; review = +60 = 1900-09-28
       expect(payload.tirSubmission).toBe('1900-07-30');
       expect(payload.tirReview).toBe('1900-09-28');
@@ -302,7 +305,7 @@ describe('UpcomingKeyDatesForm', () => {
       await userEvent.click(screen.getByTestId('button-save-upcoming-key-dates'));
 
       await waitFor(() => expect(putSpy).toHaveBeenCalled());
-      const payload = putSpy.mock.calls[0][2];
+      const payload = putSpy.mock.calls[0][2] as TrusteeUpcomingKeyDatesInput;
       // period1 end = 1900-06-30; sub1 = +30 = 1900-07-30; rev1 = +60 = 1900-09-28
       expect(payload.tirSubmission).toBe('1900-07-30');
       expect(payload.tirReview).toBe('1900-09-28');
