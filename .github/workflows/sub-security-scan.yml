@@ -3,6 +3,10 @@ name: Security
 on:
   workflow_call:
     secrets:
+      SNYK_OAUTH_CLIENT_ID:
+        required: true
+      SNYK_OAUTH_CLIENT_SECRET:
+        required: true
       AZ_SECURITY_SCAN_CLIENT_ID:
         required: true
       AZ_TENANT_ID:
@@ -31,8 +35,6 @@ jobs:
 
       - name: Fetch secrets from Key Vault
         run: |
-          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
           echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
 
       - name: Setup Snyk CLI
@@ -44,6 +46,8 @@ jobs:
         run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
+          SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }}
+          SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
 
       - name: Run Snyk SCA scan
         run: snyk test --all-projects --exclude=function-apps --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
@@ -108,8 +112,6 @@ jobs:
 
       - name: Fetch secrets from Key Vault
         run: |
-          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
-          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
           echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
 
       - name: Setup Snyk CLI
@@ -121,6 +123,8 @@ jobs:
         run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
+          SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }}
+          SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
 
       - name: Run Snyk Code (SAST) scan
         id: snyk-scan
