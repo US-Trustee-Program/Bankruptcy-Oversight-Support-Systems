@@ -397,7 +397,7 @@ describe('trustee district filter use case tests', () => {
       expect(callback).toHaveBeenCalledWith([districts[1]]);
     });
 
-    test('should call handleClearAll when removing last district', () => {
+    test('should clear selection entirely when removing last district', () => {
       const districts: ComboOption[] = [{ value: 'NYSB', label: 'Southern District of New York' }];
       const defaultDistricts: ComboOption[] = [{ value: 'VTB', label: 'District of Vermont' }];
       mockStore.selectedDistricts = districts;
@@ -407,9 +407,9 @@ describe('trustee district filter use case tests', () => {
 
       useCase.handleRemovePill(districts[0]);
 
-      // Should call handleClearAll, which sets to default
-      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(defaultDistricts);
-      expect(callback).toHaveBeenCalledWith(defaultDistricts);
+      // Should clear to empty (show all trustees), not restore defaults
+      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith([]);
+      expect(callback).toHaveBeenCalledWith([]);
     });
   });
 
