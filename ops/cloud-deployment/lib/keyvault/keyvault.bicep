@@ -50,8 +50,12 @@ var roleIdMapping = {
   'Key Vault Secrets User': '4633458b-17de-408a-b874-0445c86b69e6'
 }
 
+@description('Controls whether the role assignment granting the objectId access to the vault is created.')
+param makeRoleAssignment bool = true
+
 param tags object = {}
 
+// 'Disabled' was attempted and reverted (c7006f8ff) — private endpoint constraints block portal and pipeline access. RBAC (enableRbacAuthorization) is enforced as the primary access control.
 @description('Controls whether the key vault is accessible from the public internet.')
 @allowed([
   'Enabled'
@@ -84,7 +88,7 @@ resource kv 'Microsoft.KeyVault/vaults@2023-07-01' = {
   }
 }
 
-resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource kvRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (makeRoleAssignment) {
   name: guid(roleIdMapping[roleName], objectId, kv.id)
   scope: kv
   properties: {

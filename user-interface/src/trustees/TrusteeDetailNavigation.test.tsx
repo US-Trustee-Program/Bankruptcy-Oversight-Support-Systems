@@ -6,6 +6,11 @@ import TrusteeDetailNavigation, {
   TrusteeDetailNavigationProps,
   mapTrusteeDetailNavState,
 } from './TrusteeDetailNavigation';
+import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import { testFeatureFlags } from '@common/feature-flags';
+
+vi.mock('@/lib/hooks/UseFeatureFlags');
+const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 vi.mock('@/lib/utils/navigation', () => ({
   setCurrentNav: vi.fn((activeNav, currentNav) => (activeNav === currentNav ? 'usa-current' : '')),
@@ -20,6 +25,10 @@ vi.mock('@/lib/utils/navigation', () => ({
 }));
 
 describe('TrusteeDetailNavigation', () => {
+  beforeEach(() => {
+    mockUseFeatureFlags.mockReturnValue(testFeatureFlags);
+  });
+
   function renderWithRouter(props: TrusteeDetailNavigationProps) {
     return render(
       <BrowserRouter>
@@ -160,6 +169,54 @@ describe('TrusteeDetailNavigation', () => {
     const links = screen.getAllByRole('link');
     links.forEach((link) => {
       expect(link).toHaveClass('usa-sidenav__link');
+    });
+  });
+
+  describe('trustee-assigned-staff-enabled flag is enabled', () => {
+    test('should show Assigned Staff nav link', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.getByTestId('trustee-assigned-staff-nav-link')).toBeInTheDocument();
+      expect(screen.getByText('Assigned Staff')).toBeInTheDocument();
+    });
+
+    test('should render 5 nav items', () => {
+      renderWithRouter(defaultProps);
+
+      const listItems = screen.getAllByRole('listitem');
+      expect(listItems).toHaveLength(5);
+    });
+  });
+
+  describe('trustee-assigned-staff-enabled flag is disabled', () => {
+    beforeEach(() => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-assigned-staff-enabled': false,
+      });
+    });
+
+    test('should not show Assigned Staff nav link', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.queryByTestId('trustee-assigned-staff-nav-link')).not.toBeInTheDocument();
+      expect(screen.queryByText('Assigned Staff')).not.toBeInTheDocument();
+    });
+
+    test('should render 4 nav items', () => {
+      renderWithRouter(defaultProps);
+
+      const listItems = screen.getAllByRole('listitem');
+      expect(listItems).toHaveLength(4);
+    });
+
+    test('should still show all other nav links', () => {
+      renderWithRouter(defaultProps);
+
+      expect(screen.getByTestId('trustee-profile-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-appointments-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-notes-nav-link')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-audit-history-nav-link')).toBeInTheDocument();
     });
   });
 });

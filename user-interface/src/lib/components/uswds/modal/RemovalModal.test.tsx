@@ -13,9 +13,11 @@ describe('RemovalModal', () => {
   };
 
   const showModal = (ref: React.RefObject<RemovalModalRef>, onDelete = mockOnDelete) => {
-    ref.current?.show({
-      onDelete,
-      openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
+    act(() => {
+      ref.current?.show({
+        onDelete,
+        openModalButtonRef: { current: { focus: vi.fn(), disableButton: vi.fn() } },
+      });
     });
   };
 
@@ -78,10 +80,14 @@ describe('RemovalModal', () => {
       expect(screen.getByText('Are you sure you want to delete this item?')).toBeInTheDocument();
     });
 
-    screen.getByTestId(`button-${defaultProps.modalId}-submit-button`).click();
+    const submitButton = screen.getByTestId(
+      `button-${defaultProps.modalId}-submit-button`,
+    ) as HTMLButtonElement;
+    submitButton.click();
 
     await waitFor(() => {
       expect(mockOnDelete).toHaveBeenCalledTimes(1);
+      expect(submitButton).not.toBeDisabled();
     });
   });
 
@@ -127,10 +133,14 @@ describe('RemovalModal', () => {
       expect(screen.getByText('Are you sure you want to delete this item?')).toBeInTheDocument();
     });
 
-    screen.getByTestId(`button-${defaultProps.modalId}-submit-button`).click();
+    const submitButton = screen.getByTestId(
+      `button-${defaultProps.modalId}-submit-button`,
+    ) as HTMLButtonElement;
+    submitButton.click();
 
     await waitFor(() => {
       expect(failingOnDelete).toHaveBeenCalled();
+      expect(submitButton).not.toBeDisabled();
     });
 
     expect(screen.getByTestId(`modal-${defaultProps.modalId}`)).toBeInTheDocument();
@@ -148,15 +158,17 @@ describe('RemovalModal', () => {
       expect(screen.getByText('Are you sure you want to delete this item?')).toBeInTheDocument();
     });
 
-    act(() => {
-      showModal(modalRef, secondOnDelete);
-    });
+    showModal(modalRef, secondOnDelete);
 
-    screen.getByTestId(`button-${defaultProps.modalId}-submit-button`).click();
+    const submitButton = screen.getByTestId(
+      `button-${defaultProps.modalId}-submit-button`,
+    ) as HTMLButtonElement;
+    submitButton.click();
 
     await waitFor(() => {
       expect(secondOnDelete).toHaveBeenCalledTimes(1);
       expect(firstOnDelete).not.toHaveBeenCalled();
+      expect(submitButton).not.toBeDisabled();
     });
   });
 

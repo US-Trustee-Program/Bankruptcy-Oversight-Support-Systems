@@ -1,10 +1,11 @@
 import './TrusteeMatchVerificationAccordion.scss';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { PaginationButton } from '@/lib/components/uswds/PaginationButton';
 import { Accordion } from '@/lib/components/uswds/Accordion';
 import { NewTabLink } from '@/lib/components/cams/NewTabLink/NewTabLink';
 import Icon from '@/lib/components/uswds/Icon';
 import { TrusteeMatchVerification } from '@common/cams/trustee-match-verification';
-import { CandidateScore, UNSCORED } from '@common/cams/dataflow-events';
+import { CandidateScore } from '@common/cams/dataflow-events';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { formatDate } from '@/lib/utils/datetime';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
@@ -28,6 +29,84 @@ type TrusteeSearchLinkProps = {
   className?: string;
   onClick: () => void;
 };
+
+type OtherMatchesPaginationProps = {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+};
+
+function OtherMatchesPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: OtherMatchesPaginationProps) {
+  const pages: (number | '...')[] = [];
+
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else if (currentPage < 5) {
+    pages.push(1, 2, 3, 4, 5, '...', totalPages);
+  } else if (currentPage > totalPages - 4) {
+    pages.push(
+      1,
+      '...',
+      totalPages - 4,
+      totalPages - 3,
+      totalPages - 2,
+      totalPages - 1,
+      totalPages,
+    );
+  } else {
+    pages.push(1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages);
+  }
+
+  return (
+    <nav aria-label="Other matches pagination" className="usa-pagination">
+      <ul className="usa-pagination__list">
+        {currentPage > 1 && (
+          <li className="usa-pagination__item usa-pagination__arrow">
+            <PaginationButton
+              id="other-matches-previous"
+              isPrevious
+              onClick={() => onPageChange(currentPage - 1)}
+            />
+          </li>
+        )}
+        {pages.map((p, i) =>
+          p === '...' ? (
+            <li
+              key={`ellipsis-${i}`}
+              className="usa-pagination__item usa-pagination__overflow"
+              aria-label="ellipsis indicating non-visible pages"
+            >
+              <span>…</span>
+            </li>
+          ) : (
+            <li key={p} className="usa-pagination__item usa-pagination__page-no">
+              <PaginationButton
+                id={`other-matches-page-${p}`}
+                isCurrent={currentPage === p}
+                onClick={() => onPageChange(p as number)}
+              >
+                {p}
+              </PaginationButton>
+            </li>
+          ),
+        )}
+        {currentPage < totalPages && (
+          <li className="usa-pagination__item usa-pagination__arrow">
+            <PaginationButton
+              id="other-matches-next"
+              isNext
+              onClick={() => onPageChange(currentPage + 1)}
+            />
+          </li>
+        )}
+      </ul>
+    </nav>
+  );
+}
 
 function TrusteeSearchLink({
   linkLabel,
@@ -60,6 +139,8 @@ export interface TrusteeMatchVerificationAccordionProps {
 export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificationAccordionProps) {
   const { order, hidden, statusType, orderType, fieldHeaders, courts = [], onOrderUpdate } = props;
   const [isProcessing, setIsProcessing] = useState(false);
+  const [otherMatchesPage, setOtherMatchesPage] = useState(1);
+  const OTHER_MATCHES_PAGE_SIZE = 5;
   const rejectionModalRef = useRef<TrusteeMatchRejectionModalImperative>(null);
   const confirmationModalRef = useRef<TrusteeMatchConfirmationModalImperative>(null);
   const searchModalRef = useRef<TrusteeSearchModalImperative>(null);
@@ -99,14 +180,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
   type ViewMode =
     | 'resolved'
     | 'pending-with-candidate'
-    | 'pending-multiple-candidates'
     | 'readonly-with-candidate'
     | 'no-candidates';
   let viewMode: ViewMode;
   if (order.status === 'approved') {
     viewMode = 'resolved';
-  } else if (isMultipleMatch && order.status === 'pending' && order.matchCandidates.length > 0) {
-    viewMode = 'pending-multiple-candidates';
   } else if (preselected && order.status === 'pending') {
     viewMode = 'pending-with-candidate';
   } else if (preselected) {
@@ -115,9 +193,10 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     viewMode = 'no-candidates';
   }
 
-  const sortedCandidates = isMultipleMatch
-    ? [...order.matchCandidates].sort((a, b) => b.totalScore - a.totalScore)
-    : order.matchCandidates;
+  const otherMatchesCount = isMultipleMatch ? candidatesToShow.slice(1).length : 0;
+  useEffect(() => {
+    setOtherMatchesPage(1);
+  }, [order.id, otherMatchesCount]);
 
   async function approveTrustee({
     trusteeId,
@@ -180,10 +259,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
     confirmationModalRef.current?.show(candidate);
   }
 
-  function openRejection() {
-    rejectionModalRef.current?.show();
-  }
-
   function openSearch() {
     searchModalRef.current?.show();
   }
@@ -212,27 +287,11 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
 
   type TrusteeCandidateRowProps = {
     candidate: CandidateScore;
-    showScore?: boolean;
-    showScoreBreakdown?: boolean;
-    isSelected?: boolean;
-    onSelect?: () => void;
     onApprove?: (candidate: CandidateScore) => void;
     isProcessing?: boolean;
   };
 
-  function formatScore(score: number): string {
-    return score === UNSCORED ? 'N/A' : String(score);
-  }
-
-  function TrusteeCandidateRow({
-    candidate,
-    showScore = false,
-    showScoreBreakdown = false,
-    isSelected,
-    onSelect,
-    onApprove,
-    isProcessing,
-  }: TrusteeCandidateRowProps) {
+  function TrusteeCandidateRow({ candidate, onApprove, isProcessing }: TrusteeCandidateRowProps) {
     const rowAddressLines = candidate.address
       ? [
           candidate.address.address1,
@@ -242,78 +301,35 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         ].filter(Boolean)
       : [];
 
-    const hasRadio = !!onSelect;
-    const hasScoreBreakdown = showScoreBreakdown;
-
-    // Grid column sizing depends on which optional columns are active
-    let apptColSize = 'grid-col-3';
-    if (hasRadio && hasScoreBreakdown) apptColSize = 'grid-col-2';
-    else if (hasScoreBreakdown || showScore) apptColSize = 'grid-col-2';
-
     return (
-      <div className={`trustee-data-row grid-row grid-gap-lg${isSelected ? ' selected' : ''}`}>
-        {hasRadio && (
-          <div className="trustee-data-cell candidate-radio-cell grid-col-1" data-cell="Select">
-            <input
-              type="radio"
-              name="candidate-selection"
-              checked={!!isSelected}
-              onChange={onSelect}
-              aria-label={`Select ${candidate.trusteeName}`}
-              data-testid={`select-candidate-${candidate.trusteeId}`}
-            />
-          </div>
-        )}
+      <div className="trustee-data-row grid-row grid-gap-lg">
         <div
           className="trustee-data-cell grid-col-2"
           data-cell="Name"
           data-testid={`candidate-name-${candidate.trusteeId}`}
         >
-          {candidate.trusteeName}
+          <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
         </div>
-        {hasScoreBreakdown && (
-          <div
-            className="trustee-data-cell candidate-scores-cell grid-col-2"
-            data-cell="Scores"
-            data-testid={`candidate-scores-${candidate.trusteeId}`}
-          >
-            <div>
-              <span className="score-label">Total:</span> {formatScore(candidate.totalScore)}
-            </div>
-            <div>
-              <span className="score-label">Addr:</span> {formatScore(candidate.addressScore)}
-            </div>
-            <div>
-              <span className="score-label">Dist:</span>{' '}
-              {formatScore(candidate.districtDivisionScore)}
-            </div>
-            <div>
-              <span className="score-label">Chap:</span> {formatScore(candidate.chapterScore)}
-            </div>
-          </div>
-        )}
-        {!hasScoreBreakdown && showScore && (
-          <div className="trustee-data-cell grid-col-1" data-cell="Score">
-            {candidate.totalScore}
-          </div>
-        )}
+
         <div className="trustee-data-cell grid-col-2" data-cell="Address">
-          {rowAddressLines.map((line, i, arr) => (
-            <span key={i}>
-              {line}
-              {i < arr.length - 1 && <br />}
-            </span>
-          ))}
+          {rowAddressLines.length > 0
+            ? rowAddressLines.map((line, i, arr) => (
+                <span key={i}>
+                  {line}
+                  {i < arr.length - 1 && <br />}
+                </span>
+              ))
+            : 'Not Provided'}
         </div>
         <div className="trustee-data-cell grid-col-1" data-cell="Phone">
           {candidate.phone
             ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
-            : ''}
+            : 'Not Provided'}
         </div>
         <div className="trustee-data-cell grid-col-2" data-cell="Email">
-          {candidate.email ?? ''}
+          {candidate.email ?? 'Not Provided'}
         </div>
-        <div className={`trustee-data-cell ${apptColSize}`} data-cell="Trustee Appt.">
+        <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
           {candidate.appointments?.map((appt, i, arr) => (
             <span key={i}>
               {appt.courtName}
@@ -323,90 +339,50 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
             </span>
           ))}
         </div>
-        {!hasRadio && (
-          <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
-            {onApprove && (
-              <button
-                type="button"
-                data-testid={`approve-candidate-${candidate.trusteeId}`}
-                onClick={() => onApprove(candidate)}
-                disabled={isProcessing}
-                className="match-trustee-link"
-              >
-                <Icon name="check" />
-                Match Trustee
-              </button>
-            )}
-          </div>
-        )}
+        <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
+          {onApprove && (
+            <button
+              type="button"
+              data-testid={`approve-candidate-${candidate.trusteeId}`}
+              onClick={() => onApprove(candidate)}
+              disabled={isProcessing}
+              className="match-trustee-link"
+            >
+              <Icon name="check" />
+              Match Trustee
+            </button>
+          )}
+        </div>
       </div>
     );
   }
 
   type CandidateTableProps = {
     candidates: CandidateScore[];
-    showScore?: boolean;
-    showScoreBreakdown?: boolean;
-    nameColumnHeader?: string;
-    selectedCandidateId?: string | null;
-    onSelectCandidate?: (trusteeId: string) => void;
+
     onApprove?: (candidate: CandidateScore) => void;
     isProcessing?: boolean;
   };
 
-  function CandidateTable({
-    candidates,
-    showScore = false,
-    showScoreBreakdown = false,
-    nameColumnHeader = 'Name',
-    selectedCandidateId,
-    onSelectCandidate,
-    onApprove,
-    isProcessing,
-  }: CandidateTableProps) {
-    const hasRadio = !!onSelectCandidate;
-    const hasScoreBreakdown = showScoreBreakdown;
-
-    let apptColSize = 'grid-col-3';
-    if (hasRadio && hasScoreBreakdown) apptColSize = 'grid-col-2';
-    else if (hasScoreBreakdown || showScore) apptColSize = 'grid-col-2';
-
-    const rows = candidates.map((candidate) => (
-      <TrusteeCandidateRow
-        key={candidate.trusteeId}
-        candidate={candidate}
-        showScore={showScore}
-        showScoreBreakdown={showScoreBreakdown}
-        isSelected={selectedCandidateId === candidate.trusteeId}
-        onSelect={onSelectCandidate ? () => onSelectCandidate(candidate.trusteeId) : undefined}
-        onApprove={onApprove}
-        isProcessing={isProcessing}
-      />
-    ));
-
+  function CandidateTable({ candidates, onApprove, isProcessing }: CandidateTableProps) {
     return (
       <div className="trustee-data-grid trustee-candidates-grid">
         <div className="trustee-data-header grid-row grid-gap-lg">
-          {hasRadio && <div className="trustee-data-cell grid-col-1">Select</div>}
-          <div className="trustee-data-cell grid-col-2">{nameColumnHeader}</div>
-          {hasScoreBreakdown && <div className="trustee-data-cell grid-col-2">Scores</div>}
-          {!hasScoreBreakdown && showScore && (
-            <div className="trustee-data-cell grid-col-1">Score</div>
-          )}
+          <div className="trustee-data-cell grid-col-2">Name</div>
           <div className="trustee-data-cell grid-col-2">Address</div>
           <div className="trustee-data-cell grid-col-1">Phone</div>
           <div className="trustee-data-cell grid-col-2">Email</div>
-          <div className={`trustee-data-cell ${apptColSize}`}>Trustee Appointment</div>
-          {!hasRadio && <div className="trustee-data-cell grid-col-2">Action</div>}
+          <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
+          <div className="trustee-data-cell grid-col-2">Action</div>
         </div>
-        {hasRadio ? (
-          <fieldset className="candidate-selection-fieldset">
-            <legend className="usa-sr-only">Select a trustee candidate</legend>
-            {rows}
-          </fieldset>
-        ) : (
-          rows
-        )}
+        {candidates.map((candidate) => (
+          <TrusteeCandidateRow
+            key={candidate.trusteeId}
+            candidate={candidate}
+            onApprove={onApprove}
+            isProcessing={isProcessing}
+          />
+        ))}
       </div>
     );
   }
@@ -504,111 +480,138 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
                     {order.dxtrTrustee.fullName}
                   </div>
                   <div className="trustee-data-cell grid-col-2" data-cell="Address">
-                    {addressLines.map((line, i) => (
-                      <span key={i}>
-                        {line}
-                        {i < addressLines.length - 1 && <br />}
-                      </span>
-                    ))}
+                    {addressLines.length > 0
+                      ? addressLines.map((line, i) => (
+                          <span key={i}>
+                            {line}
+                            {i < addressLines.length - 1 && <br />}
+                          </span>
+                        ))
+                      : 'Not Provided'}
                   </div>
                   <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-                    {legacy?.phone ?? ''}
+                    {legacy?.phone ?? 'Not Provided'}
                   </div>
                   <div className="trustee-data-cell grid-col-2" data-cell="Email">
-                    {legacy?.email ?? ''}
+                    {legacy?.email ?? 'Not Provided'}
                   </div>
                   <div className="trustee-data-cell grid-col-3 no-border"></div>
                   <div className="trustee-data-cell grid-col-2 no-border"></div>
                 </div>
               </div>
 
-              <h3>{isMultipleMatch ? 'Potential Matches' : 'CAMS Strongest Match'}</h3>
-              {viewMode === 'pending-multiple-candidates' && (
-                <div
-                  className="trustee-match-candidate-section"
-                  data-testid="multiple-candidates-info"
-                >
-                  <p className="candidate-description">
-                    Results are ordered from strongest to weakest match. If you don&apos;t find the
-                    trustee you&apos;re looking for{' '}
-                    <button
-                      type="button"
-                      onClick={openSearch}
-                      className="search-trustee-inline-link"
-                    >
-                      search here
-                    </button>
-                    .
-                  </p>
-                  <p className="candidate-count" data-testid="candidate-count">
-                    {sortedCandidates.length} matches
-                  </p>
-                  <CandidateTable
-                    candidates={sortedCandidates}
-                    nameColumnHeader="Trustee"
-                    onApprove={openConfirmation}
-                    isProcessing={isProcessing}
-                  />
-                </div>
-              )}
-              {viewMode === 'pending-multiple-candidates' && (
-                <button
-                  type="button"
-                  data-testid="reject-button"
-                  onClick={openRejection}
-                  disabled={isProcessing}
-                  className="reject-task-link"
-                >
-                  <Icon name="delete" />
-                  Reject Task
-                </button>
-              )}
               {viewMode === 'pending-with-candidate' && preselected && (
                 <div className="trustee-match-candidate-section" data-testid="candidate-info">
-                  <CandidateTable
-                    candidates={candidatesToShow}
-                    showScore={isMultipleMatch}
-                    onApprove={openConfirmation}
-                    isProcessing={isProcessing}
-                  />
-                  <TrusteeSearchLink
-                    linkMessage={
-                      isMultipleMatch
-                        ? 'Multiple matches found with similar scores.'
-                        : 'There are no other suggested matches in CAMS.'
-                    }
-                    linkLabel="Search for a different trustee"
-                    onClick={openSearch}
-                  />
+                  {isMultipleMatch ? (
+                    <>
+                      <h3>CAMS Strongest Match</h3>
+                      <CandidateTable
+                        candidates={[candidatesToShow[0]]}
+                        onApprove={openConfirmation}
+                        isProcessing={isProcessing}
+                      />
+                      <h3>Other Potential Matches</h3>
+                      <p className="other-matches-subtext">
+                        Results are ordered from strongest to weakest match. If you don&apos;t find
+                        the trustee you&apos;re looking for{' '}
+                        <button
+                          type="button"
+                          onClick={openSearch}
+                          className="search-trustee-link search-trustee-inline-link"
+                        >
+                          search here.
+                        </button>
+                      </p>
+                      <p className="other-matches-count" data-testid="other-matches-count">
+                        {candidatesToShow.slice(1).length} matches
+                      </p>
+                      <CandidateTable
+                        candidates={candidatesToShow
+                          .slice(1)
+                          .slice(
+                            (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
+                            otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
+                          )}
+                        onApprove={openConfirmation}
+                        isProcessing={isProcessing}
+                      />
+                      {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
+                        <OtherMatchesPagination
+                          currentPage={otherMatchesPage}
+                          totalPages={Math.ceil(
+                            candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
+                          )}
+                          onPageChange={setOtherMatchesPage}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <h3>CAMS Strongest Match</h3>
+                      <CandidateTable
+                        candidates={candidatesToShow}
+                        onApprove={openConfirmation}
+                        isProcessing={isProcessing}
+                      />
+                      <TrusteeSearchLink
+                        linkMessage="There are no other suggested matches in CAMS."
+                        linkLabel="Search for a different trustee"
+                        onClick={openSearch}
+                      />
+                    </>
+                  )}
                 </div>
-              )}
-              {viewMode === 'pending-with-candidate' && (
-                <button
-                  type="button"
-                  data-testid="reject-button"
-                  onClick={openRejection}
-                  disabled={isProcessing}
-                  className="reject-task-link"
-                >
-                  <Icon name="delete" />
-                  Reject Task
-                </button>
               )}
               {viewMode === 'readonly-with-candidate' && preselected && (
                 <>
-                  <CandidateTable
-                    candidates={isMultipleMatch ? sortedCandidates : [preselected]}
-                    nameColumnHeader={isMultipleMatch ? 'Trustee' : undefined}
-                  />
-                  <TrusteeSearchLink
-                    linkMessage={
-                      isMultipleMatch
-                        ? 'Multiple matches found with similar scores.'
-                        : 'There are no other suggested matches in CAMS.'
-                    }
-                    linkLabel="Search for a different trustee."
-                    onClick={openSearch}
-                  />
+                  {isMultipleMatch ? (
+                    <>
+                      <h3>CAMS Strongest Match</h3>
+                      <CandidateTable candidates={[candidatesToShow[0]]} />
+                      <h3>Other Potential Matches</h3>
+                      <p className="other-matches-subtext">
+                        Results are ordered from strongest to weakest match. If you don&apos;t find
+                        the trustee you&apos;re looking for{' '}
+                        <button
+                          type="button"
+                          onClick={openSearch}
+                          className="search-trustee-link search-trustee-inline-link"
+                        >
+                          search here.
+                        </button>
+                      </p>
+                      <p className="other-matches-count" data-testid="other-matches-count">
+                        {candidatesToShow.slice(1).length} matches
+                      </p>
+                      <CandidateTable
+                        candidates={candidatesToShow
+                          .slice(1)
+                          .slice(
+                            (otherMatchesPage - 1) * OTHER_MATCHES_PAGE_SIZE,
+                            otherMatchesPage * OTHER_MATCHES_PAGE_SIZE,
+                          )}
+                      />
+                      {candidatesToShow.slice(1).length > OTHER_MATCHES_PAGE_SIZE && (
+                        <OtherMatchesPagination
+                          currentPage={otherMatchesPage}
+                          totalPages={Math.ceil(
+                            candidatesToShow.slice(1).length / OTHER_MATCHES_PAGE_SIZE,
+                          )}
+                          onPageChange={setOtherMatchesPage}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <h3>CAMS Strongest Match</h3>
+                      <CandidateTable candidates={candidatesToShow} />
+                      <TrusteeSearchLink
+                        linkMessage="There are no other suggested matches in CAMS."
+                        linkLabel="Search for a different trustee."
+                        onClick={openSearch}
+                      />
+                    </>
+                  )}
                 </>
               )}
               {viewMode === 'no-candidates' && (

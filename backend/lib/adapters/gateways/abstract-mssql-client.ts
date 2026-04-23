@@ -5,14 +5,17 @@ import { ApplicationContext } from '../types/basic';
 import { getCamsError } from '../../common-errors/error-utilities';
 
 export abstract class AbstractMssqlClient {
-  private static connectionPool: ConnectionPool;
+  private static connectionPools: Map<string, ConnectionPool> = new Map();
   private readonly moduleName: string;
+  private readonly poolKey: string;
 
   protected constructor(dbConfig: IDbConfig, childModuleName: string) {
     this.moduleName = `ABSTRACT-MSSQL-CLIENT (${childModuleName})`;
-    if (!AbstractMssqlClient.connectionPool) {
-      AbstractMssqlClient.connectionPool = new ConnectionPool(dbConfig as config);
-      deferClose(AbstractMssqlClient.connectionPool);
+    this.poolKey = `${dbConfig.server}:${dbConfig.port}:${dbConfig.database}`;
+    if (!AbstractMssqlClient.connectionPools.has(this.poolKey)) {
+      const pool = new ConnectionPool(dbConfig as config);
+      AbstractMssqlClient.connectionPools.set(this.poolKey, pool);
+      deferClose(pool);
     }
   }
 
@@ -21,11 +24,12 @@ export abstract class AbstractMssqlClient {
     query: string,
     input?: DbTableFieldSpec[],
   ): Promise<QueryResults> {
+    const connectionPool = AbstractMssqlClient.connectionPools.get(this.poolKey);
     try {
-      if (!AbstractMssqlClient.connectionPool.connected) {
-        await AbstractMssqlClient.connectionPool.connect();
+      if (!connectionPool.connected) {
+        await connectionPool.connect();
       }
-      const request = AbstractMssqlClient.connectionPool.request();
+      const request = connectionPool.request();
 
       if (typeof input != 'undefined') {
         input.forEach((item) => {

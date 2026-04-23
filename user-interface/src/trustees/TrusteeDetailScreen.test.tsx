@@ -7,8 +7,11 @@ import { ContactInformation } from '@common/cams/contact';
 import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
-import * as featureFlagsHook from '@/lib/hooks/UseFeatureFlags';
-import { DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
+import { testFeatureFlags } from '@common/feature-flags';
+
+vi.mock('@/lib/hooks/UseFeatureFlags');
+const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const mockOnEditPublicProfile = vi.fn();
 const mockOnEditInternalProfile = vi.fn();
@@ -84,9 +87,7 @@ describe('TrusteeDetailScreen', () => {
     mockOnEditInternalProfile.mockClear();
 
     vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
-    vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-      [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
-    });
+    mockUseFeatureFlags.mockReturnValue(testFeatureFlags);
   });
 
   afterEach(() => {
@@ -538,8 +539,9 @@ describe('TrusteeDetailScreen', () => {
     });
 
     test('should render UpcomingKeyDatesForm when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is enabled', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: true,
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'display-chpt7-panel-upcoming-key-dates': true,
       });
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -551,11 +553,40 @@ describe('TrusteeDetailScreen', () => {
     });
 
     test('should redirect home when DISPLAY_CHPT7_PANEL_UPCOMING_REPORT_DATES flag is disabled', async () => {
-      vi.spyOn(featureFlagsHook, 'default').mockReturnValue({
-        [DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES]: false,
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'display-chpt7-panel-upcoming-key-dates': false,
       });
 
       renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/my-cases');
+      });
+    });
+  });
+
+  describe('assigned-staff route', () => {
+    test('should render TrusteeAssignedStaff when trustee-assigned-staff-enabled flag is enabled', async () => {
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+      renderWithRouter(['/trustees/123/assigned-staff']);
+
+      await waitFor(() => {
+        expect(document.querySelector('.trustee-assigned-staff-container')).toBeInTheDocument();
+      });
+    });
+
+    test('should redirect home when trustee-assigned-staff-enabled flag is disabled', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-assigned-staff-enabled': false,
+      });
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+
+      renderWithRouter(['/trustees/123/assigned-staff']);
 
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/my-cases');
