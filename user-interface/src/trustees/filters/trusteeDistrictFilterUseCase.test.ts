@@ -239,6 +239,9 @@ describe('trustee district filter use case tests', () => {
             {
               officeCode: '088',
               officeName: 'Rutland',
+              idpGroupName: 'Rutland',
+              regionId: '01',
+              regionName: 'Boston Region',
               groups: [
                 {
                   groupDesignator: 'VT',
