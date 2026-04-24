@@ -3,7 +3,7 @@ import eslintUiTestConfig from './eslint-ui-test.config.mjs';
 import eslintNodeConfig from './eslint-node.config.mjs';
 
 const codeConfig = eslintUiConfig.map((configObject) => ({
-  files: ['**/*.ts', '**/*.tsx'],
+  files: ['**/*.ts', '**/*.tsx', '**/*.mts'],
   ...configObject,
 }));
 const testConfig = eslintUiTestConfig.map((configObject) => ({

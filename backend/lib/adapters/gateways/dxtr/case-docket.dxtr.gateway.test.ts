@@ -1,6 +1,5 @@
 import { vi } from 'vitest';
 import { QueryResults } from '../../types/database';
-import * as database from '../../utils/database';
 import { documentSorter, DxtrCaseDocketGateway, translateModel } from './case-docket.dxtr.gateway';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import {
@@ -9,12 +8,22 @@ import {
   DXTR_DOCKET_ENTRIES_DOCUMENTS,
 } from '../../../testing/mock-data/case-docket-entries.mock';
 import { NORMAL_CASE_ID, NOT_FOUND_ERROR_CASE_ID } from '../../../testing/testing-constants';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
+import { DxtrCaseDocketEntryDocument } from './case-docket.dxtr.gateway';
+
+function makeDoc(parts: string[], fileName = ''): DxtrCaseDocketEntryDocument {
+  return { sequenceNumber: 0, fileSize: 0, uriStem: '', fileName, deleted: 'N', parts };
+}
 
 describe('Test case docket DXTR Gateway', () => {
   let querySpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(() => {
-    querySpy = vi.spyOn(database, 'executeQuery');
+  beforeEach(async () => {
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('getCaseDocket', () => {
@@ -26,9 +35,7 @@ describe('Test case docket DXTR Gateway', () => {
         },
         message: '',
       };
-      querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockDocumentResults);
-      });
+      querySpy.mockImplementationOnce(async () => mockDocumentResults);
 
       const mockEntryResults: QueryResults = {
         success: true,
@@ -37,15 +44,13 @@ describe('Test case docket DXTR Gateway', () => {
         },
         message: '',
       };
-      querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockEntryResults);
-      });
-      const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
+      querySpy.mockImplementationOnce(async () => mockEntryResults);
+
       const mockContext = await createMockApplicationContext();
+      const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway(mockContext);
       await gateway.getCaseDocket(mockContext, NORMAL_CASE_ID);
       expect(querySpy).toHaveBeenCalledWith(
         expect.anything(),
-        mockContext.config.dxtrDbConfig,
         expect.anything(),
         expect.arrayContaining([
           expect.objectContaining({ value: '11-11111' }),
@@ -63,9 +68,7 @@ describe('Test case docket DXTR Gateway', () => {
         },
         message: '',
       };
-      querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockDocumentResults);
-      });
+      querySpy.mockImplementationOnce(async () => mockDocumentResults);
 
       const mockEntryResults: QueryResults = {
         success: true,
@@ -74,13 +77,11 @@ describe('Test case docket DXTR Gateway', () => {
         },
         message: '',
       };
-      querySpy.mockImplementationOnce(async () => {
-        return Promise.resolve(mockEntryResults);
-      });
-      const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
+      querySpy.mockImplementationOnce(async () => mockEntryResults);
+
       const mockContext = await createMockApplicationContext();
-      const mockCaseId = NORMAL_CASE_ID;
-      const response = await gateway.getCaseDocket(mockContext, mockCaseId);
+      const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway(mockContext);
+      const response = await gateway.getCaseDocket(mockContext, NORMAL_CASE_ID);
       expect(response).toEqual(expected);
     });
 
@@ -92,37 +93,49 @@ describe('Test case docket DXTR Gateway', () => {
         },
         message: '',
       };
-      querySpy.mockImplementation(async () => {
-        return Promise.resolve(mockResults);
-      });
-      const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
+      querySpy.mockResolvedValue(mockResults);
+
       const mockContext = await createMockApplicationContext();
-      const mockCaseId = NOT_FOUND_ERROR_CASE_ID;
-      await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow('Not found');
+      const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway(mockContext);
+      await expect(gateway.getCaseDocket(mockContext, NOT_FOUND_ERROR_CASE_ID)).rejects.toThrow(
+        'Not found',
+      );
     });
 
-    test('should raise an exception when a database error is encountred', async () => {
+    test('should throw when the documents query fails', async () => {
       const expectedMessage = 'some db error has occurred';
-      const mockResults: QueryResults = {
-        success: false,
-        results: {
-          recordset: [],
-        },
-        message: expectedMessage,
-      };
-      querySpy.mockImplementation(async () => {
-        return Promise.resolve(mockResults);
-      });
-      const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway();
       const mockContext = await createMockApplicationContext();
-      const mockCaseId = NOT_FOUND_ERROR_CASE_ID;
-      await expect(gateway.getCaseDocket(mockContext, mockCaseId)).rejects.toThrow(expectedMessage);
+      const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway(mockContext);
 
-      await expect(gateway._getCaseDocket(mockContext, mockCaseId)).rejects.toThrow(
+      querySpy.mockResolvedValueOnce({
+        success: false,
+        results: { recordset: [] },
+        message: expectedMessage,
+      });
+
+      await expect(gateway.getCaseDocket(mockContext, NOT_FOUND_ERROR_CASE_ID)).rejects.toThrow(
         expectedMessage,
       );
+    });
 
-      await expect(gateway._getCaseDocketDocuments(mockContext, mockCaseId)).rejects.toThrow(
+    test('should throw when the docket entries query fails', async () => {
+      const expectedMessage = 'some db error has occurred';
+      const mockContext = await createMockApplicationContext();
+      const gateway: DxtrCaseDocketGateway = new DxtrCaseDocketGateway(mockContext);
+
+      // Documents succeed, docket entries fail
+      querySpy.mockResolvedValueOnce({
+        success: true,
+        results: { recordset: DXTR_DOCKET_ENTRIES_DOCUMENTS },
+        message: '',
+      });
+      querySpy.mockResolvedValueOnce({
+        success: false,
+        results: { recordset: [] },
+        message: expectedMessage,
+      });
+
+      await expect(gateway.getCaseDocket(mockContext, NOT_FOUND_ERROR_CASE_ID)).rejects.toThrow(
         expectedMessage,
       );
     });
@@ -230,65 +243,23 @@ describe('Test case docket DXTR Gateway', () => {
   });
 
   describe('document sorter tests', () => {
-    test('should properly handle numbers', () => {
-      const fileOne = {
-        sequenceNumber: 1,
-        fileName: '',
-        fileSize: 1000,
-        uriStem: '',
-        deleted: 'N',
-        parts: ['4', '0', 'pdf'],
-      };
-      const fileTwo = {
-        sequenceNumber: 1,
-        fileName: '',
-        fileSize: 1000,
-        uriStem: '',
-        deleted: 'N',
-        parts: ['4', '1', 'pdf'],
-      };
-      expect(documentSorter(fileOne, fileTwo)).toEqual(-1);
-      expect(documentSorter(fileTwo, fileOne)).toEqual(1);
-    });
-
-    test('should properly handle non-numeric', () => {
-      const fileOne = {
-        sequenceNumber: 1,
-        fileName: 'abc.pdf',
-        fileSize: 1000,
-        uriStem: '',
-        deleted: 'N',
-        parts: ['4', 'a', 'pdf'],
-      };
-      const fileTwo = {
-        sequenceNumber: 1,
-        fileName: 'def.pdf',
-        fileSize: 1000,
-        uriStem: '',
-        deleted: 'N',
-        parts: ['4', '1', 'pdf'],
-      };
-      expect(documentSorter(fileOne, fileTwo)).toEqual(-1);
-      expect(documentSorter(fileTwo, fileOne)).toEqual(1);
-    });
-
-    test('should properly handle not enough parts', () => {
-      const fileOne = {
-        sequenceNumber: 1,
-        fileName: 'abc.pdf',
-        fileSize: 1000,
-        uriStem: '',
-        deleted: 'N',
-        parts: ['4'],
-      };
-      const fileTwo = {
-        sequenceNumber: 1,
-        fileName: 'def.pdf',
-        fileSize: 1000,
-        uriStem: '',
-        deleted: 'N',
-        parts: ['4', '1', 'pdf'],
-      };
+    test.each([
+      {
+        description: 'should properly handle numbers',
+        fileOne: makeDoc(['4', '0', 'pdf']),
+        fileTwo: makeDoc(['4', '1', 'pdf']),
+      },
+      {
+        description: 'should properly handle non-numeric',
+        fileOne: makeDoc(['4', 'a', 'pdf'], 'abc.pdf'),
+        fileTwo: makeDoc(['4', '1', 'pdf'], 'def.pdf'),
+      },
+      {
+        description: 'should properly handle not enough parts',
+        fileOne: makeDoc(['4'], 'abc.pdf'),
+        fileTwo: makeDoc(['4', '1', 'pdf'], 'def.pdf'),
+      },
+    ])('$description', ({ fileOne, fileTwo }) => {
       expect(documentSorter(fileOne, fileTwo)).toEqual(-1);
       expect(documentSorter(fileTwo, fileOne)).toEqual(1);
     });

@@ -1,23 +1,23 @@
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
-import factory from '../../../lib/factory';
+import { AbstractMssqlClient } from '../../../lib/adapters/gateways/abstract-mssql-client';
 
 const MODULE_NAME = 'HEALTHCHECK-SQL-DB';
 
-export default class HealthcheckSqlDb {
+export default class HealthcheckSqlDb extends AbstractMssqlClient {
   private readonly applicationContext: ApplicationContext;
 
   constructor(applicationContext: ApplicationContext) {
+    super(applicationContext.config.dxtrDbConfig, MODULE_NAME);
     this.applicationContext = applicationContext;
   }
 
   public async checkDxtrDbRead() {
     try {
-      const client = factory.getSqlConnection(this.applicationContext.config.dxtrDbConfig);
-      const sqlConnection = await client.connect();
-      const sqlRequest = sqlConnection.request();
-      const results = await sqlRequest.query('SELECT TOP 1 * FROM [dbo].[AO_CS]');
-      sqlConnection.close();
-      return results.recordset.length > 0;
+      const result = await this.executeQuery(
+        this.applicationContext,
+        'SELECT TOP 1 * FROM [dbo].[AO_CS]',
+      );
+      return (result.results as { recordset: unknown[] }).recordset.length > 0;
     } catch (error) {
       this.applicationContext.logger.error(MODULE_NAME, error.message, error);
     }

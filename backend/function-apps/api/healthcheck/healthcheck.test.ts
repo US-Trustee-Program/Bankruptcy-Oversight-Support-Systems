@@ -26,11 +26,14 @@ const healthCheckDocument: HealthCheckDocument = {
   documentType: 'HEALTH_CHECK',
 };
 
-vi.mock('mssql', () => {
+vi.mock('mssql', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('mssql')>();
   return {
-    ConnectionPool: vi.fn().mockImplementation(() => {
+    ...actual,
+    ConnectionPool: vi.fn().mockImplementation(function () {
       return {
         connect: mockConnect,
+        request: mockRequestFunc,
       };
     }),
   };
