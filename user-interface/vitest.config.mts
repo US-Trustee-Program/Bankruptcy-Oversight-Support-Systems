@@ -10,9 +10,9 @@ export default defineConfig({
     restoreMocks: true,
     setupFiles: './src/setupTests.ts',
     exclude: [
-      '**\/node_modules/**',
-      '**\/dist/**',
-      '**\/{vite,vitest,eslint,prettier}.config.*',
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/{vite,vitest,eslint,prettier}.config.*',
       'test/accessibility/**',
     ],
 
