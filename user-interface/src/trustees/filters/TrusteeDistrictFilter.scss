@@ -1,5 +1,4 @@
 .trustee-district-filter {
-  max-width: 1240px;
   margin-bottom: 1.5rem;
 
   .filter-header {
@@ -33,11 +32,6 @@
       color: #005ea2;
     }
 
-    &:focus {
-      outline: 0.25rem solid #005ea2;
-      outline-offset: 0.25rem;
-    }
-
     .usa-icon {
       width: 1.25rem;
       height: 1.25rem;
@@ -57,17 +51,26 @@
     }
   }
 
+  .usa-accordion__content:not([hidden]) + .filter-pills-container {
+    margin-top: 0.25rem;
+  }
+
+  .usa-accordion__content[hidden] + .filter-pills-container {
+    margin-top: 1.5rem;
+  }
+
   .filter-pills-container {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
-    margin-top: 1rem;
+    margin-bottom: 1rem;
+    padding-left: 1rem;
 
     .filter-pill {
       display: inline-flex;
       align-items: center;
       gap: 0.25rem;
-      background-color: #005EA2;
+      background-color: #005ea2;
       color: #ffffff;
       padding: 0.25rem 0.75rem;
       border-radius: 99rem;
@@ -90,18 +93,16 @@
           color: #f0f0f0;
         }
 
-        &:focus {
-          outline: 0.25rem solid #005ea2;
-          outline-offset: 0.25rem;
-          border-radius: 99rem;
-        }
-
         .usa-icon {
           width: 1rem;
           height: 1rem;
         }
       }
     }
+  }
+
+  .usa-accordion__content {
+    padding: 1rem 1.25rem;
   }
 
   @keyframes slideDown {
