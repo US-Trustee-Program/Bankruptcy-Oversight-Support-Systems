@@ -1,10 +1,11 @@
 import React from 'react';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteeSearchModal, { TrusteeSearchModalImperative } from './TrusteeSearchModal';
 import Api2 from '@/lib/models/api2';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { COURT_DIVISIONS } from '@common/cams/test-utilities/courts.mock';
+import MockData from '@common/cams/test-utilities/mock-data';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import * as UseDebounceModule from '@/lib/hooks/UseDebounce';
 
@@ -353,6 +354,102 @@ describe('TrusteeSearchModal', () => {
 
     await waitFor(() => {
       expect(wrapper).toHaveClass('is-hidden');
+    });
+  });
+
+  test('clears court filter and resets search results when district selection is cleared', async () => {
+    const searchSpy = vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [] });
+
+    render(
+      <BrowserRouter>
+        <TrusteeSearchModal
+          ref={modalRef}
+          id={modalId}
+          dxtrTrusteeName="DOE, JOHN"
+          courtId="0208"
+          onConfirm={vi.fn()}
+        />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show());
+
+    // Clear the pre-selected district by clicking clear-all
+    await waitFor(() => {
+      expect(document.querySelector(`#${districtComboBoxId}-clear-all`)).toBeInTheDocument();
+    });
+    fireEvent.click(document.querySelector(`#${districtComboBoxId}-clear-all`)!);
+
+    // Search without a district — courtId passed to API should be undefined
+    await expandComboBoxAndType('sm');
+
+    await waitFor(() => {
+      expect(searchSpy).toHaveBeenCalledWith('sm', undefined);
+    });
+  });
+
+  test('shows appointment court name from courts list when available', async () => {
+    const resultWithAppointment: TrusteeSearchResult = {
+      trusteeId: 'trustee-appt',
+      name: 'Appt Trustee',
+      appointments: [
+        {
+          ...MockData.getTrusteeAppointment({
+            courtDivisionName: 'Manhattan',
+            chapter: '7',
+          }),
+          courtId: '0208',
+          courtName: undefined,
+        },
+      ],
+      matchType: 'exact',
+    };
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [resultWithAppointment] });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('appt');
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      // Court name from the COURT_DIVISIONS list (courtId 0208 = Southern District of New York)
+      const details = document.querySelector('.trustee-details');
+      expect(details?.textContent).toContain('Southern District of New York');
+    });
+  });
+
+  test('clears selected trustee and disables Confirm button when selection is removed', async () => {
+    vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: sampleResults });
+
+    renderWithProps();
+    act(() => modalRef.current?.show());
+
+    await expandComboBoxAndType('smith');
+
+    await waitFor(() => {
+      expect(screen.getByTestId(`${comboBoxId}-option-item-0`)).toBeVisible();
+    });
+    await userEvent.click(screen.getByTestId(`${comboBoxId}-option-item-0`));
+
+    await waitFor(() => {
+      expect(screen.getByText('123 Main St')).toBeInTheDocument();
+    });
+
+    // Deselect by clicking the remove pill / clear-all button on the trustee combobox
+    const clearButton = document.querySelector(`#${comboBoxId}-clear-all`);
+    expect(clearButton).toBeInTheDocument();
+    fireEvent.click(clearButton!);
+
+    await waitFor(() => {
+      const submitButton = screen.getByTestId(
+        `button-trustee-search-modal-${modalId}-submit-button`,
+      );
+      expect(submitButton).toBeDisabled();
+      expect(screen.queryByText('123 Main St')).not.toBeInTheDocument();
     });
   });
 

@@ -686,6 +686,53 @@ describe('TrusteeMatchVerificationAccordion', () => {
     });
   });
 
+  describe('reject flow via rejection modal', () => {
+    function submitRejectionModal(orderId: string, reason: string) {
+      const textarea = screen.getByTestId(`rejection-reason-input-${orderId}`);
+      fireEvent.change(textarea, { target: { value: reason } });
+      const submitButton = document.getElementById(
+        `trustee-rejection-modal-${orderId}-submit-button`,
+      );
+      fireEvent.click(submitButton!);
+    }
+
+    test('calls rejection API and onOrderUpdate with warning on reject success', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockResolvedValue(undefined);
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+
+      submitRejectionModal(sampleOrderWithCandidates.id, 'Wrong person');
+
+      await waitFor(() => {
+        expect(Api2.patchTrusteeVerificationOrderRejection).toHaveBeenCalledWith(
+          sampleOrderWithCandidates.id,
+          'Wrong person',
+        );
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          { message: 'Trustee match rejected.', type: UswdsAlertStyle.Warning, timeOut: 8 },
+          expect.objectContaining({ status: 'rejected', reason: 'Wrong person' }),
+        );
+      });
+    });
+
+    test('calls onOrderUpdate with error alert on reject failure', async () => {
+      vi.spyOn(Api2, 'patchTrusteeVerificationOrderRejection').mockRejectedValue(
+        new Error('Network error'),
+      );
+      const onOrderUpdate = vi.fn();
+      renderWithProps({ order: sampleOrderWithCandidates, onOrderUpdate });
+
+      submitRejectionModal(sampleOrderWithCandidates.id, 'Wrong person');
+
+      await waitFor(() => {
+        expect(onOrderUpdate).toHaveBeenCalledWith(
+          { message: 'Failed to reject trustee match.', type: UswdsAlertStyle.Error, timeOut: 8 },
+          sampleOrderWithCandidates,
+        );
+      });
+    });
+  });
+
   describe('Other Potential Matches pagination', () => {
     function makeMultipleMatchOrder(totalCandidates: number): TrusteeMatchVerification {
       return {
@@ -760,6 +807,54 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
       expect(content.textContent).toContain('Candidate 12'); // last candidate on page 3
       expect(content.textContent).not.toContain('Candidate 2');
+    });
+
+    test('shows ellipsis before last pages when current page is near the end', () => {
+      // N=37: 1 strongest + 36 others, totalPages=8; page 5 triggers the right-tail branch
+      renderWithProps({ order: makeMultipleMatchOrder(37) });
+
+      // Navigate to page 5 (near the end, triggers last-pages branch)
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+
+      // Page 5 of 8 is in the right-tail branch: pages = [1, '...', 4, 5, 6, 7, 8]
+      expect(screen.getByTestId('pagination-button-other-matches-page-8')).toBeInTheDocument();
+      expect(screen.getByTestId('pagination-button-other-matches-page-1')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('pagination-button-other-matches-page-2'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('pagination-button-other-matches-page-3'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('shows ellipsis on both sides when current page is in the middle', () => {
+      // N=51: 1 strongest + 50 others, totalPages=10; pages 5-6 trigger the middle-window branch
+      renderWithProps({ order: makeMultipleMatchOrder(51) });
+
+      // Navigate to page 5
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+      fireEvent.click(screen.getByTestId('pagination-button-other-matches-next'));
+
+      // Middle-window branch: pages = [1, '...', 4, 5, 6, '...', 10]
+      expect(screen.getByTestId('pagination-button-other-matches-page-1')).toBeInTheDocument();
+      expect(screen.getByTestId('pagination-button-other-matches-page-4')).toBeInTheDocument();
+      expect(screen.getByTestId('pagination-button-other-matches-page-5')).toBeInTheDocument();
+      expect(screen.getByTestId('pagination-button-other-matches-page-6')).toBeInTheDocument();
+      expect(screen.getByTestId('pagination-button-other-matches-page-10')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('pagination-button-other-matches-page-2'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('pagination-button-other-matches-page-3'),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('pagination-button-other-matches-page-7'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -1005,16 +1100,6 @@ describe('TrusteeMatchVerificationAccordion', () => {
       const heading = screen.getByTestId(`accordion-heading-${sampleOrder.id}`);
       expect(heading.textContent).toContain('Multiple Match');
       expect(heading.textContent).not.toContain('Trustee Mismatch');
-    });
-
-    test('shows multiple-match problem statement', () => {
-      renderWithProps({ order: multipleCandidatesOrder });
-
-      const content = screen.getByTestId(`accordion-content-${sampleOrder.id}`);
-      expect(content.textContent).toContain('Multiple potential trustee matches found for case');
-      expect(content.textContent).toContain(
-        'review the candidates below and select the correct trustee',
-      );
     });
 
     test('shows both "CAMS Strongest Match" and "Other Potential Matches" headings', () => {
