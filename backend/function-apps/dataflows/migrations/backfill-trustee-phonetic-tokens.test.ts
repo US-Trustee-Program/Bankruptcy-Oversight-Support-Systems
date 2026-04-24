@@ -14,6 +14,8 @@ function makeTrustee(trusteeId: string, name: string): Trustee {
   return {
     id: `doc-${trusteeId}`,
     trusteeId,
+    firstName: name.split(' ')[0] || name,
+    lastName: name.split(' ').slice(1).join(' ') || name,
     name,
     documentType: 'TRUSTEE',
     public: {

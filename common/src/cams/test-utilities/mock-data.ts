@@ -590,6 +590,9 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
     trusteeId: faker.string.uuid(),
     updatedOn: getDateBeforeToday().toISOString(),
     updatedBy: getCamsUserReference(),
+    firstName: trusteeInput.firstName,
+    lastName: trusteeInput.lastName,
+    middleName: trusteeInput.middleName,
     name: trusteeInput.name,
     public: trusteeInput.public,
     // Optional fields with proper types
@@ -605,8 +608,15 @@ function getTrustee(override: Partial<Trustee> = {}): Trustee {
 }
 
 function getTrusteeInput(override: Partial<TrusteeInput> = {}): TrusteeInput {
+  const firstName = override.firstName ?? faker.person.firstName();
+  const lastName = override.lastName ?? faker.person.lastName();
+  const middleName = override.middleName;
+  const nameParts = [firstName, middleName, lastName].filter(Boolean);
   return {
-    name: faker.person.fullName(),
+    firstName,
+    lastName,
+    middleName,
+    name: nameParts.join(' '),
     public: getContactInformation(),
     ...override,
   };
@@ -614,6 +624,8 @@ function getTrusteeInput(override: Partial<TrusteeInput> = {}): TrusteeInput {
 
 function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
   const trusteeLastName = faker.person.lastName().toLowerCase().replace(/\s/g, '-');
+  const firstName = override.firstName ?? faker.person.firstName();
+  const lastName = override.lastName ?? faker.person.lastName();
   const publicContact = getContactInformation({
     website: `https://www.${trusteeLastName}-ch13.com`,
   });
@@ -624,7 +636,9 @@ function getChapter13Trustee(override: Partial<Trustee> = {}): Trustee {
   return {
     id: faker.string.uuid(),
     trusteeId: faker.string.uuid(),
-    name: faker.person.fullName(),
+    firstName,
+    lastName,
+    name: `${firstName} ${lastName}`,
     public: publicContact,
     internal: internalContact,
     updatedOn: getDateBeforeToday().toISOString(),
