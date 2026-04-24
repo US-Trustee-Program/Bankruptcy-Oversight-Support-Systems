@@ -5,9 +5,14 @@
 }
 
 .trustee-match-content {
-  p.problem-statement {
+  p.problem-statement,
+  p.resolved-statement {
     margin: 1.5rem 0;
     font-size: 1rem;
+    line-height: 1.25;
+    .new-tab-link {
+      vertical-align: top;
+    }
   }
 
   p.other-matches-subtext {
@@ -101,13 +106,11 @@
   }
 
   .search-link-container {
+    padding-top: 0.5rem;
     .link-message {
       vertical-align: text-bottom;
       line-height: 1.59rem;
-      padding-right: 0.5rem;
-    }
-    .search-trustee-link {
-      margin-top: 0.5rem;
+      padding-right: 0.25rem;
     }
   }
 
