@@ -41,10 +41,13 @@ export interface TrusteeDistrictFilterViewModel {
 export interface TrusteeDistrictFilterRef {
   refresh: () => void;
   focus: () => void;
+  removePill: (district: ComboOption) => void;
+  clearAll: () => void;
 }
 
 export type TrusteeDistrictFilterProps = {
   handleFilterDistrict(districts: ComboOption[]): void;
+  onExpandedChange?: (isExpanded: boolean) => void;
 };
 
 export interface TrusteeDistrictFilterUseCase {
