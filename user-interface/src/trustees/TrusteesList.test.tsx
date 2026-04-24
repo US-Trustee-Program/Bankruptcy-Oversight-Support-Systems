@@ -297,7 +297,7 @@ describe('TrusteesList Component', () => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
     });
 
-    test('should include ARIA live region for filter announcements and display trustee count', async () => {
+    test('should have proper ARIA attributes for accessibility', async () => {
       const trustee1 = makeListItem({ trusteeId: 'trustee-1', name: 'Trustee One' });
       const trustee2 = makeListItem({ trusteeId: 'trustee-2', name: 'Trustee Two' });
       const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee1, trustee2] };
@@ -306,15 +306,26 @@ describe('TrusteesList Component', () => {
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-      renderWithRouter(<TrusteesList />);
+      const { container } = renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
         expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
       });
 
-      const liveRegion = screen.getByRole('status');
-      expect(liveRegion).toHaveAttribute('aria-live', 'polite');
-      expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
+      // Check live region for filter announcements
+      const liveRegion = container.querySelector(
+        '[role="status"][aria-live="polite"][aria-atomic="true"]',
+      );
+      expect(liveRegion).toBeInTheDocument();
+
+      // Check filter section
+      const filterSection = container.querySelector('[aria-label="District filter controls"]');
+      expect(filterSection).toBeInTheDocument();
+
+      // Check table
+      const table = screen.getByTestId('trustees-table');
+      expect(table).toHaveAttribute('role', 'table');
+      expect(table).toHaveAttribute('aria-label', 'Trustees');
     });
 
     test('should filter trustees by selected district using OR logic', async () => {
@@ -434,33 +445,7 @@ describe('TrusteesList Component', () => {
       expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
     });
 
-    test('should show all trustees when no district filter is active', async () => {
-      const appt1 = makeAppointment({ courtId: 'NYSB', divisionCode: '081' });
-      const appt2 = makeAppointment({ courtId: 'VTB' });
-      const trustee1 = makeListItem({
-        trusteeId: 't1',
-        name: 'Trustee Alpha',
-        appointments: [appt1],
-      });
-      const trustee2 = makeListItem({
-        trusteeId: 't2',
-        name: 'Trustee Beta',
-        appointments: [appt2],
-      });
-      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1, trustee2] });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
-
-      renderWithRouter(<TrusteesList />);
-
-      await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
-      });
-
-      expect(screen.getByText('Trustee Alpha')).toBeInTheDocument();
-      expect(screen.getByText('Trustee Beta')).toBeInTheDocument();
-    });
-
-    test('should show all trustees including unassigned ones when no district filter is active', async () => {
+    test('should show all trustees when no district filter is active, including unassigned ones', async () => {
       const trusteeWithAppt = makeListItem({
         trusteeId: 't1',
         name: 'Appointed Trustee',
@@ -471,18 +456,26 @@ describe('TrusteesList Component', () => {
         name: 'Unassigned Trustee',
         appointments: [],
       });
-      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeWithAppt, trusteeNoAppt] });
+      const trusteeAnotherAppt = makeListItem({
+        trusteeId: 't3',
+        name: 'Vermont Trustee',
+        appointments: [makeAppointment({ courtId: 'VTB' })],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [trusteeWithAppt, trusteeNoAppt, trusteeAnotherAppt],
+      });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
+        expect(screen.getByText('3 Trustee(s)')).toBeInTheDocument();
       });
 
       expect(screen.getByText('Appointed Trustee')).toBeInTheDocument();
       expect(screen.getByText('Unassigned Trustee')).toBeInTheDocument();
+      expect(screen.getByText('Vermont Trustee')).toBeInTheDocument();
     });
 
     test('should render pills above trustee count when filter is expanded', async () => {

@@ -37,8 +37,11 @@ const TrusteeDistrictFilter_ = (
     }
   }, [store.districtsError, globalAlert]);
 
+  // fetchDistricts should only run once on mount to avoid unnecessary API calls
+  // useCase is stable across renders given the same props.handleFilterDistrict
   useEffect(() => {
     useCase.fetchDistricts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Notify parent when expanded state changes

@@ -136,24 +136,24 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('getDefaultDistrictsFromSession', () => {
-    test('should return empty array when user has no offices', () => {
-      const session: CamsSession = {
+    test('should return empty array when session is null or user has no offices', () => {
+      // Null session
+      const defaultDistrictsNull = useCase.getDefaultDistrictsFromSession(null, mockDistricts);
+      expect(defaultDistrictsNull).toEqual([]);
+
+      // Empty offices
+      const sessionNoOffices: CamsSession = {
         ...MockData.getCamsSession(),
         user: {
           ...MockData.getCamsSession().user,
           offices: [],
         },
       };
-
-      const defaultDistricts = useCase.getDefaultDistrictsFromSession(session, mockDistricts);
-
-      expect(defaultDistricts).toEqual([]);
-    });
-
-    test('should return empty array when session is null', () => {
-      const defaultDistricts = useCase.getDefaultDistrictsFromSession(null, mockDistricts);
-
-      expect(defaultDistricts).toEqual([]);
+      const defaultDistrictsEmpty = useCase.getDefaultDistrictsFromSession(
+        sessionNoOffices,
+        mockDistricts,
+      );
+      expect(defaultDistrictsEmpty).toEqual([]);
     });
 
     test('should extract divisionCodes from user office groups and return matching divisions', () => {
@@ -375,21 +375,17 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('handleToggleExpanded', () => {
-    test('should toggle isExpanded from false to true', () => {
+    test('should toggle isExpanded state between true and false', () => {
+      const setIsExpandedSpy = vi.spyOn(mockStore, 'setIsExpanded');
+
+      // Toggle from false to true
       mockStore.isExpanded = false;
-      const setIsExpandedSpy = vi.spyOn(mockStore, 'setIsExpanded');
-
       useCase.handleToggleExpanded();
-
       expect(setIsExpandedSpy).toHaveBeenCalledWith(true);
-    });
 
-    test('should toggle isExpanded from true to false', () => {
+      // Toggle from true to false
       mockStore.isExpanded = true;
-      const setIsExpandedSpy = vi.spyOn(mockStore, 'setIsExpanded');
-
       useCase.handleToggleExpanded();
-
       expect(setIsExpandedSpy).toHaveBeenCalledWith(false);
     });
   });

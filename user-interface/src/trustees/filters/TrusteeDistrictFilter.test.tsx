@@ -339,7 +339,7 @@ describe('TrusteeDistrictFilter Component', () => {
     expect(mockHandleFilterDistrict).not.toHaveBeenCalled();
   });
 
-  test('should call onExpandedChange callback when filter is expanded or collapsed', async () => {
+  test('should call onExpandedChange callback when toggling between collapsed and expanded states', async () => {
     const user = userEvent.setup();
     const mockOnExpandedChange = vi.fn();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
@@ -357,16 +357,23 @@ describe('TrusteeDistrictFilter Component', () => {
 
     const toggleButton = screen.getByRole('button', { name: /filters/i });
 
+    // Initially collapsed
+    expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByLabelText('District (Division)')).not.toBeInTheDocument();
+
     // Expand
     await user.click(toggleButton);
     await waitFor(() => {
       expect(mockOnExpandedChange).toHaveBeenCalledWith(true);
+      expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
+      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
     });
 
     // Collapse
     await user.click(toggleButton);
     await waitFor(() => {
       expect(mockOnExpandedChange).toHaveBeenCalledWith(false);
+      expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
     });
   });
 
