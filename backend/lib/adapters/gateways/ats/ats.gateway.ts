@@ -129,7 +129,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
 
     try {
       const { results } = await this.executeQuery<AtsTrusteeRecord>(context, query, input);
-      const trustees = results as AtsTrusteeRecord[];
+      const trustees = (results as mssql.IResult<AtsTrusteeRecord>).recordset;
 
       context.logger.info(MODULE_NAME, `Retrieved ${trustees.length} trustees from ATS`);
       return trustees;
@@ -194,7 +194,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
     try {
       // 1. Fetch raw ATS data
       const { results } = await this.executeQuery<AtsAppointmentRecord>(context, query, input);
-      const atsAppointments = results as AtsAppointmentRecord[];
+      const atsAppointments = (results as mssql.IResult<AtsAppointmentRecord>).recordset;
 
       context.logger.info(
         MODULE_NAME,
@@ -334,7 +334,8 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
 
     try {
       const { results } = await this.executeQuery<{ totalCount: number }>(context, query);
-      const count = (results as Array<{ totalCount: number }>)[0]?.totalCount || 0;
+      const count =
+        (results as mssql.IResult<{ totalCount: number }>).recordset[0]?.totalCount || 0;
 
       context.logger.info(MODULE_NAME, `Total trustees in ATS: ${count}`);
       return count;

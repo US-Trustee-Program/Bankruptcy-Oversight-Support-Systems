@@ -78,7 +78,11 @@ describe('Abstract MS-SQL client', () => {
     const client = new TestDbClient(context, context.config.dxtrDbConfig, 'TEST_MODULE');
     const queryResult: QueryResults = await client.executeQuery<string>(context, query, input);
 
-    expect(queryResult).toEqual({ results: 'test string', message: '', success: true });
+    expect(queryResult).toEqual({
+      results: { recordset: 'test string' },
+      message: '',
+      success: true,
+    });
   });
 
   test('should use separate connection pools for clients with different database configs', async () => {
