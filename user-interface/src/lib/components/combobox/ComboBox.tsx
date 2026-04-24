@@ -448,7 +448,9 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       // Scroll to first selected item if there are selections (only on open, not on selection changes)
       if (selectedMap.size > 0 && comboBoxListRef.current) {
         requestAnimationFrame(() => {
-          const firstSelectedValue = [...selectedMap.values()][0].value;
+          const firstSelected = [...selectedMap.values()][0];
+          if (!firstSelected) return;
+          const firstSelectedValue = firstSelected.value;
           const selectedElement = comboBoxListRef.current?.querySelector(
             `li[data-value="${firstSelectedValue}"]`,
           ) as HTMLElement;
