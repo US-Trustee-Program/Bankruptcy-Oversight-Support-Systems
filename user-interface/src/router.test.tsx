@@ -8,6 +8,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
 import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
+import { LandingPageProvider } from '@/lib/contexts/LandingPageContext';
 
 describe('App Router Tests', () => {
   let userEvent: CamsUserEvent;
@@ -52,7 +53,13 @@ describe('App Router Tests', () => {
   });
 
   test('should route /search to SearchScreen', async () => {
-    render(<App />, { wrapper: BrowserRouter });
+    render(
+      <BrowserRouter>
+        <LandingPageProvider>
+          <App />
+        </LandingPageProvider>
+      </BrowserRouter>
+    );
 
     expect(screen.getByTestId('header-search-link')).toBeVisible();
 
@@ -78,7 +85,9 @@ describe('App Router Tests', () => {
 
     render(
       <MemoryRouter initialEntries={['/trustees/create']}>
-        <App />
+        <LandingPageProvider>
+          <App />
+        </LandingPageProvider>
       </MemoryRouter>,
     );
 
@@ -93,7 +102,9 @@ describe('App Router Tests', () => {
     // use <MemoryRouter> when you want to manually control the history
     render(
       <MemoryRouter initialEntries={[badRoute]}>
-        <App />
+        <LandingPageProvider>
+          <App />
+        </LandingPageProvider>
       </MemoryRouter>,
     );
 
