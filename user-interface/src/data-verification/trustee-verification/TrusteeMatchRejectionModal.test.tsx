@@ -96,6 +96,23 @@ describe('TrusteeMatchRejectionModal', () => {
     });
   });
 
+  test('hides modal when Cancel is clicked and no onCancel prop is provided', async () => {
+    const modalRef2 = React.createRef<TrusteeMatchRejectionModalImperative>();
+    render(<TrusteeMatchRejectionModal ref={modalRef2} id={modalId} onConfirm={vi.fn()} />);
+    act(() => modalRef2.current?.show());
+
+    const cancelButton = screen.getByTestId(
+      `button-trustee-rejection-modal-${modalId}-cancel-button`,
+    );
+    await waitFor(() => expect(cancelButton).toBeEnabled());
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => {
+      const wrapper = document.getElementById(`trustee-rejection-modal-${modalId}-wrapper`);
+      expect(wrapper).toHaveClass('is-hidden');
+    });
+  });
+
   test('clears the reason textarea when show() is called', async () => {
     renderWithProps();
     act(() => modalRef.current?.show());

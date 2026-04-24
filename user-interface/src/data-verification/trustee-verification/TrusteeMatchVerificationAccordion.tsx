@@ -442,22 +442,20 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
         >
           {viewMode === 'resolved' ? (
             <p className="resolved-statement" data-testid="resolved-statement">
-              Trustee {getResolvedTrusteeDisplayName()} was appointed to case: {caseLink}
+              <span>Trustee {getResolvedTrusteeDisplayName()} was appointed to case: </span>
+              {caseLink}
             </p>
           ) : (
             <>
-              {isMultipleMatch ? (
+              {isInactiveStatus ? (
                 <p className="problem-statement">
-                  Multiple potential trustee matches found for case: {caseLink}. Please review the
-                  candidates below and select the correct trustee.
-                </p>
-              ) : isInactiveStatus ? (
-                <p className="problem-statement">
-                  Trustee is inactive in CAMS but was appointed to case: {caseLink}
+                  <span>Trustee is inactive in CAMS but was appointed to case: </span>
+                  {caseLink}
                 </p>
               ) : (
                 <p className="problem-statement">
-                  Trustee sent from the court does not match a CAMS Trustee for case: {caseLink}
+                  <span>Trustee sent from the court does not match a CAMS Trustee for case: </span>
+                  {caseLink}
                 </p>
               )}
 
