@@ -33,6 +33,9 @@ import useFeatureFlags, {
   PHONETIC_SEARCH_ENABLED,
   SHOW_DEBTOR_NAME_COLUMN,
 } from '@/lib/hooks/UseFeatureFlags';
+import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
+import { useLandingPageContext } from '@/lib/contexts/LandingPageContext';
+import { useLocation } from 'react-router-dom';
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -65,6 +68,9 @@ export default function SearchScreen() {
   const featureFlags = useFeatureFlags();
   const phoneticSearchEnabled = featureFlags[PHONETIC_SEARCH_ENABLED] === true;
   const showDebtorNameColumn = featureFlags[SHOW_DEBTOR_NAME_COLUMN] === true;
+  const location = useLocation();
+  const { landingPage } = useLandingPageContext();
+  const analytics = useLandingPageAnalytics('case-search');
 
   const session = LocalStorage.getSession();
   const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
@@ -99,6 +105,14 @@ export default function SearchScreen() {
 
   const globalAlert = useGlobalAlert();
   const debounce = useDebounce();
+
+  // Track navigation away from Case Search landing page
+  useEffect(() => {
+    return () => {
+      // On unmount, track that user navigated away from Case Search
+      analytics.trackNavigation(location.pathname);
+    };
+  }, []);
 
   const mapToFormData = (predicate: CasesSearchPredicate): SearchScreenFormData => {
     return {
@@ -275,6 +289,16 @@ export default function SearchScreen() {
     // Only perform search if validation passes
     if (validation.isValid) {
       setSearchPredicate(currentPredicate);
+
+      // Track first search action for analytics (only if user landed on Case Search)
+      if (landingPage === 'case-search') {
+        const searchType = currentPredicate.caseNumber
+          ? 'case-number'
+          : currentPredicate.debtorName
+            ? 'debtor-name'
+            : 'other';
+        analytics.trackFirstSearch(searchType);
+      }
     }
   }
 

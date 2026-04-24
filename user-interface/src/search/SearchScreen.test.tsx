@@ -15,6 +15,8 @@ import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import * as UseFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
 import * as courtUtils from '@/lib/utils/court-utils';
+import * as UseLandingPageAnalyticsModule from '@/lib/hooks/UseLandingPageAnalytics';
+import { LandingPageProvider } from '@/lib/contexts/LandingPageContext';
 
 describe('search screen', () => {
   const userOffices = [REGION_02_GROUP_NY];
@@ -54,7 +56,9 @@ describe('search screen', () => {
   function renderWithoutProps() {
     render(
       <BrowserRouter>
-        <SearchScreen></SearchScreen>
+        <LandingPageProvider>
+          <SearchScreen></SearchScreen>
+        </LandingPageProvider>
       </BrowserRouter>,
     );
   }
@@ -837,7 +841,9 @@ describe('debtor name search', () => {
     });
     render(
       <BrowserRouter>
-        <SearchScreen></SearchScreen>
+        <LandingPageProvider>
+          <SearchScreen></SearchScreen>
+        </LandingPageProvider>
       </BrowserRouter>,
     );
   }
@@ -1064,5 +1070,98 @@ describe('debtor name search', () => {
 
     expect(validation.isValid).toBe(false);
     expect(validation.formValidationError).toBe('Please enter at least one search criterion');
+  });
+});
+
+describe('SearchScreen analytics integration', () => {
+  const userOffices = [REGION_02_GROUP_NY];
+  const user = MockData.getCamsUser({ offices: userOffices });
+  const session = MockData.getCamsSession({ user });
+  const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
+  const searchResponseBody: ResponseBody<SyncedCase[]> = {
+    meta: { self: 'self-url' },
+    pagination: {
+      count: caseList.length,
+      currentPage: 1,
+      limit: DEFAULT_SEARCH_LIMIT,
+    },
+    data: caseList,
+  };
+  let searchCasesSpy: MockInstance;
+  let userEvent: CamsUserEvent;
+  let trackNavigationMock: MockInstance;
+  let trackFirstSearchMock: MockInstance;
+
+  function renderWithoutProps() {
+    render(
+      <BrowserRouter>
+        <LandingPageProvider>
+          <SearchScreen></SearchScreen>
+        </LandingPageProvider>
+      </BrowserRouter>,
+    );
+  }
+
+  beforeEach(async () => {
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
+    searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    userEvent = TestingUtilities.setupUserEvent();
+
+    trackNavigationMock = vi.fn();
+    trackFirstSearchMock = vi.fn();
+
+    vi.spyOn(UseLandingPageAnalyticsModule, 'useLandingPageAnalytics').mockReturnValue({
+      trackNavigation: trackNavigationMock,
+      trackFirstSearch: trackFirstSearchMock,
+    });
+  });
+
+  test('should call analytics hook with correct landing page parameter', async () => {
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(UseLandingPageAnalyticsModule.useLandingPageAnalytics).toHaveBeenCalledWith(
+        'case-search',
+      );
+    });
+  });
+
+  test('should track navigation on component unmount', async () => {
+    const { unmount } = render(
+      <BrowserRouter>
+        <LandingPageProvider>
+          <SearchScreen />
+        </LandingPageProvider>
+      </BrowserRouter>,
+    );
+
+    unmount();
+
+    await waitFor(() => {
+      expect(trackNavigationMock).toHaveBeenCalledWith(expect.any(String));
+    });
+  });
+
+  test('should not track first search when landing page context is null', async () => {
+    // The LandingPageProvider starts with landingPage as null
+    // SearchScreen should only track first search if landingPage === 'case-search'
+    renderWithoutProps();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    await userEvent.type(caseNumberInput, '00-11111');
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    // Should not track first search because landingPage is null (user didn't land on case-search)
+    expect(trackFirstSearchMock).not.toHaveBeenCalled();
   });
 });

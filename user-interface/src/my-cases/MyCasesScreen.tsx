@@ -29,12 +29,16 @@ import useFeatureFlags, {
   PHONETIC_SEARCH_ENABLED,
   SHOW_DEBTOR_NAME_COLUMN,
 } from '@/lib/hooks/UseFeatureFlags';
+import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
+import { useLocation } from 'react-router-dom';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
   const featureFlags = useFeatureFlags();
   const phoneticSearchEnabled = featureFlags[PHONETIC_SEARCH_ENABLED] === true;
   const showDebtorNameColumn = featureFlags[SHOW_DEBTOR_NAME_COLUMN] === true;
+  const location = useLocation();
+  const analytics = useLandingPageAnalytics('my-cases');
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -63,6 +67,14 @@ export const MyCasesScreen = () => {
       uswdsStyle: UswdsButtonStyle.Default,
     },
   };
+
+  // Track navigation away from My Cases landing page
+  useEffect(() => {
+    return () => {
+      // On unmount, track that user navigated away from My Cases
+      analytics.trackNavigation(location.pathname);
+    };
+  }, []);
 
   function handleShowClosedCasesToggle(isActive: boolean) {
     setDoShowClosedCases(isActive);
