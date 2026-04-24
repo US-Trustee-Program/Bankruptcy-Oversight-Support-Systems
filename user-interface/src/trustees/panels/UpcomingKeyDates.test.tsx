@@ -166,10 +166,10 @@ describe('UpcomingKeyDates', () => {
       tirFrequency: 'SEMI_ANNUAL',
       tirReviewPeriodStart: '1900-01-01',
       tirReviewPeriodEnd: '1900-06-30',
-      tirReviewPeriodStart2: '1900-07-01',
-      tirReviewPeriodEnd2: '1900-12-31',
-      tirSubmission2: '1900-07-30',
-      tirReview2: '1900-09-28',
+      tirSemiAnnualReviewPeriodStart: '1900-07-01',
+      tirSemiAnnualReviewPeriodEnd: '1900-12-31',
+      tirSemiAnnualSubmission: '1900-07-30',
+      tirSemiAnnualReview: '1900-09-28',
     };
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: semiAnnualDoc });
 
@@ -189,7 +189,7 @@ describe('UpcomingKeyDates', () => {
       ...populatedDocument,
       tirFrequency: 'SEMI_ANNUAL',
       tirSubmission: '1900-10-15',
-      tirSubmission2: '1900-04-15',
+      tirSemiAnnualSubmission: '1900-04-15',
     };
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: semiAnnualDoc });
 

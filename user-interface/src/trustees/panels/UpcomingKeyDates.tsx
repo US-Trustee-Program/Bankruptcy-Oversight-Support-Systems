@@ -69,8 +69,11 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
   let tirReviewPeriod = NO_DATE;
   if (data?.tirReviewPeriodStart && data?.tirReviewPeriodEnd) {
     const period1 = isoRangeToMMDD(data.tirReviewPeriodStart, data.tirReviewPeriodEnd);
-    if (data.tirReviewPeriodStart2 && data.tirReviewPeriodEnd2) {
-      const period2 = isoRangeToMMDD(data.tirReviewPeriodStart2, data.tirReviewPeriodEnd2);
+    if (data.tirSemiAnnualReviewPeriodStart && data.tirSemiAnnualReviewPeriodEnd) {
+      const period2 = isoRangeToMMDD(
+        data.tirSemiAnnualReviewPeriodStart,
+        data.tirSemiAnnualReviewPeriodEnd,
+      );
       tirReviewPeriod = `${period1} & ${period2}`;
     } else {
       tirReviewPeriod = period1;
@@ -79,8 +82,8 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
 
   let tirSubmission = NO_DATE;
   if (data?.tirSubmission) {
-    if (data.tirSubmission2) {
-      tirSubmission = `${isoToMMDD(data.tirSubmission)} & ${isoToMMDD(data.tirSubmission2)}`;
+    if (data.tirSemiAnnualSubmission) {
+      tirSubmission = `${isoToMMDD(data.tirSubmission)} & ${isoToMMDD(data.tirSemiAnnualSubmission)}`;
     } else {
       tirSubmission = isoToMMDD(data.tirSubmission);
     }
@@ -88,8 +91,8 @@ export default function UpcomingKeyDates(props: Readonly<UpcomingKeyDatesProps>)
 
   let tirReview = NO_DATE;
   if (data?.tirReview) {
-    if (data.tirReview2) {
-      tirReview = `${isoToMMDD(data.tirReview)} & ${isoToMMDD(data.tirReview2)}`;
+    if (data.tirSemiAnnualReview) {
+      tirReview = `${isoToMMDD(data.tirReview)} & ${isoToMMDD(data.tirSemiAnnualReview)}`;
     } else {
       tirReview = isoToMMDD(data.tirReview);
     }

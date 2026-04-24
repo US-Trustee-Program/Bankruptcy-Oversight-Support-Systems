@@ -94,8 +94,8 @@ type FormState = {
   tirPeriodKey: string;
   tirReviewPeriodStart: string;
   tirReviewPeriodEnd: string;
-  tirReviewPeriodStart2: string;
-  tirReviewPeriodEnd2: string;
+  tirSemiAnnualReviewPeriodStart: string;
+  tirSemiAnnualReviewPeriodEnd: string;
   lastAuditFiscalYear: number | null;
 };
 
@@ -114,8 +114,8 @@ const EMPTY_FORM: FormState = {
   tirPeriodKey: '',
   tirReviewPeriodStart: '',
   tirReviewPeriodEnd: '',
-  tirReviewPeriodStart2: '',
-  tirReviewPeriodEnd2: '',
+  tirSemiAnnualReviewPeriodStart: '',
+  tirSemiAnnualReviewPeriodEnd: '',
   lastAuditFiscalYear: null,
 };
 
@@ -189,8 +189,8 @@ export default function UpcomingKeyDatesForm() {
             tirPeriodKey: periodKey,
             tirReviewPeriodStart: data.tirReviewPeriodStart ?? '',
             tirReviewPeriodEnd: data.tirReviewPeriodEnd ?? '',
-            tirReviewPeriodStart2: data.tirReviewPeriodStart2 ?? '',
-            tirReviewPeriodEnd2: data.tirReviewPeriodEnd2 ?? '',
+            tirSemiAnnualReviewPeriodStart: data.tirSemiAnnualReviewPeriodStart ?? '',
+            tirSemiAnnualReviewPeriodEnd: data.tirSemiAnnualReviewPeriodEnd ?? '',
             lastAuditFiscalYear: data.lastAuditFiscalYear ?? null,
           });
         }
@@ -229,8 +229,8 @@ export default function UpcomingKeyDatesForm() {
       tirPeriodKey: '',
       tirReviewPeriodStart: '',
       tirReviewPeriodEnd: '',
-      tirReviewPeriodStart2: '',
-      tirReviewPeriodEnd2: '',
+      tirSemiAnnualReviewPeriodStart: '',
+      tirSemiAnnualReviewPeriodEnd: '',
     }));
   }
 
@@ -242,8 +242,8 @@ export default function UpcomingKeyDatesForm() {
         tirPeriodKey: '',
         tirReviewPeriodStart: '',
         tirReviewPeriodEnd: '',
-        tirReviewPeriodStart2: '',
-        tirReviewPeriodEnd2: '',
+        tirSemiAnnualReviewPeriodStart: '',
+        tirSemiAnnualReviewPeriodEnd: '',
       }));
       return;
     }
@@ -260,8 +260,8 @@ export default function UpcomingKeyDatesForm() {
         tirPeriodKey: key,
         tirReviewPeriodStart: option.start,
         tirReviewPeriodEnd: option.end,
-        tirReviewPeriodStart2: option.start2 ?? '',
-        tirReviewPeriodEnd2: option.end2 ?? '',
+        tirSemiAnnualReviewPeriodStart: option.start2 ?? '',
+        tirSemiAnnualReviewPeriodEnd: option.end2 ?? '',
       }));
     }
   }
@@ -271,8 +271,8 @@ export default function UpcomingKeyDatesForm() {
 
     let tirSubmission: string | null = null;
     let tirReview: string | null = null;
-    let tirSubmission2: string | null = null;
-    let tirReview2: string | null = null;
+    let tirSemiAnnualSubmission: string | null = null;
+    let tirSemiAnnualReview: string | null = null;
 
     if (form.tirReviewPeriodEnd) {
       const sub = calculateTirSubmission(form.tirReviewPeriodEnd);
@@ -280,10 +280,10 @@ export default function UpcomingKeyDatesForm() {
       tirReview = calculateTirReview(sub);
     }
 
-    if (form.tirFrequency === 'SEMI_ANNUAL' && form.tirReviewPeriodEnd2) {
-      const sub2 = calculateTirSubmission(form.tirReviewPeriodEnd2);
-      tirSubmission2 = sub2;
-      tirReview2 = calculateTirReview(sub2);
+    if (form.tirFrequency === 'SEMI_ANNUAL' && form.tirSemiAnnualReviewPeriodEnd) {
+      const sub2 = calculateTirSubmission(form.tirSemiAnnualReviewPeriodEnd);
+      tirSemiAnnualSubmission = sub2;
+      tirSemiAnnualReview = calculateTirReview(sub2);
     }
 
     const isoInput: TrusteeUpcomingKeyDatesInput = {
@@ -307,12 +307,12 @@ export default function UpcomingKeyDatesForm() {
       tirReviewPeriodEnd: form.tirReviewPeriodEnd || null,
       tirSubmission,
       tirReview,
-      tirReviewPeriodStart2:
-        form.tirFrequency === 'SEMI_ANNUAL' ? form.tirReviewPeriodStart2 || null : null,
-      tirReviewPeriodEnd2:
-        form.tirFrequency === 'SEMI_ANNUAL' ? form.tirReviewPeriodEnd2 || null : null,
-      tirSubmission2,
-      tirReview2,
+      tirSemiAnnualReviewPeriodStart:
+        form.tirFrequency === 'SEMI_ANNUAL' ? form.tirSemiAnnualReviewPeriodStart || null : null,
+      tirSemiAnnualReviewPeriodEnd:
+        form.tirFrequency === 'SEMI_ANNUAL' ? form.tirSemiAnnualReviewPeriodEnd || null : null,
+      tirSemiAnnualSubmission,
+      tirSemiAnnualReview,
       lastAuditFiscalYear: form.lastAuditFiscalYear,
     };
 

@@ -59,14 +59,18 @@ function buildUpcomingKeyDatesInput(
       : null,
     tirSubmission: original?.tirSubmission ? isoToSentinel(original.tirSubmission) : null,
     tirReview: original?.tirReview ? isoToSentinel(original.tirReview) : null,
-    tirReviewPeriodStart2: original?.tirReviewPeriodStart2
-      ? isoToSentinel(original.tirReviewPeriodStart2)
+    tirSemiAnnualReviewPeriodStart: original?.tirSemiAnnualReviewPeriodStart
+      ? isoToSentinel(original.tirSemiAnnualReviewPeriodStart)
       : null,
-    tirReviewPeriodEnd2: original?.tirReviewPeriodEnd2
-      ? isoToSentinel(original.tirReviewPeriodEnd2)
+    tirSemiAnnualReviewPeriodEnd: original?.tirSemiAnnualReviewPeriodEnd
+      ? isoToSentinel(original.tirSemiAnnualReviewPeriodEnd)
       : null,
-    tirSubmission2: original?.tirSubmission2 ? isoToSentinel(original.tirSubmission2) : null,
-    tirReview2: original?.tirReview2 ? isoToSentinel(original.tirReview2) : null,
+    tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission
+      ? isoToSentinel(original.tirSemiAnnualSubmission)
+      : null,
+    tirSemiAnnualReview: original?.tirSemiAnnualReview
+      ? isoToSentinel(original.tirSemiAnnualReview)
+      : null,
     upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
     upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
     tirFrequency: original?.tirFrequency ?? null,

@@ -265,7 +265,7 @@ describe('UpcomingKeyDatesForm', () => {
   });
 
   describe('saving', () => {
-    test('save with Annual period: tirSubmission and tirReview calculated; tirSubmission2 and tirReview2 null', async () => {
+    test('save with Annual period: tirSubmission and tirReview calculated; tirSemiAnnualSubmission and tirSemiAnnualReview null', async () => {
       vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: null });
       const putSpy = vi.spyOn(Api2, 'putUpcomingKeyDates').mockResolvedValue({ data: null });
 
@@ -284,10 +284,10 @@ describe('UpcomingKeyDatesForm', () => {
       // tirReviewPeriodEnd = 1900-06-30; submission = +30 = 1900-07-30; review = +60 = 1900-09-28
       expect(payload.tirSubmission).toBe('1900-07-30');
       expect(payload.tirReview).toBe('1900-09-28');
-      expect(payload.tirSubmission2).toBeNull();
-      expect(payload.tirReview2).toBeNull();
-      expect(payload.tirReviewPeriodStart2).toBeNull();
-      expect(payload.tirReviewPeriodEnd2).toBeNull();
+      expect(payload.tirSemiAnnualSubmission).toBeNull();
+      expect(payload.tirSemiAnnualReview).toBeNull();
+      expect(payload.tirSemiAnnualReviewPeriodStart).toBeNull();
+      expect(payload.tirSemiAnnualReviewPeriodEnd).toBeNull();
     });
 
     test('save with Semi-Annual period: all four TIR dates calculated correctly', async () => {
@@ -312,8 +312,8 @@ describe('UpcomingKeyDatesForm', () => {
       // period2 end = 1900-12-31; sub2 = +30 = 1900-01-30
       // rev2 = 1900-01-30 + 60 days; arithmetic uses year 2000 (leap year: Feb has 29 days)
       // Jan 30 + 60: Jan=1, Feb=29, Mar=30 → 1900-03-30
-      expect(payload.tirSubmission2).toBe('1900-01-30');
-      expect(payload.tirReview2).toBe('1900-03-30');
+      expect(payload.tirSemiAnnualSubmission).toBe('1900-01-30');
+      expect(payload.tirSemiAnnualReview).toBe('1900-03-30');
     });
 
     test('lastAuditFiscalYear is preserved in PUT payload', async () => {

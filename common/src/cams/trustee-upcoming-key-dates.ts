@@ -114,10 +114,10 @@ function validateDateFields(): ValidatorFunction {
       'tirReviewPeriodEnd',
       'tirSubmission',
       'tirReview',
-      'tirReviewPeriodStart2',
-      'tirReviewPeriodEnd2',
-      'tirSubmission2',
-      'tirReview2',
+      'tirSemiAnnualReviewPeriodStart',
+      'tirSemiAnnualReviewPeriodEnd',
+      'tirSemiAnnualSubmission',
+      'tirSemiAnnualReview',
     ];
 
     sentinelFields.forEach((field) => {
@@ -162,8 +162,8 @@ const trusteeUpcomingKeyDatesSpec: ValidationSpec<TrusteeUpcomingKeyDatesInput> 
       'TIR Review Period End',
     ),
     requirePair(
-      'tirReviewPeriodStart2',
-      'tirReviewPeriodEnd2',
+      'tirSemiAnnualReviewPeriodStart',
+      'tirSemiAnnualReviewPeriodEnd',
       'TIR Review Period 2 Start',
       'TIR Review Period 2 End',
     ),
@@ -216,10 +216,10 @@ export type TrusteeUpcomingKeyDates = Auditable &
     upcomingExamOrAuditYear?: number;
     upcomingExamOrAuditType?: 'Field Exam' | 'Audit';
     tirFrequency?: 'ANNUAL' | 'SEMI_ANNUAL';
-    tirReviewPeriodStart2?: string;
-    tirReviewPeriodEnd2?: string;
-    tirSubmission2?: string;
-    tirReview2?: string;
+    tirSemiAnnualReviewPeriodStart?: string;
+    tirSemiAnnualReviewPeriodEnd?: string;
+    tirSemiAnnualSubmission?: string;
+    tirSemiAnnualReview?: string;
     lastAuditFiscalYear?: number;
   };
 
@@ -241,10 +241,10 @@ export type TrusteeUpcomingKeyDatesInput = {
   upcomingExamOrAuditYear: number | null;
   upcomingExamOrAuditType: 'Field Exam' | 'Audit' | null;
   tirFrequency: 'ANNUAL' | 'SEMI_ANNUAL' | null;
-  tirReviewPeriodStart2: string | null;
-  tirReviewPeriodEnd2: string | null;
-  tirSubmission2: string | null;
-  tirReview2: string | null;
+  tirSemiAnnualReviewPeriodStart: string | null;
+  tirSemiAnnualReviewPeriodEnd: string | null;
+  tirSemiAnnualSubmission: string | null;
+  tirSemiAnnualReview: string | null;
   lastAuditFiscalYear: number | null;
 };
 
@@ -268,10 +268,10 @@ type DateField =
   | 'tirReviewPeriodEnd'
   | 'tirSubmission'
   | 'tirReview'
-  | 'tirReviewPeriodStart2'
-  | 'tirReviewPeriodEnd2'
-  | 'tirSubmission2'
-  | 'tirReview2';
+  | 'tirSemiAnnualReviewPeriodStart'
+  | 'tirSemiAnnualReviewPeriodEnd'
+  | 'tirSemiAnnualSubmission'
+  | 'tirSemiAnnualReview';
 
 export const DATE_FIELDS: DateField[] = [
   'pastBackgroundQuestion',
@@ -285,10 +285,10 @@ export const DATE_FIELDS: DateField[] = [
   'tirReviewPeriodEnd',
   'tirSubmission',
   'tirReview',
-  'tirReviewPeriodStart2',
-  'tirReviewPeriodEnd2',
-  'tirSubmission2',
-  'tirReview2',
+  'tirSemiAnnualReviewPeriodStart',
+  'tirSemiAnnualReviewPeriodEnd',
+  'tirSemiAnnualSubmission',
+  'tirSemiAnnualReview',
 ];
 
 type TextField = 'tprDueYearType' | 'tirFrequency';
