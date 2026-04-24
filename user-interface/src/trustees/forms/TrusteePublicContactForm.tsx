@@ -23,7 +23,9 @@ import { scrollToFirstError } from '@/lib/utils/form-helpers';
 
 const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePublicFormData => {
   return {
-    name: info?.name,
+    firstName: info?.firstName,
+    lastName: info?.lastName,
+    middleName: info?.middleName,
     companyName: info?.public?.companyName,
     address1: info?.public?.address?.address1,
     address2: info?.public?.address?.address2,
@@ -47,7 +49,8 @@ export function validateField(
   if (
     (field === 'extension' && !trimmedValue) ||
     (field === 'website' && !trimmedValue) ||
-    (field === 'companyName' && !trimmedValue)
+    (field === 'companyName' && !trimmedValue) ||
+    (field === 'middleName' && !trimmedValue)
   ) {
     return undefined;
   }
@@ -92,7 +95,9 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     const trimmedCompanyName = formData.companyName?.trim();
 
     return {
-      name: formData.name,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      middleName: formData.middleName,
       public: {
         address: {
           address1: formData.address1,
@@ -142,7 +147,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   };
 
   const requiredFields: Set<keyof TrusteePublicFormData> = new Set([
-    'name',
+    'firstName',
+    'lastName',
     'address1',
     'city',
     'state',
@@ -262,15 +268,36 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
           <div className="form-column">
             <div className="field-group">
               <Input
-                id="trustee-name"
-                className="trustee-name-input"
-                name="name"
-                label="Trustee Name"
-                value={formData.name}
+                id="trustee-first-name"
+                className="trustee-first-name-input"
+                name="firstName"
+                label="First Name"
+                value={formData.firstName}
                 onChange={handleFieldChange}
-                errorMessage={fieldErrors['name']}
+                errorMessage={fieldErrors['firstName']}
                 autoComplete="off"
-                {...isRequired('name')}
+                {...isRequired('firstName')}
+              />
+              <Input
+                id="trustee-middle-name"
+                className="trustee-middle-name-input"
+                name="middleName"
+                label="Middle Name"
+                value={formData.middleName || ''}
+                onChange={handleFieldChange}
+                errorMessage={fieldErrors['middleName']}
+                autoComplete="off"
+              />
+              <Input
+                id="trustee-last-name"
+                className="trustee-last-name-input"
+                name="lastName"
+                label="Last Name"
+                value={formData.lastName}
+                onChange={handleFieldChange}
+                errorMessage={fieldErrors['lastName']}
+                autoComplete="off"
+                {...isRequired('lastName')}
               />
             </div>
 
