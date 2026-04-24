@@ -57,7 +57,8 @@ describe('TrusteeDistrictFilter Component', () => {
     vi.restoreAllMocks();
   });
 
-  test('should render filter section collapsed by default', async () => {
+  test('should render collapsed by default and expand when toggle button clicked, loading districts from API', async () => {
+    const user = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
     render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
@@ -70,34 +71,12 @@ describe('TrusteeDistrictFilter Component', () => {
     expect(toggleButton).toBeInTheDocument();
     expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByLabelText('District (Division)')).not.toBeInTheDocument();
-  });
 
-  test('should expand filter when toggle button clicked', async () => {
-    const user = userEvent.setup();
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    const toggleButton = screen.getByRole('button', { name: /filters/i });
     await user.click(toggleButton);
 
     expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
-
     await waitFor(() => {
       expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
-    });
-  });
-
-  test('should load districts from API on mount', async () => {
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
-
-    await waitFor(() => {
       expect(Api2.getCourts).toHaveBeenCalled();
     });
   });
