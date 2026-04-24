@@ -1,7 +1,6 @@
 import { useState, useEffect, type FocusEvent } from 'react';
 import MonthDaySelector from './MonthDaySelector';
 import Icon from './Icon';
-import Button, { UswdsButtonStyle } from './Button';
 import { validateMonthDayRange } from '@common/cams/trustee-upcoming-key-dates';
 
 type MonthDayRangeSelectorProps = {
@@ -28,7 +27,6 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
     onValidationChange,
     externalError,
     submitted,
-    hideClear,
   } = props;
 
   const [internalError, setInternalError] = useState('');
@@ -60,29 +58,12 @@ export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps)
   const displayError = externalError || (shouldShowInternalError ? internalError : '');
   const hasError = !!displayError && !isFocused;
 
-  const hasValue = !!(startValue || endValue);
-
-  function handleClear() {
-    onStartChange('');
-    onEndChange('');
-  }
-
   return (
     <div className="review-period-group">
       <div className="review-period-header">
         <label className="usa-label" htmlFor={`${id}-start-month`} data-testid={`${id}-label`}>
           {label}
         </label>
-        {hasValue && !hideClear && (
-          <Button
-            id={`${id}-clear`}
-            uswdsStyle={UswdsButtonStyle.Unstyled}
-            onClick={handleClear}
-            aria-label={`Clear ${label}`}
-          >
-            Clear
-          </Button>
-        )}
       </div>
       <div className="review-period-row" onFocus={handleFocus} onBlur={handleBlur}>
         <MonthDaySelector

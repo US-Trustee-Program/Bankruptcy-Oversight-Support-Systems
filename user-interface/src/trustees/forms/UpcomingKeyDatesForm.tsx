@@ -420,7 +420,6 @@ export default function UpcomingKeyDatesForm() {
         }
         externalError={errors.tprReviewPeriodStart || errors.tprReviewPeriodEnd}
         submitted={submitted}
-        hideClear
       />
       <div className="tpr-due-group">
         <div className="tpr-due-group__header">
