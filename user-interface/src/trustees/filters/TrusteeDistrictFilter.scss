@@ -67,8 +67,8 @@
       display: inline-flex;
       align-items: center;
       gap: 0.25rem;
-      background-color: #e8f5ff;
-      color: #162e51;
+      background-color: #005EA2;
+      color: #ffffff;
       padding: 0.25rem 0.75rem;
       border-radius: 99rem;
       font-size: 0.875rem;
@@ -83,10 +83,10 @@
         background: transparent;
         border: none;
         cursor: pointer;
-        color: #1a4480;
+        color: #ffffff;
 
         &:hover {
-          color: #162e51;
+          color: #f0f0f0;
         }
 
         &:focus {

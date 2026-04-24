@@ -26,6 +26,8 @@ const TrusteeDistrictFilter_ = (
     return {
       refresh: useCase.fetchDistricts,
       focus: useCase.focusOnDistrictFilter,
+      removePill: useCase.handleRemovePill,
+      clearAll: useCase.handleClearAll,
     };
   });
 
@@ -38,6 +40,13 @@ const TrusteeDistrictFilter_ = (
   useEffect(() => {
     useCase.fetchDistricts();
   }, []);
+
+  // Notify parent when expanded state changes
+  useEffect(() => {
+    if (props.onExpandedChange) {
+      props.onExpandedChange(store.isExpanded);
+    }
+  }, [store.isExpanded, props.onExpandedChange]);
 
   const viewModel: TrusteeDistrictFilterViewModel = {
     districts: store.districts,
