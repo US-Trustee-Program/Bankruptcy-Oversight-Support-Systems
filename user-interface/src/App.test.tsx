@@ -2,6 +2,7 @@ import { act, render, waitFor, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import * as HeaderModule from './lib/components/Header';
+import { LandingPageProvider } from '@/lib/contexts/LandingPageContext';
 
 describe('App', () => {
   function scrollTo(position: number) {
@@ -12,7 +13,9 @@ describe('App', () => {
   function renderWithoutProps() {
     render(
       <BrowserRouter>
-        <App />
+        <LandingPageProvider>
+          <App />
+        </LandingPageProvider>
       </BrowserRouter>,
     );
     scrollTo(0);
