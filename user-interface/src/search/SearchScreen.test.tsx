@@ -1089,8 +1089,8 @@ describe('SearchScreen analytics integration', () => {
   };
   let searchCasesSpy: MockInstance;
   let userEvent: CamsUserEvent;
-  let trackNavigationMock: MockInstance;
-  let trackFirstSearchMock: MockInstance;
+  let trackNavigationMock: ReturnType<typeof vi.fn>;
+  let trackFirstSearchMock: ReturnType<typeof vi.fn>;
 
   function renderWithoutProps() {
     render(
@@ -1112,8 +1112,8 @@ describe('SearchScreen analytics integration', () => {
     trackFirstSearchMock = vi.fn();
 
     vi.spyOn(UseLandingPageAnalyticsModule, 'useLandingPageAnalytics').mockReturnValue({
-      trackNavigation: trackNavigationMock,
-      trackFirstSearch: trackFirstSearchMock,
+      trackNavigation: trackNavigationMock as (toPage: string) => void,
+      trackFirstSearch: trackFirstSearchMock as (searchType: 'case-number' | 'debtor-name' | 'ssn' | 'other') => void,
     });
   });
 

@@ -292,7 +292,7 @@ describe('MyCasesScreen analytics integration', () => {
     trackNavigationMock = vi.fn();
 
     vi.spyOn(UseLandingPageAnalyticsModule, 'useLandingPageAnalytics').mockReturnValue({
-      trackNavigation: trackNavigationMock,
+      trackNavigation: trackNavigationMock as (toPage: string) => void,
       trackFirstSearch: vi.fn(),
     });
   });
