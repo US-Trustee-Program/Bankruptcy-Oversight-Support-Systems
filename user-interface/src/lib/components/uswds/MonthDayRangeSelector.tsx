@@ -13,7 +13,6 @@ type MonthDayRangeSelectorProps = {
   onValidationChange?: (isValid: boolean) => void;
   externalError?: string;
   submitted?: boolean;
-  hideClear?: boolean;
 };
 
 export default function MonthDayRangeSelector(props: MonthDayRangeSelectorProps) {
