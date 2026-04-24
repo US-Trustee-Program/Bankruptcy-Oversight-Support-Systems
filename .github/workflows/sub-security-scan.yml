@@ -3,10 +3,6 @@ name: Security
 on:
   workflow_call:
     secrets:
-      SNYK_OAUTH_CLIENT_ID:
-        required: true
-      SNYK_OAUTH_CLIENT_SECRET:
-        required: true
       AZ_SECURITY_SCAN_CLIENT_ID:
         required: true
       AZ_TENANT_ID:
@@ -33,17 +29,11 @@ jobs:
           subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           environment: ${{ vars.AZURE_ENVIRONMENT }}
 
-      - name: Seed Snyk secrets into Key Vault
-        run: |
-          az keyvault secret set --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --value "$SNYK_OAUTH_CLIENT_ID" --output none
-          az keyvault secret set --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --value "$SNYK_OAUTH_CLIENT_SECRET" --output none
-        env:
-          SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
-          SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }}
-
       - name: Fetch secrets from Key Vault
         run: |
           echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
 
       - name: Setup Snyk CLI
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1
@@ -54,8 +44,6 @@ jobs:
         run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
-          SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }}
-          SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
 
       - name: Run Snyk SCA scan
         run: snyk test --all-projects --exclude=function-apps --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
@@ -121,6 +109,8 @@ jobs:
       - name: Fetch secrets from Key Vault
         run: |
           echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
 
       - name: Setup Snyk CLI
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1
@@ -131,8 +121,6 @@ jobs:
         run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
-          SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }}
-          SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
 
       - name: Run Snyk Code (SAST) scan
         id: snyk-scan

@@ -11,9 +11,8 @@
 #   repo:ORG/REPO:workflow:CALLER-WORKFLOW-NAME:environment:security-scan
 #
 # Prerequisites:
-#   - az CLI logged in as an Entra ID admin (can create app registrations and role assignments)
+#   - az CLI logged in as an Entra ID admin (can create app registrations)
 #   - The security scan storage account already exists
-#   - Both Key Vaults (kv-ustp-cams, kv-ustp-cams-dev) already exist
 #
 # This script is idempotent — re-running it will update existing resources in place
 # rather than creating duplicates.
@@ -25,8 +24,6 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 STORAGE_ACCOUNT_NAME="${AZ_SECURITY_SCAN_STORAGE_NAME:?Set AZ_SECURITY_SCAN_STORAGE_NAME}"
 RESOURCE_GROUP="${AZ_SECURITY_SCAN_RG:?Set AZ_SECURITY_SCAN_RG}"
-KV_RESOURCE_GROUP="${AZ_KV_RG:?Set AZ_KV_RG}"
-KV_NAMES=("kv-ustp-cams" "kv-ustp-cams-dev")
 GITHUB_ORG="US-Trustee-Program"
 GITHUB_REPO="Bankruptcy-Oversight-Support-Systems"
 GITHUB_WORKFLOW="Continuous Deployment"
@@ -115,27 +112,6 @@ if [[ -z "$EXISTING_ROLE" ]]; then
 else
   echo "    Role already assigned — skipping."
 fi
-
-echo "==> Checking Key Vault Secrets Officer role assignments..."
-for KV_NAME in "${KV_NAMES[@]}"; do
-  KV_SCOPE="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${KV_RESOURCE_GROUP}/providers/Microsoft.KeyVault/vaults/${KV_NAME}"
-  EXISTING_KV_ROLE=$(az role assignment list \
-    --assignee "$SP_ID" \
-    --role "Key Vault Secrets Officer" \
-    --scope "$KV_SCOPE" \
-    --query "[0].id" -o tsv 2>/dev/null || true)
-
-  if [[ -z "$EXISTING_KV_ROLE" ]]; then
-    az role assignment create \
-      --assignee-object-id "$SP_ID" \
-      --assignee-principal-type ServicePrincipal \
-      --role "Key Vault Secrets Officer" \
-      --scope "$KV_SCOPE"
-    echo "    Key Vault Secrets Officer assigned on $KV_NAME."
-  else
-    echo "    Key Vault Secrets Officer already assigned on $KV_NAME — skipping."
-  fi
-done
 
 echo ""
 echo "==> Done."
