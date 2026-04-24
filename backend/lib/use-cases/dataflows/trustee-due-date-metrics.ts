@@ -16,12 +16,13 @@ export type TrusteeDueDateMetrics = {
   // Manual entry fields
   tprReviewPeriodPercent: number;
   pastFieldExamPercent: number;
-  pastIndependentAuditPercent: number;
+  pastAuditPercent: number;
   tirReviewPeriodPercent: number;
+  lastAuditFiscalYearPercent: number;
+  tirFrequencyPercent: number;
   // Calculated fields
   tprDueDatePercent: number;
-  upcomingFieldExamPercent: number;
-  upcomingIndependentAuditRequiredPercent: number;
+  upcomingExamOrAuditYearPercent: number;
   tirSubmissionPercent: number;
   tirReviewDueDatePercent: number;
 };
@@ -46,14 +47,12 @@ export class TrusteeDueDateMetricsUseCase {
         nonePercent: toPercent(aggregation.noneCount, total),
         tprReviewPeriodPercent: toPercent(aggregation.tprReviewPeriodCount, total),
         pastFieldExamPercent: toPercent(aggregation.pastFieldExamCount, total),
-        pastIndependentAuditPercent: toPercent(aggregation.pastIndependentAuditCount, total),
+        pastAuditPercent: toPercent(aggregation.pastAuditCount, total),
         tirReviewPeriodPercent: toPercent(aggregation.tirReviewPeriodCount, total),
+        lastAuditFiscalYearPercent: toPercent(aggregation.lastAuditFiscalYearCount, total),
+        tirFrequencyPercent: toPercent(aggregation.tirFrequencyCount, total),
         tprDueDatePercent: toPercent(aggregation.tprDueDateCount, total),
-        upcomingFieldExamPercent: toPercent(aggregation.upcomingFieldExamCount, total),
-        upcomingIndependentAuditRequiredPercent: toPercent(
-          aggregation.upcomingIndependentAuditRequiredCount,
-          total,
-        ),
+        upcomingExamOrAuditYearPercent: toPercent(aggregation.upcomingExamOrAuditYearCount, total),
         tirSubmissionPercent: toPercent(aggregation.tirSubmissionCount, total),
         tirReviewDueDatePercent: toPercent(aggregation.tirReviewDueDateCount, total),
       };

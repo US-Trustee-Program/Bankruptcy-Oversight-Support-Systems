@@ -14,6 +14,7 @@ import {
   calculateTirSubmission,
   calculateTirReview,
   calculateNextAuditDate,
+  calculateAuditReqBy,
   validateMonthDay,
   validateMonthDayRange,
   validateTrusteeUpcomingKeyDates,
@@ -443,8 +444,14 @@ describe('validateTrusteeUpcomingKeyDates', () => {
       tirReviewPeriodEnd: null,
       tirSubmission: null,
       tirReview: null,
-      upcomingFieldExam: null,
-      upcomingIndependentAuditRequired: null,
+      upcomingExamOrAuditYear: null,
+      upcomingExamOrAuditType: null,
+      tirFrequency: null,
+      tirSemiAnnualReviewPeriodStart: null,
+      tirSemiAnnualReviewPeriodEnd: null,
+      tirSemiAnnualSubmission: null,
+      tirSemiAnnualReview: null,
+      lastAuditFiscalYear: null,
     };
   }
 
@@ -466,8 +473,9 @@ describe('validateTrusteeUpcomingKeyDates', () => {
         tirReviewPeriodEnd: '1900-06-30',
         tirSubmission: '1900-10-15',
         tirReview: '1900-11-01',
-        upcomingFieldExam: '2029-08-01',
-        upcomingIndependentAuditRequired: '2032-08-01',
+        upcomingExamOrAuditYear: 2029,
+        upcomingExamOrAuditType: 'Field Exam',
+        tirFrequency: 'ANNUAL',
       }),
     ).toEqual(VALID);
   });
@@ -576,5 +584,110 @@ describe('validateTprDuePair', () => {
   test('returns date error when tprDueYearType is set but tprDue is absent', () => {
     const result = validateTprDuePair('', 'EVEN');
     expect(result).toBe('Must be a valid date mm/dd.');
+  });
+});
+
+describe('calculateAuditReqBy', () => {
+  test('returns null when input is null', () => {
+    expect(calculateAuditReqBy(null)).toBeNull();
+  });
+
+  test('returns null when input is undefined', () => {
+    expect(calculateAuditReqBy(undefined)).toBeNull();
+  });
+
+  test('returns year + 3 for a valid year', () => {
+    expect(calculateAuditReqBy(2024)).toBe(2027);
+  });
+
+  test('returns correct value for a recent year', () => {
+    expect(calculateAuditReqBy(2022)).toBe(2025);
+  });
+});
+
+describe('validateTrusteeUpcomingKeyDates — Slice 1 new fields', () => {
+  function baseInput() {
+    return {
+      trusteeId: 'trustee-001',
+      appointmentId: 'appointment-001',
+      pastBackgroundQuestion: null,
+      pastFieldExam: null,
+      pastAudit: null,
+      pastTprSubmission: null,
+      tprReviewPeriodStart: null,
+      tprReviewPeriodEnd: null,
+      tprDue: null,
+      tprDueYearType: null,
+      tirReviewPeriodStart: null,
+      tirReviewPeriodEnd: null,
+      tirSubmission: null,
+      tirReview: null,
+      tirSemiAnnualReviewPeriodStart: null,
+      tirSemiAnnualReviewPeriodEnd: null,
+      tirSemiAnnualSubmission: null,
+      tirSemiAnnualReview: null,
+      tirFrequency: null,
+      upcomingExamOrAuditYear: null,
+      upcomingExamOrAuditType: null,
+      lastAuditFiscalYear: null,
+    };
+  }
+
+  test('returns VALID when all new fields are null', () => {
+    expect(validateTrusteeUpcomingKeyDates(baseInput())).toEqual(VALID);
+  });
+
+  test('returns VALID when tirSemiAnnualReviewPeriodStart and tirSemiAnnualReviewPeriodEnd are both set', () => {
+    expect(
+      validateTrusteeUpcomingKeyDates({
+        ...baseInput(),
+        tirSemiAnnualReviewPeriodStart: '1900-07-01',
+        tirSemiAnnualReviewPeriodEnd: '1900-12-31',
+      }),
+    ).toEqual(VALID);
+  });
+
+  test('returns error when tirSemiAnnualReviewPeriodStart set but tirSemiAnnualReviewPeriodEnd is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirSemiAnnualReviewPeriodStart: '1900-07-01',
+      tirSemiAnnualReviewPeriodEnd: null,
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirSemiAnnualReviewPeriodEnd?.reasons?.[0]).toBe(
+      'TIR Review Period 2 End is required.',
+    );
+  });
+
+  test('returns error when tirSemiAnnualReviewPeriodEnd set but tirSemiAnnualReviewPeriodStart is null', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirSemiAnnualReviewPeriodStart: null,
+      tirSemiAnnualReviewPeriodEnd: '1900-12-31',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirSemiAnnualReviewPeriodStart?.reasons?.[0]).toBe(
+      'TIR Review Period 2 Start is required.',
+    );
+  });
+
+  test('returns error when tirSemiAnnualSubmission is an invalid sentinel date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirSemiAnnualSubmission: '1900-02-30',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirSemiAnnualSubmission?.reasons?.[0]).toBe(
+      'Must be a valid date mm/dd.',
+    );
+  });
+
+  test('returns error when tirSemiAnnualReview is an invalid sentinel date', () => {
+    const result = validateTrusteeUpcomingKeyDates({
+      ...baseInput(),
+      tirSemiAnnualReview: '1900-13-01',
+    });
+    expect(result.valid).toBeFalsy();
+    expect(result.reasonMap?.tirSemiAnnualReview?.reasons?.[0]).toBe('Must be a valid date mm/dd.');
   });
 });

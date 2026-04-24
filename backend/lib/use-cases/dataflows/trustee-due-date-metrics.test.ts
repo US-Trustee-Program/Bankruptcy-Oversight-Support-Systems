@@ -34,11 +34,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
       noneCount: 0,
       tprReviewPeriodCount: 0,
       pastFieldExamCount: 0,
-      pastIndependentAuditCount: 0,
+      pastAuditCount: 0,
       tirReviewPeriodCount: 0,
       tprDueDateCount: 0,
-      upcomingFieldExamCount: 0,
-      upcomingIndependentAuditRequiredCount: 0,
+      upcomingExamOrAuditYearCount: 0,
+      lastAuditFiscalYearCount: 0,
+      tirFrequencyCount: 0,
       tirSubmissionCount: 0,
       tirReviewDueDateCount: 0,
     };
@@ -58,11 +59,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
     expect(metrics.nonePercent).toBe(0);
     expect(metrics.tprReviewPeriodPercent).toBe(0);
     expect(metrics.pastFieldExamPercent).toBe(0);
-    expect(metrics.pastIndependentAuditPercent).toBe(0);
+    expect(metrics.pastAuditPercent).toBe(0);
     expect(metrics.tirReviewPeriodPercent).toBe(0);
     expect(metrics.tprDueDatePercent).toBe(0);
-    expect(metrics.upcomingFieldExamPercent).toBe(0);
-    expect(metrics.upcomingIndependentAuditRequiredPercent).toBe(0);
+    expect(metrics.upcomingExamOrAuditYearPercent).toBe(0);
+    expect(metrics.lastAuditFiscalYearPercent).toBe(0);
+    expect(metrics.tirFrequencyPercent).toBe(0);
     expect(metrics.tirSubmissionPercent).toBe(0);
     expect(metrics.tirReviewDueDatePercent).toBe(0);
   });
@@ -75,11 +77,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
       noneCount: 1,
       tprReviewPeriodCount: 2,
       pastFieldExamCount: 3,
-      pastIndependentAuditCount: 2,
+      pastAuditCount: 2,
       tirReviewPeriodCount: 2,
       tprDueDateCount: 3,
-      upcomingFieldExamCount: 2,
-      upcomingIndependentAuditRequiredCount: 2,
+      upcomingExamOrAuditYearCount: 2,
+      lastAuditFiscalYearCount: 0,
+      tirFrequencyCount: 0,
       tirSubmissionCount: 2,
       tirReviewDueDateCount: 2,
     };
@@ -110,11 +113,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
       noneCount: 0,
       tprReviewPeriodCount: 1,
       pastFieldExamCount: 1,
-      pastIndependentAuditCount: 1,
+      pastAuditCount: 1,
       tirReviewPeriodCount: 1,
       tprDueDateCount: 1,
-      upcomingFieldExamCount: 1,
-      upcomingIndependentAuditRequiredCount: 1,
+      upcomingExamOrAuditYearCount: 1,
+      lastAuditFiscalYearCount: 1,
+      tirFrequencyCount: 1,
       tirSubmissionCount: 1,
       tirReviewDueDateCount: 1,
     };
@@ -140,11 +144,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
       noneCount: 1,
       tprReviewPeriodCount: 0,
       pastFieldExamCount: 0,
-      pastIndependentAuditCount: 0,
+      pastAuditCount: 0,
       tirReviewPeriodCount: 0,
       tprDueDateCount: 0,
-      upcomingFieldExamCount: 0,
-      upcomingIndependentAuditRequiredCount: 0,
+      upcomingExamOrAuditYearCount: 0,
+      lastAuditFiscalYearCount: 0,
+      tirFrequencyCount: 0,
       tirSubmissionCount: 0,
       tirReviewDueDateCount: 0,
     };
@@ -168,11 +173,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
       noneCount: 2,
       tprReviewPeriodCount: 1,
       pastFieldExamCount: 1,
-      pastIndependentAuditCount: 1,
+      pastAuditCount: 1,
       tirReviewPeriodCount: 1,
       tprDueDateCount: 1,
-      upcomingFieldExamCount: 1,
-      upcomingIndependentAuditRequiredCount: 1,
+      upcomingExamOrAuditYearCount: 1,
+      lastAuditFiscalYearCount: 0,
+      tirFrequencyCount: 0,
       tirSubmissionCount: 1,
       tirReviewDueDateCount: 1,
     };
@@ -198,11 +204,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
       noneCount: 3,
       tprReviewPeriodCount: 7, // 70%
       pastFieldExamCount: 5, // 50%
-      pastIndependentAuditCount: 3, // 30%
+      pastAuditCount: 3, // 30%
       tirReviewPeriodCount: 8, // 80%
       tprDueDateCount: 6, // 60%
-      upcomingFieldExamCount: 4, // 40%
-      upcomingIndependentAuditRequiredCount: 2, // 20%
+      upcomingExamOrAuditYearCount: 4, // 40%
+      lastAuditFiscalYearCount: 2, // 20%
+      tirFrequencyCount: 9, // 90%
       tirSubmissionCount: 9, // 90%
       tirReviewDueDateCount: 1, // 10%
     };
@@ -215,11 +222,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
 
     expect(metrics.tprReviewPeriodPercent).toBe(70);
     expect(metrics.pastFieldExamPercent).toBe(50);
-    expect(metrics.pastIndependentAuditPercent).toBe(30);
+    expect(metrics.pastAuditPercent).toBe(30);
     expect(metrics.tirReviewPeriodPercent).toBe(80);
     expect(metrics.tprDueDatePercent).toBe(60);
-    expect(metrics.upcomingFieldExamPercent).toBe(40);
-    expect(metrics.upcomingIndependentAuditRequiredPercent).toBe(20);
+    expect(metrics.upcomingExamOrAuditYearPercent).toBe(40);
+    expect(metrics.lastAuditFiscalYearPercent).toBe(20);
+    expect(metrics.tirFrequencyPercent).toBe(90);
     expect(metrics.tirSubmissionPercent).toBe(90);
     expect(metrics.tirReviewDueDatePercent).toBe(10);
   });
@@ -232,11 +240,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
       noneCount: 0,
       tprReviewPeriodCount: 0,
       pastFieldExamCount: 0,
-      pastIndependentAuditCount: 0,
+      pastAuditCount: 0,
       tirReviewPeriodCount: 0,
       tprDueDateCount: 0,
-      upcomingFieldExamCount: 0,
-      upcomingIndependentAuditRequiredCount: 0,
+      upcomingExamOrAuditYearCount: 0,
+      lastAuditFiscalYearCount: 0,
+      tirFrequencyCount: 0,
       tirSubmissionCount: 0,
       tirReviewDueDateCount: 0,
     };
@@ -258,11 +267,12 @@ describe('TrusteeDueDateMetricsUseCase', () => {
       noneCount: 1,
       tprReviewPeriodCount: 3,
       pastFieldExamCount: 4,
-      pastIndependentAuditCount: 2,
+      pastAuditCount: 2,
       tirReviewPeriodCount: 3,
       tprDueDateCount: 4,
-      upcomingFieldExamCount: 3,
-      upcomingIndependentAuditRequiredCount: 2,
+      upcomingExamOrAuditYearCount: 3,
+      lastAuditFiscalYearCount: 0,
+      tirFrequencyCount: 0,
       tirSubmissionCount: 3,
       tirReviewDueDateCount: 3,
     };

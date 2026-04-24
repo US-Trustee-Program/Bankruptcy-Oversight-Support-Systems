@@ -37,6 +37,7 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   pastFieldExam: '2024-02-21',
   pastAudit: '2023-02-22',
   pastTprSubmission: '2025-11-03',
+  lastAuditFiscalYear: 2022,
   tprReviewPeriodStart: '1900-04-01',
   tprReviewPeriodEnd: '1900-03-31',
   tprDue: '2026-09-01',
@@ -44,8 +45,6 @@ const populatedDocument: TrusteeUpcomingKeyDates = {
   tirReviewPeriodEnd: '1900-06-30',
   tirSubmission: '1900-10-15',
   tirReview: '1900-11-01',
-  upcomingFieldExam: '2029-08-01',
-  upcomingIndependentAuditRequired: '2032-08-01',
 };
 
 function renderComponent(props?: Partial<PastKeyDatesProps>) {
@@ -75,7 +74,7 @@ describe('PastKeyDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(4);
+    expect(noDateElements.length).toBe(5);
   });
 
   test('renders all field labels', async () => {
@@ -87,10 +86,11 @@ describe('PastKeyDates', () => {
       expect(screen.getByTestId('past-key-dates-card')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Background Question:')).toBeInTheDocument();
-    expect(screen.getByText('Field Exam:')).toBeInTheDocument();
-    expect(screen.getByText('Audit:')).toBeInTheDocument();
-    expect(screen.getByText('TPR Submission:')).toBeInTheDocument();
+    expect(screen.getByText('Last Update to Background Questionnaire:')).toBeInTheDocument();
+    expect(screen.getByText('Field Exam Report Date:')).toBeInTheDocument();
+    expect(screen.getByText('Audit Report Date:')).toBeInTheDocument();
+    expect(screen.getByText("Last Audit's Fiscal Year:")).toBeInTheDocument();
+    expect(screen.getByText('TIR Letter:')).toBeInTheDocument();
   });
 
   test('renders correctly formatted values when API returns populated document', async () => {
@@ -126,7 +126,7 @@ describe('PastKeyDates', () => {
     expect(screen.getByTestId('past-tpr-submission-row')).toHaveTextContent('No date added');
   });
 
-  test('renders fields in correct order: background question, field exam, audit, tpr submission', async () => {
+  test('renders fields in correct order', async () => {
     vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
 
     renderComponent();
@@ -139,7 +139,8 @@ describe('PastKeyDates', () => {
     expect(listItems[0]).toHaveAttribute('data-testid', 'past-background-question-row');
     expect(listItems[1]).toHaveAttribute('data-testid', 'past-field-exam-row');
     expect(listItems[2]).toHaveAttribute('data-testid', 'past-audit-row');
-    expect(listItems[3]).toHaveAttribute('data-testid', 'past-tpr-submission-row');
+    expect(listItems[3]).toHaveAttribute('data-testid', 'past-last-audit-fiscal-year-row');
+    expect(listItems[4]).toHaveAttribute('data-testid', 'past-tpr-submission-row');
   });
 
   test('Edit button is visible for TrusteeAdmin users', async () => {
@@ -187,7 +188,35 @@ describe('PastKeyDates', () => {
     });
 
     const noDateElements = screen.getAllByText('No date added');
-    expect(noDateElements.length).toBe(4);
+    expect(noDateElements.length).toBe(5);
+  });
+
+  test('renders Last Audit Fiscal Year value when present', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({ data: populatedDocument });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent('2022');
+  });
+
+  test('renders Last Audit Fiscal Year as No date added when absent', async () => {
+    vi.spyOn(Api2, 'getUpcomingKeyDates').mockResolvedValue({
+      data: { ...populatedDocument, lastAuditFiscalYear: undefined },
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('past-last-audit-fiscal-year-row')).toHaveTextContent(
+      'No date added',
+    );
   });
 
   test('Edit button navigates to edit route', async () => {
