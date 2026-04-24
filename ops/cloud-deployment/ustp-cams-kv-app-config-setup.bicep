@@ -13,7 +13,7 @@
                  privateEndpointSubnetId=<subnet-resource-id>
 
   What this template provisions:
-  1. Managed identity with "Key Vault Secrets User" access to the vault.
+  1. Managed identity with Key Vault Secrets User access scoped to individual secrets.
   2. Key Vault with network ACLs (public access disabled).
   3. Private DNS zone (privatelink.vaultcore.usgovcloudapi.net) linked to the virtual network.
   4. Private endpoint for the vault in the designated private endpoint subnet.
@@ -28,6 +28,7 @@ param deployedAt string = utcNow()
 
 param deployDns bool = true
 
+@description('When false, no role assignments are created (used for USTP deployments where the ADO service principal lacks role assignment permissions).')
 param makeRoleAssignment bool = true
 
 param location string = resourceGroup().location
@@ -63,7 +64,7 @@ param kvNetworkAcls object = {
   virtualNetworkRules: []
 }
 
-@description('Managed identity with Secrets User role to Keyvault')
+@description('Managed identity with Secrets User role to individual secrets in the Keyvault')
 param managedIdentityName string = 'id-kv-app-config-${uniqueString(stackName)}'
 
 var tags = {
@@ -71,6 +72,32 @@ var tags = {
   component: 'security'
   'deployed-at': deployedAt
 }
+
+// All secrets consumed by the API and Dataflows function apps via @Microsoft.KeyVault() references.
+// Both apps have identical secret needs so they share one managed identity.
+// Auth-method-specific secrets (MSSQL-USER/PASS vs MSSQL-CLIENT-ID) are both included here
+// because the vault holds all secrets regardless of which auth method is active.
+var functionAppSecrets = [
+  'ADMIN-KEY'
+  'MONGO-CONNECTION-STRING'
+  'MSSQL-HOST'
+  'MSSQL-DATABASE-DXTR'
+  'MSSQL-ENCRYPT'
+  'MSSQL-TRUST-UNSIGNED-CERT'
+  'MSSQL-USER'
+  'MSSQL-PASS'
+  'MSSQL-CLIENT-ID'
+  'ACMS-MSSQL-HOST'
+  'ACMS-MSSQL-DATABASE'
+  'ACMS-MSSQL-ENCRYPT'
+  'ACMS-MSSQL-TRUST-UNSIGNED-CERT'
+  'ACMS-MSSQL-USER'
+  'ACMS-MSSQL-PASS'
+  'ACMS-MSSQL-CLIENT-ID'
+  'FEATURE-FLAG-SDK-KEY'
+  'CAMS-USER-GROUP-GATEWAY-CONFIG'
+  'OKTA-API-KEY'
+]
 
 module appConfigIdentity './lib/identity/managed-identity.bicep' = {
   name: '${stackName}-id-app-config-module'
@@ -88,13 +115,23 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
   params: {
     location: location
     keyVaultName: kvName
-    objectId: appConfigIdentity.outputs.principalId
-    roleName: 'Key Vault Secrets User'
-    makeRoleAssignment: makeRoleAssignment
     networkAcls: kvNetworkAcls
     tags: tags
   }
 }
+
+module appConfigSecretRoleAssignments './lib/keyvault/keyvault-secret-role-assignment.bicep' = [
+  for secretName in functionAppSecrets: if (makeRoleAssignment) {
+    name: '${stackName}-kv-secret-role-${secretName}'
+    scope: resourceGroup(kvResourceGroup)
+    params: {
+      keyVaultName: kvName
+      secretName: secretName
+      objectId: appConfigIdentity.outputs.principalId
+    }
+    dependsOn: [appConfigKeyvault]
+  }
+]
 
 resource ustpVirtualNetwork 'Microsoft.Network/virtualNetworks@2022-11-01' existing = {
   name: virtualNetworkName
