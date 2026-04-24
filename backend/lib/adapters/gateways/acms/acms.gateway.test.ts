@@ -22,12 +22,12 @@ describe('ACMS gateway tests', () => {
       .spyOn(AbstractMssqlClient.prototype, 'executeQuery')
       .mockResolvedValueOnce({
         success: true,
-        results: [{ leadCaseCount: 0 }],
+        results: { recordset: [{ leadCaseCount: 0 }] },
         message: '',
       })
       .mockResolvedValue({
         success: true,
-        results: [],
+        results: { recordset: [] },
         message: '',
       });
 
@@ -54,12 +54,12 @@ describe('ACMS gateway tests', () => {
       .spyOn(AbstractMssqlClient.prototype, 'executeQuery')
       .mockResolvedValueOnce({
         success: true,
-        results: [{ leadCaseCount: 0 }],
+        results: { recordset: [{ leadCaseCount: 0 }] },
         message: '',
       })
       .mockResolvedValue({
         success: true,
-        results: [],
+        results: { recordset: [] },
         message: '',
       });
 
@@ -111,7 +111,7 @@ describe('ACMS gateway tests', () => {
 
     const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
       success: true,
-      results: databaseResult,
+      results: { recordset: databaseResult },
       message: '',
     });
 
@@ -159,7 +159,7 @@ describe('ACMS gateway tests', () => {
 
     const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
       success: true,
-      results: databaseResult,
+      results: { recordset: databaseResult },
       message: '',
     });
 
@@ -215,7 +215,7 @@ describe('ACMS gateway tests', () => {
   test('should exclude deleted cases when loading migration table', async () => {
     const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
       success: true,
-      results: [],
+      results: { recordset: [] },
       message: '',
     });
     const ssn = '234-21-5326';
@@ -236,7 +236,7 @@ describe('ACMS gateway tests', () => {
     test('should convert date string to YYYYMMDD integer and pass mssql.Int type', async () => {
       const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
-        results: [],
+        results: { recordset: [] },
         message: '',
       });
 
@@ -266,7 +266,7 @@ describe('ACMS gateway tests', () => {
 
       vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
-        results: databaseResults,
+        results: { recordset: databaseResults },
         message: '',
       });
 
@@ -283,7 +283,7 @@ describe('ACMS gateway tests', () => {
     test('should return input date when no deleted cases found', async () => {
       vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
-        results: [],
+        results: { recordset: [] },
         message: '',
       });
 
@@ -307,7 +307,7 @@ describe('ACMS gateway tests', () => {
       for (const testCase of testCases) {
         const spy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
           success: true,
-          results: [],
+          results: { recordset: [] },
           message: '',
         });
 
@@ -337,7 +337,7 @@ describe('ACMS gateway tests', () => {
       const dbResults = [{ acmsProfessionalId: 'NY-00123' }, { acmsProfessionalId: 'UT-05321' }];
       vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
-        results: dbResults,
+        results: { recordset: dbResults },
         message: '',
       });
 
@@ -351,7 +351,7 @@ describe('ACMS gateway tests', () => {
     test('should return empty array when no matching professional IDs found', async () => {
       vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue({
         success: true,
-        results: [],
+        results: { recordset: [] },
         message: '',
       });
 

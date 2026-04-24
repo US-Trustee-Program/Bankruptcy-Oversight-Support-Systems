@@ -566,6 +566,70 @@ describe('TrusteeDetailScreen', () => {
     });
   });
 
+  describe('trustee-software-bank-display feature flag', () => {
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+    });
+
+    test('should render OtherInformationCard when flag is enabled', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-software-bank-display': true,
+      });
+
+      renderWithRouter(['/trustees/123']);
+
+      await waitFor(() => {
+        expect(screen.getByText('Software and Bank')).toBeInTheDocument();
+      });
+      expect(screen.getByText('341 Meeting and Other Information')).toBeInTheDocument();
+    });
+
+    test('should hide OtherInformationCard when flag is disabled', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-software-bank-display': false,
+      });
+
+      renderWithRouter(['/trustees/123']);
+
+      await waitFor(() => {
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+      });
+      expect(screen.queryByText('Software and Bank')).not.toBeInTheDocument();
+      expect(screen.getByText('341 Meeting Information')).toBeInTheDocument();
+    });
+
+    test('should render other/edit route when flag is enabled', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-software-bank-display': true,
+      });
+
+      renderWithRouter(['/trustees/123/other/edit']);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('heading', { level: 2, name: 'Edit Other Trustee Information' }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('should redirect home when navigating to other/edit with flag disabled', async () => {
+      mockUseFeatureFlags.mockReturnValue({
+        ...testFeatureFlags,
+        'trustee-software-bank-display': false,
+      });
+
+      renderWithRouter(['/trustees/123/other/edit']);
+
+      await waitFor(() => {
+        expect(mockNavigate).toHaveBeenCalledWith('/my-cases');
+      });
+    });
+  });
+
   describe('assigned-staff route', () => {
     test('should render TrusteeAssignedStaff when trustee-assigned-staff-enabled flag is enabled', async () => {
       vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
