@@ -1,8 +1,8 @@
 # GitHub Actions Workflow Analysis
 
 ## Summary
-- **Total Workflows**: 27
-- **Main Workflows**: 11
+- **Total Workflows**: 28
+- **Main Workflows**: 12
 - **Reusable Workflows**: 16
 
 ## Legend
@@ -101,11 +101,15 @@ flowchart LR
 ### Push Triggered Workflows
 
 Workflows triggered by `push`:
+- **Deploy GitHub Pages** (`deploy-pages.yml`)
 - **Continuous Deployment** (`continuous-deployment.yml`)
 
 ```mermaid
 flowchart LR
     trigger_push(["push"])
+    deploy_pages_yml["Deploy GitHub Pages"]
+    deploy_pages_yml_build["build"]
+    deploy_pages_yml_deploy["deploy"]
     continuous_deployment_yml["Continuous Deployment"]
     continuous_deployment_yml_setup["Setup"]
     reusable_build_info_yml["reusable-build-info.yml"]
@@ -169,6 +173,9 @@ flowchart LR
     sub_deploy_code_slot_yml_endpoint_test_application_post_swap["endpoint-test-application-post-swap"]
     sub_deploy_code_slot_yml_enable_access["enable-access"]
 
+    trigger_push --> deploy_pages_yml
+    deploy_pages_yml --> deploy_pages_yml_build
+    deploy_pages_yml --> deploy_pages_yml_deploy
     trigger_push --> continuous_deployment_yml
     continuous_deployment_yml --> continuous_deployment_yml_setup
     reusable_build_info_yml --> reusable_build_info_yml_build_info
@@ -243,6 +250,9 @@ flowchart LR
     classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
 
     class trigger_push trigger
+    class deploy_pages_yml mainWorkflow
+    class deploy_pages_yml_build job
+    class deploy_pages_yml_deploy job
     class continuous_deployment_yml mainWorkflow
     class continuous_deployment_yml_setup job
     class reusable_build_info_yml reusable
@@ -1135,6 +1145,32 @@ flowchart LR
     class reusable_dast_yml_zap_dast_scan job
 ```
 
+#### Deploy GitHub Pages
+
+Manual execution of `deploy-pages.yml`
+
+```mermaid
+flowchart LR
+    trigger_workflow_dispatch(["workflow_dispatch"])
+    deploy_pages_yml["Deploy GitHub Pages"]
+    deploy_pages_yml_build["build"]
+    deploy_pages_yml_deploy["deploy"]
+
+    trigger_workflow_dispatch --> deploy_pages_yml
+    deploy_pages_yml --> deploy_pages_yml_build
+    deploy_pages_yml --> deploy_pages_yml_deploy
+
+    classDef reusable fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#000000
+    classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
+    classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
+    classDef job fill:#f1f8e9,stroke:#33691e,stroke-width:1px,color:#000000
+
+    class trigger_workflow_dispatch trigger
+    class deploy_pages_yml mainWorkflow
+    class deploy_pages_yml_build job
+    class deploy_pages_yml_deploy job
+```
+
 #### Deploy Security Scan Storage
 
 Manual execution of `deploy-security-scan-storage.yml`
@@ -1318,6 +1354,7 @@ flowchart LR
 flowchart LR
     trigger_workflow_dispatch(["workflow_dispatch"])
     deploy_security_scan_storage_yml["Deploy Security Scan Storage"]
+    deploy_pages_yml["Deploy GitHub Pages"]
     e2e_test_yml["Stand Alone E2E Test Runs"]
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     prune_e2e_image_cache_yml["Prune E2E Image Cache"]
@@ -1327,6 +1364,9 @@ flowchart LR
     build_azure_cli_image_yml["Build Custom Azure CLI Runner Image"]
     dast_scan_yml["Stand Alone DAST Scan"]
     update_dependencies_yml["NPM Package Updates"]
+    trigger_push(["push"])
+    deploy_pages_yml["Deploy GitHub Pages"]
+    continuous_deployment_yml["Continuous Deployment"]
     trigger_delete(["delete"])
     azure_remove_branch_yml["Clean up Flexion Azure Resources"]
     trigger_schedule(["schedule"])
@@ -1336,12 +1376,11 @@ flowchart LR
     dast_scan_yml["Stand Alone DAST Scan"]
     trigger_pull_request(["pull_request"])
     pr_validation_yml["Pull Request E2E Validation"]
-    trigger_push(["push"])
-    continuous_deployment_yml["Continuous Deployment"]
     trigger_workflow_run(["workflow_run"])
     slack_notification_yml["slack-notification"]
 
     trigger_workflow_dispatch --> deploy_security_scan_storage_yml
+    trigger_workflow_dispatch --> deploy_pages_yml
     trigger_workflow_dispatch --> e2e_test_yml
     trigger_workflow_dispatch --> azure_remove_branch_yml
     trigger_workflow_dispatch --> prune_e2e_image_cache_yml
@@ -1351,25 +1390,27 @@ flowchart LR
     trigger_workflow_dispatch --> build_azure_cli_image_yml
     trigger_workflow_dispatch --> dast_scan_yml
     trigger_workflow_dispatch --> update_dependencies_yml
+    trigger_push --> deploy_pages_yml
+    trigger_push --> continuous_deployment_yml
     trigger_delete --> azure_remove_branch_yml
     trigger_schedule --> prune_e2e_image_cache_yml
     trigger_schedule --> refresh_e2e_base_images_yml
     trigger_schedule --> build_azure_cli_image_yml
     trigger_schedule --> dast_scan_yml
     trigger_pull_request --> pr_validation_yml
-    trigger_push --> continuous_deployment_yml
     trigger_workflow_run --> slack_notification_yml
 
     classDef mainWorkflow fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#000000
     classDef trigger fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#000000
 
     class trigger_workflow_dispatch trigger
+    class trigger_push trigger
     class trigger_delete trigger
     class trigger_schedule trigger
     class trigger_pull_request trigger
-    class trigger_push trigger
     class trigger_workflow_run trigger
     class deploy_security_scan_storage_yml mainWorkflow
+    class deploy_pages_yml mainWorkflow
     class e2e_test_yml mainWorkflow
     class azure_remove_branch_yml mainWorkflow
     class prune_e2e_image_cache_yml mainWorkflow
@@ -1388,6 +1429,9 @@ flowchart LR
 - **Deploy Security Scan Storage** (`deploy-security-scan-storage.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 1
+- **Deploy GitHub Pages** (`deploy-pages.yml`)
+  - Triggers: push, workflow_dispatch
+  - Jobs: 2
 - **Stand Alone E2E Test Runs** (`e2e-test.yml`)
   - Triggers: workflow_dispatch
   - Jobs: 2
