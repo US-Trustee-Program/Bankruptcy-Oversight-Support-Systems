@@ -17,6 +17,41 @@ describe('trustees-validators', () => {
     });
   });
 
+  describe('trusteeFirstName', () => {
+    test.each([
+      { value: 'Jane', expected: VALID },
+      { value: 'A', expected: VALID },
+      { value: 'x'.repeat(15), expected: VALID },
+      { value: '', expected: { reasons: ['First name is required'] } },
+      { value: 'x'.repeat(16), expected: { reasons: ['Max length 15 characters'] } },
+    ])('should validate trustee first name: $value', ({ value, expected }) => {
+      expect(TV.trusteeFirstName(value)).toEqual(expected);
+    });
+  });
+
+  describe('trusteeLastName', () => {
+    test.each([
+      { value: 'Doe', expected: VALID },
+      { value: 'A', expected: VALID },
+      { value: 'x'.repeat(20), expected: VALID },
+      { value: '', expected: { reasons: ['Last name is required'] } },
+      { value: 'x'.repeat(21), expected: { reasons: ['Max length 20 characters'] } },
+    ])('should validate trustee last name: $value', ({ value, expected }) => {
+      expect(TV.trusteeLastName(value)).toEqual(expected);
+    });
+  });
+
+  describe('trusteeMiddleName', () => {
+    test.each([
+      { value: 'Ann', expected: VALID },
+      { value: undefined, expected: VALID },
+      { value: 'x'.repeat(15), expected: VALID },
+      { value: 'x'.repeat(16), expected: { reasons: ['Max length 15 characters'] } },
+    ])('should validate trustee middle name: $value', ({ value, expected }) => {
+      expect(TV.trusteeMiddleName(value)).toEqual(expected);
+    });
+  });
+
   describe('companyName', () => {
     test.each([
       { value: 'Acme Corp', expected: VALID },

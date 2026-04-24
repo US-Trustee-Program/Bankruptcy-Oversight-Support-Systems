@@ -2,6 +2,7 @@ import {
   getAppointmentDetails,
   formatChapterType,
   formatAppointmentType,
+  computeTrusteeName,
   AppointmentChapterType,
   AppointmentType,
 } from './trustees';
@@ -31,6 +32,28 @@ describe('trustees', () => {
       ['converted-case', 'Converted Case'],
     ])('should format "%s" as "%s"', (input, expected) => {
       expect(formatAppointmentType(input as AppointmentType)).toBe(expected);
+    });
+  });
+
+  describe('computeTrusteeName', () => {
+    test('should return "First Middle Last" when all three parts provided', () => {
+      expect(computeTrusteeName('Jane', 'Ann', 'Doe')).toBe('Jane Ann Doe');
+    });
+
+    test('should return "First Last" when middleName is undefined', () => {
+      expect(computeTrusteeName('Jane', undefined, 'Doe')).toBe('Jane Doe');
+    });
+
+    test('should return "First Last" when middleName is empty string', () => {
+      expect(computeTrusteeName('Jane', '', 'Doe')).toBe('Jane Doe');
+    });
+
+    test('should trim whitespace from each part', () => {
+      expect(computeTrusteeName('  Jane  ', '  Ann  ', '  Doe  ')).toBe('Jane Ann Doe');
+    });
+
+    test('should handle empty firstName and lastName', () => {
+      expect(computeTrusteeName('', undefined, '')).toBe('');
     });
   });
 

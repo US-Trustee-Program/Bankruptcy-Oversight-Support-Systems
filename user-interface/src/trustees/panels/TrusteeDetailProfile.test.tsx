@@ -9,6 +9,8 @@ import MockData from '@common/cams/test-utilities/mock-data';
 const mockTrustee: Trustee = {
   id: '--id-guid--',
   trusteeId: '123',
+  firstName: 'John',
+  lastName: 'Doe',
   name: 'John Doe',
   public: {
     address: {

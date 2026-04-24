@@ -74,12 +74,24 @@ export type ZoomInfo = {
 };
 
 type TrusteeCore = {
+  firstName: string;
+  lastName: string;
+  middleName?: string;
   name: string;
   status?: AppointmentStatus;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
   assistants?: TrusteeAssistant[];
 };
+
+export function computeTrusteeName(
+  firstName: string,
+  middleName: string | undefined,
+  lastName: string,
+): string {
+  const parts = [firstName.trim(), middleName?.trim(), lastName.trim()].filter(Boolean);
+  return parts.join(' ');
+}
 
 type TrusteeOptionalFields = {
   banks?: string[];

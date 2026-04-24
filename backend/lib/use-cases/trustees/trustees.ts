@@ -14,7 +14,9 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import {
-  trusteeName,
+  trusteeFirstName,
+  trusteeLastName,
+  trusteeMiddleName,
   companyName,
   addressLine1,
   addressLine2,
@@ -67,7 +69,9 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
 };
 
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
-  name: [trusteeName],
+  firstName: [trusteeFirstName],
+  lastName: [trusteeLastName],
+  middleName: [trusteeMiddleName],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],

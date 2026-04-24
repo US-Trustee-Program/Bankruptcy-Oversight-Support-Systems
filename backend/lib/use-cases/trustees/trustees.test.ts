@@ -113,7 +113,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should throw BadRequestError for invalid trustee input', async () => {
-      const invalidTrustee = { ...MockData.getTrusteeInput(), name: '' };
+      const invalidTrustee = { ...MockData.getTrusteeInput(), firstName: '' };
 
       await expect(trusteesUseCase.createTrustee(context, invalidTrustee)).rejects.toThrow(
         BadRequestError,
@@ -564,7 +564,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should throw BadRequestError for invalid update data', async () => {
-      const invalidUpdateData = { name: '' };
+      const invalidUpdateData = { firstName: '' };
 
       await expect(
         trusteesUseCase.updateTrustee(context, trusteeId, invalidUpdateData),
