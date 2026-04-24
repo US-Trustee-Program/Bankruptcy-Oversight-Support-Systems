@@ -342,7 +342,6 @@ describe('TrusteesList Component', () => {
         data: [
           {
             courtId: 'NYSB',
-            courtDivisionCode: '081',
             courtName: 'Southern District of New York',
             officeCode: '081',
             officeName: 'Manhattan',
