@@ -1,0 +1,264 @@
+name: Document User Story
+
+on:
+  repository_dispatch:
+    types: [document-story]
+
+permissions:
+  id-token: write   # Required for OIDC
+  contents: read    # Required to checkout code
+  issues: read      # Required to read issues
+  pull-requests: read # Required to read PRs
+
+jobs:
+  document:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Story Documenter
+        uses: actions/checkout@v4
+        with:
+          repository: flexion/story-documenter
+          path: bedrock-story-documenter
+          token: ${{ secrets.DOCUMENTER_REPO_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'bedrock-story-documenter/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: bedrock-story-documenter
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_BEDROCK_ROLE_ARN }}
+          aws-region: us-east-2
+          role-session-name: GitHubActions-DocumentStory
+
+      - name: Fetch Slack Thread
+        id: slack-thread
+        working-directory: bedrock-story-documenter
+        run: |
+          THREAD_CHANNEL="${{ github.event.client_payload.slack_context.thread_context.channel_id }}"
+          THREAD_TS="${{ github.event.client_payload.slack_context.thread_context.thread_ts }}"
+
+          if [ -n "$THREAD_CHANNEL" ] && [ -n "$THREAD_TS" ]; then
+            echo "Fetching Slack thread from channel $THREAD_CHANNEL..."
+            node scripts/fetch-slack-thread.js \
+              --channel "$THREAD_CHANNEL" \
+              --thread-ts "$THREAD_TS" \
+              --output ../slack-thread.json
+          else
+            echo "No thread context provided, skipping Slack thread fetch"
+            echo '{"has_thread": false, "messages": []}' > ../slack-thread.json
+          fi
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+
+      - name: Fetch GitHub Data
+        id: github-data
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const storyId = '${{ github.event.client_payload.story_id }}';
+
+            // Search for issues and PRs
+            const searchResults = await github.rest.search.issuesAndPullRequests({
+              q: `${storyId} repo:${{ github.repository }}`,
+              sort: 'created',
+              order: 'desc',
+              per_page: 10
+            });
+
+            // Separate issues and PRs with enhanced data
+            const issues = [];
+            const pullRequests = [];
+
+            for (const item of searchResults.data.items) {
+              // Filter: only include items whose title or body contains the exact story ID
+              const titleMatch = item.title?.toUpperCase().includes(storyId.toUpperCase());
+              const bodyMatch = item.body?.toUpperCase().includes(storyId.toUpperCase());
+              if (!titleMatch && !bodyMatch) {
+                console.log(`Skipping #${item.number}: ${item.title} (no exact story ID match)`);
+                continue;
+              }
+
+              if (item.pull_request) {
+                // Get full PR details
+                const pr = await github.rest.pulls.get({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: item.number
+                });
+
+                // Get PR review comments
+                const reviewComments = await github.rest.pulls.listReviewComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: item.number,
+                  per_page: 50
+                });
+
+                // Get PR reviews
+                const reviews = await github.rest.pulls.listReviews({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: item.number,
+                  per_page: 50
+                });
+
+                // Get commits
+                const commits = await github.rest.pulls.listCommits({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: item.number,
+                  per_page: 50
+                });
+
+                // Get files changed
+                const files = await github.rest.pulls.listFiles({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: item.number,
+                  per_page: 100
+                });
+
+                pullRequests.push({
+                  number: pr.data.number,
+                  title: pr.data.title,
+                  body: pr.data.body,
+                  state: pr.data.state,
+                  merged: pr.data.merged,
+                  html_url: pr.data.html_url,
+                  additions: pr.data.additions,
+                  deletions: pr.data.deletions,
+                  changed_files: pr.data.changed_files,
+                  user: pr.data.user.login,
+                  created_at: pr.data.created_at,
+                  merged_at: pr.data.merged_at,
+                  base_branch: pr.data.base.ref,
+                  head_branch: pr.data.head.ref,
+                  review_comments: reviewComments.data.map(c => ({
+                    user: c.user.login,
+                    body: c.body,
+                    path: c.path,
+                    line: c.line,
+                    created_at: c.created_at
+                  })),
+                  reviews: reviews.data.map(r => ({
+                    user: r.user.login,
+                    state: r.state,
+                    body: r.body,
+                    submitted_at: r.submitted_at
+                  })),
+                  commits: commits.data.map(c => ({
+                    sha: c.sha.substring(0, 7),
+                    message: c.commit.message,
+                    author: c.commit.author.name,
+                    date: c.commit.author.date
+                  })),
+                  files: files.data.map(f => ({
+                    filename: f.filename,
+                    status: f.status,
+                    additions: f.additions,
+                    deletions: f.deletions,
+                    changes: f.changes
+                  }))
+                });
+              } else {
+                // Get issue comments
+                const comments = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: item.number,
+                  per_page: 50
+                });
+
+                issues.push({
+                  number: item.number,
+                  title: item.title,
+                  body: item.body,
+                  state: item.state,
+                  html_url: item.html_url,
+                  user: item.user.login,
+                  created_at: item.created_at,
+                  labels: item.labels.map(l => l.name),
+                  comments: comments.data.map(c => ({
+                    user: c.user.login,
+                    body: c.body,
+                    created_at: c.created_at
+                  }))
+                });
+              }
+            }
+
+            // Save to file for next step
+            const fs = require('fs');
+            fs.writeFileSync('github-data.json', JSON.stringify({
+              story_id: storyId,
+              issues,
+              pullRequests,
+              fetched_at: new Date().toISOString()
+            }, null, 2));
+
+            return { issues: issues.length, pullRequests: pullRequests.length };
+
+      - name: Generate Documentation with Bedrock Claude
+        id: generate-doc
+        working-directory: bedrock-story-documenter
+        run: |
+          node scripts/generate-documentation.js \
+            --story-id "${{ github.event.client_payload.story_id }}" \
+            --github-data ../github-data.json \
+            --slack-thread ../slack-thread.json \
+            --slack-context '${{ toJson(github.event.client_payload.slack_context) }}'
+        env:
+          BEDROCK_MODEL_ID: us.anthropic.claude-sonnet-4-20250514-v1:0
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+
+      - name: Post to Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "${{ steps.generate-doc.outcome == 'success' && format('✅ Documentation {0} successfully!', steps.generate-doc.outputs.action) || '❌ Documentation failed' }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.generate-doc.outcome == 'success' && format('✅ Documentation for *{0}* {1} successfully!', github.event.client_payload.story_id, steps.generate-doc.outputs.action) || format('❌ Failed to document {0}', github.event.client_payload.story_id) }}"
+                  }
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "${{ steps.generate-doc.outcome == 'success' && format('📄 <{0}|View in Google Drive>', steps.generate-doc.outputs.document_url) || format('Error: {0}', steps.generate-doc.outputs.error) }}"
+                  }
+                },
+                {
+                  "type": "context",
+                  "elements": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "Requested by <@${{ github.event.client_payload.slack_context.user_id }}> | ${{ steps.github-data.outputs.result.issues }} issues, ${{ steps.github-data.outputs.result.pullRequests }} PRs found | Thread included: ${{ github.event.client_payload.slack_context.thread_context && 'Yes' || 'No' }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
