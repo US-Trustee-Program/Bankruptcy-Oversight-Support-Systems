@@ -301,8 +301,10 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(mockTrackEvent).toHaveBeenCalledWith(
           { name: 'Trustee List Loaded' },
-          { trusteeCount: 2 },
-          expect.objectContaining({ loadMs: expect.any(Number) }),
+          expect.objectContaining({
+            trusteeCount: 2,
+            loadMs: expect.any(Number),
+          }),
         );
       });
     });
