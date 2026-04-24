@@ -50,3 +50,17 @@ resource trusteeMatchingAnalyticsWorkbook 'Microsoft.Insights/workbooks@2023-06-
     )
   }
 }
+
+resource caseSearchMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid('case-search-metrics-workbook', resourceGroup().id)
+  location: location
+  tags: tags
+  kind: 'shared'
+  properties: {
+    displayName: 'Case Search Metrics'
+    description: 'Monitor case search usage: search volume, search types, user behavior, and performance patterns.'
+    category: 'workbook'
+    sourceId: appInsightsResourceId
+    serializedData: loadTextContent('case-search-metrics.json')
+  }
+}
