@@ -8,6 +8,7 @@ import { CamsSession } from '@common/cams/session';
 import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
   // Show all divisions with format: District (Division)
@@ -99,6 +100,7 @@ const trusteeDistrictFilterUseCase = (
     const defaultDistricts = store.defaultDistricts;
     store.setSelectedDistricts(defaultDistricts);
     notifySelectionChange(defaultDistricts);
+    getAppInsights().appInsights.trackEvent({ name: 'Trustee District Filter Cleared' });
   };
 
   const handleToggleExpanded = () => {
