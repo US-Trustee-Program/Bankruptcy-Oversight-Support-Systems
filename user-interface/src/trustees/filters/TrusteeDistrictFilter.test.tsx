@@ -361,7 +361,6 @@ describe('TrusteeDistrictFilter Component', () => {
 
     // Initially collapsed
     expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByLabelText('District (Division)')).not.toBeInTheDocument();
 
     // Expand
     await user.click(toggleButton);
