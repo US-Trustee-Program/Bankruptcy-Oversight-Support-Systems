@@ -94,53 +94,13 @@ describe('GoHome Component', () => {
       expect(mockNavigateTo).toHaveBeenCalledWith(customPath);
     });
   });
-});
 
-describe('GoHome Component - Integration Tests', () => {
-  const mockNavigateTo = vi.fn();
-  const mockWaitForInitialization = vi.fn().mockResolvedValue(undefined);
-
-  beforeEach(() => {
-    vi.resetModules();
-    vi.mocked(useCamsNavigator).mockReturnValue({
-      navigateTo: mockNavigateTo,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+  test('should navigate when LaunchDarkly initialization fails', async () => {
+    const mockWaitForInitialization = vi.fn().mockRejectedValue(new Error('LD init failed'));
 
     vi.mocked(LaunchDarkly.useLDClient).mockReturnValue({
       waitForInitialization: mockWaitForInitialization,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
-  });
-
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  test('should route to Case Search when LaunchDarkly returns flag as enabled', async () => {
-    vi.mocked(LaunchDarkly.useFlags).mockReturnValue({
-      [CASE_SEARCH_LANDING_PAGE]: true,
-    });
-
-    vi.mocked(useFeatureFlags).mockReturnValue({
-      [CASE_SEARCH_LANDING_PAGE]: true,
-    });
-
-    render(
-      <LandingPageProvider>
-        <GoHome />
-      </LandingPageProvider>,
-    );
-
-    await waitFor(() => {
-      expect(mockNavigateTo).toHaveBeenCalledWith(CASE_SEARCH_PATH);
-    });
-  });
-
-  test('should route to My Cases when LaunchDarkly returns flag as disabled', async () => {
-    vi.mocked(LaunchDarkly.useFlags).mockReturnValue({
-      [CASE_SEARCH_LANDING_PAGE]: false,
-    });
+    } as unknown as ReturnType<typeof LaunchDarkly.useLDClient>);
 
     vi.mocked(useFeatureFlags).mockReturnValue({
       [CASE_SEARCH_LANDING_PAGE]: false,
@@ -157,10 +117,12 @@ describe('GoHome Component - Integration Tests', () => {
     });
   });
 
-  test('should route to My Cases when LaunchDarkly is unavailable', async () => {
-    vi.mocked(LaunchDarkly.useFlags).mockReturnValue({});
+  test('should navigate when LaunchDarkly client is undefined', async () => {
+    vi.mocked(LaunchDarkly.useLDClient).mockReturnValue(undefined);
 
-    vi.mocked(useFeatureFlags).mockReturnValue({});
+    vi.mocked(useFeatureFlags).mockReturnValue({
+      [CASE_SEARCH_LANDING_PAGE]: false,
+    });
 
     render(
       <LandingPageProvider>

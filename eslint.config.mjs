@@ -30,7 +30,7 @@ const jsConfig = eslintJsConfig.map((configObject) => ({
 }));
 const nodeConfig = eslintNodeConfig.map((configObject) => ({
   ...configObject,
-  files: ['user-interface/**/envToConfig.js'],
+  files: ['user-interface/**/envToConfig.js', '**/esbuild.config.mjs'],
 }));
 
 const jsonConfig = eslintJsonConfig.map((configObject) => ({
@@ -47,6 +47,7 @@ const eslintConfig = [
       '**/coverage/**/*',
       '**/.*/**',
       '**/eslint*.config.mjs',
+      '**/playwright-report/**/*',
     ],
   },
   ...frontendSourceConfig,

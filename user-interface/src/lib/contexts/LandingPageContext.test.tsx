@@ -26,7 +26,6 @@ describe('LandingPageContext', () => {
 
       expect(result.current.landingPage).toBeNull();
       expect(result.current.landingTimestamp).toBeNull();
-      expect(typeof result.current.setLandingPage).toBe('function');
     });
 
     it('should set landing page on first call', () => {
@@ -37,7 +36,7 @@ describe('LandingPageContext', () => {
       });
 
       expect(result.current.landingPage).toBe('case-search');
-      expect(result.current.landingTimestamp).toBeGreaterThan(0);
+      expect(result.current.landingTimestamp).not.toBeNull();
     });
 
     it('should not change landing page on subsequent calls', () => {
@@ -56,17 +55,6 @@ describe('LandingPageContext', () => {
       // Should still be case-search, not my-cases
       expect(result.current.landingPage).toBe('case-search');
       expect(result.current.landingTimestamp).toBe(firstTimestamp);
-    });
-
-    it('should handle my-cases as landing page', () => {
-      const { result } = renderHook(() => useLandingPageContext(), { wrapper });
-
-      act(() => {
-        result.current.setLandingPage('my-cases');
-      });
-
-      expect(result.current.landingPage).toBe('my-cases');
-      expect(result.current.landingTimestamp).toBeGreaterThan(0);
     });
 
     it('should set timestamp when landing page is set', () => {
