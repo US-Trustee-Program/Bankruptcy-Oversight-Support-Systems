@@ -75,6 +75,14 @@
     display: block;
   }
 
+  .trustees-list-row--continuation {
+    margin-top: 0.5rem;
+
+    .col-name {
+      display: none;
+    }
+  }
+
   .trustees-list-cell {
     padding: 0;
     word-wrap: break-word;
@@ -89,12 +97,26 @@
     position: relative;
 
     &::before {
-      content: attr(data-cell) ':';
+      content: attr(data-cell) ': ';
       position: absolute;
       left: 0;
       top: 0.25rem;
       font-weight: 700;
       white-space: nowrap;
+    }
+  }
+
+  // Small phones — inline label, full line wraps naturally
+  @media screen and (max-width: 479px) {
+    .trustees-list-cell[data-cell] {
+      padding: 0.25rem 0.375rem;
+      min-height: unset;
+
+      &::before {
+        position: static;
+        display: inline;
+        white-space: nowrap;
+      }
     }
   }
 
@@ -113,6 +135,14 @@
 
     .trustee-group {
       margin-top: 0;
+    }
+
+    .trustees-list-row--continuation {
+      margin-top: 0;
+
+      .col-name {
+        display: block;
+      }
     }
 
     .trustees-list-row {
@@ -135,11 +165,17 @@
     }
 
     .col-name,
-    .col-district-division,
     .col-chapter,
     .col-type,
     .col-status {
       flex: 1 1 0;
+      min-width: 0;
+      max-width: none;
+      white-space: normal;
+    }
+
+    .col-district-division {
+      flex: 2 1 0;
       min-width: 0;
       max-width: none;
       white-space: normal;
