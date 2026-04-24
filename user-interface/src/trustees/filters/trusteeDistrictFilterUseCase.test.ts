@@ -351,14 +351,6 @@ describe('trustee district filter use case tests', () => {
       expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(defaultDistricts);
       expect(mockOnFilterDistrict).toHaveBeenCalledWith(defaultDistricts);
     });
-
-    test('should track Trustee District Filter Cleared event', () => {
-      mockStore.defaultDistricts = [];
-
-      useCase.handleClearAll();
-
-      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee District Filter Cleared' });
-    });
   });
 
   describe('handleRemovePill', () => {
@@ -416,6 +408,18 @@ describe('trustee district filter use case tests', () => {
 
       expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(newDistricts);
       expect(mockOnFilterDistrict).toHaveBeenCalledWith(newDistricts);
+    });
+
+    test('should track Trustee District Filter Cleared event when called with empty array', () => {
+      useCase.handleFilterChange([]);
+
+      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee District Filter Cleared' });
+    });
+
+    test('should not track Trustee District Filter Cleared when districts are selected', () => {
+      useCase.handleFilterChange([{ value: 'NYSB', label: 'Southern District of New York' }]);
+
+      expect(mockTrackEvent).not.toHaveBeenCalledWith({ name: 'Trustee District Filter Cleared' });
     });
   });
 
