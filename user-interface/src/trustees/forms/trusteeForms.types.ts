@@ -7,6 +7,9 @@ import {
 import V from '@common/cams/validators';
 import {
   trusteeName,
+  trusteeFirstName,
+  trusteeLastName,
+  trusteeMiddleName,
   companyName,
   addressLine1,
   addressLine2,
@@ -22,7 +25,9 @@ import {
 import { FIELD_VALIDATION_MESSAGES } from '@common/cams/validation-messages';
 
 export type TrusteePublicFormData = {
-  name?: string;
+  firstName?: string;
+  lastName?: string;
+  middleName?: string;
   companyName?: string;
   address1?: string;
   address2?: string;
@@ -126,7 +131,9 @@ const phoneRequiredWithExtension: ValidatorFunction = (obj): ValidatorResult => 
 // ============================================================================
 
 export const trusteePublicSpec: Readonly<ValidationSpec<TrusteePublicFormData>> = {
-  name: [trusteeName],
+  firstName: [trusteeFirstName],
+  lastName: [trusteeLastName],
+  middleName: [trusteeMiddleName],
   companyName: [companyName],
   address1: [addressLine1],
   address2: [addressLine2],
