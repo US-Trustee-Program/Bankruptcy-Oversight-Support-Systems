@@ -1,3 +1,9 @@
+* {
+  font-family:
+    'Source Sans Pro', 'Source Sans Pro Web', 'Helvetica Neue', 'Helvetica', 'Roboto', 'Arial',
+    sans-serif;
+}
+
 .uswds-showcase {
   min-height: 100vh;
   background-color: #f0f0f0;
@@ -61,5 +67,4 @@
 
 body {
   margin: 0;
-  font-family: 'Source Sans Pro', 'Helvetica Neue', 'Helvetica', 'Roboto', 'Arial', sans-serif;
 }
