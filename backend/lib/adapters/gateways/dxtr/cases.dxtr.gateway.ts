@@ -9,7 +9,7 @@ import { TrusteeAppointmentSyncEvent, DxtrTrusteeParty } from '@common/cams/data
 import { ApplicationContext } from '../../types/basic';
 import { DxtrTransactionRecord, TransactionDates } from '../../types/cases';
 import { getMonthDayYearStringFromDate, sortListOfDates } from '../../utils/date-helper';
-import { executeQuery } from '../../utils/database';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { handleQueryResult } from '../gateway-helper';
 import { decomposeCaseId, parseTransactionDate } from './dxtr.gateway.helper';
@@ -51,7 +51,10 @@ const NOT_FOUND = -1;
 
 type CaseIdRecord = { caseId: string; latestSyncDate: string };
 
-class CasesDxtrGateway implements CasesInterface {
+class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
+  constructor(context: ApplicationContext) {
+    super(context.config.dxtrDbConfig, MODULE_NAME);
+  }
   async getCaseDetail(applicationContext: ApplicationContext, caseId: string): Promise<CaseDetail> {
     const caseSummary = await this.getCaseSummary(applicationContext, caseId);
     const bCase: CaseDetail = {
@@ -229,9 +232,8 @@ class CasesDxtrGateway implements CasesInterface {
         ORDER BY
           cs.CS_DATE_FILED DESC`;
 
-    const queryResult: QueryResults = await executeQuery(
+    const queryResult: QueryResults = await this.executeQuery(
       applicationContext,
-      applicationContext.config.dxtrDbConfig,
       CASE_SUGGESTION_QUERY,
       input,
     );
@@ -269,11 +271,11 @@ class CasesDxtrGateway implements CasesInterface {
     findDate: string,
   ): Promise<TransactionIdRangeForDate> {
     const maxQuery = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
-    const maxAnswer = await executeQuery(context, context.config.dxtrDbConfig, maxQuery);
+    const maxAnswer = await this.executeQuery(context, maxQuery);
     const maxTxId: number = Number.parseInt(maxAnswer.results['recordset'][0]['MAX_TX_ID']);
 
     const minQuery = 'SELECT TOP 1 TX_ID AS MIN_TX_ID FROM AO_TX ORDER BY TX_ID ASC';
-    const minAnswer = await executeQuery(context, context.config.dxtrDbConfig, minQuery);
+    const minAnswer = await this.executeQuery(context, minQuery);
     const minTxId: number = Number.parseInt(minAnswer.results['recordset'][0]['MIN_TX_ID']);
 
     const startTxId = await this.bisectBound(context, minTxId, maxTxId, findDate, 'START');
@@ -292,7 +294,7 @@ class CasesDxtrGateway implements CasesInterface {
 
   public async findMaxTransactionId(context: ApplicationContext): Promise<string> {
     const query = 'SELECT TOP 1 TX_ID AS MAX_TX_ID FROM AO_TX ORDER BY TX_ID DESC';
-    const { results } = await executeQuery(context, context.config.dxtrDbConfig, query);
+    const { results } = await this.executeQuery(context, query);
     return results['recordset'][0]['MAX_TX_ID'] ?? undefined;
   }
 
@@ -320,12 +322,7 @@ class CasesDxtrGateway implements CasesInterface {
 
       const txDateQuery =
         'SELECT CONVERT(VARCHAR(10), TX_DATE, 23) AS TX_DATE FROM AO_TX WHERE TX_ID=@midTxId';
-      const { results } = await executeQuery(
-        context,
-        context.config.dxtrDbConfig,
-        txDateQuery,
-        params,
-      );
+      const { results } = await this.executeQuery(context, txDateQuery, params);
 
       const answer = results['recordset'][0];
 
@@ -506,12 +503,7 @@ class CasesDxtrGateway implements CasesInterface {
       CASE_SEARCH_QUERY_ORDER,
     ].join(' ');
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      CASE_SEARCH_QUERY,
-      params,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, CASE_SEARCH_QUERY, params);
 
     if (queryResult.success) {
       const foundCases = this.casesBasicQueryCallback(context, queryResult);
@@ -555,7 +547,7 @@ class CasesDxtrGateway implements CasesInterface {
     sql: string,
     params: DbTableFieldSpec[],
   ): Promise<CaseIdRecord[]> {
-    const result = await executeQuery(context, context.config.dxtrDbConfig, sql, params);
+    const result = await this.executeQuery(context, sql, params);
     return handleQueryResult<CaseIdRecord[]>(
       context,
       result,
@@ -668,12 +660,7 @@ class CasesDxtrGateway implements CasesInterface {
         AND TX.TX_DATE AT TIME ZONE 'UTC' >= @cutoffDate
     `;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      params,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, params);
 
     const results = handleQueryResult<CaseIdRecord[]>(
       context,
@@ -747,9 +734,8 @@ class CasesDxtrGateway implements CasesInterface {
         ORDER BY
           cs.CS_DATE_FILED DESC`;
 
-    const queryResult: QueryResults = await executeQuery(
+    const queryResult: QueryResults = await this.executeQuery(
       applicationContext,
-      applicationContext.config.dxtrDbConfig,
       CASE_DETAIL_QUERY,
       input,
     );
@@ -811,12 +797,7 @@ class CasesDxtrGateway implements CasesInterface {
       AND TX_TYPE = 'O'
       AND TX_CODE in (@closedByCourtTxCode, @dismissedByCourtTxCode, @orderToTransferCode, @reopenedDate)`;
 
-    const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
-      query,
-      input,
-    );
+    const queryResult: QueryResults = await this.executeQuery(applicationContext, query, input);
 
     return handleQueryResult<TransactionDates>(
       applicationContext,
@@ -931,12 +912,7 @@ class CasesDxtrGateway implements CasesInterface {
         PY_ROLE = @partyCode
     `;
 
-    const queryResult: QueryResults = await executeQuery(
-      applicationContext,
-      applicationContext.config.dxtrDbConfig,
-      query,
-      input,
-    );
+    const queryResult: QueryResults = await this.executeQuery(applicationContext, query, input);
 
     return handleQueryResult<T>(applicationContext, queryResult, MODULE_NAME, mapper);
   }
@@ -1037,12 +1013,7 @@ class CasesDxtrGateway implements CasesInterface {
     `;
 
     try {
-      const queryResult: QueryResults = await executeQuery(
-        applicationContext,
-        applicationContext.config.dxtrDbConfig,
-        query,
-        input,
-      );
+      const queryResult: QueryResults = await this.executeQuery(applicationContext, query, input);
 
       const records =
         queryResult.success && queryResult.results
@@ -1119,12 +1090,7 @@ class CasesDxtrGateway implements CasesInterface {
         PY_ROLE = @debtorPartyCode
     `;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      input,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, input);
 
     return handleQueryResult<DebtorAttorney>(
       context,
@@ -1290,12 +1256,7 @@ class CasesDxtrGateway implements CasesInterface {
       ORDER BY TX.TX_DATE DESC, TX.CS_CASEID DESC
     `;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      params,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, params);
 
     type TrusteeAppointmentRecord = {
       caseId: string;
@@ -1402,12 +1363,7 @@ class CasesDxtrGateway implements CasesInterface {
       ORDER BY TX.TX_DATE DESC
     `;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      params,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, params);
 
     type AppointmentDateRecord = {
       caseId: string;

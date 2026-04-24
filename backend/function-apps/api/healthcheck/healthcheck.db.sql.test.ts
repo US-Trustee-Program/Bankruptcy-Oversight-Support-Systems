@@ -1,82 +1,61 @@
 import { vi } from 'vitest';
-import { ConnectionPool } from 'mssql';
 
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
-import { closeDeferred } from '../../../lib/deferrable/defer-close';
-import factory from '../../../lib/factory';
 import HealthcheckSqlDb from './healthcheck.db.sql';
+import { AbstractMssqlClient } from '../../../lib/adapters/gateways/abstract-mssql-client';
+import { QueryResults } from '../../../lib/adapters/types/database';
 
 describe('healthcheck.db.sql', () => {
   let context: ApplicationContext;
   let healthcheckSqlDb: HealthcheckSqlDb;
-  let mockRequestFunc: ReturnType<typeof vi.fn>;
-  let mockCloseFunc: ReturnType<typeof vi.fn>;
-  let mockConnect: ReturnType<typeof vi.fn>;
+  let querySpy: ReturnType<typeof vi.spyOn>;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     context = await createMockApplicationContext();
     healthcheckSqlDb = new HealthcheckSqlDb(context);
+    querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
   });
 
-  beforeEach(() => {
-    mockRequestFunc = vi.fn(() => ({
-      input: vi.fn(),
-      query: vi.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
-    }));
-    mockCloseFunc = vi.fn();
-    mockConnect = vi.fn().mockResolvedValue({
-      request: mockRequestFunc,
-      close: mockCloseFunc,
-    });
-
-    vi.spyOn(factory, 'getSqlConnection').mockReturnValue({
-      connect: mockConnect,
-    } as unknown as ConnectionPool);
-  });
-
-  afterEach(async () => {
-    await closeDeferred(context);
+  afterEach(() => {
     vi.restoreAllMocks();
   });
 
   test('should return true when database query returns records', async () => {
-    mockRequestFunc.mockImplementation(() => ({
-      input: vi.fn(),
-      query: vi.fn().mockResolvedValue({ recordset: [{ id: 1 }] }),
-    }));
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [{ id: 1 }] },
+      message: '',
+    } as QueryResults);
 
     const result = await healthcheckSqlDb.checkDxtrDbRead();
 
     expect(result).toBe(true);
-    expect(mockConnect).toHaveBeenCalled();
-    expect(mockCloseFunc).toHaveBeenCalled();
+    expect(querySpy).toHaveBeenCalled();
   });
 
   test('should return false when database query returns no records', async () => {
-    mockRequestFunc.mockImplementation(() => ({
-      input: vi.fn(),
-      query: vi.fn().mockResolvedValue({ recordset: [] }),
-    }));
+    querySpy.mockResolvedValue({
+      success: true,
+      results: { recordset: [] },
+      message: '',
+    } as QueryResults);
 
     const result = await healthcheckSqlDb.checkDxtrDbRead();
 
     expect(result).toBe(false);
-    expect(mockConnect).toHaveBeenCalled();
-    expect(mockCloseFunc).toHaveBeenCalled();
+    expect(querySpy).toHaveBeenCalled();
   });
 
   test('should handle errors and return false', async () => {
     const error = new Error('Database connection error');
-    mockConnect.mockRejectedValueOnce(error);
+    querySpy.mockRejectedValueOnce(error);
 
-    // Mock the logger.error method
     const loggerErrorSpy = vi.spyOn(context.logger, 'error');
 
     const result = await healthcheckSqlDb.checkDxtrDbRead();
 
     expect(result).toBe(false);
-    expect(mockConnect).toHaveBeenCalled();
     expect(loggerErrorSpy).toHaveBeenCalledWith('HEALTHCHECK-SQL-DB', error.message, error);
   });
 });

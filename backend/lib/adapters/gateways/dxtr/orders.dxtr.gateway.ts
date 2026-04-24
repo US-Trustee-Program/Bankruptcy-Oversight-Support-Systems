@@ -1,7 +1,7 @@
 import * as mssql from 'mssql';
-import { executeQuery } from '../../utils/database';
 import { DbTableFieldSpec, QueryResults } from '../../types/database';
 import { ApplicationContext } from '../../types/basic';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 import { OrdersGateway } from '../../../use-cases/gateways.types';
 import { CamsError } from '../../../common-errors/cams-error';
 import { OrderSync, RawConsolidationOrder, RawOrderSync, TransferOrder } from '@common/cams/orders';
@@ -61,7 +61,10 @@ export function dxtrOrdersSorter(a: { orderDate: string }, b: { orderDate: strin
   return a.orderDate < b.orderDate ? -1 : 1;
 }
 
-class DxtrOrdersGateway implements OrdersGateway {
+class DxtrOrdersGateway extends AbstractMssqlClient implements OrdersGateway {
+  constructor(context: ApplicationContext) {
+    super(context.config.dxtrDbConfig, MODULE_NAME);
+  }
   async getOrderSync(context: ApplicationContext, txId: string): Promise<RawOrderSync> {
     const transfers = await this.getTransferOrderSync(context, txId);
     const consolidations = await this.getConsolidationOrderSync(context, txId);
@@ -280,12 +283,7 @@ class DxtrOrdersGateway implements OrdersGateway {
       WHERE CS.CS_CHAPTER IN ('${chapters.join("','")}')
       AND G.REGION_ID IN ('${regions.join("','")}')
       `;
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      params,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, params);
 
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<DxtrConsolidation>).recordset;
@@ -352,12 +350,7 @@ class DxtrOrdersGateway implements OrdersGateway {
       AND G.REGION_ID IN ('${regions.join("','")}')
       `;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      params,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, params);
 
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<T>).recordset;
@@ -428,12 +421,7 @@ class DxtrOrdersGateway implements OrdersGateway {
       ORDER BY TX.TX_ID ASC
       `;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      params,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, params);
 
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<DxtrOrderDocketEntry>).recordset;
@@ -561,12 +549,7 @@ class DxtrOrdersGateway implements OrdersGateway {
       AND TX.TX_CODE=@transactionCode
     `;
 
-    const queryResult: QueryResults = await executeQuery(
-      context,
-      context.config.dxtrDbConfig,
-      query,
-      params,
-    );
+    const queryResult: QueryResults = await this.executeQuery(context, query, params);
 
     if (queryResult.success) {
       return (queryResult.results as mssql.IResult<DxtrOrderDocument>).recordset;
