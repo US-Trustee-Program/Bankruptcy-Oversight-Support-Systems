@@ -93,12 +93,22 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('districtsToComboOptions', () => {
-    test('should return unique districts by courtId sorted alphabetically by label', () => {
+    test('should return all divisions with District (Division) format sorted alphabetically', () => {
       const comboOptions = useCase.districtsToComboOptions(mockDistricts);
 
-      expect(comboOptions).toHaveLength(2);
-      expect(comboOptions[0]).toEqual({ value: 'VTB', label: 'District of Vermont' });
-      expect(comboOptions[1]).toEqual({ value: 'NYSB', label: 'Southern District of New York' });
+      expect(comboOptions).toHaveLength(3);
+      expect(comboOptions[0]).toEqual({
+        value: '088',
+        label: 'District of Vermont (Rutland)',
+      });
+      expect(comboOptions[1]).toEqual({
+        value: '081',
+        label: 'Southern District of New York (Manhattan)',
+      });
+      expect(comboOptions[2]).toEqual({
+        value: '087',
+        label: 'Southern District of New York (White Plains)',
+      });
     });
 
     test('should handle empty districts array', () => {
@@ -107,8 +117,8 @@ describe('trustee district filter use case tests', () => {
       expect(comboOptions).toEqual([]);
     });
 
-    test('should deduplicate districts with same courtId', () => {
-      const duplicateDistricts: CourtDivisionDetails[] = [
+    test('should show all divisions even if they share the same district', () => {
+      const multiDivisionDistricts: CourtDivisionDetails[] = [
         ...mockDistricts,
         {
           ...mockDistricts[0],
@@ -117,9 +127,11 @@ describe('trustee district filter use case tests', () => {
         },
       ];
 
-      const comboOptions = useCase.districtsToComboOptions(duplicateDistricts);
+      const comboOptions = useCase.districtsToComboOptions(multiDivisionDistricts);
 
-      expect(comboOptions).toHaveLength(2);
+      // Should have 4 divisions now (3 original + 1 new)
+      expect(comboOptions).toHaveLength(4);
+      expect(comboOptions.some((o) => o.value === '999')).toBe(true);
     });
   });
 
@@ -144,7 +156,7 @@ describe('trustee district filter use case tests', () => {
       expect(defaultDistricts).toEqual([]);
     });
 
-    test('should extract courtIds from user office groups and return matching districts', () => {
+    test('should extract divisionCodes from user office groups and return matching divisions', () => {
       const session: CamsSession = {
         ...MockData.getCamsSession(),
         user: {
@@ -183,8 +195,8 @@ describe('trustee district filter use case tests', () => {
 
       expect(defaultDistricts).toHaveLength(1);
       expect(defaultDistricts[0]).toEqual({
-        value: 'NYSB',
-        label: 'Southern District of New York',
+        value: '081',
+        label: 'Southern District of New York (Manhattan)',
       });
     });
 
@@ -253,8 +265,8 @@ describe('trustee district filter use case tests', () => {
       expect(defaultDistricts).toHaveLength(2);
       expect(defaultDistricts).toEqual(
         expect.arrayContaining([
-          { value: 'NYSB', label: 'Southern District of New York' },
-          { value: 'VTB', label: 'District of Vermont' },
+          { value: '081', label: 'Southern District of New York (Manhattan)' },
+          { value: '088', label: 'District of Vermont (Rutland)' },
         ]),
       );
     });
@@ -294,8 +306,8 @@ describe('trustee district filter use case tests', () => {
       };
 
       const sorted = useCase.getDefaultDistrictsFromSession(sessionWithDivisions, mockDistricts);
-      expect(sorted[0].label).toBe('District of Vermont');
-      expect(sorted[1].label).toBe('Southern District of New York');
+      expect(sorted[0].label).toBe('District of Vermont (Rutland)');
+      expect(sorted[1].label).toBe('Southern District of New York (Manhattan)');
 
       const sessionNoDivisions: CamsSession = {
         ...MockData.getCamsSession(),
@@ -456,7 +468,7 @@ describe('trustee district filter use case tests', () => {
       await useCase.fetchDistricts();
 
       expect(mockOnFilterDistrict).toHaveBeenCalledWith([
-        { value: 'NYSB', label: 'Southern District of New York' },
+        { value: '081', label: 'Southern District of New York (Manhattan)' },
       ]);
     });
 

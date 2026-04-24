@@ -10,19 +10,17 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 
 const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
-  const uniqueDistricts = new Map<string, CourtDivisionDetails>();
+  // Show all divisions with format: District (Division)
+  return districts
+    .map((district) => {
+      const divisionName = district.courtDivisionName || district.courtDivisionCode;
+      const label = divisionName ? `${district.courtName} (${divisionName})` : district.courtName;
 
-  districts.forEach((district) => {
-    if (!uniqueDistricts.has(district.courtId)) {
-      uniqueDistricts.set(district.courtId, district);
-    }
-  });
-
-  return Array.from(uniqueDistricts.values())
-    .map((district) => ({
-      value: district.courtId,
-      label: district.courtName,
-    }))
+      return {
+        value: district.courtDivisionCode,
+        label: label,
+      };
+    })
     .sort((a, b) => a.label.localeCompare(b.label));
 };
 
@@ -34,29 +32,28 @@ const getDefaultDistrictsFromSession = (
     return [];
   }
 
-  const userCourtIds = new Set<string>();
+  const userDivisionCodes = new Set<string>();
   session.user.offices.forEach((office) => {
     office.groups?.forEach((group) => {
       group.divisions?.forEach((division) => {
-        if (division.court?.courtId) {
-          userCourtIds.add(division.court.courtId);
+        if (division.divisionCode) {
+          userDivisionCodes.add(division.divisionCode);
         }
       });
     });
   });
 
-  const uniqueDistricts = new Map<string, CourtDivisionDetails>();
-  allDistricts.forEach((district) => {
-    if (userCourtIds.has(district.courtId) && !uniqueDistricts.has(district.courtId)) {
-      uniqueDistricts.set(district.courtId, district);
-    }
-  });
+  return allDistricts
+    .filter((district) => userDivisionCodes.has(district.courtDivisionCode))
+    .map((district) => {
+      const divisionName = district.courtDivisionName || district.courtDivisionCode;
+      const label = divisionName ? `${district.courtName} (${divisionName})` : district.courtName;
 
-  return Array.from(uniqueDistricts.values())
-    .map((district) => ({
-      value: district.courtId,
-      label: district.courtName,
-    }))
+      return {
+        value: district.courtDivisionCode,
+        label: label,
+      };
+    })
     .sort((a, b) => a.label.localeCompare(b.label));
 };
 

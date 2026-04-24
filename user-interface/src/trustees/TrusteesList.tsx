@@ -75,9 +75,11 @@ export default function TrusteesList() {
         announcement: `Showing all ${trustees.length} trustee(s)`,
       };
     }
-    const selectedDistrictIds = selectedDistricts.map((d) => d.value);
+    const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
     const filtered = trustees.filter((trustee) =>
-      trustee.appointments.some((appt) => selectedDistrictIds.includes(appt.courtId)),
+      trustee.appointments.some(
+        (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
+      ),
     );
     const districtNames = selectedDistricts.map((d) => d.label).join(', ');
     return {
