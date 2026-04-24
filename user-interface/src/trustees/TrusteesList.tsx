@@ -2,7 +2,11 @@ import './TrusteesList.scss';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { TrusteeListItem } from '@common/cams/trustees';
-import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
+import {
+  formatChapterType,
+  formatAppointmentType,
+  formatTrusteeListName,
+} from '@common/cams/trustees';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
@@ -184,7 +188,12 @@ export default function TrusteesList() {
                           data-testid={`trustee-link-${trustee.trusteeId}`}
                           className="usa-link"
                         >
-                          {trustee.name}
+                          {formatTrusteeListName(
+                            trustee.firstName,
+                            trustee.middleName,
+                            trustee.lastName,
+                            trustee.name,
+                          )}
                         </NavLink>
                       ) : (
                         <span aria-hidden="true"></span>

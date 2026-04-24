@@ -188,7 +188,15 @@ export class TrusteesUseCase {
         appointments: appointmentsByTrusteeId.get(trustee.trusteeId) ?? [],
       }));
 
-      listItems.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+      listItems.sort((a, b) => {
+        const lastCmp = (a.lastName ?? '').localeCompare(b.lastName ?? '', undefined, {
+          sensitivity: 'base',
+        });
+        if (lastCmp !== 0) return lastCmp;
+        return (a.firstName ?? '').localeCompare(b.firstName ?? '', undefined, {
+          sensitivity: 'base',
+        });
+      });
 
       context.logger.info(MODULE_NAME, `Retrieved ${listItems.length} trustees`);
       return listItems;

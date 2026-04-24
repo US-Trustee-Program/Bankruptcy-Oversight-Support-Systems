@@ -64,8 +64,18 @@ describe('TrusteesList Component', () => {
   });
 
   test('should display trustees list when data is loaded', async () => {
-    const trustee1 = makeListItem({ trusteeId: 'trustee-1', name: 'John Doe' });
-    const trustee2 = makeListItem({ trusteeId: 'trustee-2', name: 'Jane Smith' });
+    const trustee1 = makeListItem({
+      trusteeId: 'trustee-1',
+      firstName: 'John',
+      lastName: 'Doe',
+      name: 'John Doe',
+    });
+    const trustee2 = makeListItem({
+      trusteeId: 'trustee-2',
+      firstName: 'Jane',
+      lastName: 'Smith',
+      name: 'Jane Smith',
+    });
     const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee1, trustee2] };
 
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
@@ -76,8 +86,8 @@ describe('TrusteesList Component', () => {
       expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+    expect(screen.getByText('Doe, John')).toBeInTheDocument();
+    expect(screen.getByText('Smith, Jane')).toBeInTheDocument();
   });
 
   test('should display links to individual trustee profiles', async () => {
@@ -192,6 +202,8 @@ describe('TrusteesList Component', () => {
   test('should show one row with empty cells for a trustee with zero appointments', async () => {
     const trustee = makeListItem({
       trusteeId: 'trustee-zero',
+      firstName: 'Zero',
+      lastName: 'Appt',
       name: 'Zero Appt Trustee',
       appointments: [],
     });
@@ -202,7 +214,7 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByText('Zero Appt Trustee')).toBeInTheDocument();
+      expect(screen.getByText('Appt, Zero')).toBeInTheDocument();
     });
 
     expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
@@ -282,7 +294,12 @@ describe('TrusteesList Component', () => {
 
   describe('District Filtering', () => {
     test('should render district filter component with ARIA live region', async () => {
-      const trustee = makeListItem({ trusteeId: 'trustee-1', name: 'Test Trustee' });
+      const trustee = makeListItem({
+        trusteeId: 'trustee-1',
+        firstName: 'Test',
+        lastName: 'Trustee',
+        name: 'Test Trustee',
+      });
       const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
 
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
@@ -291,7 +308,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('Test Trustee')).toBeInTheDocument();
+        expect(screen.getByText('Trustee, Test')).toBeInTheDocument();
       });
 
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -334,16 +351,22 @@ describe('TrusteesList Component', () => {
       const apptCA = makeAppointment({ courtId: 'CAB', divisionCode: '999' });
       const trusteeNY = makeListItem({
         trusteeId: 'ny',
+        firstName: 'New York',
+        lastName: 'Trustee',
         name: 'New York Trustee',
         appointments: [apptNY],
       });
       const trusteeVT = makeListItem({
         trusteeId: 'vt',
+        firstName: 'Vermont',
+        lastName: 'Trustee',
         name: 'Vermont Trustee',
         appointments: [apptVT],
       });
       const trusteeCA = makeListItem({
         trusteeId: 'ca',
+        firstName: 'California',
+        lastName: 'Trustee',
         name: 'California Trustee',
         appointments: [apptCA],
       });
@@ -438,9 +461,9 @@ describe('TrusteesList Component', () => {
 
       // NY and VT trustees appear, CA trustee is excluded
       await waitFor(() => {
-        expect(screen.getByText('New York Trustee')).toBeInTheDocument();
-        expect(screen.getByText('Vermont Trustee')).toBeInTheDocument();
-        expect(screen.queryByText('California Trustee')).not.toBeInTheDocument();
+        expect(screen.getByText('Trustee, New York')).toBeInTheDocument();
+        expect(screen.getByText('Trustee, Vermont')).toBeInTheDocument();
+        expect(screen.queryByText('Trustee, California')).not.toBeInTheDocument();
       });
       expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
     });
@@ -448,16 +471,22 @@ describe('TrusteesList Component', () => {
     test('should show all trustees when no district filter is active, including unassigned ones', async () => {
       const trusteeWithAppt = makeListItem({
         trusteeId: 't1',
+        firstName: 'Appointed',
+        lastName: 'Trustee',
         name: 'Appointed Trustee',
         appointments: [makeAppointment({ courtId: 'NYSB', divisionCode: '081' })],
       });
       const trusteeNoAppt = makeListItem({
         trusteeId: 't2',
+        firstName: 'Unassigned',
+        lastName: 'Trustee',
         name: 'Unassigned Trustee',
         appointments: [],
       });
       const trusteeAnotherAppt = makeListItem({
         trusteeId: 't3',
+        firstName: 'Vermont',
+        lastName: 'Trustee',
         name: 'Vermont Trustee',
         appointments: [makeAppointment({ courtId: 'VTB' })],
       });
@@ -473,9 +502,9 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('3 Trustee(s)')).toBeInTheDocument();
       });
 
-      expect(screen.getByText('Appointed Trustee')).toBeInTheDocument();
-      expect(screen.getByText('Unassigned Trustee')).toBeInTheDocument();
-      expect(screen.getByText('Vermont Trustee')).toBeInTheDocument();
+      expect(screen.getByText('Trustee, Appointed')).toBeInTheDocument();
+      expect(screen.getByText('Trustee, Unassigned')).toBeInTheDocument();
+      expect(screen.getByText('Trustee, Vermont')).toBeInTheDocument();
     });
 
     test('should render pills above trustee count when filter is expanded', async () => {
