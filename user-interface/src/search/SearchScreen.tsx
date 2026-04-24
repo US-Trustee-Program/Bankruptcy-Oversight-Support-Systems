@@ -112,7 +112,7 @@ export default function SearchScreen() {
       // On unmount, track that user navigated away from Case Search
       analytics.trackNavigation(location.pathname);
     };
-  }, []);
+  }, [analytics, location.pathname]);
 
   const mapToFormData = (predicate: CasesSearchPredicate): SearchScreenFormData => {
     return {

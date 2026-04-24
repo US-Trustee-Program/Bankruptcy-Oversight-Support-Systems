@@ -47,6 +47,15 @@ export const MyCasesScreen = () => {
   const [draftNotesCaseIds, setDraftNotesCaseIds] = useState<string[]>([]);
   const [draftNotes, setDraftNotes] = useState<Cacheable<CaseNoteInput>[]>([]);
 
+  // Track navigation away from My Cases landing page
+  // Note: This useEffect must be before the early return to comply with Rules of Hooks
+  useEffect(() => {
+    return () => {
+      // On unmount, track that user navigated away from My Cases
+      analytics.trackNavigation(location.pathname);
+    };
+  }, [analytics, location.pathname]);
+
   if (!session || !session.user.offices) {
     // TODO: This renders a blank pane with no notice to the user. Maybe this should at least return a <Stop> component with a message.
     return <></>;
@@ -67,14 +76,6 @@ export const MyCasesScreen = () => {
       uswdsStyle: UswdsButtonStyle.Default,
     },
   };
-
-  // Track navigation away from My Cases landing page
-  useEffect(() => {
-    return () => {
-      // On unmount, track that user navigated away from My Cases
-      analytics.trackNavigation(location.pathname);
-    };
-  }, []);
 
   function handleShowClosedCasesToggle(isActive: boolean) {
     setDoShowClosedCases(isActive);

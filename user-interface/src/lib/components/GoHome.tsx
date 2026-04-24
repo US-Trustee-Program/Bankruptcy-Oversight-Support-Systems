@@ -38,8 +38,11 @@ export function GoHome(props: GoHomeProps) {
           // Even if LD fails, we should navigate somewhere
           setIsReady(true);
         });
+    } else {
+      // If LaunchDarkly client is not available (not configured or provider missing),
+      // proceed with navigation using default feature flag values to avoid blank screen
+      setIsReady(true);
     }
-    // Don't set isReady if ldClient is undefined - wait for it to be available
   }, [ldClient]);
 
   useEffect(() => {
