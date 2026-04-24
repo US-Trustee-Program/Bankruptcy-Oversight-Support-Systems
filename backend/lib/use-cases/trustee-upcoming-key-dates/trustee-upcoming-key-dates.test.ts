@@ -42,8 +42,14 @@ function buildMockInput(
     tirReviewPeriodEnd: null,
     tirSubmission: null,
     tirReview: null,
-    upcomingFieldExam: null,
-    upcomingIndependentAuditRequired: null,
+    upcomingExamOrAuditYear: null,
+    upcomingExamOrAuditType: null,
+    tirFrequency: null,
+    tirSemiAnnualReviewPeriodStart: null,
+    tirSemiAnnualReviewPeriodEnd: null,
+    tirSemiAnnualSubmission: null,
+    tirSemiAnnualReview: null,
+    lastAuditFiscalYear: null,
     ...overrides,
   };
 }
@@ -153,6 +159,173 @@ describe('TrusteeUpcomingKeyDatesUseCase', () => {
       );
 
       expect(createHistorySpy).not.toHaveBeenCalled();
+    });
+
+    test('saves lastAuditFiscalYear when set', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'createHistory').mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({ lastAuditFiscalYear: 2024 });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ lastAuditFiscalYear: 2024 }),
+      );
+    });
+
+    test('does not include lastAuditFiscalYear in saved doc when null', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'createHistory').mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({ lastAuditFiscalYear: null });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      const savedDoc = upsertSpy.mock.calls[0][0];
+      expect(savedDoc).not.toHaveProperty('lastAuditFiscalYear');
+    });
+
+    test('lastAuditFiscalYear change is captured in audit history', async () => {
+      const existing = buildMockDocument({ lastAuditFiscalYear: 2022 });
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(undefined);
+      const createHistorySpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createHistory')
+        .mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({ lastAuditFiscalYear: 2024 });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      expect(createHistorySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          before: { lastAuditFiscalYear: 2022 },
+          after: { lastAuditFiscalYear: 2024 },
+        }),
+      );
+    });
+
+    test('saves upcomingExamOrAuditYear when set', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'createHistory').mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({ upcomingExamOrAuditYear: 2029 });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ upcomingExamOrAuditYear: 2029 }),
+      );
+    });
+
+    test('saves upcomingExamOrAuditType when set', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'createHistory').mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({ upcomingExamOrAuditType: 'Field Exam' });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      expect(upsertSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ upcomingExamOrAuditType: 'Field Exam' }),
+      );
+    });
+
+    test('does not include upcomingExamOrAuditYear in saved doc when null', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(null);
+      const upsertSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'upsert')
+        .mockResolvedValue(undefined);
+      vi.spyOn(MockMongoRepository.prototype, 'createHistory').mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({ upcomingExamOrAuditYear: null });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      const savedDoc = upsertSpy.mock.calls[0][0];
+      expect(savedDoc).not.toHaveProperty('upcomingExamOrAuditYear');
+    });
+
+    test('upcomingExamOrAuditYear change is captured in audit history', async () => {
+      const existing = buildMockDocument({ upcomingExamOrAuditYear: 2027 });
+      vi.spyOn(MockMongoRepository.prototype, 'getByAppointmentId').mockResolvedValue(existing);
+      vi.spyOn(MockMongoRepository.prototype, 'upsert').mockResolvedValue(undefined);
+      const createHistorySpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createHistory')
+        .mockResolvedValue(undefined);
+
+      const context = await createMockApplicationContext();
+      const useCase = new TrusteeUpcomingKeyDatesUseCase(context);
+      const input = buildMockInput({ upcomingExamOrAuditYear: 2029 });
+
+      await useCase.upsertUpcomingKeyDates(
+        'trustee-001',
+        'appointment-001',
+        input,
+        SYSTEM_USER_REFERENCE,
+      );
+
+      expect(createHistorySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          before: { upcomingExamOrAuditYear: 2027 },
+          after: { upcomingExamOrAuditYear: 2029 },
+        }),
+      );
     });
 
     test('existing doc, field cleared (set to null): creates history showing old value → absent', async () => {
