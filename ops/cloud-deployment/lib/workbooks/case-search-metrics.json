@@ -1,0 +1,263 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Case Search Metrics\nMonitor case search usage: search volume, search types, user behavior, and performance patterns."
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 3600000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 300000
+                },
+                {
+                  "durationMs": 900000
+                },
+                {
+                  "durationMs": 1800000
+                },
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 432000000
+                },
+                {
+                  "durationMs": 604800000
+                }
+              ]
+            },
+            "name": "TimeRange",
+            "label": "Time Range"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Search Activity Overview"
+      },
+      "name": "overview-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| summarize TotalSearches = count(),\n            UniqueUsers = dcount(user_Id),\n            AvgTimeToSearch = avg(todouble(customMeasurements.timeToFirstSearch)) / 1000\n| project TotalSearches, UniqueUsers, AvgTimeToSearchSeconds = round(AvgTimeToSearch, 1)",
+        "size": 4,
+        "title": "Search Summary",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "Column",
+            "formatter": 1
+          },
+          "leftContent": {
+            "columnMatch": "Value",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "auto"
+            }
+          },
+          "showBorder": false
+        }
+      },
+      "name": "search-summary"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Search Volume Over Time"
+      },
+      "name": "volume-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| summarize SearchCount = count() by bin(timestamp, 1h)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Searches Per Hour",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart",
+        "chartSettings": {
+          "xAxis": "timestamp",
+          "yAxis": ["SearchCount"],
+          "seriesLabelSettings": [
+            {
+              "seriesName": "SearchCount",
+              "label": "Searches"
+            }
+          ]
+        }
+      },
+      "name": "searches-per-hour"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Search Type Distribution"
+      },
+      "name": "search-type-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| extend searchType = tostring(customDimensions.searchType)\n| summarize Count = count() by searchType\n| order by Count desc",
+        "size": 0,
+        "title": "Search Types",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "piechart"
+      },
+      "name": "search-types"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| extend searchType = tostring(customDimensions.searchType)\n| summarize Count = count() by searchType, bin(timestamp, 1h)\n| order by timestamp asc",
+        "size": 0,
+        "title": "Search Types Over Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "timestamp",
+          "yAxis": ["Count"],
+          "group": "searchType",
+          "createOtherGroup": 0
+        }
+      },
+      "name": "search-types-over-time"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Time to First Search"
+      },
+      "name": "time-to-search-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| extend timeToSearchMs = todouble(customMeasurements.timeToFirstSearch)\n| extend timeToSearchSeconds = timeToSearchMs / 1000\n| summarize \n    AvgTime = avg(timeToSearchSeconds),\n    MedianTime = percentile(timeToSearchSeconds, 50),\n    P90Time = percentile(timeToSearchSeconds, 90),\n    P95Time = percentile(timeToSearchSeconds, 95)\n| project \n    ['Average (s)'] = round(AvgTime, 1),\n    ['Median (s)'] = round(MedianTime, 1),\n    ['90th Percentile (s)'] = round(P90Time, 1),\n    ['95th Percentile (s)'] = round(P95Time, 1)",
+        "size": 0,
+        "title": "Time to First Search Distribution",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "$gen_group",
+              "formatter": 13,
+              "formatOptions": {
+                "linkTarget": null,
+                "showIcon": true
+              }
+            }
+          ]
+        }
+      },
+      "name": "time-to-search-stats"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| extend timeToSearchMs = todouble(customMeasurements.timeToFirstSearch)\n| extend timeToSearchSeconds = timeToSearchMs / 1000\n| extend TimeBucket = case(\n    timeToSearchSeconds < 5, \"0-5s\",\n    timeToSearchSeconds < 10, \"5-10s\",\n    timeToSearchSeconds < 30, \"10-30s\",\n    timeToSearchSeconds < 60, \"30-60s\",\n    timeToSearchSeconds < 300, \"1-5m\",\n    \"5m+\"\n)\n| summarize Count = count() by TimeBucket\n| order by TimeBucket asc",
+        "size": 0,
+        "title": "Time to First Search Histogram",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart"
+      },
+      "name": "time-to-search-histogram"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "## Navigation Patterns"
+      },
+      "name": "navigation-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Landing Page Navigation\"\n| extend fromPage = tostring(customDimensions.fromPage)\n| extend toPage = tostring(customDimensions.toPage)\n| where fromPage == \"case-search\"\n| summarize Count = count() by toPage\n| order by Count desc\n| take 10",
+        "size": 0,
+        "title": "Top Destinations from Case Search",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      },
+      "name": "navigation-from-search"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Landing Page Navigation\"\n| extend timeOnPage = todouble(customMeasurements.timeOnLandingPage) / 1000\n| extend fromPage = tostring(customDimensions.fromPage)\n| where fromPage == \"case-search\"\n| summarize \n    AvgTime = avg(timeOnPage),\n    MedianTime = percentile(timeOnPage, 50)\n| project \n    ['Average Time on Search Page (s)'] = round(AvgTime, 1),\n    ['Median Time on Search Page (s)'] = round(MedianTime, 1)",
+        "size": 0,
+        "title": "Time Spent on Search Page",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table"
+      },
+      "name": "time-on-search-page"
+    }
+  ],
+  "fallbackResourceIds": [],
+  "fromTemplateId": "sentinel-UserWorkbook",
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
