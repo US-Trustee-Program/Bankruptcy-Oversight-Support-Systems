@@ -3,12 +3,6 @@ name: Security
 on:
   workflow_call:
     secrets:
-      SNYK_OAUTH_CLIENT_ID:
-        required: true
-      SNYK_OAUTH_CLIENT_SECRET:
-        required: true
-      AZ_SECURITY_SCAN_STORAGE_NAME:
-        required: true
       AZ_SECURITY_SCAN_CLIENT_ID:
         required: true
       AZ_TENANT_ID:
@@ -28,6 +22,19 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
+      - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
+        with:
+          client-id: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Fetch secrets from Key Vault
+        run: |
+          echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
+
       - name: Setup Snyk CLI
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1
         with:
@@ -37,8 +44,6 @@ jobs:
         run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
-          SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }}
-          SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
 
       - name: Run Snyk SCA scan
         run: snyk test --all-projects --exclude=function-apps --severity-threshold=medium --policy-path=. --sarif-file-output=snyk-sca.sarif
@@ -51,28 +56,18 @@ jobs:
         env:
           SNYK_API: https://api.snykgov.io
 
-      - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
-        if: always()
-        with:
-          client-id: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZ_TENANT_ID }}
-          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-
       - name: Upload raw SARIF to Azure Storage
         if: always()
         run: |
           if [ -f snyk-sca.sarif ]; then
             az storage blob upload \
-              --account-name "$ACCOUNT_NAME" \
+              --account-name "$AZ_SECURITY_SCAN_STORAGE_NAME" \
               --auth-mode login \
               -f snyk-sca.sarif \
               -c security-scan-results \
               -n "snyk-sca-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.sarif" \
               --overwrite
           fi
-        env:
-          ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
 
       - name: Sanitize SARIF for GitHub upload
         if: always()
@@ -104,6 +99,19 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
+      - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
+        with:
+          client-id: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZ_TENANT_ID }}
+          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          environment: ${{ vars.AZURE_ENVIRONMENT }}
+
+      - name: Fetch secrets from Key Vault
+        run: |
+          echo "AZ_SECURITY_SCAN_STORAGE_NAME=$(az keyvault secret show --vault-name kv-ustp-cams --name AZ-SECURITY-SCAN-STORAGE-NAME --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "SNYK_OAUTH_CLIENT_ID=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-ID --query value -o tsv)" >> "$GITHUB_ENV"
+          echo "SNYK_OAUTH_CLIENT_SECRET=$(az keyvault secret show --vault-name kv-ustp-cams --name SNYK-OAUTH-CLIENT-SECRET --query value -o tsv)" >> "$GITHUB_ENV"
+
       - name: Setup Snyk CLI
         uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1
         with:
@@ -113,8 +121,6 @@ jobs:
         run: snyk auth --auth-type=oauth --client-secret="$SNYK_OAUTH_CLIENT_SECRET" --client-id="$SNYK_OAUTH_CLIENT_ID"
         env:
           SNYK_API: https://api.snykgov.io
-          SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }}
-          SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }}
 
       - name: Run Snyk Code (SAST) scan
         id: snyk-scan
@@ -123,35 +129,25 @@ jobs:
         env:
           SNYK_API: https://api.snykgov.io
 
-      - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
-        if: always()
-        with:
-          client-id: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZ_TENANT_ID }}
-          subscription-id: ${{ secrets.AZ_SUBSCRIPTION_ID }}
-          environment: ${{ vars.AZURE_ENVIRONMENT }}
-
       - name: Upload raw SARIF to Azure Storage
         if: always()
         run: |
           if [ -f snyk-code.sarif ]; then
             az storage blob upload \
-              --account-name "$ACCOUNT_NAME" \
+              --account-name "$AZ_SECURITY_SCAN_STORAGE_NAME" \
               --auth-mode login \
               -f snyk-code.sarif \
               -c security-scan-results \
               -n "snyk-code-${{ github.run_number }}-${{ github.run_attempt }}-${{ github.ref_name }}.sarif" \
               --overwrite
           fi
-        env:
-          ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
 
       - name: Download SAST baseline
         id: baseline
         if: always()
         run: |
           if az storage blob download \
-            --account-name "$ACCOUNT_NAME" \
+            --account-name "$AZ_SECURITY_SCAN_STORAGE_NAME" \
             --auth-mode login \
             -c snyk-baseline \
             -n snyk-code-baseline.txt \
@@ -161,8 +157,6 @@ jobs:
             echo "::warning::No SAST baseline found. All findings will be treated as new."
             echo "baseline_found=false" >> "$GITHUB_OUTPUT"
           fi
-        env:
-          ACCOUNT_NAME: ${{ secrets.AZ_SECURITY_SCAN_STORAGE_NAME }}
 
       - name: Compare against baseline
         id: baseline-compare

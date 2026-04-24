@@ -4,9 +4,11 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
-  calculateNextAuditDate,
   isoToSentinel,
 } from '@common/cams/trustee-upcoming-key-dates';
+
+const CURRENT_YEAR = new Date().getFullYear();
+const FISCAL_YEAR_OPTIONS = Array.from({ length: 21 }, (_, i) => CURRENT_YEAR - i);
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -18,8 +20,7 @@ type PastKeyDatesFormState = {
   pastFieldExam: string;
   pastAudit: string;
   pastTprSubmission: string;
-  upcomingFieldExam: string;
-  upcomingIndependentAuditRequired: string;
+  lastAuditFiscalYear: number | '';
 };
 
 const EMPTY_FORM: PastKeyDatesFormState = {
@@ -27,18 +28,8 @@ const EMPTY_FORM: PastKeyDatesFormState = {
   pastFieldExam: '',
   pastAudit: '',
   pastTprSubmission: '',
-  upcomingFieldExam: '',
-  upcomingIndependentAuditRequired: '',
+  lastAuditFiscalYear: '',
 };
-
-function computeNextDates(pastFieldExam: string, pastAudit: string) {
-  return {
-    upcomingFieldExam:
-      calculateNextAuditDate(pastFieldExam || undefined, pastAudit || undefined, 3) ?? '',
-    upcomingIndependentAuditRequired:
-      calculateNextAuditDate(pastFieldExam || undefined, pastAudit || undefined, 6) ?? '',
-  };
-}
 
 function buildUpcomingKeyDatesInput(
   ids: { trusteeId: string; appointmentId: string },
@@ -68,8 +59,22 @@ function buildUpcomingKeyDatesInput(
       : null,
     tirSubmission: original?.tirSubmission ? isoToSentinel(original.tirSubmission) : null,
     tirReview: original?.tirReview ? isoToSentinel(original.tirReview) : null,
-    upcomingFieldExam: form.upcomingFieldExam || null,
-    upcomingIndependentAuditRequired: form.upcomingIndependentAuditRequired || null,
+    tirSemiAnnualReviewPeriodStart: original?.tirSemiAnnualReviewPeriodStart
+      ? isoToSentinel(original.tirSemiAnnualReviewPeriodStart)
+      : null,
+    tirSemiAnnualReviewPeriodEnd: original?.tirSemiAnnualReviewPeriodEnd
+      ? isoToSentinel(original.tirSemiAnnualReviewPeriodEnd)
+      : null,
+    tirSemiAnnualSubmission: original?.tirSemiAnnualSubmission
+      ? isoToSentinel(original.tirSemiAnnualSubmission)
+      : null,
+    tirSemiAnnualReview: original?.tirSemiAnnualReview
+      ? isoToSentinel(original.tirSemiAnnualReview)
+      : null,
+    upcomingExamOrAuditYear: original?.upcomingExamOrAuditYear ?? null,
+    upcomingExamOrAuditType: original?.upcomingExamOrAuditType ?? null,
+    tirFrequency: original?.tirFrequency ?? null,
+    lastAuditFiscalYear: form.lastAuditFiscalYear || null,
   };
 }
 
@@ -97,8 +102,7 @@ export default function PastKeyDatesForm() {
             pastFieldExam: data.pastFieldExam ?? '',
             pastAudit: data.pastAudit ?? '',
             pastTprSubmission: data.pastTprSubmission ?? '',
-            upcomingFieldExam: data.upcomingFieldExam ?? '',
-            upcomingIndependentAuditRequired: data.upcomingIndependentAuditRequired ?? '',
+            lastAuditFiscalYear: data.lastAuditFiscalYear ?? '',
           });
         }
       })
@@ -118,14 +122,7 @@ export default function PastKeyDatesForm() {
 
   function handleChange(field: 'pastFieldExam' | 'pastAudit') {
     return (ev: React.ChangeEvent<HTMLInputElement>) => {
-      const value = ev.target.value;
-      const pastFieldExam = field === 'pastFieldExam' ? value : form.pastFieldExam;
-      const pastAudit = field === 'pastAudit' ? value : form.pastAudit;
-      setForm((prev) => ({
-        ...prev,
-        [field]: value,
-        ...computeNextDates(pastFieldExam, pastAudit),
-      }));
+      setForm((prev) => ({ ...prev, [field]: ev.target.value }));
     };
   }
 
@@ -160,28 +157,51 @@ export default function PastKeyDatesForm() {
       <h3>Edit Past Key Dates</h3>
       <DatePicker
         id="past-background-question"
-        label="Background Question"
+        label="Last Update to Background Questionnaire"
         value={form.pastBackgroundQuestion}
         onChange={handleSimpleChange('pastBackgroundQuestion')}
         disableMax
       />
       <DatePicker
         id="past-field-exam"
-        label="Field Exam"
+        label="Field Exam Report Date"
         value={form.pastFieldExam}
         onChange={handleChange('pastFieldExam')}
         disableMax
       />
       <DatePicker
         id="past-audit"
-        label="Audit"
+        label="Audit Report Date"
         value={form.pastAudit}
         onChange={handleChange('pastAudit')}
         disableMax
       />
+      <div className="usa-form-group">
+        <label className="usa-label" htmlFor="last-audit-fiscal-year">
+          Last Audit&apos;s Fiscal Year
+        </label>
+        <span className="usa-hint">The fiscal year of the TIR data audited</span>
+        <select
+          className="usa-select"
+          id="last-audit-fiscal-year"
+          data-testid="last-audit-fiscal-year"
+          value={form.lastAuditFiscalYear}
+          onChange={(ev) => {
+            const val = ev.target.value;
+            setForm((prev) => ({ ...prev, lastAuditFiscalYear: val ? Number(val) : '' }));
+          }}
+        >
+          <option value="">- Select -</option>
+          {FISCAL_YEAR_OPTIONS.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
+      </div>
       <DatePicker
         id="past-tpr-submission"
-        label="TPR Submission"
+        label="Trustee Interim Report Letter Date"
         value={form.pastTprSubmission}
         onChange={handleSimpleChange('pastTprSubmission')}
         disableMax
