@@ -13,6 +13,22 @@
         margin-bottom: 0.4rem;
         line-height: 1.5;
       }
+
+      .trustee-name-fields {
+        margin-bottom: 0.4rem;
+
+        .trustee-name-field {
+          margin-bottom: 0.25rem;
+          line-height: 1.5;
+
+          .trustee-name-label {
+            display: block;
+            font-size: 0.85rem;
+            color: #71767a;
+            margin-bottom: 0.1rem;
+          }
+        }
+      }
     }
   }
 }

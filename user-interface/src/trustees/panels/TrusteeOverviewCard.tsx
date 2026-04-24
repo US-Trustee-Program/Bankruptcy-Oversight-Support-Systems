@@ -30,7 +30,28 @@ export default function TrusteeOverviewCard({
                 <IconLabel icon="edit" label="Edit" />
               </Button>
             </div>
-            <div className="trustee-name">{trustee.name}</div>
+            {trustee.firstName || trustee.lastName ? (
+              <div className="trustee-name-fields">
+                <div className="trustee-name-field">
+                  <span className="trustee-name-label">First Name</span>
+                  <span data-testid="trustee-first-name">{trustee.firstName}</span>
+                </div>
+                {trustee.middleName && (
+                  <div className="trustee-name-field">
+                    <span className="trustee-name-label">Middle Name</span>
+                    <span data-testid="trustee-middle-name">{trustee.middleName}</span>
+                  </div>
+                )}
+                <div className="trustee-name-field">
+                  <span className="trustee-name-label">Last Name</span>
+                  <span data-testid="trustee-last-name">{trustee.lastName}</span>
+                </div>
+              </div>
+            ) : (
+              <div className="trustee-name" data-testid="trustee-name-fallback">
+                {trustee.name}
+              </div>
+            )}
             <FormattedContact contact={trustee.public} testIdPrefix="trustee" />
           </div>
         </div>
