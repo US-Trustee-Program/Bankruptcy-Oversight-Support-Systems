@@ -7,6 +7,7 @@ import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { TrusteeDistrictFilterRef } from './trusteeDistrictFilter.types';
 
 const mockDistricts: CourtDivisionDetails[] = [
   {
@@ -335,5 +336,178 @@ describe('TrusteeDistrictFilter Component', () => {
 
     // Should not call callback with empty selection on mount (no default)
     expect(mockHandleFilterDistrict).not.toHaveBeenCalled();
+  });
+
+  test('should call onExpandedChange callback when filter is expanded or collapsed', async () => {
+    const user = userEvent.setup();
+    const mockOnExpandedChange = vi.fn();
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+    render(
+      <TrusteeDistrictFilter
+        handleFilterDistrict={mockHandleFilterDistrict}
+        onExpandedChange={mockOnExpandedChange}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Filters')).toBeInTheDocument();
+    });
+
+    const toggleButton = screen.getByRole('button', { name: /filters/i });
+
+    // Expand
+    await user.click(toggleButton);
+    await waitFor(() => {
+      expect(mockOnExpandedChange).toHaveBeenCalledWith(true);
+    });
+
+    // Collapse
+    await user.click(toggleButton);
+    await waitFor(() => {
+      expect(mockOnExpandedChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  test('should expose removePill method via ref', async () => {
+    const ref = { current: null } as unknown as React.RefObject<TrusteeDistrictFilterRef>;
+    const session = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '081',
+            officeName: 'Manhattan',
+            idpGroupName: 'Manhattan',
+            regionId: '02',
+            regionName: 'New York Region',
+            groups: [
+              {
+                groupDesignator: 'NY',
+                divisions: [
+                  {
+                    divisionCode: '081',
+                    court: {
+                      courtId: 'NYSB',
+                      courtName: 'Southern District of New York',
+                    },
+                    courtOffice: {
+                      courtOfficeCode: '081',
+                      courtOfficeName: 'Manhattan',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+
+    render(<TrusteeDistrictFilter ref={ref} handleFilterDistrict={mockHandleFilterDistrict} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Filters')).toBeInTheDocument();
+    });
+
+    // Wait for pre-populated district
+    await waitFor(() => {
+      expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
+        expect.arrayContaining([{ value: 'NYSB', label: 'Southern District of New York' }]),
+      );
+    });
+
+    // Call removePill via ref
+    ref.current?.removePill({ value: 'NYSB', label: 'Southern District of New York' });
+
+    // Should update selection to empty
+    await waitFor(() => {
+      expect(mockHandleFilterDistrict).toHaveBeenCalledWith([]);
+    });
+  });
+
+  test('should expose clearAll method via ref', async () => {
+    const user = userEvent.setup();
+    const ref = { current: null } as unknown as React.RefObject<TrusteeDistrictFilterRef>;
+    const session = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '081',
+            officeName: 'Manhattan',
+            idpGroupName: 'Manhattan',
+            regionId: '02',
+            regionName: 'New York Region',
+            groups: [
+              {
+                groupDesignator: 'NY',
+                divisions: [
+                  {
+                    divisionCode: '081',
+                    court: {
+                      courtId: 'NYSB',
+                      courtName: 'Southern District of New York',
+                    },
+                    courtOffice: {
+                      courtOfficeCode: '081',
+                      courtOfficeName: 'Manhattan',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+
+    render(<TrusteeDistrictFilter ref={ref} handleFilterDistrict={mockHandleFilterDistrict} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Filters')).toBeInTheDocument();
+    });
+
+    // Wait for pre-populated district
+    await waitFor(() => {
+      expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
+        expect.arrayContaining([{ value: 'NYSB', label: 'Southern District of New York' }]),
+      );
+    });
+
+    mockHandleFilterDistrict.mockClear();
+
+    // Expand and select Vermont
+    const toggleButton = screen.getByRole('button', { name: /filters/i });
+    await user.click(toggleButton);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+    });
+
+    const combobox = screen.getByLabelText('District (Division)');
+    await user.click(combobox);
+
+    await waitFor(() => {
+      expect(screen.getByText('District of Vermont')).toBeInTheDocument();
+    });
+
+    const vermontOption = screen.getByText('District of Vermont');
+    await user.click(vermontOption);
+
+    mockHandleFilterDistrict.mockClear();
+
+    // Call clearAll via ref - should restore defaults (NYSB)
+    ref.current?.clearAll();
+
+    await waitFor(() => {
+      expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
+        expect.arrayContaining([{ value: 'NYSB', label: 'Southern District of New York' }]),
+      );
+    });
   });
 });
