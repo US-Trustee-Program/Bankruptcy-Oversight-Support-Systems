@@ -172,11 +172,15 @@ export default function TrusteesList() {
             return (
               <div key={trustee.trusteeId} className="trustee-group">
                 {rows.map((appt, idx) => (
-                  <div key={`${trustee.trusteeId}-${idx}`} className="trustees-list-row" role="row">
+                  <div
+                    key={`${trustee.trusteeId}-${idx}`}
+                    className={`trustees-list-row${idx > 0 ? ' trustees-list-row--continuation' : ''}`}
+                    role="row"
+                  >
                     <div
                       className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[0])}`}
                       role="cell"
-                      data-cell={COLUMN_HEADERS[0]}
+                      {...(idx === 0 ? { 'data-cell': COLUMN_HEADERS[0] } : {})}
                     >
                       {idx === 0 ? (
                         <NavLink
