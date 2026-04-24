@@ -32,8 +32,9 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: '../node_modules/@uswds/uswds/dist/fonts/*',
+          src: '../node_modules/@uswds/uswds/dist/fonts/**',
           dest: 'assets/fonts',
+          rename: { stripBase: 5 },
         },
         {
           src: '../node_modules/@uswds/uswds/dist/img/*',
