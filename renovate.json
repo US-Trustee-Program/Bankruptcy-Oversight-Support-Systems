@@ -78,8 +78,7 @@
     {
       "description": "Group TypeScript ESLint packages",
       "matchPackageNames": ["typescript-eslint", "@typescript-eslint/eslint-plugin", "@typescript-eslint/parser"],
-      "groupName": "typescript-eslint",
-      "allowedVersions": "8.54.x"
+      "groupName": "typescript-eslint"
     },
     {
       "description": "Pin ESLint package until full support of V10",
