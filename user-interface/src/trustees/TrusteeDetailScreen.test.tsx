@@ -15,7 +15,8 @@ import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
 vi.mock('@/lib/hooks/UseFeatureFlags');
 vi.mock('launchdarkly-react-client-sdk', () => ({
   useLDClient: vi.fn(),
-  withLDProvider: vi.fn((config) => (component) => component),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  withLDProvider: vi.fn((config: any) => (component: any) => component),
   useFlags: vi.fn(() => ({})),
 }));
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
