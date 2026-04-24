@@ -1,5 +1,4 @@
 import { vi } from 'vitest';
-import * as database from '../../utils/database';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { QueryResults } from '../../types/database';
 import DxtrOrdersGateway, {
@@ -10,13 +9,7 @@ import DxtrOrdersGateway, {
 } from './orders.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';
 import MockData from '@common/cams/test-utilities/mock-data';
-
-function getEarliestDate(docket: DxtrOrderDocketEntry[]) {
-  return docket.reduce<string>((earliestDate, de) => {
-    if (!earliestDate || earliestDate > de.dateFiled) return de.dateFiled;
-    return earliestDate;
-  }, null);
-}
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 
 const dxtrTransferCaseDocketEntries: DxtrOrderDocketEntry[] = [
   {
@@ -130,27 +123,25 @@ const dxtrConsolidationOrderDocument: DxtrOrderDocument = {
 };
 
 function buildSuccessfulQueryResult(recordset: Array<unknown> = []) {
-  const orderDocumentResults: QueryResults = {
+  return {
     success: true,
-    results: {
-      recordset: recordset,
-    },
+    results: { recordset },
     message: '',
-  };
-  return orderDocumentResults;
+  } as QueryResults;
 }
 
 describe('DxtrOrdersGateway', () => {
   describe('getOrders', () => {
     let applicationContext: ApplicationContext;
-    const querySpy = vi.spyOn(database, 'executeQuery');
+    let querySpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(async () => {
       applicationContext = await createMockApplicationContext();
+      querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
     });
 
     afterEach(() => {
-      querySpy.mockReset();
+      vi.restoreAllMocks();
     });
 
     test('should sort orders', () => {
@@ -170,116 +161,60 @@ describe('DxtrOrdersGateway', () => {
       expect(actualList).toEqual(expectedList);
     });
 
-    test('should return a list of orders', async () => {
-      const applicationContext = await createMockApplicationContext();
-      const querySpy = vi.spyOn(database, 'executeQuery');
-
-      const consolidtionOrdersResults = buildSuccessfulQueryResult(dxtrConsolidationOrders);
-      const consolidationDocketEntryResults = buildSuccessfulQueryResult(
-        dxtrConsolidationCaseDocketEntries,
-      );
-      const consolidationDocumentResults = buildSuccessfulQueryResult([
-        dxtrConsolidationOrderDocument,
-      ]);
-
-      const transferOrdersResults = buildSuccessfulQueryResult([dxtrTransferOrder]);
-      const transferDocketEntryResults = buildSuccessfulQueryResult(dxtrTransferCaseDocketEntries);
-      const transferDocumentResults = buildSuccessfulQueryResult([dxtrTransferOrderDocument]);
+    test('should return a list of orders with correct order dates derived from earliest docket entry', async () => {
       querySpy
-        .mockResolvedValueOnce(transferOrdersResults)
-        .mockResolvedValueOnce(transferDocketEntryResults)
-        .mockResolvedValueOnce(transferDocumentResults)
-        .mockResolvedValueOnce(consolidtionOrdersResults)
-        .mockResolvedValueOnce(consolidationDocketEntryResults)
-        .mockResolvedValueOnce(consolidationDocumentResults);
+        .mockResolvedValueOnce(buildSuccessfulQueryResult([dxtrTransferOrder]))
+        .mockResolvedValueOnce(buildSuccessfulQueryResult(dxtrTransferCaseDocketEntries))
+        .mockResolvedValueOnce(buildSuccessfulQueryResult([dxtrTransferOrderDocument]))
+        .mockResolvedValueOnce(buildSuccessfulQueryResult(dxtrConsolidationOrders))
+        .mockResolvedValueOnce(buildSuccessfulQueryResult(dxtrConsolidationCaseDocketEntries))
+        .mockResolvedValueOnce(buildSuccessfulQueryResult([dxtrConsolidationOrderDocument]));
 
-      const gateway = new DxtrOrdersGateway();
+      const gateway = new DxtrOrdersGateway(applicationContext);
       const orderSync = await gateway.getOrderSync(applicationContext, '0');
+
       expect(orderSync.maxTxId).toEqual('6');
-      expect(orderSync.transfers[0].orderDate).toEqual(
-        getEarliestDate(dxtrTransferCaseDocketEntries),
-      );
-
-      const firstConsolidation = orderSync.consolidations[0];
-      const secondConsolidation = orderSync.consolidations[1];
-
-      expect(firstConsolidation.orderDate).toEqual(
-        getEarliestDate(dxtrConsolidationCaseDocketEntries1),
-      );
-      expect(secondConsolidation.orderDate).toEqual(
-        getEarliestDate(dxtrConsolidationCaseDocketEntries2),
-      );
+      // Earliest date across dxtrTransferCaseDocketEntries is 2023-11-01
+      expect(orderSync.transfers[0].orderDate).toEqual('2023-11-01');
+      // Earliest date across dxtrConsolidationCaseDocketEntries1 is 2023-11-01
+      expect(orderSync.consolidations[0].orderDate).toEqual('2023-11-01');
+      // Earliest date across dxtrConsolidationCaseDocketEntries2 is 2023-11-01
+      expect(orderSync.consolidations[1].orderDate).toEqual('2023-11-01');
     });
 
-    test('should add chapters enabled by feature flags', async () => {
-      const gateway = new DxtrOrdersGateway();
+    test.each([
+      {
+        description: 'should include only chapter 15 when no feature flags are set',
+        featureFlags: {},
+        expectedChapterClause: "CS.CS_CHAPTER IN ('15')",
+      },
+      {
+        description: 'should include chapters 11 and 12 when feature flags are enabled',
+        featureFlags: { 'chapter-eleven-enabled': true, 'chapter-twelve-enabled': true },
+        expectedChapterClause: "CS.CS_CHAPTER IN ('15','11','12')",
+      },
+    ])('$description', async ({ featureFlags, expectedChapterClause }) => {
+      applicationContext.featureFlags = featureFlags;
 
-      const querySpy = vi.spyOn(database, 'executeQuery');
-      const mockOrdersResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [dxtrTransferOrder],
-        },
-        message: '',
-      };
+      querySpy.mockResolvedValue(buildSuccessfulQueryResult([]));
 
-      const mockDocumentsResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [dxtrTransferOrderDocument],
-        },
-        message: '',
-      };
-
-      applicationContext.featureFlags = {};
-      querySpy.mockResolvedValue(mockOrdersResults);
-      querySpy.mockResolvedValueOnce(mockDocumentsResults);
-
+      const gateway = new DxtrOrdersGateway(applicationContext);
       await gateway.getOrderSync(applicationContext, '0');
-      expect(querySpy).toHaveBeenCalled(); //"CS.CS_CHAPTER IN ('15')"
 
-      applicationContext.featureFlags = {
-        'chapter-eleven-enabled': true,
-        'chapter-twelve-enabled': true,
-      };
-
-      querySpy.mockResolvedValue(mockOrdersResults);
-      querySpy.mockResolvedValueOnce(mockDocumentsResults);
-
-      await gateway.getOrderSync(applicationContext, '0');
-      expect(querySpy).toHaveBeenCalled(); // "CS.CS_CHAPTER IN ('15','11','12')"
+      const queryString = querySpy.mock.calls[0][1] as string;
+      expect(queryString).toContain(expectedChapterClause);
     });
 
-    test('should handle thrown errors from _getOrders', async () => {
-      const applicationContext = await createMockApplicationContext();
-      const querySpy = vi.spyOn(database, 'executeQuery');
-
+    test('should throw when the orders query fails', async () => {
       const expectedErrorMessage = 'some warning from the orders query';
-      const mockOrdersResults: QueryResults = {
+
+      querySpy.mockResolvedValueOnce({
         success: false,
         message: expectedErrorMessage,
         results: undefined,
-      };
-
-      const mockDocumentsResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [dxtrTransferOrderDocument],
-        },
-        message: '',
-      };
-
-      let callSequence = 0;
-      querySpy.mockImplementation(async () => {
-        callSequence++;
-        if (callSequence === 1) {
-          return Promise.resolve(mockOrdersResults);
-        } else {
-          return Promise.resolve(mockDocumentsResults);
-        }
       });
 
-      const gateway = new DxtrOrdersGateway();
+      const gateway = new DxtrOrdersGateway(applicationContext);
       await expect(gateway.getOrderSync(applicationContext, '0')).rejects.toThrow(
         expect.objectContaining({
           message: expectedErrorMessage,
@@ -289,81 +224,30 @@ describe('DxtrOrdersGateway', () => {
       );
     });
 
-    test('should handle thrown errors from _getDocuments', async () => {
-      const testQuerySpy = vi.spyOn(database, 'executeQuery');
-
-      const mockTransferOrdersResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [dxtrTransferOrder],
+    test.each([
+      {
+        description:
+          'should throw when documents query fails after successful orders and docket entries',
+        mocks: (spy: ReturnType<typeof vi.spyOn>, errorMessage: string) => {
+          spy
+            .mockResolvedValueOnce(buildSuccessfulQueryResult([dxtrTransferOrder]))
+            .mockResolvedValueOnce(buildSuccessfulQueryResult(dxtrTransferCaseDocketEntries))
+            .mockResolvedValueOnce({ success: false, message: errorMessage, results: undefined });
         },
-        message: '',
-      };
-
-      const mockTransferDocketEntryResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: dxtrTransferCaseDocketEntries,
+      },
+      {
+        description: 'should throw when docket entries query fails after successful orders',
+        mocks: (spy: ReturnType<typeof vi.spyOn>, errorMessage: string) => {
+          spy
+            .mockResolvedValueOnce(buildSuccessfulQueryResult([dxtrTransferOrder]))
+            .mockResolvedValueOnce({ success: false, message: errorMessage, results: undefined });
         },
-        message: '',
-      };
-
+      },
+    ])('$description', async ({ mocks }) => {
       const expectedErrorMessage = 'some warning from the documents query';
-      const mockTransferDocumentsResults: QueryResults = {
-        success: false,
-        message: expectedErrorMessage,
-        results: undefined,
-      };
+      mocks(querySpy, expectedErrorMessage);
 
-      // Mock only 3 queries for transfers - it should fail on transfer documents
-      // and never reach consolidation queries
-      testQuerySpy
-        .mockResolvedValueOnce(mockTransferOrdersResults)
-        .mockResolvedValueOnce(mockTransferDocketEntryResults)
-        .mockResolvedValueOnce(mockTransferDocumentsResults);
-
-      const gateway = new DxtrOrdersGateway();
-      await expect(gateway.getOrderSync(applicationContext, '0')).rejects.toThrow(
-        expect.objectContaining({
-          message: expectedErrorMessage,
-          status: 500,
-          module: 'ORDERS-DXTR-GATEWAY',
-        }),
-      );
-    });
-
-    test('_getOrderDocuments should throw a CamsError when the query execution fails', async () => {
-      const testQuerySpy = vi.spyOn(database, 'executeQuery');
-
-      const mockOrdersResults: QueryResults = {
-        success: true,
-        results: {
-          recordset: [dxtrTransferOrder],
-        },
-        message: '',
-      };
-
-      const mockDocketEntries: QueryResults = {
-        success: true,
-        message: '',
-        results: {
-          recordset: dxtrTransferCaseDocketEntries,
-        },
-      };
-
-      const expectedErrorMessage = 'some warning from the documents query';
-      const mockDocumentsResults: QueryResults = {
-        success: false,
-        message: expectedErrorMessage,
-        results: undefined,
-      };
-
-      testQuerySpy
-        .mockResolvedValueOnce(mockOrdersResults)
-        .mockResolvedValueOnce(mockDocketEntries)
-        .mockResolvedValueOnce(mockDocumentsResults);
-
-      const gateway = new DxtrOrdersGateway();
+      const gateway = new DxtrOrdersGateway(applicationContext);
       await expect(gateway.getOrderSync(applicationContext, '0')).rejects.toThrow(
         expect.objectContaining({
           message: expectedErrorMessage,

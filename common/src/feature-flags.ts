@@ -20,4 +20,5 @@ export const testFeatureFlags: FeatureFlagSet = {
   'display-chpt7-panel-upcoming-key-dates': true,
   'trustee-verification-enabled': true,
   'trustee-software-bank-display': true,
+  'trustee-assigned-staff-enabled': true,
 };

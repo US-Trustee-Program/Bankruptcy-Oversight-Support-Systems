@@ -66,7 +66,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     context.logger.debug(MODULE_NAME, `Querying for parameters: ${JSON.stringify(input)}`);
     try {
       const { results } = await this.executeQuery<ResultType>(context, query, input);
-      const leadCaseIdsResults = results as ResultType[];
+      const leadCaseIdsResults = (results as mssql.IResult<ResultType>).recordset;
       return leadCaseIdsResults.map((record) => record.leadCaseId);
     } catch (originalError) {
       throwCamsError(originalError);
@@ -100,7 +100,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
     try {
       const results = await this.executeQuery<AcmsConsolidationMemberCase>(context, query, input);
-      const rawResults = results.results as AcmsConsolidationMemberCase[];
+      const rawResults = (results.results as mssql.IResult<AcmsConsolidationMemberCase>).recordset;
 
       const formattedLeadCaseId = this.formatCaseId(leadCaseId);
       const memberCases = rawResults
@@ -160,7 +160,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     const query = `SELECT caseId FROM dbo.CAMS_MIGRATION_TEMP WHERE id BETWEEN ${start} AND ${end}`;
     try {
       const { results } = await this.executeQuery<ResultType>(context, query);
-      const caseIdResults = results as ResultType[];
+      const caseIdResults = (results as mssql.IResult<ResultType>).recordset;
       return caseIdResults.map((record) => record.caseId);
     } catch (originalError) {
       throwCamsError(originalError);
@@ -186,7 +186,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
 
     try {
       const { results } = await this.executeQuery<ResultType>(context, countQuery);
-      const caseIdResults = results as ResultType[];
+      const caseIdResults = (results as mssql.IResult<ResultType>).recordset;
       return caseIdResults[0].total;
     } catch (originalError) {
       throwCamsError(originalError);
@@ -230,7 +230,7 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
     try {
       context.logger.debug(MODULE_NAME, `Querying for deleted cases since: ${lastChangeDate}`);
       const { results } = await this.executeQuery<ResultType>(context, query, input);
-      const deletedCaseResults = results as ResultType[];
+      const deletedCaseResults = (results as mssql.IResult<ResultType>).recordset;
 
       const caseIds = deletedCaseResults.map((r) => r.caseId);
       const latestDeletedCaseDate =
@@ -271,7 +271,9 @@ export class AcmsGatewayImpl extends AbstractMssqlClient implements AcmsGateway 
         query,
         input,
       );
-      return (results as Array<{ acmsProfessionalId: string }>).map((r) => r.acmsProfessionalId);
+      return (results as mssql.IResult<{ acmsProfessionalId: string }>).recordset.map(
+        (r) => r.acmsProfessionalId,
+      );
     } catch (originalError) {
       throwCamsError(originalError);
     }
