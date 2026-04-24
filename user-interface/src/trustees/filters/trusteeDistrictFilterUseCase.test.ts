@@ -11,6 +11,13 @@ import { CamsSession } from '@common/cams/session';
 import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 
+const mockTrackEvent = vi.fn();
+vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
+  getAppInsights: () => ({
+    appInsights: { trackEvent: mockTrackEvent },
+  }),
+}));
+
 describe('trustee district filter use case tests', () => {
   let setSelectedDistrictsSpy: MockInstance<(val: ComboOption[]) => void>;
 
@@ -86,6 +93,7 @@ describe('trustee district filter use case tests', () => {
     mockStore.setSelectedDistricts = vi.fn();
     setSelectedDistrictsSpy = vi.spyOn(mockStore, 'setSelectedDistricts');
     mockOnFilterDistrict.mockReset();
+    mockTrackEvent.mockReset();
   });
 
   afterEach(() => {
@@ -342,6 +350,14 @@ describe('trustee district filter use case tests', () => {
 
       expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(defaultDistricts);
       expect(mockOnFilterDistrict).toHaveBeenCalledWith(defaultDistricts);
+    });
+
+    test('should track Trustee District Filter Cleared event', () => {
+      mockStore.defaultDistricts = [];
+
+      useCase.handleClearAll();
+
+      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee District Filter Cleared' });
     });
   });
 

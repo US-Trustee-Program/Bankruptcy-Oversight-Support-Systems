@@ -1,5 +1,5 @@
 import './TrusteesList.scss';
-import { useEffect, useMemo, useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { TrusteeListItem } from '@common/cams/trustees';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
@@ -9,6 +9,7 @@ import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import TrusteeDistrictFilter from './filters/TrusteeDistrictFilter';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 const COLUMN_HEADERS = ['Name', 'District (Division)', 'Chapter', 'Type', 'Status'];
 
@@ -35,14 +36,21 @@ export default function TrusteesList() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
+  const pageLoadStart = useRef(performance.now());
 
   useEffect(() => {
     const fetchTrustees = () => {
       setLoading(true);
       Api2.getTrustees()
         .then((trusteesResponse) => {
-          setTrustees(trusteesResponse.data ?? []);
+          const data = trusteesResponse.data ?? [];
+          setTrustees(data);
           setError(null);
+          getAppInsights().appInsights.trackEvent(
+            { name: 'Trustee List Loaded' },
+            { trusteeCount: data.length },
+            { loadMs: performance.now() - pageLoadStart.current },
+          );
         })
         .catch(() => {
           setError('Failed to load trustees. Please try again later.');
@@ -54,7 +62,14 @@ export default function TrusteesList() {
     fetchTrustees();
   }, []);
 
+  const defaultDistrictsRef = useRef<ComboOption[]>([]);
+  const isDefaultApplied = useRef(false);
+
   const handleFilterDistrict = (districts: ComboOption[]) => {
+    if (!isDefaultApplied.current) {
+      defaultDistrictsRef.current = districts;
+      isDefaultApplied.current = true;
+    }
     setSelectedDistricts(districts);
   };
 
@@ -77,6 +92,18 @@ export default function TrusteesList() {
       announcement: `Showing ${filtered.length} trustee(s) in ${districtNames}`,
     };
   }, [trustees, selectedDistricts]);
+
+  useEffect(() => {
+    if (!isDefaultApplied.current) return;
+    const defaults = defaultDistrictsRef.current;
+    const isDefault =
+      selectedDistricts.length === defaults.length &&
+      selectedDistricts.every((d) => defaults.some((def) => def.value === d.value));
+    getAppInsights().appInsights.trackEvent(
+      { name: 'Trustee District Filter Changed' },
+      { isDefault, selectedCount: selectedDistricts.length, resultCount: filteredTrustees.length },
+    );
+  }, [selectedDistricts, filteredTrustees]);
 
   if (loading) {
     return <LoadingSpinner caption="Loading trustees..." />;
