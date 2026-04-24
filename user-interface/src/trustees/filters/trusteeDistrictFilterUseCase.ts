@@ -92,6 +92,9 @@ const trusteeDistrictFilterUseCase = (
   };
 
   const handleFilterChange = (districts: ComboOption[]) => {
+    if (districts.length === 0) {
+      getAppInsights().appInsights.trackEvent({ name: 'Trustee District Filter Cleared' });
+    }
     store.setSelectedDistricts(districts);
     notifySelectionChange(districts);
   };
@@ -100,7 +103,6 @@ const trusteeDistrictFilterUseCase = (
     const defaultDistricts = store.defaultDistricts;
     store.setSelectedDistricts(defaultDistricts);
     notifySelectionChange(defaultDistricts);
-    getAppInsights().appInsights.trackEvent({ name: 'Trustee District Filter Cleared' });
   };
 
   const handleToggleExpanded = () => {

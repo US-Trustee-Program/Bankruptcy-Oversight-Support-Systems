@@ -24,15 +24,33 @@
             },
             "typeSettings": {
               "selectableValues": [
-                { "durationMs": 86400000 },
-                { "durationMs": 172800000 },
-                { "durationMs": 259200000 },
-                { "durationMs": 604800000 },
-                { "durationMs": 1209600000 },
-                { "durationMs": 2419200000 },
-                { "durationMs": 2592000000 },
-                { "durationMs": 5184000000 },
-                { "durationMs": 7776000000 }
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 1209600000
+                },
+                {
+                  "durationMs": 2419200000
+                },
+                {
+                  "durationMs": 2592000000
+                },
+                {
+                  "durationMs": 5184000000
+                },
+                {
+                  "durationMs": 7776000000
+                }
               ]
             },
             "label": "Time Range",
@@ -60,7 +78,7 @@
         "version": "KqlItem/1.0",
         "query": "let TrusteePageSessions =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | summarize by session_Id;\nlet FilterModifiedSessions =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | summarize by session_Id;\nlet TotalSessions = toscalar(TrusteePageSessions | count);\nlet ModifiedSessions = toscalar(\n    FilterModifiedSessions\n    | join kind=inner TrusteePageSessions on session_Id\n    | count\n);\nprint\n    TotalSessions = TotalSessions,\n    ModifiedSessions = ModifiedSessions,\n    ModificationRate = round(iif(TotalSessions > 0, todouble(ModifiedSessions) / todouble(TotalSessions) * 100, 0.0), 1)",
         "size": 3,
-        "title": "% of Trustee Page Visits That Modified District Filter",
+        "title": "% of Page Visits Where Filter Was Changed",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -89,8 +107,42 @@
           "showBorder": true
         }
       },
-      "customWidth": "33",
+      "customWidth": "25",
       "name": "filter-modification-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageSessions =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | summarize by session_Id;\nlet FilterChangesPerSession =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | summarize ChangeCount = count() by session_Id;\nTrusteePageSessions\n| join kind=leftouter FilterChangesPerSession on session_Id\n| extend ChangeCount = coalesce(ChangeCount, 0)\n| summarize AvgChangesPerVisit = round(avg(ChangeCount), 2)",
+        "size": 3,
+        "title": "Avg Filter Changes per Page Visit",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "AvgChangesPerVisit",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 2,
+                "maximumFractionDigits": 2
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "filter-avg-changes-kpi"
     },
     {
       "type": 3,
@@ -127,14 +179,14 @@
           "showBorder": true
         }
       },
-      "customWidth": "33",
+      "customWidth": "25",
       "name": "filter-clear-rate-kpi"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\"\n| where tostring(customDimensions.isDefault) != \"true\"\n| extend resultCount = toint(customDimensions.resultCount)\n| extend ResultBucket = case(\n    resultCount == 0, \"0 trustees\",\n    resultCount <= 5, \"1–5 trustees\",\n    resultCount <= 10, \"6–10 trustees\",\n    resultCount <= 20, \"11–20 trustees\",\n    resultCount <= 50, \"21–50 trustees\",\n    \"51+ trustees\"\n  )\n| summarize FilterApplications = count() by ResultBucket\n| order by ResultBucket asc",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\"\n| where tostring(customDimensions.isDefault) != \"true\"\n| extend resultCount = toint(customMeasurements.resultCount)\n| extend ResultBucket = case(\n    resultCount == 0, \"0 trustees\",\n    resultCount <= 5, \"1–5 trustees\",\n    resultCount <= 10, \"6–10 trustees\",\n    resultCount <= 20, \"11–20 trustees\",\n    resultCount <= 50, \"21–50 trustees\",\n    \"51+ trustees\"\n  )\n| summarize FilterApplications = count() by ResultBucket\n| order by ResultBucket asc",
         "size": 3,
         "title": "Trustee Count Distribution After Filtering",
         "timeContextFromParameter": "TimeRange",
@@ -161,7 +213,7 @@
           "showBorder": true
         }
       },
-      "customWidth": "33",
+      "customWidth": "25",
       "name": "trustee-count-distribution-kpi"
     },
     {
@@ -204,70 +256,11 @@
       "name": "filter-activity-trend"
     },
     {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\"\n| where tostring(customDimensions.isDefault) != \"true\"\n| extend resultCount = toint(customDimensions.resultCount)\n| extend ResultBucket = case(\n    resultCount == 0, \"0 trustees\",\n    resultCount <= 5, \"1–5 trustees\",\n    resultCount <= 10, \"6–10 trustees\",\n    resultCount <= 20, \"11–20 trustees\",\n    resultCount <= 50, \"21–50 trustees\",\n    \"51+ trustees\"\n  )\n| summarize Count = count() by ResultBucket\n| order by ResultBucket asc",
-        "size": 0,
-        "title": "Trustee Count Distribution After Filtering",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "barchart",
-        "chartSettings": {
-          "xAxis": "ResultBucket",
-          "createOtherGroup": 0
-        }
-      },
-      "name": "trustee-count-distribution-chart"
-    },
-    {
       "type": 1,
       "content": {
         "json": "---\n## Performance Tracking\nFilter response time and page load time for the trustee list."
       },
       "name": "performance-header"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\"\n| extend responseMs = todouble(customMeasurements.responseMs)\n| where isnotnull(responseMs)\n| summarize\n    P50Ms = round(percentile(responseMs, 50), 1),\n    P95Ms = round(percentile(responseMs, 95), 1),\n    SampleCount = count()\n| project\n    ['P50 Response (ms)'] = P50Ms,\n    ['P95 Response (ms)'] = P95Ms,\n    ['Sample Count'] = SampleCount",
-        "size": 3,
-        "title": "Filter Response Time (Change to Results Rendered)",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "tiles",
-        "tileSettings": {
-          "titleContent": {
-            "columnMatch": "P50Ms",
-            "formatter": 1
-          },
-          "leftContent": {
-            "columnMatch": "P50 Response (ms)",
-            "formatter": 12,
-            "formatOptions": {
-              "palette": "greenRed"
-            },
-            "numberFormat": {
-              "unit": 23,
-              "options": {
-                "style": "decimal",
-                "minimumFractionDigits": 1,
-                "maximumFractionDigits": 1
-              }
-            }
-          },
-          "secondaryContent": {
-            "columnMatch": "P95 Response (ms)",
-            "formatter": 1
-          },
-          "showBorder": true
-        }
-      },
-      "customWidth": "50",
-      "name": "filter-response-time-kpi"
     },
     {
       "type": 3,
@@ -309,93 +302,10 @@
       },
       "customWidth": "50",
       "name": "page-load-time-kpi"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\"\n| extend responseMs = todouble(customMeasurements.responseMs)\n| where isnotnull(responseMs)\n| summarize\n    P50Ms = percentile(responseMs, 50),\n    P95Ms = percentile(responseMs, 95)\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
-        "size": 0,
-        "title": "Filter Response Time Trend (P50 / P95)",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "linechart",
-        "chartSettings": {
-          "xAxis": "Day",
-          "showDataPoints": true,
-          "seriesLabelSettings": [
-            {
-              "seriesName": "P50Ms",
-              "label": "P50",
-              "color": "green"
-            },
-            {
-              "seriesName": "P95Ms",
-              "label": "P95",
-              "color": "orange"
-            }
-          ],
-          "ySettings": {
-            "numberFormatSettings": {
-              "unit": 23,
-              "options": {
-                "style": "decimal",
-                "useGrouping": true
-              }
-            }
-          }
-        }
-      },
-      "customWidth": "50",
-      "name": "filter-response-time-trend"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee List Loaded\"\n| extend\n    loadMs = todouble(customMeasurements.loadMs),\n    trusteeCount = toint(customDimensions.trusteeCount)\n| where isnotnull(loadMs)\n| extend TrusteeBucket = case(\n    trusteeCount <= 50, \"1–50\",\n    trusteeCount <= 100, \"51–100\",\n    trusteeCount <= 200, \"101–200\",\n    \"201+\"\n  )\n| summarize\n    P50Ms = percentile(loadMs, 50),\n    P95Ms = percentile(loadMs, 95),\n    SampleCount = count()\n    by TrusteeBucket\n| order by TrusteeBucket asc",
-        "size": 0,
-        "title": "Page Load Time by Result Set Size",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "table",
-        "gridSettings": {
-          "formatters": [
-            {
-              "columnMatch": "P50Ms",
-              "formatter": 0,
-              "numberFormat": {
-                "unit": 23,
-                "options": {
-                  "style": "decimal",
-                  "minimumFractionDigits": 0,
-                  "maximumFractionDigits": 0
-                }
-              }
-            },
-            {
-              "columnMatch": "P95Ms",
-              "formatter": 0,
-              "numberFormat": {
-                "unit": 23,
-                "options": {
-                  "style": "decimal",
-                  "minimumFractionDigits": 0,
-                  "maximumFractionDigits": 0
-                }
-              }
-            }
-          ]
-        }
-      },
-      "customWidth": "50",
-      "name": "page-load-by-result-size"
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-471a3f/providers/Microsoft.Insights/components/appi-ustp-cams-dev-471a3f-webapp"
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-5d5564/providers/Microsoft.Insights/components/appi-ustp-cams-dev-5d5564-webapp"
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
