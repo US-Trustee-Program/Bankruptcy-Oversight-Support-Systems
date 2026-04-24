@@ -1,0 +1,132 @@
+.trustee-district-filter {
+  max-width: 1240px;
+  margin-bottom: 1.5rem;
+
+  .filter-header {
+    background-color: #f0f0f0;
+    border: 1px solid #dfe1e2;
+    border-radius: 0.25rem;
+    padding: 0.75rem 1.25rem;
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 1.5rem;
+  }
+
+  .filter-toggle-button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0;
+    font-weight: 700;
+    font-size: 1rem;
+    color: #1b1b1b;
+    cursor: pointer;
+    background: none;
+    border: none;
+    width: 100%;
+    text-decoration: none;
+
+    &:hover {
+      color: #005ea2;
+    }
+
+    &:focus {
+      outline: 0.25rem solid #005ea2;
+      outline-offset: 0.25rem;
+    }
+
+    .usa-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+  }
+
+  .filter-content {
+    margin-top: 1rem;
+    animation: slideDown 0.2s ease-out;
+
+    .filter-control {
+      max-width: 30rem;
+
+      .combo-box-form-group {
+        max-width: 30rem;
+      }
+    }
+  }
+
+  .filter-pills-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+
+    .filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background-color: #005EA2;
+      color: #ffffff;
+      padding: 0.25rem 0.75rem;
+      border-radius: 99rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-transform: none;
+
+      .usa-tag__remove-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        margin: 0 0 0 0.25rem;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: #ffffff;
+
+        &:hover {
+          color: #f0f0f0;
+        }
+
+        &:focus {
+          outline: 0.25rem solid #005ea2;
+          outline-offset: 0.25rem;
+          border-radius: 99rem;
+        }
+
+        .usa-icon {
+          width: 1rem;
+          height: 1rem;
+        }
+      }
+    }
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (max-width: 30rem) {
+    .filter-content {
+      .filter-control {
+        max-width: 100%;
+      }
+    }
+
+    .filter-pills-container {
+      .filter-pill {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+      }
+    }
+  }
+}
