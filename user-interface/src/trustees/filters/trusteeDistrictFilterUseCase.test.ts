@@ -93,29 +93,12 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('districtsToComboOptions', () => {
-    test('should return unique districts by courtId with courtName as label', () => {
-      const expectedOptions: ComboOption[] = [
-        {
-          value: 'VTB',
-          label: 'District of Vermont',
-        },
-        {
-          value: 'NYSB',
-          label: 'Southern District of New York',
-        },
-      ];
-
+    test('should return unique districts by courtId sorted alphabetically by label', () => {
       const comboOptions = useCase.districtsToComboOptions(mockDistricts);
 
       expect(comboOptions).toHaveLength(2);
-      expect(comboOptions).toEqual(expect.arrayContaining(expectedOptions));
-    });
-
-    test('should sort districts alphabetically by label', () => {
-      const comboOptions = useCase.districtsToComboOptions(mockDistricts);
-
-      expect(comboOptions[0].label).toBe('District of Vermont');
-      expect(comboOptions[1].label).toBe('Southern District of New York');
+      expect(comboOptions[0]).toEqual({ value: 'VTB', label: 'District of Vermont' });
+      expect(comboOptions[1]).toEqual({ value: 'NYSB', label: 'Southern District of New York' });
     });
 
     test('should handle empty districts array', () => {
