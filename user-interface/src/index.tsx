@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import { AuthenticationRoutes } from './login/AuthenticationRoutes';
+import { LandingPageProvider } from './lib/contexts/LandingPageContext';
 
 export type CamsConfiguration = Partial<{
   CAMS_BASE_PATH: string;
@@ -38,9 +39,11 @@ if (!rootElement) {
 ReactDOM.createRoot(rootElement as HTMLElement).render(
   <React.StrictMode>
     <BrowserRouter>
-      <AuthenticationRoutes>
-        <App />
-      </AuthenticationRoutes>
+      <LandingPageProvider>
+        <AuthenticationRoutes>
+          <App />
+        </AuthenticationRoutes>
+      </LandingPageProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

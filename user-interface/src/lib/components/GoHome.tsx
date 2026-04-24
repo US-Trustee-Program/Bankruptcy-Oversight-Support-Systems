@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useLDClient } from 'launchdarkly-react-client-sdk';
 import useCamsNavigator from '../hooks/UseCamsNavigator';
 import useFeatureFlags, { CASE_SEARCH_LANDING_PAGE } from '@/lib/hooks/UseFeatureFlags';
+import { useLandingPageContext } from '@/lib/contexts/LandingPageContext';
 
 type GoHomeProps = {
   path?: string;
@@ -23,6 +24,7 @@ export function GoHome(props: GoHomeProps) {
   const flags = useFeatureFlags();
   const ldClient = useLDClient();
   const [isReady, setIsReady] = useState(false);
+  const { setLandingPage } = useLandingPageContext();
 
   // Wait for LaunchDarkly to be ready
   useEffect(() => {
@@ -48,8 +50,13 @@ export function GoHome(props: GoHomeProps) {
     }
 
     const destination = flags[CASE_SEARCH_LANDING_PAGE] ? CASE_SEARCH_PATH : LOGIN_SUCCESS_PATH;
+
+    // Track which page user is landing on for analytics
+    const landingPage = destination === CASE_SEARCH_PATH ? 'case-search' : 'my-cases';
+    setLandingPage(landingPage);
+
     navigator.navigateTo(destination);
-  }, [isReady, flags, props.path, navigator]);
+  }, [isReady, flags, props.path, navigator, setLandingPage]);
 
   return <></>;
 }

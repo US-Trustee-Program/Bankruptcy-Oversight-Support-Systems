@@ -16,6 +16,8 @@ import useFeatureFlags, {
   PHONETIC_SEARCH_ENABLED,
   SHOW_DEBTOR_NAME_COLUMN,
 } from '@/lib/hooks/UseFeatureFlags';
+import * as UseLandingPageAnalyticsModule from '@/lib/hooks/UseLandingPageAnalytics';
+import { LandingPageProvider } from '@/lib/contexts/LandingPageContext';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
@@ -26,7 +28,9 @@ describe('MyCasesScreen', () => {
   const renderWithoutProps = () => {
     render(
       <BrowserRouter>
-        <MyCasesScreen></MyCasesScreen>
+        <LandingPageProvider>
+          <MyCasesScreen></MyCasesScreen>
+        </LandingPageProvider>
       </BrowserRouter>,
     );
   };
@@ -271,5 +275,61 @@ describe('MyCasesScreen', () => {
     expect(alertMessage).toHaveTextContent(
       `The draft on case number ${getCaseNumber(duplicatedId)} expires on ${formatDateTime(new Date(earlierDate))}.`,
     );
+  });
+});
+
+describe('MyCasesScreen analytics integration', () => {
+  const user: CamsUser = MockData.getCamsUser({});
+  let trackNavigationMock: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(MockData.getCamsSession({ user }));
+    mockUseFeatureFlags.mockReturnValue({
+      [PHONETIC_SEARCH_ENABLED]: true,
+      [SHOW_DEBTOR_NAME_COLUMN]: true,
+    });
+
+    trackNavigationMock = vi.fn();
+
+    vi.spyOn(UseLandingPageAnalyticsModule, 'useLandingPageAnalytics').mockReturnValue({
+      trackNavigation: trackNavigationMock,
+      trackFirstSearch: vi.fn(),
+    });
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('should call analytics hook with correct landing page parameter', async () => {
+    render(
+      <BrowserRouter>
+        <LandingPageProvider>
+          <MyCasesScreen />
+        </LandingPageProvider>
+      </BrowserRouter>,
+    );
+
+    await waitFor(() => {
+      expect(UseLandingPageAnalyticsModule.useLandingPageAnalytics).toHaveBeenCalledWith(
+        'my-cases',
+      );
+    });
+  });
+
+  test('should track navigation on component unmount', async () => {
+    const { unmount } = render(
+      <BrowserRouter>
+        <LandingPageProvider>
+          <MyCasesScreen />
+        </LandingPageProvider>
+      </BrowserRouter>,
+    );
+
+    unmount();
+
+    await waitFor(() => {
+      expect(trackNavigationMock).toHaveBeenCalledWith(expect.any(String));
+    });
   });
 });
