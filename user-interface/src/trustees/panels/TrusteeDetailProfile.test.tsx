@@ -72,12 +72,44 @@ describe('TrusteeDetailProfile', () => {
     userEvent = TestingUtilities.setupUserEvent();
   });
 
-  test('should render public trustee overview section', () => {
+  test('should render public trustee overview section with separate name fields', () => {
     renderWithProps({});
 
     expect(screen.getByText('Contact Information')).toBeInTheDocument();
     expect(screen.getByText('Public')).toBeInTheDocument();
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-first-name')).toHaveTextContent('John');
+    expect(screen.getByTestId('trustee-last-name')).toHaveTextContent('Doe');
+    expect(screen.queryByTestId('trustee-middle-name')).not.toBeInTheDocument();
+  });
+
+  test('should display name field labels', () => {
+    renderWithProps({});
+
+    expect(screen.getByText('First Name')).toBeInTheDocument();
+    expect(screen.getByText('Last Name')).toBeInTheDocument();
+  });
+
+  test('should render middle name in overview when present', () => {
+    const trusteeWithMiddle = { ...mockTrustee, middleName: 'Michael' };
+    renderWithProps({ trustee: trusteeWithMiddle });
+
+    expect(screen.getByTestId('trustee-first-name')).toHaveTextContent('John');
+    expect(screen.getByTestId('trustee-middle-name')).toHaveTextContent('Michael');
+    expect(screen.getByTestId('trustee-last-name')).toHaveTextContent('Doe');
+    expect(screen.getByText('Middle Name')).toBeInTheDocument();
+  });
+
+  test('should fall back to name field when firstName and lastName are absent', () => {
+    const legacyTrustee = {
+      ...mockTrustee,
+      firstName: undefined as unknown as string,
+      lastName: undefined as unknown as string,
+      name: 'Legacy Name',
+    };
+    renderWithProps({ trustee: legacyTrustee });
+
+    expect(screen.getByTestId('trustee-name-fallback')).toHaveTextContent('Legacy Name');
+    expect(screen.queryByTestId('trustee-first-name')).not.toBeInTheDocument();
   });
 
   test('should render public contact information', () => {
