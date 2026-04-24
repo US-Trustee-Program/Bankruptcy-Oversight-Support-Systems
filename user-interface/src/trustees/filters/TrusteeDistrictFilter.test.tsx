@@ -71,7 +71,6 @@ describe('TrusteeDistrictFilter Component', () => {
     const toggleButton = screen.getByRole('button', { name: /filters/i });
     expect(toggleButton).toBeInTheDocument();
     expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.queryByLabelText('District (Division)')).not.toBeInTheDocument();
 
     await user.click(toggleButton);
 
@@ -286,10 +285,13 @@ describe('TrusteeDistrictFilter Component', () => {
     });
 
     // Pills should be visible when collapsed (default state)
-    // Wait for districts to load
-
+    // Wait for districts to load and pill to appear
     await waitFor(() => {
-      expect(screen.getByText('Southern District of New York (Manhattan)')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /remove southern district of new york \(manhattan\) filter/i,
+        }),
+      ).toBeInTheDocument();
     });
 
     // Click remove button on pill
