@@ -9,8 +9,15 @@ import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { testFeatureFlags } from '@common/feature-flags';
+import { LandingPageProvider } from '@/lib/contexts/LandingPageContext';
+import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
+vi.mock('launchdarkly-react-client-sdk', () => ({
+  useLDClient: vi.fn(),
+  withLDProvider: vi.fn((config) => (component) => component),
+  useFlags: vi.fn(() => ({})),
+}));
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const mockOnEditPublicProfile = vi.fn();
@@ -69,11 +76,13 @@ describe('TrusteeDetailScreen', () => {
 
   const renderWithRouter = (initialEntries = ['/trustees/123']) => {
     return render(
-      <MemoryRouter initialEntries={initialEntries}>
-        <Routes>
-          <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />} />
-        </Routes>
-      </MemoryRouter>,
+      <LandingPageProvider>
+        <MemoryRouter initialEntries={initialEntries}>
+          <Routes>
+            <Route path="/trustees/:trusteeId/*" element={<TrusteeDetailScreen />} />
+          </Routes>
+        </MemoryRouter>
+      </LandingPageProvider>,
     );
   };
 
@@ -88,6 +97,12 @@ describe('TrusteeDetailScreen', () => {
 
     vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
     mockUseFeatureFlags.mockReturnValue(testFeatureFlags);
+
+    // Mock LaunchDarkly for GoHome component
+    vi.mocked(LaunchDarkly.useLDClient).mockReturnValue({
+      waitForInitialization: vi.fn().mockResolvedValue(undefined),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
   });
 
   afterEach(() => {
