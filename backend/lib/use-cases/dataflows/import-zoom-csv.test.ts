@@ -12,6 +12,7 @@ const MOCK_TRUSTEE = {
   name: 'John Doe',
   public: {
     address: { address1: '', city: '', state: 'NY', zipCode: '', countryCode: 'US' as const },
+    email: 'john.doe@example.com',
   },
 };
 
@@ -97,41 +98,47 @@ describe('import-zoom-csv', () => {
       link: 'https://zoom.us/j/123456789',
     };
 
-    test('should return "unmatched" when no trustees found', async () => {
+    test('should return "unmatched" when no trustees found by any strategy', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
 
       const result = await processZoomTsvRow(context, row);
 
-      expect(result).toBe('unmatched');
+      expect(result.outcome).toBe('unmatched');
+      expect(result.matchStrategy).toBeUndefined();
+      expect(result.matchedTrusteeId).toBeUndefined();
     });
 
-    test('should return "ambiguous" when multiple trustees found', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
+    test('should return "ambiguous" when multiple trustees found with same email', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
         MOCK_TRUSTEE,
-        { ...MOCK_TRUSTEE, trusteeId: 'trustee-789' },
+        { ...MOCK_TRUSTEE, trusteeId: 'trustee-789', name: 'John A. Doe' },
       ]);
 
       const result = await processZoomTsvRow(context, row);
 
-      expect(result).toBe('ambiguous');
+      expect(result.outcome).toBe('ambiguous');
+      expect(result.matchStrategy).toBeUndefined();
     });
 
-    test('should return "matched" and update trustee with zoom info from row', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
-        MOCK_TRUSTEE,
-      ]);
+    test('should return "matched" and update trustee when matched by email', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([MOCK_TRUSTEE]);
       const updateSpy = vi
         .spyOn(MockMongoRepository.prototype, 'updateTrustee')
         .mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await processZoomTsvRow(context, row);
 
-      expect(result).toBe('matched');
+      expect(result.outcome).toBe('matched');
+      expect(result.matchStrategy).toBe('email');
+      expect(result.matchedTrusteeId).toBe('trustee-456');
+      expect(result.matchedTrusteeName).toBe('John Doe');
       expect(updateSpy).toHaveBeenCalledOnce();
     });
 
-    test('should set accountEmail to undefined on trustee when row has no accountEmail', async () => {
+    test('should return "matched" and update trustee when matched by exact name', async () => {
       const rowWithoutEmail = { ...row, accountEmail: undefined };
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([]);
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
         MOCK_TRUSTEE,
       ]);
@@ -141,7 +148,44 @@ describe('import-zoom-csv', () => {
 
       const result = await processZoomTsvRow(context, rowWithoutEmail);
 
-      expect(result).toBe('matched');
+      expect(result.outcome).toBe('matched');
+      expect(result.matchStrategy).toBe('exact-name');
+      expect(result.matchedTrusteeId).toBe('trustee-456');
+      expect(updateSpy).toHaveBeenCalledOnce();
+    });
+
+    test('should return "matched" and update trustee when matched by fuzzy name', async () => {
+      const rowWithTypo = { ...row, fullName: 'Jon Doe', accountEmail: undefined };
+      const trusteeWithSimilarName = { ...MOCK_TRUSTEE, name: 'John Doe' };
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
+        trusteeWithSimilarName,
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(trusteeWithSimilarName);
+
+      const result = await processZoomTsvRow(context, rowWithTypo);
+
+      expect(result.outcome).toBe('matched');
+      expect(result.matchStrategy).toBe('fuzzy-name');
+      expect(result.matchedTrusteeId).toBe('trustee-456');
+      expect(updateSpy).toHaveBeenCalledOnce();
+    });
+
+    test('should set accountEmail to undefined on trustee when row has no accountEmail', async () => {
+      const rowWithoutEmail = { ...row, accountEmail: undefined };
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([
+        MOCK_TRUSTEE,
+      ]);
+      const updateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'updateTrustee')
+        .mockResolvedValue(MOCK_TRUSTEE);
+
+      const result = await processZoomTsvRow(context, rowWithoutEmail);
+
+      expect(result.outcome).toBe('matched');
       expect(updateSpy).toHaveBeenCalledWith(
         MOCK_TRUSTEE.trusteeId,
         expect.objectContaining({ zoomInfo: expect.objectContaining({ accountEmail: undefined }) }),
@@ -150,13 +194,14 @@ describe('import-zoom-csv', () => {
     });
 
     test('should return "error" when repo throws', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockRejectedValue(
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockRejectedValue(
         new Error('DB error'),
       );
 
       const result = await processZoomTsvRow(context, row);
 
-      expect(result).toBe('error');
+      expect(result.outcome).toBe('error');
+      expect(result.matchStrategy).toBeUndefined();
     });
   });
 
@@ -191,7 +236,7 @@ describe('import-zoom-csv', () => {
       expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
         expect.any(String),
         'zoom-import-report.tsv',
-        'fullName\taccountEmail\tmeetingId\tpasscode\tphone\tlink\toutcome',
+        'fullName\taccountEmail\tmeetingId\tpasscode\tphone\tlink\toutcome\tmatchStrategy\tmatchedTrusteeId\tmatchedTrusteeName',
       );
     });
 
@@ -199,22 +244,40 @@ describe('import-zoom-csv', () => {
       const mixedTsv = [
         'Region\tLocation (City, State)\tTrustee First and Last Name\tZoom Account Email Address\tZoom Meeting ID\tZoom Passcode\tZoom Dedicated Phone Number\tZoom Meeting Link',
         'NE\tNew York, NY\tJohn Doe\tjohn.doe@example.com\t111\tabc\t111-111-1111\thttps://zoom.us/j/1',
-        'SE\tAtlanta, GA\tJane Smith\tjane.smith@example.com\t222\tdef\t222-222-2222\thttps://zoom.us/j/2',
+        'SE\tAtlanta, GA\tJane Smith\t\t222\tdef\t222-222-2222\thttps://zoom.us/j/2',
         'MW\tChicago, IL\tBob Jones\tbob@example.com\t333\tghi\t333-333-3333\thttps://zoom.us/j/3',
         'SW\tDallas, TX\tAmy Lee\tamy@example.com\t444\tjkl\t444-444-4444\thttps://zoom.us/j/4',
       ].join('\n');
 
       vi.mocked(mockObjectStorage.readObject).mockResolvedValue(mixedTsv);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName')
-        .mockResolvedValueOnce([MOCK_TRUSTEE])
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([MOCK_TRUSTEE, { ...MOCK_TRUSTEE, trusteeId: 'trustee-789' }])
-        .mockRejectedValueOnce(new Error('DB error'));
+      const bobTrustee1 = {
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-bob-1',
+        public: { ...MOCK_TRUSTEE.public, email: 'bob@example.com' },
+        name: 'Bob Jones',
+      };
+      const bobTrustee2 = {
+        ...MOCK_TRUSTEE,
+        trusteeId: 'trustee-bob-2',
+        public: { ...MOCK_TRUSTEE.public, email: 'bob@example.com' },
+        name: 'Robert Jones',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees')
+        .mockResolvedValueOnce([MOCK_TRUSTEE]) // John Doe - matched by email
+        .mockResolvedValueOnce([bobTrustee1, bobTrustee2]) // Bob Jones - ambiguous (2 trustees same email)
+        .mockRejectedValueOnce(new Error('DB error')); // Amy Lee - error during listTrustees
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValueOnce([
+        MOCK_TRUSTEE,
+        { ...MOCK_TRUSTEE, trusteeId: 'trustee-789' },
+      ]); // Jane Smith - ambiguous by exact name
+
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
       const result = await importZoomCsv(context);
 
-      expect(result).toEqual({ total: 4, matched: 1, unmatched: 1, ambiguous: 1, errors: 1 });
+      expect(result).toEqual({ total: 4, matched: 1, unmatched: 0, ambiguous: 2, errors: 1 });
     });
 
     test('should write TSV report with outcome for each row', async () => {
@@ -226,16 +289,21 @@ describe('import-zoom-csv', () => {
       ].join('\n');
 
       vi.mocked(mockObjectStorage.readObject).mockResolvedValue(tsv);
+      vi.spyOn(MockMongoRepository.prototype, 'listTrustees')
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([])
+        .mockRejectedValueOnce(new Error('DB error'));
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName')
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([MOCK_TRUSTEE, { ...MOCK_TRUSTEE, trusteeId: 'trustee-789' }])
-        .mockRejectedValueOnce(new Error('DB error'));
+        .mockResolvedValueOnce([MOCK_TRUSTEE, { ...MOCK_TRUSTEE, trusteeId: 'trustee-789' }]);
 
       await importZoomCsv(context);
 
       const reportContent = vi.mocked(mockObjectStorage.writeObject).mock.calls[0][2];
       const lines = reportContent.split('\n');
-      expect(lines[0]).toBe('fullName\taccountEmail\tmeetingId\tpasscode\tphone\tlink\toutcome');
+      expect(lines[0]).toBe(
+        'fullName\taccountEmail\tmeetingId\tpasscode\tphone\tlink\toutcome\tmatchStrategy\tmatchedTrusteeId\tmatchedTrusteeName',
+      );
       expect(lines[1]).toContain('John Doe');
       expect(lines[1]).toContain('unmatched');
       expect(lines[2]).toContain('Jane Smith');
