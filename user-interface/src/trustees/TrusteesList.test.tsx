@@ -318,9 +318,9 @@ describe('TrusteesList Component', () => {
     });
 
     test('should filter trustees by selected district using OR logic', async () => {
-      const apptNY = makeAppointment({ courtId: 'NYSB' });
-      const apptVT = makeAppointment({ courtId: 'VTB' });
-      const apptCA = makeAppointment({ courtId: 'CAB' });
+      const apptNY = makeAppointment({ courtId: 'NYSB', divisionCode: '081' });
+      const apptVT = makeAppointment({ courtId: 'VTB', divisionCode: '088' });
+      const apptCA = makeAppointment({ courtId: 'CAB', divisionCode: '999' });
       const trusteeNY = makeListItem({
         trusteeId: 'ny',
         name: 'New York Trustee',
@@ -342,6 +342,7 @@ describe('TrusteesList Component', () => {
         data: [
           {
             courtId: 'NYSB',
+            courtDivisionCode: '081',
             courtName: 'Southern District of New York',
             officeCode: '081',
             officeName: 'Manhattan',
@@ -435,7 +436,7 @@ describe('TrusteesList Component', () => {
     });
 
     test('should show all trustees when no district filter is active', async () => {
-      const appt1 = makeAppointment({ courtId: 'NYSB' });
+      const appt1 = makeAppointment({ courtId: 'NYSB', divisionCode: '081' });
       const appt2 = makeAppointment({ courtId: 'VTB' });
       const trustee1 = makeListItem({
         trusteeId: 't1',
@@ -464,7 +465,7 @@ describe('TrusteesList Component', () => {
       const trusteeWithAppt = makeListItem({
         trusteeId: 't1',
         name: 'Appointed Trustee',
-        appointments: [makeAppointment({ courtId: 'NYSB' })],
+        appointments: [makeAppointment({ courtId: 'NYSB', divisionCode: '081' })],
       });
       const trusteeNoAppt = makeListItem({
         trusteeId: 't2',
@@ -491,7 +492,11 @@ describe('TrusteesList Component', () => {
         trusteeId: 't1',
         name: 'Trustee One',
         appointments: [
-          makeAppointment({ courtId: 'NYSB', courtName: 'Southern District of New York' }),
+          makeAppointment({
+            courtId: 'NYSB',
+            divisionCode: '081',
+            courtName: 'Southern District of New York',
+          }),
         ],
       });
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeWithAppt] });
@@ -530,6 +535,8 @@ describe('TrusteesList Component', () => {
                       court: {
                         courtId: 'NYSB',
                         courtName: 'Southern District of New York',
+                        courtDivisionCode: '081',
+                        courtDivisionName: 'Manhattan',
                       },
                       courtOffice: {
                         courtOfficeCode: '081',
@@ -553,7 +560,7 @@ describe('TrusteesList Component', () => {
 
       // Initially collapsed - pills should be in filter component
       await waitFor(() => {
-        const pills = screen.getAllByText('Southern District of New York');
+        const pills = screen.getAllByText('Southern District of New York (Manhattan)');
         expect(pills.length).toBeGreaterThan(0);
       });
 
@@ -563,7 +570,7 @@ describe('TrusteesList Component', () => {
 
       // When expanded, pills should appear above trustee count (in TrusteesList)
       await waitFor(() => {
-        const pills = screen.getAllByText('Southern District of New York');
+        const pills = screen.getAllByText('Southern District of New York (Manhattan)');
         // Should have pills both in dropdown AND in list area
         expect(pills.length).toBeGreaterThan(1);
       });
@@ -575,7 +582,11 @@ describe('TrusteesList Component', () => {
         trusteeId: 't1',
         name: 'Trustee One',
         appointments: [
-          makeAppointment({ courtId: 'NYSB', courtName: 'Southern District of New York' }),
+          makeAppointment({
+            courtId: 'NYSB',
+            divisionCode: '081',
+            courtName: 'Southern District of New York',
+          }),
         ],
       });
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeWithAppt] });
@@ -614,6 +625,8 @@ describe('TrusteesList Component', () => {
                       court: {
                         courtId: 'NYSB',
                         courtName: 'Southern District of New York',
+                        courtDivisionCode: '081',
+                        courtDivisionName: 'Manhattan',
                       },
                       courtOffice: {
                         courtOfficeCode: '081',
@@ -641,13 +654,13 @@ describe('TrusteesList Component', () => {
 
       // Wait for pills to appear
       await waitFor(() => {
-        const pills = screen.getAllByText('Southern District of New York');
+        const pills = screen.getAllByText('Southern District of New York (Manhattan)');
         expect(pills.length).toBeGreaterThan(1);
       });
 
       // Click remove button on one of the pills
       const removeButtons = screen.getAllByRole('button', {
-        name: /remove southern district of new york filter/i,
+        name: /remove southern district of new york \(manhattan\) filter/i,
       });
       await user.click(removeButtons[0]);
 
