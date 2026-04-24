@@ -58,7 +58,7 @@ describe('App Router Tests', () => {
         <LandingPageProvider>
           <App />
         </LandingPageProvider>
-      </BrowserRouter>
+      </BrowserRouter>,
     );
 
     expect(screen.getByTestId('header-search-link')).toBeVisible();

@@ -29,12 +29,15 @@ export function GoHome(props: GoHomeProps) {
   // Wait for LaunchDarkly to be ready
   useEffect(() => {
     if (ldClient) {
-      ldClient.waitForInitialization().then(() => {
-        setIsReady(true);
-      }).catch(() => {
-        // Even if LD fails, we should navigate somewhere
-        setIsReady(true);
-      });
+      ldClient
+        .waitForInitialization()
+        .then(() => {
+          setIsReady(true);
+        })
+        .catch(() => {
+          // Even if LD fails, we should navigate somewhere
+          setIsReady(true);
+        });
     }
     // Don't set isReady if ldClient is undefined - wait for it to be available
   }, [ldClient]);

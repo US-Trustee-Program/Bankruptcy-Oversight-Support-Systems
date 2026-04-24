@@ -1087,7 +1087,6 @@ describe('SearchScreen analytics integration', () => {
     },
     data: caseList,
   };
-  let searchCasesSpy: MockInstance;
   let userEvent: CamsUserEvent;
   let trackNavigationMock: ReturnType<typeof vi.fn>;
   let trackFirstSearchMock: ReturnType<typeof vi.fn>;
@@ -1104,7 +1103,7 @@ describe('SearchScreen analytics integration', () => {
 
   beforeEach(async () => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
-    searchCasesSpy = vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
     userEvent = TestingUtilities.setupUserEvent();
 
@@ -1113,7 +1112,9 @@ describe('SearchScreen analytics integration', () => {
 
     vi.spyOn(UseLandingPageAnalyticsModule, 'useLandingPageAnalytics').mockReturnValue({
       trackNavigation: trackNavigationMock as (toPage: string) => void,
-      trackFirstSearch: trackFirstSearchMock as (searchType: 'case-number' | 'debtor-name' | 'ssn' | 'other') => void,
+      trackFirstSearch: trackFirstSearchMock as (
+        searchType: 'case-number' | 'debtor-name' | 'ssn' | 'other',
+      ) => void,
     });
   });
 
