@@ -31,6 +31,7 @@ import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
+  TRUSTEE_ASSIGNED_STAFF_ENABLED,
 } from '@/lib/hooks/UseFeatureFlags';
 
 type TrusteeHeaderProps = JSX.IntrinsicElements['div'] & {
@@ -258,6 +259,7 @@ export default function TrusteeDetailScreen() {
     },
     {
       path: 'assigned-staff',
+      disabled: !featureFlags[TRUSTEE_ASSIGNED_STAFF_ENABLED],
       subHeading: 'Trustee',
       content: (
         <div className="trustee-detail-screen-info-container">

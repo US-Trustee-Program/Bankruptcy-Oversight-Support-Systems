@@ -2,7 +2,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteesList from './TrusteesList';
 import Api2 from '@/lib/models/api2';
-import { Trustee } from '@common/cams/trustees';
+import { TrusteeListItem } from '@common/cams/trustees';
+import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { ResponseBody } from '@common/api/response';
 import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -12,36 +13,25 @@ function renderWithRouter(component: React.ReactElement) {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 }
 
-describe('TrusteesList Component', () => {
-  const mockTrustees: Trustee[] = [
-    {
-      id: '--id-guid-1--',
-      trusteeId: 'trustee-1',
-      name: 'John Doe',
-      public: {
-        address: MockData.getAddress(),
-        phone: { number: '555-123-4567' },
-        email: 'john.doe@example.com',
-      },
-      updatedOn: '2025-08-14T10:00:00Z',
-      updatedBy: { id: 'user-1', name: 'Admin User' },
-    },
-    {
-      id: '--id-guid-2--',
-      trusteeId: 'trustee-2',
-      name: 'Jane Smith',
-      public: {
-        address: MockData.getAddress(),
-        phone: { number: '555-987-6543' },
-        email: 'jane.smith@example.com',
-      },
-      updatedOn: '2025-08-14T09:00:00Z',
-      updatedBy: { id: 'user-2', name: 'Admin User 2' },
-    },
-  ];
+function makeListItem(overrides: Partial<TrusteeListItem> = {}): TrusteeListItem {
+  return {
+    ...MockData.getTrustee(),
+    appointments: [],
+    ...overrides,
+  };
+}
 
+function makeAppointment(overrides: Partial<TrusteeAppointment> = {}): TrusteeAppointment {
+  return MockData.getTrusteeAppointment(overrides);
+}
+
+describe('TrusteesList Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   test('should display loading spinner while fetching trustees', () => {
@@ -57,10 +47,24 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('Loading trustees...')).toBeInTheDocument();
   });
 
+  test('should display trustee count above table', async () => {
+    const trustee1 = makeListItem({ trusteeId: 'trustee-1', name: 'Alice' });
+    const trustee2 = makeListItem({ trusteeId: 'trustee-2', name: 'Bob' });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee1, trustee2] };
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
+    });
+  });
+
   test('should display trustees list when data is loaded', async () => {
-    const mockResponse: ResponseBody<Trustee[]> = {
-      data: mockTrustees,
-    };
+    const trustee1 = makeListItem({ trusteeId: 'trustee-1', name: 'John Doe' });
+    const trustee2 = makeListItem({ trusteeId: 'trustee-2', name: 'Jane Smith' });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee1, trustee2] };
 
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
 
@@ -70,15 +74,14 @@ describe('TrusteesList Component', () => {
       expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
     });
 
-    expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('Jane Smith')).toBeInTheDocument();
   });
 
   test('should display links to individual trustee profiles', async () => {
-    const mockResponse: ResponseBody<Trustee[]> = {
-      data: mockTrustees,
-    };
+    const trustee1 = makeListItem({ trusteeId: 'trustee-1', name: 'John Doe' });
+    const trustee2 = makeListItem({ trusteeId: 'trustee-2', name: 'Jane Smith' });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee1, trustee2] };
 
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
 
@@ -88,17 +91,126 @@ describe('TrusteesList Component', () => {
       expect(screen.getByTestId('trustee-link-trustee-1')).toBeInTheDocument();
     });
 
-    const johnDoeLink = screen.getByTestId('trustee-link-trustee-1');
-    expect(johnDoeLink).toHaveAttribute('href', '/trustees/trustee-1');
+    expect(screen.getByTestId('trustee-link-trustee-1')).toHaveAttribute(
+      'href',
+      '/trustees/trustee-1',
+    );
+    expect(screen.getByTestId('trustee-link-trustee-2')).toHaveAttribute(
+      'href',
+      '/trustees/trustee-2',
+    );
+  });
 
-    const janeSmithLink = screen.getByTestId('trustee-link-trustee-2');
-    expect(janeSmithLink).toHaveAttribute('href', '/trustees/trustee-2');
+  test('should render multiple rows for a trustee with multiple appointments', async () => {
+    const trusteeId = 'trustee-multi';
+    const appt1 = makeAppointment({
+      trusteeId,
+      chapter: '7',
+      appointmentType: 'panel',
+      status: 'active',
+      courtId: 'court-1',
+      courtName: 'Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      divisionCode: '081',
+    });
+    const appt2 = makeAppointment({
+      trusteeId,
+      chapter: '11',
+      appointmentType: 'case-by-case',
+      status: 'inactive',
+      courtId: 'court-2',
+      courtName: 'District of Vermont',
+      courtDivisionName: 'Burlington',
+      divisionCode: '087',
+    });
+    const trustee = makeListItem({
+      trusteeId,
+      name: 'Multi Appt Trustee',
+      appointments: [appt1, appt2],
+    });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Southern District of New York (Manhattan)')).toBeInTheDocument();
+    expect(screen.getByText('District of Vermont (Burlington)')).toBeInTheDocument();
+    expect(screen.getByText('Panel')).toBeInTheDocument();
+    expect(screen.getByText('Case by Case')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getByText('Inactive')).toBeInTheDocument();
+  });
+
+  test('should format District (Division) correctly using courtName and courtDivisionName', async () => {
+    const trusteeId = 'trustee-district';
+    const appt = makeAppointment({
+      trusteeId,
+      courtName: 'Eastern District of California',
+      courtDivisionName: 'Sacramento',
+      divisionCode: '099',
+    });
+    const trustee = makeListItem({ trusteeId, name: 'District Trustee', appointments: [appt] });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Eastern District of California (Sacramento)')).toBeInTheDocument();
+    });
+  });
+
+  test('should fall back to courtId and divisionCode when court name fields are absent', async () => {
+    const trusteeId = 'trustee-fallback';
+    const appt = makeAppointment({
+      trusteeId,
+      courtId: 'court-xyz',
+      divisionCode: '042',
+      courtName: undefined,
+      courtDivisionName: undefined,
+    });
+    const trustee = makeListItem({ trusteeId, name: 'Fallback Trustee', appointments: [appt] });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('court-xyz (042)')).toBeInTheDocument();
+    });
+  });
+
+  test('should show one row with empty cells for a trustee with zero appointments', async () => {
+    const trustee = makeListItem({
+      trusteeId: 'trustee-zero',
+      name: 'Zero Appt Trustee',
+      appointments: [],
+    });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Zero Appt Trustee')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+    const rows = screen.getAllByRole('row');
+    // header row + 1 data row
+    expect(rows).toHaveLength(2);
   });
 
   test('should display empty state when no trustees exist', async () => {
-    const mockResponse: ResponseBody<Trustee[]> = {
-      data: [],
-    };
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [] };
 
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
 
@@ -127,36 +239,9 @@ describe('TrusteesList Component', () => {
     expect(screen.queryByTestId('trustees-table')).not.toBeInTheDocument();
   });
 
-  test('should handle trustees with missing optional fields', async () => {
-    const minimalTrustee: Trustee = {
-      id: '--id-guid-min--',
-      trusteeId: 'trustee-minimal',
-      name: 'Minimal Trustee',
-      public: {
-        address: MockData.getAddress(),
-        phone: { number: '555-1234' },
-        email: 'jane.doe@example.com',
-      },
-      updatedOn: '2025-08-14T08:00:00Z',
-      updatedBy: { id: 'user-3', name: 'Admin User 3' },
-    };
-
-    const mockResponse: ResponseBody<Trustee[]> = {
-      data: [minimalTrustee],
-    };
-
-    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
-
-    renderWithRouter(<TrusteesList />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Minimal Trustee')).toBeInTheDocument();
-    });
-  });
-
   test('should handle API response with undefined data field', async () => {
-    const mockResponse: ResponseBody<Trustee[]> = {
-      data: undefined as unknown as Trustee[],
+    const mockResponse: ResponseBody<TrusteeListItem[]> = {
+      data: undefined as unknown as TrusteeListItem[],
     };
 
     vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
@@ -168,5 +253,28 @@ describe('TrusteesList Component', () => {
     });
 
     expect(screen.getByText(/No trustee profiles have been created yet/)).toBeInTheDocument();
+  });
+
+  test('should display chapter, type, and status using format helpers', async () => {
+    const trusteeId = 'trustee-format';
+    const appt = makeAppointment({
+      trusteeId,
+      chapter: '11-subchapter-v',
+      appointmentType: 'pool',
+      status: 'voluntarily-suspended',
+    });
+    const trustee = makeListItem({ trusteeId, name: 'Format Trustee', appointments: [appt] });
+    const mockResponse: ResponseBody<TrusteeListItem[]> = { data: [trustee] };
+
+    vi.spyOn(Api2, 'getTrustees').mockResolvedValue(mockResponse);
+
+    renderWithRouter(<TrusteesList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('11 Subchapter V')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Pool')).toBeInTheDocument();
+    expect(screen.getByText('Voluntarily Suspended')).toBeInTheDocument();
   });
 });

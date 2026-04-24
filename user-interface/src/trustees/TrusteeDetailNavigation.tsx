@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
+import useFeatureFlags, { TRUSTEE_ASSIGNED_STAFF_ENABLED } from '@/lib/hooks/UseFeatureFlags';
 
 export enum TrusteeNavState {
   TRUSTEE_PROFILE,
@@ -32,6 +33,8 @@ export default function TrusteeDetailNavigation({
   className,
 }: TrusteeDetailNavigationProps) {
   const [activeNav, setActiveNav] = useState<TrusteeNavState>(initiallySelectedNavLink);
+  const flags = useFeatureFlags();
+  const showAssignedStaff = !!flags[TRUSTEE_ASSIGNED_STAFF_ENABLED];
 
   return (
     <>
@@ -63,17 +66,19 @@ export default function TrusteeDetailNavigation({
               Appointments
             </NavLink>
           </li>
-          <li className="usa-sidenav__item">
-            <NavLink
-              to={`/trustees/${trusteeId}/assigned-staff`}
-              data-testid="trustee-assigned-staff-nav-link"
-              className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.ASSIGNED_STAFF)}`}
-              onClick={() => setActiveNav(TrusteeNavState.ASSIGNED_STAFF)}
-              title="View staff assigned to the current trustee"
-            >
-              Assigned Staff
-            </NavLink>
-          </li>
+          {showAssignedStaff && (
+            <li className="usa-sidenav__item">
+              <NavLink
+                to={`/trustees/${trusteeId}/assigned-staff`}
+                data-testid="trustee-assigned-staff-nav-link"
+                className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.ASSIGNED_STAFF)}`}
+                onClick={() => setActiveNav(TrusteeNavState.ASSIGNED_STAFF)}
+                title="View staff assigned to the current trustee"
+              >
+                Assigned Staff
+              </NavLink>
+            </li>
+          )}
           <li className="usa-sidenav__item">
             <NavLink
               to={`/trustees/${trusteeId}/notes`}

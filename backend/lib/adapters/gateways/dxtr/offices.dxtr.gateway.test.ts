@@ -1,46 +1,36 @@
-import { vi, MockInstance } from 'vitest';
+import { vi } from 'vitest';
 import OfficesDxtrGateway from './offices.dxtr.gateway';
 import { ApplicationContext } from '../../types/basic';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
-import * as database from '../../utils/database';
-import { DbTableFieldSpec, IDbConfig, QueryResults } from '../../types/database';
+import { QueryResults } from '../../types/database';
 import { COURT_DIVISIONS } from '@common/cams/test-utilities/courts.mock';
+import { AbstractMssqlClient } from '../abstract-mssql-client';
 
 describe('offices gateway tests', () => {
+  let applicationContext: ApplicationContext;
+
+  beforeEach(async () => {
+    applicationContext = await createMockApplicationContext();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('getOffice tests', () => {
-    test('should return the name of a known office by ID', () => {
-      const gateway = new OfficesDxtrGateway();
+    test('should return the name of a known office by ID', async () => {
+      const gateway = new OfficesDxtrGateway(applicationContext);
       const office = gateway.getOfficeName('011');
       expect(office).toEqual('Boston');
     });
 
-    test('should return a placeholder name for an invalid ID', () => {
-      const gateway = new OfficesDxtrGateway();
+    test('should return a placeholder name for an invalid ID', async () => {
+      const gateway = new OfficesDxtrGateway(applicationContext);
       expect(gateway.getOfficeName('AAA')).toEqual('UNKNOWN_AAA');
     });
   });
 
   describe('getOffices test', () => {
-    let applicationContext: ApplicationContext;
-    let querySpy: MockInstance<
-      (
-        applicationContext: ApplicationContext<unknown>,
-        databaseConfig: IDbConfig,
-        query: string,
-        input?: DbTableFieldSpec[],
-      ) => Promise<QueryResults>
-    >;
-
-    beforeEach(async () => {
-      querySpy = vi.spyOn(database, 'executeQuery');
-      applicationContext = await createMockApplicationContext();
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-      vi.resetModules();
-    });
-
     test('Should get Offices', async () => {
       const mockResults: QueryResults = {
         success: true,
@@ -49,17 +39,15 @@ describe('offices gateway tests', () => {
         },
         message: '',
       };
-      querySpy.mockResolvedValue(mockResults);
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue(mockResults);
 
-      const gateway = new OfficesDxtrGateway();
+      const gateway = new OfficesDxtrGateway(applicationContext);
       const offices = await gateway.getOffices(applicationContext);
 
-      // Flatten all divisions from the gateway output
       const allDivisions = offices.flatMap((office) =>
         office.groups.flatMap((group) => group.divisions),
       );
 
-      // Every court division from COURT_DIVISIONS should appear in the output
       COURT_DIVISIONS.forEach((cd) => {
         const match = allDivisions.find(
           (d) => d.divisionCode === cd.courtDivisionCode && d.court.courtId === cd.courtId,
@@ -67,7 +55,6 @@ describe('offices gateway tests', () => {
         expect(match).toBeDefined();
       });
 
-      // Every office should have valid structure
       offices.forEach((office) => {
         expect(office.officeCode).toBeTruthy();
         expect(office.officeName).toBeTruthy();
@@ -82,9 +69,9 @@ describe('offices gateway tests', () => {
         results: {},
         message: 'Some expected SQL error.',
       };
-      querySpy.mockResolvedValue(mockResults);
+      vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery').mockResolvedValue(mockResults);
 
-      const gateway = new OfficesDxtrGateway();
+      const gateway = new OfficesDxtrGateway(applicationContext);
 
       await expect(gateway.getOffices(applicationContext)).rejects.toThrow(
         'Some expected SQL error.',
