@@ -250,10 +250,22 @@ describe('TrusteesUseCase tests', () => {
       expect(result[0].appointments).toEqual([]);
     });
 
-    test('should return trustees sorted by name ascending (case-insensitive)', async () => {
-      const trusteeC = MockData.getTrustee({ trusteeId: 'id-c', name: 'charlie' });
-      const trusteeA = MockData.getTrustee({ trusteeId: 'id-a', name: 'Alice' });
-      const trusteeB = MockData.getTrustee({ trusteeId: 'id-b', name: 'bob' });
+    test('should return trustees sorted by lastName ascending, then firstName as tiebreaker (case-insensitive)', async () => {
+      const trusteeC = MockData.getTrustee({
+        trusteeId: 'id-c',
+        firstName: 'Zara',
+        lastName: 'Adams',
+      });
+      const trusteeA = MockData.getTrustee({
+        trusteeId: 'id-a',
+        firstName: 'Alice',
+        lastName: 'carter',
+      });
+      const trusteeB = MockData.getTrustee({
+        trusteeId: 'id-b',
+        firstName: 'bob',
+        lastName: 'Adams',
+      });
 
       vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
         trusteeC,
@@ -264,7 +276,8 @@ describe('TrusteesUseCase tests', () => {
 
       const result = await trusteesUseCase.listTrustees(context);
 
-      expect(result.map((r) => r.name)).toEqual(['Alice', 'bob', 'charlie']);
+      expect(result.map((r) => r.lastName)).toEqual(['Adams', 'Adams', 'carter']);
+      expect(result.map((r) => r.firstName)).toEqual(['bob', 'Zara', 'Alice']);
     });
 
     test('should handle repository error during list operation', async () => {

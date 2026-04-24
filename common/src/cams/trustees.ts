@@ -93,6 +93,22 @@ export function computeTrusteeName(
   return parts.join(' ');
 }
 
+export function formatTrusteeListName(
+  firstName: string | undefined,
+  middleName: string | undefined,
+  lastName: string | undefined,
+  fallbackName?: string,
+): string {
+  const last = lastName?.trim();
+  const first = firstName?.trim();
+  const middle = middleName?.trim();
+
+  if (!last && !first) return fallbackName?.trim() || '';
+
+  const firstMiddle = [first, middle].filter(Boolean).join(' ');
+  return firstMiddle ? `${last}, ${firstMiddle}` : last || '';
+}
+
 type TrusteeOptionalFields = {
   banks?: string[];
   software?: string;
