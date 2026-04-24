@@ -57,19 +57,7 @@ describe('TrusteeDistrictFilter Component', () => {
     vi.restoreAllMocks();
   });
 
-  test('should render filter section with expand/collapse button', async () => {
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    expect(screen.getByRole('button', { name: /filters/i })).toBeInTheDocument();
-  });
-
-  test('should start collapsed by default', async () => {
+  test('should render filter section collapsed by default', async () => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
     render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
@@ -79,6 +67,7 @@ describe('TrusteeDistrictFilter Component', () => {
     });
 
     const toggleButton = screen.getByRole('button', { name: /filters/i });
+    expect(toggleButton).toBeInTheDocument();
     expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByLabelText('District (Division)')).not.toBeInTheDocument();
   });
