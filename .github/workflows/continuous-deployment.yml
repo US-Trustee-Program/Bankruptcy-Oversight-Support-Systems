@@ -68,8 +68,6 @@ jobs:
     name: Security
     uses: ./.github/workflows/sub-security-scan.yml
     secrets:
-      SNYK_OAUTH_CLIENT_ID: ${{ secrets.SNYK_OAUTH_CLIENT_ID }} # pragma: allowlist secret
-      SNYK_OAUTH_CLIENT_SECRET: ${{ secrets.SNYK_OAUTH_CLIENT_SECRET }} # pragma: allowlist secret
       AZ_SECURITY_SCAN_CLIENT_ID: ${{ secrets.AZ_SECURITY_SCAN_CLIENT_ID }} # pragma: allowlist secret
       AZ_TENANT_ID: ${{ secrets.AZ_TENANT_ID }} # pragma: allowlist secret
       AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }} # pragma: allowlist secret
