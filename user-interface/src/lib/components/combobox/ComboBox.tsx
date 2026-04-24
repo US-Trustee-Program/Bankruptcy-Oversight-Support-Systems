@@ -444,6 +444,22 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   useEffect(() => {
     if (expanded) {
       focusInput();
+
+      // Scroll to first selected item if there are selections (only on open, not on selection changes)
+      if (selectedMap.size > 0 && comboBoxListRef.current) {
+        requestAnimationFrame(() => {
+          const firstSelected = Array.from(selectedMap.values())[0];
+          if (!firstSelected) return;
+
+          const selectedElement = comboBoxListRef.current?.querySelector(
+            `li[data-value="${firstSelected.value}"]`,
+          ) as HTMLElement;
+
+          if (selectedElement && typeof selectedElement.scrollIntoView === 'function') {
+            selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+          }
+        });
+      }
     }
   }, [expanded]);
 

@@ -1,11 +1,15 @@
 import './TrusteesList.scss';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { NavLink } from 'react-router-dom';
 import { TrusteeListItem } from '@common/cams/trustees';
 import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import TrusteeDistrictFilter from './filters/TrusteeDistrictFilter';
+import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import Icon from '@/lib/components/uswds/Icon';
+import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
 
 const COLUMN_HEADERS = ['Name', 'District (Division)', 'Chapter', 'Type', 'Status'];
 
@@ -30,6 +34,9 @@ export default function TrusteesList() {
   const [trustees, setTrustees] = useState<TrusteeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const filterRef = useRef<TrusteeDistrictFilterRef>(null);
 
   useEffect(() => {
     const fetchTrustees = () => {
@@ -48,6 +55,38 @@ export default function TrusteesList() {
 
     fetchTrustees();
   }, []);
+
+  const handleFilterDistrict = (districts: ComboOption[]) => {
+    setSelectedDistricts(districts);
+  };
+
+  const handleExpandedChange = (isExpanded: boolean) => {
+    setIsFilterExpanded(isExpanded);
+  };
+
+  const handleRemovePill = (district: ComboOption) => {
+    filterRef.current?.removePill(district);
+  };
+
+  const { filteredTrustees, announcement } = useMemo(() => {
+    if (selectedDistricts.length === 0) {
+      return {
+        filteredTrustees: trustees,
+        announcement: `Showing all ${trustees.length} trustee(s)`,
+      };
+    }
+    const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
+    const filtered = trustees.filter((trustee) =>
+      trustee.appointments.some(
+        (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
+      ),
+    );
+    const districtNames = selectedDistricts.map((d) => d.label).join(', ');
+    return {
+      filteredTrustees: filtered,
+      announcement: `Showing ${filtered.length} trustee(s) in ${districtNames}`,
+    };
+  }, [trustees, selectedDistricts]);
 
   if (loading) {
     return <LoadingSpinner caption="Loading trustees..." />;
@@ -80,7 +119,33 @@ export default function TrusteesList() {
 
   return (
     <div className="trustees-list">
-      <p className="trustees-list-count">{trustees.length} Trustee(s)</p>
+      <TrusteeDistrictFilter
+        ref={filterRef}
+        handleFilterDistrict={handleFilterDistrict}
+        onExpandedChange={handleExpandedChange}
+      />
+      <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
+        {announcement}
+      </div>
+      {/* Pills shown when filter is expanded */}
+      {isFilterExpanded && selectedDistricts.length > 0 && (
+        <div className="filter-pills-container">
+          {selectedDistricts.map((district) => (
+            <span key={district.value} className="usa-tag filter-pill">
+              {district.label}
+              <button
+                type="button"
+                className="usa-tag__remove-button"
+                onClick={() => handleRemovePill(district)}
+                aria-label={`Remove ${district.label} filter`}
+              >
+                <Icon name="close" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="trustees-list-count">{filteredTrustees.length} Trustee(s)</p>
       <div
         className="trustees-list-grid"
         role="table"
@@ -101,7 +166,7 @@ export default function TrusteesList() {
           </div>
         </div>
         <div role="rowgroup">
-          {trustees.map((trustee) => {
+          {filteredTrustees.map((trustee) => {
             const rows = trustee.appointments.length === 0 ? [null] : trustee.appointments;
 
             return (
