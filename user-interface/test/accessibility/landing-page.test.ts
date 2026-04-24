@@ -65,7 +65,7 @@ test.describe('Landing Page - Case Search', () => {
     // Tab through elements until we reach My Cases link
     // This verifies keyboard navigation works
     await page.keyboard.press('Tab');
-    let focused = await page.evaluate(() => document.activeElement?.tagName);
+    await page.evaluate(() => document.activeElement?.tagName);
 
     // Try to find and activate My Cases link via keyboard
     // Focus on the My Cases link

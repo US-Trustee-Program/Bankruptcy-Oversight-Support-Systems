@@ -12,8 +12,10 @@ describe('useLandingPageAnalytics', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.spyOn(UseApplicationInsights, 'getAppInsights').mockReturnValue({
       appInsights: mockAppInsights as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       reactPlugin: {} as any,
     });
     vi.spyOn(UseFeatureFlags, 'default').mockReturnValue({

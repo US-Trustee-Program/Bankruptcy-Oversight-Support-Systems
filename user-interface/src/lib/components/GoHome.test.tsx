@@ -6,7 +6,6 @@ import useCamsNavigator from '../hooks/UseCamsNavigator';
 import { LOGIN_SUCCESS_PATH, CASE_SEARCH_PATH } from '@/login/login-library';
 import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
 import { LandingPageProvider } from '@/lib/contexts/LandingPageContext';
-import React from 'react';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
 vi.mock('../hooks/UseCamsNavigator');
@@ -41,7 +40,7 @@ describe('GoHome Component', () => {
     render(
       <LandingPageProvider>
         <GoHome />
-      </LandingPageProvider>
+      </LandingPageProvider>,
     );
 
     await waitFor(() => {
@@ -57,7 +56,7 @@ describe('GoHome Component', () => {
     render(
       <LandingPageProvider>
         <GoHome />
-      </LandingPageProvider>
+      </LandingPageProvider>,
     );
 
     await waitFor(() => {
@@ -71,7 +70,7 @@ describe('GoHome Component', () => {
     render(
       <LandingPageProvider>
         <GoHome />
-      </LandingPageProvider>
+      </LandingPageProvider>,
     );
 
     await waitFor(() => {
@@ -88,7 +87,7 @@ describe('GoHome Component', () => {
     render(
       <LandingPageProvider>
         <GoHome path={customPath} />
-      </LandingPageProvider>
+      </LandingPageProvider>,
     );
 
     await waitFor(() => {
@@ -130,7 +129,7 @@ describe('GoHome Component - Integration Tests', () => {
     render(
       <LandingPageProvider>
         <GoHome />
-      </LandingPageProvider>
+      </LandingPageProvider>,
     );
 
     await waitFor(() => {
@@ -150,7 +149,7 @@ describe('GoHome Component - Integration Tests', () => {
     render(
       <LandingPageProvider>
         <GoHome />
-      </LandingPageProvider>
+      </LandingPageProvider>,
     );
 
     await waitFor(() => {
@@ -166,7 +165,7 @@ describe('GoHome Component - Integration Tests', () => {
     render(
       <LandingPageProvider>
         <GoHome />
-      </LandingPageProvider>
+      </LandingPageProvider>,
     );
 
     await waitFor(() => {
