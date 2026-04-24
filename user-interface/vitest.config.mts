@@ -20,6 +20,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       exclude: [
+        '**/*.scss',
         '**/index.tsx',
         '**/.dependency-cruiser.js',
         'src/configuration/apiConfiguration.ts',
