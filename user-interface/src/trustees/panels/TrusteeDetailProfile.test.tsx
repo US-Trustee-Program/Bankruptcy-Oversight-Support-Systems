@@ -575,4 +575,34 @@ describe('TrusteeDetailProfile', () => {
     expect(screen.queryByTestId('assistant-0-phone-number')).not.toBeInTheDocument();
     expect(screen.queryByTestId('assistant-0-email')).not.toBeInTheDocument();
   });
+
+  describe('showSoftwareBankInfo prop', () => {
+    test('should render OtherInformationCard when showSoftwareBankInfo is true', () => {
+      renderWithProps({ showSoftwareBankInfo: true });
+
+      expect(screen.getByText('341 Meeting and Other Information')).toBeInTheDocument();
+      expect(screen.getByText('Software and Bank')).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Edit other trustee information' }),
+      ).toBeInTheDocument();
+    });
+
+    test('should hide OtherInformationCard and adjust heading when showSoftwareBankInfo is false', () => {
+      renderWithProps({ showSoftwareBankInfo: false });
+
+      expect(screen.queryByText('Software and Bank')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Edit other trustee information' }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('no-other-information')).not.toBeInTheDocument();
+      expect(screen.getByText('341 Meeting Information')).toBeInTheDocument();
+      expect(screen.queryByText('341 Meeting and Other Information')).not.toBeInTheDocument();
+    });
+
+    test('should still render MeetingOfCreditorsInfoCard when showSoftwareBankInfo is false', () => {
+      renderWithProps({ showSoftwareBankInfo: false });
+
+      expect(screen.getByTestId('zoom-info-heading')).toBeInTheDocument();
+    });
+  });
 });
