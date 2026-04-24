@@ -48,8 +48,10 @@ export default function TrusteesList() {
           setError(null);
           getAppInsights().appInsights.trackEvent(
             { name: 'Trustee List Loaded' },
-            { trusteeCount: data.length },
-            { loadMs: performance.now() - pageLoadStart.current },
+            {
+              trusteeCount: data.length,
+              loadMs: performance.now() - pageLoadStart.current,
+            },
           );
         })
         .catch(() => {
