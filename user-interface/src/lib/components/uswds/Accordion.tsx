@@ -24,9 +24,13 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
   const renderChildren = () => {
     if (!props.children) return;
     return Children.map(props.children, (child) => {
+      const childOnExpand = child.props.onExpand;
       return cloneElement(child, {
         key: `${child.key}-copy`,
-        onExpand: expandAccordion,
+        onExpand: (id: string) => {
+          expandAccordion(id);
+          if (childOnExpand) childOnExpand(id);
+        },
         expandedId: expandedAccordion,
       });
     });
