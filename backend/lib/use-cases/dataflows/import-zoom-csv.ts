@@ -4,6 +4,7 @@ import factory from '../../factory';
 import { ZoomInfo, Trustee } from '@common/cams/trustees';
 import { CamsUserReference } from '@common/cams/users';
 import { normalizeName } from './trustee-match.helpers';
+import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
 import ModuleNames from '../../../function-apps/dataflows/module-names';
 
 const MODULE_NAME = ModuleNames.IMPORT_ZOOM_CSV;
@@ -57,21 +58,33 @@ function normalizeEmail(email: string | undefined): string {
   return (email || '').toLowerCase().trim();
 }
 
-export function parseZoomMatchedTsvFile(content: string): ZoomMatchedRow[] {
-  const lines = content.split('\n');
-  const rows: ZoomMatchedRow[] = [];
+type ZoomHeaderIndices = {
+  zoomName: number;
+  zoomEmail: number;
+  meetingId: number;
+  passcode: number;
+  phone: number;
+  link: number;
+  outcome: number;
+  strategy: number;
+  atsTruIds: number;
+  matchedNames: number;
+  matchCount: number;
+  similarity: number;
+  activeStatus: number;
+  statusCodes: number;
+  ambiguousCandidates: number;
+};
 
-  // Parse header to get column indices
-  const headerLine = lines[0];
-  if (!headerLine) {
-    return rows;
-  }
-
+/**
+ * Builds a header map from the TSV header line, validating required columns.
+ */
+function buildZoomMatchedHeaderMap(headerLine: string): ZoomHeaderIndices {
   const headers = headerLine.split('\t').map((h) => h.trim());
   const getColumnIndex = (name: string) =>
     headers.findIndex((h) => h.toLowerCase() === name.toLowerCase());
 
-  const indices = {
+  const indices: ZoomHeaderIndices = {
     zoomName: getColumnIndex('Zoom Name'),
     zoomEmail: getColumnIndex('Zoom Email'),
     meetingId: getColumnIndex('Meeting ID'),
@@ -90,38 +103,110 @@ export function parseZoomMatchedTsvFile(content: string): ZoomMatchedRow[] {
   };
 
   // Validate required columns exist
-  if (indices.zoomName === -1 || indices.atsTruIds === -1 || indices.meetingId === -1) {
+  if (
+    indices.zoomName === -1 ||
+    indices.atsTruIds === -1 ||
+    indices.meetingId === -1 ||
+    indices.link === -1
+  ) {
     throw new Error(
-      'Required columns missing from zoom matching report: Zoom Name, ATS TRU_IDs, Meeting ID',
+      'Required columns missing from zoom matching report: Zoom Name, ATS TRU_IDs, Meeting ID, Link',
     );
   }
+
+  return indices;
+}
+
+/**
+ * Parses a single TSV row into a ZoomMatchedRow object.
+ */
+function parseZoomMatchedRow(line: string, indices: ZoomHeaderIndices): ZoomMatchedRow {
+  const parts = line.split('\t').map((p) => p.trim());
+
+  return {
+    zoomName: parts[indices.zoomName] || '',
+    zoomEmail: parts[indices.zoomEmail] || '',
+    meetingId: parts[indices.meetingId] || '',
+    passcode: parts[indices.passcode] || '',
+    phone: parts[indices.phone] || '',
+    link: parts[indices.link] || '',
+    outcome: parts[indices.outcome] || '',
+    strategy: parts[indices.strategy] || '',
+    atsTruIds: parts[indices.atsTruIds] || '',
+    matchedNames: parts[indices.matchedNames] || '',
+    matchCount: parts[indices.matchCount] || '',
+    similarity: parts[indices.similarity] || '',
+    activeStatus: parts[indices.activeStatus] || '',
+    statusCodes: parts[indices.statusCodes] || '',
+    ambiguousCandidates: parts[indices.ambiguousCandidates] || '',
+  };
+}
+
+export function parseZoomMatchedTsvFile(content: string): ZoomMatchedRow[] {
+  const lines = content.split('\n');
+  if (!lines[0]) return [];
+
+  const indices = buildZoomMatchedHeaderMap(lines[0]);
+  const rows: ZoomMatchedRow[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
     if (!line.trim()) continue;
-
-    const parts = line.split('\t').map((p) => p.trim());
-
-    rows.push({
-      zoomName: parts[indices.zoomName] || '',
-      zoomEmail: parts[indices.zoomEmail] || '',
-      meetingId: parts[indices.meetingId] || '',
-      passcode: parts[indices.passcode] || '',
-      phone: parts[indices.phone] || '',
-      link: parts[indices.link] || '',
-      outcome: parts[indices.outcome] || '',
-      strategy: parts[indices.strategy] || '',
-      atsTruIds: parts[indices.atsTruIds] || '',
-      matchedNames: parts[indices.matchedNames] || '',
-      matchCount: parts[indices.matchCount] || '',
-      similarity: parts[indices.similarity] || '',
-      activeStatus: parts[indices.activeStatus] || '',
-      statusCodes: parts[indices.statusCodes] || '',
-      ambiguousCandidates: parts[indices.ambiguousCandidates] || '',
-    });
+    rows.push(parseZoomMatchedRow(line, indices));
   }
 
   return rows;
+}
+
+/**
+ * Disambiguates multiple trustee candidates by email match.
+ * Returns the single matching trustee, or null if not exactly one match.
+ */
+async function disambiguateByEmail(
+  candidates: Trustee[],
+  zoomEmail?: string,
+): Promise<Trustee | null> {
+  if (!zoomEmail) return null;
+  const normalizedZoomEmail = normalizeEmail(zoomEmail);
+  const emailFiltered = candidates.filter(
+    (t) => normalizeEmail(t.public.email) === normalizedZoomEmail,
+  );
+  return emailFiltered.length === 1 ? emailFiltered[0] : null;
+}
+
+/**
+ * Searches for trustees by exact name match.
+ */
+async function findByExactName(
+  context: ApplicationContext,
+  normalizedName: string,
+): Promise<Trustee[]> {
+  const repo = factory.getTrusteesRepository(context);
+  return repo.findTrusteesByName(normalizedName);
+}
+
+/**
+ * Searches for trustees by partial name match (substring).
+ */
+async function findByPartialName(
+  context: ApplicationContext,
+  normalizedName: string,
+): Promise<Trustee[]> {
+  const repo = factory.getTrusteesRepository(context);
+  return repo.searchTrusteesByName(normalizedName);
+}
+
+/**
+ * Searches for trustees by phonetic token matching.
+ */
+async function findByPhoneticTokens(
+  context: ApplicationContext,
+  normalizedName: string,
+): Promise<Trustee[]> {
+  const tokens = generateSearchTokens(normalizedName);
+  if (tokens.length === 0) return [];
+  const repo = factory.getTrusteesRepository(context);
+  return repo.searchTrusteesByPhoneticTokens(tokens);
 }
 
 /**
@@ -137,108 +222,42 @@ async function findTrusteeByNameFallback(
   zoomName: string,
   zoomEmail?: string,
 ): Promise<Trustee | null> {
-  const repo = factory.getTrusteesRepository(context);
   const normalizedName = normalizeName(zoomName);
 
-  // Step 1: Try exact name match
-  const exactMatches = await repo.findTrusteesByName(normalizedName);
+  const strategies: Array<{
+    name: string;
+    search: () => Promise<Trustee[]>;
+  }> = [
+    { name: 'exact name', search: () => findByExactName(context, normalizedName) },
+    { name: 'partial name', search: () => findByPartialName(context, normalizedName) },
+    { name: 'phonetic tokens', search: () => findByPhoneticTokens(context, normalizedName) },
+  ];
 
-  if (exactMatches.length === 1) {
-    context.logger.info(
-      MODULE_NAME,
-      `FALLBACK: Found trustee by exact name: "${normalizedName}" -> ${exactMatches[0].trusteeId}`,
-    );
-    return exactMatches[0];
-  }
+  for (const strategy of strategies) {
+    const candidates = await strategy.search();
+    if (candidates.length === 0) continue;
 
-  if (exactMatches.length > 1) {
-    // Try to disambiguate with email if available
-    if (zoomEmail) {
-      const normalizedZoomEmail = normalizeEmail(zoomEmail);
-      const emailFiltered = exactMatches.filter((t) => {
-        const trusteeEmail = normalizeEmail(t.public.email);
-        return trusteeEmail === normalizedZoomEmail;
-      });
+    if (candidates.length === 1) {
+      context.logger.info(
+        MODULE_NAME,
+        `FALLBACK: Found trustee by ${strategy.name}: "${normalizedName}" -> ${candidates[0].trusteeId}`,
+      );
+      return candidates[0];
+    }
 
-      if (emailFiltered.length === 1) {
-        context.logger.info(
-          MODULE_NAME,
-          `FALLBACK: Found trustee by exact name + email: "${normalizedName}" -> ${emailFiltered[0].trusteeId}`,
-        );
-        return emailFiltered[0];
-      }
+    const byEmail = await disambiguateByEmail(candidates, zoomEmail);
+    if (byEmail) {
+      context.logger.info(
+        MODULE_NAME,
+        `FALLBACK: Found trustee by ${strategy.name} + email: "${normalizedName}" -> ${byEmail.trusteeId}`,
+      );
+      return byEmail;
     }
 
     context.logger.warn(
       MODULE_NAME,
-      `FALLBACK: Multiple trustees found for exact name "${normalizedName}", trying fuzzy search`,
+      `FALLBACK: Multiple trustees found by ${strategy.name} for "${normalizedName}", cannot disambiguate`,
     );
-  }
-
-  // Step 2: Try partial name search (substring matching)
-  const partialMatches = await repo.searchTrusteesByName(normalizedName);
-
-  if (partialMatches.length === 1) {
-    context.logger.info(
-      MODULE_NAME,
-      `FALLBACK: Found trustee by partial name search: "${normalizedName}" -> ${partialMatches[0].trusteeId}`,
-    );
-    return partialMatches[0];
-  }
-
-  if (partialMatches.length > 1 && zoomEmail) {
-    const normalizedZoomEmail = normalizeEmail(zoomEmail);
-    const emailFiltered = partialMatches.filter((t) => {
-      const trusteeEmail = normalizeEmail(t.public.email);
-      return trusteeEmail === normalizedZoomEmail;
-    });
-
-    if (emailFiltered.length === 1) {
-      context.logger.info(
-        MODULE_NAME,
-        `FALLBACK: Found trustee by partial name + email: "${normalizedName}" -> ${emailFiltered[0].trusteeId}`,
-      );
-      return emailFiltered[0];
-    }
-  }
-
-  // Step 3: Try phonetic token matching (fuzzy search)
-  const { generateSearchTokens } = await import('../../adapters/utils/phonetic-helper');
-  const tokens = generateSearchTokens(normalizedName);
-
-  if (tokens.length > 0) {
-    const phoneticMatches = await repo.searchTrusteesByPhoneticTokens(tokens);
-
-    if (phoneticMatches.length === 1) {
-      context.logger.info(
-        MODULE_NAME,
-        `FALLBACK: Found trustee by phonetic tokens: "${normalizedName}" -> ${phoneticMatches[0].trusteeId}`,
-      );
-      return phoneticMatches[0];
-    }
-
-    if (phoneticMatches.length > 1 && zoomEmail) {
-      const normalizedZoomEmail = normalizeEmail(zoomEmail);
-      const emailFiltered = phoneticMatches.filter((t) => {
-        const trusteeEmail = normalizeEmail(t.public.email);
-        return trusteeEmail === normalizedZoomEmail;
-      });
-
-      if (emailFiltered.length === 1) {
-        context.logger.info(
-          MODULE_NAME,
-          `FALLBACK: Found trustee by phonetic tokens + email: "${normalizedName}" -> ${emailFiltered[0].trusteeId}`,
-        );
-        return emailFiltered[0];
-      }
-    }
-
-    if (phoneticMatches.length > 1) {
-      context.logger.warn(
-        MODULE_NAME,
-        `FALLBACK: Multiple trustees found by phonetic search for "${normalizedName}", cannot disambiguate`,
-      );
-    }
   }
 
   context.logger.info(
@@ -246,6 +265,50 @@ async function findTrusteeByNameFallback(
     `FALLBACK: No trustee found for name "${normalizedName}" after trying all strategies`,
   );
   return null;
+}
+
+/**
+ * Builds a TSV row for the main import report.
+ */
+function buildMatchedReportRow(row: ZoomMatchedRow, processResult: ProcessResult): string {
+  return [
+    row.zoomName,
+    row.zoomEmail,
+    row.atsTruIds,
+    row.matchedNames,
+    row.matchCount,
+    row.similarity,
+    row.activeStatus,
+    row.statusCodes,
+    row.strategy,
+    processResult.matchedTrusteeId ?? '',
+    processResult.matchedTrusteeName ?? '',
+    processResult.outcome,
+    '', // error column (empty for now)
+  ].join('\t');
+}
+
+/**
+ * Builds a TSV row for the unmatched report.
+ */
+function buildUnmatchedReportRow(row: ZoomMatchedRow, outcome: ProcessResult['outcome']): string {
+  return [
+    row.zoomName,
+    row.zoomEmail,
+    row.meetingId,
+    row.passcode,
+    row.phone,
+    row.link,
+    outcome, // Use computed outcome, not original TSV outcome
+    row.strategy,
+    row.atsTruIds,
+    row.matchedNames,
+    row.matchCount,
+    row.similarity,
+    row.activeStatus,
+    row.statusCodes,
+    row.ambiguousCandidates,
+  ].join('\t');
 }
 
 export async function processZoomMatchedRow(
@@ -385,42 +448,25 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
   result.total = rows.length;
 
   const reportLines: string[] = [ZOOM_REPORT_HEADERS];
-  const unmatchedRows: ZoomMatchedRow[] = [];
+  const unmatchedRows: Array<{ row: ZoomMatchedRow; outcome: ProcessResult['outcome'] }> = [];
+
+  const outcomeToKey: Record<ProcessResult['outcome'], keyof ZoomImportResult> = {
+    matched: 'matched',
+    unmatched: 'unmatched',
+    ambiguous: 'ambiguous',
+    error: 'errors',
+  };
 
   for (const row of rows) {
     const processResult = await processZoomMatchedRow(context, row);
-    result[
-      processResult.outcome === 'matched'
-        ? 'matched'
-        : processResult.outcome === 'unmatched'
-          ? 'unmatched'
-          : processResult.outcome === 'ambiguous'
-            ? 'ambiguous'
-            : 'errors'
-    ]++;
+    result[outcomeToKey[processResult.outcome]]++;
 
     // Collect unmatched rows for separate report
     if (processResult.outcome === 'unmatched') {
-      unmatchedRows.push(row);
+      unmatchedRows.push({ row, outcome: processResult.outcome });
     }
 
-    reportLines.push(
-      [
-        row.zoomName,
-        row.zoomEmail,
-        row.atsTruIds,
-        row.matchedNames,
-        row.matchCount,
-        row.similarity,
-        row.activeStatus,
-        row.statusCodes,
-        row.strategy,
-        processResult.matchedTrusteeId ?? '',
-        processResult.matchedTrusteeName ?? '',
-        processResult.outcome,
-        '', // error column (empty for now)
-      ].join('\t'),
-    );
+    reportLines.push(buildMatchedReportRow(row, processResult));
   }
 
   context.logger.info(MODULE_NAME, `Import complete: ${JSON.stringify(result)}`);
@@ -434,26 +480,8 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
       'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
     ];
 
-    for (const row of unmatchedRows) {
-      unmatchedReportLines.push(
-        [
-          row.zoomName,
-          row.zoomEmail,
-          row.meetingId,
-          row.passcode,
-          row.phone,
-          row.link,
-          row.outcome,
-          row.strategy,
-          row.atsTruIds,
-          row.matchedNames,
-          row.matchCount,
-          row.similarity,
-          row.activeStatus,
-          row.statusCodes,
-          row.ambiguousCandidates,
-        ].join('\t'),
-      );
+    for (const { row, outcome } of unmatchedRows) {
+      unmatchedReportLines.push(buildUnmatchedReportRow(row, outcome));
     }
 
     const UNMATCHED_REPORT_BLOB_NAME = 'zoom-import-unmatched-report.tsv';
