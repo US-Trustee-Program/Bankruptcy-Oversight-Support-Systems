@@ -1,0 +1,332 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Trustee District Filter Metrics\n\nSuccess metrics for CAMS-691: district filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`, `selectedCount`, `resultCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee List Loaded` — fired when trustee data first renders; dimensions: `trusteeCount`; measurement: `loadMs`"
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "TimeRange",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 172800000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 300000
+                },
+                {
+                  "durationMs": 900000
+                },
+                {
+                  "durationMs": 1800000
+                },
+                {
+                  "durationMs": 3600000
+                },
+                {
+                  "durationMs": 14400000
+                },
+                {
+                  "durationMs": 43200000
+                },
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 259200000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 1209600000
+                },
+                {
+                  "durationMs": 2419200000
+                },
+                {
+                  "durationMs": 2592000000
+                },
+                {
+                  "durationMs": 5184000000
+                },
+                {
+                  "durationMs": 7776000000
+                }
+              ]
+            },
+            "label": "Time Range",
+            "timeContext": {
+              "durationMs": 86400000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Usage Tracking\nHow frequently users modify the district filter and what they do with it."
+      },
+      "name": "usage-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageVisits = \n    pageViews \n    | where timestamp {TimeRange} \n    | where url contains \"/trustees\" \n    | project operation_Id;\nlet FilterModifiedVisits = \n    customEvents \n    | where timestamp {TimeRange} \n    | where name == \"Trustee District Filter Changed\" \n    | where tostring(customDimensions.isDefault) != \"true\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet ModifiedVisits = toscalar(\n    FilterModifiedVisits \n    | join kind=inner TrusteePageVisits on operation_Id \n    | summarize by operation_Id \n    | count\n);\nprint \n    TotalVisits = TotalVisits, \n    ModifiedVisits = ModifiedVisits, \n    ModificationRate = round(iif(TotalVisits > 0, todouble(ModifiedVisits) / todouble(TotalVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Page Visits Where Filter Was Changed",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "ModificationRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalVisits",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "filter-modification-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageSessions =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet FilterChangesPerSession =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageSessions | count);\nlet TotalChanges = toscalar(FilterChangesPerSession | count);\nprint \n    TotalVisits = TotalVisits, \n    TotalChanges = TotalChanges, \n    AvgChangesPerVisit = round(iif(TotalVisits > 0, todouble(TotalChanges) / todouble(TotalVisits), 0.0), 2)",
+        "size": 3,
+        "title": "Avg Filter Changes per Page Visit",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "AvgChangesPerVisit",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 2,
+                "maximumFractionDigits": 2
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalVisits"
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "filter-avg-changes-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageSessions = \n    pageViews \n    | where timestamp {TimeRange} \n    | where url contains \"/trustees\" \n    | project operation_Id;\nlet ClearSessions = \n    customEvents \n    | where timestamp {TimeRange} \n    | where name == \"Trustee District Filter Cleared\" \n    | project operation_Id;\nlet TotalSessions = toscalar(TrusteePageSessions | count);\nlet ClearedSessions = toscalar(\n    ClearSessions \n    | join kind=inner TrusteePageSessions on operation_Id \n    | summarize by operation_Id \n    | count\n);\nprint \n    TotalSessions = TotalSessions, \n    ClearedSessions = ClearedSessions, \n    ClearedSessionsRate = round(iif(TotalSessions > 0, todouble(ClearedSessions) / todouble(TotalSessions) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Trustee Page Visits That Cleared Default Selection",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "ClearedSessionsRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalSessions",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "filter-clear-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\"\n| where tostring(customDimensions.isDefault) != \"true\"\n| extend resultCount = toint(customMeasurements.resultCount)\n| extend ResultBucket = case(\n    resultCount == 0, \"0 trustees\",\n    resultCount <= 5, \"1–5 trustees\",\n    resultCount <= 10, \"6–10 trustees\",\n    resultCount <= 20, \"11–20 trustees\",\n    resultCount <= 50, \"21–50 trustees\",\n    \"51+ trustees\"\n  )\n| summarize FilterApplications = count() by ResultBucket\n| order by ResultBucket asc",
+        "size": 3,
+        "title": "Trustee Count Distribution After Filtering",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "ResultBucket"
+          },
+          "leftContent": {
+            "columnMatch": "FilterApplications",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "trustee-count-distribution-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\" or name == \"Trustee District Filter Cleared\"\n| summarize\n    FilterModifications = countif(name == \"Trustee District Filter Changed\" and tostring(customDimensions.isDefault) != \"true\"),\n    DefaultClears = countif(name == \"Trustee District Filter Cleared\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "size": 0,
+        "title": "Filter Activity Over Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "FilterModifications",
+              "label": "Filter Modified Beyond Defaults",
+              "color": "blue"
+            },
+            {
+              "seriesName": "DefaultClears",
+              "label": "Default Selection Cleared",
+              "color": "orange"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "filter-activity-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Performance Tracking\nFilter response time and page load time for the trustee list."
+      },
+      "name": "performance-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee List Loaded\"\n| extend loadMs = todouble(customMeasurements.loadMs)\n| where isnotnull(loadMs)\n| summarize\n    P50Ms = round(percentile(loadMs, 50), 0),\n    P95Ms = round(percentile(loadMs, 95), 0),\n    SampleCount = count()\n| project\n    ['P50 Load (ms)'] = P50Ms,\n    ['P95 Load (ms)'] = P95Ms,\n    ['Sample Count'] = SampleCount",
+        "size": 3,
+        "title": "Trustee List Page Load Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "P50Ms",
+            "formatter": 1
+          },
+          "leftContent": {
+            "columnMatch": "P50 Load (ms)",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "greenRed"
+            },
+            "numberFormat": {
+              "unit": 23,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 0,
+                "maximumFractionDigits": 0
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "P95 Load (ms)",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "50",
+      "name": "page-load-time-kpi"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-5d5564/providers/Microsoft.Insights/components/appi-ustp-cams-dev-5d5564-webapp"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

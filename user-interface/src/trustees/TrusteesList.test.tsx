@@ -11,6 +11,13 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import LocalStorage from '@/lib/utils/local-storage';
 import React from 'react';
 
+const mockTrackEvent = vi.fn();
+vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
+  getAppInsights: () => ({
+    appInsights: { trackEvent: mockTrackEvent },
+  }),
+}));
+
 function renderWithRouter(component: React.ReactElement) {
   return render(<BrowserRouter>{component}</BrowserRouter>);
 }
@@ -30,6 +37,7 @@ function makeAppointment(overrides: Partial<TrusteeAppointment> = {}): TrusteeAp
 describe('TrusteesList Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTrackEvent.mockReset();
   });
 
   afterEach(() => {
@@ -278,6 +286,89 @@ describe('TrusteesList Component', () => {
 
     expect(screen.getByText('Pool')).toBeInTheDocument();
     expect(screen.getByText('Voluntarily Suspended')).toBeInTheDocument();
+  });
+
+  describe('Success Metrics Telemetry', () => {
+    test('should track Trustee List Loaded event with trusteeCount after data loads', async () => {
+      const trustee1 = makeListItem({ trusteeId: 'trustee-1', name: 'Alice' });
+      const trustee2 = makeListItem({ trusteeId: 'trustee-2', name: 'Bob' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1, trustee2] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith(
+          { name: 'Trustee List Loaded' },
+          expect.objectContaining({
+            trusteeCount: 2,
+            loadMs: expect.any(Number),
+          }),
+        );
+      });
+    });
+
+    test('should track Trustee District Filter Changed with isDefault=true when default filter applied', async () => {
+      const apptNY = makeAppointment({ courtId: 'NYSB', divisionCode: '081' });
+      const trusteeNY = makeListItem({
+        trusteeId: 'ny',
+        name: 'NY Trustee',
+        appointments: [apptNY],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York Region',
+          },
+        ],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith(
+          { name: 'Trustee District Filter Changed' },
+          expect.objectContaining({ isDefault: true, selectedCount: 1, resultCount: 1 }),
+        );
+      });
+    });
   });
 
   describe('District Filtering', () => {
