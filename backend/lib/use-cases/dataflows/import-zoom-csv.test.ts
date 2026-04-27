@@ -75,6 +75,13 @@ describe('import-zoom-csv', () => {
       expect(() => parseZoomMatchedTsvFile(missingColumns)).toThrow('Required columns missing');
     });
 
+    test('should throw error if Link column missing', () => {
+      const missingLink = 'Zoom Name\tZoom Email\tMeeting ID\tATS TRU_IDs';
+      expect(() => parseZoomMatchedTsvFile(missingLink)).toThrow(
+        'Required columns missing from zoom matching report: Zoom Name, ATS TRU_IDs, Meeting ID, Link',
+      );
+    });
+
     test('should handle multiple ATS TRU_IDs', () => {
       const multipleIds = [
         'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
@@ -288,6 +295,30 @@ describe('import-zoom-csv', () => {
         'zoom-import-unmatched-report.tsv',
         expect.stringContaining('Jane Smith'),
       );
+    });
+
+    test('should use computed outcome in unmatched report, not original TSV outcome', async () => {
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(SAMPLE_MATCHED_TSV);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByPhoneticTokens').mockResolvedValue(
+        [],
+      );
+
+      await importZoomCsv(context);
+
+      // Both rows in SAMPLE_MATCHED_TSV have outcome='matched' in the TSV
+      // But since we can't find them, the computed outcome should be 'unmatched'
+      const writeObjectCalls = vi.mocked(mockObjectStorage.writeObject).mock.calls;
+      const unmatchedReportCall = writeObjectCalls.find(
+        (call) => call[1] === 'zoom-import-unmatched-report.tsv',
+      );
+      expect(unmatchedReportCall).toBeDefined();
+      const reportContent = unmatchedReportCall![2];
+      // The outcome column (7th column) should contain 'unmatched', not 'matched'
+      expect(reportContent).toContain('\tunmatched\t');
+      expect(reportContent).not.toContain('\tmatched\temail\t');
     });
 
     test('should not write unmatched report when all records matched', async () => {
