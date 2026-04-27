@@ -1943,6 +1943,8 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           id: 'trustee-001',
           trusteeId: 'trustee-001',
           name: 'John Doe',
+          firstName: 'John',
+          lastName: 'Doe',
           updatedOn: '2025-01-01T00:00:00.000Z',
           updatedBy: {
             id: 'user-1',
@@ -1978,6 +1980,8 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           id: 'trustee-002',
           trusteeId: 'trustee-002',
           name: 'Jane Smith',
+          firstName: 'Jane',
+          lastName: 'Smith',
           updatedOn: '2025-01-01T00:00:00.000Z',
           updatedBy: {
             id: 'user-1',
@@ -2013,6 +2017,8 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           id: 'trustee-003',
           trusteeId: 'trustee-003',
           name: 'Bob Johnson',
+          firstName: 'Bob',
+          lastName: 'Johnson',
           updatedOn: '2025-01-01T00:00:00.000Z',
           updatedBy: {
             id: 'user-1',
