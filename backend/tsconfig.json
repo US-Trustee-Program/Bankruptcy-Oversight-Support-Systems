@@ -11,10 +11,12 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "types": ["vitest/globals"],
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@common/*": ["../common/src/*"]
     }
   },
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules"],
+  "references": [{ "path": "../common" }]
 }
