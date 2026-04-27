@@ -8,7 +8,7 @@ import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
 import ModuleNames from '../../../function-apps/dataflows/module-names';
 
 const MODULE_NAME = ModuleNames.IMPORT_ZOOM_CSV;
-const ZOOM_MATCHED_TSV_BLOB_NAME = 'zoom-matching-report-matched.tsv';
+const ZOOM_MATCHED_TSV_BLOB_NAME = 'zoom-import.tsv';
 const ZOOM_REPORT_BLOB_NAME = 'zoom-import-report.tsv';
 const ZOOM_REPORT_HEADERS =
   'zoomName\tzoomEmail\tatsTruIds\tmatchedNames\tmatchCount\tsimilarity\tactiveStatus\tstatusCodes\tmatchStrategy\tcamsTrusteeId\tcamsTrusteeName\toutcome\terror';
@@ -159,7 +159,7 @@ export function parseZoomMatchedTsvFile(content: string): ZoomMatchedRow[] {
 }
 
 /**
- * Disambiguates multiple trustee candidates by email match.
+ * Disambiguate multiple trustee candidates by email match.
  * Returns the single matching trustee, or null if not exactly one match.
  */
 async function disambiguateByEmail(
