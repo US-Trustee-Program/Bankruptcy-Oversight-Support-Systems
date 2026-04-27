@@ -162,10 +162,7 @@ export function parseZoomMatchedTsvFile(content: string): ZoomMatchedRow[] {
  * Disambiguate multiple trustee candidates by email match.
  * Returns the single matching trustee, or null if not exactly one match.
  */
-async function disambiguateByEmail(
-  candidates: Trustee[],
-  zoomEmail?: string,
-): Promise<Trustee | null> {
+function disambiguateByEmail(candidates: Trustee[], zoomEmail?: string): Trustee | null {
   if (!zoomEmail) return null;
   const normalizedZoomEmail = normalizeEmail(zoomEmail);
   const emailFiltered = candidates.filter(
@@ -245,7 +242,7 @@ async function findTrusteeByNameFallback(
       return candidates[0];
     }
 
-    const byEmail = await disambiguateByEmail(candidates, zoomEmail);
+    const byEmail = disambiguateByEmail(candidates, zoomEmail);
     if (byEmail) {
       context.logger.info(
         MODULE_NAME,
@@ -377,16 +374,21 @@ export async function processZoomMatchedRow(
       );
     }
 
-    // If multiple ATS trustees mapped to the same zoom, we need to decide which one to update
-    // For now, update the first one and log a warning
-    const targetTrustee = camsTrustees[0];
-
+    // If multiple ATS trustees mapped to the same zoom, mark as ambiguous for manual review
     if (camsTrustees.length > 1) {
       context.logger.warn(
         MODULE_NAME,
-        `Multiple CAMS trustees found for zoom "${row.zoomName}": ${camsTrustees.map((t) => t.trusteeId).join(', ')}. Updating first trustee: ${targetTrustee.trusteeId}`,
+        `Multiple CAMS trustees found for zoom "${row.zoomName}": ${camsTrustees.map((t) => t.trusteeId).join(', ')}. Marking as ambiguous for manual resolution.`,
       );
+      return {
+        outcome: 'ambiguous',
+        matchStrategy: row.strategy,
+        matchedTrusteeId: undefined,
+        matchedTrusteeName: undefined,
+      };
     }
+
+    const targetTrustee = camsTrustees[0];
 
     if (notFoundIds.length > 0) {
       context.logger.info(
@@ -461,8 +463,12 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
     const processResult = await processZoomMatchedRow(context, row);
     result[outcomeToKey[processResult.outcome]]++;
 
-    // Collect unmatched rows for separate report
-    if (processResult.outcome === 'unmatched') {
+    // Collect unmatched, ambiguous, and error rows for remediation report
+    if (
+      processResult.outcome === 'unmatched' ||
+      processResult.outcome === 'ambiguous' ||
+      processResult.outcome === 'error'
+    ) {
       unmatchedRows.push({ row, outcome: processResult.outcome });
     }
 

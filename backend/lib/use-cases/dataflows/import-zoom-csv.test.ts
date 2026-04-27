@@ -188,7 +188,7 @@ describe('import-zoom-csv', () => {
       expect(result.outcome).toBe('error');
     });
 
-    test('should handle multiple TRU_IDs and use first matched trustee', async () => {
+    test('should mark as ambiguous when multiple TRU_IDs resolve to different trustees', async () => {
       const rowWithMultipleIds = { ...row, atsTruIds: '12345,67890' };
       const secondTrustee = { ...MOCK_TRUSTEE, trusteeId: 'trustee-789' };
 
@@ -201,9 +201,9 @@ describe('import-zoom-csv', () => {
 
       const result = await processZoomMatchedRow(context, rowWithMultipleIds);
 
-      expect(result.outcome).toBe('matched');
-      expect(result.matchedTrusteeId).toBe('trustee-456');
-      expect(updateSpy).toHaveBeenCalledWith('trustee-456', expect.any(Object), expect.any(Object));
+      expect(result.outcome).toBe('ambiguous');
+      expect(result.matchedTrusteeId).toBeUndefined();
+      expect(updateSpy).not.toHaveBeenCalled();
     });
 
     test('should return error when repo throws', async () => {
