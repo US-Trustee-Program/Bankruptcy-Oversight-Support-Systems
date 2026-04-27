@@ -47,7 +47,7 @@
     display: block;
     width: 100%;
     min-height: 1.75rem;
-    padding: 0.25rem 0.375rem 0.25rem 40%;
+    padding: 0.25rem 0.375rem 0.25rem 0;
     white-space: normal;
     position: relative;
 
@@ -62,9 +62,9 @@
   }
 
   // Small phones — inline label, full line wraps naturally
-  @media screen and (max-width: 479px) {
+  @media screen and (max-width: 640px) {
     .trustees-list-cell[data-cell] {
-      padding: 0.25rem 0.375rem;
+      padding: 0.25rem 0.375rem 0.25rem 0;
       min-height: unset;
 
       &::before {
@@ -78,6 +78,7 @@
   // Tablet — equal columns
   @media screen and (min-width: 641px) {
     .trustees-list-count {
+      padding-left: 0;
       margin-bottom: 1.25rem;
     }
 

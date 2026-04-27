@@ -1,6 +1,29 @@
 .trustee-district-filter {
   margin-bottom: 1.5rem;
 
+  .usa-accordion__heading {
+    margin-bottom: 1.5rem;
+    .usa-accordion__button {
+      padding-left: 1rem;
+    }
+  }
+  .usa-accordion__heading.usa-accordion--expanded {
+    margin-bottom: 0;
+  }
+  .usa-accordion__content {
+    padding: 1rem 1.25rem 1rem 1rem;
+    .filter-content {
+      margin-top: 0.5rem;
+      .usa-form-group {
+        margin-top: 0;
+      }
+    }
+  }
+  .usa-accordion__content:not([hidden]) + .filter-pills-container {
+    margin-top: 0.25rem;
+  }
+
+  /*
   .filter-header {
     background-color: #f0f0f0;
     border: 1px solid #dfe1e2;
@@ -12,6 +35,7 @@
     justify-content: space-between;
     min-height: 1.5rem;
   }
+    */
 
   .filter-toggle-button {
     display: flex;
@@ -49,14 +73,6 @@
         max-width: 30rem;
       }
     }
-  }
-
-  .usa-accordion__content:not([hidden]) + .filter-pills-container {
-    margin-top: 0.25rem;
-  }
-
-  .usa-accordion__content[hidden] + .filter-pills-container {
-    margin-top: 1.5rem;
   }
 
   .filter-pills-container {
@@ -99,10 +115,6 @@
         }
       }
     }
-  }
-
-  .usa-accordion__content {
-    padding: 1rem 1.25rem;
   }
 
   @keyframes slideDown {
