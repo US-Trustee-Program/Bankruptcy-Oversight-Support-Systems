@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Trustee District Filter Metrics\n\nSuccess metrics for CAMS-691: district filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`, `selectedCount`, `resultCount`; measurement: `responseMs`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee List Loaded` — fired when trustee data first renders; dimensions: `trusteeCount`; measurement: `loadMs`"
+        "json": "# Trustee District Filter Metrics\n\nSuccess metrics for CAMS-691: district filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`, `selectedCount`, `resultCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee List Loaded` — fired when trustee data first renders; dimensions: `trusteeCount`; measurement: `loadMs`"
       },
       "name": "header"
     },

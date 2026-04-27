@@ -101,11 +101,22 @@ export default function TrusteesList() {
     const isDefault =
       selectedDistricts.length === defaults.length &&
       selectedDistricts.every((d) => defaults.some((def) => def.value === d.value));
+
+    // Calculate result count inline to avoid dependency on filteredTrustees
+    const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
+    const resultCount = selectedDistricts.length === 0
+      ? trustees.length
+      : trustees.filter((trustee) =>
+          trustee.appointments.some(
+            (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
+          ),
+        ).length;
+
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee District Filter Changed' },
-      { isDefault, selectedCount: selectedDistricts.length, resultCount: filteredTrustees.length },
+      { isDefault, selectedCount: selectedDistricts.length, resultCount },
     );
-  }, [selectedDistricts, filteredTrustees]);
+  }, [selectedDistricts, trustees]);
 
   if (loading) {
     return <LoadingSpinner caption="Loading trustees..." />;

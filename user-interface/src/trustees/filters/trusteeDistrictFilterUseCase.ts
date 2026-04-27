@@ -63,6 +63,9 @@ const trusteeDistrictFilterUseCase = (
   controls: TrusteeDistrictFilterControls,
   onFilterDistrict: (districts: ComboOption[]) => void,
 ): TrusteeDistrictFilterUseCase => {
+  // Track previous selection to detect user-driven clears
+  let previousDistricts: ComboOption[] | undefined = undefined;
+
   const notifySelectionChange = (districts: ComboOption[]) => {
     onFilterDistrict(districts);
   };
@@ -92,9 +95,15 @@ const trusteeDistrictFilterUseCase = (
   };
 
   const handleFilterChange = (districts: ComboOption[]) => {
-    if (districts.length === 0) {
+    // Only track "cleared" when transitioning from non-empty to empty
+    const wasNonEmpty = previousDistricts && previousDistricts.length > 0;
+    const isNowEmpty = districts.length === 0;
+
+    if (wasNonEmpty && isNowEmpty) {
       getAppInsights().appInsights.trackEvent({ name: 'Trustee District Filter Cleared' });
     }
+
+    previousDistricts = districts;
     store.setSelectedDistricts(districts);
     notifySelectionChange(districts);
   };
