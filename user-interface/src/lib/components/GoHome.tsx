@@ -30,6 +30,8 @@ export function GoHome(props: GoHomeProps) {
   // Wait for LaunchDarkly to be ready
   useEffect(() => {
     const config = getFeatureFlagConfiguration();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let isUnmounted = false;
 
     // If LaunchDarkly is configured, wait for the client to be available
     if (config.useExternalProvider) {
@@ -37,17 +39,16 @@ export function GoHome(props: GoHomeProps) {
         ldClient
           .waitForInitialization()
           .then(() => {
+            if (isUnmounted) return;
             setIsReady(true);
             // Set a timeout: if flags don't arrive via useFlags() within 500ms, proceed anyway
             // This handles cases where LD initializes but returns no flags for the user
-            const timeoutId = setTimeout(() => {
+            timeoutId = setTimeout(() => {
               setHasTimedOut(true);
             }, 500);
-
-            // Clean up timeout on unmount
-            return () => clearTimeout(timeoutId);
           })
           .catch(() => {
+            if (isUnmounted) return;
             // Even if LD fails, we should navigate somewhere
             setIsReady(true);
             setHasTimedOut(true);
@@ -59,6 +60,13 @@ export function GoHome(props: GoHomeProps) {
       setIsReady(true);
       setHasTimedOut(true);
     }
+
+    return () => {
+      isUnmounted = true;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
   }, [ldClient]);
 
   useEffect(() => {
