@@ -21,6 +21,7 @@ import TrusteesScreen from './trustees/TrusteesScreen';
 import TrusteeDetailScreen from './trustees/TrusteeDetailScreen';
 import TrusteePublicContactForm from './trustees/forms/TrusteePublicContactForm';
 import SessionTimeoutManager from './lib/components/cams/SessionTimeoutManager/SessionTimeoutManager';
+import { NavigationTracker } from './lib/components/NavigationTracker';
 
 const featureFlagConfig = getFeatureFlagConfiguration();
 export const GlobalAlertContext = createContext<React.RefObject<GlobalAlertRef | null> | null>(
@@ -41,6 +42,7 @@ function App() {
       <div id="app-root" className="App" data-testid="app-component-test-id">
         <GlobalAlert inline={false} type={UswdsAlertStyle.Info} ref={globalAlertRef} />
         <Header />
+        <NavigationTracker />
         <GlobalAlertContext.Provider value={globalAlertRef}>
           <div className="cams-content">
             <Routes>

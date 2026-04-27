@@ -16,7 +16,6 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import * as UseFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
 import * as courtUtils from '@/lib/utils/court-utils';
 import * as UseLandingPageAnalyticsModule from '@/lib/hooks/UseLandingPageAnalytics';
-import { LandingPageProvider } from '@/lib/contexts/LandingPageContext';
 
 describe('search screen', () => {
   const userOffices = [REGION_02_GROUP_NY];
@@ -56,9 +55,7 @@ describe('search screen', () => {
   function renderWithoutProps() {
     render(
       <BrowserRouter>
-        <LandingPageProvider>
-          <SearchScreen></SearchScreen>
-        </LandingPageProvider>
+        <SearchScreen></SearchScreen>
       </BrowserRouter>,
     );
   }
@@ -841,9 +838,7 @@ describe('debtor name search', () => {
     });
     render(
       <BrowserRouter>
-        <LandingPageProvider>
-          <SearchScreen></SearchScreen>
-        </LandingPageProvider>
+        <SearchScreen></SearchScreen>
       </BrowserRouter>,
     );
   }
@@ -1094,9 +1089,7 @@ describe('SearchScreen analytics integration', () => {
   function renderWithoutProps() {
     render(
       <BrowserRouter>
-        <LandingPageProvider>
-          <SearchScreen></SearchScreen>
-        </LandingPageProvider>
+        <SearchScreen></SearchScreen>
       </BrowserRouter>,
     );
   }
@@ -1128,25 +1121,8 @@ describe('SearchScreen analytics integration', () => {
     });
   });
 
-  test('should track navigation on component unmount', async () => {
-    const { unmount } = render(
-      <BrowserRouter>
-        <LandingPageProvider>
-          <SearchScreen />
-        </LandingPageProvider>
-      </BrowserRouter>,
-    );
-
-    unmount();
-
-    await waitFor(() => {
-      expect(trackNavigationMock).toHaveBeenCalledWith(expect.any(String));
-    });
-  });
-
-  test('should not track first search when landing page context is null', async () => {
-    // The LandingPageProvider starts with landingPage as null
-    // SearchScreen should only track first search if landingPage === 'case-search'
+  test('should track first search action regardless of navigation method', async () => {
+    // After removing LandingPageContext, SearchScreen now tracks first search for any user on /search
     renderWithoutProps();
 
     const caseNumberInput = screen.getByTestId('basic-search-field');
@@ -1162,7 +1138,7 @@ describe('SearchScreen analytics integration', () => {
       expect(document.querySelector('.search-results table')).toBeVisible();
     });
 
-    // Should not track first search because landingPage is null (user didn't land on case-search)
-    expect(trackFirstSearchMock).not.toHaveBeenCalled();
+    // Should track first search action
+    expect(trackFirstSearchMock).toHaveBeenCalledWith('case-number');
   });
 });
