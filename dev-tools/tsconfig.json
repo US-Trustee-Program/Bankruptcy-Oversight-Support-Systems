@@ -10,7 +10,8 @@
     "strict": true,
     "noImplicitAny": true,
     "esModuleInterop": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "types": ["node"]
   },
   "ts-node": {
     "esm": true
@@ -19,6 +20,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "data"
+    "data",
+    "eslint.config.mjs"
   ],
 }
