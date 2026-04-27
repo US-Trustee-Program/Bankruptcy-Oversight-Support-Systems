@@ -1,56 +1,11 @@
 .trustees-list {
-  .filter-pills-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 1rem;
-
-    .filter-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      background-color: #005EA2;
-      color: #ffffff;
-      padding: 0.25rem 0.75rem;
-      border-radius: 99rem;
-      font-size: 0.875rem;
-      font-weight: 700;
-      text-transform: none;
-
-      .usa-tag__remove-button {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        margin: 0 0 0 0.25rem;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        color: #ffffff;
-
-        &:hover {
-          color: #f0f0f0;
-        }
-
-        &:focus {
-          outline: 0.25rem solid #005ea2;
-          outline-offset: 0.25rem;
-          border-radius: 99rem;
-        }
-
-        .usa-icon {
-          width: 1rem;
-          height: 1rem;
-        }
-      }
-    }
-  }
-
+  margin-top: 20px;
   .trustees-list-count {
     font-size: 1rem;
     font-weight: bold;
     line-height: 1.5rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: 0;
+    padding-left: 1rem;
   }
 
   .trustees-list-grid {
@@ -66,13 +21,21 @@
   .trustee-group {
     border-bottom: 1px solid #1b1b1b;
     padding: 0.625rem 1rem;
-    margin-top: 1rem;
+    margin-bottom: 0.25rem;
   }
 
   .trustees-list-row {
     font-size: 1rem;
     line-height: 1.625rem;
     display: block;
+  }
+
+  .trustees-list-row--continuation {
+    margin-top: 0.5rem;
+
+    .col-name {
+      display: none;
+    }
   }
 
   .trustees-list-cell {
@@ -89,7 +52,7 @@
     position: relative;
 
     &::before {
-      content: attr(data-cell) ':';
+      content: attr(data-cell) ': ';
       position: absolute;
       left: 0;
       top: 0.25rem;
@@ -98,8 +61,26 @@
     }
   }
 
+  // Small phones — inline label, full line wraps naturally
+  @media screen and (max-width: 479px) {
+    .trustees-list-cell[data-cell] {
+      padding: 0.25rem 0.375rem;
+      min-height: unset;
+
+      &::before {
+        position: static;
+        display: inline;
+        white-space: nowrap;
+      }
+    }
+  }
+
   // Tablet — equal columns
   @media screen and (min-width: 641px) {
+    .trustees-list-count {
+      margin-bottom: 1.25rem;
+    }
+
     .trustees-list-header {
       display: flex;
       flex-direction: row;
@@ -113,6 +94,14 @@
 
     .trustee-group {
       margin-top: 0;
+    }
+
+    .trustees-list-row--continuation {
+      margin-top: 0;
+
+      .col-name {
+        display: block;
+      }
     }
 
     .trustees-list-row {
@@ -135,11 +124,17 @@
     }
 
     .col-name,
-    .col-district-division,
     .col-chapter,
     .col-type,
     .col-status {
       flex: 1 1 0;
+      min-width: 0;
+      max-width: none;
+      white-space: normal;
+    }
+
+    .col-district-division {
+      flex: 2 1 0;
       min-width: 0;
       max-width: none;
       white-space: normal;
