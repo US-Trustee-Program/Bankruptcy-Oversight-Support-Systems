@@ -97,7 +97,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     return {
       firstName: formData.firstName,
       lastName: formData.lastName,
-      middleName: formData.middleName,
+      middleName: formData.middleName ?? null,
       public: {
         address: {
           address1: formData.address1,

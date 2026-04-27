@@ -202,7 +202,7 @@ describe('TrusteePublicContactForm Tests', () => {
     const expectedPayload = {
       firstName: 'Test',
       lastName: 'Trustee',
-      middleName: undefined,
+      middleName: null,
       public: {
         address: {
           address1,
@@ -289,7 +289,7 @@ describe('TrusteePublicContactForm Tests', () => {
     const expectedPayload = {
       firstName: existing.firstName,
       lastName: existing.lastName,
-      middleName: existing.middleName,
+      middleName: existing.middleName ?? null,
       public: {
         address: {
           address1: newAddress1,
@@ -309,6 +309,35 @@ describe('TrusteePublicContactForm Tests', () => {
 
     expect(patchSpy).toHaveBeenCalledWith(existing.trusteeId, expectedPayload);
     expect(navigateTo).toHaveBeenCalledWith('/trustees/' + existing.trusteeId);
+  });
+
+  test('should send null for middleName when it is cleared during edit', async () => {
+    const existing = MockData.getTrustee({ middleName: 'Lee' });
+    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({ data: existing });
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: `/trustees/${existing.trusteeId}`,
+      trusteeId: existing.trusteeId,
+      trustee: existing,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-middle-name')).toBeInTheDocument();
+    });
+
+    const middleNameInput = screen.getByTestId('trustee-middle-name');
+    expect(middleNameInput).toHaveValue('Lee');
+    await userEvent.clear(middleNameInput);
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(patchSpy).toHaveBeenCalledWith(
+        existing.trusteeId,
+        expect.objectContaining({ middleName: null }),
+      );
+    });
   });
 
   test('should handle cancel button functionality for create mode', async () => {
@@ -482,7 +511,7 @@ describe('TrusteePublicContactForm Tests', () => {
     const expectedPayload = {
       firstName: 'Test',
       lastName: 'Trustee',
-      middleName: undefined,
+      middleName: null,
       public: {
         address: {
           address1,
