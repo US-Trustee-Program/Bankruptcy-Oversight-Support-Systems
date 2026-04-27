@@ -271,7 +271,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 id="trustee-first-name"
                 className="trustee-first-name-input"
                 name="firstName"
-                label="First Name"
+                label="Trustee First Name"
                 value={formData.firstName}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['firstName']}
@@ -282,7 +282,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 id="trustee-middle-name"
                 className="trustee-middle-name-input"
                 name="middleName"
-                label="Middle Name"
+                label="Trustee Middle Name"
                 value={formData.middleName || ''}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['middleName']}
@@ -292,7 +292,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 id="trustee-last-name"
                 className="trustee-last-name-input"
                 name="lastName"
-                label="Last Name"
+                label="Trustee Last Name"
                 value={formData.lastName}
                 onChange={handleFieldChange}
                 errorMessage={fieldErrors['lastName']}
