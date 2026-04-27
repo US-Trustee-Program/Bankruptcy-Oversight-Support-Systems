@@ -122,7 +122,7 @@ module appConfigKeyvault './lib/keyvault/keyvault.bicep' = {
 
 module appConfigSecretRoleAssignments './lib/keyvault/keyvault-secret-role-assignment.bicep' = [
   for secretName in functionAppSecrets: if (makeRoleAssignment) {
-    name: '${stackName}-kv-secret-role-${secretName}'
+    name: '${stackName}-kv-secret-role-${uniqueString(secretName)}-${take(secretName, 10)}'
     scope: resourceGroup(kvResourceGroup)
     params: {
       keyVaultName: kvName
