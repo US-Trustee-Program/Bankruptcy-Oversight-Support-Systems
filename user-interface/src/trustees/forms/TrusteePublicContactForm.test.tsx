@@ -202,7 +202,7 @@ describe('TrusteePublicContactForm Tests', () => {
     const expectedPayload = {
       firstName: 'Test',
       lastName: 'Trustee',
-      middleName: null,
+      middleName: undefined,
       public: {
         address: {
           address1,
@@ -511,7 +511,7 @@ describe('TrusteePublicContactForm Tests', () => {
     const expectedPayload = {
       firstName: 'Test',
       lastName: 'Trustee',
-      middleName: null,
+      middleName: undefined,
       public: {
         address: {
           address1,
