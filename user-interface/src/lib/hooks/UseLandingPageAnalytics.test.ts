@@ -27,7 +27,7 @@ describe('useLandingPageAnalytics', () => {
   });
 
   describe('trackNavigation', () => {
-    it('should track navigation event with correct properties', () => {
+    test('should track navigation event with correct properties', () => {
       const { result } = renderHook(() => useLandingPageAnalytics('case-search'));
 
       result.current.trackNavigation('/case-detail/123');
