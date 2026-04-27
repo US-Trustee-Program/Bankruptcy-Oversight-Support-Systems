@@ -2,6 +2,9 @@ import { act, render, waitFor, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import * as HeaderModule from './lib/components/Header';
+import * as UseLandingPageAnalyticsModule from './lib/hooks/UseLandingPageAnalytics';
+
+vi.mock('./lib/hooks/UseLandingPageAnalytics');
 
 describe('App', () => {
   function scrollTo(position: number) {
@@ -23,6 +26,12 @@ describe('App', () => {
       if (typeof top === 'number') {
         scrollTo(top);
       }
+    });
+
+    // Mock analytics hook used by NavigationTracker
+    vi.mocked(UseLandingPageAnalyticsModule.useLandingPageAnalytics).mockReturnValue({
+      trackNavigation: vi.fn(),
+      trackFirstSearch: vi.fn(),
     });
   });
 
