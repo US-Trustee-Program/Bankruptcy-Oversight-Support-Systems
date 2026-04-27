@@ -45,8 +45,8 @@ describe('App', () => {
     };
 
     vi.mocked(getAppInsights).mockReturnValue({
-      reactPlugin: mockReactPlugin as any,
-      appInsights: mockAppInsights as any,
+      reactPlugin: mockReactPlugin as unknown as ReturnType<typeof getAppInsights>['reactPlugin'],
+      appInsights: mockAppInsights as unknown as ReturnType<typeof getAppInsights>['appInsights'],
     });
 
     // Mock feature flags
