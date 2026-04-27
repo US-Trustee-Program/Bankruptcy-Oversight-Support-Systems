@@ -104,13 +104,14 @@ export default function TrusteesList() {
 
     // Calculate result count inline to avoid dependency on filteredTrustees
     const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
-    const resultCount = selectedDistricts.length === 0
-      ? trustees.length
-      : trustees.filter((trustee) =>
-          trustee.appointments.some(
-            (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
-          ),
-        ).length;
+    const resultCount =
+      selectedDistricts.length === 0
+        ? trustees.length
+        : trustees.filter((trustee) =>
+            trustee.appointments.some(
+              (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
+            ),
+          ).length;
 
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee District Filter Changed' },
