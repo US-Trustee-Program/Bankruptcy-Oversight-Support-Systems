@@ -87,13 +87,21 @@ describe('trustee district filter use case tests', () => {
     districtFilterRef: comboBoxRef,
   };
 
-  const useCase = trusteeDistrictFilterUseCase(mockStore, mockControls, mockOnFilterDistrict);
+  const previousDistrictsRef = { current: undefined as ComboOption[] | undefined };
+
+  const useCase = trusteeDistrictFilterUseCase(
+    mockStore,
+    mockControls,
+    mockOnFilterDistrict,
+    previousDistrictsRef,
+  );
 
   beforeEach(() => {
     mockStore.setSelectedDistricts = vi.fn();
     setSelectedDistrictsSpy = vi.spyOn(mockStore, 'setSelectedDistricts');
     mockOnFilterDistrict.mockReset();
     mockTrackEvent.mockReset();
+    previousDistrictsRef.current = undefined; // Reset ref state between tests
   });
 
   afterEach(() => {
