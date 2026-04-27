@@ -1,5 +1,5 @@
 import './TrusteeOverviewCard.scss';
-import { Trustee } from '@common/cams/trustees';
+import { computeTrusteeName, Trustee } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
@@ -30,28 +30,11 @@ export default function TrusteeOverviewCard({
                 <IconLabel icon="edit" label="Edit" />
               </Button>
             </div>
-            {trustee.firstName || trustee.lastName ? (
-              <div className="trustee-name-fields">
-                <div className="trustee-name-field">
-                  <span className="trustee-name-label">First Name</span>
-                  <span data-testid="trustee-first-name">{trustee.firstName}</span>
-                </div>
-                {trustee.middleName && (
-                  <div className="trustee-name-field">
-                    <span className="trustee-name-label">Middle Name</span>
-                    <span data-testid="trustee-middle-name">{trustee.middleName}</span>
-                  </div>
-                )}
-                <div className="trustee-name-field">
-                  <span className="trustee-name-label">Last Name</span>
-                  <span data-testid="trustee-last-name">{trustee.lastName}</span>
-                </div>
-              </div>
-            ) : (
-              <div className="trustee-name" data-testid="trustee-name-fallback">
-                {trustee.name}
-              </div>
-            )}
+            <div className="trustee-name" data-testid="trustee-name">
+              {trustee.firstName || trustee.lastName
+                ? computeTrusteeName(trustee.firstName, trustee.middleName, trustee.lastName)
+                : trustee.name}
+            </div>
             <FormattedContact contact={trustee.public} testIdPrefix="trustee" />
           </div>
         </div>
