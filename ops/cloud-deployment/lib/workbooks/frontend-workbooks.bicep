@@ -12,7 +12,7 @@ resource trusteeDistrictFilterMetricsWorkbook 'Microsoft.Insights/workbooks@2023
   kind: 'shared'
   properties: {
     displayName: 'Trustee District Filter Metrics'
-    description: 'Success metrics for CAMS-691: district filter usage rates, default clear frequency, trustee count distribution, and performance (filter response time, page load time).'
+    description: 'Success metrics for CAMS-691: district filter usage rates, default clear frequency, trustee count distribution, and page load time performance.'
     category: 'workbook'
     sourceId: appInsightsResourceId
     serializedData: loadTextContent('trustee-district-filter-metrics.json')
