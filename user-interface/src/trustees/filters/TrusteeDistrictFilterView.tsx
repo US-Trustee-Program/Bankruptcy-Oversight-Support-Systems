@@ -1,7 +1,7 @@
 import './TrusteeDistrictFilter.scss';
 import ComboBox from '@/lib/components/combobox/ComboBox';
-import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import Icon from '@/lib/components/uswds/Icon';
+import { Accordion } from '@/lib/components/uswds/Accordion';
 import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
 
 function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
@@ -9,44 +9,13 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
 
   return (
     <section className="trustee-district-filter" aria-label="District filter controls">
-      <div className="filter-header">
-        <Button
-          uswdsStyle={UswdsButtonStyle.Unstyled}
-          className="filter-toggle-button"
-          onClick={viewModel.handleToggleExpanded}
-          aria-expanded={viewModel.isExpanded}
-          aria-controls="district-filter-content"
-        >
-          <span className="filter-toggle-text">Filters</span>
-          <Icon name={viewModel.isExpanded ? 'remove' : 'add'} />
-        </Button>
-      </div>
-
-      {/* Selected district pills - visible when collapsed */}
-      {!viewModel.isExpanded && viewModel.selectedDistricts.length > 0 && (
-        <div className="filter-pills-container">
-          {viewModel.selectedDistricts.map((district) => (
-            <span key={district.value} className="usa-tag filter-pill">
-              {district.label}
-              <button
-                type="button"
-                className="usa-tag__remove-button"
-                onClick={() => viewModel.handleRemovePill(district)}
-                aria-label={`Remove ${district.label} filter`}
-              >
-                <Icon name="close" />
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {viewModel.isExpanded && (
+      <Accordion id="district-filter" onExpand={() => viewModel.handleToggleExpanded()}>
+        <span>Filters</span>
         <div id="district-filter-content" className="filter-content">
           {viewModel.districts.length > 0 && !viewModel.districtsError && (
             <div className="filter-control">
               <ComboBox
-                id="district-filter"
+                id="district-combobox"
                 label="District (Division)"
                 options={viewModel.districtsToComboOptions(viewModel.districts)}
                 selections={viewModel.selectedDistricts}
@@ -70,6 +39,24 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
               </div>
             </div>
           )}
+        </div>
+      </Accordion>
+
+      {viewModel.selectedDistricts.length > 0 && (
+        <div className="filter-pills-container">
+          {viewModel.selectedDistricts.map((district) => (
+            <span key={district.value} className="usa-tag filter-pill">
+              {district.label}
+              <button
+                type="button"
+                className="usa-tag__remove-button"
+                onClick={() => viewModel.handleRemovePill(district)}
+                aria-label={`Remove ${district.label} filter`}
+              >
+                <Icon name="close" />
+              </button>
+            </span>
+          ))}
         </div>
       )}
     </section>

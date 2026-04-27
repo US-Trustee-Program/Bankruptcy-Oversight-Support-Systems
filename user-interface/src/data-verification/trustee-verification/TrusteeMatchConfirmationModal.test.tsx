@@ -140,4 +140,51 @@ describe('TrusteeMatchConfirmationModal', () => {
       expect(screen.getByText('Bob Jones')).toBeInTheDocument();
     });
   });
+
+  test('shows phone number without extension when extension is absent', async () => {
+    const candidateNoExtension: CandidateScore = {
+      ...sampleCandidate,
+      phone: { number: '555-9999' },
+    };
+    renderWithProps();
+    act(() => modalRef.current?.show(candidateNoExtension));
+
+    await waitFor(() => {
+      const content = document.querySelector('.usa-modal__main');
+      expect(content?.textContent).toContain('555-9999');
+      expect(content?.textContent).not.toContain(' x');
+    });
+  });
+
+  test('does not call onConfirm when confirm is clicked before show() is called', async () => {
+    const { onConfirm } = renderWithProps();
+
+    const submitButton = screen.getByTestId(
+      `button-trustee-confirmation-modal-${modalId}-submit-button`,
+    );
+    fireEvent.click(submitButton);
+
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  test('hides modal when Cancel is clicked and no onCancel prop is provided', async () => {
+    const onConfirm = vi.fn();
+    render(
+      <BrowserRouter>
+        <TrusteeMatchConfirmationModal ref={modalRef} id={modalId} onConfirm={onConfirm} />
+      </BrowserRouter>,
+    );
+    act(() => modalRef.current?.show(sampleCandidate));
+
+    const cancelButton = screen.getByTestId(
+      `button-trustee-confirmation-modal-${modalId}-cancel-button`,
+    );
+    await waitFor(() => expect(cancelButton).toBeEnabled());
+    fireEvent.click(cancelButton);
+
+    await waitFor(() => {
+      const wrapper = document.getElementById(`trustee-confirmation-modal-${modalId}-wrapper`);
+      expect(wrapper).toHaveClass('is-hidden');
+    });
+  });
 });
