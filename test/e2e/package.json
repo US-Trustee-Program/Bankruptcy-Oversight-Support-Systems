@@ -51,7 +51,7 @@
     "eslint-plugin-promise": "7.2.1",
     "prettier": "3.6.2",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.46.2"
+    "typescript-eslint": "8.58.1"
   },
   "dependencies": {
     "@azure/functions": "4.12.0",
