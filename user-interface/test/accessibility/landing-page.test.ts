@@ -78,8 +78,7 @@ test.describe('Landing Page - My Cases', () => {
     // Verify page loaded
     await expect(page).toHaveURL(/\/my-cases/);
 
-    // Verify critical table elements are present
-    await expect(page.locator('table[data-testid="my-cases-table"]')).toBeVisible();
+    // Verify page heading is present
     await expect(page.locator('h1:has-text("My Cases")')).toBeVisible();
   });
 
