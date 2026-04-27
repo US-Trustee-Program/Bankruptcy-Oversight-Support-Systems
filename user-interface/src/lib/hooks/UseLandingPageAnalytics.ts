@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { getAppInsights } from './UseApplicationInsights';
 import { IEventTelemetry } from '@microsoft/applicationinsights-web';
 import useFeatureFlags, { CASE_SEARCH_LANDING_PAGE } from './UseFeatureFlags';
@@ -30,45 +30,51 @@ export function useLandingPageAnalytics(landingPage: LandingPage): LandingPageAn
     hasTrackedSearch.current = false;
   }, []);
 
-  const trackNavigation = (toPage: string) => {
-    const timeOnLandingPage = Date.now() - landingTimestamp.current;
+  const trackNavigation = useCallback(
+    (toPage: string) => {
+      const timeOnLandingPage = Date.now() - landingTimestamp.current;
 
-    const event: IEventTelemetry = {
-      name: 'Landing Page Navigation',
-      properties: {
-        fromPage: landingPage,
-        toPage,
-        timeOnLandingPage,
-        featureFlagEnabled: !!flags[CASE_SEARCH_LANDING_PAGE],
-        timestamp: Date.now(),
-      },
-    };
+      const event: IEventTelemetry = {
+        name: 'Landing Page Navigation',
+        properties: {
+          fromPage: landingPage,
+          toPage,
+          timeOnLandingPage,
+          featureFlagEnabled: !!flags[CASE_SEARCH_LANDING_PAGE],
+          timestamp: Date.now(),
+        },
+      };
 
-    appInsights.trackEvent(event);
-  };
+      appInsights.trackEvent(event);
+    },
+    [landingPage, flags, appInsights],
+  );
 
-  const trackFirstSearch = (searchType: SearchType) => {
-    // Only track the first search action
-    if (hasTrackedSearch.current) {
-      return;
-    }
+  const trackFirstSearch = useCallback(
+    (searchType: SearchType) => {
+      // Only track the first search action
+      if (hasTrackedSearch.current) {
+        return;
+      }
 
-    hasTrackedSearch.current = true;
-    const timeToFirstSearch = Date.now() - landingTimestamp.current;
+      hasTrackedSearch.current = true;
+      const timeToFirstSearch = Date.now() - landingTimestamp.current;
 
-    const event: IEventTelemetry = {
-      name: 'First Search Action',
-      properties: {
-        landingPage,
-        timeToFirstSearch,
-        searchType,
-        featureFlagEnabled: !!flags[CASE_SEARCH_LANDING_PAGE],
-        timestamp: Date.now(),
-      },
-    };
+      const event: IEventTelemetry = {
+        name: 'First Search Action',
+        properties: {
+          landingPage,
+          timeToFirstSearch,
+          searchType,
+          featureFlagEnabled: !!flags[CASE_SEARCH_LANDING_PAGE],
+          timestamp: Date.now(),
+        },
+      };
 
-    appInsights.trackEvent(event);
-  };
+      appInsights.trackEvent(event);
+    },
+    [landingPage, flags, appInsights],
+  );
 
   return {
     trackNavigation,
