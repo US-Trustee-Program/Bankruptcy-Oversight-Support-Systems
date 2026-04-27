@@ -24,9 +24,13 @@ export const AccordionGroup: FunctionComponent<AccordionGroupProps> = (props) =>
   const renderChildren = () => {
     if (!props.children) return;
     return Children.map(props.children, (child) => {
+      const childOnExpand = child.props.onExpand;
       return cloneElement(child, {
         key: `${child.key}-copy`,
-        onExpand: expandAccordion,
+        onExpand: (id: string) => {
+          expandAccordion(id);
+          if (childOnExpand) childOnExpand(id);
+        },
         expandedId: expandedAccordion,
       });
     });
@@ -70,7 +74,11 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
 
   return (
     <>
-      <h4 className="usa-accordion__heading" data-testid={`accordion-${props.id}`} hidden={hidden}>
+      <h4
+        className={`usa-accordion__heading ${expanded ? 'usa-accordion--expanded' : ''}`}
+        data-testid={`accordion-${props.id}`}
+        hidden={hidden}
+      >
         <button
           type="button"
           className="usa-accordion__button"

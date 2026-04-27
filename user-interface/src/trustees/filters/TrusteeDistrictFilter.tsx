@@ -19,7 +19,13 @@ const TrusteeDistrictFilter_ = (
 ) => {
   const store: TrusteeDistrictFilterStore = useTrusteeDistrictFilterStoreReact();
   const controls: TrusteeDistrictFilterControls = useTrusteeDistrictFilterControlsReact();
-  const useCase = trusteeDistrictFilterUseCase(store, controls, props.handleFilterDistrict);
+  const previousDistrictsRef = useRef<ComboOption[] | undefined>(undefined);
+  const useCase = trusteeDistrictFilterUseCase(
+    store,
+    controls,
+    props.handleFilterDistrict,
+    previousDistrictsRef,
+  );
   const globalAlert = useGlobalAlert();
 
   useImperativeHandle(ref, () => {
