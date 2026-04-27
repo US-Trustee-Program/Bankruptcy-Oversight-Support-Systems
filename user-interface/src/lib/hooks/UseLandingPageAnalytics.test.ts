@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { useLandingPageAnalytics } from './UseLandingPageAnalytics';
 import * as UseApplicationInsights from './UseApplicationInsights';
 import * as UseFeatureFlags from './UseFeatureFlags';
@@ -42,7 +42,7 @@ describe('useLandingPageAnalytics', () => {
       expect(event.properties.timestamp).toBeGreaterThan(0);
     });
 
-    it('should track navigation from my-cases landing page', () => {
+    test('should track navigation from my-cases landing page', () => {
       const { result } = renderHook(() => useLandingPageAnalytics('my-cases'));
 
       result.current.trackNavigation('/search');
@@ -53,7 +53,7 @@ describe('useLandingPageAnalytics', () => {
       expect(event.properties.toPage).toBe('/search');
     });
 
-    it('should include feature flag state when enabled', () => {
+    test('should include feature flag state when enabled', () => {
       vi.spyOn(UseFeatureFlags, 'default').mockReturnValue({
         'case-search-landing-page': true,
       });
@@ -66,7 +66,7 @@ describe('useLandingPageAnalytics', () => {
       expect(event.properties.featureFlagEnabled).toBe(true);
     });
 
-    it('should calculate time on landing page', async () => {
+    test('should calculate time on landing page', async () => {
       const { result } = renderHook(() => useLandingPageAnalytics('case-search'));
 
       // Wait a bit before navigating
@@ -80,7 +80,7 @@ describe('useLandingPageAnalytics', () => {
   });
 
   describe('trackFirstSearch', () => {
-    it('should track first search event with correct properties', () => {
+    test('should track first search event with correct properties', () => {
       const { result } = renderHook(() => useLandingPageAnalytics('case-search'));
 
       result.current.trackFirstSearch('case-number');
@@ -95,7 +95,7 @@ describe('useLandingPageAnalytics', () => {
       expect(event.properties.timestamp).toBeGreaterThan(0);
     });
 
-    it('should only track first search once', () => {
+    test('should only track first search once', () => {
       const { result } = renderHook(() => useLandingPageAnalytics('case-search'));
 
       result.current.trackFirstSearch('case-number');
@@ -107,7 +107,7 @@ describe('useLandingPageAnalytics', () => {
       expect(event.properties.searchType).toBe('case-number');
     });
 
-    it('should track different search types', () => {
+    test('should track different search types', () => {
       const searchTypes = ['case-number', 'debtor-name', 'ssn', 'other'] as const;
 
       searchTypes.forEach((searchType) => {
@@ -121,7 +121,7 @@ describe('useLandingPageAnalytics', () => {
       });
     });
 
-    it('should calculate time to first search', async () => {
+    test('should calculate time to first search', async () => {
       const { result } = renderHook(() => useLandingPageAnalytics('case-search'));
 
       // Wait a bit before searching
@@ -133,7 +133,7 @@ describe('useLandingPageAnalytics', () => {
       expect(event.properties.timeToFirstSearch).toBeGreaterThan(0);
     });
 
-    it('should work from my-cases landing page', () => {
+    test('should work from my-cases landing page', () => {
       const { result } = renderHook(() => useLandingPageAnalytics('my-cases'));
 
       result.current.trackFirstSearch('case-number');
@@ -144,7 +144,7 @@ describe('useLandingPageAnalytics', () => {
   });
 
   describe('tracking state', () => {
-    it('should reset tracking state on remount', () => {
+    test('should reset tracking state on remount', () => {
       const { result, unmount } = renderHook(() => useLandingPageAnalytics('case-search'));
 
       result.current.trackFirstSearch('case-number');
