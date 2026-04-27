@@ -1,9 +1,8 @@
 import { LOGIN_SUCCESS_PATH, CASE_SEARCH_PATH } from '@/login/login-library';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLDClient } from 'launchdarkly-react-client-sdk';
 import useCamsNavigator from '../hooks/UseCamsNavigator';
 import useFeatureFlags, { CASE_SEARCH_LANDING_PAGE } from '@/lib/hooks/UseFeatureFlags';
-import { useLandingPageContext } from '@/lib/contexts/LandingPageContext';
 import { getFeatureFlagConfiguration } from '@/configuration/featureFlagConfiguration';
 
 type GoHomeProps = {
@@ -26,7 +25,7 @@ export function GoHome(props: GoHomeProps) {
   const ldClient = useLDClient();
   const [isReady, setIsReady] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
-  const { setLandingPage } = useLandingPageContext();
+  const hasNavigated = useRef(false);
 
   // Wait for LaunchDarkly to be ready
   useEffect(() => {
@@ -41,9 +40,12 @@ export function GoHome(props: GoHomeProps) {
             setIsReady(true);
             // Set a timeout: if flags don't arrive via useFlags() within 500ms, proceed anyway
             // This handles cases where LD initializes but returns no flags for the user
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
               setHasTimedOut(true);
             }, 500);
+
+            // Clean up timeout on unmount
+            return () => clearTimeout(timeoutId);
           })
           .catch(() => {
             // Even if LD fails, we should navigate somewhere
@@ -60,6 +62,11 @@ export function GoHome(props: GoHomeProps) {
   }, [ldClient]);
 
   useEffect(() => {
+    // Guard against multiple navigation attempts
+    if (hasNavigated.current) {
+      return;
+    }
+
     if (!isReady) {
       return;
     }
@@ -74,19 +81,17 @@ export function GoHome(props: GoHomeProps) {
       return;
     }
 
+    // Mark that we're about to navigate
+    hasNavigated.current = true;
+
     if (props.path) {
       navigator.navigateTo(props.path);
       return;
     }
 
     const destination = flags[CASE_SEARCH_LANDING_PAGE] ? CASE_SEARCH_PATH : LOGIN_SUCCESS_PATH;
-
-    // Track which page user is landing on for analytics
-    const landingPage = destination === CASE_SEARCH_PATH ? 'case-search' : 'my-cases';
-    setLandingPage(landingPage);
-
     navigator.navigateTo(destination);
-  }, [isReady, hasTimedOut, flags, props.path, navigator, setLandingPage, ldClient]);
+  }, [isReady, hasTimedOut, flags, props.path, navigator, ldClient]);
 
   return <></>;
 }

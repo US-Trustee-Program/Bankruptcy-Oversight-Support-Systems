@@ -29,16 +29,12 @@ import useFeatureFlags, {
   PHONETIC_SEARCH_ENABLED,
   SHOW_DEBTOR_NAME_COLUMN,
 } from '@/lib/hooks/UseFeatureFlags';
-import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
-import { useLocation } from 'react-router-dom';
 
 export const MyCasesScreen = () => {
   const screenTitle = 'My Cases';
   const featureFlags = useFeatureFlags();
   const phoneticSearchEnabled = featureFlags[PHONETIC_SEARCH_ENABLED] === true;
   const showDebtorNameColumn = featureFlags[SHOW_DEBTOR_NAME_COLUMN] === true;
-  const location = useLocation();
-  const analytics = useLandingPageAnalytics('my-cases');
 
   const infoModalRef = useRef(null);
   const infoModalId = 'info-modal';
@@ -46,15 +42,6 @@ export const MyCasesScreen = () => {
   const [doShowClosedCases, setDoShowClosedCases] = useState(false);
   const [draftNotesCaseIds, setDraftNotesCaseIds] = useState<string[]>([]);
   const [draftNotes, setDraftNotes] = useState<Cacheable<CaseNoteInput>[]>([]);
-
-  // Track navigation away from My Cases landing page
-  // Note: This useEffect must be before the early return to comply with Rules of Hooks
-  useEffect(() => {
-    return () => {
-      // On unmount, track that user navigated away from My Cases
-      analytics.trackNavigation(location.pathname);
-    };
-  }, [analytics, location.pathname]);
 
   if (!session || !session.user.offices) {
     // TODO: This renders a blank pane with no notice to the user. Maybe this should at least return a <Stop> component with a message.
