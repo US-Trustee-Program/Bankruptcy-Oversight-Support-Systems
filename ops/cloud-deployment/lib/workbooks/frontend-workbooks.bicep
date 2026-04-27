@@ -5,6 +5,20 @@ param appInsightsResourceId string
 
 param tags object = {}
 
+resource trusteeDistrictFilterMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid('trustee-district-filter-metrics-workbook', resourceGroup().id)
+  location: location
+  tags: tags
+  kind: 'shared'
+  properties: {
+    displayName: 'Trustee District Filter Metrics'
+    description: 'Success metrics for CAMS-691: district filter usage rates, default clear frequency, trustee count distribution, and page load time performance.'
+    category: 'workbook'
+    sourceId: appInsightsResourceId
+    serializedData: loadTextContent('trustee-district-filter-metrics.json')
+  }
+}
+
 resource trusteeCaseDetailInfoEngagementWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
   name: guid('trustee-case-detail-info-engagement-workbook', resourceGroup().id)
   location: location

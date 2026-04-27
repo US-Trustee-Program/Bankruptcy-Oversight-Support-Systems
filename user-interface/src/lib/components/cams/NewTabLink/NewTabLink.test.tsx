@@ -38,7 +38,7 @@ describe('NewTabLink component', () => {
     renderComponent('/some/path', 'My Link');
 
     const link = screen.getByRole('link', { name: /my link/i });
-    expect(link).toHaveAttribute('aria-label', 'My Link (opens in a new tab)');
+    expect(link).toHaveAttribute('aria-label', 'My Link opens in a new tab');
   });
 
   test('should always include the new-tab-link class', () => {

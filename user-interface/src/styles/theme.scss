@@ -6,6 +6,13 @@ $cams-theme-background: white;
     sans-serif;
 }
 
+header {
+  .cams-logo-and-title {
+    .site-title * {
+      font-family: 'Source Serif Pro', Georgia, 'Times New Roman', serif;
+    }
+  }
+}
 a {
   color: #005ea2;
 
