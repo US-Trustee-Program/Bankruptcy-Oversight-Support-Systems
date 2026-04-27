@@ -3,8 +3,12 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import * as HeaderModule from './lib/components/Header';
 import * as UseLandingPageAnalyticsModule from './lib/hooks/UseLandingPageAnalytics';
+import { getAppInsights } from './lib/hooks/UseApplicationInsights';
+import useFeatureFlags from './lib/hooks/UseFeatureFlags';
 
 vi.mock('./lib/hooks/UseLandingPageAnalytics');
+vi.mock('./lib/hooks/UseFeatureFlags');
+vi.mock('./lib/hooks/UseApplicationInsights');
 
 describe('App', () => {
   function scrollTo(position: number) {
@@ -27,6 +31,26 @@ describe('App', () => {
         scrollTo(top);
       }
     });
+
+    // Mock Application Insights
+    const mockAppInsights = {
+      trackEvent: vi.fn(),
+      trackPageView: vi.fn(),
+      trackException: vi.fn(),
+    };
+
+    const mockReactPlugin = {
+      ...mockAppInsights,
+      appInsights: mockAppInsights,
+    };
+
+    vi.mocked(getAppInsights).mockReturnValue({
+      reactPlugin: mockReactPlugin as any,
+      appInsights: mockAppInsights as any,
+    });
+
+    // Mock feature flags
+    vi.mocked(useFeatureFlags).mockReturnValue({});
 
     // Mock analytics hook used by NavigationTracker
     vi.mocked(UseLandingPageAnalyticsModule.useLandingPageAnalytics).mockReturnValue({
