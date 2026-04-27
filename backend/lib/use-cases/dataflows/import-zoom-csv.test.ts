@@ -5,9 +5,9 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import factory from '../../factory';
 import { ObjectStorageGateway } from '../gateways.types';
+import MockData from '@common/cams/test-utilities/mock-data';
 
-const MOCK_TRUSTEE = {
-  id: 'doc-123',
+const MOCK_TRUSTEE = MockData.getTrustee({
   trusteeId: 'trustee-456',
   name: 'John Doe',
   public: {
@@ -17,7 +17,7 @@ const MOCK_TRUSTEE = {
   legacy: {
     truIds: ['12345'],
   },
-};
+});
 
 const SAMPLE_MATCHED_TSV = [
   'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
