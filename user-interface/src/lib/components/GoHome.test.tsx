@@ -5,7 +5,6 @@ import useFeatureFlags, { CASE_SEARCH_LANDING_PAGE } from '@/lib/hooks/UseFeatur
 import useCamsNavigator from '../hooks/UseCamsNavigator';
 import { LOGIN_SUCCESS_PATH, CASE_SEARCH_PATH } from '@/login/login-library';
 import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
-import { LandingPageProvider } from '@/lib/contexts/LandingPageContext';
 import * as featureFlagConfig from '@/configuration/featureFlagConfiguration';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
@@ -47,11 +46,7 @@ describe('GoHome Component', () => {
       [CASE_SEARCH_LANDING_PAGE]: true,
     });
 
-    render(
-      <LandingPageProvider>
-        <GoHome />
-      </LandingPageProvider>,
-    );
+    render(<GoHome />);
 
     await waitFor(() => {
       expect(mockNavigateTo).toHaveBeenCalledWith(CASE_SEARCH_PATH);
@@ -63,11 +58,7 @@ describe('GoHome Component', () => {
       [CASE_SEARCH_LANDING_PAGE]: false,
     });
 
-    render(
-      <LandingPageProvider>
-        <GoHome />
-      </LandingPageProvider>,
-    );
+    render(<GoHome />);
 
     await waitFor(() => {
       expect(mockNavigateTo).toHaveBeenCalledWith(LOGIN_SUCCESS_PATH);
@@ -77,11 +68,7 @@ describe('GoHome Component', () => {
   test('should navigate to LOGIN_SUCCESS_PATH when feature flag is undefined and no custom path provided', async () => {
     vi.mocked(useFeatureFlags).mockReturnValue({});
 
-    render(
-      <LandingPageProvider>
-        <GoHome />
-      </LandingPageProvider>,
-    );
+    render(<GoHome />);
 
     await waitFor(() => {
       expect(mockNavigateTo).toHaveBeenCalledWith(LOGIN_SUCCESS_PATH);
@@ -94,11 +81,7 @@ describe('GoHome Component', () => {
       [CASE_SEARCH_LANDING_PAGE]: true,
     });
 
-    render(
-      <LandingPageProvider>
-        <GoHome path={customPath} />
-      </LandingPageProvider>,
-    );
+    render(<GoHome path={customPath} />);
 
     await waitFor(() => {
       expect(mockNavigateTo).toHaveBeenCalledWith(customPath);
@@ -116,11 +99,7 @@ describe('GoHome Component', () => {
       [CASE_SEARCH_LANDING_PAGE]: false,
     });
 
-    render(
-      <LandingPageProvider>
-        <GoHome />
-      </LandingPageProvider>,
-    );
+    render(<GoHome />);
 
     await waitFor(() => {
       expect(mockNavigateTo).toHaveBeenCalledWith(LOGIN_SUCCESS_PATH);
@@ -141,11 +120,7 @@ describe('GoHome Component', () => {
       [CASE_SEARCH_LANDING_PAGE]: false,
     });
 
-    render(
-      <LandingPageProvider>
-        <GoHome />
-      </LandingPageProvider>,
-    );
+    render(<GoHome />);
 
     await waitFor(() => {
       expect(mockNavigateTo).toHaveBeenCalledWith(LOGIN_SUCCESS_PATH);
