@@ -11,6 +11,13 @@ import { CamsSession } from '@common/cams/session';
 import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 
+const mockTrackEvent = vi.fn();
+vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
+  getAppInsights: () => ({
+    appInsights: { trackEvent: mockTrackEvent },
+  }),
+}));
+
 describe('trustee district filter use case tests', () => {
   let setSelectedDistrictsSpy: MockInstance<(val: ComboOption[]) => void>;
 
@@ -80,12 +87,21 @@ describe('trustee district filter use case tests', () => {
     districtFilterRef: comboBoxRef,
   };
 
-  const useCase = trusteeDistrictFilterUseCase(mockStore, mockControls, mockOnFilterDistrict);
+  const previousDistrictsRef = { current: undefined as ComboOption[] | undefined };
+
+  const useCase = trusteeDistrictFilterUseCase(
+    mockStore,
+    mockControls,
+    mockOnFilterDistrict,
+    previousDistrictsRef,
+  );
 
   beforeEach(() => {
     mockStore.setSelectedDistricts = vi.fn();
     setSelectedDistrictsSpy = vi.spyOn(mockStore, 'setSelectedDistricts');
     mockOnFilterDistrict.mockReset();
+    mockTrackEvent.mockReset();
+    previousDistrictsRef.current = undefined; // Reset ref state between tests
   });
 
   afterEach(() => {
@@ -400,6 +416,29 @@ describe('trustee district filter use case tests', () => {
 
       expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(newDistricts);
       expect(mockOnFilterDistrict).toHaveBeenCalledWith(newDistricts);
+    });
+
+    test('should track Trustee District Filter Cleared event only when transitioning from non-empty to empty', () => {
+      // First call with non-empty selection (establishes previous state)
+      useCase.handleFilterChange([{ value: 'NYSB', label: 'Southern District of New York' }]);
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+
+      // Second call with empty array (user-driven clear)
+      useCase.handleFilterChange([]);
+      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee District Filter Cleared' });
+    });
+
+    test('should not track Trustee District Filter Cleared on initial empty call', () => {
+      // First call with empty array (initial/programmatic, not user-driven)
+      useCase.handleFilterChange([]);
+
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+    });
+
+    test('should not track Trustee District Filter Cleared when districts are selected', () => {
+      useCase.handleFilterChange([{ value: 'NYSB', label: 'Southern District of New York' }]);
+
+      expect(mockTrackEvent).not.toHaveBeenCalledWith({ name: 'Trustee District Filter Cleared' });
     });
   });
 
