@@ -70,7 +70,11 @@ export const Accordion: FunctionComponent<AccordionProps> = (props) => {
 
   return (
     <>
-      <h4 className="usa-accordion__heading" data-testid={`accordion-${props.id}`} hidden={hidden}>
+      <h4
+        className={`usa-accordion__heading ${expanded ? 'usa-accordion--expanded' : ''}`}
+        data-testid={`accordion-${props.id}`}
+        hidden={hidden}
+      >
         <button
           type="button"
           className="usa-accordion__button"
