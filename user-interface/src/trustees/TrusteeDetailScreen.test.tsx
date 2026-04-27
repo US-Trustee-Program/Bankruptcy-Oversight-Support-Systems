@@ -101,8 +101,7 @@ describe('TrusteeDetailScreen', () => {
     // Mock LaunchDarkly for GoHome component
     vi.mocked(LaunchDarkly.useLDClient).mockReturnValue({
       waitForInitialization: vi.fn().mockResolvedValue(undefined),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any);
+    } as unknown as ReturnType<typeof LaunchDarkly.useLDClient>);
   });
 
   afterEach(() => {

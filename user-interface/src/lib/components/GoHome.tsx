@@ -73,11 +73,10 @@ export function GoHome(props: GoHomeProps) {
 
     // If LaunchDarkly is configured, wait for flags to be populated OR timeout
     // The flags object starts empty and gets populated after initialization
-    const hasFlagValue = CASE_SEARCH_LANDING_PAGE in flags;
     const hasAnyFlags = Object.keys(flags).length > 0;
 
     // If LD client exists but flags aren't loaded yet and we haven't timed out, wait
-    if (ldClient && !hasFlagValue && !hasAnyFlags && !hasTimedOut) {
+    if (ldClient && !hasAnyFlags && !hasTimedOut) {
       return;
     }
 

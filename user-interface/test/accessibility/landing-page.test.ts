@@ -4,21 +4,8 @@ import { ANALYZE_DELAY, createAxeBuilder, getUrl } from './test-constants';
 /**
  * E2E Tests for Landing Page Feature
  *
- * Note: These tests verify the landing page functionality within the constraints
- * of the current test infrastructure. Full E2E tests with login flow and feature
- * flag toggling require additional test infrastructure:
- * - Feature flag control mechanism (environment variables or test API)
- * - Mock authentication or test Okta configuration
- * - Test data setup for authenticated users
- *
- * These tests verify:
- * 1. Landing pages are accessible and load without errors
- * 2. Navigation between pages works
- * 3. Keyboard navigation is functional
- *
- * For testing with feature flag enabled/disabled:
- * - Modify testFeatureFlags in common/src/feature-flags.ts
- * - Or implement feature flag override mechanism in test environment
+ * Verifies landing page accessibility, navigation, and keyboard interaction.
+ * Full E2E with login flow requires feature flag control and auth setup.
  */
 
 test.describe('Landing Page - Case Search', () => {
@@ -32,9 +19,9 @@ test.describe('Landing Page - Case Search', () => {
     // Verify page loaded
     await expect(page).toHaveURL(/\/search/);
 
-    // Verify page has main heading
-    const heading = page.locator('h1').first();
-    await expect(heading).toBeVisible();
+    // Verify critical search elements are present
+    await expect(page.locator('input[name="basic-search"]')).toBeVisible();
+    await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
   test('Case Search page has no accessibility issues', async ({ page }) => {
@@ -91,9 +78,9 @@ test.describe('Landing Page - My Cases', () => {
     // Verify page loaded
     await expect(page).toHaveURL(/\/my-cases/);
 
-    // Verify page has main heading
-    const heading = page.locator('h1').first();
-    await expect(heading).toBeVisible();
+    // Verify critical table elements are present
+    await expect(page.locator('table[data-testid="my-cases-table"]')).toBeVisible();
+    await expect(page.locator('h1:has-text("My Cases")')).toBeVisible();
   });
 
   test('My Cases page has no accessibility issues', async ({ page }) => {
