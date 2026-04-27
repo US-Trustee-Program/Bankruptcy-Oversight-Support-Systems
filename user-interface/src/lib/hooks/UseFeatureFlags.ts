@@ -23,6 +23,9 @@ export default function useFeatureFlags(): FeatureFlagSet {
   const config = getFeatureFlagConfiguration();
   const appConfig = getAppConfiguration();
 
+  // Always call hooks unconditionally (rules of hooks)
+  const featureFlags = useFlags();
+
   if (appConfig.useFakeApi) {
     return testFeatureFlags;
   }
@@ -36,6 +39,5 @@ export default function useFeatureFlags(): FeatureFlagSet {
     return {};
   }
 
-  const featureFlags = useFlags();
   return !featureFlags || Object.keys(featureFlags).length === 0 ? {} : featureFlags;
 }

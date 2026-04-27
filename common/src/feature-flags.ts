@@ -8,7 +8,7 @@ export interface FeatureFlagSet {
 }
 
 export const testFeatureFlags: FeatureFlagSet = {
-  'case-search-landing-page': false,
+  'case-search-landing-page': true,
   'chapter-eleven-enabled': true,
   'chapter-twelve-enabled': true,
   'consolidations-enabled': true,
