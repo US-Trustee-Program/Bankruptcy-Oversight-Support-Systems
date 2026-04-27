@@ -108,8 +108,7 @@ const trusteeDistrictFilterUseCase = (
 
   const handleClearAll = () => {
     const defaultDistricts = store.defaultDistricts;
-    store.setSelectedDistricts(defaultDistricts);
-    notifySelectionChange(defaultDistricts);
+    handleFilterChange(defaultDistricts);
   };
 
   const handleToggleExpanded = () => {
@@ -118,8 +117,7 @@ const trusteeDistrictFilterUseCase = (
 
   const handleRemovePill = (district: ComboOption) => {
     const updatedDistricts = store.selectedDistricts.filter((d) => d.value !== district.value);
-    store.setSelectedDistricts(updatedDistricts);
-    notifySelectionChange(updatedDistricts);
+    handleFilterChange(updatedDistricts);
   };
 
   return {
