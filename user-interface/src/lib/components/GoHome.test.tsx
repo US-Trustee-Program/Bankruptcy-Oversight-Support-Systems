@@ -6,10 +6,12 @@ import useCamsNavigator from '../hooks/UseCamsNavigator';
 import { LOGIN_SUCCESS_PATH, CASE_SEARCH_PATH } from '@/login/login-library';
 import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
 import { LandingPageProvider } from '@/lib/contexts/LandingPageContext';
+import * as featureFlagConfig from '@/configuration/featureFlagConfiguration';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
 vi.mock('../hooks/UseCamsNavigator');
 vi.mock('launchdarkly-react-client-sdk');
+vi.mock('@/configuration/featureFlagConfiguration');
 
 describe('GoHome Component', () => {
   const mockNavigateTo = vi.fn();
@@ -23,8 +25,16 @@ describe('GoHome Component', () => {
 
     vi.mocked(LaunchDarkly.useLDClient).mockReturnValue({
       waitForInitialization: mockWaitForInitialization,
+      allFlags: vi.fn().mockReturnValue({}),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
+
+    // Default: LaunchDarkly is configured
+    vi.mocked(featureFlagConfig.getFeatureFlagConfiguration).mockReturnValue({
+      clientId: 'test-client-id',
+      useExternalProvider: true,
+      useCamelCaseFlagKeys: false,
+    });
   });
 
   afterEach(() => {
@@ -117,7 +127,14 @@ describe('GoHome Component', () => {
     });
   });
 
-  test('should navigate when LaunchDarkly client is undefined', async () => {
+  test('should navigate immediately when LaunchDarkly is not configured', async () => {
+    // Mock config to indicate LD is not configured
+    vi.mocked(featureFlagConfig.getFeatureFlagConfiguration).mockReturnValue({
+      clientId: '',
+      useExternalProvider: false,
+      useCamelCaseFlagKeys: false,
+    });
+
     vi.mocked(LaunchDarkly.useLDClient).mockReturnValue(undefined);
 
     vi.mocked(useFeatureFlags).mockReturnValue({
