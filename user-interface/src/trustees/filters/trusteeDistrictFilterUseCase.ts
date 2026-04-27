@@ -8,6 +8,7 @@ import { CamsSession } from '@common/cams/session';
 import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
   // Show all divisions with format: District (Division)
@@ -61,6 +62,7 @@ const trusteeDistrictFilterUseCase = (
   store: TrusteeDistrictFilterStore,
   controls: TrusteeDistrictFilterControls,
   onFilterDistrict: (districts: ComboOption[]) => void,
+  previousDistrictsRef: { current: ComboOption[] | undefined },
 ): TrusteeDistrictFilterUseCase => {
   const notifySelectionChange = (districts: ComboOption[]) => {
     onFilterDistrict(districts);
@@ -91,14 +93,22 @@ const trusteeDistrictFilterUseCase = (
   };
 
   const handleFilterChange = (districts: ComboOption[]) => {
+    // Only track "cleared" when transitioning from non-empty to empty
+    const wasNonEmpty = previousDistrictsRef.current && previousDistrictsRef.current.length > 0;
+    const isNowEmpty = districts.length === 0;
+
+    if (wasNonEmpty && isNowEmpty) {
+      getAppInsights().appInsights.trackEvent({ name: 'Trustee District Filter Cleared' });
+    }
+
+    previousDistrictsRef.current = districts;
     store.setSelectedDistricts(districts);
     notifySelectionChange(districts);
   };
 
   const handleClearAll = () => {
     const defaultDistricts = store.defaultDistricts;
-    store.setSelectedDistricts(defaultDistricts);
-    notifySelectionChange(defaultDistricts);
+    handleFilterChange(defaultDistricts);
   };
 
   const handleToggleExpanded = () => {
@@ -107,8 +117,7 @@ const trusteeDistrictFilterUseCase = (
 
   const handleRemovePill = (district: ComboOption) => {
     const updatedDistricts = store.selectedDistricts.filter((d) => d.value !== district.value);
-    store.setSelectedDistricts(updatedDistricts);
-    notifySelectionChange(updatedDistricts);
+    handleFilterChange(updatedDistricts);
   };
 
   return {
