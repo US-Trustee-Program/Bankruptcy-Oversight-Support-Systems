@@ -25,7 +25,7 @@ const getInitialFormData = (info: Partial<TrusteeInput> | undefined): TrusteePub
   return {
     firstName: info?.firstName,
     lastName: info?.lastName,
-    middleName: info?.middleName,
+    middleName: info?.middleName || undefined,
     companyName: info?.public?.companyName,
     address1: info?.public?.address?.address1,
     address2: info?.public?.address?.address2,
@@ -97,7 +97,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     return {
       firstName: formData.firstName,
       lastName: formData.lastName,
-      middleName: formData.middleName ?? null,
+      middleName: isCreate ? formData.middleName : (formData.middleName ?? null),
       public: {
         address: {
           address1: formData.address1,
