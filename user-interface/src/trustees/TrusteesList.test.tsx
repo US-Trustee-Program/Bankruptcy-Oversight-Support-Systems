@@ -292,6 +292,95 @@ describe('TrusteesList Component', () => {
     expect(screen.getByText('Voluntarily Suspended')).toBeInTheDocument();
   });
 
+  describe('Name Column Sort', () => {
+    function makeTrusteeWithName(
+      trusteeId: string,
+      firstName: string,
+      lastName: string,
+    ): TrusteeListItem {
+      return makeListItem({ trusteeId, firstName, lastName, name: `${firstName} ${lastName}` });
+    }
+
+    test('should show ascending sort indicator on Name header by default', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [makeTrusteeWithName('t1', 'Alice', 'Smith')],
+      });
+
+      const { container } = renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      const nameHeader = container.querySelector('[role="columnheader"][aria-sort="ascending"]');
+      expect(nameHeader).toBeInTheDocument();
+      expect(nameHeader).toHaveTextContent('Name');
+    });
+
+    test('should sort descending by last name when Name header is clicked', async () => {
+      const user = userEvent.setup();
+      const adams = makeTrusteeWithName('t1', 'Alice', 'Adams');
+      const smith = makeTrusteeWithName('t2', 'Bob', 'Smith');
+      const jones = makeTrusteeWithName('t3', 'Carol', 'Jones');
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [adams, smith, jones] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole('columnheader', { name: /name/i }));
+
+      const links = screen.getAllByRole('link');
+      const names = links.map((l) => l.textContent);
+      expect(names[0]).toBe('Smith, Bob');
+      expect(names[1]).toBe('Jones, Carol');
+      expect(names[2]).toBe('Adams, Alice');
+    });
+
+    test('should toggle back to ascending when Name header is clicked again', async () => {
+      const user = userEvent.setup();
+      const adams = makeTrusteeWithName('t1', 'Alice', 'Adams');
+      const smith = makeTrusteeWithName('t2', 'Bob', 'Smith');
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [adams, smith] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      const nameHeader = screen.getByRole('columnheader', { name: /name/i });
+      await user.click(nameHeader);
+      await user.click(nameHeader);
+
+      const links = screen.getAllByRole('link');
+      expect(links[0]).toHaveTextContent('Adams, Alice');
+      expect(links[1]).toHaveTextContent('Smith, Bob');
+    });
+
+    test('should update aria-sort attribute when sort direction changes', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [makeTrusteeWithName('t1', 'Alice', 'Smith')],
+      });
+
+      const { container } = renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      const nameHeader = screen.getByRole('columnheader', { name: /name/i });
+      await user.click(nameHeader);
+
+      const descHeader = container.querySelector('[role="columnheader"][aria-sort="descending"]');
+      expect(descHeader).toBeInTheDocument();
+      expect(descHeader).toHaveTextContent('Name');
+    });
+  });
+
   describe('District Filtering', () => {
     test('should render district filter component with ARIA live region', async () => {
       const trustee = makeListItem({
