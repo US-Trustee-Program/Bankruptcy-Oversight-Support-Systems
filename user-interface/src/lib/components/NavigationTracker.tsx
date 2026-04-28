@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
+import { CASE_SEARCH_PATH, LOGIN_SUCCESS_PATH } from '@/login/login-library';
 
 /**
  * NavigationTracker
@@ -34,10 +35,10 @@ export function NavigationTracker() {
     // 3. We haven't tracked navigation from this landing page yet
     // 4. Previous path was one of the landing pages
     if (previousPath && previousPath !== currentPath) {
-      if (previousPath === '/search' && !hasTrackedFromSearchRef.current) {
+      if (previousPath === CASE_SEARCH_PATH && !hasTrackedFromSearchRef.current) {
         searchAnalytics.trackNavigation(currentPath);
         hasTrackedFromSearchRef.current = true;
-      } else if (previousPath === '/my-cases' && !hasTrackedFromMyCasesRef.current) {
+      } else if (previousPath === LOGIN_SUCCESS_PATH && !hasTrackedFromMyCasesRef.current) {
         myCasesAnalytics.trackNavigation(currentPath);
         hasTrackedFromMyCasesRef.current = true;
       }
