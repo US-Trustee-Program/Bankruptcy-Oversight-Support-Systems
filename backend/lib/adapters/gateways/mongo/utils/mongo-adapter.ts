@@ -5,6 +5,7 @@ import { getCamsErrorWithStack } from '../../../../common-errors/error-utilities
 import { NotFoundError } from '../../../../common-errors/not-found-error';
 import { UnknownError } from '../../../../common-errors/unknown-error';
 import { GatewayTimeoutError } from '../../../../common-errors/gateway-timeout';
+import { TooManyRequestsError } from '../../../../common-errors/too-many-requests-error';
 import { CollectionHumble, DocumentClient } from '../../../../humble-objects/mongo-humble';
 import { ConditionOrConjunction, Query, SortSpec } from '../../../../query/query-builder';
 import QueryPipeline, { isPaginate, isPipeline, Pipeline } from '../../../../query/query-pipeline';
@@ -191,6 +192,36 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       throw this.handleError(originalError, `Failed to replace item. ${originalError.message}`, {
         query,
         item,
+      });
+    }
+  }
+
+  public async upsertOne(
+    query: Query<T>,
+    setFields: Partial<T>,
+    insertOnlyFields: Partial<T>,
+  ): Promise<void> {
+    const mongoQuery = toMongoQuery(query);
+    const insertFields = { ...insertOnlyFields, id: randomUUID() };
+
+    try {
+      const result = await this.collectionHumble.upsertOne(
+        mongoQuery,
+        setFields as MongoDocument,
+        insertFields as MongoDocument,
+      );
+      const unknownError = new UnknownError(this.moduleName, {
+        message: 'Failed to insert document into database.',
+      });
+
+      if (!result.acknowledged) {
+        throw unknownError;
+      }
+    } catch (originalError) {
+      throw this.handleError(originalError, `Failed to upsert item. ${originalError.message}`, {
+        query,
+        setFields,
+        insertOnlyFields,
       });
     }
   }
@@ -383,6 +414,12 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 
   private handleError(error: unknown, message: string, data?: object): CamsError {
+    if (!isCamsError(error) && isRateLimitError(error)) {
+      return new TooManyRequestsError(this.moduleName, {
+        message: `Query failed. Request rate is large.`,
+        originalError: error instanceof Error ? error : undefined,
+      });
+    }
     if (!isCamsError(error) && isTimeoutError(error)) {
       return new GatewayTimeoutError(this.moduleName, {
         message: `Query failed. Search request timed out.`,
@@ -406,6 +443,20 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
       data,
     });
   }
+}
+
+// Cosmos DB signals 429 via error code 16500; some driver versions surface it only in the message.
+function isRateLimitError(error: unknown): boolean {
+  // Cosmos DB returns error code 16500 for 429 rate limit errors
+  if (
+    error instanceof Object &&
+    'code' in error &&
+    (error as Record<string, unknown>)['code'] === 16500
+  ) {
+    return true;
+  }
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  return message.includes('Request rate is large');
 }
 
 function isTimeoutError(error: unknown): boolean {

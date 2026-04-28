@@ -951,13 +951,13 @@ describe('Cases repository', () => {
     expect(result).toEqual(caseIds);
   });
 
-  test('should persist the case to sync', async () => {
+  test('should persist the case to sync using upsertOne with $set and $setOnInsert', async () => {
     const bCase = MockData.getSyncedCase();
-    const replaceSpy = vi
-      .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
-      .mockResolvedValue(null);
+    const upsertSpy = vi
+      .spyOn(MongoCollectionAdapter.prototype, 'upsertOne')
+      .mockResolvedValue(undefined);
 
-    const expected: Conjunction<SyncedCase> = {
+    const expectedQuery: Conjunction<SyncedCase> = {
       conjunction: 'AND',
       values: [
         {
@@ -974,12 +974,32 @@ describe('Cases repository', () => {
     };
 
     await repo.syncDxtrCase(bCase);
-    expect(replaceSpy).toHaveBeenCalledWith(expected, bCase, true);
+    expect(upsertSpy).toHaveBeenCalledWith(
+      expectedQuery,
+      expect.not.objectContaining({ createdOn: expect.anything() }),
+      expect.objectContaining({
+        createdOn: bCase.createdOn,
+        createdBy: bCase.createdBy,
+      }),
+    );
   });
 
-  test('should throw when replaceOne throws error', async () => {
+  test('should always update updatedOn and updatedBy via $set', async () => {
     const bCase = MockData.getSyncedCase();
-    vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+    const upsertSpy = vi
+      .spyOn(MongoCollectionAdapter.prototype, 'upsertOne')
+      .mockResolvedValue(undefined);
+
+    await repo.syncDxtrCase(bCase);
+
+    const [, setFields] = upsertSpy.mock.calls[0];
+    expect(setFields).toHaveProperty('updatedOn', bCase.updatedOn);
+    expect(setFields).toHaveProperty('updatedBy', bCase.updatedBy);
+  });
+
+  test('should throw when upsertOne throws error', async () => {
+    const bCase = MockData.getSyncedCase();
+    vi.spyOn(MongoCollectionAdapter.prototype, 'upsertOne').mockRejectedValue(
       new Error('some error'),
     );
 
