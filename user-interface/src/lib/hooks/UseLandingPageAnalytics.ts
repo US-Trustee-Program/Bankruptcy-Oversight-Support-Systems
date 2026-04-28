@@ -42,7 +42,6 @@ export function useLandingPageAnalytics(landingPage: LandingPage): LandingPageAn
           toPage,
           timeOnLandingPage,
           featureFlagEnabled,
-          timestamp: Date.now(),
         },
       };
 
@@ -68,7 +67,6 @@ export function useLandingPageAnalytics(landingPage: LandingPage): LandingPageAn
           timeToFirstSearch,
           searchType,
           featureFlagEnabled,
-          timestamp: Date.now(),
         },
       };
 

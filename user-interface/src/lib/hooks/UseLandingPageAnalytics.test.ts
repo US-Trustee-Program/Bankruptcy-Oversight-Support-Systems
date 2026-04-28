@@ -39,7 +39,6 @@ describe('useLandingPageAnalytics', () => {
       expect(event.properties.toPage).toBe('/case-detail/123');
       expect(event.properties.featureFlagEnabled).toBe(false);
       expect(event.properties.timeOnLandingPage).toBeGreaterThanOrEqual(0);
-      expect(event.properties.timestamp).toBeGreaterThan(0);
     });
 
     test('should track navigation from my-cases landing page', () => {
@@ -92,7 +91,6 @@ describe('useLandingPageAnalytics', () => {
       expect(event.properties.searchType).toBe('case-number');
       expect(event.properties.featureFlagEnabled).toBe(false);
       expect(event.properties.timeToFirstSearch).toBeGreaterThanOrEqual(0);
-      expect(event.properties.timestamp).toBeGreaterThan(0);
     });
 
     test('should only track first search once', () => {
