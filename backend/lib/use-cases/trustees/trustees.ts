@@ -401,8 +401,8 @@ function patchTrustee(
       continue;
     }
     if (patch[key] === null || patch[key] === undefined) {
-      // set keys to undefined when intended to be unset
-      copy[key] = undefined;
+      // delete the key so it is absent rather than null/undefined
+      delete copy[key];
     } else if (
       typeof patch[key] === 'object' &&
       patch[key] !== null &&
@@ -412,8 +412,8 @@ function patchTrustee(
       const patchedNestedObj = patchNestedObject(patch[key] as Record<string, unknown>);
 
       if (patchedNestedObj === undefined || Object.keys(patchedNestedObj).length === 0) {
-        // if the nested object is empty after patching, set parent to undefined
-        copy[key] = undefined;
+        // delete the key so it is absent rather than undefined/null
+        delete copy[key];
       } else {
         copy[key] = patchedNestedObj as Trustee[keyof Trustee];
       }

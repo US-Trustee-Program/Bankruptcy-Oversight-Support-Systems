@@ -656,14 +656,13 @@ describe('TrusteesUseCase tests', () => {
 
       expect(mongoMock).toHaveBeenCalledWith(
         trusteeId,
-        expect.objectContaining({
-          name: 'Updated Name',
-          internal: undefined,
-          software: undefined,
-          banks: undefined,
-        }),
+        expect.objectContaining({ name: 'Updated Name' }),
         expect.any(Object),
       );
+      const patchedArg = (mongoMock.mock.calls[0] as unknown[])[1] as Record<string, unknown>;
+      expect(patchedArg).not.toHaveProperty('internal');
+      expect(patchedArg).not.toHaveProperty('software');
+      expect(patchedArg).not.toHaveProperty('banks');
       expect(result).toEqual(updatedTrustee);
       expect(result.software).toBeUndefined();
       expect(result.banks).toBeUndefined();

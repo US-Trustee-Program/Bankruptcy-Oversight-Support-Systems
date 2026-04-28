@@ -1,6 +1,6 @@
 import './TrusteeContactForm.scss';
 import './TrusteePublicContactForm.scss';
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import Input from '@/lib/components/uswds/Input';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
@@ -15,7 +15,7 @@ import useDebounce from '@/lib/hooks/UseDebounce';
 import { Stop } from '@/lib/components/Stop';
 import PhoneNumberInput from '@/lib/components/PhoneNumberInput';
 import ZipCodeInput from '@/lib/components/ZipCodeInput';
-import { TrusteeInput } from '@common/cams/trustees';
+import { TrusteeInput, TrusteePatchBody } from '@common/cams/trustees';
 import { TrusteePublicFormData, trusteePublicSpec } from './trusteeForms.types';
 import { flattenReasonMap, validateEach, validateObject } from '@common/cams/validation';
 import { normalizeFormData } from './trusteeForms.utils';
@@ -82,23 +82,42 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [formData, setFormData] = useState<TrusteePublicFormData>(
-    getInitialFormData(props.trustee ?? undefined),
-  );
+  const initialFormData = getInitialFormData(props.trustee ?? undefined);
+  const initialFormDataRef = useRef<TrusteePublicFormData>(initialFormData);
+  const [formData, setFormData] = useState<TrusteePublicFormData>(initialFormData);
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
   const navigate = useCamsNavigator();
 
-  // TODO: 12/17/25 This method returns partial but the return value is 'as TrusteeInput' in the submit handler. Let's fix that.
-  // maybe use 'satisfies' operator, but we'll need to adjust the mapPayload return type accordingly.
-  const mapPayload = (formData: TrusteePublicFormData): Partial<TrusteeInput> => {
+  const mapPayload = (formData: TrusteePublicFormData): TrusteePatchBody => {
     const trimmedCompanyName = formData.companyName?.trim();
+    const initial = isCreate ? undefined : initialFormDataRef.current;
+    const changed = (key: keyof TrusteePublicFormData) =>
+      !initial || formData[key] !== initial[key];
 
-    return {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      middleName: isCreate ? formData.middleName : (formData.middleName ?? null),
-      public: {
+    const patch: TrusteePatchBody = {};
+
+    if (changed('firstName')) patch.firstName = formData.firstName;
+    if (changed('lastName')) patch.lastName = formData.lastName;
+    if (changed('middleName'))
+      patch.middleName = isCreate ? formData.middleName : (formData.middleName ?? null);
+
+    const publicFields: (keyof TrusteePublicFormData)[] = [
+      'companyName',
+      'address1',
+      'address2',
+      'city',
+      'state',
+      'zipCode',
+      'phone',
+      'extension',
+      'email',
+      'website',
+    ];
+    const publicChanged = publicFields.some(changed);
+
+    if (publicChanged) {
+      patch.public = {
         address: {
           address1: formData.address1,
           ...(formData.address2 && { address2: formData.address2 }),
@@ -111,8 +130,10 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
         email: formData.email,
         ...(formData.website && formData.website.length > 0 && { website: formData.website }),
         ...(trimmedCompanyName && { companyName: trimmedCompanyName }),
-      },
-    } as TrusteeInput;
+      };
+    }
+
+    return patch;
   };
 
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
@@ -126,11 +147,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
       const payload = mapPayload(currentFormData);
       try {
         if (isCreate) {
-          // TODO: 12/17/25 Let's get rid of the need to use 'as' here.
-          // Modify the return type for Api2.postTrustee to include the intended partial
-          // which includes only the trusteeId.
-          const response = await Api2.postTrustee(payload as TrusteeInput);
-          const createdId = (response as { data?: { trusteeId?: string } })?.data?.trusteeId;
+          const response = await Api2.postTrustee(payload);
+          const createdId = response?.data?.trusteeId;
           navigate.navigateTo(`/trustees/${createdId}`);
         } else {
           await Api2.patchTrustee(props.trusteeId!, payload);

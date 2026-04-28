@@ -35,6 +35,7 @@ import {
   TrusteeInput,
   TrusteeListItem,
   TrusteeOversightAssignment,
+  TrusteePatchBody,
 } from '@common/cams/trustees';
 import { CaseAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
@@ -2525,11 +2526,11 @@ async function deletePrivilegedIdentityUser(userId: string) {
   await _delete(`/dev-tools/privileged-identity/${userId}`);
 }
 
-async function postTrustee(trustee: TrusteeInput) {
+async function postTrustee(trustee: TrusteePatchBody) {
   return post('/trustees', trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
 }
 
-async function patchTrustee(id: string, trustee: Partial<TrusteeInput>) {
+async function patchTrustee(id: string, trustee: TrusteePatchBody) {
   return patch(`/trustees/${id}`, trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
 }
 
