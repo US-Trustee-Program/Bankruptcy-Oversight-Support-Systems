@@ -4,6 +4,7 @@ import QueryBuilder from '../../../../query/query-builder';
 import QueryPipeline from '../../../../query/query-pipeline';
 import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
 import { GatewayTimeoutError } from '../../../../common-errors/gateway-timeout';
+import { TooManyRequestsError } from '../../../../common-errors/too-many-requests-error';
 
 const { and, orderBy } = QueryBuilder;
 
@@ -387,6 +388,20 @@ describe('Mongo adapter', () => {
         module: ADAPTER_MODULE_NAME,
       }),
     );
+  });
+
+  test('should throw TooManyRequestsError when a 429 rate limit error occurs', async () => {
+    const rateLimitError = new Error('Request rate is large. More Request Units may be needed');
+    (rateLimitError as unknown as Record<string, unknown>)['code'] = 16500;
+    aggregate.mockRejectedValue(rateLimitError);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(
+      expect.objectContaining({
+        status: 429,
+        message: 'Query failed. Request rate is large.',
+      }),
+    );
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
   });
 
   test('should throw GatewayTimeoutError when a timeout error occurs', async () => {

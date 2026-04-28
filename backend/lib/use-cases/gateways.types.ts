@@ -504,6 +504,11 @@ export interface DocumentCollectionAdapter<T> {
   deleteMany: (query: ConditionOrConjunction<T>) => Promise<number>;
   countDocuments: (query: ConditionOrConjunction<T>) => Promise<number>;
   updateOne: (query: ConditionOrConjunction<T>, item: unknown) => Promise<UpdateResult>;
+  upsertOne: (
+    query: ConditionOrConjunction<T>,
+    setFields: Partial<T>,
+    insertOnlyFields: Partial<T>,
+  ) => Promise<void>;
   countAllDocuments: () => Promise<number>;
   bulkReplace: (
     replacements: Array<{ filter: ConditionOrConjunction<T>; replacement: T }>,
