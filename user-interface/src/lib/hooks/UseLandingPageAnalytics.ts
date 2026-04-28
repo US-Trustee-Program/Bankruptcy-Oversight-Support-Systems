@@ -20,6 +20,7 @@ interface LandingPageAnalyticsResult {
  */
 export function useLandingPageAnalytics(landingPage: LandingPage): LandingPageAnalyticsResult {
   const flags = useFeatureFlags();
+  const featureFlagEnabled = !!flags[CASE_SEARCH_LANDING_PAGE];
   const landingTimestamp = useRef<number>(Date.now());
   const hasTrackedSearch = useRef<boolean>(false);
   const { appInsights } = getAppInsights();
@@ -40,14 +41,14 @@ export function useLandingPageAnalytics(landingPage: LandingPage): LandingPageAn
           fromPage: landingPage,
           toPage,
           timeOnLandingPage,
-          featureFlagEnabled: !!flags[CASE_SEARCH_LANDING_PAGE],
+          featureFlagEnabled,
           timestamp: Date.now(),
         },
       };
 
       appInsights.trackEvent(event);
     },
-    [landingPage, flags, appInsights],
+    [landingPage, featureFlagEnabled, appInsights],
   );
 
   const trackFirstSearch = useCallback(
@@ -66,14 +67,14 @@ export function useLandingPageAnalytics(landingPage: LandingPage): LandingPageAn
           landingPage,
           timeToFirstSearch,
           searchType,
-          featureFlagEnabled: !!flags[CASE_SEARCH_LANDING_PAGE],
+          featureFlagEnabled,
           timestamp: Date.now(),
         },
       };
 
       appInsights.trackEvent(event);
     },
-    [landingPage, flags, appInsights],
+    [landingPage, featureFlagEnabled, appInsights],
   );
 
   return {

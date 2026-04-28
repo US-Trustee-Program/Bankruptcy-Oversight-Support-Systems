@@ -26,11 +26,11 @@ export function GoHome(props: GoHomeProps) {
   const [isReady, setIsReady] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
   const hasNavigated = useRef(false);
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | undefined>();
 
   // Wait for LaunchDarkly to be ready
   useEffect(() => {
     const config = getFeatureFlagConfiguration();
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let isUnmounted = false;
 
     // If LaunchDarkly is configured, wait for the client to be available
@@ -43,7 +43,7 @@ export function GoHome(props: GoHomeProps) {
             setIsReady(true);
             // Set a timeout: if flags don't arrive via useFlags() within 500ms, proceed anyway
             // This handles cases where LD initializes but returns no flags for the user
-            timeoutId = setTimeout(() => {
+            timeoutIdRef.current = setTimeout(() => {
               setHasTimedOut(true);
             }, 500);
           })
@@ -63,8 +63,8 @@ export function GoHome(props: GoHomeProps) {
 
     return () => {
       isUnmounted = true;
-      if (timeoutId) {
-        clearTimeout(timeoutId);
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
       }
     };
   }, [ldClient]);
@@ -90,6 +90,12 @@ export function GoHome(props: GoHomeProps) {
 
     // Mark that we're about to navigate
     hasNavigated.current = true;
+
+    // Clear timeout when navigating to prevent setState after navigation
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = undefined;
+    }
 
     if (props.path) {
       navigator.navigateTo(props.path);
