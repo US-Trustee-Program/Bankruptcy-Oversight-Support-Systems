@@ -266,6 +266,15 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
             sparse: true
           }
         }
+        {
+          key: {
+            keys: [
+              'documentType'
+              'updatedOn'
+              '_id'
+            ]
+          }
+        }
       ]
     }
   }
