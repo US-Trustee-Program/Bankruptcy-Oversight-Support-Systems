@@ -1,7 +1,7 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { LegacyAddress } from './parties';
-import { ContactInformation } from './contact';
+import { ContactInformation, Person } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
@@ -73,10 +73,7 @@ export type ZoomInfo = {
   accountEmail?: string;
 };
 
-type TrusteeCore = {
-  firstName: string;
-  lastName: string;
-  middleName?: string;
+type TrusteeCore = Person & {
   name: string;
   status?: AppointmentStatus;
   public: ContactInformation;
