@@ -15,6 +15,15 @@ test.describe('Trustees', () => {
     expect(accessibilityScanResults.violations).toEqual([]);
   });
 
+  test('trustees list should not have accessibility issues after sorting descending', async ({
+    page,
+  }) => {
+    await page.getByRole('columnheader', { name: /name/i }).click();
+    await page.waitForTimeout(ANALYZE_DELAY);
+    const accessibilityScanResults = await createAxeBuilder(page).analyze();
+    expect(accessibilityScanResults.violations).toEqual([]);
+  });
+
   test('trustee profile should not have accessibility issues', async ({ page }) => {
     const trusteeProfileLink = page.locator('[data-testid^="trustee-link-"]').first();
     await expect(trusteeProfileLink).toBeVisible();

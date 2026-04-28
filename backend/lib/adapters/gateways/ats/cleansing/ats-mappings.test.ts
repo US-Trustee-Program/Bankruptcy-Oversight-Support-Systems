@@ -291,6 +291,9 @@ describe('ATS Mappings', () => {
       const result = transformTrusteeRecord(atsTrustee);
 
       expect(result).toEqual({
+        firstName: 'John',
+        lastName: 'Doe',
+        middleName: 'A',
         name: 'John A Doe',
         status: 'active',
         public: {
@@ -322,6 +325,9 @@ describe('ATS Mappings', () => {
       const result = transformTrusteeRecord(atsTrustee);
 
       expect(result).toEqual({
+        firstName: 'Jane',
+        lastName: 'Smith',
+        middleName: undefined,
         name: 'Jane Smith',
         status: 'active',
         public: {
@@ -404,6 +410,56 @@ describe('ATS Mappings', () => {
 
       const result = transformTrusteeRecord(atsTrustee);
 
+      expect(result.name).toBe('Unknown');
+      expect(result.firstName).toBe('');
+      expect(result.lastName).toBe('');
+      expect(result.middleName).toBeUndefined();
+    });
+
+    test('should populate separate name fields from ATS source data', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 100,
+        FIRST_NAME: 'Robert',
+        MIDDLE: 'Lee',
+        LAST_NAME: 'Smith',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.firstName).toBe('Robert');
+      expect(result.middleName).toBe('Lee');
+      expect(result.lastName).toBe('Smith');
+      expect(result.name).toBe('Robert Lee Smith');
+    });
+
+    test('should set middleName to undefined when MIDDLE is absent', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 101,
+        FIRST_NAME: 'Jane',
+        LAST_NAME: 'Doe',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.firstName).toBe('Jane');
+      expect(result.middleName).toBeUndefined();
+      expect(result.lastName).toBe('Doe');
+      expect(result.name).toBe('Jane Doe');
+    });
+
+    test('should treat whitespace-only name fields as absent', () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 102,
+        FIRST_NAME: '   ',
+        MIDDLE: '  ',
+        LAST_NAME: '   ',
+      };
+
+      const result = transformTrusteeRecord(atsTrustee);
+
+      expect(result.firstName).toBe('');
+      expect(result.middleName).toBeUndefined();
+      expect(result.lastName).toBe('');
       expect(result.name).toBe('Unknown');
     });
 

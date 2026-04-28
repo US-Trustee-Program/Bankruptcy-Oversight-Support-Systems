@@ -41,9 +41,9 @@ import getAppConfiguration from '@/configuration/appConfiguration';
 import {
   Trustee,
   TrusteeHistory,
-  TrusteeInput,
   TrusteeListItem,
   TrusteeOversightAssignment,
+  TrusteePatchBody,
 } from '@common/cams/trustees';
 import {
   CaseAppointment,
@@ -259,12 +259,12 @@ async function getOversightStaff(): Promise<ResponseBody<Record<OversightRoleTyp
   return api().get<Record<OversightRoleType, Staff[]>>('/staff');
 }
 
-async function postTrustee(trustee: TrusteeInput) {
-  return api().post<Trustee, TrusteeInput>('/trustees', trustee);
+async function postTrustee(trustee: TrusteePatchBody) {
+  return api().post<Trustee, TrusteePatchBody>('/trustees', trustee);
 }
 
-async function patchTrustee(id: string, trustee: Partial<TrusteeInput>) {
-  return api().patch<Trustee, Partial<TrusteeInput>>(`/trustees/${id}`, trustee);
+async function patchTrustee(id: string, trustee: TrusteePatchBody) {
+  return api().patch<Trustee, TrusteePatchBody>(`/trustees/${id}`, trustee);
 }
 
 async function getTrustees() {

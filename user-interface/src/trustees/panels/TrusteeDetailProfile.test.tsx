@@ -9,6 +9,8 @@ import MockData from '@common/cams/test-utilities/mock-data';
 const mockTrustee: Trustee = {
   id: '--id-guid--',
   trusteeId: '123',
+  firstName: 'John',
+  lastName: 'Doe',
   name: 'John Doe',
   public: {
     address: {
@@ -70,12 +72,19 @@ describe('TrusteeDetailProfile', () => {
     userEvent = TestingUtilities.setupUserEvent();
   });
 
-  test('should render public trustee overview section', () => {
+  test('should render public trustee overview section with concatenated name', () => {
     renderWithProps({});
 
     expect(screen.getByText('Contact Information')).toBeInTheDocument();
     expect(screen.getByText('Public')).toBeInTheDocument();
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
+    expect(screen.getByTestId('trustee-name')).toHaveTextContent('John Doe');
+  });
+
+  test('should render middle name in concatenated name when present', () => {
+    const trusteeWithMiddle = { ...mockTrustee, middleName: 'Michael', name: 'John Michael Doe' };
+    renderWithProps({ trustee: trusteeWithMiddle });
+
+    expect(screen.getByTestId('trustee-name')).toHaveTextContent('John Michael Doe');
   });
 
   test('should render public contact information', () => {

@@ -226,6 +226,8 @@ describe('Migrate Trustees Use Case', () => {
       const existingTrustee = {
         id: 'existing-id',
         trusteeId: 'trustee-123',
+        firstName: 'John',
+        lastName: 'Doe',
         name: 'John Doe',
         legacy: { truIds: ['1'] },
         public: {
@@ -285,6 +287,8 @@ describe('Migrate Trustees Use Case', () => {
     const mockTrustee = {
       id: 'doc-id',
       trusteeId: 'trustee-100',
+      firstName: 'Test',
+      lastName: 'Trustee',
       name: 'Test Trustee',
       status: 'active' as const,
       public: {

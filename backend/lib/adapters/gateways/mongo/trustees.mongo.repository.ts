@@ -11,6 +11,7 @@ import {
   TrusteeHistory,
   TrusteeInput,
   TrusteeOversightAssignment,
+  computeTrusteeName,
 } from '@common/cams/trustees';
 import { isNotFoundError, NotFoundError } from '../../../common-errors/not-found-error';
 import { normalizeName, escapeRegex } from '../../../use-cases/dataflows/trustee-match.helpers';
@@ -67,12 +68,20 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
   }
 
   async createTrustee(trustee: TrusteeInput, user: CamsUserReference): Promise<Trustee> {
+    const computedName = computeTrusteeName(
+      trustee.firstName,
+      trustee.middleName,
+      trustee.lastName,
+    );
+    const { middleName, ...trusteeWithoutMiddle } = trustee;
     const trusteeDocument = createAuditRecord<Creatable<TrusteeDocument>>(
       {
-        ...trustee,
+        ...trusteeWithoutMiddle,
+        ...(middleName ? { middleName } : {}),
+        name: computedName,
         documentType: 'TRUSTEE',
         trusteeId: crypto.randomUUID(),
-        phoneticTokens: generateSearchTokens(trustee.name),
+        phoneticTokens: generateSearchTokens(computedName),
       },
       user,
     );
@@ -260,9 +269,20 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const doc = using<TrusteeDocument>();
       const query = and(doc('documentType').equals('TRUSTEE'), doc('trusteeId').equals(id));
 
+      const {
+        _id: _mongoId,
+        middleName,
+        ...inputWithoutIdOrMiddle
+      } = input as TrusteeDocument & { _id?: unknown };
+      const computedName =
+        input.firstName && input.lastName
+          ? computeTrusteeName(input.firstName, middleName, input.lastName)
+          : input.name;
       const updateData = {
-        ...input,
-        phoneticTokens: generateSearchTokens(input.name),
+        ...inputWithoutIdOrMiddle,
+        ...(middleName ? { middleName } : {}),
+        name: computedName,
+        phoneticTokens: generateSearchTokens(computedName),
         updatedOn: new Date().toISOString(),
         updatedBy: userRef,
       };

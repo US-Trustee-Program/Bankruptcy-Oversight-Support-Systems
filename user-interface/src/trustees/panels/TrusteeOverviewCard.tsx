@@ -30,7 +30,9 @@ export default function TrusteeOverviewCard({
                 <IconLabel icon="edit" label="Edit" />
               </Button>
             </div>
-            <div className="trustee-name">{trustee.name}</div>
+            <div className="trustee-name" data-testid="trustee-name">
+              {trustee.name}
+            </div>
             <FormattedContact contact={trustee.public} testIdPrefix="trustee" />
           </div>
         </div>
