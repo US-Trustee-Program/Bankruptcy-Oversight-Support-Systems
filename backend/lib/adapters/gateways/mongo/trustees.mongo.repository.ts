@@ -73,9 +73,11 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       trustee.middleName,
       trustee.lastName,
     );
+    const { middleName, ...trusteeWithoutMiddle } = trustee;
     const trusteeDocument = createAuditRecord<Creatable<TrusteeDocument>>(
       {
-        ...trustee,
+        ...trusteeWithoutMiddle,
+        ...(middleName ? { middleName } : {}),
         name: computedName,
         documentType: 'TRUSTEE',
         trusteeId: crypto.randomUUID(),
@@ -267,13 +269,18 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const doc = using<TrusteeDocument>();
       const query = and(doc('documentType').equals('TRUSTEE'), doc('trusteeId').equals(id));
 
-      const { _id: _mongoId, ...inputWithoutId } = input as TrusteeDocument & { _id?: unknown };
+      const {
+        _id: _mongoId,
+        middleName,
+        ...inputWithoutIdOrMiddle
+      } = input as TrusteeDocument & { _id?: unknown };
       const computedName =
         input.firstName && input.lastName
-          ? computeTrusteeName(input.firstName, input.middleName, input.lastName)
+          ? computeTrusteeName(input.firstName, middleName, input.lastName)
           : input.name;
       const updateData = {
-        ...inputWithoutId,
+        ...inputWithoutIdOrMiddle,
+        ...(middleName ? { middleName } : {}),
         name: computedName,
         phoneticTokens: generateSearchTokens(computedName),
         updatedOn: new Date().toISOString(),
