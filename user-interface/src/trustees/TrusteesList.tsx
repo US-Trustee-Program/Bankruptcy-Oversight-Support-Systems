@@ -2,13 +2,18 @@ import './TrusteesList.scss';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { TrusteeListItem } from '@common/cams/trustees';
-import { formatChapterType, formatAppointmentType } from '@common/cams/trustees';
+import {
+  formatChapterType,
+  formatAppointmentType,
+  formatTrusteeListName,
+} from '@common/cams/trustees';
 import { formatAppointmentStatus } from '@common/cams/trustee-appointments';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import TrusteeDistrictFilter from './filters/TrusteeDistrictFilter';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
+import Icon from '@/lib/components/uswds/Icon';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 const COLUMN_HEADERS = ['Name', 'District (Division)', 'Chapter', 'Type', 'Status'];
@@ -35,6 +40,7 @@ export default function TrusteesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
   const pageLoadStart = useRef(performance.now());
 
@@ -76,24 +82,36 @@ export default function TrusteesList() {
   };
 
   const { filteredTrustees, announcement } = useMemo(() => {
-    if (selectedDistricts.length === 0) {
-      return {
-        filteredTrustees: trustees,
-        announcement: `Showing all ${trustees.length} trustee(s)`,
-      };
-    }
     const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
-    const filtered = trustees.filter((trustee) =>
-      trustee.appointments.some(
-        (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
-      ),
-    );
-    const districtNames = selectedDistricts.map((d) => d.label).join(', ');
-    return {
-      filteredTrustees: filtered,
-      announcement: `Showing ${filtered.length} trustee(s) in ${districtNames}`,
-    };
-  }, [trustees, selectedDistricts]);
+    const base =
+      selectedDistricts.length === 0
+        ? trustees
+        : trustees.filter((t) =>
+            t.appointments.some(
+              (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
+            ),
+          );
+
+    const sorted = [...base].sort((a, b) => {
+      const lastCmp = (a.lastName ?? '').localeCompare(b.lastName ?? '', undefined, {
+        sensitivity: 'base',
+      });
+      const cmp =
+        lastCmp !== 0
+          ? lastCmp
+          : (a.firstName ?? '').localeCompare(b.firstName ?? '', undefined, {
+              sensitivity: 'base',
+            });
+      return sortDirection === 'asc' ? cmp : -cmp;
+    });
+
+    const announcement =
+      selectedDistricts.length === 0
+        ? `Showing all ${trustees.length} trustee(s)`
+        : `Showing ${base.length} trustee(s) in ${selectedDistricts.map((d) => d.label).join(', ')}`;
+
+    return { filteredTrustees: sorted, announcement };
+  }, [trustees, selectedDistricts, sortDirection]);
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
@@ -163,15 +181,41 @@ export default function TrusteesList() {
       >
         <div role="rowgroup">
           <div className="trustees-list-header" role="row">
-            {COLUMN_HEADERS.map((header) => (
-              <div
-                key={header}
-                className={`trustees-list-cell ${toColClass(header)}`}
-                role="columnheader"
-              >
-                {header}
-              </div>
-            ))}
+            {COLUMN_HEADERS.map((header) => {
+              const isNameCol = header === 'Name';
+              return (
+                <div
+                  key={header}
+                  className={`trustees-list-cell ${toColClass(header)}${isNameCol ? ' sortable' : ''}`}
+                  role="columnheader"
+                  tabIndex={isNameCol ? 0 : undefined}
+                  aria-sort={
+                    isNameCol ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined
+                  }
+                  onClick={
+                    isNameCol
+                      ? () => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
+                      : undefined
+                  }
+                  onKeyDown={
+                    isNameCol
+                      ? (e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+                          }
+                        }
+                      : undefined
+                  }
+                  style={isNameCol ? { cursor: 'pointer' } : undefined}
+                >
+                  {header}
+                  {isNameCol && (
+                    <Icon name={sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'} />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
         <div role="rowgroup">
@@ -197,7 +241,12 @@ export default function TrusteesList() {
                           data-testid={`trustee-link-${trustee.trusteeId}`}
                           className="usa-link"
                         >
-                          {trustee.name}
+                          {formatTrusteeListName(
+                            trustee.firstName,
+                            trustee.middleName,
+                            trustee.lastName,
+                            trustee.name,
+                          )}
                         </NavLink>
                       ) : (
                         <span aria-hidden="true"></span>

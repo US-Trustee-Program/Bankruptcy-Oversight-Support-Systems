@@ -3,6 +3,7 @@ import {
   AppointmentStatus,
   AppointmentType,
   TrusteeInput,
+  computeTrusteeName,
 } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { ContactInformation } from '@common/cams/contact';
@@ -186,13 +187,13 @@ export function transformTrusteeRecord(
   atsTrustee: AtsTrusteeRecord,
   status?: AppointmentStatus,
 ): TrusteeInput {
-  // Build full name string
-  const nameParts = [];
-  if (atsTrustee.FIRST_NAME) nameParts.push(atsTrustee.FIRST_NAME);
-  if (atsTrustee.MIDDLE) nameParts.push(atsTrustee.MIDDLE);
-  if (atsTrustee.LAST_NAME) nameParts.push(atsTrustee.LAST_NAME);
+  // Build separate name fields from ATS source
+  const firstName = atsTrustee.FIRST_NAME?.trim() || '';
+  const lastName = atsTrustee.LAST_NAME?.trim() || '';
+  const middleName = atsTrustee.MIDDLE?.trim() || undefined;
 
-  const fullName = nameParts.join(' ') || 'Unknown';
+  const computedName = computeTrusteeName(firstName, middleName, lastName);
+  const fullName = computedName || 'Unknown';
 
   // Build public contact information
   const publicContact: ContactInformation = {
@@ -223,6 +224,9 @@ export function transformTrusteeRecord(
   }
 
   const trusteeInput: TrusteeInput = {
+    firstName,
+    lastName,
+    middleName,
     name: fullName,
     status: status || DEFAULT_TRUSTEE_STATUS,
     public: publicContact,

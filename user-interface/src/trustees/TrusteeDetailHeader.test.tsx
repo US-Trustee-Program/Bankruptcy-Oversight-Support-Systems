@@ -7,6 +7,8 @@ import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 const mockTrustee: Trustee = {
   id: '--id-guid--',
   trusteeId: '123',
+  firstName: 'John',
+  lastName: 'Doe',
   name: 'John Doe',
   public: {
     address: {
