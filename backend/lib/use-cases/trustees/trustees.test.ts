@@ -113,7 +113,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should throw BadRequestError for invalid trustee input', async () => {
-      const invalidTrustee = { ...MockData.getTrusteeInput(), name: '' };
+      const invalidTrustee = { ...MockData.getTrusteeInput(), firstName: '' };
 
       await expect(trusteesUseCase.createTrustee(context, invalidTrustee)).rejects.toThrow(
         BadRequestError,
@@ -250,10 +250,22 @@ describe('TrusteesUseCase tests', () => {
       expect(result[0].appointments).toEqual([]);
     });
 
-    test('should return trustees sorted by name ascending (case-insensitive)', async () => {
-      const trusteeC = MockData.getTrustee({ trusteeId: 'id-c', name: 'charlie' });
-      const trusteeA = MockData.getTrustee({ trusteeId: 'id-a', name: 'Alice' });
-      const trusteeB = MockData.getTrustee({ trusteeId: 'id-b', name: 'bob' });
+    test('should return trustees sorted by lastName ascending, then firstName as tiebreaker (case-insensitive)', async () => {
+      const trusteeC = MockData.getTrustee({
+        trusteeId: 'id-c',
+        firstName: 'Zara',
+        lastName: 'Adams',
+      });
+      const trusteeA = MockData.getTrustee({
+        trusteeId: 'id-a',
+        firstName: 'Alice',
+        lastName: 'carter',
+      });
+      const trusteeB = MockData.getTrustee({
+        trusteeId: 'id-b',
+        firstName: 'bob',
+        lastName: 'Adams',
+      });
 
       vi.spyOn(MockMongoRepository.prototype, 'listTrustees').mockResolvedValue([
         trusteeC,
@@ -264,7 +276,8 @@ describe('TrusteesUseCase tests', () => {
 
       const result = await trusteesUseCase.listTrustees(context);
 
-      expect(result.map((r) => r.name)).toEqual(['Alice', 'bob', 'charlie']);
+      expect(result.map((r) => r.lastName)).toEqual(['Adams', 'Adams', 'carter']);
+      expect(result.map((r) => r.firstName)).toEqual(['bob', 'Zara', 'Alice']);
     });
 
     test('should handle repository error during list operation', async () => {
@@ -564,7 +577,7 @@ describe('TrusteesUseCase tests', () => {
     });
 
     test('should throw BadRequestError for invalid update data', async () => {
-      const invalidUpdateData = { name: '' };
+      const invalidUpdateData = { firstName: '' };
 
       await expect(
         trusteesUseCase.updateTrustee(context, trusteeId, invalidUpdateData),
@@ -643,14 +656,13 @@ describe('TrusteesUseCase tests', () => {
 
       expect(mongoMock).toHaveBeenCalledWith(
         trusteeId,
-        expect.objectContaining({
-          name: 'Updated Name',
-          internal: undefined,
-          software: undefined,
-          banks: undefined,
-        }),
+        expect.objectContaining({ name: 'Updated Name' }),
         expect.any(Object),
       );
+      const patchedArg = (mongoMock.mock.calls[0] as unknown[])[1] as Record<string, unknown>;
+      expect(patchedArg).not.toHaveProperty('internal');
+      expect(patchedArg).not.toHaveProperty('software');
+      expect(patchedArg).not.toHaveProperty('banks');
       expect(result).toEqual(updatedTrustee);
       expect(result.software).toBeUndefined();
       expect(result.banks).toBeUndefined();

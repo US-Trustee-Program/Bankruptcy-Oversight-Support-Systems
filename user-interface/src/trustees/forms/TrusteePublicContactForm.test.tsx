@@ -11,7 +11,7 @@ import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 
-import { TrusteeInput } from '@common/cams/trustees';
+import { TrusteeInput, TrusteePatchBody } from '@common/cams/trustees';
 import { TrusteePublicFormData } from './trusteeForms.types';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -98,11 +98,13 @@ describe('TrusteePublicContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
+      const firstNameInput = screen.getByTestId('trustee-first-name');
+      expect(firstNameInput).toBeInTheDocument();
     });
 
-    const nameInput = screen.getByTestId('trustee-name');
+    const firstNameInput = screen.getByTestId('trustee-first-name');
+    const middleNameInput = screen.getByTestId('trustee-middle-name');
+    const lastNameInput = screen.getByTestId('trustee-last-name');
     const address1Input = screen.getByTestId('trustee-address1');
     const address2Input = screen.getByTestId('trustee-address2');
     const cityInput = screen.getByTestId('trustee-city');
@@ -112,8 +114,9 @@ describe('TrusteePublicContactForm Tests', () => {
     const emailInput = screen.getByTestId('trustee-email');
     const websiteInput = screen.getByTestId('trustee-website');
 
-    const trusteeName = 'Test Trustee';
-    await userEvent.type(nameInput, trusteeName);
+    await userEvent.type(firstNameInput, 'Test');
+    await userEvent.type(middleNameInput, 'Q');
+    await userEvent.type(lastNameInput, 'Trustee');
     const address1 = '123 Main St';
     await userEvent.type(address1Input, address1);
     const address2 = 'Apt 123';
@@ -136,7 +139,9 @@ describe('TrusteePublicContactForm Tests', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     const expectedPayload = {
-      name: trusteeName,
+      firstName: 'Test',
+      middleName: 'Q',
+      lastName: 'Trustee',
       public: {
         address: {
           address1,
@@ -165,19 +170,20 @@ describe('TrusteePublicContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
+      const firstNameInput = screen.getByTestId('trustee-first-name');
+      expect(firstNameInput).toBeInTheDocument();
     });
 
-    const nameInput = screen.getByTestId('trustee-name');
+    const firstNameInput = screen.getByTestId('trustee-first-name');
+    const lastNameInput = screen.getByTestId('trustee-last-name');
     const address1Input = screen.getByTestId('trustee-address1');
     const cityInput = screen.getByTestId('trustee-city');
     const zipInput = screen.getByTestId('trustee-zip');
     const phoneInput = screen.getByTestId('trustee-phone');
     const emailInput = screen.getByTestId('trustee-email');
 
-    const trusteeName = 'Test Trustee';
-    await userEvent.type(nameInput, trusteeName);
+    await userEvent.type(firstNameInput, 'Test');
+    await userEvent.type(lastNameInput, 'Trustee');
     const address1 = '123 Main St';
     await userEvent.type(address1Input, address1);
     const city = 'Test City';
@@ -194,7 +200,9 @@ describe('TrusteePublicContactForm Tests', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     const expectedPayload = {
-      name: trusteeName,
+      firstName: 'Test',
+      lastName: 'Trustee',
+      middleName: undefined,
       public: {
         address: {
           address1,
@@ -235,8 +243,8 @@ describe('TrusteePublicContactForm Tests', () => {
     renderWithProps(editPublicState);
 
     await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
+      const firstNameInput = screen.getByTestId('trustee-first-name');
+      expect(firstNameInput).toBeInTheDocument();
     });
 
     const address1Input = screen.getByTestId('trustee-address1');
@@ -278,8 +286,7 @@ describe('TrusteePublicContactForm Tests', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    const expectedPayload = {
-      name: existing.name,
+    const expectedPayload: TrusteePatchBody = {
       public: {
         address: {
           address1: newAddress1,
@@ -295,10 +302,39 @@ describe('TrusteePublicContactForm Tests', () => {
         email: newEmail,
         website: 'example.com',
       },
-    } as Partial<TrusteeInput>;
+    };
 
     expect(patchSpy).toHaveBeenCalledWith(existing.trusteeId, expectedPayload);
     expect(navigateTo).toHaveBeenCalledWith('/trustees/' + existing.trusteeId);
+  });
+
+  test('should send null for middleName when it is cleared during edit', async () => {
+    const existing = MockData.getTrustee({ middleName: 'Lee' });
+    const patchSpy = vi.spyOn(Api2, 'patchTrustee').mockResolvedValue({ data: existing });
+
+    renderWithProps({
+      action: 'edit',
+      cancelTo: `/trustees/${existing.trusteeId}`,
+      trusteeId: existing.trusteeId,
+      trustee: existing,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('trustee-middle-name')).toBeInTheDocument();
+    });
+
+    const middleNameInput = screen.getByTestId('trustee-middle-name');
+    expect(middleNameInput).toHaveValue('Lee');
+    await userEvent.clear(middleNameInput);
+
+    await userEvent.click(screen.getByRole('button', { name: /save/i }));
+
+    await waitFor(() => {
+      expect(patchSpy).toHaveBeenCalledWith(
+        existing.trusteeId,
+        expect.objectContaining({ middleName: null }),
+      );
+    });
   });
 
   test('should handle cancel button functionality for create mode', async () => {
@@ -360,7 +396,8 @@ describe('TrusteePublicContactForm Tests', () => {
 
     renderWithProps({ action: 'create', cancelTo: '/trustees', trusteeId: '' });
 
-    await userEvent.type(screen.getByTestId('trustee-name'), 'Create Trustee');
+    await userEvent.type(screen.getByTestId('trustee-first-name'), 'Create');
+    await userEvent.type(screen.getByTestId('trustee-last-name'), 'Trustee');
     await userEvent.type(screen.getByTestId('trustee-address1'), '1 Main St');
     await userEvent.type(screen.getByTestId('trustee-city'), 'City');
     await userEvent.type(screen.getByTestId('trustee-zip'), '90210');
@@ -402,10 +439,10 @@ describe('TrusteePublicContactForm Tests', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-name')).toHaveValue(existing.name);
+      expect(screen.getByTestId('trustee-first-name')).toHaveValue(existing.firstName);
     });
 
-    await userEvent.type(screen.getByTestId('trustee-name'), 'Edited Name');
+    await userEvent.type(screen.getByTestId('trustee-first-name'), 'Edited');
     await userEvent.type(screen.getByTestId('trustee-address1'), '1 Main St');
     await TestingUtilities.toggleComboBoxItemSelection('trustee-state', 5);
     await userEvent.type(screen.getByTestId('trustee-zip'), '90210');
@@ -436,11 +473,12 @@ describe('TrusteePublicContactForm Tests', () => {
     renderWithProps();
 
     await waitFor(() => {
-      const nameInput = screen.getByTestId('trustee-name');
-      expect(nameInput).toBeInTheDocument();
+      const firstNameInput = screen.getByTestId('trustee-first-name');
+      expect(firstNameInput).toBeInTheDocument();
     });
 
-    const nameInput = screen.getByTestId('trustee-name');
+    const firstNameInput = screen.getByTestId('trustee-first-name');
+    const lastNameInput = screen.getByTestId('trustee-last-name');
     const companyNameInput = screen.getByTestId('trustee-company-name');
     const address1Input = screen.getByTestId('trustee-address1');
     const cityInput = screen.getByTestId('trustee-city');
@@ -448,8 +486,8 @@ describe('TrusteePublicContactForm Tests', () => {
     const phoneInput = screen.getByTestId('trustee-phone');
     const emailInput = screen.getByTestId('trustee-email');
 
-    const trusteeName = 'Test Trustee';
-    await userEvent.type(nameInput, trusteeName);
+    await userEvent.type(firstNameInput, 'Test');
+    await userEvent.type(lastNameInput, 'Trustee');
     const companyName = "ABC Corp. & Co., Inc. - 123's Best!";
     await userEvent.type(companyNameInput, companyName);
     const address1 = '123 Main St';
@@ -468,7 +506,9 @@ describe('TrusteePublicContactForm Tests', () => {
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     const expectedPayload = {
-      name: trusteeName,
+      firstName: 'Test',
+      lastName: 'Trustee',
+      middleName: undefined,
       public: {
         address: {
           address1,
@@ -529,15 +569,18 @@ describe('TrusteePublicContactForm Tests', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('trustee-name')).toBeInTheDocument();
+      expect(screen.getByTestId('trustee-first-name')).toBeInTheDocument();
     });
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => {
-      const nameError = document.getElementById('trustee-name-input__error-message');
-      expect(nameError).toBeInTheDocument();
+      const firstNameError = document.getElementById('trustee-first-name-input__error-message');
+      expect(firstNameError).toBeInTheDocument();
     });
+
+    const lastNameError = document.getElementById('trustee-last-name-input__error-message');
+    expect(lastNameError).toBeInTheDocument();
 
     const address1Error = document.getElementById('trustee-address1-input__error-message');
     expect(address1Error).toBeInTheDocument();
@@ -556,5 +599,14 @@ describe('TrusteePublicContactForm Tests', () => {
 
     const emailError = document.getElementById('trustee-email-input__error-message');
     expect(emailError).toBeInTheDocument();
+  });
+
+  test('should validate first name, last name, and middle name length limits', () => {
+    expect(validateField('firstName', 'A'.repeat(15))).toBeUndefined();
+    expect(validateField('firstName', 'A'.repeat(16))).toBeTruthy();
+    expect(validateField('lastName', 'A'.repeat(20))).toBeUndefined();
+    expect(validateField('lastName', 'A'.repeat(21))).toBeTruthy();
+    expect(validateField('middleName', 'A'.repeat(15))).toBeUndefined();
+    expect(validateField('middleName', 'A'.repeat(16))).toBeTruthy();
   });
 });

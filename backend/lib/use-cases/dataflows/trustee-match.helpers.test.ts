@@ -76,6 +76,8 @@ const makeCase = (overrides: Partial<SyncedCase> = {}): SyncedCase => ({
 const makeTrustee = (overrides: Partial<Trustee> = {}): Trustee => ({
   id: 'trustee-1',
   trusteeId: 'trustee-1',
+  firstName: 'John',
+  lastName: 'Doe',
   name: 'John Doe',
   status: 'active',
   public: {

@@ -2,6 +2,8 @@ import {
   getAppointmentDetails,
   formatChapterType,
   formatAppointmentType,
+  computeTrusteeName,
+  formatTrusteeListName,
   AppointmentChapterType,
   AppointmentType,
 } from './trustees';
@@ -31,6 +33,68 @@ describe('trustees', () => {
       ['converted-case', 'Converted Case'],
     ])('should format "%s" as "%s"', (input, expected) => {
       expect(formatAppointmentType(input as AppointmentType)).toBe(expected);
+    });
+  });
+
+  describe('computeTrusteeName', () => {
+    test('should return "First Middle Last" when all three parts provided', () => {
+      expect(computeTrusteeName('Jane', 'Ann', 'Doe')).toBe('Jane Ann Doe');
+    });
+
+    test('should return "First Last" when middleName is undefined', () => {
+      expect(computeTrusteeName('Jane', undefined, 'Doe')).toBe('Jane Doe');
+    });
+
+    test('should return "First Last" when middleName is empty string', () => {
+      expect(computeTrusteeName('Jane', '', 'Doe')).toBe('Jane Doe');
+    });
+
+    test('should trim whitespace from each part', () => {
+      expect(computeTrusteeName('  Jane  ', '  Ann  ', '  Doe  ')).toBe('Jane Ann Doe');
+    });
+
+    test('should handle empty firstName and lastName', () => {
+      expect(computeTrusteeName('', undefined, '')).toBe('');
+    });
+  });
+
+  describe('formatTrusteeListName', () => {
+    test('should return "Last, First Middle" when all three parts provided', () => {
+      expect(formatTrusteeListName('John', 'Q', 'Doe')).toBe('Doe, John Q');
+    });
+
+    test('should return "Last, First" when middleName is undefined', () => {
+      expect(formatTrusteeListName('John', undefined, 'Doe')).toBe('Doe, John');
+    });
+
+    test('should return fallback name when firstName and lastName are missing', () => {
+      expect(formatTrusteeListName(undefined, undefined, undefined, 'John Doe')).toBe('John Doe');
+    });
+
+    test('should return empty string when all parts and fallback are empty strings', () => {
+      expect(formatTrusteeListName('', '', '', '')).toBe('');
+    });
+
+    test('should return empty string when all parts are undefined and no fallback', () => {
+      expect(formatTrusteeListName(undefined, undefined, undefined)).toBe('');
+    });
+
+    test('should trim whitespace from each part', () => {
+      expect(formatTrusteeListName('  John  ', '  Q  ', '  Doe  ')).toBe('Doe, John Q');
+    });
+
+    test('should trim whitespace from fallback name', () => {
+      expect(formatTrusteeListName(undefined, undefined, undefined, '  John Doe  ')).toBe(
+        'John Doe',
+      );
+    });
+
+    test('should return "Last" when only lastName is provided', () => {
+      expect(formatTrusteeListName(undefined, undefined, 'Doe')).toBe('Doe');
+    });
+
+    test('should ignore middleName when firstName is missing but lastName exists', () => {
+      expect(formatTrusteeListName(undefined, 'Q', 'Doe')).toBe('Doe, Q');
     });
   });
 

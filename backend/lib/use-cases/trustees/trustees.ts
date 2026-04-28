@@ -14,7 +14,9 @@ import { TrusteeAppointment } from '@common/cams/trustee-appointments';
 import { CourtsUseCase } from '../courts/courts';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import {
-  trusteeName,
+  trusteeFirstName,
+  trusteeLastName,
+  trusteeMiddleName,
   companyName,
   addressLine1,
   addressLine2,
@@ -67,7 +69,9 @@ const internalContactInformationSpec: ValidationSpec<ContactInformation> = {
 };
 
 const trusteeSpec: ValidationSpec<TrusteeInput> = {
-  name: [trusteeName],
+  firstName: [trusteeFirstName],
+  lastName: [trusteeLastName],
+  middleName: [trusteeMiddleName],
   public: [V.optional(V.spec(contactInformationSpec))],
   internal: [V.optional(V.spec(internalContactInformationSpec))],
   banks: [V.optional(V.arrayOf(V.length(1, 100)))],
@@ -184,7 +188,15 @@ export class TrusteesUseCase {
         appointments: appointmentsByTrusteeId.get(trustee.trusteeId) ?? [],
       }));
 
-      listItems.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+      listItems.sort((a, b) => {
+        const lastCmp = (a.lastName ?? '').localeCompare(b.lastName ?? '', undefined, {
+          sensitivity: 'base',
+        });
+        if (lastCmp !== 0) return lastCmp;
+        return (a.firstName ?? '').localeCompare(b.firstName ?? '', undefined, {
+          sensitivity: 'base',
+        });
+      });
 
       context.logger.info(MODULE_NAME, `Retrieved ${listItems.length} trustees`);
       return listItems;
@@ -389,8 +401,8 @@ function patchTrustee(
       continue;
     }
     if (patch[key] === null || patch[key] === undefined) {
-      // set keys to undefined when intended to be unset
-      copy[key] = undefined;
+      // delete the key so it is absent rather than null/undefined
+      delete copy[key];
     } else if (
       typeof patch[key] === 'object' &&
       patch[key] !== null &&
@@ -400,8 +412,8 @@ function patchTrustee(
       const patchedNestedObj = patchNestedObject(patch[key] as Record<string, unknown>);
 
       if (patchedNestedObj === undefined || Object.keys(patchedNestedObj).length === 0) {
-        // if the nested object is empty after patching, set parent to undefined
-        copy[key] = undefined;
+        // delete the key so it is absent rather than undefined/null
+        delete copy[key];
       } else {
         copy[key] = patchedNestedObj as Trustee[keyof Trustee];
       }

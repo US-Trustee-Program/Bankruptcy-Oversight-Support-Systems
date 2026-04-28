@@ -1,7 +1,7 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { LegacyAddress } from './parties';
-import { ContactInformation } from './contact';
+import { Address, ContactInformation, Person, PhoneNumber } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
@@ -73,13 +73,38 @@ export type ZoomInfo = {
   accountEmail?: string;
 };
 
-type TrusteeCore = {
+type TrusteeCore = Person & {
   name: string;
   status?: AppointmentStatus;
   public: ContactInformation;
   internal?: Partial<ContactInformation>;
   assistants?: TrusteeAssistant[];
 };
+
+export function computeTrusteeName(
+  firstName: string,
+  middleName: string | undefined,
+  lastName: string,
+): string {
+  const parts = [firstName.trim(), middleName?.trim(), lastName.trim()].filter(Boolean);
+  return parts.join(' ');
+}
+
+export function formatTrusteeListName(
+  firstName: string | undefined,
+  middleName: string | undefined,
+  lastName: string | undefined,
+  fallbackName?: string,
+): string {
+  const last = lastName?.trim();
+  const first = firstName?.trim();
+  const middle = middleName?.trim();
+
+  if (!last && !first) return fallbackName?.trim() || '';
+
+  const firstMiddle = [first, middle].filter(Boolean).join(' ');
+  return firstMiddle ? `${last}, ${firstMiddle}` : last || '';
+}
 
 type TrusteeOptionalFields = {
   banks?: string[];
@@ -114,6 +139,23 @@ export type TrusteeInput = TrusteeCore &
       addresses?: LegacyAddress[];
     };
   };
+
+export type TrusteePatchBody = Omit<Partial<Person>, 'middleName'> & {
+  middleName?: string | null;
+  public?: Partial<Omit<ContactInformation, 'address' | 'phone'>> & {
+    address?: Partial<Address>;
+    phone?: Partial<PhoneNumber>;
+  };
+  internal?:
+    | (Partial<Omit<ContactInformation, 'address' | 'phone'>> & {
+        address?: Partial<Address>;
+        phone?: Partial<PhoneNumber>;
+      })
+    | null;
+  banks?: string[] | null;
+  software?: string | null;
+  zoomInfo?: ZoomInfo | null;
+};
 
 export type TrusteeOversightAssignment = Auditable &
   Identifiable & {
