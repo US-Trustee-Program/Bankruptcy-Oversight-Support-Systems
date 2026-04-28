@@ -1,8 +1,73 @@
 .trustee-form-screen {
+  // CSS variable for consistent field width
+  --form-field-max-width: 385px;
+
   .usa-alert-container {
     margin-left: 0;
   }
   .field-group.appointedDate {
     margin-bottom: 0.5rem;
+  }
+
+  // Ensure division field takes full width and proper spacing
+  .field-group {
+    gap: 0;
+  }
+  
+  .division-field-group {
+    margin-bottom: 24px; // Space between pills and next field
+
+    .division-dropdown-wrapper {
+      display: block;
+      width: 100%;
+      margin-bottom: 0; // Remove any default margin
+
+      .combo-box-form-group {
+        margin-bottom: 0; // Ensure ComboBox has no bottom margin
+      }
+    }
+
+    // Division pills styling - display below the dropdown
+    .division-pills-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 16px; // Exactly 16px space between dropdown and pills
+      max-width: var(--form-field-max-width); // Match form field width
+    }
+
+    .division-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background-color: #005ea2;
+      color: #ffffff;
+      height: 32px; // Figma spec
+      padding: 0 0.75rem;
+      border-radius: 99rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      text-transform: none;
+
+      .usa-tag__remove-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        margin-left: 0.5rem;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: #ffffff;
+        font-size: 1.25rem;
+        line-height: 1;
+        width: 1rem;
+        height: 1rem;
+
+        &:hover {
+          color: #f0f0f0;
+        }
+      }
+    }
   }
 }
