@@ -39,7 +39,9 @@ export class CollectionHumble<T> {
   ) {
     return this.collection.updateOne(
       query,
-      { $set: setFields, $setOnInsert: insertOnlyFields },
+      { $set: setFields, $setOnInsert: insertOnlyFields } as Parameters<
+        Collection<T>['updateOne']
+      >[1],
       { upsert: true },
     );
   }
