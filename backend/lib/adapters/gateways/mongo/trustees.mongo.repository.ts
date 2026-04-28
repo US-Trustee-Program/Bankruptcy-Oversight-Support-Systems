@@ -268,7 +268,10 @@ export class TrusteesMongoRepository extends BaseMongoRepository implements Trus
       const query = and(doc('documentType').equals('TRUSTEE'), doc('trusteeId').equals(id));
 
       const { _id: _mongoId, ...inputWithoutId } = input as TrusteeDocument & { _id?: unknown };
-      const computedName = computeTrusteeName(input.firstName, input.middleName, input.lastName);
+      const computedName =
+        input.firstName && input.lastName
+          ? computeTrusteeName(input.firstName, input.middleName, input.lastName)
+          : input.name;
       const updateData = {
         ...inputWithoutId,
         name: computedName,
