@@ -26,7 +26,7 @@ export function GoHome(props: GoHomeProps) {
   const [isReady, setIsReady] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
   const hasNavigated = useRef(false);
-  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | undefined>();
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Wait for LaunchDarkly to be ready
   useEffect(() => {
