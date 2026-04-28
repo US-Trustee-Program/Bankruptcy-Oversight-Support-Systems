@@ -11,7 +11,7 @@ import * as DebounceModule from '@/lib/hooks/UseDebounce';
 import { FeatureFlagSet } from '@common/feature-flags';
 import Api2 from '@/lib/models/api2';
 
-import { TrusteeInput } from '@common/cams/trustees';
+import { TrusteeInput, TrusteePatchBody } from '@common/cams/trustees';
 import { TrusteePublicFormData } from './trusteeForms.types';
 import * as NavigatorModule from '@/lib/hooks/UseCamsNavigator';
 import MockData from '@common/cams/test-utilities/mock-data';
@@ -286,10 +286,7 @@ describe('TrusteePublicContactForm Tests', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /save/i }));
 
-    const expectedPayload = {
-      firstName: existing.firstName,
-      lastName: existing.lastName,
-      middleName: existing.middleName ?? null,
+    const expectedPayload: TrusteePatchBody = {
       public: {
         address: {
           address1: newAddress1,
@@ -305,7 +302,7 @@ describe('TrusteePublicContactForm Tests', () => {
         email: newEmail,
         website: 'example.com',
       },
-    } as Partial<TrusteeInput>;
+    };
 
     expect(patchSpy).toHaveBeenCalledWith(existing.trusteeId, expectedPayload);
     expect(navigateTo).toHaveBeenCalledWith('/trustees/' + existing.trusteeId);

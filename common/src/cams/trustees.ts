@@ -1,7 +1,7 @@
 import { Auditable } from './auditable';
 import { Identifiable } from './document';
 import { LegacyAddress } from './parties';
-import { ContactInformation, Person } from './contact';
+import { Address, ContactInformation, Person, PhoneNumber } from './contact';
 import { CamsUserReference } from './users';
 import { OversightRoleType } from './roles';
 import { NullableOptionalFields } from '../api/common';
@@ -139,6 +139,23 @@ export type TrusteeInput = TrusteeCore &
       addresses?: LegacyAddress[];
     };
   };
+
+export type TrusteePatchBody = Omit<Partial<Person>, 'middleName'> & {
+  middleName?: string | null;
+  public?: Partial<Omit<ContactInformation, 'address' | 'phone'>> & {
+    address?: Partial<Address>;
+    phone?: Partial<PhoneNumber>;
+  };
+  internal?:
+    | (Partial<Omit<ContactInformation, 'address' | 'phone'>> & {
+        address?: Partial<Address>;
+        phone?: Partial<PhoneNumber>;
+      })
+    | null;
+  banks?: string[] | null;
+  software?: string | null;
+  zoomInfo?: ZoomInfo | null;
+};
 
 export type TrusteeOversightAssignment = Auditable &
   Identifiable & {

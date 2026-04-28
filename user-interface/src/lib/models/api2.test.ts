@@ -361,7 +361,7 @@ describe('_Api2 functions', async () => {
       .spyOn(api.default, 'patch')
       .mockResolvedValue({ data: { id: 'trustee-id' } });
     const trusteeId = 'trustee-id';
-    const trusteeInput = { name: 'Updated Trustee' };
+    const trusteeInput = { firstName: 'Updated' };
     api2.default.patchTrustee(trusteeId, trusteeInput);
     expect(patchSpy).toHaveBeenCalledWith(`/trustees/${trusteeId}`, trusteeInput, {});
   });
