@@ -24,6 +24,8 @@ describe('TrusteesController', () => {
   };
 
   const sampleTrustee: TrusteeInput = {
+    firstName: 'John',
+    lastName: 'Doe',
     name: 'John Doe',
     public: {
       address: {

@@ -17,6 +17,21 @@ export const trusteeName = V.checkFirst(V.minLength(1, 'Trustee name is required
   V.maxLength(50),
 );
 
+export const FIRST_NAME_MAX = 15;
+export const MIDDLE_NAME_MAX = 15;
+export const LAST_NAME_MAX = 20;
+export const FULL_NAME_MAX = FIRST_NAME_MAX + MIDDLE_NAME_MAX + LAST_NAME_MAX + 2;
+
+export const trusteeFirstName = V.checkFirst(V.minLength(1, 'First name is required')).then(
+  V.maxLength(FIRST_NAME_MAX),
+);
+
+export const trusteeLastName = V.checkFirst(V.minLength(1, 'Last name is required')).then(
+  V.maxLength(LAST_NAME_MAX),
+);
+
+export const trusteeMiddleName = V.optional(V.maxLength(MIDDLE_NAME_MAX));
+
 export const companyName = V.optional(V.maxLength(50));
 
 export const addressLine1 = V.checkFirst(

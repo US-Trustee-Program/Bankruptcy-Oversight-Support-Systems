@@ -35,6 +35,7 @@ import {
   TrusteeInput,
   TrusteeListItem,
   TrusteeOversightAssignment,
+  TrusteePatchBody,
 } from '@common/cams/trustees';
 import { CaseAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
@@ -1943,6 +1944,8 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           id: 'trustee-001',
           trusteeId: 'trustee-001',
           name: 'John Doe',
+          firstName: 'John',
+          lastName: 'Doe',
           updatedOn: '2025-01-01T00:00:00.000Z',
           updatedBy: {
             id: 'user-1',
@@ -1978,6 +1981,8 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           id: 'trustee-002',
           trusteeId: 'trustee-002',
           name: 'Jane Smith',
+          firstName: 'Jane',
+          lastName: 'Smith',
           updatedOn: '2025-01-01T00:00:00.000Z',
           updatedBy: {
             id: 'user-1',
@@ -2013,6 +2018,8 @@ async function get<T = unknown>(path: string): Promise<ResponseBody<T>> {
           id: 'trustee-003',
           trusteeId: 'trustee-003',
           name: 'Bob Johnson',
+          firstName: 'Bob',
+          lastName: 'Johnson',
           updatedOn: '2025-01-01T00:00:00.000Z',
           updatedBy: {
             id: 'user-1',
@@ -2519,11 +2526,11 @@ async function deletePrivilegedIdentityUser(userId: string) {
   await _delete(`/dev-tools/privileged-identity/${userId}`);
 }
 
-async function postTrustee(trustee: TrusteeInput) {
+async function postTrustee(trustee: TrusteePatchBody) {
   return post('/trustees', trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
 }
 
-async function patchTrustee(id: string, trustee: Partial<TrusteeInput>) {
+async function patchTrustee(id: string, trustee: TrusteePatchBody) {
   return patch(`/trustees/${id}`, trustee, {}) as unknown as Promise<ResponseBody<Trustee>>;
 }
 

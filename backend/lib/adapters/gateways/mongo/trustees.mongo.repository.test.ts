@@ -26,6 +26,8 @@ describe('TrusteesMongoRepository', () => {
   };
 
   const sampleTrusteeInput: TrusteeInput = {
+    firstName: 'John',
+    lastName: 'Doe',
     name: 'John Doe',
     public: {
       address: {
@@ -271,6 +273,8 @@ describe('TrusteesMongoRepository', () => {
       const mockTrustee = {
         id: 'trustee-123',
         trusteeId: 'trustee-123',
+        firstName: 'John',
+        lastName: 'Doe',
         name: 'John Doe',
         public: sampleTrusteeInput.public,
         documentType: 'TRUSTEE',
@@ -567,6 +571,8 @@ describe('TrusteesMongoRepository', () => {
     test('should update trustee successfully with audit fields', async () => {
       const trusteeId = 'trustee-123';
       const updatedTrusteeInput: Partial<TrusteeInput> = {
+        firstName: 'Jane',
+        lastName: 'Doe Updated',
         name: 'Jane Doe Updated',
         public: {
           address: {
@@ -647,6 +653,8 @@ describe('TrusteesMongoRepository', () => {
     test('should throw error when trustee to update is not found', async () => {
       const trusteeId = 'nonexistent-id';
       const updatedTrusteeInput: Partial<TrusteeDocument> = {
+        firstName: 'Updated',
+        lastName: 'Name',
         name: 'Updated Name',
       };
 
@@ -699,6 +707,8 @@ describe('TrusteesMongoRepository', () => {
     test('should handle database errors when updating trustee', async () => {
       const trusteeId = 'trustee-123';
       const updatedTrusteeInput: Partial<TrusteeInput> = {
+        firstName: 'Updated',
+        lastName: 'Name',
         name: 'Updated Name',
       };
       const updatedTrusteeDocument = {
@@ -1424,6 +1434,8 @@ describe('TrusteesMongoRepository', () => {
         .mockResolvedValue(undefined);
 
       const testInput: TrusteeInput = {
+        firstName: 'Smith',
+        lastName: 'Smith',
         name: 'Smith',
         public: {
           address: {
@@ -1457,6 +1469,8 @@ describe('TrusteesMongoRepository', () => {
       const updatedTrusteeInput = {
         id: trusteeId,
         trusteeId,
+        firstName: 'Jane',
+        lastName: 'Doe Updated',
         name: 'Jane Doe Updated',
         public: {
           address: {
@@ -1506,6 +1520,8 @@ describe('TrusteesMongoRepository', () => {
       const firstUpdate = {
         id: trusteeId,
         trusteeId,
+        firstName: 'Smith',
+        lastName: 'Smith',
         name: 'Smith',
         public: {
           address: {
@@ -1538,6 +1554,8 @@ describe('TrusteesMongoRepository', () => {
 
       const secondUpdate = {
         ...firstUpdate,
+        firstName: 'Johnson',
+        lastName: 'Johnson',
         name: 'Johnson',
       };
 
