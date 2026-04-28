@@ -268,3 +268,98 @@ export function sortTrusteeAppointments(appointments: TrusteeAppointment[]): Tru
     })
     .map((wrapper) => wrapper.appointment);
 }
+
+/**
+ * Represents a unique district (court) for selection in a dropdown.
+ */
+export interface DistrictOption {
+  courtId: string;
+  courtName: string;
+  state?: string;
+}
+
+/**
+ * Represents a division within a district for selection in a dropdown.
+ */
+export interface DivisionOption {
+  courtDivisionCode: string;
+  courtDivisionName: string;
+}
+
+/**
+ * Extracts unique districts from a flat array of CourtDivisionDetails.
+ * Deduplicates by courtId and sorts by state name then court name.
+ *
+ * @param courts - Flat array of court division details (one entry per division)
+ * @returns Array of unique districts sorted by state and court name
+ *
+ * @example
+ * const courts = [
+ *   { courtId: '097', courtName: 'District of Alaska', state: 'AK', ... },
+ *   { courtId: '097', courtName: 'District of Alaska', state: 'AK', ... }, // duplicate
+ *   { courtId: '081', courtName: 'Northern District of California', state: 'CA', ... }
+ * ];
+ * getUniqueDistricts(courts);
+ * // Returns: [
+ * //   { courtId: '097', courtName: 'District of Alaska', state: 'AK' },
+ * //   { courtId: '081', courtName: 'Northern District of California', state: 'CA' }
+ * // ]
+ */
+export function getUniqueDistricts(courts: CourtDivisionDetails[]): DistrictOption[] {
+  // Deduplicate by courtId using a Map
+  const districtMap = new Map<string, DistrictOption>();
+
+  for (const court of courts) {
+    if (!districtMap.has(court.courtId)) {
+      districtMap.set(court.courtId, {
+        courtId: court.courtId,
+        courtName: court.courtName,
+        state: court.state,
+      });
+    }
+  }
+
+  // Convert to array and sort by state then court name
+  const districts = Array.from(districtMap.values());
+
+  return districts.sort((a, b) => {
+    // Sort by state name (mapped from code to full name)
+    const stateA = getStateNameFromCode(a.state || '');
+    const stateB = getStateNameFromCode(b.state || '');
+    const stateComparison = stateA.localeCompare(stateB);
+    if (stateComparison !== 0) return stateComparison;
+
+    // Sort by court name within state
+    return a.courtName.localeCompare(b.courtName);
+  });
+}
+
+/**
+ * Gets all divisions for a specific district (court).
+ * Returns divisions sorted alphabetically by division name.
+ *
+ * @param courts - Flat array of court division details
+ * @param courtId - The court ID to filter by
+ * @returns Array of divisions for the specified court, sorted alphabetically
+ *
+ * @example
+ * getDivisionsForDistrict(courts, '097');
+ * // Returns: [
+ * //   { courtDivisionCode: '710', courtDivisionName: 'Juneau' },
+ * //   { courtDivisionCode: '711', courtDivisionName: 'Nome' }
+ * // ]
+ */
+export function getDivisionsForDistrict(
+  courts: CourtDivisionDetails[],
+  courtId: string,
+): DivisionOption[] {
+  const divisions = courts
+    .filter((court) => court.courtId === courtId)
+    .map((court) => ({
+      courtDivisionCode: court.courtDivisionCode,
+      courtDivisionName: court.courtDivisionName,
+    }));
+
+  // Sort alphabetically by division name
+  return divisions.sort((a, b) => a.courtDivisionName.localeCompare(b.courtDivisionName));
+}
