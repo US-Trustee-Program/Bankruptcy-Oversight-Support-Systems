@@ -1,5 +1,5 @@
 import './TrusteeOverviewCard.scss';
-import { computeTrusteeName, Trustee } from '@common/cams/trustees';
+import { Trustee } from '@common/cams/trustees';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import { IconLabel } from '@/lib/components/cams/IconLabel/IconLabel';
 import FormattedContact from '@/lib/components/cams/FormattedContact';
@@ -31,9 +31,7 @@ export default function TrusteeOverviewCard({
               </Button>
             </div>
             <div className="trustee-name" data-testid="trustee-name">
-              {trustee.firstName || trustee.lastName
-                ? computeTrusteeName(trustee.firstName, trustee.middleName, trustee.lastName)
-                : trustee.name}
+              {trustee.name}
             </div>
             <FormattedContact contact={trustee.public} testIdPrefix="trustee" />
           </div>

@@ -201,6 +201,7 @@ export default function TrusteesList() {
                     isNameCol
                       ? (e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
                             setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
                           }
                         }
