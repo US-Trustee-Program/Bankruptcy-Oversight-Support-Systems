@@ -67,7 +67,7 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
+      expect(screen.getAllByText('2 Trustee(s)')[0]).toBeInTheDocument();
     });
   });
 
@@ -293,7 +293,7 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByText('11 Subchapter V')).toBeInTheDocument();
+      expect(screen.getAllByText('11 Subchapter V').length).toBeGreaterThan(0);
     });
 
     expect(screen.getByText('Pool')).toBeInTheDocument();
@@ -472,6 +472,265 @@ describe('TrusteesList Component', () => {
     });
   });
 
+  describe('Chapter Filtering', () => {
+    test('should filter trustees by selected chapter', async () => {
+      const ch7Appt = makeAppointment({ chapter: '7', divisionCode: '081' });
+      const ch13Appt = makeAppointment({ chapter: '13', divisionCode: '088' });
+      const trustee7 = makeListItem({
+        trusteeId: 't7',
+        name: 'Chapter 7 Trustee',
+        appointments: [ch7Appt],
+      });
+      const trustee13 = makeListItem({
+        trusteeId: 't13',
+        name: 'Chapter 13 Trustee',
+        appointments: [ch13Appt],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee7, trustee13] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      const { container } = renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => expect(screen.getAllByText('2 Trustee(s)')[0]).toBeInTheDocument());
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+
+      const chapterCombobox = screen.getByLabelText('Chapter');
+      await userEvent.setup().click(chapterCombobox);
+
+      await waitFor(() => expect(screen.getAllByText('13').length).toBeGreaterThan(0));
+      await userEvent.setup().click(screen.getAllByText('13')[0]);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('1 Trustee(s)')[0]).toBeInTheDocument();
+        expect(screen.getByText('Chapter 13 Trustee')).toBeInTheDocument();
+        expect(screen.queryByText('Chapter 7 Trustee')).not.toBeInTheDocument();
+      });
+
+      // Suppress unused variable warning
+      void container;
+    });
+
+    test('should show all trustees when no chapter is selected', async () => {
+      const trustee7 = makeListItem({
+        trusteeId: 't7',
+        name: 'Chapter 7 Trustee',
+        appointments: [makeAppointment({ chapter: '7' })],
+      });
+      const trustee13 = makeListItem({
+        trusteeId: 't13',
+        name: 'Chapter 13 Trustee',
+        appointments: [makeAppointment({ chapter: '13' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee7, trustee13] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('2 Trustee(s)')[0]).toBeInTheDocument();
+        expect(screen.getByText('Chapter 7 Trustee')).toBeInTheDocument();
+        expect(screen.getByText('Chapter 13 Trustee')).toBeInTheDocument();
+      });
+    });
+
+    test('should AND-filter when both district and chapter filters are active', async () => {
+      const apptA = makeAppointment({ chapter: '7', divisionCode: '081' });
+      const apptB = makeAppointment({ chapter: '13', divisionCode: '081' });
+      const apptC = makeAppointment({ chapter: '7', divisionCode: '088' });
+      const trusteeA = makeListItem({ trusteeId: 'a', name: 'Trustee A', appointments: [apptA] });
+      const trusteeB = makeListItem({ trusteeId: 'b', name: 'Trustee B', appointments: [apptB] });
+      const trusteeC = makeListItem({ trusteeId: 'c', name: 'Trustee C', appointments: [apptC] });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeA, trusteeB, trusteeC] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York',
+          },
+        ],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      // Wait for default district filter (Manhattan) to be applied — shows A and B
+      await waitFor(() => expect(screen.getAllByText('2 Trustee(s)')[0]).toBeInTheDocument());
+
+      // Now select chapter 7
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+      const chapterCombobox = screen.getByLabelText('Chapter');
+      await userEvent.setup().click(chapterCombobox);
+      await waitFor(() => expect(screen.getAllByText('7').length).toBeGreaterThan(0));
+      await userEvent.setup().click(screen.getAllByText('7')[0]);
+
+      // Only Trustee A (ch7 + Manhattan) should remain
+      await waitFor(() => {
+        expect(screen.getAllByText('1 Trustee(s)')[0]).toBeInTheDocument();
+        expect(screen.getByText('Trustee A')).toBeInTheDocument();
+        expect(screen.queryByText('Trustee B')).not.toBeInTheDocument();
+        expect(screen.queryByText('Trustee C')).not.toBeInTheDocument();
+      });
+    });
+
+    test('should use OR logic within chapter filter', async () => {
+      const trustee7 = makeListItem({
+        trusteeId: 't7',
+        name: 'Chapter 7 Trustee',
+        appointments: [makeAppointment({ chapter: '7' })],
+      });
+      const trustee11 = makeListItem({
+        trusteeId: 't11',
+        name: 'Chapter 11 Trustee',
+        appointments: [makeAppointment({ chapter: '11' })],
+      });
+      const trustee13 = makeListItem({
+        trusteeId: 't13',
+        name: 'Chapter 13 Trustee',
+        appointments: [makeAppointment({ chapter: '13' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee7, trustee11, trustee13] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderWithRouter(<TrusteesList />);
+      await waitFor(() => expect(screen.getAllByText('3 Trustee(s)')[0]).toBeInTheDocument());
+
+      const user = userEvent.setup();
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+
+      const chapterCombobox = screen.getByLabelText('Chapter');
+      await user.click(chapterCombobox);
+      await waitFor(() => expect(screen.getAllByText('7').length).toBeGreaterThan(0));
+      await user.click(screen.getAllByText('7')[0]);
+      await user.click(chapterCombobox);
+      await waitFor(() => expect(screen.getAllByText('13').length).toBeGreaterThan(0));
+      await user.click(screen.getAllByText('13')[0]);
+
+      await waitFor(() => {
+        expect(screen.getAllByText('2 Trustee(s)')[0]).toBeInTheDocument();
+        expect(screen.getByText('Chapter 7 Trustee')).toBeInTheDocument();
+        expect(screen.getByText('Chapter 13 Trustee')).toBeInTheDocument();
+        expect(screen.queryByText('Chapter 11 Trustee')).not.toBeInTheDocument();
+      });
+    });
+
+    test('should announce updated count in live region when chapter filter changes', async () => {
+      const trustee7 = makeListItem({
+        trusteeId: 't7',
+        name: 'Chapter 7 Trustee',
+        appointments: [makeAppointment({ chapter: '7' })],
+      });
+      const trustee13 = makeListItem({
+        trusteeId: 't13',
+        name: 'Chapter 13 Trustee',
+        appointments: [makeAppointment({ chapter: '13' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee7, trustee13] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderWithRouter(<TrusteesList />);
+      await waitFor(() => expect(screen.getAllByText('2 Trustee(s)')[0]).toBeInTheDocument());
+
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion).toHaveTextContent('2 Trustee(s)');
+
+      const user = userEvent.setup();
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+      const chapterCombobox = screen.getByLabelText('Chapter');
+      await user.click(chapterCombobox);
+      await waitFor(() => expect(screen.getAllByText('7').length).toBeGreaterThan(0));
+      await user.click(screen.getAllByText('7')[0]);
+
+      await waitFor(() => {
+        expect(liveRegion).toHaveTextContent('1 Trustee(s)');
+      });
+    });
+  });
+
+  describe('Chapter Filter Telemetry', () => {
+    test('should track Trustee Chapter Filter Changed with selectedCount and resultCount', async () => {
+      const trustee7 = makeListItem({
+        trusteeId: 't7',
+        name: 'Chapter 7 Trustee',
+        appointments: [makeAppointment({ chapter: '7' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee7] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderWithRouter(<TrusteesList />);
+      await waitFor(() => expect(screen.getAllByText('1 Trustee(s)')[0]).toBeInTheDocument());
+
+      const user = userEvent.setup();
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+      const chapterCombobox = screen.getByLabelText('Chapter');
+      await user.click(chapterCombobox);
+      await waitFor(() => expect(screen.getAllByText('7').length).toBeGreaterThan(0));
+      await user.click(screen.getAllByText('7')[0]);
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith(
+          { name: 'Trustee Chapter Filter Changed' },
+          expect.objectContaining({ selectedCount: 1, resultCount: 1 }),
+        );
+      });
+    });
+  });
+
   describe('District Filtering', () => {
     test('should render district filter component with ARIA live region', async () => {
       const trustee = makeListItem({
@@ -503,21 +762,18 @@ describe('TrusteesList Component', () => {
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-      const { container } = renderWithRouter(<TrusteesList />);
+      renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
+        expect(screen.getAllByText('2 Trustee(s)')[0]).toBeInTheDocument();
       });
 
       // Check live region for filter announcements
-      const liveRegion = container.querySelector(
-        '[role="status"][aria-live="polite"][aria-atomic="true"]',
-      );
+      const liveRegion = screen.getByRole('status');
       expect(liveRegion).toBeInTheDocument();
 
       // Check filter section
-      const filterSection = container.querySelector('[aria-label="District filter controls"]');
-      expect(filterSection).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Trustee filter controls' })).toBeInTheDocument();
 
       // Check table
       const table = screen.getByTestId('trustees-table');
@@ -645,7 +901,7 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('Trustee, Vermont')).toBeInTheDocument();
         expect(screen.queryByText('Trustee, California')).not.toBeInTheDocument();
       });
-      expect(screen.getByText('2 Trustee(s)')).toBeInTheDocument();
+      expect(screen.getAllByText('2 Trustee(s)')[0]).toBeInTheDocument();
     });
 
     test('should show all trustees when no district filter is active, including unassigned ones', async () => {
@@ -679,7 +935,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('3 Trustee(s)')).toBeInTheDocument();
+        expect(screen.getAllByText('3 Trustee(s)')[0]).toBeInTheDocument();
       });
 
       expect(screen.getByText('Trustee, Appointed')).toBeInTheDocument();
@@ -867,7 +1123,7 @@ describe('TrusteesList Component', () => {
 
       // Should remove the filter and show all trustees
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)')).toBeInTheDocument();
+        expect(screen.getAllByText('1 Trustee(s)')[0]).toBeInTheDocument();
       });
     });
   });

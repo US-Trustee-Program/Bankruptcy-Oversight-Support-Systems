@@ -47,6 +47,7 @@ const mockDistricts: CourtDivisionDetails[] = [
 
 describe('TrusteeDistrictFilter Component', () => {
   const mockHandleFilterDistrict = vi.fn();
+  const mockHandleFilterChapter = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -62,7 +63,12 @@ describe('TrusteeDistrictFilter Component', () => {
     const user = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -85,7 +91,12 @@ describe('TrusteeDistrictFilter Component', () => {
     const user = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -147,7 +158,12 @@ describe('TrusteeDistrictFilter Component', () => {
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     // Wait for component to render
     await waitFor(() => {
@@ -171,7 +187,12 @@ describe('TrusteeDistrictFilter Component', () => {
     const user = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -206,7 +227,12 @@ describe('TrusteeDistrictFilter Component', () => {
     const user = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -278,7 +304,12 @@ describe('TrusteeDistrictFilter Component', () => {
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -311,7 +342,12 @@ describe('TrusteeDistrictFilter Component', () => {
     vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('API Error'));
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -331,7 +367,12 @@ describe('TrusteeDistrictFilter Component', () => {
   test('should handle empty user session gracefully', async () => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(<TrusteeDistrictFilter handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -415,7 +456,13 @@ describe('TrusteeDistrictFilter Component', () => {
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 
-    render(<TrusteeDistrictFilter ref={ref} handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        ref={ref}
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -477,7 +524,13 @@ describe('TrusteeDistrictFilter Component', () => {
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 
-    render(<TrusteeDistrictFilter ref={ref} handleFilterDistrict={mockHandleFilterDistrict} />);
+    render(
+      <TrusteeDistrictFilter
+        ref={ref}
+        handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
+      />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -523,6 +576,94 @@ describe('TrusteeDistrictFilter Component', () => {
           { value: '081', label: 'Southern District of New York (Manhattan)' },
         ]),
       );
+    });
+  });
+
+  describe('Chapter Filter', () => {
+    test('should render chapter combobox when accordion is expanded', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      render(
+        <TrusteeDistrictFilter
+          handleFilterDistrict={mockHandleFilterDistrict}
+          handleFilterChapter={mockHandleFilterChapter}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Filters')).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Chapter')).toBeInTheDocument();
+      });
+    });
+
+    test('should call handleFilterChapter when a chapter is selected', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      render(
+        <TrusteeDistrictFilter
+          handleFilterDistrict={mockHandleFilterDistrict}
+          handleFilterChapter={mockHandleFilterChapter}
+        />,
+      );
+
+      expect(await screen.findByText('Filters')).toBeInTheDocument();
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+
+      const chapterCombobox = screen.getByLabelText('Chapter');
+      await user.click(chapterCombobox);
+
+      expect(await screen.findByText('11 Subchapter V')).toBeInTheDocument();
+
+      await user.click(screen.getByText('11 Subchapter V'));
+
+      await waitFor(() => {
+        expect(mockHandleFilterChapter).toHaveBeenCalledWith(
+          expect.arrayContaining([{ value: '11-subchapter-v', label: '11 Subchapter V' }]),
+        );
+      });
+    });
+
+    test('should render chapter pill when chapter is selected and accordion is collapsed', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      render(
+        <TrusteeDistrictFilter
+          handleFilterDistrict={mockHandleFilterDistrict}
+          handleFilterChapter={mockHandleFilterChapter}
+        />,
+      );
+
+      expect(await screen.findByText('Filters')).toBeInTheDocument();
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+
+      const chapterCombobox = screen.getByLabelText('Chapter');
+      await user.click(chapterCombobox);
+
+      expect(await screen.findByText('7')).toBeInTheDocument();
+      await user.click(screen.getByText('7'));
+
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /remove 7 filter/i })).toBeInTheDocument();
+      });
     });
   });
 });

@@ -52,11 +52,49 @@
     margin-top: 1rem;
     animation: slideDown 0.2s ease-out;
 
+    .filter-controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
     .filter-control {
+      flex: 1 1 20rem;
+      min-width: 16rem;
       max-width: 30rem;
 
       .combo-box-form-group {
-        max-width: 30rem;
+        margin-top: 0;
+
+        .combo-box-label .usa-label {
+          display: none;
+        }
+      }
+    }
+
+    .filter-control-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 0.25rem;
+    }
+
+    .filter-control-label {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .filter-clear-link {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 0.875rem;
+      color: #005ea2;
+      cursor: pointer;
+      text-decoration: underline;
+
+      &:hover {
+        color: #1a4480;
       }
     }
   }
