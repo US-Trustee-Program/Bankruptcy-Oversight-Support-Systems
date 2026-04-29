@@ -325,7 +325,7 @@
         "version": "KqlItem/1.0",
         "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Chapter Filter Changed\"\n| extend selectedCount = toint(customMeasurements.selectedCount)\n| summarize FilterApplications = count() by selectedCount\n| order by selectedCount asc",
         "size": 3,
-        "title": "Chapter Selections per Filter Application",
+        "title": "Count of # of Chapters Selected",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -451,7 +451,9 @@
         "visualization": "barchart",
         "chartSettings": {
           "xAxis": "ChapterLabel",
-          "yAxis": ["PctOfVisits"],
+          "yAxis": [
+            "PctOfVisits"
+          ],
           "seriesLabelSettings": [
             {
               "seriesName": "PctOfVisits",
@@ -569,7 +571,7 @@
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-5d5564/providers/Microsoft.Insights/components/appi-ustp-cams-dev-5d5564-webapp"
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-b2abcd/providers/Microsoft.Insights/components/appi-ustp-cams-dev-b2abcd-webapp"
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
