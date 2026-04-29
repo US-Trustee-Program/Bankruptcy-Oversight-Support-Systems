@@ -139,7 +139,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-742-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend activeTrustees = toint(customDimensions.trusteeListFetchCount)\n| summarize LatestCount = max(activeTrustees) by Day = startofday(timestamp)\n| order by Day desc\n| take 1\n| project ActiveTrustees = LatestCount",
+        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-742-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend activeTrustees = toint(customDimensions.trusteeFetchedCount)\n| summarize LatestCount = max(activeTrustees) by Day = startofday(timestamp)\n| order by Day desc\n| take 1\n| project ActiveTrustees = LatestCount",
         "size": 3,
         "title": "Active Trustees (latest)",
         "timeContextFromParameter": "TimeRange",
