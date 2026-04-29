@@ -18,6 +18,27 @@ import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 const COLUMN_HEADERS = ['Name', 'District (Division)', 'Chapter', 'Type', 'Status'];
 
+function filterTrustees(
+  trustees: TrusteeListItem[],
+  selectedDistricts: ComboOption[],
+  selectedChapters: ComboOption[],
+): TrusteeListItem[] {
+  if (selectedDistricts.length === 0 && selectedChapters.length === 0) return trustees;
+  const selectedDivisionCodes = new Set(selectedDistricts.map((d) => d.value));
+  const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
+  return trustees.filter((trustee) => {
+    const districtMatch =
+      selectedDistricts.length === 0 ||
+      trustee.appointments.some(
+        (appt) => appt.divisionCode && selectedDivisionCodes.has(appt.divisionCode),
+      );
+    const chapterMatch =
+      selectedChapters.length === 0 ||
+      trustee.appointments.some((appt) => selectedChapterValues.has(appt.chapter));
+    return districtMatch && chapterMatch;
+  });
+}
+
 function toColClass(header: string): string {
   return (
     'col-' +
@@ -89,23 +110,7 @@ export default function TrusteesList() {
   };
 
   const { filteredTrustees, announcement } = useMemo(() => {
-    const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
-    const selectedChapterValues = selectedChapters.map((c) => c.value);
-
-    const filtered =
-      selectedDistricts.length === 0 && selectedChapters.length === 0
-        ? trustees
-        : trustees.filter((trustee) => {
-            const districtMatch =
-              selectedDistricts.length === 0 ||
-              trustee.appointments.some(
-                (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
-              );
-            const chapterMatch =
-              selectedChapters.length === 0 ||
-              trustee.appointments.some((appt) => selectedChapterValues.includes(appt.chapter));
-            return districtMatch && chapterMatch;
-          });
+    const filtered = filterTrustees(trustees, selectedDistricts, selectedChapters);
 
     const sorted = [...filtered].sort((a, b) => {
       const lastCmp = (a.lastName ?? '').localeCompare(b.lastName ?? '', undefined, {
@@ -133,22 +138,7 @@ export default function TrusteesList() {
       selectedDistricts.length === defaults.length &&
       selectedDistricts.every((d) => defaults.some((def) => def.value === d.value));
 
-    const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
-    const selectedChapterValues = selectedChapters.map((c) => c.value);
-    const resultCount =
-      selectedDistricts.length === 0 && selectedChapters.length === 0
-        ? trustees.length
-        : trustees.filter((trustee) => {
-            const districtMatch =
-              selectedDistricts.length === 0 ||
-              trustee.appointments.some(
-                (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
-              );
-            const chapterMatch =
-              selectedChapters.length === 0 ||
-              trustee.appointments.some((appt) => selectedChapterValues.includes(appt.chapter));
-            return districtMatch && chapterMatch;
-          }).length;
+    const resultCount = filterTrustees(trustees, selectedDistricts, selectedChapters).length;
 
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee District Filter Changed' },
@@ -159,22 +149,7 @@ export default function TrusteesList() {
   useEffect(() => {
     if (!isChapterFilterInteracted.current) return;
 
-    const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
-    const selectedChapterValues = selectedChapters.map((c) => c.value);
-    const resultCount =
-      selectedDistricts.length === 0 && selectedChapters.length === 0
-        ? trustees.length
-        : trustees.filter((trustee) => {
-            const districtMatch =
-              selectedDistricts.length === 0 ||
-              trustee.appointments.some(
-                (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
-              );
-            const chapterMatch =
-              selectedChapters.length === 0 ||
-              trustee.appointments.some((appt) => selectedChapterValues.includes(appt.chapter));
-            return districtMatch && chapterMatch;
-          }).length;
+    const resultCount = filterTrustees(trustees, selectedDistricts, selectedChapters).length;
 
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee Chapter Filter Changed' },
