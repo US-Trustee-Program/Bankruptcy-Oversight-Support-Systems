@@ -422,7 +422,6 @@ export type RuntimeStateDocumentType =
   | 'TRUSTEE_MIGRATION_STATE'
   | 'TRUSTEE_APPOINTMENTS_SYNC_STATE'
   | 'TRUSTEE_NOTES_METRICS_STATE'
-  | 'TRUSTEE_742_METRICS_STATE'
   | 'DELETED_CASES_SYNC_STATE'
   | 'ZOOM_CSV_IMPORT_STATE';
 
@@ -481,11 +480,6 @@ export type TrusteeAppointmentsSyncState = RuntimeState & {
 
 export type TrusteeNotesMetricsState = RuntimeState & {
   documentType: 'TRUSTEE_NOTES_METRICS_STATE';
-  lastSyncDate: string;
-};
-
-export type Trustee742MetricsState = RuntimeState & {
-  documentType: 'TRUSTEE_742_METRICS_STATE';
   lastSyncDate: string;
 };
 

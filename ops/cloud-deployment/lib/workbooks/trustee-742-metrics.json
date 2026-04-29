@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# CAMS-742 Trustee Name Management Metrics\n\nSuccess metrics for CAMS-742: last-name sort adoption and post-launch name correction patterns.\n\n**Measurements:**\n- **Sort adoption** — trustee list page visits proxy for last-name sort usage (sort is always applied since 742; every list load uses it)\n- **Name edits** — `AUDIT_NAME` history entries created since launch, segmented by migrated vs non-migrated trustees to identify data correction patterns from migration"
+        "json": "# CAMS-742 Trustee Name Management Metrics\n\nSuccess metrics for CAMS-742: last-name sort adoption and post-launch name correction patterns.\n\n**Measurements:**\n- **Sort adoption** — percentage of trustee list page loads where the user clicked the sort button\n- **Name edits** — trustee name changes since launch, segmented by migrated vs non-migrated trustees"
       },
       "name": "header"
     },
@@ -65,7 +65,7 @@
     {
       "type": 1,
       "content": {
-        "json": "---\n## Sort-by-Last-Name Adoption\nBecause last-name sort is always applied since CAMS-742, every visit to the trustee list page represents a user interacting with the sorted view. High and sustained page visit counts confirm the feature is in active use."
+        "json": "---\n## Sort-by-Last-Name Adoption\nPercentage of sessions where the user sorted the trustee list at least once. Spam clicks are deduplicated per session so one user clicking sort many times counts as a single sorted session."
       },
       "name": "sort-adoption-header"
     },
@@ -73,9 +73,9 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "pageViews\n| where timestamp {TimeRange}\n| where url contains \"/trustees\"\n| summarize TrusteeListVisits = count()",
+        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | summarize by session_Id;\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | summarize DidSort = true by session_Id;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize TotalSessions = count(), SortedSessions = countif(DidSort == true)\n| project SortAdoptionPct = round(100.0 * SortedSessions / TotalSessions, 1), TotalSessions, SortedSessions",
         "size": 3,
-        "title": "Trustee List Page Visits",
+        "title": "Sort Adoption Rate",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -83,7 +83,41 @@
         "tileSettings": {
           "titleContent": {},
           "leftContent": {
-            "columnMatch": "TrusteeListVisits",
+            "columnMatch": "SortAdoptionPct",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "33",
+      "name": "sort-adoption-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee List Loaded\"\n| summarize TrusteeListLoads = count() by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 3,
+        "title": "Trustee List Page Loads",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "TrusteeListLoads",
             "formatter": 12,
             "formatOptions": {
               "palette": "blue"
@@ -99,16 +133,16 @@
           "showBorder": true
         }
       },
-      "customWidth": "25",
-      "name": "sort-visit-count-kpi"
+      "customWidth": "33",
+      "name": "page-loads-kpi"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "pageViews\n| where timestamp {TimeRange}\n| where url contains \"/trustees\"\n| summarize UniqueUsers = dcount(user_Id)",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee List Sort Changed\"\n| summarize SortClicks = count() by Day = startofday(timestamp)\n| order by Day asc",
         "size": 3,
-        "title": "Unique Users Viewing Trustee List",
+        "title": "Sort Button Clicks",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -116,7 +150,7 @@
         "tileSettings": {
           "titleContent": {},
           "leftContent": {
-            "columnMatch": "UniqueUsers",
+            "columnMatch": "SortClicks",
             "formatter": 12,
             "formatOptions": {
               "palette": "blue"
@@ -132,49 +166,16 @@
           "showBorder": true
         }
       },
-      "customWidth": "25",
-      "name": "sort-unique-users-kpi"
+      "customWidth": "33",
+      "name": "sort-clicks-kpi"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-742-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend activeTrustees = toint(customDimensions.trusteeFetchedCount)\n| summarize LatestCount = max(activeTrustees) by Day = startofday(timestamp)\n| order by Day desc\n| take 1\n| project ActiveTrustees = LatestCount",
-        "size": 3,
-        "title": "Active Trustees (latest)",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "tiles",
-        "tileSettings": {
-          "titleContent": {},
-          "leftContent": {
-            "columnMatch": "ActiveTrustees",
-            "formatter": 12,
-            "formatOptions": {
-              "palette": "blue"
-            },
-            "numberFormat": {
-              "unit": 0,
-              "options": {
-                "style": "decimal",
-                "useGrouping": true
-              }
-            }
-          },
-          "showBorder": true
-        }
-      },
-      "customWidth": "25",
-      "name": "active-trustees-kpi"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "pageViews\n| where timestamp {TimeRange}\n| where url contains \"/trustees\"\n| summarize TrusteeListVisits = count() by Day = startofday(timestamp)\n| order by Day asc",
+        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | summarize by session_Id, Day = startofday(timestamp);\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | summarize DidSort = true by session_Id;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize TotalSessions = count(), SortedSessions = countif(DidSort == true) by Day\n| project Day, SortAdoptionPct = round(100.0 * SortedSessions / TotalSessions, 1)\n| order by Day asc",
         "size": 0,
-        "title": "Trustee List Page Visits Over Time",
+        "title": "Sort Adoption Over Time",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -184,19 +185,21 @@
           "showDataPoints": true,
           "seriesLabelSettings": [
             {
-              "seriesName": "TrusteeListVisits",
-              "label": "Page Visits",
+              "seriesName": "SortAdoptionPct",
+              "label": "Sort Adoption %",
               "color": "blue"
             }
           ],
           "ySettings": {
             "numberFormatSettings": {
-              "unit": 0,
+              "unit": 1,
               "options": {
                 "style": "decimal",
                 "useGrouping": true
               }
-            }
+            },
+            "min": 0,
+            "max": 100
           }
         }
       },
@@ -205,7 +208,7 @@
     {
       "type": 1,
       "content": {
-        "json": "---\n## Name Edit Correction Patterns\nCounts of trustee name field edits (`AUDIT_NAME`) since launch, measured each day by the `SYNC-TRUSTEE-742-METRICS` dataflow. Segmented by migrated vs non-migrated to surface whether migration introduced data quality issues that users are now correcting."
+        "json": "---\n## Name Edit Correction Patterns\nReal-time count of trustee name edits since launch, segmented by migrated vs non-migrated to surface whether migration introduced data quality issues that users are now correcting."
       },
       "name": "name-edits-header"
     },
@@ -213,9 +216,9 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-742-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend total = toint(customDimensions.nameEditsTotal)\n| summarize TotalNameEdits = sum(total)",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| summarize TotalNameEdits = count()",
         "size": 3,
-        "title": "Total Name Edits Since Launch",
+        "title": "Total Name Edits",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -246,7 +249,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-742-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend migrated = toint(customDimensions.nameEditsMigrated)\n| summarize MigratedEdits = sum(migrated)",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| where tostring(customDimensions.isMigrated) == \"true\"\n| summarize MigratedEdits = count()",
         "size": 3,
         "title": "Name Edits — Migrated Trustees",
         "timeContextFromParameter": "TimeRange",
@@ -279,7 +282,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-742-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend nonMigrated = toint(customDimensions.nameEditsNonMigrated)\n| summarize NonMigratedEdits = sum(nonMigrated)",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| where tostring(customDimensions.isMigrated) == \"false\"\n| summarize NonMigratedEdits = count()",
         "size": 3,
         "title": "Name Edits — Non-Migrated Trustees",
         "timeContextFromParameter": "TimeRange",
@@ -312,7 +315,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where customDimensions.moduleName == \"SYNC-TRUSTEE-742-METRICS\"\n| where name == \"DataflowHandlerComplete\"\n| where timestamp {TimeRange}\n| extend\n    migrated = toint(customDimensions.nameEditsMigrated),\n    nonMigrated = toint(customDimensions.nameEditsNonMigrated)\n| summarize\n    MigratedEdits = sum(migrated),\n    NonMigratedEdits = sum(nonMigrated)\n    by Day = startofday(timestamp)\n| order by Day asc",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| extend isMigrated = tostring(customDimensions.isMigrated)\n| summarize\n    MigratedEdits = countif(isMigrated == \"true\"),\n    NonMigratedEdits = countif(isMigrated == \"false\")\n    by Day = startofday(timestamp)\n| order by Day asc",
         "size": 0,
         "title": "Name Edits Over Time — Migrated vs Non-Migrated",
         "timeContextFromParameter": "TimeRange",

@@ -194,7 +194,14 @@ export default function TrusteesList() {
                   }
                   onClick={
                     isNameCol
-                      ? () => setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'))
+                      ? () => {
+                          const newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+                          setSortDirection(newDirection);
+                          getAppInsights().appInsights.trackEvent(
+                            { name: 'Trustee List Sort Changed' },
+                            { sortDirection: newDirection },
+                          );
+                        }
                       : undefined
                   }
                   onKeyDown={

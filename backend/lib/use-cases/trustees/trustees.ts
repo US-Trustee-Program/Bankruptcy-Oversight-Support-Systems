@@ -303,6 +303,15 @@ export class TrusteesUseCase {
             userReference,
           ),
         );
+        const trace = context.observability.startTrace(context.invocationId);
+        const isMigrated = !!(
+          updatedTrustee.legacy?.truIds && updatedTrustee.legacy.truIds.length > 0
+        );
+        context.observability.completeTrace(trace, 'Trustee Name Edited', {
+          success: true,
+          properties: { isMigrated: String(isMigrated) },
+          measurements: {},
+        });
       }
 
       if (!deepEqual(existingTrustee.public, updatedTrustee.public)) {
