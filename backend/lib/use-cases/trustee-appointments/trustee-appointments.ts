@@ -57,6 +57,35 @@ export class TrusteeAppointmentsUseCase {
     return court?.courtName;
   }
 
+  /**
+   * Normalize appointment data to ensure backward compatibility.
+   * Converts single divisionCode to divisionCodes array if needed.
+   */
+  private normalizeAppointmentData(
+    appointmentData: TrusteeAppointmentInput,
+  ): TrusteeAppointmentInput {
+    // If new format is provided, use it
+    if (appointmentData.divisionCodes && appointmentData.divisionCodes.length > 0) {
+      return {
+        ...appointmentData,
+        divisionCode: appointmentData.divisionCodes[0], // Keep first for backward compatibility
+        divisionCodes: appointmentData.divisionCodes,
+      };
+    }
+
+    // If old format is provided, convert to new format
+    if (appointmentData.divisionCode) {
+      return {
+        ...appointmentData,
+        divisionCode: appointmentData.divisionCode,
+        divisionCodes: [appointmentData.divisionCode],
+      };
+    }
+
+    // Neither provided - validation will catch this
+    return appointmentData;
+  }
+
   private validateAppointmentData(appointmentData: TrusteeAppointmentInput): void {
     const validationResult = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointmentData);
 
@@ -174,13 +203,16 @@ export class TrusteeAppointmentsUseCase {
         });
       }
 
-      this.validateAppointmentData(appointmentData);
+      // Normalize data (convert old format to new format if needed)
+      const normalizedData = this.normalizeAppointmentData(appointmentData);
+
+      this.validateAppointmentData(normalizedData);
 
       const userReference = getCamsUserReference(context.session.user);
 
       const createdAppointment = await this.trusteeAppointmentsRepository.createAppointment(
         trusteeId,
-        appointmentData,
+        normalizedData,
         userReference,
       );
 
@@ -226,7 +258,10 @@ export class TrusteeAppointmentsUseCase {
     appointmentData: TrusteeAppointmentInput,
   ): Promise<TrusteeAppointment> {
     try {
-      this.validateAppointmentData(appointmentData);
+      // Normalize data (convert old format to new format if needed)
+      const normalizedData = this.normalizeAppointmentData(appointmentData);
+
+      this.validateAppointmentData(normalizedData);
 
       const userReference = getCamsUserReference(context.session.user);
 
@@ -238,7 +273,7 @@ export class TrusteeAppointmentsUseCase {
       const updatedAppointment = await this.trusteeAppointmentsRepository.updateAppointment(
         trusteeId,
         appointmentId,
-        appointmentData,
+        normalizedData,
         userReference,
       );
 
