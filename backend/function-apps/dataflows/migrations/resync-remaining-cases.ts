@@ -6,11 +6,13 @@ import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
+import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 
 const MODULE_NAME = 'RESYNC-REMAINING-CASES';
 const PAGE_SIZE = 100;
@@ -23,7 +25,19 @@ type ResyncRemainingCursorMessage = {
   cutoffDate: string;
   lastId: string | null;
   remainingCount: number;
+  retryCount?: number;
 };
+
+const RATE_LIMIT_RETRY_LIMIT = 10;
+const RATE_LIMIT_BASE_DELAY_SECONDS = 30;
+const RATE_LIMIT_MAX_DELAY_SECONDS = 600;
+
+function computeBackoffSeconds(retryCount: number): number {
+  return Math.min(
+    Math.pow(2, retryCount) * RATE_LIMIT_BASE_DELAY_SECONDS,
+    RATE_LIMIT_MAX_DELAY_SECONDS,
+  );
+}
 
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
@@ -91,7 +105,7 @@ async function handleStart(
   });
 }
 
-async function handlePage(
+export async function handlePage(
   cursor: ResyncRemainingCursorMessage,
   invocationContext: InvocationContext,
 ) {
@@ -107,6 +121,53 @@ async function handlePage(
   );
 
   if (result.error || !result.data) {
+    if (isTooManyRequestsError(result.error)) {
+      const currentRetryCount = cursor.retryCount ?? 0;
+      if (currentRetryCount >= RATE_LIMIT_RETRY_LIMIT) {
+        logger.error(
+          MODULE_NAME,
+          `Rate limit retry limit reached (${RATE_LIMIT_RETRY_LIMIT}) for cursor at ${cursor.lastId ?? 'start'}. Giving up.`,
+        );
+        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limit-retry-exhausted',
+        });
+        return;
+      }
+
+      const nextRetryCount = currentRetryCount + 1;
+      const visibilityTimeout = computeBackoffSeconds(currentRetryCount);
+      const nextCursor: ResyncRemainingCursorMessage = {
+        ...cursor,
+        retryCount: nextRetryCount,
+      };
+
+      logger.warn(
+        MODULE_NAME,
+        `Rate limited (429) fetching page at cursor ${cursor.lastId ?? 'start'}. Retrying in ${visibilityTimeout}s (attempt ${nextRetryCount}/${RATE_LIMIT_RETRY_LIMIT}).`,
+      );
+
+      const connectionString = process.env.AzureWebJobsDataflowsStorage;
+      if (!connectionString) {
+        throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+      }
+      const queueClient = StorageQueueHumbleObject.fromConnectionString(
+        connectionString,
+        PAGE.queueName,
+      );
+      await queueClient.sendMessage(JSON.stringify(nextCursor), visibilityTimeout);
+
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { reason: 'rate-limited-requeued', visibilityTimeout: String(visibilityTimeout) },
+      });
+      return;
+    }
+
     logger.error(MODULE_NAME, `Failed to get page of remaining cases: ${result.error?.message}`);
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
       documentsWritten: 0,
