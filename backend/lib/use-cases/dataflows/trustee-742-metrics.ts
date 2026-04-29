@@ -3,9 +3,6 @@ import factory from '../../factory';
 import { TrusteeNameHistory } from '@common/cams/trustees';
 import { isNotFoundError } from '../../common-errors/not-found-error';
 
-// Launch date for CAMS-742 trustee name management feature
-const LAUNCH_DATE = '2026-04-28T00:00:00.000Z';
-
 export type Trustee742Metrics = {
   trusteeFetchedCount: number;
   nameEditsTotal: number;
@@ -18,13 +15,12 @@ export class Trustee742MetricsUseCase {
     const repo = factory.getTrusteesRepository(context);
     const stateRepo = factory.getTrustee742MetricsSyncStateRepo(context);
 
-    let lastSyncDate: string;
+    let lastSyncDate: string | undefined;
     try {
       const state = await stateRepo.read('TRUSTEE_742_METRICS_STATE');
       lastSyncDate = state.lastSyncDate;
     } catch (e) {
       if (!isNotFoundError(e)) throw e;
-      lastSyncDate = LAUNCH_DATE;
     }
     const runAt = new Date().toISOString();
 
@@ -36,7 +32,9 @@ export class Trustee742MetricsUseCase {
       const history = await repo.listTrusteeHistory(trustee.trusteeId);
       const nameEdits = history.filter(
         (h): h is TrusteeNameHistory =>
-          h.documentType === 'AUDIT_NAME' && !!h.createdOn && h.createdOn >= lastSyncDate,
+          h.documentType === 'AUDIT_NAME' &&
+          !!h.createdOn &&
+          h.createdOn >= (lastSyncDate ?? runAt),
       );
 
       if (nameEdits.length > 0) {
