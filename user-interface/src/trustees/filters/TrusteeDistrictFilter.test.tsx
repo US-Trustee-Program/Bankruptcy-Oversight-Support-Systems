@@ -390,6 +390,7 @@ describe('TrusteeDistrictFilter Component', () => {
     render(
       <TrusteeDistrictFilter
         handleFilterDistrict={mockHandleFilterDistrict}
+        handleFilterChapter={mockHandleFilterChapter}
         onExpandedChange={mockOnExpandedChange}
       />,
     );
