@@ -111,7 +111,7 @@ export default function TrusteesList() {
     setLiveAnnouncement('');
   };
 
-  const { filteredTrustees, announcement } = useMemo(() => {
+  const { filteredTrustees } = useMemo(() => {
     const filtered = filterTrustees(trustees, selectedDistricts, selectedChapters);
 
     const sorted = [...filtered].sort((a, b) => {
@@ -129,7 +129,6 @@ export default function TrusteesList() {
 
     return {
       filteredTrustees: sorted,
-      announcement: `${filtered.length} Trustees`,
     };
   }, [trustees, selectedDistricts, selectedChapters, sortDirection]);
 
