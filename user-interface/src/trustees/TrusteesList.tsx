@@ -63,6 +63,7 @@ export default function TrusteesList() {
   const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
+  const [liveAnnouncement, setLiveAnnouncement] = useState<string>('');
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
   const pageLoadStart = useRef(performance.now());
 
@@ -107,6 +108,7 @@ export default function TrusteesList() {
   const handleFilterChapter = (chapters: ComboOption[]) => {
     isChapterFilterInteracted.current = true;
     setSelectedChapters(chapters);
+    setLiveAnnouncement('');
   };
 
   const { filteredTrustees, announcement } = useMemo(() => {
@@ -127,7 +129,7 @@ export default function TrusteesList() {
 
     return {
       filteredTrustees: sorted,
-      announcement: `${filtered.length} Trustee(s)`,
+      announcement: `${filtered.length} Trustees`,
     };
   }, [trustees, selectedDistricts, selectedChapters, sortDirection]);
 
@@ -150,6 +152,11 @@ export default function TrusteesList() {
       },
     );
   }, [selectedDistricts, selectedChapters, trustees]);
+
+  useEffect(() => {
+    if (!isChapterFilterInteracted.current) return;
+    setLiveAnnouncement(`${filteredTrustees.length} Trustees`);
+  }, [filteredTrustees]);
 
   useEffect(() => {
     if (!isChapterFilterInteracted.current) return;
@@ -204,7 +211,7 @@ export default function TrusteesList() {
         handleFilterChapter={handleFilterChapter}
       />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
-        {announcement}
+        {liveAnnouncement}
       </div>
       <p className="trustees-list-count">{filteredTrustees.length} Trustee(s)</p>
       <div

@@ -683,12 +683,14 @@ describe('TrusteesList Component', () => {
     test('should announce updated count in live region when chapter filter changes', async () => {
       const trustee7 = makeListItem({
         trusteeId: 't7',
-        name: 'Chapter 7 Trustee',
+        firstName: 'Alice',
+        lastName: 'Seven',
         appointments: [makeAppointment({ chapter: '7' })],
       });
       const trustee13 = makeListItem({
         trusteeId: 't13',
-        name: 'Chapter 13 Trustee',
+        firstName: 'Bob',
+        lastName: 'Thirteen',
         appointments: [makeAppointment({ chapter: '13' })],
       });
 
@@ -700,7 +702,8 @@ describe('TrusteesList Component', () => {
       expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
 
       const liveRegion = screen.getByRole('status');
-      expect(liveRegion).toHaveTextContent('2 Trustee(s)');
+      // live region starts empty — only populated after chapter interaction
+      expect(liveRegion).toHaveTextContent('');
 
       const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -712,7 +715,7 @@ describe('TrusteesList Component', () => {
       await user.click(screen.getByRole('option', { name: /option: 7/ }));
 
       await waitFor(() => {
-        expect(liveRegion).toHaveTextContent('1 Trustee(s)');
+        expect(liveRegion).toHaveTextContent('1 Trustees');
       });
     });
   });
