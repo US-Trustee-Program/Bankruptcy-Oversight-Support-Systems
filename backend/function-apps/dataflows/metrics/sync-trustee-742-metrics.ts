@@ -23,7 +23,7 @@ async function timerTrigger(_ignore: Timer, invocationContext: InvocationContext
         documentsFailed: 0,
         success: true,
         details: {
-          trusteeListFetchCount: String(metrics.trusteeListFetchCount),
+          trusteeFetchedCount: String(metrics.trusteeFetchedCount),
           nameEditsTotal: String(metrics.nameEditsTotal),
           nameEditsMigrated: String(metrics.nameEditsMigrated),
           nameEditsNonMigrated: String(metrics.nameEditsNonMigrated),
