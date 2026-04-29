@@ -1,6 +1,6 @@
 import './TrusteeDistrictFilter.scss';
 import ComboBox from '@/lib/components/combobox/ComboBox';
-import Icon from '@/lib/components/uswds/Icon';
+import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
 
@@ -46,21 +46,12 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
       </AccordionGroup>
 
       {viewModel.selectedDistricts.length > 0 && (
-        <div className="filter-pills-container">
-          {viewModel.selectedDistricts.map((district) => (
-            <span key={district.value} className="usa-tag filter-pill">
-              {district.label}
-              <button
-                type="button"
-                className="usa-tag__remove-button"
-                onClick={() => viewModel.handleRemovePill(district)}
-                aria-label={`Remove ${district.label} filter`}
-              >
-                <Icon name="close" />
-              </button>
-            </span>
-          ))}
-        </div>
+        <PillBox
+          id="district-filter-pills"
+          className="filter-pills-container"
+          selections={viewModel.selectedDistricts}
+          onSelectionChange={viewModel.handleFilterChange}
+        />
       )}
     </section>
   );
