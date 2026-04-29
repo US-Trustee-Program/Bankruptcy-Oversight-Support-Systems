@@ -5,6 +5,7 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
+import { CamsError } from '../../../lib/common-errors/cams-error';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
 import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
@@ -179,14 +180,18 @@ export async function handlePage(
       return;
     }
 
-    logger.error(MODULE_NAME, `Failed to get page of remaining cases: ${result.error?.message}`);
+    const nonTransientError: CamsError | undefined = result.error;
+    logger.error(
+      MODULE_NAME,
+      `Failed to get page of remaining cases: ${nonTransientError?.message}`,
+    );
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,
-      error: result.error?.message,
+      error: nonTransientError?.message,
     });
-    throw result.error;
+    throw nonTransientError;
   }
 
   const { caseIds, lastId: newLastId, hasMore } = result.data;

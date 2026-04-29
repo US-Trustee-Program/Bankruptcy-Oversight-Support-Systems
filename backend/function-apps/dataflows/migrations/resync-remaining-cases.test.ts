@@ -4,6 +4,7 @@ import { createMockApplicationContext } from '../../../lib/testing/testing-utili
 import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
+import { UnknownError } from '../../../lib/common-errors/unknown-error';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
 import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { handlePage } from './resync-remaining-cases';
@@ -124,7 +125,7 @@ describe('resync-remaining-cases handlePage', () => {
   });
 
   test('should throw on non-transient page fetch errors', async () => {
-    const genericError = new Error('Some unexpected database error');
+    const genericError = new UnknownError('TEST', { message: 'Some unexpected database error' });
     vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
       error: genericError,
       data: null,
