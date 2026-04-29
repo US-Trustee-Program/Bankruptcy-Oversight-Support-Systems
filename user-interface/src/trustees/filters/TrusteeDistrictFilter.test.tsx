@@ -20,6 +20,7 @@ const mockDistricts: CourtDivisionDetails[] = [
     groupDesignator: 'NY',
     regionId: '02',
     regionName: 'New York Region',
+    state: 'NY',
   },
   {
     officeName: 'White Plains',
@@ -31,6 +32,7 @@ const mockDistricts: CourtDivisionDetails[] = [
     groupDesignator: 'NY',
     regionId: '02',
     regionName: 'New York Region',
+    state: 'NY',
   },
   {
     officeName: 'Rutland',
@@ -42,6 +44,7 @@ const mockDistricts: CourtDivisionDetails[] = [
     groupDesignator: 'VT',
     regionId: '01',
     regionName: 'Boston Region',
+    state: 'VT',
   },
 ];
 
@@ -76,7 +79,7 @@ describe('TrusteeDistrictFilter Component', () => {
 
     expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
     await waitFor(() => {
-      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      expect(screen.getByLabelText('District')).toBeInTheDocument();
       expect(Api2.getCourts).toHaveBeenCalled();
     });
   });
@@ -96,17 +99,16 @@ describe('TrusteeDistrictFilter Component', () => {
     await user.click(toggleButton);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      expect(screen.getByLabelText('District')).toBeInTheDocument();
     });
 
-    const combobox = screen.getByLabelText('District (Division)');
+    const combobox = screen.getByLabelText('District');
     await user.click(combobox);
 
-    // Should show 2 unique districts (NYSB and VTB), not 3 divisions
+    // Should show all 3 divisions (2 NYSB + 1 VTB)
     await waitFor(() => {
-      expect(screen.getByText('District of Vermont (Rutland)')).toBeInTheDocument();
-      expect(screen.getByText('Southern District of New York (Manhattan)')).toBeInTheDocument();
-      expect(screen.getByText('Southern District of New York (White Plains)')).toBeInTheDocument();
+      expect(screen.getByText('District of Vermont')).toBeInTheDocument();
+      expect(screen.getAllByText('Southern District of New York')).toHaveLength(2);
     });
   });
 
@@ -182,22 +184,22 @@ describe('TrusteeDistrictFilter Component', () => {
     await user.click(toggleButton);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      expect(screen.getByLabelText('District')).toBeInTheDocument();
     });
 
-    const combobox = screen.getByLabelText('District (Division)');
+    const combobox = screen.getByLabelText('District');
     await user.click(combobox);
 
     await waitFor(() => {
-      expect(screen.getByText('District of Vermont (Rutland)')).toBeInTheDocument();
+      expect(screen.getByText('District of Vermont')).toBeInTheDocument();
     });
 
-    const vermontOption = screen.getByText('District of Vermont (Rutland)');
+    const vermontOption = screen.getByText('District of Vermont');
     await user.click(vermontOption);
 
     await waitFor(() => {
       expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([{ value: '088', label: 'District of Vermont (Rutland)' }]),
+        expect.arrayContaining([{ value: '088', label: 'District of Vermont' }]),
       );
     });
   });
@@ -217,18 +219,18 @@ describe('TrusteeDistrictFilter Component', () => {
     await user.click(toggleButton);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      expect(screen.getByLabelText('District')).toBeInTheDocument();
     });
 
     // Select a district
-    const combobox = screen.getByLabelText('District (Division)');
+    const combobox = screen.getByLabelText('District');
     await user.click(combobox);
 
     await waitFor(() => {
-      expect(screen.getByText('District of Vermont (Rutland)')).toBeInTheDocument();
+      expect(screen.getByText('District of Vermont')).toBeInTheDocument();
     });
 
-    const vermontOption = screen.getByText('District of Vermont (Rutland)');
+    const vermontOption = screen.getByText('District of Vermont');
     await user.click(vermontOption);
 
     // Collapse the filter again
@@ -236,7 +238,7 @@ describe('TrusteeDistrictFilter Component', () => {
 
     // Pills should be visible when collapsed
     await waitFor(() => {
-      const pills = screen.getAllByText('District of Vermont (Rutland)');
+      const pills = screen.getAllByText('District of Vermont');
       expect(pills.length).toBeGreaterThan(0);
     });
   });
@@ -289,14 +291,14 @@ describe('TrusteeDistrictFilter Component', () => {
     await waitFor(() => {
       expect(
         screen.getByRole('button', {
-          name: /remove southern district of new york \(manhattan\) filter/i,
+          name: /remove southern district of new york filter/i,
         }),
       ).toBeInTheDocument();
     });
 
     // Click remove button on pill
     const removeButton = screen.getByRole('button', {
-      name: /remove southern district of new york \(manhattan\) filter/i,
+      name: /remove southern district of new york filter/i,
     });
     await user.click(removeButton);
 
@@ -367,7 +369,7 @@ describe('TrusteeDistrictFilter Component', () => {
     await waitFor(() => {
       expect(mockOnExpandedChange).toHaveBeenCalledWith(true);
       expect(toggleButton).toHaveAttribute('aria-expanded', 'true');
-      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      expect(screen.getByLabelText('District')).toBeInTheDocument();
     });
 
     // Collapse
@@ -424,14 +426,12 @@ describe('TrusteeDistrictFilter Component', () => {
     // Wait for pre-populated district
     await waitFor(() => {
       expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          { value: '081', label: 'Southern District of New York (Manhattan)' },
-        ]),
+        expect.arrayContaining([{ value: '081', label: 'Southern District of New York' }]),
       );
     });
 
     // Call removePill via ref
-    ref.current?.removePill({ value: '081', label: 'Southern District of New York (Manhattan)' });
+    ref.current?.removePill({ value: '081', label: 'Southern District of New York' });
 
     // Should update selection to empty
     await waitFor(() => {
@@ -486,9 +486,7 @@ describe('TrusteeDistrictFilter Component', () => {
     // Wait for pre-populated district
     await waitFor(() => {
       expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          { value: '081', label: 'Southern District of New York (Manhattan)' },
-        ]),
+        expect.arrayContaining([{ value: '081', label: 'Southern District of New York' }]),
       );
     });
 
@@ -499,17 +497,17 @@ describe('TrusteeDistrictFilter Component', () => {
     await user.click(toggleButton);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      expect(screen.getByLabelText('District')).toBeInTheDocument();
     });
 
-    const combobox = screen.getByLabelText('District (Division)');
+    const combobox = screen.getByLabelText('District');
     await user.click(combobox);
 
     await waitFor(() => {
-      expect(screen.getByText('District of Vermont (Rutland)')).toBeInTheDocument();
+      expect(screen.getByText('District of Vermont')).toBeInTheDocument();
     });
 
-    const vermontOption = screen.getByText('District of Vermont (Rutland)');
+    const vermontOption = screen.getByText('District of Vermont');
     await user.click(vermontOption);
 
     mockHandleFilterDistrict.mockClear();
@@ -519,9 +517,7 @@ describe('TrusteeDistrictFilter Component', () => {
 
     await waitFor(() => {
       expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          { value: '081', label: 'Southern District of New York (Manhattan)' },
-        ]),
+        expect.arrayContaining([{ value: '081', label: 'Southern District of New York' }]),
       );
     });
   });

@@ -17,7 +17,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
               <div className="filter-control">
                 <ComboBox
                   id="district-combobox"
-                  label="District (Division)"
+                  label="District"
                   options={viewModel.districtsToComboOptions(viewModel.districts)}
                   selections={viewModel.selectedDistricts}
                   onUpdateSelection={viewModel.handleFilterChange}
