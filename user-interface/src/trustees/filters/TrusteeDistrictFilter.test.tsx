@@ -105,10 +105,10 @@ describe('TrusteeDistrictFilter Component', () => {
     const combobox = screen.getByLabelText('District');
     await user.click(combobox);
 
-    // Should show all 3 divisions (2 NYSB + 1 VTB)
+    // Should show 2 unique districts (NYSB and VTB)
     await waitFor(() => {
       expect(screen.getByText('District of Vermont')).toBeInTheDocument();
-      expect(screen.getAllByText('Southern District of New York')).toHaveLength(2);
+      expect(screen.getByText('Southern District of New York')).toBeInTheDocument();
     });
   });
 

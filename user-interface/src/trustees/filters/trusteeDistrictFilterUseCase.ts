@@ -11,7 +11,17 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 const sortByState = (a: CourtDivisionDetails, b: CourtDivisionDetails) =>
-  (a.state || '').localeCompare(b.state || '') || a.courtName.localeCompare(b.courtName);
+  (a.state || '').localeCompare(b.state || '') ||
+  a.courtName.localeCompare(b.courtName) ||
+  a.courtDivisionCode.localeCompare(b.courtDivisionCode);
+
+const toDistrictOption = (
+  district: CourtDivisionDetails,
+  divisionCodes: string[],
+): ComboOption => ({
+  value: divisionCodes.join(','),
+  label: district.courtName,
+});
 
 const getDefaultDistrictsFromSession = (
   session: CamsSession | null,
@@ -32,13 +42,27 @@ const getDefaultDistrictsFromSession = (
     });
   });
 
-  return allDistricts
+  // Group divisions by district (courtName)
+  const districtMap = new Map<string, CourtDivisionDetails[]>();
+  allDistricts
     .filter((district) => userDivisionCodes.has(district.courtDivisionCode))
-    .sort(sortByState)
-    .map((district) => ({
-      value: district.courtDivisionCode,
-      label: district.courtName,
-    }));
+    .forEach((district) => {
+      const key = district.courtName;
+      if (!districtMap.has(key)) {
+        districtMap.set(key, []);
+      }
+      districtMap.get(key)!.push(district);
+    });
+
+  // Convert to ComboOptions, one per unique district
+  return Array.from(districtMap.values())
+    .sort((a, b) => sortByState(a[0], b[0]))
+    .map((divisions) =>
+      toDistrictOption(
+        divisions[0],
+        divisions.map((d) => d.courtDivisionCode),
+      ),
+    );
 };
 
 const trusteeDistrictFilterUseCase = (
@@ -48,26 +72,45 @@ const trusteeDistrictFilterUseCase = (
   previousDistrictsRef: { current: ComboOption[] | undefined },
 ): TrusteeDistrictFilterUseCase => {
   const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
-    const defaultCodes = new Set(store.defaultDistricts.map((d) => d.value));
-    const sorted = [...districts].sort(sortByState);
+    // Group divisions by district (courtName)
+    const districtMap = new Map<string, CourtDivisionDetails[]>();
+    districts.forEach((district) => {
+      const key = district.courtName;
+      if (!districtMap.has(key)) {
+        districtMap.set(key, []);
+      }
+      districtMap.get(key)!.push(district);
+    });
 
-    const defaults = sorted.filter((d) => defaultCodes.has(d.courtDivisionCode));
-    const nonDefaults = sorted.filter((d) => !defaultCodes.has(d.courtDivisionCode));
+    // Convert to unique districts
+    const uniqueDistricts = Array.from(districtMap.values())
+      .map((divisions) => ({
+        representative: divisions[0],
+        divisionCodes: divisions.map((d) => d.courtDivisionCode),
+      }))
+      .sort((a, b) => sortByState(a.representative, b.representative));
+
+    // Separate defaults from non-defaults
+    const defaultCodesFlat = new Set(
+      (store.defaultDistricts || []).flatMap((d) => d.value.split(',')),
+    );
+    const defaults = uniqueDistricts.filter((d) =>
+      d.divisionCodes.some((code) => defaultCodesFlat.has(code)),
+    );
+    const nonDefaults = uniqueDistricts.filter(
+      (d) => !d.divisionCodes.some((code) => defaultCodesFlat.has(code)),
+    );
 
     const result: ComboOption[] = [];
     defaults.forEach((district, i) => {
       result.push({
-        value: district.courtDivisionCode,
-        label: district.courtName,
+        ...toDistrictOption(district.representative, district.divisionCodes),
         isAriaDefault: true,
         divider: i === defaults.length - 1 && nonDefaults.length > 0,
       });
     });
     nonDefaults.forEach((district) => {
-      result.push({
-        value: district.courtDivisionCode,
-        label: district.courtName,
-      });
+      result.push(toDistrictOption(district.representative, district.divisionCodes));
     });
 
     return result;
