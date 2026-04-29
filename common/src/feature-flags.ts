@@ -8,17 +8,18 @@ export interface FeatureFlagSet {
 }
 
 export const testFeatureFlags: FeatureFlagSet = {
-  'chapter-twelve-enabled': true,
+  'case-search-landing-page': true,
   'chapter-eleven-enabled': true,
-  'transfer-orders-enabled': true,
+  'chapter-twelve-enabled': true,
   'consolidations-enabled': true,
-  'privileged-identity-management': true,
-  'view-trustee-on-case': true,
-  'trustee-management': true,
-  'phonetic-search-enabled': true,
-  'show-debtor-name-column': true,
   'display-chpt7-panel-upcoming-key-dates': true,
-  'trustee-verification-enabled': true,
-  'trustee-software-bank-display': true,
+  'phonetic-search-enabled': true,
+  'privileged-identity-management': true,
+  'show-debtor-name-column': true,
+  'transfer-orders-enabled': true,
   'trustee-assigned-staff-enabled': true,
+  'trustee-management': true,
+  'trustee-software-bank-display': true,
+  'trustee-verification-enabled': true,
+  'view-trustee-on-case': true,
 };

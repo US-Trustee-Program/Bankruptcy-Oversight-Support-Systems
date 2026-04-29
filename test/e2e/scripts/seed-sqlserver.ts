@@ -47,7 +47,6 @@ function buildTargetConfig(): sql.config {
     config.user = user;
     config.password = password;
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mssql auth type is a string literal union
     config.authentication = {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mssql auth type is a string literal union
       type: authType as any,

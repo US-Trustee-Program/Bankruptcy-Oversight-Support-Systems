@@ -5,7 +5,6 @@ import { COMMON_BUILD_OPTIONS } from '../../esbuild-shared.mjs';
 // This eliminates code duplication across multiple bundles
 const entryPoints = ['index.ts'];
 
-
 console.log('Building single bundle with all Azure Functions');
 
 esbuild
@@ -16,7 +15,6 @@ esbuild
     outbase: '.',
   })
   .catch((err) => {
-
     console.error('Build failed:', err);
 
     process.exit(1);

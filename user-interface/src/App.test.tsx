@@ -2,6 +2,13 @@ import { act, render, waitFor, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import * as HeaderModule from './lib/components/Header';
+import * as UseLandingPageAnalyticsModule from './lib/hooks/UseLandingPageAnalytics';
+import { getAppInsights } from './lib/hooks/UseApplicationInsights';
+import useFeatureFlags from './lib/hooks/UseFeatureFlags';
+
+vi.mock('./lib/hooks/UseLandingPageAnalytics');
+vi.mock('./lib/hooks/UseFeatureFlags');
+vi.mock('./lib/hooks/UseApplicationInsights');
 
 describe('App', () => {
   function scrollTo(position: number) {
@@ -23,6 +30,32 @@ describe('App', () => {
       if (typeof top === 'number') {
         scrollTo(top);
       }
+    });
+
+    // Mock Application Insights
+    const mockAppInsights = {
+      trackEvent: vi.fn(),
+      trackPageView: vi.fn(),
+      trackException: vi.fn(),
+    };
+
+    const mockReactPlugin = {
+      ...mockAppInsights,
+      appInsights: mockAppInsights,
+    };
+
+    vi.mocked(getAppInsights).mockReturnValue({
+      reactPlugin: mockReactPlugin as unknown as ReturnType<typeof getAppInsights>['reactPlugin'],
+      appInsights: mockAppInsights as unknown as ReturnType<typeof getAppInsights>['appInsights'],
+    });
+
+    // Mock feature flags
+    vi.mocked(useFeatureFlags).mockReturnValue({});
+
+    // Mock analytics hook used by NavigationTracker
+    vi.mocked(UseLandingPageAnalyticsModule.useLandingPageAnalytics).mockReturnValue({
+      trackNavigation: vi.fn(),
+      trackFirstSearch: vi.fn(),
     });
   });
 
