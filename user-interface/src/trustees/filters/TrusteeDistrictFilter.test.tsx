@@ -8,6 +8,7 @@ import { vi } from 'vitest';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeDistrictFilterRef } from './trusteeDistrictFilter.types';
+import React from 'react';
 
 const mockDistricts: CourtDivisionDetails[] = [
   {
@@ -45,10 +46,26 @@ const mockDistricts: CourtDivisionDetails[] = [
   },
 ];
 
-describe('TrusteeDistrictFilter Component', () => {
+function renderFilter(
+  overrides: Partial<{
+    ref: React.RefObject<TrusteeDistrictFilterRef>;
+    onExpandedChange: (expanded: boolean) => void;
+  }> = {},
+) {
   const mockHandleFilterDistrict = vi.fn();
   const mockHandleFilterChapter = vi.fn();
+  render(
+    <TrusteeDistrictFilter
+      ref={overrides.ref}
+      handleFilterDistrict={mockHandleFilterDistrict}
+      handleFilterChapter={mockHandleFilterChapter}
+      onExpandedChange={overrides.onExpandedChange}
+    />,
+  );
+  return { mockHandleFilterDistrict, mockHandleFilterChapter };
+}
 
+describe('TrusteeDistrictFilter Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     const mockResponse: ResponseBody<CourtDivisionDetails[]> = { data: mockDistricts };
@@ -63,12 +80,7 @@ describe('TrusteeDistrictFilter Component', () => {
     const user = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(
-      <TrusteeDistrictFilter
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    renderFilter();
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -91,12 +103,7 @@ describe('TrusteeDistrictFilter Component', () => {
     const user = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(
-      <TrusteeDistrictFilter
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    renderFilter();
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -158,12 +165,7 @@ describe('TrusteeDistrictFilter Component', () => {
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 
-    render(
-      <TrusteeDistrictFilter
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    renderFilter();
 
     // Wait for component to render
     await waitFor(() => {
@@ -187,12 +189,7 @@ describe('TrusteeDistrictFilter Component', () => {
     const user = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(
-      <TrusteeDistrictFilter
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    const { mockHandleFilterDistrict } = renderFilter();
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -227,12 +224,7 @@ describe('TrusteeDistrictFilter Component', () => {
     const user = userEvent.setup();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(
-      <TrusteeDistrictFilter
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    renderFilter();
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -304,12 +296,7 @@ describe('TrusteeDistrictFilter Component', () => {
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 
-    render(
-      <TrusteeDistrictFilter
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    const { mockHandleFilterDistrict } = renderFilter();
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -342,12 +329,7 @@ describe('TrusteeDistrictFilter Component', () => {
     vi.spyOn(Api2, 'getCourts').mockRejectedValue(new Error('API Error'));
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(
-      <TrusteeDistrictFilter
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    renderFilter();
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -367,12 +349,7 @@ describe('TrusteeDistrictFilter Component', () => {
   test('should handle empty user session gracefully', async () => {
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(
-      <TrusteeDistrictFilter
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    const { mockHandleFilterDistrict } = renderFilter();
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -387,13 +364,7 @@ describe('TrusteeDistrictFilter Component', () => {
     const mockOnExpandedChange = vi.fn();
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-    render(
-      <TrusteeDistrictFilter
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-        onExpandedChange={mockOnExpandedChange}
-      />,
-    );
+    renderFilter({ onExpandedChange: mockOnExpandedChange });
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -457,13 +428,7 @@ describe('TrusteeDistrictFilter Component', () => {
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 
-    render(
-      <TrusteeDistrictFilter
-        ref={ref}
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    const { mockHandleFilterDistrict } = renderFilter({ ref });
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -525,13 +490,7 @@ describe('TrusteeDistrictFilter Component', () => {
     };
     vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
 
-    render(
-      <TrusteeDistrictFilter
-        ref={ref}
-        handleFilterDistrict={mockHandleFilterDistrict}
-        handleFilterChapter={mockHandleFilterChapter}
-      />,
-    );
+    const { mockHandleFilterDistrict } = renderFilter({ ref });
 
     await waitFor(() => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -585,12 +544,7 @@ describe('TrusteeDistrictFilter Component', () => {
       const user = userEvent.setup();
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-      render(
-        <TrusteeDistrictFilter
-          handleFilterDistrict={mockHandleFilterDistrict}
-          handleFilterChapter={mockHandleFilterChapter}
-        />,
-      );
+      renderFilter();
 
       await waitFor(() => {
         expect(screen.getByText('Filters')).toBeInTheDocument();
@@ -608,12 +562,7 @@ describe('TrusteeDistrictFilter Component', () => {
       const user = userEvent.setup();
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-      render(
-        <TrusteeDistrictFilter
-          handleFilterDistrict={mockHandleFilterDistrict}
-          handleFilterChapter={mockHandleFilterChapter}
-        />,
-      );
+      const { mockHandleFilterChapter } = renderFilter();
 
       expect(await screen.findByText('Filters')).toBeInTheDocument();
 
@@ -640,12 +589,7 @@ describe('TrusteeDistrictFilter Component', () => {
       const user = userEvent.setup();
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-      render(
-        <TrusteeDistrictFilter
-          handleFilterDistrict={mockHandleFilterDistrict}
-          handleFilterChapter={mockHandleFilterChapter}
-        />,
-      );
+      renderFilter();
 
       expect(await screen.findByText('Filters')).toBeInTheDocument();
 
