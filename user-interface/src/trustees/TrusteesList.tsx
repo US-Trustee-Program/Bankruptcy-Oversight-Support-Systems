@@ -129,7 +129,7 @@ export default function TrusteesList() {
       filteredTrustees: sorted,
       announcement: `${filtered.length} Trustee(s)`,
     };
-  }, [trustees, selectedDistricts, selectedChapters]);
+  }, [trustees, selectedDistricts, selectedChapters, sortDirection]);
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
