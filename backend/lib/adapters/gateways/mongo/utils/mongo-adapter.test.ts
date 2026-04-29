@@ -49,7 +49,7 @@ describe('Mongo adapter', () => {
   const adapter = new MongoCollectionAdapter<TestType>(MODULE_NAME, humbleCollection);
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return an instance of the adapter from newAdapter', () => {
