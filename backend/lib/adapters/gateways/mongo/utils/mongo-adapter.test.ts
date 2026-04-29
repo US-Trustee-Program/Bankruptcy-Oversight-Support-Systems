@@ -390,7 +390,7 @@ describe('Mongo adapter', () => {
     );
   });
 
-  test('should throw TooManyRequestsError when a 429 rate limit error occurs', async () => {
+  test('should throw TooManyRequestsError when a 429 rate limit error occurs via error code', async () => {
     const rateLimitError = new Error('Request rate is large. More Request Units may be needed');
     (rateLimitError as unknown as Record<string, unknown>)['code'] = 16500;
     aggregate.mockRejectedValue(rateLimitError);
@@ -398,9 +398,16 @@ describe('Mongo adapter', () => {
     await expect(adapter.paginate(testQuery)).rejects.toThrow(
       expect.objectContaining({
         status: 429,
-        message: 'Query failed. Request rate is large.',
+        message: 'Service is temporarily unavailable. Please retry later.',
       }),
     );
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
+  });
+
+  test('should throw TooManyRequestsError when a 429 rate limit error is detected via message only', async () => {
+    const rateLimitError = new Error('Request rate is large. More Request Units may be needed');
+    aggregate.mockRejectedValue(rateLimitError);
+
     await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
   });
 

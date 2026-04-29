@@ -416,7 +416,7 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   private handleError(error: unknown, message: string, data?: object): CamsError {
     if (!isCamsError(error) && isRateLimitError(error)) {
       return new TooManyRequestsError(this.moduleName, {
-        message: `Query failed. Request rate is large.`,
+        message: 'Service is temporarily unavailable. Please retry later.',
         originalError: error instanceof Error ? error : undefined,
       });
     }

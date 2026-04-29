@@ -1,4 +1,4 @@
-import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { InvocationContext } from '@azure/functions';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
@@ -39,6 +39,10 @@ describe('resync-remaining-cases handlePage', () => {
 
     // Default: export-and-load succeeds with no errors
     vi.spyOn(ExportAndLoadCase, 'exportAndLoad').mockResolvedValue([]);
+  });
+
+  afterEach(() => {
+    delete process.env.AzureWebJobsDataflowsStorage;
   });
 
   test('should re-enqueue cursor with exponential backoff on 429 error', async () => {
@@ -183,5 +187,65 @@ describe('resync-remaining-cases handlePage', () => {
     expect(nextCursor).toBeDefined();
     expect(nextCursor.retryCount).toBeUndefined();
     expect(sendMessageSpy).not.toHaveBeenCalled();
+  });
+
+  test('should throw when AzureWebJobsDataflowsStorage env var is missing', async () => {
+    delete process.env.AzureWebJobsDataflowsStorage;
+
+    const cursor = { cutoffDate: '2024-01-01', lastId: null, remainingCount: 0 };
+
+    await expect(handlePage(cursor, invocationContext)).rejects.toThrow(
+      'Missing required environment variable: AzureWebJobsDataflowsStorage',
+    );
+    expect(sendMessageSpy).not.toHaveBeenCalled();
+  });
+
+  test('should clamp an out-of-range retryCount before computing backoff', async () => {
+    const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      error: rateLimitError,
+      data: null,
+    });
+
+    const cursor = {
+      cutoffDate: '2024-01-01',
+      lastId: null,
+      remainingCount: 0,
+      retryCount: 999,
+    };
+
+    await handlePage(cursor, invocationContext);
+
+    // retryCount 999 clamped to RATE_LIMIT_RETRY_LIMIT (10) → treated as exhausted, no re-enqueue
+    expect(sendMessageSpy).not.toHaveBeenCalled();
+  });
+
+  test('should emit a structured metric log on rate-limit backoff', async () => {
+    const rateLimitError = new TooManyRequestsError('TEST', { message: 'Rate limit' });
+    vi.spyOn(ResyncRemainingCasesUseCase, 'getPageOfRemainingCasesByCursor').mockResolvedValue({
+      error: rateLimitError,
+      data: null,
+    });
+
+    const cursor = {
+      cutoffDate: '2024-01-01',
+      lastId: 'some-id',
+      remainingCount: 0,
+      retryCount: 0,
+    };
+    const logSpy = vi.spyOn(invocationContext, 'log');
+
+    await handlePage(cursor, invocationContext);
+
+    const logCalls = logSpy.mock.calls.map((args) => String(args[0]));
+    const metricLogStr = logCalls.find((msg) => msg.includes('"event":"rate-limit-backoff"'));
+    expect(metricLogStr).toBeDefined();
+    const jsonStart = metricLogStr.indexOf('{');
+    const parsed = JSON.parse(metricLogStr.slice(jsonStart));
+    expect(parsed).toMatchObject({
+      event: 'rate-limit-backoff',
+      retryCount: 1,
+      visibilityTimeoutSeconds: 30,
+    });
   });
 });
