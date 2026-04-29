@@ -72,6 +72,54 @@ function getDefaultAppointmentType(
 // Synthetic value for "All Divisions" option
 const ALL_DIVISIONS_VALUE = '__ALL__';
 
+/**
+ * Extract court and division information from form data.
+ * Handles both legacy (combined districtKey) and new (separate courtId/divisionCodes) formats.
+ * Expands "All Divisions" synthetic value to actual division codes.
+ *
+ * @param formData - The form data
+ * @param useSeparateFields - Whether district-division flag is enabled (separate fields)
+ * @param allCourts - All available court divisions (needed for "All Divisions" expansion)
+ * @returns {courtId, divisionCodes} or null if required fields are missing
+ */
+function extractCourtAndDivisions(
+  formData: Pick<FormData, 'courtId' | 'divisionCodes' | 'districtKey'>,
+  useSeparateFields: boolean,
+  allCourts: CourtDivisionDetails[],
+): { courtId: string; divisionCodes: string[] } | null {
+  if (useSeparateFields) {
+    // New format: separate courtId and divisionCodes fields
+    if (!formData.courtId || formData.divisionCodes.length === 0) {
+      return null;
+    }
+
+    let divisionCodes = formData.divisionCodes;
+
+    // Expand "All Divisions" synthetic value to actual division codes
+    if (divisionCodes.includes(ALL_DIVISIONS_VALUE)) {
+      divisionCodes = getDivisionsForDistrict(allCourts, formData.courtId).map(
+        (d) => d.courtDivisionCode,
+      );
+    }
+
+    return {
+      courtId: formData.courtId,
+      divisionCodes,
+    };
+  } else {
+    // Legacy format: combined districtKey (courtId|divisionCode)
+    if (!formData.districtKey) {
+      return null;
+    }
+
+    const [courtId, divisionCode] = formData.districtKey.split('|');
+    return {
+      courtId,
+      divisionCodes: [divisionCode],
+    };
+  }
+}
+
 type FormData = {
   districtKey: string; // Combined key: "{courtId}|{divisionCode}" (used when flag is OFF)
   courtId: string; // Separate court ID (used when flag is ON)
@@ -268,39 +316,35 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     currentAppointmentId?: string,
     useSeparateFields?: boolean,
   ): string | null => {
-    // Get courtId and divisionCode based on flag state
-    let courtId: string;
-    let divisionCode: string;
+    // Validate required fields
+    if (!data.chapter || !data.appointmentType) return null;
 
-    if (useSeparateFields) {
-      // When flag is ON, use separate fields
+    // Extract court and divisions using shared helper
+    const courtInfo = extractCourtAndDivisions(data, !!useSeparateFields, allCourts);
+    if (!courtInfo) return null;
+
+    const { courtId, divisionCodes: divisionCodesToCheck } = courtInfo;
+
+    // Check for overlap: any of the new divisions overlap with any existing appointment's divisions
+    const conflictingAppointment = appointments.find((appointment) => {
       if (
-        !data.courtId ||
-        data.divisionCodes.length === 0 ||
-        !data.chapter ||
-        !data.appointmentType
-      )
-        return null;
-      courtId = data.courtId;
-      // For validation, use first division code
-      divisionCode = data.divisionCodes[0];
-    } else {
-      // When flag is OFF, use combined districtKey
-      if (!data.districtKey || !data.chapter || !data.appointmentType) return null;
-      [courtId, divisionCode] = data.districtKey.split('|');
-    }
+        appointment.id === currentAppointmentId ||
+        appointment.courtId !== courtId ||
+        appointment.chapter !== data.chapter ||
+        appointment.appointmentType !== data.appointmentType ||
+        appointment.status !== 'active'
+      ) {
+        return false;
+      }
 
-    const hasOverlap = appointments.some(
-      (appointment) =>
-        appointment.id !== currentAppointmentId &&
-        appointment.courtId === courtId &&
-        appointment.divisionCode === divisionCode &&
-        appointment.chapter === data.chapter &&
-        appointment.appointmentType === data.appointmentType &&
-        appointment.status === 'active',
-    );
+      // Get existing appointment's divisions (could be array or single code for backward compat)
+      const existingDivisions = appointment.divisionCodes || [appointment.divisionCode];
 
-    if (!hasOverlap) return null;
+      // Check if ANY of the new divisions overlap with ANY of the existing divisions
+      return divisionCodesToCheck.some((code) => existingDivisions.includes(code));
+    });
+
+    if (!conflictingAppointment) return null;
 
     // Build error message
     const chapter = CHAPTER_OPTIONS.find((opt) => opt.value === data.chapter);
@@ -310,12 +354,16 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     if (useSeparateFields) {
       // Find district name from allCourts
       const court = allCourts.find((c) => c.courtId === courtId);
+      // Show the first conflicting division in the error message
+      const conflictingDivisionCode =
+        conflictingAppointment.divisionCodes?.[0] || conflictingAppointment.divisionCode;
       const division = allCourts.find(
-        (c) => c.courtId === courtId && c.courtDivisionCode === divisionCode,
+        (c) => c.courtId === courtId && c.courtDivisionCode === conflictingDivisionCode,
       );
       districtLabel = court && division ? `${court.courtName} (${division.courtDivisionName})` : '';
     } else {
-      const district = options.find((opt) => opt.value === data.districtKey);
+      const districtKey = `${courtId}|${conflictingAppointment.divisionCode}`;
+      const district = options.find((opt) => opt.value === districtKey);
       districtLabel = district?.label ?? '';
     }
 
@@ -358,35 +406,22 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
     setIsSubmitting(true);
 
-    // Get courtId and divisionCode(s) based on flag state
-    let courtId: string;
-    let divisionCode: string | undefined;
-    let divisionCodes: string[] | undefined;
-
-    if (useSeparateFields) {
-      // When flag is ON, use separate fields and map "All Divisions" to actual codes
-      courtId = formData.courtId;
-
-      // Map "__ALL__" to all actual division codes for this district
-      divisionCodes = formData.divisionCodes;
-      if (divisionCodes.includes(ALL_DIVISIONS_VALUE)) {
-        divisionCodes = getDivisionsForDistrict(allCourts, courtId).map((d) => d.courtDivisionCode);
-      }
-
-      // Send array to backend (backend now supports divisionCodes array)
-      // Also send first as divisionCode for backward compatibility
-      divisionCode = divisionCodes[0];
-    } else {
-      // When flag is OFF, split the composite key
-      [courtId, divisionCode] = formData.districtKey.split('|');
+    // Extract court and divisions using shared helper
+    const courtInfo = extractCourtAndDivisions(formData, useSeparateFields, allCourts);
+    if (!courtInfo) {
+      setGlobalAlertWarning('Missing required court or division information');
+      setIsSubmitting(false);
+      return;
     }
+
+    const { courtId, divisionCodes } = courtInfo;
 
     const payload: TrusteeAppointmentInput = {
       chapter: formData.chapter as AppointmentChapterType,
       appointmentType: formData.appointmentType as AppointmentType,
       courtId,
-      divisionCode,
-      divisionCodes, // New: send array of division codes
+      divisionCode: divisionCodes[0], // Send first for backward compatibility
+      divisionCodes, // Send array of division codes
       appointedDate: formData.appointedDate,
       status: formData.status as AppointmentStatus,
       effectiveDate: isEditMode ? formData.effectiveDate : formData.appointedDate,
