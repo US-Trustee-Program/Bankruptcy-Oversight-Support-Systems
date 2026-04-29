@@ -15,7 +15,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
 import Icon from '@/lib/components/uswds/Icon';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { sortByCourtLocation } from '@/lib/utils/court-utils';
+import { sortTrusteeAppointments } from '@/lib/utils/court-utils';
 
 const COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
 
@@ -105,10 +105,10 @@ export default function TrusteesList() {
       return sortDirection === 'asc' ? cmp : -cmp;
     });
 
-    // Sort appointments within each trustee by state, court, division, chapter, and appointment type
+    // Sort appointments within each trustee by state, region, chapter, and appointment type
     const sortedWithAppointments = sorted.map((trustee) => ({
       ...trustee,
-      appointments: sortByCourtLocation(trustee.appointments, { includeAppointmentDetails: true }),
+      appointments: sortTrusteeAppointments(trustee.appointments),
     }));
 
     const announcement =

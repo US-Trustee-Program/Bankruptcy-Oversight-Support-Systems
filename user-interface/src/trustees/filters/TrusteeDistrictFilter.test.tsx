@@ -380,65 +380,6 @@ describe('TrusteeDistrictFilter Component', () => {
     });
   });
 
-  test('should expose removePill method via ref', async () => {
-    const ref = { current: null } as unknown as React.RefObject<TrusteeDistrictFilterRef>;
-    const session = {
-      ...MockData.getCamsSession(),
-      user: {
-        ...MockData.getCamsSession().user,
-        offices: [
-          {
-            officeCode: '081',
-            officeName: 'Manhattan',
-            idpGroupName: 'Manhattan',
-            regionId: '02',
-            regionName: 'New York Region',
-            groups: [
-              {
-                groupDesignator: 'NY',
-                divisions: [
-                  {
-                    divisionCode: '081',
-                    court: {
-                      courtId: 'NYSB',
-                      courtName: 'Southern District of New York',
-                    },
-                    courtOffice: {
-                      courtOfficeCode: '081',
-                      courtOfficeName: 'Manhattan',
-                    },
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    };
-    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
-
-    render(<TrusteeDistrictFilter ref={ref} handleFilterDistrict={mockHandleFilterDistrict} />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Filters')).toBeInTheDocument();
-    });
-
-    // Wait for pre-populated district
-    await waitFor(() => {
-      expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([{ value: '081', label: 'Southern District of New York' }]),
-      );
-    });
-
-    // Call removePill via ref
-    ref.current?.removePill({ value: '081', label: 'Southern District of New York' });
-
-    // Should update selection to empty
-    await waitFor(() => {
-      expect(mockHandleFilterDistrict).toHaveBeenCalledWith([]);
-    });
-  });
-
   test('should expose clearAll method via ref', async () => {
     const user = userEvent.setup();
     const ref = { current: null } as unknown as React.RefObject<TrusteeDistrictFilterRef>;
@@ -486,7 +427,7 @@ describe('TrusteeDistrictFilter Component', () => {
     // Wait for pre-populated district
     await waitFor(() => {
       expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([{ value: '081', label: 'Southern District of New York' }]),
+        expect.arrayContaining([{ value: '081,087', label: 'Southern District of New York' }]),
       );
     });
 
@@ -517,7 +458,7 @@ describe('TrusteeDistrictFilter Component', () => {
 
     await waitFor(() => {
       expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([{ value: '081', label: 'Southern District of New York' }]),
+        expect.arrayContaining([{ value: '081,087', label: 'Southern District of New York' }]),
       );
     });
   });

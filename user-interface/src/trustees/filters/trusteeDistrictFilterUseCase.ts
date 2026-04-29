@@ -42,13 +42,19 @@ const getDefaultDistrictsFromSession = (
     });
   });
 
-  // Group divisions by district (courtName)
-  const filteredDistricts = allDistricts.filter((district) =>
+  // Find which districts contain the user's divisions
+  const userDistricts = allDistricts.filter((district) =>
     userDivisionCodes.has(district.courtDivisionCode),
   );
-  const districtMap = groupDivisionsByDistrict(filteredDistricts);
+  const userDistrictNames = new Set(userDistricts.map((d) => d.courtName));
 
-  // Convert to ComboOptions, one per unique district
+  // Group ALL divisions for those districts (not just user's divisions)
+  const allDistrictsForUser = allDistricts.filter((district) =>
+    userDistrictNames.has(district.courtName),
+  );
+  const districtMap = groupDivisionsByDistrict(allDistrictsForUser);
+
+  // Convert to ComboOptions, one per unique district with ALL division codes
   const sortedDistricts = sortByCourtLocation(
     Array.from(districtMap.values()).map((divisions) => divisions[0]),
   );
