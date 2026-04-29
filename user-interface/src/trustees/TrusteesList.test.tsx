@@ -547,9 +547,24 @@ describe('TrusteesList Component', () => {
       const apptA = makeAppointment({ chapter: '7', divisionCode: '081' });
       const apptB = makeAppointment({ chapter: '13', divisionCode: '081' });
       const apptC = makeAppointment({ chapter: '7', divisionCode: '088' });
-      const trusteeA = makeListItem({ trusteeId: 'a', firstName: 'Alice', lastName: 'Alpha', appointments: [apptA] });
-      const trusteeB = makeListItem({ trusteeId: 'b', firstName: 'Bob', lastName: 'Beta', appointments: [apptB] });
-      const trusteeC = makeListItem({ trusteeId: 'c', firstName: 'Carol', lastName: 'Gamma', appointments: [apptC] });
+      const trusteeA = makeListItem({
+        trusteeId: 'a',
+        firstName: 'Alice',
+        lastName: 'Alpha',
+        appointments: [apptA],
+      });
+      const trusteeB = makeListItem({
+        trusteeId: 'b',
+        firstName: 'Bob',
+        lastName: 'Beta',
+        appointments: [apptB],
+      });
+      const trusteeC = makeListItem({
+        trusteeId: 'c',
+        firstName: 'Carol',
+        lastName: 'Gamma',
+        appointments: [apptC],
+      });
 
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeA, trusteeB, trusteeC] });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({
@@ -703,10 +718,11 @@ describe('TrusteesList Component', () => {
   });
 
   describe('Chapter Filter Telemetry', () => {
-    test('should track Trustee Chapter Filter Changed with selectedCount and resultCount', async () => {
+    test('should track Trustee Chapter Filter Changed with selectedCount, resultCount, districtCount, and selectedChapterValues', async () => {
       const trustee7 = makeListItem({
         trusteeId: 't7',
-        name: 'Chapter 7 Trustee',
+        firstName: 'Alice',
+        lastName: 'Seven',
         appointments: [makeAppointment({ chapter: '7' })],
       });
 
@@ -729,7 +745,89 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(mockTrackEvent).toHaveBeenCalledWith(
           { name: 'Trustee Chapter Filter Changed' },
-          expect.objectContaining({ selectedCount: 1, resultCount: 1 }),
+          expect.objectContaining({
+            selectedCount: 1,
+            resultCount: 1,
+            districtCount: 0,
+            selectedChapterValues: '7',
+          }),
+        );
+      });
+    });
+
+    test('should include districtCount when district filter is also active', async () => {
+      const appt = makeAppointment({ chapter: '7', divisionCode: '081' });
+      const trustee = makeListItem({
+        trusteeId: 't1',
+        firstName: 'Alice',
+        lastName: 'Seven',
+        appointments: [appt],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York',
+          },
+        ],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup();
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+      const chapterCombobox = screen.getByLabelText('Chapter');
+      await user.click(chapterCombobox);
+      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: /option: 7/ }));
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith(
+          { name: 'Trustee Chapter Filter Changed' },
+          expect.objectContaining({
+            selectedCount: 1,
+            districtCount: 1,
+            selectedChapterValues: '7',
+          }),
         );
       });
     });
