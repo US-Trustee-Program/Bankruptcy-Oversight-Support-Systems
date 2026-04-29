@@ -761,7 +761,7 @@ describe('TrusteesList Component', () => {
 
       // Initially collapsed - pills should be in filter component
       await waitFor(() => {
-        const pills = screen.getAllByText('Southern District of New York (Manhattan)');
+        const pills = screen.getAllByText('Southern District of New York');
         expect(pills.length).toBeGreaterThan(0);
       });
 
@@ -771,7 +771,7 @@ describe('TrusteesList Component', () => {
 
       // When expanded, pills should appear above trustee count (in TrusteesList)
       await waitFor(() => {
-        const pills = screen.getAllByText('Southern District of New York (Manhattan)');
+        const pills = screen.getAllByText('Southern District of New York');
         // Should have pills both in dropdown AND in list area
         expect(pills.length).toBeGreaterThan(1);
       });
@@ -855,13 +855,13 @@ describe('TrusteesList Component', () => {
 
       // Wait for pills to appear
       await waitFor(() => {
-        const pills = screen.getAllByText('Southern District of New York (Manhattan)');
+        const pills = screen.getAllByText('Southern District of New York');
         expect(pills.length).toBeGreaterThan(1);
       });
 
       // Click remove button on one of the pills
       const removeButtons = screen.getAllByRole('button', {
-        name: /remove southern district of new york \(manhattan\) filter/i,
+        name: /remove southern district of new york filter/i,
       });
       await user.click(removeButtons[0]);
 
