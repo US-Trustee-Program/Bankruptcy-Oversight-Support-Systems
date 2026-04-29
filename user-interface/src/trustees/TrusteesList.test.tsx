@@ -479,12 +479,14 @@ describe('TrusteesList Component', () => {
       const ch13Appt = makeAppointment({ chapter: '13', divisionCode: '088' });
       const trustee7 = makeListItem({
         trusteeId: 't7',
-        name: 'Chapter 7 Trustee',
+        firstName: 'Alice',
+        lastName: 'Seven',
         appointments: [ch7Appt],
       });
       const trustee13 = makeListItem({
         trusteeId: 't13',
-        name: 'Chapter 13 Trustee',
+        firstName: 'Bob',
+        lastName: 'Thirteen',
         appointments: [ch13Appt],
       });
 
@@ -492,7 +494,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
-      const { container } = renderWithRouter(<TrusteesList />);
+      renderWithRouter(<TrusteesList />);
 
       expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
 
@@ -509,23 +511,22 @@ describe('TrusteesList Component', () => {
 
       await waitFor(() => {
         expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
-        expect(screen.getByText('Chapter 13 Trustee')).toBeInTheDocument();
-        expect(screen.queryByText('Chapter 7 Trustee')).not.toBeInTheDocument();
+        expect(screen.getByText('Thirteen, Bob')).toBeInTheDocument();
+        expect(screen.queryByText('Seven, Alice')).not.toBeInTheDocument();
       });
-
-      // Suppress unused variable warning
-      void container;
     });
 
     test('should show all trustees when no chapter is selected', async () => {
       const trustee7 = makeListItem({
         trusteeId: 't7',
-        name: 'Chapter 7 Trustee',
+        firstName: 'Alice',
+        lastName: 'Seven',
         appointments: [makeAppointment({ chapter: '7' })],
       });
       const trustee13 = makeListItem({
         trusteeId: 't13',
-        name: 'Chapter 13 Trustee',
+        firstName: 'Bob',
+        lastName: 'Thirteen',
         appointments: [makeAppointment({ chapter: '13' })],
       });
 
@@ -537,8 +538,8 @@ describe('TrusteesList Component', () => {
 
       await waitFor(() => {
         expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
-        expect(screen.getByText('Chapter 7 Trustee')).toBeInTheDocument();
-        expect(screen.getByText('Chapter 13 Trustee')).toBeInTheDocument();
+        expect(screen.getByText('Seven, Alice')).toBeInTheDocument();
+        expect(screen.getByText('Thirteen, Bob')).toBeInTheDocument();
       });
     });
 
@@ -546,9 +547,9 @@ describe('TrusteesList Component', () => {
       const apptA = makeAppointment({ chapter: '7', divisionCode: '081' });
       const apptB = makeAppointment({ chapter: '13', divisionCode: '081' });
       const apptC = makeAppointment({ chapter: '7', divisionCode: '088' });
-      const trusteeA = makeListItem({ trusteeId: 'a', name: 'Trustee A', appointments: [apptA] });
-      const trusteeB = makeListItem({ trusteeId: 'b', name: 'Trustee B', appointments: [apptB] });
-      const trusteeC = makeListItem({ trusteeId: 'c', name: 'Trustee C', appointments: [apptC] });
+      const trusteeA = makeListItem({ trusteeId: 'a', firstName: 'Alice', lastName: 'Alpha', appointments: [apptA] });
+      const trusteeB = makeListItem({ trusteeId: 'b', firstName: 'Bob', lastName: 'Beta', appointments: [apptB] });
+      const trusteeC = makeListItem({ trusteeId: 'c', firstName: 'Carol', lastName: 'Gamma', appointments: [apptC] });
 
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeA, trusteeB, trusteeC] });
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({
@@ -611,26 +612,29 @@ describe('TrusteesList Component', () => {
       // Only Trustee A (ch7 + Manhattan) should remain
       await waitFor(() => {
         expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
-        expect(screen.getByText('Trustee A')).toBeInTheDocument();
-        expect(screen.queryByText('Trustee B')).not.toBeInTheDocument();
-        expect(screen.queryByText('Trustee C')).not.toBeInTheDocument();
+        expect(screen.getByText('Alpha, Alice')).toBeInTheDocument();
+        expect(screen.queryByText('Beta, Bob')).not.toBeInTheDocument();
+        expect(screen.queryByText('Gamma, Carol')).not.toBeInTheDocument();
       });
     });
 
     test('should use OR logic within chapter filter', async () => {
       const trustee7 = makeListItem({
         trusteeId: 't7',
-        name: 'Chapter 7 Trustee',
+        firstName: 'Alice',
+        lastName: 'Seven',
         appointments: [makeAppointment({ chapter: '7' })],
       });
       const trustee11 = makeListItem({
         trusteeId: 't11',
-        name: 'Chapter 11 Trustee',
+        firstName: 'Bob',
+        lastName: 'Eleven',
         appointments: [makeAppointment({ chapter: '11' })],
       });
       const trustee13 = makeListItem({
         trusteeId: 't13',
-        name: 'Chapter 13 Trustee',
+        firstName: 'Carol',
+        lastName: 'Thirteen',
         appointments: [makeAppointment({ chapter: '13' })],
       });
 
@@ -655,9 +659,9 @@ describe('TrusteesList Component', () => {
 
       await waitFor(() => {
         expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
-        expect(screen.getByText('Chapter 7 Trustee')).toBeInTheDocument();
-        expect(screen.getByText('Chapter 13 Trustee')).toBeInTheDocument();
-        expect(screen.queryByText('Chapter 11 Trustee')).not.toBeInTheDocument();
+        expect(screen.getByText('Seven, Alice')).toBeInTheDocument();
+        expect(screen.getByText('Thirteen, Carol')).toBeInTheDocument();
+        expect(screen.queryByText('Eleven, Bob')).not.toBeInTheDocument();
       });
     });
 
