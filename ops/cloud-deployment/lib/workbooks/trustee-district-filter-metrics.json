@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Trustee Filter Metrics\n\nSuccess metrics for trustee filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`, `selectedCount`, `resultCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee Chapter Filter Changed` — fired on any chapter selection change; dimensions: `selectedCount`, `resultCount`\n- `Trustee List Loaded` — fired when trustee data first renders; dimensions: `trusteeCount`; measurement: `loadMs`"
+        "json": "# Trustee Filter Metrics\n\nSuccess metrics for trustee filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`; measurements: `selectedCount`, `resultCount`, `chapterCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee Chapter Filter Changed` — fired on any chapter selection change; dimensions: `selectedChapterValues`; measurements: `selectedCount`, `resultCount`, `districtCount`\n- `Trustee List Loaded` — fired when trustee data first renders; measurements: `trusteeCount`, `loadMs`"
       },
       "name": "header"
     },
@@ -434,7 +434,7 @@
     {
       "type": 1,
       "content": {
-        "json": "---\n## Chapter Filter Popularity\nHow often each chapter is selected, based on `selectedChapterValues` in the `Trustee Chapter Filter Changed` event."
+        "json": "---\n## Chapter Filter Popularity\n% of trustee page visits where each chapter was selected, based on `selectedChapterValues` in the `Trustee Chapter Filter Changed` event."
       },
       "name": "chapter-popularity-header"
     },
@@ -442,29 +442,30 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Chapter Filter Changed\"\n| extend selectedChapterValues = tostring(customDimensions.selectedChapterValues)\n| where isnotempty(selectedChapterValues)\n| mv-expand Chapter = split(selectedChapterValues, \",\")\n| extend ChapterLabel = case(\n    Chapter == \"7\", \"7\",\n    Chapter == \"11\", \"11\",\n    Chapter == \"11-subchapter-v\", \"11 Subchapter V\",\n    Chapter == \"12\", \"12\",\n    Chapter == \"13\", \"13\",\n    tostring(Chapter)\n  )\n| summarize SelectionCount = count() by ChapterLabel\n| order by SelectionCount desc",
+        "query": "let TotalVisits = toscalar(\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | summarize by operation_Id\n    | count\n);\ncustomEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Chapter Filter Changed\"\n| extend selectedChapterValues = tostring(customDimensions.selectedChapterValues)\n| where isnotempty(selectedChapterValues)\n| mv-expand Chapter = split(selectedChapterValues, \",\")\n| extend ChapterLabel = case(\n    Chapter == \"7\", \"Chapter 7\",\n    Chapter == \"11\", \"Chapter 11\",\n    Chapter == \"11-subchapter-v\", \"Chapter 11 Subchapter V\",\n    Chapter == \"12\", \"Chapter 12\",\n    Chapter == \"13\", \"Chapter 13\",\n    tostring(Chapter)\n  )\n| summarize VisitCount = dcount(operation_Id) by ChapterLabel\n| extend PctOfVisits = round(todouble(VisitCount) / todouble(TotalVisits) * 100, 1)\n| order by PctOfVisits desc",
         "size": 0,
-        "title": "Chapter Filter Selection Frequency",
+        "title": "% of Page Visits by Chapter Selected",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
         "visualization": "barchart",
         "chartSettings": {
           "xAxis": "ChapterLabel",
-          "yAxis": ["SelectionCount"],
+          "yAxis": ["PctOfVisits"],
           "seriesLabelSettings": [
             {
-              "seriesName": "SelectionCount",
-              "label": "Times Selected",
+              "seriesName": "PctOfVisits",
+              "label": "% of Visits",
               "color": "blue"
             }
           ],
           "ySettings": {
             "numberFormatSettings": {
-              "unit": 0,
+              "unit": 1,
               "options": {
                 "style": "decimal",
-                "useGrouping": true
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
               }
             }
           }
@@ -476,7 +477,7 @@
     {
       "type": 1,
       "content": {
-        "json": "---\n## Combined Filter Usage\nHow often users apply both district and chapter filters at the same time. Incremented on each filter change event where both `selectedCount` (district) and `chapterCount`/`districtCount` > 0."
+        "json": "---\n## Combined Filter Usage\n% of trustee page visits where both district and chapter filters were active at the same time, and the average number of combined-filter events per visit."
       },
       "name": "combined-filter-usage-header"
     },
@@ -484,9 +485,9 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let DistrictWithChapter =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | extend districtCount = toint(customDimensions.selectedCount)\n    | extend chapterCount = toint(customDimensions.chapterCount)\n    | where districtCount > 0 and chapterCount > 0\n    | count;\nlet ChapterWithDistrict =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Chapter Filter Changed\"\n    | extend chapterCount = toint(customDimensions.selectedCount)\n    | extend districtCount = toint(customDimensions.districtCount)\n    | where chapterCount > 0 and districtCount > 0\n    | count;\nlet DistrictOnly =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | extend districtCount = toint(customDimensions.selectedCount)\n    | extend chapterCount = toint(customDimensions.chapterCount)\n    | where districtCount > 0 and (isnull(chapterCount) or chapterCount == 0)\n    | count;\nlet ChapterOnly =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Chapter Filter Changed\"\n    | extend chapterCount = toint(customDimensions.selectedCount)\n    | extend districtCount = toint(customDimensions.districtCount)\n    | where chapterCount > 0 and (isnull(districtCount) or districtCount == 0)\n    | count;\nprint\n    DistrictOnly = toscalar(DistrictOnly),\n    ChapterOnly = toscalar(ChapterOnly),\n    BothFilters = toscalar(DistrictWithChapter) + toscalar(ChapterWithDistrict)",
+        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | summarize by operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet CombinedEvents =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Chapter Filter Changed\"\n    | extend chapterCount = toint(customMeasurements.selectedCount)\n    | extend districtCount = toint(customMeasurements.districtCount)\n    | where chapterCount > 0 and districtCount > 0\n    | project operation_Id;\nlet CombinedVisits = toscalar(\n    CombinedEvents\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nlet TotalCombinedEvents = toscalar(CombinedEvents | count);\nprint\n    TotalVisits = TotalVisits,\n    CombinedVisits = CombinedVisits,\n    PctCombinedVisits = round(iif(TotalVisits > 0, todouble(CombinedVisits) / todouble(TotalVisits) * 100, 0.0), 1),\n    AvgCombinedEventsPerVisit = round(iif(TotalVisits > 0, todouble(TotalCombinedEvents) / todouble(TotalVisits), 0.0), 2)",
         "size": 3,
-        "title": "Filter Combination Usage",
+        "title": "Combined Filter Usage (District + Chapter)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -494,20 +495,22 @@
         "tileSettings": {
           "titleContent": {},
           "leftContent": {
-            "columnMatch": "BothFilters",
+            "columnMatch": "PctCombinedVisits",
             "formatter": 12,
             "formatOptions": {
               "palette": "blue"
             },
             "numberFormat": {
-              "unit": 0,
+              "unit": 1,
               "options": {
-                "style": "decimal"
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
               }
             }
           },
           "secondaryContent": {
-            "columnMatch": "DistrictOnly",
+            "columnMatch": "AvgCombinedEventsPerVisit",
             "formatter": 1
           },
           "showBorder": true
