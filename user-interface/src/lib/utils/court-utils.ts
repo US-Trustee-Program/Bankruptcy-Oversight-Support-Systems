@@ -1,4 +1,5 @@
 import { usStates } from '@common/cams/us-states';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 /**
  * Maps a 2-letter state code to its full state name for sorting purposes.
@@ -94,4 +95,40 @@ export function sortByCourtLocation<T extends CourtLocationSortable>(
 
     return 0;
   });
+}
+
+/**
+ * Groups divisions by district (court name).
+ *
+ * Multiple divisions can belong to the same district court. For example,
+ * "Southern District of New York" has Manhattan (081) and White Plains (087) divisions.
+ * This function groups all divisions under their parent district.
+ *
+ * @param divisions - Array of court division details
+ * @returns Map where key is courtName and value is array of all divisions in that district
+ *
+ * @example
+ * const divisions = [
+ *   { courtName: "Southern District of New York", courtDivisionCode: "081", ... },
+ *   { courtName: "Southern District of New York", courtDivisionCode: "087", ... },
+ *   { courtName: "District of Vermont", courtDivisionCode: "088", ... }
+ * ];
+ * const grouped = groupDivisionsByDistrict(divisions);
+ * // Map {
+ * //   "Southern District of New York" => [{ code: "081", ... }, { code: "087", ... }],
+ * //   "District of Vermont" => [{ code: "088", ... }]
+ * // }
+ */
+export function groupDivisionsByDistrict(
+  divisions: CourtDivisionDetails[],
+): Map<string, CourtDivisionDetails[]> {
+  const districtMap = new Map<string, CourtDivisionDetails[]>();
+  divisions.forEach((division) => {
+    const key = division.courtName;
+    if (!districtMap.has(key)) {
+      districtMap.set(key, []);
+    }
+    districtMap.get(key)!.push(division);
+  });
+  return districtMap;
 }
