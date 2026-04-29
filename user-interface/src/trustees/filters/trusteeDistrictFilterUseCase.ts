@@ -9,7 +9,7 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { sortByCourtLocation } from '@/lib/utils/court-utils';
+import { sortByCourtLocation, groupDivisionsByDistrict } from '@/lib/utils/court-utils';
 
 const toDistrictOption = (
   district: CourtDivisionDetails,
@@ -39,16 +39,10 @@ const getDefaultDistrictsFromSession = (
   });
 
   // Group divisions by district (courtName)
-  const districtMap = new Map<string, CourtDivisionDetails[]>();
-  allDistricts
-    .filter((district) => userDivisionCodes.has(district.courtDivisionCode))
-    .forEach((district) => {
-      const key = district.courtName;
-      if (!districtMap.has(key)) {
-        districtMap.set(key, []);
-      }
-      districtMap.get(key)!.push(district);
-    });
+  const filteredDistricts = allDistricts.filter((district) =>
+    userDivisionCodes.has(district.courtDivisionCode),
+  );
+  const districtMap = groupDivisionsByDistrict(filteredDistricts);
 
   // Convert to ComboOptions, one per unique district
   const sortedDistricts = sortByCourtLocation(
@@ -72,14 +66,7 @@ const trusteeDistrictFilterUseCase = (
 ): TrusteeDistrictFilterUseCase => {
   const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
     // Group divisions by district (courtName)
-    const districtMap = new Map<string, CourtDivisionDetails[]>();
-    districts.forEach((district) => {
-      const key = district.courtName;
-      if (!districtMap.has(key)) {
-        districtMap.set(key, []);
-      }
-      districtMap.get(key)!.push(district);
-    });
+    const districtMap = groupDivisionsByDistrict(districts);
 
     // Convert to unique districts and sort by court location
     const sortedRepresentatives = sortByCourtLocation(
