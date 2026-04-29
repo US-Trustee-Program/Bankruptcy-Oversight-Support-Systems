@@ -4,8 +4,27 @@ import Icon from '@/lib/components/uswds/Icon';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
 
+function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
+  return (
+    <span className="usa-tag filter-pill">
+      {label}
+      <button
+        type="button"
+        className="usa-tag__remove-button"
+        onClick={onRemove}
+        aria-label={`Remove ${label} filter`}
+      >
+        <Icon name="close" />
+      </button>
+    </span>
+  );
+}
+
 function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   const { viewModel } = props;
+
+  const showDistrictFilter = viewModel.districts.length > 0 && !viewModel.districtsError;
+  const hasPills = viewModel.selectedDistricts.length > 0 || viewModel.selectedChapters.length > 0;
 
   return (
     <section className="trustee-district-filter" aria-label="Trustee filter controls">
@@ -24,7 +43,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             )}
 
             <div className="filter-controls-row">
-              {viewModel.districts.length > 0 && !viewModel.districtsError && (
+              {showDistrictFilter && (
                 <div className="filter-control">
                   <div className="filter-control-header">
                     <span className="filter-control-label">District (Division)</span>
@@ -88,33 +107,21 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
         </Accordion>
       </AccordionGroup>
 
-      {(viewModel.selectedDistricts.length > 0 || viewModel.selectedChapters.length > 0) && (
+      {hasPills && (
         <div className="filter-pills-container">
           {viewModel.selectedDistricts.map((district) => (
-            <span key={district.value} className="usa-tag filter-pill">
-              {district.label}
-              <button
-                type="button"
-                className="usa-tag__remove-button"
-                onClick={() => viewModel.handleRemovePill(district)}
-                aria-label={`Remove ${district.label} filter`}
-              >
-                <Icon name="close" />
-              </button>
-            </span>
+            <FilterPill
+              key={district.value}
+              label={district.label}
+              onRemove={() => viewModel.handleRemovePill(district)}
+            />
           ))}
           {viewModel.selectedChapters.map((chapter) => (
-            <span key={chapter.value} className="usa-tag filter-pill">
-              {chapter.label}
-              <button
-                type="button"
-                className="usa-tag__remove-button"
-                onClick={() => viewModel.handleRemoveChapterPill(chapter)}
-                aria-label={`Remove ${chapter.label} filter`}
-              >
-                <Icon name="close" />
-              </button>
-            </span>
+            <FilterPill
+              key={chapter.value}
+              label={chapter.label}
+              onRemove={() => viewModel.handleRemoveChapterPill(chapter)}
+            />
           ))}
         </div>
       )}
