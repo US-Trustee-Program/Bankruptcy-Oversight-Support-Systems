@@ -136,7 +136,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(MockMongoRepository.prototype.read).toHaveBeenCalledWith(trusteeId);
       expect(MockMongoRepository.prototype.createAppointment).toHaveBeenCalledWith(
         trusteeId,
-        appointmentInput,
+        expect.objectContaining({
+          ...appointmentInput,
+          divisionCodes: ['1'], // Normalized from divisionCode
+        }),
         expect.objectContaining({
           id: expect.any(String),
           name: expect.any(String),
@@ -348,7 +351,10 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(MockMongoRepository.prototype.updateAppointment).toHaveBeenCalledWith(
         trusteeId,
         appointmentId,
-        appointmentUpdate,
+        expect.objectContaining({
+          ...appointmentUpdate,
+          divisionCodes: ['2'], // Normalized from divisionCode
+        }),
         expect.objectContaining({
           id: expect.any(String),
           name: expect.any(String),
@@ -723,6 +729,129 @@ describe('TrusteeAppointmentsUseCase tests', () => {
           }),
         }),
       );
+    });
+  });
+
+  describe('multi-division support', () => {
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('should accept divisionCodes array and normalize to both formats', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+
+      const appointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['1', '2', '3'], // New format: array
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      };
+
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        ...appointmentInput,
+        divisionCode: '1', // Should be normalized to first element
+        divisionCodes: ['1', '2', '3'],
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+
+      const result = await trusteeAppointmentsUseCase.createAppointment(
+        context,
+        trusteeId,
+        appointmentInput,
+      );
+
+      expect(result).toEqual(mockCreatedAppointment);
+      expect(MockMongoRepository.prototype.createAppointment).toHaveBeenCalledWith(
+        trusteeId,
+        expect.objectContaining({
+          divisionCode: '1', // Normalized to first element
+          divisionCodes: ['1', '2', '3'], // Array preserved
+        }),
+        expect.any(Object),
+      );
+    });
+
+    test('should convert single divisionCode to divisionCodes array for backward compatibility', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+
+      const appointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCode: '5', // Old format: single string
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      };
+
+      const mockCreatedAppointment = MockData.getTrusteeAppointment({
+        trusteeId,
+        ...appointmentInput,
+        divisionCode: '5',
+        divisionCodes: ['5'], // Should be normalized to array
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue(
+        mockCreatedAppointment,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrusteeHistory').mockResolvedValue(undefined);
+
+      const result = await trusteeAppointmentsUseCase.createAppointment(
+        context,
+        trusteeId,
+        appointmentInput,
+      );
+
+      expect(result).toEqual(mockCreatedAppointment);
+      expect(MockMongoRepository.prototype.createAppointment).toHaveBeenCalledWith(
+        trusteeId,
+        expect.objectContaining({
+          divisionCode: '5', // Original preserved
+          divisionCodes: ['5'], // Normalized to array
+        }),
+        expect.any(Object),
+      );
+    });
+
+    test('should reject appointment with no divisions specified', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+
+      const appointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        // No divisionCode or divisionCodes specified
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('At least one division must be specified');
     });
   });
 });

@@ -361,19 +361,20 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     // Get courtId and divisionCode(s) based on flag state
     let courtId: string;
     let divisionCode: string | undefined;
+    let divisionCodes: string[] | undefined;
 
     if (useSeparateFields) {
       // When flag is ON, use separate fields and map "All Divisions" to actual codes
       courtId = formData.courtId;
 
       // Map "__ALL__" to all actual division codes for this district
-      let divisionCodes = formData.divisionCodes;
+      divisionCodes = formData.divisionCodes;
       if (divisionCodes.includes(ALL_DIVISIONS_VALUE)) {
         divisionCodes = getDivisionsForDistrict(allCourts, courtId).map((d) => d.courtDivisionCode);
       }
 
-      // For now, send first division code (backend doesn't support array yet)
-      // TODO: Update when backend supports divisionCodes array
+      // Send array to backend (backend now supports divisionCodes array)
+      // Also send first as divisionCode for backward compatibility
       divisionCode = divisionCodes[0];
     } else {
       // When flag is OFF, split the composite key
@@ -385,6 +386,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       appointmentType: formData.appointmentType as AppointmentType,
       courtId,
       divisionCode,
+      divisionCodes, // New: send array of division codes
       appointedDate: formData.appointedDate,
       status: formData.status as AppointmentStatus,
       effectiveDate: isEditMode ? formData.effectiveDate : formData.appointedDate,
@@ -492,6 +494,34 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     setFormData((prev) => ({ ...prev, divisionCodes: selectedValues }));
   };
 
+  // Handle when focus leaves the entire division dropdown component
+  const handleDivisionBlur = (e: React.FocusEvent) => {
+    const currentTarget = e.currentTarget;
+
+    // Check if the new focus target is outside the division dropdown component
+    setTimeout(() => {
+      // If focus moved to an element outside this component
+      if (!currentTarget.contains(document.activeElement)) {
+        if (!formData.courtId || !allCourts.length) return;
+
+        const allAvailableDivisions = getDivisionsForDistrict(allCourts, formData.courtId).map(
+          (d) => d.courtDivisionCode,
+        );
+
+        // If user selected all individual divisions (and not already "All Divisions")
+        if (
+          !formData.divisionCodes.includes(ALL_DIVISIONS_VALUE) &&
+          formData.divisionCodes.length === allAvailableDivisions.length &&
+          formData.divisionCodes.length > 0 &&
+          allAvailableDivisions.every((code) => formData.divisionCodes.includes(code))
+        ) {
+          // Auto-convert to "All Divisions"
+          setFormData((prev) => ({ ...prev, divisionCodes: [ALL_DIVISIONS_VALUE] }));
+        }
+      }
+    }, 100);
+  };
+
   const handleDateChange = (field: keyof FormData, e: React.ChangeEvent<HTMLInputElement>) => {
     handleFieldChange(field, e.target.value);
   };
@@ -550,7 +580,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
                 {/* Division dropdown when flag is ON */}
                 <div className="field-group division-field-group">
-                  <div className="division-dropdown-wrapper">
+                  <div className="division-dropdown-wrapper" onBlur={handleDivisionBlur}>
                     <ComboBox
                       id="division"
                       label="Assignable Divisions"
