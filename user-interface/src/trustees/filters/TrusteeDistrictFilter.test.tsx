@@ -291,14 +291,14 @@ describe('TrusteeDistrictFilter Component', () => {
     await waitFor(() => {
       expect(
         screen.getByRole('button', {
-          name: /remove southern district of new york filter/i,
+          name: /southern district of new york selected\. click to deselect\./i,
         }),
       ).toBeInTheDocument();
     });
 
     // Click remove button on pill
     const removeButton = screen.getByRole('button', {
-      name: /remove southern district of new york filter/i,
+      name: /southern district of new york selected\. click to deselect\./i,
     });
     await user.click(removeButton);
 
