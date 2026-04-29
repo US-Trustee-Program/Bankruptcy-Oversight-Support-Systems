@@ -35,7 +35,6 @@ export interface TrusteeDistrictFilterViewModel {
   handleFilterChange(districts: ComboOption[]): void;
   handleClearAll(): void;
   handleToggleExpanded(): void;
-  handleRemovePill(district: ComboOption): void;
 }
 
 export interface TrusteeDistrictFilterRef {
@@ -61,5 +60,4 @@ export interface TrusteeDistrictFilterUseCase {
   handleFilterChange(districts: ComboOption[]): void;
   handleClearAll(): void;
   handleToggleExpanded(): void;
-  handleRemovePill(district: ComboOption): void;
 }

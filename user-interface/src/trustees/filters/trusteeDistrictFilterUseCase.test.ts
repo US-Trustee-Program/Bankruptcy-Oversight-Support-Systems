@@ -385,35 +385,6 @@ describe('trustee district filter use case tests', () => {
     });
   });
 
-  describe('handleRemovePill', () => {
-    test('should remove the specified district from selection', () => {
-      const districts: ComboOption[] = [
-        { value: 'NYSB', label: 'Southern District of New York' },
-        { value: 'VTB', label: 'District of Vermont' },
-      ];
-      mockStore.selectedDistricts = districts;
-
-      const districtToRemove = districts[0];
-      useCase.handleRemovePill(districtToRemove);
-
-      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith([districts[1]]);
-      expect(mockOnFilterDistrict).toHaveBeenCalledWith([districts[1]]);
-    });
-
-    test('should clear selection entirely when removing last district', () => {
-      const districts: ComboOption[] = [{ value: 'NYSB', label: 'Southern District of New York' }];
-      const defaultDistricts: ComboOption[] = [{ value: 'VTB', label: 'District of Vermont' }];
-      mockStore.selectedDistricts = districts;
-      mockStore.defaultDistricts = defaultDistricts;
-
-      useCase.handleRemovePill(districts[0]);
-
-      // Should clear to empty (show all trustees), not restore defaults
-      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith([]);
-      expect(mockOnFilterDistrict).toHaveBeenCalledWith([]);
-    });
-  });
-
   describe('handleToggleExpanded', () => {
     test('should toggle isExpanded state between true and false', () => {
       const setIsExpandedSpy = vi.spyOn(mockStore, 'setIsExpanded');
