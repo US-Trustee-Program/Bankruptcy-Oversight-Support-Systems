@@ -4,38 +4,25 @@ import { createMockApplicationContext } from '../../../lib/testing/testing-utili
 import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
 import { TooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
-
-// Mock storage-queue humble object
-let mockSendMessage: ReturnType<typeof vi.fn>;
-
-vi.mock('../../../lib/humble-objects/storage-queue-humble', () => {
-  class MockStorageQueueHumbleObject {
-    sendMessage(...args: unknown[]) {
-      return mockSendMessage(...args);
-    }
-    static fromConnectionString() {
-      return new MockStorageQueueHumbleObject();
-    }
-  }
-  return { StorageQueueHumbleObject: MockStorageQueueHumbleObject };
-});
-
-vi.mock('../../../lib/use-cases/dataflows/resync-remaining-cases');
-vi.mock('../../../lib/use-cases/dataflows/export-and-load-case');
-vi.mock('../../../lib/use-cases/dataflows/dataflow-telemetry', () => ({
-  completeDataflowTrace: vi.fn(),
-}));
-
-// We need to import after mocking
-const { handlePage } = await import('./resync-remaining-cases');
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
+import * as DataflowTelemetry from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import { handlePage } from './resync-remaining-cases';
 
 describe('resync-remaining-cases handlePage', () => {
   let invocationContext: InvocationContext;
   const extraOutputsMap = new Map();
+  let sendMessageSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(async () => {
     vi.restoreAllMocks();
-    mockSendMessage = vi.fn().mockResolvedValue({});
+
+    sendMessageSpy = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(StorageQueueHumbleObject, 'fromConnectionString').mockReturnValue({
+      sendMessage: sendMessageSpy,
+    } as unknown as StorageQueueHumbleObject);
+
+    vi.spyOn(DataflowTelemetry, 'completeDataflowTrace').mockResolvedValue(undefined);
+
     process.env.AzureWebJobsDataflowsStorage =
       'DefaultEndpointsProtocol=https;AccountName=test;AccountKey=dGVzdA==;EndpointSuffix=core.windows.net';
     await createMockApplicationContext();
@@ -70,7 +57,7 @@ describe('resync-remaining-cases handlePage', () => {
 
     await handlePage(cursor, invocationContext);
 
-    const [payload, opts] = mockSendMessage.mock.calls[0];
+    const [payload, opts] = sendMessageSpy.mock.calls[0];
     expect(JSON.parse(payload)).toMatchObject({ retryCount: 1 });
     expect(opts).toEqual(30);
   });
@@ -91,7 +78,7 @@ describe('resync-remaining-cases handlePage', () => {
 
     await handlePage(cursor, invocationContext);
 
-    expect(mockSendMessage).toHaveBeenCalledWith(expect.any(String), 120);
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.any(String), 120);
   });
 
   test('should cap visibilityTimeout at 600 seconds', async () => {
@@ -110,7 +97,7 @@ describe('resync-remaining-cases handlePage', () => {
 
     await handlePage(cursor, invocationContext);
 
-    expect(mockSendMessage).toHaveBeenCalledWith(expect.any(String), 600);
+    expect(sendMessageSpy).toHaveBeenCalledWith(expect.any(String), 600);
   });
 
   test('should stop re-enqueueing when retryCount exceeds limit and log error', async () => {
@@ -129,7 +116,7 @@ describe('resync-remaining-cases handlePage', () => {
 
     await handlePage(cursor, invocationContext);
 
-    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
   test('should throw on non-transient page fetch errors', async () => {
@@ -148,7 +135,7 @@ describe('resync-remaining-cases handlePage', () => {
     await expect(handlePage(cursor, invocationContext)).rejects.toThrow(
       'Some unexpected database error',
     );
-    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 
   test('should continue pagination normally on success', async () => {
@@ -169,7 +156,7 @@ describe('resync-remaining-cases handlePage', () => {
 
     await handlePage(cursor, invocationContext);
 
-    expect(mockSendMessage).not.toHaveBeenCalled(); // no rate limit, no manual re-enqueue
+    expect(sendMessageSpy).not.toHaveBeenCalled(); // no rate limit, no manual re-enqueue
   });
 
   test('should reset retryCount on successful page fetch after prior rate limiting', async () => {
@@ -195,6 +182,6 @@ describe('resync-remaining-cases handlePage', () => {
     const nextCursor = [...extraOutputsMap.values()][0];
     expect(nextCursor).toBeDefined();
     expect(nextCursor.retryCount).toBeUndefined();
-    expect(mockSendMessage).not.toHaveBeenCalled();
+    expect(sendMessageSpy).not.toHaveBeenCalled();
   });
 });

@@ -1,30 +1,17 @@
 import { vi, describe, test, expect, beforeEach } from 'vitest';
+import { QueueServiceClient } from '@azure/storage-queue';
 import { StorageQueueHumbleObject } from './storage-queue-humble';
 
-let mockSendMessage: ReturnType<typeof vi.fn>;
-let mockGetQueueClient: ReturnType<typeof vi.fn>; // used by mock factory
-
-vi.mock('@azure/storage-queue', () => {
-  class MockQueueServiceClient {
-    getQueueClient(queueName: string) {
-      return mockGetQueueClient(queueName);
-    }
-    static fromConnectionString(_connectionString: string) {
-      return new MockQueueServiceClient();
-    }
-  }
-
-  return {
-    QueueServiceClient: MockQueueServiceClient,
-  };
-});
-
 describe('StorageQueueHumbleObject', () => {
+  let sendMessageMock: ReturnType<typeof vi.fn>;
+
   beforeEach(() => {
-    mockSendMessage = vi.fn().mockResolvedValue({});
-    mockGetQueueClient = vi.fn().mockReturnValue({
-      sendMessage: (...args: unknown[]) => mockSendMessage(...args),
-    });
+    vi.restoreAllMocks();
+    sendMessageMock = vi.fn().mockResolvedValue({});
+    const mockQueueClient = { sendMessage: sendMessageMock };
+    vi.spyOn(QueueServiceClient, 'fromConnectionString').mockReturnValue({
+      getQueueClient: vi.fn().mockReturnValue(mockQueueClient),
+    } as unknown as QueueServiceClient);
   });
 
   test('fromConnectionString creates a humble object that sends base64-encoded messages', async () => {
@@ -37,7 +24,7 @@ describe('StorageQueueHumbleObject', () => {
 
     await humble.sendMessage(message);
 
-    expect(mockSendMessage).toHaveBeenCalledWith(expectedBase64, { visibilityTimeout: undefined });
+    expect(sendMessageMock).toHaveBeenCalledWith(expectedBase64, { visibilityTimeout: undefined });
   });
 
   test('should pass visibilityTimeout when provided', async () => {
@@ -49,6 +36,6 @@ describe('StorageQueueHumbleObject', () => {
 
     await humble.sendMessage(message, 120);
 
-    expect(mockSendMessage).toHaveBeenCalledWith(expect.any(String), { visibilityTimeout: 120 });
+    expect(sendMessageMock).toHaveBeenCalledWith(expect.any(String), { visibilityTimeout: 120 });
   });
 });
