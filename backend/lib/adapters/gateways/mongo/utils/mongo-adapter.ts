@@ -447,7 +447,6 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
 
 // Cosmos DB signals 429 via error code 16500; some driver versions surface it only in the message.
 function isRateLimitError(error: unknown): boolean {
-  // Cosmos DB returns error code 16500 for 429 rate limit errors
   if (
     error instanceof Object &&
     'code' in error &&
