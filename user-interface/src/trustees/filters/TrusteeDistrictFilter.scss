@@ -67,7 +67,7 @@
         margin-top: 0;
 
         .combo-box-label .usa-label {
-          display: none;
+          @extend .usa-sr-only;
         }
       }
     }

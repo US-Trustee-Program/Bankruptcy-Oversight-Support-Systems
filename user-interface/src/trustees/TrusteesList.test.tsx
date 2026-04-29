@@ -494,7 +494,7 @@ describe('TrusteesList Component', () => {
 
       const { container } = renderWithRouter(<TrusteesList />);
 
-      await waitFor(() => expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument());
+      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
       await userEvent.setup().click(toggleButton);
@@ -504,7 +504,7 @@ describe('TrusteesList Component', () => {
       const chapterCombobox = screen.getByLabelText('Chapter');
       await userEvent.setup().click(chapterCombobox);
 
-      await waitFor(() => expect(screen.getByRole('option', { name: /option: 13/ })).toBeInTheDocument());
+      expect(await screen.findByRole('option', { name: /option: 13/ })).toBeInTheDocument();
       await userEvent.setup().click(screen.getByRole('option', { name: /option: 13/ }));
 
       await waitFor(() => {
@@ -597,7 +597,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       // Wait for default district filter (Manhattan) to be applied — shows A and B
-      await waitFor(() => expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument());
+      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
 
       // Now select chapter 7
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -605,7 +605,7 @@ describe('TrusteesList Component', () => {
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       const chapterCombobox = screen.getByLabelText('Chapter');
       await userEvent.setup().click(chapterCombobox);
-      await waitFor(() => expect(screen.getByRole('option', { name: /option: 7/ })).toBeInTheDocument());
+      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
       await userEvent.setup().click(screen.getByRole('option', { name: /option: 7/ }));
 
       // Only Trustee A (ch7 + Manhattan) should remain
@@ -639,7 +639,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderWithRouter(<TrusteesList />);
-      await waitFor(() => expect(screen.getByText('3 Trustee(s)', { selector: 'p' })).toBeInTheDocument());
+      expect(await screen.findByText('3 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -648,9 +648,9 @@ describe('TrusteesList Component', () => {
 
       const chapterCombobox = screen.getByLabelText('Chapter');
       await user.click(chapterCombobox);
-      await waitFor(() => expect(screen.getByRole('option', { name: /option: 7/ })).toBeInTheDocument());
+      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
       await user.click(screen.getByRole('option', { name: /option: 7/ }));
-      await waitFor(() => expect(screen.getByRole('option', { name: /option: 13/ })).toBeInTheDocument());
+      expect(await screen.findByRole('option', { name: /option: 13/ })).toBeInTheDocument();
       await user.click(screen.getByRole('option', { name: /option: 13/ }));
 
       await waitFor(() => {
@@ -678,7 +678,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderWithRouter(<TrusteesList />);
-      await waitFor(() => expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument());
+      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
 
       const liveRegion = screen.getByRole('status');
       expect(liveRegion).toHaveTextContent('2 Trustee(s)');
@@ -689,7 +689,7 @@ describe('TrusteesList Component', () => {
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       const chapterCombobox = screen.getByLabelText('Chapter');
       await user.click(chapterCombobox);
-      await waitFor(() => expect(screen.getByRole('option', { name: /option: 7/ })).toBeInTheDocument());
+      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
       await user.click(screen.getByRole('option', { name: /option: 7/ }));
 
       await waitFor(() => {
@@ -711,7 +711,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderWithRouter(<TrusteesList />);
-      await waitFor(() => expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument());
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -719,7 +719,7 @@ describe('TrusteesList Component', () => {
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       const chapterCombobox = screen.getByLabelText('Chapter');
       await user.click(chapterCombobox);
-      await waitFor(() => expect(screen.getByRole('option', { name: /option: 7/ })).toBeInTheDocument());
+      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
       await user.click(screen.getByRole('option', { name: /option: 7/ }));
 
       await waitFor(() => {
