@@ -7,9 +7,7 @@ import { isNotFoundError } from '../../common-errors/not-found-error';
 const LAUNCH_DATE = '2026-04-28T00:00:00.000Z';
 
 export type Trustee742Metrics = {
-  // Count of trustee list fetches since last sync — proxy for sort adoption
-  // (trustee list is sorted by last name post-742; each load reflects that sort)
-  trusteeListFetchCount: number;
+  trusteeFetchedCount: number;
   nameEditsTotal: number;
   nameEditsMigrated: number;
   nameEditsNonMigrated: number;
@@ -55,7 +53,7 @@ export class Trustee742MetricsUseCase {
     await stateRepo.upsert({ documentType: 'TRUSTEE_742_METRICS_STATE', lastSyncDate: runAt });
 
     return {
-      trusteeListFetchCount: trustees.length,
+      trusteeFetchedCount: trustees.length,
       nameEditsTotal: nameEditCounts.total,
       nameEditsMigrated: nameEditCounts.migrated,
       nameEditsNonMigrated: nameEditCounts.nonMigrated,
