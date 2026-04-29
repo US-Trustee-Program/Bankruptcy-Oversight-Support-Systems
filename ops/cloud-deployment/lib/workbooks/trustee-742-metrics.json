@@ -73,7 +73,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | summarize by session_Id;\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | summarize DidSort = true by session_Id;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize TotalSessions = count(), SortedSessions = countif(DidSort == true)\n| project SortAdoptionPct = round(100.0 * SortedSessions / TotalSessions, 1), TotalSessions, SortedSessions",
+        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | distinct session_Id;\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | extend DidSort = true\n    | distinct session_Id, DidSort;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize TotalSessions = count(), SortedSessions = countif(DidSort == true)\n| project SortAdoptionPct = round(100.0 * SortedSessions / TotalSessions, 1), TotalSessions, SortedSessions",
         "size": 3,
         "title": "Sort Adoption Rate",
         "timeContextFromParameter": "TimeRange",
@@ -173,7 +173,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | summarize by session_Id, Day = startofday(timestamp);\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | summarize DidSort = true by session_Id;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize TotalSessions = count(), SortedSessions = countif(DidSort == true) by Day\n| project Day, SortAdoptionPct = round(100.0 * SortedSessions / TotalSessions, 1)\n| order by Day asc",
+        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | extend Day = startofday(timestamp)\n    | distinct session_Id, Day;\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | extend DidSort = true\n    | distinct session_Id, DidSort;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize TotalSessions = count(), SortedSessions = countif(DidSort == true) by Day\n| project Day, SortAdoptionPct = round(100.0 * SortedSessions / TotalSessions, 1)\n| order by Day asc",
         "size": 0,
         "title": "Sort Adoption Over Time",
         "timeContextFromParameter": "TimeRange",
@@ -352,7 +352,7 @@
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-1fee48/providers/Microsoft.Insights/components/appi-ustp-cams-dev-1fee48-dataflows"
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-5d5564/providers/Microsoft.Insights/components/appi-ustp-cams-dev-5d5564-webapp"
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
