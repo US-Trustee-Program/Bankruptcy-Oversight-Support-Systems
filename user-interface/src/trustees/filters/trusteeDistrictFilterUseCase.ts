@@ -9,7 +9,11 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { sortByCourtLocation, groupDivisionsByDistrict } from '@/lib/utils/court-utils';
+import {
+  sortByCourtLocation,
+  groupDivisionsByDistrict,
+  separateDefaultOptions,
+} from '@/lib/utils/court-utils';
 
 const toDistrictOption = (
   district: CourtDivisionDetails,
@@ -73,35 +77,20 @@ const trusteeDistrictFilterUseCase = (
       Array.from(districtMap.values()).map((divisions) => divisions[0]),
     );
 
-    const uniqueDistricts = sortedRepresentatives.map((representative) => ({
-      representative,
-      divisionCodes: districtMap.get(representative.courtName)!.map((d) => d.courtDivisionCode),
-    }));
+    // Convert to ComboOptions
+    const allOptions = sortedRepresentatives.map((representative) => {
+      const divisions = districtMap.get(representative.courtName)!;
+      return toDistrictOption(
+        representative,
+        divisions.map((d) => d.courtDivisionCode),
+      );
+    });
 
-    // Separate defaults from non-defaults
+    // Separate defaults from non-defaults and mark them
     const defaultCodesFlat = new Set(
       (store.defaultDistricts || []).flatMap((d) => d.value.split(',')),
     );
-    const defaults = uniqueDistricts.filter((d) =>
-      d.divisionCodes.some((code) => defaultCodesFlat.has(code)),
-    );
-    const nonDefaults = uniqueDistricts.filter(
-      (d) => !d.divisionCodes.some((code) => defaultCodesFlat.has(code)),
-    );
-
-    const result: ComboOption[] = [];
-    defaults.forEach((district, i) => {
-      result.push({
-        ...toDistrictOption(district.representative, district.divisionCodes),
-        isAriaDefault: true,
-        divider: i === defaults.length - 1 && nonDefaults.length > 0,
-      });
-    });
-    nonDefaults.forEach((district) => {
-      result.push(toDistrictOption(district.representative, district.divisionCodes));
-    });
-
-    return result;
+    return separateDefaultOptions(allOptions, defaultCodesFlat);
   };
 
   const notifySelectionChange = (districts: ComboOption[]) => {
