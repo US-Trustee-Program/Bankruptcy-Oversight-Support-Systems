@@ -132,3 +132,50 @@ export function groupDivisionsByDistrict(
   });
   return districtMap;
 }
+
+/**
+ * Separates ComboBox options into defaults and non-defaults with proper accessibility markup.
+ *
+ * User default options are placed first in the list, marked with `isAriaDefault: true` for
+ * screen readers, and separated from other options with a visual divider on the last default.
+ *
+ * @param allOptions - All available ComboBox options
+ * @param defaultValues - Set of values that should be treated as defaults
+ * @returns Ordered array with defaults first (marked and divided), then non-defaults
+ *
+ * @example
+ * const options = [
+ *   { value: "081", label: "Southern District of NY" },
+ *   { value: "088", label: "District of Vermont" },
+ *   { value: "089", label: "Eastern District of CA" }
+ * ];
+ * const defaults = new Set(["081", "088"]);
+ * const result = separateDefaultOptions(options, defaults);
+ * // [
+ * //   { value: "081", label: "...", isAriaDefault: true, divider: false },
+ * //   { value: "088", label: "...", isAriaDefault: true, divider: true },  ← divider
+ * //   { value: "089", label: "..." }
+ * // ]
+ */
+export function separateDefaultOptions(
+  allOptions: { value: string; label: string; [key: string]: unknown }[],
+  defaultValues: Set<string>,
+): {
+  value: string;
+  label: string;
+  isAriaDefault?: boolean;
+  divider?: boolean;
+  [key: string]: unknown;
+}[] {
+  const defaults = allOptions.filter((opt) => defaultValues.has(opt.value));
+  const nonDefaults = allOptions.filter((opt) => !defaultValues.has(opt.value));
+
+  // Mark defaults and add divider to last one if non-defaults exist
+  const markedDefaults = defaults.map((opt, i) => ({
+    ...opt,
+    isAriaDefault: true,
+    divider: i === defaults.length - 1 && nonDefaults.length > 0,
+  }));
+
+  return [...markedDefaults, ...nonDefaults];
+}
