@@ -9,8 +9,17 @@ import TestingUtilities from '@/lib/testing/testing-utilities';
 import Api2 from '@/lib/models/api2';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { testFeatureFlags } from '@common/feature-flags';
+import * as LaunchDarkly from 'launchdarkly-react-client-sdk';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
+vi.mock('launchdarkly-react-client-sdk', () => ({
+  useLDClient: vi.fn(() => ({
+    waitForInitialization: vi.fn().mockResolvedValue(undefined),
+    allFlags: vi.fn().mockReturnValue({}),
+  })),
+  withLDProvider: vi.fn(() => (component: React.ComponentType) => component),
+  useFlags: vi.fn(() => ({})),
+}));
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
 
 const mockOnEditPublicProfile = vi.fn();
@@ -88,6 +97,11 @@ describe('TrusteeDetailScreen', () => {
 
     vi.spyOn(Api2, 'getTrusteeNotes').mockResolvedValue({ data: [] });
     mockUseFeatureFlags.mockReturnValue(testFeatureFlags);
+
+    // Mock LaunchDarkly for GoHome component
+    vi.mocked(LaunchDarkly.useLDClient).mockReturnValue({
+      waitForInitialization: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ReturnType<typeof LaunchDarkly.useLDClient>);
   });
 
   afterEach(() => {
@@ -561,7 +575,8 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter(['/trustees/123/appointments/appt-1/upcoming-key-dates/edit']);
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/my-cases');
+        // When feature flag is disabled, GoHome is rendered instead of the edit form
+        expect(screen.queryByTestId('edit-upcoming-key-dates')).not.toBeInTheDocument();
       });
     });
   });
@@ -625,7 +640,10 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter(['/trustees/123/other/edit']);
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/my-cases');
+        // When feature flag is disabled, GoHome is rendered instead of the edit form
+        expect(
+          screen.queryByRole('heading', { level: 2, name: 'Edit Other Trustee Information' }),
+        ).not.toBeInTheDocument();
       });
     });
   });
@@ -653,7 +671,8 @@ describe('TrusteeDetailScreen', () => {
       renderWithRouter(['/trustees/123/assigned-staff']);
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith('/my-cases');
+        // When feature flag is disabled, GoHome is rendered instead of the assigned staff component
+        expect(screen.queryByTestId('trustee-assigned-staff-container')).not.toBeInTheDocument();
       });
     });
   });

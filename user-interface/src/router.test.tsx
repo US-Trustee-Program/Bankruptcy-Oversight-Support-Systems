@@ -52,7 +52,11 @@ describe('App Router Tests', () => {
   });
 
   test('should route /search to SearchScreen', async () => {
-    render(<App />, { wrapper: BrowserRouter });
+    render(
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>,
+    );
 
     expect(screen.getByTestId('header-search-link')).toBeVisible();
 
@@ -87,7 +91,7 @@ describe('App Router Tests', () => {
     });
   });
 
-  test('should render My Cases page when an invalid URL is supplied', async () => {
+  test('should render landing page when an invalid URL is supplied', async () => {
     const badRoute = '/some/bad/route';
 
     // use <MemoryRouter> when you want to manually control the history
@@ -97,9 +101,10 @@ describe('App Router Tests', () => {
       </MemoryRouter>,
     );
 
-    // verify navigation to "no match" route
+    // verify navigation to "no match" route redirects to landing page
+    // In test mode, case-search-landing-page feature flag is true, so it goes to Case Search
     await waitFor(() => {
-      expect(document.querySelector('h1')).toHaveTextContent('My Cases');
+      expect(document.querySelector('h1')).toHaveTextContent('Case Search');
     });
   });
 

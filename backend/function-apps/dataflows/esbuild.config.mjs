@@ -8,7 +8,6 @@ esbuild
     outfile: 'dist/dataflows.js',
   })
   .catch((err) => {
-
     console.error('Build failed:', err);
 
     process.exit(1);

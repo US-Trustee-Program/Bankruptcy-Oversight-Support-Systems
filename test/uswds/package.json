@@ -2,11 +2,11 @@
   "name": "uswds",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "USWDS Component Showcase - Testing Environment",
+  "type": "module",
   "scripts": {
-    "dev": "vite",
     "build": "tsc && vite build",
+    "dev": "vite",
     "preview": "vite preview",
     "typecheck": "npx tsc --noEmit"
   },

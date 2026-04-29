@@ -15,6 +15,7 @@ import { REGION_02_GROUP_NY } from '@common/cams/test-utilities/mock-user';
 import { getCourtDivisionCodes } from '@common/cams/users';
 import * as UseFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
 import * as courtUtils from '@/lib/utils/court-utils';
+import * as UseLandingPageAnalyticsModule from '@/lib/hooks/UseLandingPageAnalytics';
 
 describe('search screen', () => {
   const userOffices = [REGION_02_GROUP_NY];
@@ -1064,5 +1065,80 @@ describe('debtor name search', () => {
 
     expect(validation.isValid).toBe(false);
     expect(validation.formValidationError).toBe('Please enter at least one search criterion');
+  });
+});
+
+describe('SearchScreen analytics integration', () => {
+  const userOffices = [REGION_02_GROUP_NY];
+  const user = MockData.getCamsUser({ offices: userOffices });
+  const session = MockData.getCamsSession({ user });
+  const caseList = MockData.buildArray(MockData.getSyncedCase, 2);
+  const searchResponseBody: ResponseBody<SyncedCase[]> = {
+    meta: { self: 'self-url' },
+    pagination: {
+      count: caseList.length,
+      currentPage: 1,
+      limit: DEFAULT_SEARCH_LIMIT,
+    },
+    data: caseList,
+  };
+  let userEvent: CamsUserEvent;
+  let trackNavigationMock: ReturnType<typeof vi.fn>;
+  let trackFirstSearchMock: ReturnType<typeof vi.fn>;
+
+  function renderWithoutProps() {
+    render(
+      <BrowserRouter>
+        <SearchScreen></SearchScreen>
+      </BrowserRouter>,
+    );
+  }
+
+  beforeEach(async () => {
+    vi.stubEnv('CAMS_USE_FAKE_API', 'true');
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue(searchResponseBody);
+    vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+    userEvent = TestingUtilities.setupUserEvent();
+
+    trackNavigationMock = vi.fn();
+    trackFirstSearchMock = vi.fn();
+
+    vi.spyOn(UseLandingPageAnalyticsModule, 'useLandingPageAnalytics').mockReturnValue({
+      trackNavigation: trackNavigationMock as (toPage: string) => void,
+      trackFirstSearch: trackFirstSearchMock as (
+        searchType: 'case-number' | 'debtor-name' | 'ssn' | 'other',
+      ) => void,
+    });
+  });
+
+  test('should call analytics hook with correct landing page parameter', async () => {
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(UseLandingPageAnalyticsModule.useLandingPageAnalytics).toHaveBeenCalledWith(
+        'case-search',
+      );
+    });
+  });
+
+  test('should track first search action regardless of navigation method', async () => {
+    // After removing LandingPageContext, SearchScreen now tracks first search for any user on /search
+    renderWithoutProps();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    await waitFor(() => {
+      expect(caseNumberInput).toBeEnabled();
+    });
+
+    await userEvent.type(caseNumberInput, '00-11111');
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeVisible();
+    });
+
+    // Should track first search action
+    expect(trackFirstSearchMock).toHaveBeenCalledWith('case-number');
   });
 });

@@ -33,6 +33,7 @@ import useFeatureFlags, {
   PHONETIC_SEARCH_ENABLED,
   SHOW_DEBTOR_NAME_COLUMN,
 } from '@/lib/hooks/UseFeatureFlags';
+import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -65,6 +66,7 @@ export default function SearchScreen() {
   const featureFlags = useFeatureFlags();
   const phoneticSearchEnabled = featureFlags[PHONETIC_SEARCH_ENABLED] === true;
   const showDebtorNameColumn = featureFlags[SHOW_DEBTOR_NAME_COLUMN] === true;
+  const analytics = useLandingPageAnalytics('case-search');
 
   const session = LocalStorage.getSession();
   const userCourtDivisionCodes = getCourtDivisionCodes(session!.user);
@@ -275,6 +277,14 @@ export default function SearchScreen() {
     // Only perform search if validation passes
     if (validation.isValid) {
       setSearchPredicate(currentPredicate);
+
+      // Track first search action for analytics
+      const searchType = currentPredicate.caseNumber
+        ? 'case-number'
+        : currentPredicate.debtorName
+          ? 'debtor-name'
+          : 'other';
+      analytics.trackFirstSearch(searchType);
     }
   }
 
