@@ -11,9 +11,7 @@ import { CamsRole } from '@common/cams/roles';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
-import { useState, useEffect } from 'react';
-import Api2 from '@/lib/models/api2';
-import { CourtDivisionDetails } from '@common/cams/courts';
+import useCourts from '@/lib/hooks/UseCourts';
 import { getDivisionsForDistrict } from '@/lib/utils/court-utils';
 
 export interface AppointmentCardProps {
@@ -46,21 +44,12 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
 
-  const [allCourts, setAllCourts] = useState<CourtDivisionDetails[]>([]);
+  // Use shared courts hook to avoid redundant API calls
+  const { courts: allCourts, error: courtsError } = useCourts();
 
-  // Load courts data for division name lookup
-  useEffect(() => {
-    const loadCourts = async () => {
-      try {
-        const response = await Api2.getCourts();
-        setAllCourts(response.data);
-      } catch (err) {
-        console.error('Error loading courts:', err);
-      }
-    };
-
-    loadCourts();
-  }, []);
+  if (courtsError) {
+    console.error('Error loading courts:', courtsError);
+  }
 
   // Build district display with guards for missing data
   // Use court name (e.g., "Eastern District of Missouri") populated by backend enrichment
