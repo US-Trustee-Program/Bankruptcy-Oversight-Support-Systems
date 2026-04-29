@@ -274,6 +274,9 @@ resource casesCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases
               '_id'
             ]
           }
+          options: {
+            sparse: true
+          }
         }
       ]
     }

@@ -109,9 +109,16 @@ export async function handlePage(
   cursor: ResyncRemainingCursorMessage,
   invocationContext: InvocationContext,
 ) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  const currentRetryCount = Math.max(0, Math.min(cursor.retryCount ?? 0, RATE_LIMIT_RETRY_LIMIT));
 
   const result = await ResyncRemainingCasesUseCase.getPageOfRemainingCasesByCursor(
     context,
@@ -122,7 +129,6 @@ export async function handlePage(
 
   if (result.error || !result.data) {
     if (isTooManyRequestsError(result.error)) {
-      const currentRetryCount = cursor.retryCount ?? 0;
       if (currentRetryCount >= RATE_LIMIT_RETRY_LIMIT) {
         logger.error(
           MODULE_NAME,
@@ -148,11 +154,16 @@ export async function handlePage(
         MODULE_NAME,
         `Rate limited (429) fetching page at cursor ${cursor.lastId ?? 'start'}. Retrying in ${visibilityTimeout}s (attempt ${nextRetryCount}/${RATE_LIMIT_RETRY_LIMIT}).`,
       );
+      logger.info(
+        MODULE_NAME,
+        JSON.stringify({
+          event: 'rate-limit-backoff',
+          cursor: cursor.lastId ?? 'start',
+          retryCount: nextRetryCount,
+          visibilityTimeoutSeconds: visibilityTimeout,
+        }),
+      );
 
-      const connectionString = process.env.AzureWebJobsDataflowsStorage;
-      if (!connectionString) {
-        throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
-      }
       const queueClient = StorageQueueHumbleObject.fromConnectionString(
         connectionString,
         PAGE.queueName,
