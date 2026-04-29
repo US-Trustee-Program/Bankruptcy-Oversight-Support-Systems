@@ -234,7 +234,7 @@ describe('trustee district filter use case tests', () => {
 
       expect(defaultDistricts).toHaveLength(1);
       expect(defaultDistricts[0]).toEqual({
-        value: '081',
+        value: '081,087',
         label: 'Southern District of New York',
       });
     });
@@ -304,7 +304,7 @@ describe('trustee district filter use case tests', () => {
       expect(defaultDistricts).toHaveLength(2);
       expect(defaultDistricts).toEqual(
         expect.arrayContaining([
-          { value: '081', label: 'Southern District of New York' },
+          { value: '081,087', label: 'Southern District of New York' },
           { value: '088', label: 'District of Vermont' },
         ]),
       );
@@ -498,7 +498,7 @@ describe('trustee district filter use case tests', () => {
       await useCase.fetchDistricts();
 
       expect(mockOnFilterDistrict).toHaveBeenCalledWith([
-        { value: '081', label: 'Southern District of New York' },
+        { value: '081,087', label: 'Southern District of New York' },
       ]);
     });
 
