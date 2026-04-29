@@ -15,6 +15,7 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
 import Icon from '@/lib/components/uswds/Icon';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
+import { sortByCourtLocation } from '@/lib/utils/court-utils';
 
 const COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
 
@@ -31,18 +32,6 @@ function toColClass(header: string): string {
 
 function formatDistrict(appointment: TrusteeListItem['appointments'][number]): string {
   return appointment.courtName ?? appointment.courtId;
-}
-
-function parseDistrictName(courtName: string): { state: string; region: string } {
-  // Extract state: everything after "District of " or use entire name as fallback
-  const districtOfMatch = courtName.match(/District of (.+)$/i);
-  const state = districtOfMatch ? districtOfMatch[1] : courtName;
-
-  // Extract region: everything before "District of" (e.g., "Southern", "Eastern", "Western", "Northern")
-  const regionMatch = courtName.match(/^(.+?)\s+District of/i);
-  const region = regionMatch ? regionMatch[1] : '';
-
-  return { state, region };
 }
 
 export default function TrusteesList() {
@@ -116,29 +105,10 @@ export default function TrusteesList() {
       return sortDirection === 'asc' ? cmp : -cmp;
     });
 
-    // Sort appointments within each trustee by state, then region, then chapter
+    // Sort appointments within each trustee by state, court, division, chapter, and appointment type
     const sortedWithAppointments = sorted.map((trustee) => ({
       ...trustee,
-      appointments: [...trustee.appointments].sort((a, b) => {
-        const districtA = a.courtName ?? a.courtId ?? '';
-        const districtB = b.courtName ?? b.courtId ?? '';
-
-        const { state: stateA, region: regionA } = parseDistrictName(districtA);
-        const { state: stateB, region: regionB } = parseDistrictName(districtB);
-
-        // First sort by state
-        const stateCmp = stateA.localeCompare(stateB, undefined, { sensitivity: 'base' });
-        if (stateCmp !== 0) return stateCmp;
-
-        // Then sort by region (Western, Southern, Eastern, Northern, etc.)
-        const regionCmp = regionA.localeCompare(regionB, undefined, { sensitivity: 'base' });
-        if (regionCmp !== 0) return regionCmp;
-
-        // Finally sort by chapter
-        const chapterA = a.chapter ?? '';
-        const chapterB = b.chapter ?? '';
-        return chapterA.localeCompare(chapterB, undefined, { sensitivity: 'base' });
-      }),
+      appointments: sortByCourtLocation(trustee.appointments, { includeAppointmentDetails: true }),
     }));
 
     const announcement =

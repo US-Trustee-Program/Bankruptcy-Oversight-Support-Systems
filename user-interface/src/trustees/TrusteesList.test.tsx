@@ -859,11 +859,11 @@ describe('TrusteesList Component', () => {
         expect(pills.length).toBeGreaterThan(1);
       });
 
-      // Click remove button on one of the pills
-      const removeButtons = screen.getAllByRole('button', {
-        name: /remove southern district of new york filter/i,
+      // Click remove button on one of the pills (PillBox component)
+      const pillButton = screen.getByRole('button', {
+        name: /southern district of new york selected.*click to deselect/i,
       });
-      await user.click(removeButtons[0]);
+      await user.click(pillButton);
 
       // Should remove the filter and show all trustees
       await waitFor(() => {

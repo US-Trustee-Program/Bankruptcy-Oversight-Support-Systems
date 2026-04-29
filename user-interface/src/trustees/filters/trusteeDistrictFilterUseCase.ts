@@ -9,11 +9,7 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-
-const sortByState = (a: CourtDivisionDetails, b: CourtDivisionDetails) =>
-  (a.state || '').localeCompare(b.state || '') ||
-  a.courtName.localeCompare(b.courtName) ||
-  a.courtDivisionCode.localeCompare(b.courtDivisionCode);
+import { sortByCourtLocation } from '@/lib/utils/court-utils';
 
 const toDistrictOption = (
   district: CourtDivisionDetails,
@@ -55,14 +51,17 @@ const getDefaultDistrictsFromSession = (
     });
 
   // Convert to ComboOptions, one per unique district
-  return Array.from(districtMap.values())
-    .sort((a, b) => sortByState(a[0], b[0]))
-    .map((divisions) =>
-      toDistrictOption(
-        divisions[0],
-        divisions.map((d) => d.courtDivisionCode),
-      ),
+  const sortedDistricts = sortByCourtLocation(
+    Array.from(districtMap.values()).map((divisions) => divisions[0]),
+  );
+
+  return sortedDistricts.map((district) => {
+    const divisions = districtMap.get(district.courtName)!;
+    return toDistrictOption(
+      district,
+      divisions.map((d) => d.courtDivisionCode),
     );
+  });
 };
 
 const trusteeDistrictFilterUseCase = (
@@ -82,13 +81,15 @@ const trusteeDistrictFilterUseCase = (
       districtMap.get(key)!.push(district);
     });
 
-    // Convert to unique districts
-    const uniqueDistricts = Array.from(districtMap.values())
-      .map((divisions) => ({
-        representative: divisions[0],
-        divisionCodes: divisions.map((d) => d.courtDivisionCode),
-      }))
-      .sort((a, b) => sortByState(a.representative, b.representative));
+    // Convert to unique districts and sort by court location
+    const sortedRepresentatives = sortByCourtLocation(
+      Array.from(districtMap.values()).map((divisions) => divisions[0]),
+    );
+
+    const uniqueDistricts = sortedRepresentatives.map((representative) => ({
+      representative,
+      divisionCodes: districtMap.get(representative.courtName)!.map((d) => d.courtDivisionCode),
+    }));
 
     // Separate defaults from non-defaults
     const defaultCodesFlat = new Set(
@@ -167,11 +168,6 @@ const trusteeDistrictFilterUseCase = (
     store.setIsExpanded(!store.isExpanded);
   };
 
-  const handleRemovePill = (district: ComboOption) => {
-    const updatedDistricts = store.selectedDistricts.filter((d) => d.value !== district.value);
-    handleFilterChange(updatedDistricts);
-  };
-
   return {
     districtsToComboOptions,
     fetchDistricts,
@@ -180,7 +176,6 @@ const trusteeDistrictFilterUseCase = (
     handleFilterChange,
     handleClearAll,
     handleToggleExpanded,
-    handleRemovePill,
   };
 };
 
