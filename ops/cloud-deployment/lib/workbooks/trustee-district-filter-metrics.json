@@ -434,6 +434,91 @@
     {
       "type": 1,
       "content": {
+        "json": "---\n## Chapter Filter Popularity\nHow often each chapter is selected, based on `selectedChapterValues` in the `Trustee Chapter Filter Changed` event."
+      },
+      "name": "chapter-popularity-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Chapter Filter Changed\"\n| extend selectedChapterValues = tostring(customDimensions.selectedChapterValues)\n| where isnotempty(selectedChapterValues)\n| mv-expand Chapter = split(selectedChapterValues, \",\")\n| extend ChapterLabel = case(\n    Chapter == \"7\", \"7\",\n    Chapter == \"11\", \"11\",\n    Chapter == \"11-subchapter-v\", \"11 Subchapter V\",\n    Chapter == \"12\", \"12\",\n    Chapter == \"13\", \"13\",\n    tostring(Chapter)\n  )\n| summarize SelectionCount = count() by ChapterLabel\n| order by SelectionCount desc",
+        "size": 0,
+        "title": "Chapter Filter Selection Frequency",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart",
+        "chartSettings": {
+          "xAxis": "ChapterLabel",
+          "yAxis": ["SelectionCount"],
+          "seriesLabelSettings": [
+            {
+              "seriesName": "SelectionCount",
+              "label": "Times Selected",
+              "color": "blue"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "customWidth": "50",
+      "name": "chapter-selection-frequency"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Combined Filter Usage\nHow often users apply both district and chapter filters at the same time. Incremented on each filter change event where both `selectedCount` (district) and `chapterCount`/`districtCount` > 0."
+      },
+      "name": "combined-filter-usage-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let DistrictWithChapter =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | extend districtCount = toint(customDimensions.selectedCount)\n    | extend chapterCount = toint(customDimensions.chapterCount)\n    | where districtCount > 0 and chapterCount > 0\n    | count;\nlet ChapterWithDistrict =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Chapter Filter Changed\"\n    | extend chapterCount = toint(customDimensions.selectedCount)\n    | extend districtCount = toint(customDimensions.districtCount)\n    | where chapterCount > 0 and districtCount > 0\n    | count;\nlet DistrictOnly =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | extend districtCount = toint(customDimensions.selectedCount)\n    | extend chapterCount = toint(customDimensions.chapterCount)\n    | where districtCount > 0 and (isnull(chapterCount) or chapterCount == 0)\n    | count;\nlet ChapterOnly =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Chapter Filter Changed\"\n    | extend chapterCount = toint(customDimensions.selectedCount)\n    | extend districtCount = toint(customDimensions.districtCount)\n    | where chapterCount > 0 and (isnull(districtCount) or districtCount == 0)\n    | count;\nprint\n    DistrictOnly = toscalar(DistrictOnly),\n    ChapterOnly = toscalar(ChapterOnly),\n    BothFilters = toscalar(DistrictWithChapter) + toscalar(ChapterWithDistrict)",
+        "size": 3,
+        "title": "Filter Combination Usage",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "BothFilters",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "DistrictOnly",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "50",
+      "name": "combined-filter-usage-kpi"
+    },
+    {
+      "type": 1,
+      "content": {
         "json": "---\n## Performance Tracking\nFilter response time and page load time for the trustee list."
       },
       "name": "performance-header"

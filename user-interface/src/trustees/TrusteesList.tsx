@@ -142,7 +142,12 @@ export default function TrusteesList() {
 
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee District Filter Changed' },
-      { isDefault, selectedCount: selectedDistricts.length, resultCount },
+      {
+        isDefault,
+        selectedCount: selectedDistricts.length,
+        resultCount,
+        chapterCount: selectedChapters.length,
+      },
     );
   }, [selectedDistricts, selectedChapters, trustees]);
 
@@ -153,7 +158,12 @@ export default function TrusteesList() {
 
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee Chapter Filter Changed' },
-      { selectedCount: selectedChapters.length, resultCount },
+      {
+        selectedCount: selectedChapters.length,
+        resultCount,
+        districtCount: selectedDistricts.length,
+        selectedChapterValues: selectedChapters.map((c) => c.value).join(','),
+      },
     );
   }, [selectedChapters, selectedDistricts, trustees]);
 
