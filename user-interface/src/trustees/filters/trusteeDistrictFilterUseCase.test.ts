@@ -113,20 +113,16 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('districtsToComboOptions', () => {
-    test('should return all divisions sorted by state then court name', () => {
+    test('should return unique districts with all division codes, sorted by state then court name', () => {
       const comboOptions = useCase.districtsToComboOptions(mockDistricts);
 
-      expect(comboOptions).toHaveLength(3);
-      // NY sorts before VT
+      expect(comboOptions).toHaveLength(2);
+      // NY sorts before VT, and Southern District of NY includes both division codes
       expect(comboOptions[0]).toEqual({
-        value: '081',
+        value: '081,087',
         label: 'Southern District of New York',
       });
       expect(comboOptions[1]).toEqual({
-        value: '087',
-        label: 'Southern District of New York',
-      });
-      expect(comboOptions[2]).toEqual({
         value: '088',
         label: 'District of Vermont',
       });
@@ -137,7 +133,7 @@ describe('trustee district filter use case tests', () => {
 
       const comboOptions = useCase.districtsToComboOptions(mockDistricts);
 
-      expect(comboOptions).toHaveLength(3);
+      expect(comboOptions).toHaveLength(2);
       // Default appears first with divider and isAriaDefault
       expect(comboOptions[0]).toEqual({
         value: '088',
@@ -145,13 +141,9 @@ describe('trustee district filter use case tests', () => {
         isAriaDefault: true,
         divider: true,
       });
-      // Non-defaults follow, sorted by state
+      // Non-defaults follow, sorted by state (Southern District of NY with both divisions)
       expect(comboOptions[1]).toEqual({
-        value: '081',
-        label: 'Southern District of New York',
-      });
-      expect(comboOptions[2]).toEqual({
-        value: '087',
+        value: '081,087',
         label: 'Southern District of New York',
       });
     });
@@ -162,7 +154,7 @@ describe('trustee district filter use case tests', () => {
       expect(comboOptions).toEqual([]);
     });
 
-    test('should show all divisions even if they share the same district', () => {
+    test('should deduplicate districts and include all division codes in value', () => {
       const multiDivisionDistricts: CourtDivisionDetails[] = [
         ...mockDistricts,
         {
@@ -174,9 +166,11 @@ describe('trustee district filter use case tests', () => {
 
       const comboOptions = useCase.districtsToComboOptions(multiDivisionDistricts);
 
-      // Should have 4 divisions now (3 original + 1 new)
-      expect(comboOptions).toHaveLength(4);
-      expect(comboOptions.some((o) => o.value === '999')).toBe(true);
+      // Should have 2 unique districts (Southern District of NY and District of VT)
+      expect(comboOptions).toHaveLength(2);
+      // Southern District of NY should now include 3 division codes
+      expect(comboOptions[0].value).toBe('081,087,999');
+      expect(comboOptions[0].label).toBe('Southern District of New York');
     });
   });
 

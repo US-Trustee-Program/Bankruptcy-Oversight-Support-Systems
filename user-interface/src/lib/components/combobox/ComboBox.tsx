@@ -458,7 +458,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           ) as HTMLElement;
 
           if (selectedElement && typeof selectedElement.scrollIntoView === 'function') {
-            selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            selectedElement.scrollIntoView({ block: 'nearest', behavior: 'instant' });
           }
         });
       }

@@ -26,6 +26,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   pluralLabel="districts"
                   singularLabel="district"
                   placeholder="- Select one or more -"
+                  scrollToSelected={true}
                   ref={viewModel.districtFilterRef}
                 />
               </div>
