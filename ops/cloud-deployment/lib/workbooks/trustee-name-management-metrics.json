@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# CAMS-742 Trustee Name Management Metrics\n\nSuccess metrics for CAMS-742: last-name sort adoption and post-launch name correction patterns.\n\n**Measurements:**\n- **Sort adoption** — percentage of trustee list page loads where the user clicked the sort button\n- **Name edits** — trustee name changes since launch, segmented by migrated vs non-migrated trustees"
+        "json": "# Trustee Name Management Metrics\n\nSuccess metrics for trustee name management: last-name sort adoption and post-launch name correction patterns.\n\n**Measurements:**\n- **Sort adoption** — percentage of trustee list page loads where the user clicked the sort button\n- **Name edits** — trustee name changes since launch, segmented by migrated vs non-migrated trustees"
       },
       "name": "header"
     },
