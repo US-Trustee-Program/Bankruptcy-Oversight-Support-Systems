@@ -158,15 +158,15 @@ describe('TrusteesList Component', () => {
       expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Southern District of New York (Manhattan)')).toBeInTheDocument();
-    expect(screen.getByText('District of Vermont (Burlington)')).toBeInTheDocument();
+    expect(screen.getByText('Southern District of New York')).toBeInTheDocument();
+    expect(screen.getByText('District of Vermont')).toBeInTheDocument();
     expect(screen.getByText('Panel')).toBeInTheDocument();
     expect(screen.getByText('Case by Case')).toBeInTheDocument();
     expect(screen.getByText('Active')).toBeInTheDocument();
     expect(screen.getByText('Inactive')).toBeInTheDocument();
   });
 
-  test('should format District (Division) correctly using courtName and courtDivisionName', async () => {
+  test('should format District correctly using courtName only', async () => {
     const trusteeId = 'trustee-district';
     const appt = makeAppointment({
       trusteeId,
@@ -182,11 +182,11 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByText('Eastern District of California (Sacramento)')).toBeInTheDocument();
+      expect(screen.getByText('Eastern District of California')).toBeInTheDocument();
     });
   });
 
-  test('should fall back to courtId and divisionCode when court name fields are absent', async () => {
+  test('should fall back to courtId when courtName is absent', async () => {
     const trusteeId = 'trustee-fallback';
     const appt = makeAppointment({
       trusteeId,
@@ -203,7 +203,7 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByText('court-xyz (042)')).toBeInTheDocument();
+      expect(screen.getByText('court-xyz')).toBeInTheDocument();
     });
   });
 
@@ -1122,7 +1122,7 @@ describe('TrusteesList Component', () => {
 
       // Initially collapsed - pills should be in filter component
       await waitFor(() => {
-        const pills = screen.getAllByText('Southern District of New York (Manhattan)');
+        const pills = screen.getAllByText('Southern District of New York');
         expect(pills.length).toBeGreaterThan(0);
       });
 
@@ -1132,7 +1132,7 @@ describe('TrusteesList Component', () => {
 
       // When expanded, pills should appear above trustee count (in TrusteesList)
       await waitFor(() => {
-        const pills = screen.getAllByText('Southern District of New York (Manhattan)');
+        const pills = screen.getAllByText('Southern District of New York');
         // Should have pills both in dropdown AND in list area
         expect(pills.length).toBeGreaterThan(1);
       });
@@ -1216,15 +1216,15 @@ describe('TrusteesList Component', () => {
 
       // Wait for pills to appear
       await waitFor(() => {
-        const pills = screen.getAllByText('Southern District of New York (Manhattan)');
+        const pills = screen.getAllByText('Southern District of New York');
         expect(pills.length).toBeGreaterThan(1);
       });
 
-      // Click remove button on one of the pills
-      const removeButtons = screen.getAllByRole('button', {
-        name: /remove southern district of new york \(manhattan\) filter/i,
+      // Click remove button on one of the pills (PillBox component)
+      const pillButton = screen.getByRole('button', {
+        name: /southern district of new york selected.*click to deselect/i,
       });
-      await user.click(removeButtons[0]);
+      await user.click(pillButton);
 
       // Should remove the filter and show all trustees
       await waitFor(() => {

@@ -15,8 +15,9 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
 import Icon from '@/lib/components/uswds/Icon';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
+import { sortTrusteeAppointments } from '@/lib/utils/court-utils';
 
-const COLUMN_HEADERS = ['Name', 'District (Division)', 'Chapter', 'Type', 'Status'];
+const COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
 
 function filterTrustees(
   trustees: TrusteeListItem[],
@@ -24,7 +25,7 @@ function filterTrustees(
   selectedChapters: ComboOption[],
 ): TrusteeListItem[] {
   if (selectedDistricts.length === 0 && selectedChapters.length === 0) return trustees;
-  const selectedDivisionCodes = new Set(selectedDistricts.map((d) => d.value));
+  const selectedDivisionCodes = new Set(selectedDistricts.flatMap((d) => d.value.split(',')));
   const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
   return trustees.filter((trustee) => {
     const districtMatch =
@@ -51,9 +52,7 @@ function toColClass(header: string): string {
 }
 
 function formatDistrict(appointment: TrusteeListItem['appointments'][number]): string {
-  const name = appointment.courtName ?? appointment.courtId;
-  const division = appointment.courtDivisionName ?? appointment.divisionCode;
-  return division ? `${name} (${division})` : name;
+  return appointment.courtName ?? appointment.courtId;
 }
 
 export default function TrusteesList() {
@@ -127,8 +126,14 @@ export default function TrusteesList() {
       return sortDirection === 'asc' ? cmp : -cmp;
     });
 
+    // Sort appointments within each trustee by state, region, chapter, and appointment type
+    const sortedWithAppointments = sorted.map((trustee) => ({
+      ...trustee,
+      appointments: sortTrusteeAppointments(trustee.appointments),
+    }));
+
     return {
-      filteredTrustees: sorted,
+      filteredTrustees: sortedWithAppointments,
     };
   }, [trustees, selectedDistricts, selectedChapters, sortDirection]);
 

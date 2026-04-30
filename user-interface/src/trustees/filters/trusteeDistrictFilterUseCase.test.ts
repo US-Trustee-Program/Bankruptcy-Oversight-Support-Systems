@@ -32,6 +32,7 @@ describe('trustee district filter use case tests', () => {
       groupDesignator: 'NY',
       regionId: '02',
       regionName: 'New York Region',
+      state: 'NY',
     },
     {
       officeName: 'Rutland',
@@ -43,6 +44,7 @@ describe('trustee district filter use case tests', () => {
       groupDesignator: 'VT',
       regionId: '01',
       regionName: 'Boston Region',
+      state: 'VT',
     },
     {
       officeName: 'White Plains',
@@ -54,6 +56,7 @@ describe('trustee district filter use case tests', () => {
       groupDesignator: 'NY',
       regionId: '02',
       regionName: 'New York Region',
+      state: 'NY',
     },
   ];
 
@@ -104,6 +107,7 @@ describe('trustee district filter use case tests', () => {
   );
 
   beforeEach(() => {
+    mockStore.defaultDistricts = [];
     mockStore.setSelectedDistricts = vi.fn();
     mockStore.setSelectedChapters = vi.fn();
     setSelectedDistrictsSpy = vi.spyOn(mockStore, 'setSelectedDistricts');
@@ -119,21 +123,38 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('districtsToComboOptions', () => {
-    test('should return all divisions with District (Division) format sorted alphabetically', () => {
+    test('should return unique districts with all division codes, sorted by state then court name', () => {
       const comboOptions = useCase.districtsToComboOptions(mockDistricts);
 
-      expect(comboOptions).toHaveLength(3);
+      expect(comboOptions).toHaveLength(2);
+      // NY sorts before VT, and Southern District of NY includes both division codes
       expect(comboOptions[0]).toEqual({
-        value: '088',
-        label: 'District of Vermont (Rutland)',
+        value: '081,087',
+        label: 'Southern District of New York',
       });
       expect(comboOptions[1]).toEqual({
-        value: '081',
-        label: 'Southern District of New York (Manhattan)',
+        value: '088',
+        label: 'District of Vermont',
       });
-      expect(comboOptions[2]).toEqual({
-        value: '087',
-        label: 'Southern District of New York (White Plains)',
+    });
+
+    test('should place default districts at the top with divider', () => {
+      mockStore.defaultDistricts = [{ value: '088', label: 'District of Vermont' }];
+
+      const comboOptions = useCase.districtsToComboOptions(mockDistricts);
+
+      expect(comboOptions).toHaveLength(2);
+      // Default appears first with divider and isAriaDefault
+      expect(comboOptions[0]).toEqual({
+        value: '088',
+        label: 'District of Vermont',
+        isAriaDefault: true,
+        divider: true,
+      });
+      // Non-defaults follow, sorted by state (Southern District of NY with both divisions)
+      expect(comboOptions[1]).toEqual({
+        value: '081,087',
+        label: 'Southern District of New York',
       });
     });
 
@@ -143,7 +164,7 @@ describe('trustee district filter use case tests', () => {
       expect(comboOptions).toEqual([]);
     });
 
-    test('should show all divisions even if they share the same district', () => {
+    test('should deduplicate districts and include all division codes in value', () => {
       const multiDivisionDistricts: CourtDivisionDetails[] = [
         ...mockDistricts,
         {
@@ -155,9 +176,11 @@ describe('trustee district filter use case tests', () => {
 
       const comboOptions = useCase.districtsToComboOptions(multiDivisionDistricts);
 
-      // Should have 4 divisions now (3 original + 1 new)
-      expect(comboOptions).toHaveLength(4);
-      expect(comboOptions.some((o) => o.value === '999')).toBe(true);
+      // Should have 2 unique districts (Southern District of NY and District of VT)
+      expect(comboOptions).toHaveLength(2);
+      // Southern District of NY should now include 3 division codes
+      expect(comboOptions[0].value).toBe('081,087,999');
+      expect(comboOptions[0].label).toBe('Southern District of New York');
     });
   });
 
@@ -221,8 +244,8 @@ describe('trustee district filter use case tests', () => {
 
       expect(defaultDistricts).toHaveLength(1);
       expect(defaultDistricts[0]).toEqual({
-        value: '081',
-        label: 'Southern District of New York (Manhattan)',
+        value: '081,087',
+        label: 'Southern District of New York',
       });
     });
 
@@ -291,13 +314,13 @@ describe('trustee district filter use case tests', () => {
       expect(defaultDistricts).toHaveLength(2);
       expect(defaultDistricts).toEqual(
         expect.arrayContaining([
-          { value: '081', label: 'Southern District of New York (Manhattan)' },
-          { value: '088', label: 'District of Vermont (Rutland)' },
+          { value: '081,087', label: 'Southern District of New York' },
+          { value: '088', label: 'District of Vermont' },
         ]),
       );
     });
 
-    test('should sort default districts alphabetically and return empty for groups with no divisions', () => {
+    test('should sort default districts by state and return empty for groups with no divisions', () => {
       const sessionWithDivisions: CamsSession = {
         ...MockData.getCamsSession(),
         user: {
@@ -332,8 +355,9 @@ describe('trustee district filter use case tests', () => {
       };
 
       const sorted = useCase.getDefaultDistrictsFromSession(sessionWithDivisions, mockDistricts);
-      expect(sorted[0].label).toBe('District of Vermont (Rutland)');
-      expect(sorted[1].label).toBe('Southern District of New York (Manhattan)');
+      // Sorted by state: NY before VT
+      expect(sorted[0].label).toBe('Southern District of New York');
+      expect(sorted[1].label).toBe('District of Vermont');
 
       const sessionNoDivisions: CamsSession = {
         ...MockData.getCamsSession(),
@@ -358,43 +382,11 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('handleClearAll', () => {
-    test('should reset selected districts to default districts and notify', () => {
-      const defaultDistricts: ComboOption[] = [
-        { value: 'NYSB', label: 'Southern District of New York' },
-      ];
-      mockStore.defaultDistricts = defaultDistricts;
+    test('should clear all selected districts and notify', () => {
+      mockStore.selectedDistricts = [{ value: 'NYSB', label: 'Southern District of New York' }];
 
       useCase.handleClearAll();
 
-      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(defaultDistricts);
-      expect(mockOnFilterDistrict).toHaveBeenCalledWith(defaultDistricts);
-    });
-  });
-
-  describe('handleRemovePill', () => {
-    test('should remove the specified district from selection', () => {
-      const districts: ComboOption[] = [
-        { value: 'NYSB', label: 'Southern District of New York' },
-        { value: 'VTB', label: 'District of Vermont' },
-      ];
-      mockStore.selectedDistricts = districts;
-
-      const districtToRemove = districts[0];
-      useCase.handleRemovePill(districtToRemove);
-
-      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith([districts[1]]);
-      expect(mockOnFilterDistrict).toHaveBeenCalledWith([districts[1]]);
-    });
-
-    test('should clear selection entirely when removing last district', () => {
-      const districts: ComboOption[] = [{ value: 'NYSB', label: 'Southern District of New York' }];
-      const defaultDistricts: ComboOption[] = [{ value: 'VTB', label: 'District of Vermont' }];
-      mockStore.selectedDistricts = districts;
-      mockStore.defaultDistricts = defaultDistricts;
-
-      useCase.handleRemovePill(districts[0]);
-
-      // Should clear to empty (show all trustees), not restore defaults
       expect(setSelectedDistrictsSpy).toHaveBeenCalledWith([]);
       expect(mockOnFilterDistrict).toHaveBeenCalledWith([]);
     });
@@ -513,22 +505,6 @@ describe('trustee district filter use case tests', () => {
     });
   });
 
-  describe('handleRemoveChapterPill', () => {
-    test('should remove the specified chapter from selection and notify', () => {
-      const chapters: ComboOption[] = [
-        { value: '7', label: '7' },
-        { value: '13', label: '13' },
-      ];
-      mockStore.selectedChapters = chapters;
-      const setSelectedChaptersSpy = vi.spyOn(mockStore, 'setSelectedChapters');
-
-      useCase.handleRemoveChapterPill(chapters[0]);
-
-      expect(setSelectedChaptersSpy).toHaveBeenCalledWith([chapters[1]]);
-      expect(mockOnFilterChapter).toHaveBeenCalledWith([chapters[1]]);
-    });
-  });
-
   describe('fetchDistricts', () => {
     beforeEach(() => {
       mockStore.setDistricts = vi.fn();
@@ -580,7 +556,7 @@ describe('trustee district filter use case tests', () => {
       await useCase.fetchDistricts();
 
       expect(mockOnFilterDistrict).toHaveBeenCalledWith([
-        { value: '081', label: 'Southern District of New York (Manhattan)' },
+        { value: '081,087', label: 'Southern District of New York' },
       ]);
     });
 

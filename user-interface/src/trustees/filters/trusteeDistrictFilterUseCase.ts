@@ -9,21 +9,35 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
+import {
+  sortByCourtLocation,
+  groupDivisionsByDistrict,
+  separateDefaultOptions,
+} from '@/lib/utils/court-utils';
 import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
 
-const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
-  // Show all divisions with format: District (Division)
-  return districts
-    .map((district) => {
-      const divisionName = district.courtDivisionName || district.courtDivisionCode;
-      const label = divisionName ? `${district.courtName} (${divisionName})` : district.courtName;
+const toDistrictOption = (
+  district: CourtDivisionDetails,
+  divisionCodes: string[],
+): ComboOption => ({
+  value: divisionCodes.join(','),
+  label: district.courtName,
+});
 
-      return {
-        value: district.courtDivisionCode,
-        label: label,
-      };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label));
+const buildDistrictOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
+  const districtMap = groupDivisionsByDistrict(districts);
+
+  const sortedDistricts = sortByCourtLocation(
+    Array.from(districtMap.values()).map((divisions) => divisions[0]),
+  );
+
+  return sortedDistricts.map((district) => {
+    const divisions = districtMap.get(district.courtName)!;
+    return toDistrictOption(
+      district,
+      divisions.map((d) => d.courtDivisionCode),
+    );
+  });
 };
 
 const getDefaultDistrictsFromSession = (
@@ -45,18 +59,19 @@ const getDefaultDistrictsFromSession = (
     });
   });
 
-  return allDistricts
-    .filter((district) => userDivisionCodes.has(district.courtDivisionCode))
-    .map((district) => {
-      const divisionName = district.courtDivisionName || district.courtDivisionCode;
-      const label = divisionName ? `${district.courtName} (${divisionName})` : district.courtName;
+  // Find which districts contain the user's divisions
+  const userDistricts = allDistricts.filter((district) =>
+    userDivisionCodes.has(district.courtDivisionCode),
+  );
+  const userDistrictNames = new Set(userDistricts.map((d) => d.courtName));
 
-      return {
-        value: district.courtDivisionCode,
-        label: label,
-      };
-    })
-    .sort((a, b) => a.label.localeCompare(b.label));
+  // Group ALL divisions for those districts (not just user's divisions)
+  const allDistrictsForUser = allDistricts.filter((district) =>
+    userDistrictNames.has(district.courtName),
+  );
+
+  // Convert to ComboOptions, one per unique district with ALL division codes
+  return buildDistrictOptions(allDistrictsForUser);
 };
 
 const CHAPTER_OPTIONS: AppointmentChapterType[] = ['7', '11', '11-subchapter-v', '12', '13'];
@@ -72,6 +87,17 @@ const trusteeDistrictFilterUseCase = (
   onFilterChapter: (chapters: ComboOption[]) => void,
   previousChaptersRef: { current: ComboOption[] | undefined },
 ): TrusteeDistrictFilterUseCase => {
+  const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
+    // Build base options (grouped by district, sorted by court location)
+    const allOptions = buildDistrictOptions(districts);
+
+    // Separate defaults from non-defaults and mark them
+    const defaultCodesFlat = new Set(
+      (store.defaultDistricts ?? []).flatMap((d) => d.value.split(',')),
+    );
+    return separateDefaultOptions(allOptions, defaultCodesFlat);
+  };
+
   const notifySelectionChange = (districts: ComboOption[]) => {
     onFilterDistrict(districts);
   };
@@ -115,17 +141,11 @@ const trusteeDistrictFilterUseCase = (
   };
 
   const handleClearAll = () => {
-    const defaultDistricts = store.defaultDistricts;
-    handleFilterChange(defaultDistricts);
+    handleFilterChange([]);
   };
 
   const handleToggleExpanded = () => {
     store.setIsExpanded(!store.isExpanded);
-  };
-
-  const handleRemovePill = (district: ComboOption) => {
-    const updatedDistricts = store.selectedDistricts.filter((d) => d.value !== district.value);
-    handleFilterChange(updatedDistricts);
   };
 
   const handleFilterChapter = (chapters: ComboOption[]) => {
@@ -145,11 +165,6 @@ const trusteeDistrictFilterUseCase = (
     handleFilterChapter([]);
   };
 
-  const handleRemoveChapterPill = (chapter: ComboOption) => {
-    const updated = store.selectedChapters.filter((c) => c.value !== chapter.value);
-    handleFilterChapter(updated);
-  };
-
   return {
     chaptersToComboOptions,
     districtsToComboOptions,
@@ -159,10 +174,8 @@ const trusteeDistrictFilterUseCase = (
     handleFilterChange,
     handleClearAll,
     handleToggleExpanded,
-    handleRemovePill,
     handleFilterChapter,
     handleClearAllChapters,
-    handleRemoveChapterPill,
   };
 };
 

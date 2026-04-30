@@ -1,24 +1,8 @@
 import './TrusteeDistrictFilter.scss';
 import ComboBox from '@/lib/components/combobox/ComboBox';
-import Icon from '@/lib/components/uswds/Icon';
+import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
-
-function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }) {
-  return (
-    <span className="usa-tag filter-pill">
-      {label}
-      <button
-        type="button"
-        className="usa-tag__remove-button"
-        onClick={onRemove}
-        aria-label={`Remove ${label} filter`}
-      >
-        <Icon name="close" />
-      </button>
-    </span>
-  );
-}
 
 function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   const { viewModel } = props;
@@ -46,7 +30,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
               {showDistrictFilter && (
                 <div className="filter-control">
                   <div className="filter-control-header">
-                    <span className="filter-control-label">District (Division)</span>
+                    <span className="filter-control-label">District</span>
                     {viewModel.selectedDistricts.length > 0 && (
                       <button
                         type="button"
@@ -59,7 +43,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   </div>
                   <ComboBox
                     id="district-combobox"
-                    label="District (Division)"
+                    label="District"
                     options={viewModel.districtsToComboOptions(viewModel.districts)}
                     selections={viewModel.selectedDistricts}
                     onUpdateSelection={viewModel.handleFilterChange}
@@ -68,6 +52,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                     pluralLabel="districts"
                     singularLabel="district"
                     placeholder="- Select one or more -"
+                    scrollToSelected={true}
                     ref={viewModel.districtFilterRef}
                     hideClearAllButton={true}
                   />
@@ -108,22 +93,27 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
       </AccordionGroup>
 
       {hasPills && (
-        <div className="filter-pills-container">
-          {viewModel.selectedDistricts.map((district) => (
-            <FilterPill
-              key={district.value}
-              label={district.label}
-              onRemove={() => viewModel.handleRemovePill(district)}
-            />
-          ))}
-          {viewModel.selectedChapters.map((chapter) => (
-            <FilterPill
-              key={chapter.value}
-              label={chapter.label}
-              onRemove={() => viewModel.handleRemoveChapterPill(chapter)}
-            />
-          ))}
-        </div>
+        <PillBox
+          id="filter-pills"
+          className="filter-pills-container"
+          selections={[...viewModel.selectedDistricts, ...viewModel.selectedChapters]}
+          onSelectionChange={(updatedPills) => {
+            // Separate district and chapter pills
+            const districtValues = new Set(viewModel.selectedDistricts.map((d) => d.value));
+            const chapterValues = new Set(viewModel.selectedChapters.map((c) => c.value));
+
+            const updatedDistricts = updatedPills.filter((p) => districtValues.has(p.value));
+            const updatedChapters = updatedPills.filter((p) => chapterValues.has(p.value));
+
+            // Update both filters
+            if (updatedDistricts.length !== viewModel.selectedDistricts.length) {
+              viewModel.handleFilterChange(updatedDistricts);
+            }
+            if (updatedChapters.length !== viewModel.selectedChapters.length) {
+              viewModel.handleFilterChapter(updatedChapters);
+            }
+          }}
+        />
       )}
     </section>
   );

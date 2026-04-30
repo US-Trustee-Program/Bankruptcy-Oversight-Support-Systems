@@ -1,3 +1,5 @@
+@use 'uswds-core' as *;
+
 .pill-container {
   display: flex;
   flex-wrap: wrap;
@@ -6,18 +8,21 @@
 
 .pill.usa-button--unstyled {
   position: relative;
+  background-color: color('primary');
+  color: color('white');
   display: flex;
   justify-content: space-between;
   align-items: center;
   text-decoration: none;
   height: 1.5rem;
-  border: 2px solid #949494;
-  border-radius: calc(1.5rem / 4);
+  border-radius: calc(1.5rem / 2);
   max-width: 100%;
   min-width: 4rem;
-  padding: 0 0.25rem 0 0.6rem;
+  padding: 0.25rem 0.75rem;
   margin: 0.25rem;
   cursor: pointer;
+  font-weight: 700;
+  font-size: 0.875rem;
 
   .pill-text {
     display: inline-block;
@@ -25,6 +30,12 @@
     text-overflow: ellipsis;
     overflow: hidden;
     max-width: calc(100% - 1em);
+  }
+
+  svg {
+    margin-left: 0.5rem;
+    width: 1rem;
+    height: 1rem;
   }
 }
 
@@ -45,5 +56,5 @@
 }
 
 .pill:hover {
-  filter: brightness(0.85);
+  filter: brightness(0.9);
 }
