@@ -32,6 +32,40 @@ function getChapterNumber(chapter: string): number {
 }
 
 /**
+ * Case-insensitive string comparison for sorting.
+ * Uses locale-aware comparison with base sensitivity.
+ *
+ * @param a - First string to compare
+ * @param b - Second string to compare
+ * @returns Negative if a < b, positive if a > b, 0 if equal
+ */
+function caseInsensitiveCompare(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { sensitivity: 'base' });
+}
+
+/**
+ * Compare function for sorting by state name (from code) then court name.
+ * Use with Array.sort() for consistent state+court ordering across the application.
+ *
+ * @param a - First item with state and courtName properties
+ * @param b - Second item with state and courtName properties
+ * @returns Negative if a < b, positive if a > b, 0 if equal
+ */
+function compareByStateAndCourt<T extends { state?: string; courtName?: string }>(
+  a: T,
+  b: T,
+): number {
+  // Sort by state name (mapped from code to full name)
+  const stateA = getStateNameFromCode(a.state || '');
+  const stateB = getStateNameFromCode(b.state || '');
+  const stateComparison = stateA.localeCompare(stateB);
+  if (stateComparison !== 0) return stateComparison;
+
+  // Sort by court name within state
+  return (a.courtName || '').localeCompare(b.courtName || '');
+}
+
+/**
  * Item with court location properties for sorting.
  * Properties are optional to support types like TrusteeAppointment where they may be undefined.
  */
@@ -68,15 +102,9 @@ export function sortByCourtLocation<T extends CourtLocationSortable>(
   options?: SortOptions,
 ): T[] {
   return [...items].sort((a, b) => {
-    // 1. Sort by state name (mapped from state code to full name)
-    const stateA = getStateNameFromCode(a.state || '');
-    const stateB = getStateNameFromCode(b.state || '');
-    const stateComparison = stateA.localeCompare(stateB);
-    if (stateComparison !== 0) return stateComparison;
-
-    // 2. Sort by court name within state
-    const courtComparison = (a.courtName || '').localeCompare(b.courtName || '');
-    if (courtComparison !== 0) return courtComparison;
+    // 1-2. Sort by state name then court name
+    const locationComparison = compareByStateAndCourt(a, b);
+    if (locationComparison !== 0) return locationComparison;
 
     // 3. Sort by division name within court
     const divisionComparison = (a.courtDivisionName || '').localeCompare(b.courtDivisionName || '');
@@ -246,13 +274,11 @@ export function sortTrusteeAppointments(appointments: TrusteeAppointment[]): Tru
     })
     .sort((a, b) => {
       // 1. Sort by state name alphabetically
-      const stateComparison = a.state.localeCompare(b.state, undefined, { sensitivity: 'base' });
+      const stateComparison = caseInsensitiveCompare(a.state, b.state);
       if (stateComparison !== 0) return stateComparison;
 
       // 2. Sort by region (Eastern, Northern, Southern, Western, etc.)
-      const regionComparison = a.region.localeCompare(b.region, undefined, {
-        sensitivity: 'base',
-      });
+      const regionComparison = caseInsensitiveCompare(a.region, b.region);
       if (regionComparison !== 0) return regionComparison;
 
       // 3. Sort by chapter number
@@ -264,7 +290,7 @@ export function sortTrusteeAppointments(appointments: TrusteeAppointment[]): Tru
       // 4. Sort by appointment type
       const typeA = a.appointment.appointmentType ?? '';
       const typeB = b.appointment.appointmentType ?? '';
-      return typeA.localeCompare(typeB, undefined, { sensitivity: 'base' });
+      return caseInsensitiveCompare(typeA, typeB);
     })
     .map((wrapper) => wrapper.appointment);
 }
@@ -322,16 +348,7 @@ export function getUniqueDistricts(courts: CourtDivisionDetails[]): DistrictOpti
   // Convert to array and sort by state then court name
   const districts = Array.from(districtMap.values());
 
-  return districts.sort((a, b) => {
-    // Sort by state name (mapped from code to full name)
-    const stateA = getStateNameFromCode(a.state || '');
-    const stateB = getStateNameFromCode(b.state || '');
-    const stateComparison = stateA.localeCompare(stateB);
-    if (stateComparison !== 0) return stateComparison;
-
-    // Sort by court name within state
-    return a.courtName.localeCompare(b.courtName);
-  });
+  return districts.sort(compareByStateAndCourt);
 }
 
 /**
