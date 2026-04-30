@@ -18,6 +18,27 @@ import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 const COLUMN_HEADERS = ['Name', 'District (Division)', 'Chapter', 'Type', 'Status'];
 
+function filterTrustees(
+  trustees: TrusteeListItem[],
+  selectedDistricts: ComboOption[],
+  selectedChapters: ComboOption[],
+): TrusteeListItem[] {
+  if (selectedDistricts.length === 0 && selectedChapters.length === 0) return trustees;
+  const selectedDivisionCodes = new Set(selectedDistricts.map((d) => d.value));
+  const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
+  return trustees.filter((trustee) => {
+    const districtMatch =
+      selectedDistricts.length === 0 ||
+      trustee.appointments.some(
+        (appt) => appt.divisionCode && selectedDivisionCodes.has(appt.divisionCode),
+      );
+    const chapterMatch =
+      selectedChapters.length === 0 ||
+      trustee.appointments.some((appt) => selectedChapterValues.has(appt.chapter));
+    return districtMatch && chapterMatch;
+  });
+}
+
 function toColClass(header: string): string {
   return (
     'col-' +
@@ -41,6 +62,8 @@ export default function TrusteesList() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
+  const [liveAnnouncement, setLiveAnnouncement] = useState<string>('');
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
   const pageLoadStart = useRef(performance.now());
 
@@ -72,6 +95,7 @@ export default function TrusteesList() {
 
   const defaultDistrictsRef = useRef<ComboOption[]>([]);
   const isDefaultApplied = useRef(false);
+  const isChapterFilterInteracted = useRef(false);
 
   const handleFilterDistrict = (districts: ComboOption[]) => {
     if (!isDefaultApplied.current) {
@@ -81,18 +105,16 @@ export default function TrusteesList() {
     setSelectedDistricts(districts);
   };
 
-  const { filteredTrustees, announcement } = useMemo(() => {
-    const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
-    const base =
-      selectedDistricts.length === 0
-        ? trustees
-        : trustees.filter((t) =>
-            t.appointments.some(
-              (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
-            ),
-          );
+  const handleFilterChapter = (chapters: ComboOption[]) => {
+    isChapterFilterInteracted.current = true;
+    setSelectedChapters(chapters);
+    setLiveAnnouncement('');
+  };
 
-    const sorted = [...base].sort((a, b) => {
+  const { filteredTrustees } = useMemo(() => {
+    const filtered = filterTrustees(trustees, selectedDistricts, selectedChapters);
+
+    const sorted = [...filtered].sort((a, b) => {
       const lastCmp = (a.lastName ?? '').localeCompare(b.lastName ?? '', undefined, {
         sensitivity: 'base',
       });
@@ -105,13 +127,10 @@ export default function TrusteesList() {
       return sortDirection === 'asc' ? cmp : -cmp;
     });
 
-    const announcement =
-      selectedDistricts.length === 0
-        ? `Showing all ${trustees.length} trustee(s)`
-        : `Showing ${base.length} trustee(s) in ${selectedDistricts.map((d) => d.label).join(', ')}`;
-
-    return { filteredTrustees: sorted, announcement };
-  }, [trustees, selectedDistricts, sortDirection]);
+    return {
+      filteredTrustees: sorted,
+    };
+  }, [trustees, selectedDistricts, selectedChapters, sortDirection]);
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
@@ -120,22 +139,39 @@ export default function TrusteesList() {
       selectedDistricts.length === defaults.length &&
       selectedDistricts.every((d) => defaults.some((def) => def.value === d.value));
 
-    // Calculate result count inline to avoid dependency on filteredTrustees
-    const selectedDivisionCodes = selectedDistricts.map((d) => d.value);
-    const resultCount =
-      selectedDistricts.length === 0
-        ? trustees.length
-        : trustees.filter((trustee) =>
-            trustee.appointments.some(
-              (appt) => appt.divisionCode && selectedDivisionCodes.includes(appt.divisionCode),
-            ),
-          ).length;
+    const resultCount = filterTrustees(trustees, selectedDistricts, selectedChapters).length;
 
     getAppInsights().appInsights.trackEvent(
       { name: 'Trustee District Filter Changed' },
-      { isDefault, selectedCount: selectedDistricts.length, resultCount },
+      {
+        isDefault,
+        selectedCount: selectedDistricts.length,
+        resultCount,
+        chapterCount: selectedChapters.length,
+      },
     );
-  }, [selectedDistricts, trustees]);
+  }, [selectedDistricts, selectedChapters, trustees]);
+
+  useEffect(() => {
+    if (!isChapterFilterInteracted.current) return;
+    setLiveAnnouncement(`${filteredTrustees.length} Trustees`);
+  }, [filteredTrustees]);
+
+  useEffect(() => {
+    if (!isChapterFilterInteracted.current) return;
+
+    const resultCount = filterTrustees(trustees, selectedDistricts, selectedChapters).length;
+
+    getAppInsights().appInsights.trackEvent(
+      { name: 'Trustee Chapter Filter Changed' },
+      {
+        selectedCount: selectedChapters.length,
+        resultCount,
+        districtCount: selectedDistricts.length,
+        selectedChapterValues: selectedChapters.map((c) => c.value).join(','),
+      },
+    );
+  }, [selectedChapters, selectedDistricts, trustees]);
 
   if (loading) {
     return <LoadingSpinner caption="Loading trustees..." />;
@@ -168,9 +204,13 @@ export default function TrusteesList() {
 
   return (
     <div className="trustees-list">
-      <TrusteeDistrictFilter ref={filterRef} handleFilterDistrict={handleFilterDistrict} />
+      <TrusteeDistrictFilter
+        ref={filterRef}
+        handleFilterDistrict={handleFilterDistrict}
+        handleFilterChapter={handleFilterChapter}
+      />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
-        {announcement}
+        {liveAnnouncement}
       </div>
       <p className="trustees-list-count">{filteredTrustees.length} Trustee(s)</p>
       <div
