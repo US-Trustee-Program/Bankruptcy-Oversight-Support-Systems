@@ -206,6 +206,7 @@ module frontendWorkbooks 'lib/workbooks/frontend-workbooks.bicep' = if (createAp
   params: {
     location: location
     appInsightsResourceId: webappInsights.outputs.id
+    nodeApiAppInsightsResourceId: nodeApiAppInsightsId
     tags: tags
   }
 }

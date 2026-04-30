@@ -216,7 +216,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| summarize TotalNameEdits = count()",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| summarize TotalNameEdits = count()",
         "size": 3,
         "title": "Total Name Edits",
         "timeContextFromParameter": "TimeRange",
@@ -249,7 +249,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| where tostring(customDimensions.isMigrated) == \"true\"\n| summarize MigratedEdits = count()",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| where tostring(customDimensions.isMigrated) == \"true\"\n| summarize MigratedEdits = count()",
         "size": 3,
         "title": "Name Edits — Migrated Trustees",
         "timeContextFromParameter": "TimeRange",
@@ -282,7 +282,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| where tostring(customDimensions.isMigrated) == \"false\"\n| summarize NonMigratedEdits = count()",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| where tostring(customDimensions.isMigrated) == \"false\"\n| summarize NonMigratedEdits = count()",
         "size": 3,
         "title": "Name Edits — Non-Migrated Trustees",
         "timeContextFromParameter": "TimeRange",
@@ -315,7 +315,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| extend isMigrated = tostring(customDimensions.isMigrated)\n| summarize\n    MigratedEdits = countif(isMigrated == \"true\"),\n    NonMigratedEdits = countif(isMigrated == \"false\")\n    by Day = startofday(timestamp)\n| order by Day asc",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| extend isMigrated = tostring(customDimensions.isMigrated)\n| summarize\n    MigratedEdits = countif(isMigrated == \"true\"),\n    NonMigratedEdits = countif(isMigrated == \"false\")\n    by Day = startofday(timestamp)\n| order by Day asc",
         "size": 0,
         "title": "Name Edits Over Time — Migrated vs Non-Migrated",
         "timeContextFromParameter": "TimeRange",
