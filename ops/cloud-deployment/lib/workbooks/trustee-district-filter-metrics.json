@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Trustee District Filter Metrics\n\nSuccess metrics for CAMS-691: district filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`, `selectedCount`, `resultCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee List Loaded` — fired when trustee data first renders; dimensions: `trusteeCount`; measurement: `loadMs`"
+        "json": "# Trustee Filter Metrics\n\nSuccess metrics for trustee filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`; measurements: `selectedCount`, `resultCount`, `chapterCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee Chapter Filter Changed` — fired on any chapter selection change; dimensions: `selectedChapterValues`; measurements: `selectedCount`, `resultCount`, `districtCount`\n- `Trustee List Loaded` — fired when trustee data first renders; measurements: `trusteeCount`, `loadMs`"
       },
       "name": "header"
     },
@@ -238,12 +238,162 @@
       "name": "trustee-count-distribution-kpi"
     },
     {
+      "type": 1,
+      "content": {
+        "json": "---\n## Chapter Filter Usage\nHow frequently users apply the chapter filter and what results they see."
+      },
+      "name": "chapter-filter-header"
+    },
+    {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\" or name == \"Trustee District Filter Cleared\"\n| summarize\n    FilterModifications = countif(name == \"Trustee District Filter Changed\" and tostring(customDimensions.isDefault) != \"true\"),\n    DefaultClears = countif(name == \"Trustee District Filter Cleared\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet ChapterFilterVisits =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Chapter Filter Changed\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet ChapterFilteredVisits = toscalar(\n    ChapterFilterVisits\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    ChapterFilteredVisits = ChapterFilteredVisits,\n    ChapterFilterRate = round(iif(TotalVisits > 0, todouble(ChapterFilteredVisits) / todouble(TotalVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Page Visits Where Chapter Filter Was Used",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "ChapterFilterRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalVisits",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "chapter-filter-usage-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageSessions =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet ChapterFilterChanges =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Chapter Filter Changed\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageSessions | count);\nlet TotalChanges = toscalar(ChapterFilterChanges | count);\nprint\n    TotalVisits = TotalVisits,\n    TotalChanges = TotalChanges,\n    AvgChangesPerVisit = round(iif(TotalVisits > 0, todouble(TotalChanges) / todouble(TotalVisits), 0.0), 2)",
+        "size": 3,
+        "title": "Avg Chapter Filter Changes per Page Visit",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "AvgChangesPerVisit",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 2,
+                "maximumFractionDigits": 2
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalVisits"
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "chapter-filter-avg-changes-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Chapter Filter Changed\"\n| extend selectedCount = toint(customMeasurements.selectedCount)\n| summarize FilterApplications = count() by selectedCount\n| order by selectedCount asc",
+        "size": 3,
+        "title": "Count of # of Chapters Selected",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "selectedCount"
+          },
+          "leftContent": {
+            "columnMatch": "FilterApplications",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "chapter-filter-selection-count-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Chapter Filter Changed\"\n| extend resultCount = toint(customMeasurements.resultCount)\n| extend ResultBucket = case(\n    resultCount == 0, \"0 trustees\",\n    resultCount <= 5, \"1–5 trustees\",\n    resultCount <= 10, \"6–10 trustees\",\n    resultCount <= 20, \"11–20 trustees\",\n    resultCount <= 50, \"21–50 trustees\",\n    \"51+ trustees\"\n  )\n| summarize FilterApplications = count() by ResultBucket\n| order by ResultBucket asc",
+        "size": 3,
+        "title": "Trustee Count Distribution After Chapter Filtering",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "ResultBucket"
+          },
+          "leftContent": {
+            "columnMatch": "FilterApplications",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "chapter-filter-count-distribution-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"Trustee District Filter Changed\", \"Trustee District Filter Cleared\", \"Trustee Chapter Filter Changed\")\n| summarize\n    DistrictModifications = countif(name == \"Trustee District Filter Changed\" and tostring(customDimensions.isDefault) != \"true\"),\n    DefaultClears = countif(name == \"Trustee District Filter Cleared\"),\n    ChapterModifications = countif(name == \"Trustee Chapter Filter Changed\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
         "size": 0,
-        "title": "Filter Activity Over Time",
+        "title": "Filter Activity Over Time (District + Chapter)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -253,14 +403,19 @@
           "showDataPoints": true,
           "seriesLabelSettings": [
             {
-              "seriesName": "FilterModifications",
-              "label": "Filter Modified Beyond Defaults",
+              "seriesName": "DistrictModifications",
+              "label": "District Filter Modified",
               "color": "blue"
             },
             {
               "seriesName": "DefaultClears",
-              "label": "Default Selection Cleared",
+              "label": "District Default Cleared",
               "color": "orange"
+            },
+            {
+              "seriesName": "ChapterModifications",
+              "label": "Chapter Filter Modified",
+              "color": "green"
             }
           ],
           "ySettings": {
@@ -274,7 +429,97 @@
           }
         }
       },
-      "name": "filter-activity-trend"
+      "name": "combined-filter-activity-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Chapter Filter Popularity\n% of trustee page visits where each chapter was selected, based on `selectedChapterValues` in the `Trustee Chapter Filter Changed` event."
+      },
+      "name": "chapter-popularity-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TotalVisits = toscalar(\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | summarize by operation_Id\n    | count\n);\ncustomEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Chapter Filter Changed\"\n| extend selectedChapterValues = tostring(customDimensions.selectedChapterValues)\n| where isnotempty(selectedChapterValues)\n| mv-expand Chapter = split(selectedChapterValues, \",\")\n| extend ChapterLabel = case(\n    Chapter == \"7\", \"Chapter 7\",\n    Chapter == \"11\", \"Chapter 11\",\n    Chapter == \"11-subchapter-v\", \"Chapter 11 Subchapter V\",\n    Chapter == \"12\", \"Chapter 12\",\n    Chapter == \"13\", \"Chapter 13\",\n    tostring(Chapter)\n  )\n| summarize VisitCount = dcount(operation_Id) by ChapterLabel\n| extend PctOfVisits = round(todouble(VisitCount) / todouble(TotalVisits) * 100, 1)\n| order by PctOfVisits desc",
+        "size": 0,
+        "title": "% of Page Visits by Chapter Selected",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "barchart",
+        "chartSettings": {
+          "xAxis": "ChapterLabel",
+          "yAxis": [
+            "PctOfVisits"
+          ],
+          "seriesLabelSettings": [
+            {
+              "seriesName": "PctOfVisits",
+              "label": "% of Visits",
+              "color": "blue"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          }
+        }
+      },
+      "customWidth": "50",
+      "name": "chapter-selection-frequency"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Combined Filter Usage\n% of trustee page visits where both district and chapter filters were active at the same time, and the average number of combined-filter events per visit."
+      },
+      "name": "combined-filter-usage-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | summarize by operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet CombinedEvents =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Chapter Filter Changed\"\n    | extend chapterCount = toint(customMeasurements.selectedCount)\n    | extend districtCount = toint(customMeasurements.districtCount)\n    | where chapterCount > 0 and districtCount > 0\n    | project operation_Id;\nlet CombinedVisits = toscalar(\n    CombinedEvents\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nlet TotalCombinedEvents = toscalar(CombinedEvents | count);\nprint\n    TotalVisits = TotalVisits,\n    CombinedVisits = CombinedVisits,\n    PctCombinedVisits = round(iif(TotalVisits > 0, todouble(CombinedVisits) / todouble(TotalVisits) * 100, 0.0), 1),\n    AvgCombinedEventsPerVisit = round(iif(TotalVisits > 0, todouble(TotalCombinedEvents) / todouble(TotalVisits), 0.0), 2)",
+        "size": 3,
+        "title": "Combined Filter Usage (District + Chapter)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "PctCombinedVisits",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "AvgCombinedEventsPerVisit",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "50",
+      "name": "combined-filter-usage-kpi"
     },
     {
       "type": 1,
@@ -326,7 +571,7 @@
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-5d5564/providers/Microsoft.Insights/components/appi-ustp-cams-dev-5d5564-webapp"
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-b2abcd/providers/Microsoft.Insights/components/appi-ustp-cams-dev-b2abcd-webapp"
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }

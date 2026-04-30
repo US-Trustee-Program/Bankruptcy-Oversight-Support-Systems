@@ -14,6 +14,7 @@ import {
   groupDivisionsByDistrict,
   separateDefaultOptions,
 } from '@/lib/utils/court-utils';
+import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
 
 const toDistrictOption = (
   district: CourtDivisionDetails,
@@ -73,11 +74,18 @@ const getDefaultDistrictsFromSession = (
   return buildDistrictOptions(allDistrictsForUser);
 };
 
+const CHAPTER_OPTIONS: AppointmentChapterType[] = ['7', '11', '11-subchapter-v', '12', '13'];
+
+const chaptersToComboOptions = (): ComboOption[] =>
+  CHAPTER_OPTIONS.map((chapter) => ({ value: chapter, label: formatChapterType(chapter) }));
+
 const trusteeDistrictFilterUseCase = (
   store: TrusteeDistrictFilterStore,
   controls: TrusteeDistrictFilterControls,
   onFilterDistrict: (districts: ComboOption[]) => void,
   previousDistrictsRef: { current: ComboOption[] | undefined },
+  onFilterChapter: (chapters: ComboOption[]) => void,
+  previousChaptersRef: { current: ComboOption[] | undefined },
 ): TrusteeDistrictFilterUseCase => {
   const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
     // Build base options (grouped by district, sorted by court location)
@@ -133,15 +141,32 @@ const trusteeDistrictFilterUseCase = (
   };
 
   const handleClearAll = () => {
-    const defaultDistricts = store.defaultDistricts;
-    handleFilterChange(defaultDistricts);
+    handleFilterChange([]);
   };
 
   const handleToggleExpanded = () => {
     store.setIsExpanded(!store.isExpanded);
   };
 
+  const handleFilterChapter = (chapters: ComboOption[]) => {
+    const wasNonEmpty = previousChaptersRef.current && previousChaptersRef.current.length > 0;
+    const isNowEmpty = chapters.length === 0;
+
+    if (wasNonEmpty && isNowEmpty) {
+      getAppInsights().appInsights.trackEvent({ name: 'Trustee Chapter Filter Cleared' });
+    }
+
+    previousChaptersRef.current = chapters;
+    store.setSelectedChapters(chapters);
+    onFilterChapter(chapters);
+  };
+
+  const handleClearAllChapters = () => {
+    handleFilterChapter([]);
+  };
+
   return {
+    chaptersToComboOptions,
     districtsToComboOptions,
     fetchDistricts,
     focusOnDistrictFilter,
@@ -149,6 +174,8 @@ const trusteeDistrictFilterUseCase = (
     handleFilterChange,
     handleClearAll,
     handleToggleExpanded,
+    handleFilterChapter,
+    handleClearAllChapters,
   };
 };
 
