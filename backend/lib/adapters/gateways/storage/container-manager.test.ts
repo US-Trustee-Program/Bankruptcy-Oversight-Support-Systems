@@ -55,7 +55,7 @@ describe('Container Manager', () => {
       await ensureContainersExistAsync(['new-container'], 'TEST_MODULE');
 
       expect(mockContainerClient.exists).toHaveBeenCalledTimes(1);
-      expect(mockContainerClient.create).toHaveBeenCalledWith({ access: 'none' });
+      expect(mockContainerClient.create).toHaveBeenCalledWith();
     });
 
     test('should not create container when it already exists', async () => {
