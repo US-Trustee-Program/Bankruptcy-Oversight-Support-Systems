@@ -409,7 +409,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     // Extract court and divisions using shared helper
     const courtInfo = extractCourtAndDivisions(formData, useSeparateFields, allCourts);
     if (!courtInfo) {
-      setGlobalAlertWarning('Missing required court or division information');
+      globalAlert?.warning('Missing required court or division information');
       setIsSubmitting(false);
       return;
     }
