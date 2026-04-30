@@ -6,6 +6,8 @@ import {
   buildQueueName,
   buildStartQueueHttpTrigger,
   buildStartQueueTimerTrigger,
+  buildContainerName,
+  ensureContainersExist,
   isAuthorized,
 } from './dataflows-common';
 
@@ -37,6 +39,22 @@ describe('Dataflows Common', () => {
       expect(buildQueueName()).toEqual('');
       expect(buildQueueName('ONE')).toEqual('one');
       expect(buildQueueName('TWO', 'THREE')).toEqual('two-three');
+    });
+  });
+
+  describe('buildContainerName', () => {
+    test('should convert module name with hyphens to lowercase container name with direction suffix', () => {
+      expect(buildContainerName('SYNC-OFFICE-STAFF', 'in')).toEqual('sync-office-staff-in');
+      expect(buildContainerName('SYNC-OFFICE-STAFF', 'out')).toEqual('sync-office-staff-out');
+    });
+
+    test('should convert module name with underscores to lowercase container name with hyphens', () => {
+      expect(buildContainerName('MIGRATE_CASE_HISTORY', 'in')).toEqual('migrate-case-history-in');
+      expect(buildContainerName('MIGRATE_CASE_HISTORY', 'out')).toEqual('migrate-case-history-out');
+    });
+
+    test('should handle mixed case with underscores and hyphens', () => {
+      expect(buildContainerName('PROCESS_LARGE-FILE', 'in')).toEqual('process-large-file-in');
     });
   });
 
@@ -138,6 +156,38 @@ describe('Dataflows Common', () => {
       } as unknown as HttpRequest;
       await trigger(goodRequest, invocationContext);
       expect(setSpy).toHaveBeenCalledWith(storageQueue, {});
+    });
+  });
+
+  describe('ensureContainersExist', () => {
+    test('should return immediately for empty container list', () => {
+      // Should not throw
+      ensureContainersExist([], 'TEST');
+      expect(true).toBeTruthy();
+    });
+
+    test('should return immediately for undefined container list', () => {
+      // Should not throw
+      ensureContainersExist(undefined as unknown as string[], 'TEST');
+      expect(true).toBeTruthy();
+    });
+
+    test('should schedule async container creation for valid container names', () => {
+      const setImmediateSpy = vi.spyOn(global, 'setImmediate');
+
+      ensureContainersExist(['test-container-in', 'test-container-out'], 'TEST');
+
+      expect(setImmediateSpy).toHaveBeenCalledTimes(1);
+      setImmediateSpy.mockRestore();
+    });
+
+    test('should handle single container name', () => {
+      const setImmediateSpy = vi.spyOn(global, 'setImmediate');
+
+      ensureContainersExist(['single-container'], 'TEST');
+
+      expect(setImmediateSpy).toHaveBeenCalledTimes(1);
+      setImmediateSpy.mockRestore();
     });
   });
 });
