@@ -31,6 +31,7 @@ type AppointmentSnapshot = {
   appointmentType: AppointmentType;
   courtId: string;
   divisionCode: string;
+  divisionCodes?: string[];
   appointedDate: string;
   status: AppointmentStatus;
   effectiveDate: string;
@@ -227,6 +228,7 @@ export class TrusteeAppointmentsUseCase {
           appointmentType: createdAppointment.appointmentType,
           courtId: createdAppointment.courtId,
           divisionCode: createdAppointment.divisionCode,
+          divisionCodes: createdAppointment.divisionCodes,
           appointedDate: createdAppointment.appointedDate,
           status: createdAppointment.status,
           effectiveDate: createdAppointment.effectiveDate,
@@ -288,6 +290,7 @@ export class TrusteeAppointmentsUseCase {
             appointmentType: existingAppointment.appointmentType,
             courtId: existingAppointment.courtId,
             divisionCode: existingAppointment.divisionCode,
+            divisionCodes: existingAppointment.divisionCodes,
             appointedDate: existingAppointment.appointedDate,
             status: existingAppointment.status,
             effectiveDate: existingAppointment.effectiveDate,
@@ -297,6 +300,7 @@ export class TrusteeAppointmentsUseCase {
             appointmentType: updatedAppointment.appointmentType,
             courtId: updatedAppointment.courtId,
             divisionCode: updatedAppointment.divisionCode,
+            divisionCodes: updatedAppointment.divisionCodes,
             appointedDate: updatedAppointment.appointedDate,
             status: updatedAppointment.status,
             effectiveDate: updatedAppointment.effectiveDate,

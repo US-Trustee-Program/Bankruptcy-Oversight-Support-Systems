@@ -1,6 +1,6 @@
 import './TrusteeContactForm.scss';
 import './TrusteeAppointmentForm.scss';
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useFeatureFlags, {
@@ -162,6 +162,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const [existingAppointments, setExistingAppointments] = useState<TrusteeAppointment[]>(
     appointmentsToUse ?? [],
   );
+  const divisionBlurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [formData, setFormData] = useState<FormData>(() => {
     if (appointment) {
       return {
@@ -533,8 +534,13 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const handleDivisionBlur = (e: React.FocusEvent) => {
     const currentTarget = e.currentTarget;
 
+    // Clear any pending timeout
+    if (divisionBlurTimeoutRef.current) {
+      clearTimeout(divisionBlurTimeoutRef.current);
+    }
+
     // Check if the new focus target is outside the division dropdown component
-    setTimeout(() => {
+    divisionBlurTimeoutRef.current = setTimeout(() => {
       // If focus moved to an element outside this component
       if (!currentTarget.contains(document.activeElement)) {
         if (!formData.courtId || !allCourts.length) return;
@@ -556,6 +562,15 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       }
     }, 100);
   };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (divisionBlurTimeoutRef.current) {
+        clearTimeout(divisionBlurTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleDateChange = (field: keyof FormData, e: React.ChangeEvent<HTMLInputElement>) => {
     handleFieldChange(field, e.target.value);
