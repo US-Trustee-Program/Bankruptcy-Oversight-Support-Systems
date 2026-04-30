@@ -24,18 +24,18 @@ resource trusteeDistrictFilterMetricsWorkbook 'Microsoft.Insights/workbooks@2023
   }
 }
 
-resource trustee742MetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
-  name: guid('trustee-742-metrics-workbook', resourceGroup().id)
+resource trusteeNameManagementMetricsWorkbook 'Microsoft.Insights/workbooks@2023-06-01' = {
+  name: guid('trustee-name-management-metrics-workbook', resourceGroup().id)
   location: location
   tags: tags
   kind: 'shared'
   properties: {
-    displayName: 'CAMS-742 Trustee Name Management Metrics'
+    displayName: 'Trustee Name Management Metrics'
     description: 'Sort-by-last-name adoption and post-launch name correction patterns for migrated vs non-migrated trustees.'
     category: 'workbook'
     sourceId: appInsightsResourceId
     serializedData: replace(
-      loadTextContent('trustee-742-metrics.json'),
+      loadTextContent('trustee-name-management-metrics.json'),
       '{NodeApiAppInsights:name}',
       nodeApiAppInsightsName
     )
