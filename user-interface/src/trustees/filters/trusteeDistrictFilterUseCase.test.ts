@@ -382,16 +382,13 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('handleClearAll', () => {
-    test('should reset selected districts to default districts and notify', () => {
-      const defaultDistricts: ComboOption[] = [
-        { value: 'NYSB', label: 'Southern District of New York' },
-      ];
-      mockStore.defaultDistricts = defaultDistricts;
+    test('should clear all selected districts and notify', () => {
+      mockStore.selectedDistricts = [{ value: 'NYSB', label: 'Southern District of New York' }];
 
       useCase.handleClearAll();
 
-      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith(defaultDistricts);
-      expect(mockOnFilterDistrict).toHaveBeenCalledWith(defaultDistricts);
+      expect(setSelectedDistrictsSpy).toHaveBeenCalledWith([]);
+      expect(mockOnFilterDistrict).toHaveBeenCalledWith([]);
     });
   });
 
