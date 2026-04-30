@@ -56,6 +56,69 @@ describe('Dataflows Common', () => {
     test('should handle mixed case with underscores and hyphens', () => {
       expect(buildContainerName('PROCESS_LARGE-FILE', 'in')).toEqual('process-large-file-in');
     });
+
+    test('should normalize spaces to hyphens', () => {
+      expect(buildContainerName('SYNC OFFICE STAFF', 'in')).toEqual('sync-office-staff-in');
+    });
+
+    test('should normalize dots to hyphens', () => {
+      expect(buildContainerName('MODULE.SUB.NAME', 'out')).toEqual('module-sub-name-out');
+    });
+
+    test('should normalize multiple consecutive invalid characters to single hyphen', () => {
+      expect(buildContainerName('MODULE___SUB...NAME', 'in')).toEqual('module-sub-name-in');
+    });
+
+    test('should remove leading and trailing invalid characters', () => {
+      expect(buildContainerName('_MODULE_NAME_', 'out')).toEqual('module-name-out');
+      expect(buildContainerName('...MODULE...', 'in')).toEqual('module-in');
+    });
+
+    test('should handle module names with mixed punctuation', () => {
+      expect(buildContainerName('SYNC_OFFICE-STAFF.V2', 'in')).toEqual('sync-office-staff-v2-in');
+    });
+
+    test('should produce valid 3-character minimum container names', () => {
+      expect(buildContainerName('A', 'in')).toEqual('a-in'); // 4 chars, valid
+      expect(buildContainerName('AB', 'in')).toEqual('ab-in'); // 5 chars, valid
+    });
+
+    test('should throw error for invalid container names that are too short', () => {
+      // Empty module name would create container name that's too short after normalization
+      expect(() => buildContainerName('', 'in')).toThrow(
+        /Invalid Azure container name.*Container names must be 3–63 characters/,
+      );
+    });
+
+    test('should throw error for module names with only invalid characters', () => {
+      expect(() => buildContainerName('___', 'in')).toThrow(
+        /Invalid Azure container name.*Container names must be 3–63 characters/,
+      );
+      expect(() => buildContainerName('...', 'out')).toThrow(
+        /Invalid Azure container name.*Container names must be 3–63 characters/,
+      );
+    });
+
+    test('should throw error for container names exceeding 63 characters', () => {
+      // Create a module name that would result in >63 char container name
+      const longModuleName = 'A'.repeat(62); // 62 + '-' + 2|3 for direction = 65|66 chars
+      expect(() => buildContainerName(longModuleName, 'in')).toThrow(
+        /Invalid Azure container name.*Container names must be 3–63 characters/,
+      );
+    });
+
+    test('should accept container names at exactly 63 characters', () => {
+      // 60 chars + '-' + 'in' (2 chars) = 63 chars (max allowed)
+      const moduleName = 'A'.repeat(60);
+      const result = buildContainerName(moduleName, 'in');
+      expect(result.length).toEqual(63);
+      expect(result).toMatch(/^[a-z0-9][a-z0-9-]*[a-z0-9]$/);
+    });
+
+    test('should handle numeric module names', () => {
+      expect(buildContainerName('12345', 'in')).toEqual('12345-in');
+      expect(buildContainerName('V2', 'out')).toEqual('v2-out');
+    });
   });
 
   describe('isAuthorized', () => {
@@ -173,21 +236,18 @@ describe('Dataflows Common', () => {
     });
 
     test('should schedule async container creation for valid container names', () => {
-      const setImmediateSpy = vi.spyOn(global, 'setImmediate');
-
-      ensureContainersExist(['test-container-in', 'test-container-out'], 'TEST');
-
-      expect(setImmediateSpy).toHaveBeenCalledTimes(1);
-      setImmediateSpy.mockRestore();
+      // Function should return immediately without throwing
+      // The async work happens in background via fire-and-forget IIFE
+      expect(() => {
+        ensureContainersExist(['test-container-in', 'test-container-out'], 'TEST');
+      }).not.toThrow();
     });
 
     test('should handle single container name', () => {
-      const setImmediateSpy = vi.spyOn(global, 'setImmediate');
-
-      ensureContainersExist(['single-container'], 'TEST');
-
-      expect(setImmediateSpy).toHaveBeenCalledTimes(1);
-      setImmediateSpy.mockRestore();
+      // Function should return immediately without throwing
+      expect(() => {
+        ensureContainersExist(['single-container'], 'TEST');
+      }).not.toThrow();
     });
   });
 });

@@ -60,10 +60,8 @@ export async function ensureContainersExistAsync(
         const exists = await containerClient.exists();
 
         if (!exists) {
-          // Create container with default settings
-          await containerClient.create({
-            access: 'none', // Private access (no public access)
-          });
+          // Create container with default settings (private access by default)
+          await containerClient.create();
           logger.info(moduleName, `Created blob storage container: ${containerName}`);
         } else {
           logger.debug(moduleName, `Blob storage container already exists: ${containerName}`);
