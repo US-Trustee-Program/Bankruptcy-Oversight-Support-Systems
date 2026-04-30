@@ -466,13 +466,11 @@ describe('TrusteeDistrictFilter Component', () => {
 
     mockHandleFilterDistrict.mockClear();
 
-    // Call clearAll via ref - should restore defaults (NYSB)
+    // Call clearAll via ref - should clear to empty array
     ref.current?.clearAll();
 
     await waitFor(() => {
-      expect(mockHandleFilterDistrict).toHaveBeenCalledWith(
-        expect.arrayContaining([{ value: '081,087', label: 'Southern District of New York' }]),
-      );
+      expect(mockHandleFilterDistrict).toHaveBeenCalledWith([]);
     });
   });
 
@@ -544,7 +542,9 @@ describe('TrusteeDistrictFilter Component', () => {
       await user.click(toggleButton);
 
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /remove 7 filter/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /7 selected.*click to deselect/i }),
+        ).toBeInTheDocument();
       });
     });
   });
