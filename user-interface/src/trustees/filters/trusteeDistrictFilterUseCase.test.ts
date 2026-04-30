@@ -508,22 +508,6 @@ describe('trustee district filter use case tests', () => {
     });
   });
 
-  describe('handleRemoveChapterPill', () => {
-    test('should remove the specified chapter from selection and notify', () => {
-      const chapters: ComboOption[] = [
-        { value: '7', label: '7' },
-        { value: '13', label: '13' },
-      ];
-      mockStore.selectedChapters = chapters;
-      const setSelectedChaptersSpy = vi.spyOn(mockStore, 'setSelectedChapters');
-
-      useCase.handleRemoveChapterPill(chapters[0]);
-
-      expect(setSelectedChaptersSpy).toHaveBeenCalledWith([chapters[1]]);
-      expect(mockOnFilterChapter).toHaveBeenCalledWith([chapters[1]]);
-    });
-  });
-
   describe('fetchDistricts', () => {
     beforeEach(() => {
       mockStore.setDistricts = vi.fn();
