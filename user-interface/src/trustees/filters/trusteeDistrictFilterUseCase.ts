@@ -23,6 +23,22 @@ const toDistrictOption = (
   label: district.courtName,
 });
 
+const buildDistrictOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
+  const districtMap = groupDivisionsByDistrict(districts);
+
+  const sortedDistricts = sortByCourtLocation(
+    Array.from(districtMap.values()).map((divisions) => divisions[0]),
+  );
+
+  return sortedDistricts.map((district) => {
+    const divisions = districtMap.get(district.courtName)!;
+    return toDistrictOption(
+      district,
+      divisions.map((d) => d.courtDivisionCode),
+    );
+  });
+};
+
 const getDefaultDistrictsFromSession = (
   session: CamsSession | null,
   allDistricts: CourtDivisionDetails[],
@@ -52,20 +68,9 @@ const getDefaultDistrictsFromSession = (
   const allDistrictsForUser = allDistricts.filter((district) =>
     userDistrictNames.has(district.courtName),
   );
-  const districtMap = groupDivisionsByDistrict(allDistrictsForUser);
 
   // Convert to ComboOptions, one per unique district with ALL division codes
-  const sortedDistricts = sortByCourtLocation(
-    Array.from(districtMap.values()).map((divisions) => divisions[0]),
-  );
-
-  return sortedDistricts.map((district) => {
-    const divisions = districtMap.get(district.courtName)!;
-    return toDistrictOption(
-      district,
-      divisions.map((d) => d.courtDivisionCode),
-    );
-  });
+  return buildDistrictOptions(allDistrictsForUser);
 };
 
 const trusteeDistrictFilterUseCase = (
@@ -75,26 +80,12 @@ const trusteeDistrictFilterUseCase = (
   previousDistrictsRef: { current: ComboOption[] | undefined },
 ): TrusteeDistrictFilterUseCase => {
   const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
-    // Group divisions by district (courtName)
-    const districtMap = groupDivisionsByDistrict(districts);
-
-    // Convert to unique districts and sort by court location
-    const sortedRepresentatives = sortByCourtLocation(
-      Array.from(districtMap.values()).map((divisions) => divisions[0]),
-    );
-
-    // Convert to ComboOptions
-    const allOptions = sortedRepresentatives.map((representative) => {
-      const divisions = districtMap.get(representative.courtName)!;
-      return toDistrictOption(
-        representative,
-        divisions.map((d) => d.courtDivisionCode),
-      );
-    });
+    // Build base options (grouped by district, sorted by court location)
+    const allOptions = buildDistrictOptions(districts);
 
     // Separate defaults from non-defaults and mark them
     const defaultCodesFlat = new Set(
-      (store.defaultDistricts || []).flatMap((d) => d.value.split(',')),
+      (store.defaultDistricts ?? []).flatMap((d) => d.value.split(',')),
     );
     return separateDefaultOptions(allOptions, defaultCodesFlat);
   };
