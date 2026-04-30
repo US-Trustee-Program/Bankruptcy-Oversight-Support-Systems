@@ -93,22 +93,27 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
       </AccordionGroup>
 
       {hasPills && (
-        <div className="filter-pills-container">
-          {viewModel.selectedDistricts.length > 0 && (
-            <PillBox
-              id="district-filter-pills"
-              selections={viewModel.selectedDistricts}
-              onSelectionChange={viewModel.handleFilterChange}
-            />
-          )}
-          {viewModel.selectedChapters.length > 0 && (
-            <PillBox
-              id="chapter-filter-pills"
-              selections={viewModel.selectedChapters}
-              onSelectionChange={viewModel.handleFilterChapter}
-            />
-          )}
-        </div>
+        <PillBox
+          id="filter-pills"
+          className="filter-pills-container"
+          selections={[...viewModel.selectedDistricts, ...viewModel.selectedChapters]}
+          onSelectionChange={(updatedPills) => {
+            // Separate district and chapter pills
+            const districtValues = new Set(viewModel.selectedDistricts.map((d) => d.value));
+            const chapterValues = new Set(viewModel.selectedChapters.map((c) => c.value));
+
+            const updatedDistricts = updatedPills.filter((p) => districtValues.has(p.value));
+            const updatedChapters = updatedPills.filter((p) => chapterValues.has(p.value));
+
+            // Update both filters
+            if (updatedDistricts.length !== viewModel.selectedDistricts.length) {
+              viewModel.handleFilterChange(updatedDistricts);
+            }
+            if (updatedChapters.length !== viewModel.selectedChapters.length) {
+              viewModel.handleFilterChapter(updatedChapters);
+            }
+          }}
+        />
       )}
     </section>
   );
