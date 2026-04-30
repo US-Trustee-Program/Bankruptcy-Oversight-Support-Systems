@@ -67,11 +67,3 @@ export default function useCourts() {
 
   return { courts, loading, error };
 }
-
-/**
- * Clear the courts cache. Useful for testing or force-refresh scenarios.
- */
-export function clearCourtsCache() {
-  courtsCache = null;
-  courtsPromise = null;
-}
