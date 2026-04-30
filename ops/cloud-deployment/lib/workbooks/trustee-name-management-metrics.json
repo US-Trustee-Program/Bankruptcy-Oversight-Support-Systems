@@ -1,0 +1,358 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 1,
+      "content": {
+        "json": "# Trustee Name Management Metrics\n\nSuccess metrics for trustee name management: last-name sort adoption and post-launch name correction patterns.\n\n**Measurements:**\n- **Sort adoption** — percentage of trustee list page loads where the user clicked the sort button\n- **Name edits** — trustee name changes since launch, segmented by migrated vs non-migrated trustees"
+      },
+      "name": "header"
+    },
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "TimeRange",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "isRequired": true,
+            "value": {
+              "durationMs": 2592000000
+            },
+            "typeSettings": {
+              "selectableValues": [
+                {
+                  "durationMs": 86400000
+                },
+                {
+                  "durationMs": 172800000
+                },
+                {
+                  "durationMs": 604800000
+                },
+                {
+                  "durationMs": 1209600000
+                },
+                {
+                  "durationMs": 2419200000
+                },
+                {
+                  "durationMs": 2592000000
+                },
+                {
+                  "durationMs": 5184000000
+                },
+                {
+                  "durationMs": 7776000000
+                }
+              ]
+            },
+            "label": "Time Range",
+            "timeContext": {
+              "durationMs": 86400000
+            }
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Sort-by-Last-Name Adoption\nPercentage of sessions where the user sorted the trustee list at least once. Spam clicks are deduplicated per session so one user clicking sort many times counts as a single sorted session."
+      },
+      "name": "sort-adoption-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | distinct session_Id;\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | extend DidSort = true\n    | distinct session_Id, DidSort;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize TotalSessions = count(), SortedSessions = countif(DidSort == true)\n| project SortAdoptionPct = round(100.0 * SortedSessions / TotalSessions, 1), TotalSessions, SortedSessions",
+        "size": 3,
+        "title": "Sort Adoption Rate",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "SortAdoptionPct",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "33",
+      "name": "sort-adoption-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee List Loaded\"\n| summarize TrusteeListLoads = count() by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 3,
+        "title": "Trustee List Page Loads",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "TrusteeListLoads",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "33",
+      "name": "page-loads-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee List Sort Changed\"\n| summarize SortClicks = count() by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 3,
+        "title": "Sort Button Clicks",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "SortClicks",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "33",
+      "name": "sort-clicks-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | extend Day = startofday(timestamp)\n    | distinct session_Id, Day;\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | extend DidSort = true\n    | distinct session_Id, DidSort;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize TotalSessions = count(), SortedSessions = countif(DidSort == true) by Day\n| project Day, SortAdoptionPct = round(100.0 * SortedSessions / TotalSessions, 1)\n| order by Day asc",
+        "size": 0,
+        "title": "Sort Adoption Over Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "SortAdoptionPct",
+              "label": "Sort Adoption %",
+              "color": "blue"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            },
+            "min": 0,
+            "max": 100
+          }
+        }
+      },
+      "name": "sort-adoption-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Name Edit Correction Patterns\nReal-time count of trustee name edits since launch, segmented by migrated vs non-migrated to surface whether migration introduced data quality issues that users are now correcting."
+      },
+      "name": "name-edits-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| summarize TotalNameEdits = count()",
+        "size": 3,
+        "title": "Total Name Edits",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "TotalNameEdits",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "33",
+      "name": "name-edits-total-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| where tostring(customDimensions.isMigrated) == \"true\"\n| summarize MigratedEdits = count()",
+        "size": 3,
+        "title": "Name Edits — Migrated Trustees",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "MigratedEdits",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "orange"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "33",
+      "name": "name-edits-migrated-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| where tostring(customDimensions.isMigrated) == \"false\"\n| summarize NonMigratedEdits = count()",
+        "size": 3,
+        "title": "Name Edits — Non-Migrated Trustees",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "NonMigratedEdits",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "green"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "33",
+      "name": "name-edits-non-migrated-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| extend isMigrated = tostring(customDimensions.isMigrated)\n| summarize\n    MigratedEdits = countif(isMigrated == \"true\"),\n    NonMigratedEdits = countif(isMigrated == \"false\")\n    by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 0,
+        "title": "Name Edits Over Time — Migrated vs Non-Migrated",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "MigratedEdits",
+              "label": "Migrated Trustees",
+              "color": "orange"
+            },
+            {
+              "seriesName": "NonMigratedEdits",
+              "label": "Non-Migrated Trustees",
+              "color": "green"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "name-edits-trend"
+    }
+  ],
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-5d5564/providers/Microsoft.Insights/components/appi-ustp-cams-dev-5d5564-webapp"
+  ],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
