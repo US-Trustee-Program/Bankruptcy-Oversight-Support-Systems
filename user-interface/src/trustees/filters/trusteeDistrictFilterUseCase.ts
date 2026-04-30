@@ -9,6 +9,7 @@ import Api2 from '@/lib/models/api2';
 import LocalStorage from '@/lib/utils/local-storage';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
+import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
 
 const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
   // Show all divisions with format: District (Division)
@@ -58,11 +59,18 @@ const getDefaultDistrictsFromSession = (
     .sort((a, b) => a.label.localeCompare(b.label));
 };
 
+const CHAPTER_OPTIONS: AppointmentChapterType[] = ['7', '11', '11-subchapter-v', '12', '13'];
+
+const chaptersToComboOptions = (): ComboOption[] =>
+  CHAPTER_OPTIONS.map((chapter) => ({ value: chapter, label: formatChapterType(chapter) }));
+
 const trusteeDistrictFilterUseCase = (
   store: TrusteeDistrictFilterStore,
   controls: TrusteeDistrictFilterControls,
   onFilterDistrict: (districts: ComboOption[]) => void,
   previousDistrictsRef: { current: ComboOption[] | undefined },
+  onFilterChapter: (chapters: ComboOption[]) => void,
+  previousChaptersRef: { current: ComboOption[] | undefined },
 ): TrusteeDistrictFilterUseCase => {
   const notifySelectionChange = (districts: ComboOption[]) => {
     onFilterDistrict(districts);
@@ -120,7 +128,30 @@ const trusteeDistrictFilterUseCase = (
     handleFilterChange(updatedDistricts);
   };
 
+  const handleFilterChapter = (chapters: ComboOption[]) => {
+    const wasNonEmpty = previousChaptersRef.current && previousChaptersRef.current.length > 0;
+    const isNowEmpty = chapters.length === 0;
+
+    if (wasNonEmpty && isNowEmpty) {
+      getAppInsights().appInsights.trackEvent({ name: 'Trustee Chapter Filter Cleared' });
+    }
+
+    previousChaptersRef.current = chapters;
+    store.setSelectedChapters(chapters);
+    onFilterChapter(chapters);
+  };
+
+  const handleClearAllChapters = () => {
+    handleFilterChapter([]);
+  };
+
+  const handleRemoveChapterPill = (chapter: ComboOption) => {
+    const updated = store.selectedChapters.filter((c) => c.value !== chapter.value);
+    handleFilterChapter(updated);
+  };
+
   return {
+    chaptersToComboOptions,
     districtsToComboOptions,
     fetchDistricts,
     focusOnDistrictFilter,
@@ -129,6 +160,9 @@ const trusteeDistrictFilterUseCase = (
     handleClearAll,
     handleToggleExpanded,
     handleRemovePill,
+    handleFilterChapter,
+    handleClearAllChapters,
+    handleRemoveChapterPill,
   };
 };
 
