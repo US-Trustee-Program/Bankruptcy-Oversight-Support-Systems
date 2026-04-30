@@ -10,7 +10,7 @@ import Input from '@/lib/components/uswds/Input';
 import Api2 from '@/lib/models/api2';
 import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
-import { sortByCourtLocation } from '@/lib/utils/court-utils';
+import { sortByCourtLocation, separateDefaultOptions } from '@/lib/utils/court-utils';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
@@ -147,24 +147,20 @@ export default function SearchScreen() {
     Api2.getCourts()
       .then((response) => {
         const newOfficesList = sortByCourtLocation(response.data);
-        const officeComboOptions = getDivisionComboOptions(newOfficesList);
-        const filteredDivisionCodes = getDivisionComboOptions(
-          newOfficesList.filter((office) =>
-            defaultDivisionCodes?.includes(office.courtDivisionCode),
-          ),
+        const allOfficeComboOptions = getDivisionComboOptions(newOfficesList);
+
+        // Separate defaults from non-defaults using utility
+        const defaultCodesSet = new Set(defaultDivisionCodes || []);
+        const finalOfficeComboOptions = separateDefaultOptions(
+          allOfficeComboOptions,
+          defaultCodesSet,
         );
-        if (filteredDivisionCodes.length) {
-          filteredDivisionCodes[filteredDivisionCodes.length - 1].divider = true;
-          filteredDivisionCodes.forEach((option: ComboOption) => {
-            option.isAriaDefault = true;
-          });
-        }
-        const filteredOfficeComboOptions = officeComboOptions.filter((officeComboOption) => {
-          return !defaultDivisionCodes?.includes(officeComboOption.value);
-        });
-        const finalOfficeComboOptions = [...filteredDivisionCodes, ...filteredOfficeComboOptions];
+
+        // Get default options for initial selection
+        const defaultOptions = finalOfficeComboOptions.filter((opt) => opt.isAriaDefault);
+
         setOfficesList(finalOfficeComboOptions);
-        courtSelectionRef.current?.setSelections(filteredDivisionCodes);
+        courtSelectionRef.current?.setSelections(defaultOptions);
       })
       .catch(() => {
         globalAlert?.error('Cannot load office list');

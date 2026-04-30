@@ -2,13 +2,8 @@ import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import './Pill.scss';
 import Icon from './uswds/Icon';
 
-const defaultColor = 'black';
-const defaultBackgroundColor = '#d0d0d0';
-
 type PillProps = {
   id: string;
-  color?: string;
-  backgroundColor?: string;
   label: string;
   ariaLabelPrefix?: string;
   value: string;
@@ -19,8 +14,6 @@ type PillProps = {
 };
 
 function Pill_(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
-  const color = props.color ?? defaultColor;
-  const backgroundColor = props.backgroundColor ?? defaultBackgroundColor;
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   function handleKeyDown(ev: React.KeyboardEvent<HTMLButtonElement>) {
@@ -49,7 +42,6 @@ function Pill_(props: PillProps, ref: React.Ref<Partial<HTMLButtonElement>>) {
       id={props.id}
       data-testid={`pill-${props.id}`}
       className={`pill usa-button--unstyled ${wrapTextClass}`}
-      style={{ backgroundColor, color }}
       onClick={() => props.onClick(props.value)}
       onKeyDown={(ev) => handleKeyDown(ev)}
       tabIndex={0}

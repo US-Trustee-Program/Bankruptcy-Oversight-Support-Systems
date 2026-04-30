@@ -41,16 +41,13 @@ export interface TrusteeDistrictFilterViewModel {
   handleFilterChange(districts: ComboOption[]): void;
   handleClearAll(): void;
   handleToggleExpanded(): void;
-  handleRemovePill(district: ComboOption): void;
   handleFilterChapter(chapters: ComboOption[]): void;
   handleClearAllChapters(): void;
-  handleRemoveChapterPill(chapter: ComboOption): void;
 }
 
 export interface TrusteeDistrictFilterRef {
   refresh: () => void;
   focus: () => void;
-  removePill: (district: ComboOption) => void;
   clearAll: () => void;
 }
 
@@ -72,8 +69,6 @@ export interface TrusteeDistrictFilterUseCase {
   handleFilterChange(districts: ComboOption[]): void;
   handleClearAll(): void;
   handleToggleExpanded(): void;
-  handleRemovePill(district: ComboOption): void;
   handleFilterChapter(chapters: ComboOption[]): void;
   handleClearAllChapters(): void;
-  handleRemoveChapterPill(chapter: ComboOption): void;
 }

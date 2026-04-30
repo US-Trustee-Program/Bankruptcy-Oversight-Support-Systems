@@ -49,6 +49,7 @@ export interface ComboBoxProps extends Omit<InputProps, 'onChange' | 'onFocus' |
   errorMessage?: string;
   hideClearAllButton?: boolean;
   placeholder?: string;
+  scrollToSelected?: boolean;
 }
 
 function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
@@ -71,6 +72,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     errorMessage,
     hideClearAllButton,
     placeholder,
+    scrollToSelected,
     ...otherProps
   } = props;
 
@@ -446,7 +448,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       focusInput();
 
       // Scroll to first selected item if there are selections (only on open, not on selection changes)
-      if (selectedMap.size > 0 && comboBoxListRef.current) {
+      if (scrollToSelected && selectedMap.size > 0 && comboBoxListRef.current) {
         requestAnimationFrame(() => {
           const firstSelected = Array.from(selectedMap.values())[0];
           if (!firstSelected) return;
@@ -456,7 +458,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           ) as HTMLElement;
 
           if (selectedElement && typeof selectedElement.scrollIntoView === 'function') {
-            selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            selectedElement.scrollIntoView({ block: 'nearest', behavior: 'auto' });
           }
         });
       }

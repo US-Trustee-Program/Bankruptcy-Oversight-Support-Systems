@@ -35,7 +35,6 @@ const TrusteeDistrictFilter_ = (
     return {
       refresh: useCase.fetchDistricts,
       focus: useCase.focusOnDistrictFilter,
-      removePill: useCase.handleRemovePill,
       clearAll: useCase.handleClearAll,
     };
   });
@@ -73,10 +72,8 @@ const TrusteeDistrictFilter_ = (
     handleFilterChange: useCase.handleFilterChange,
     handleClearAll: useCase.handleClearAll,
     handleToggleExpanded: useCase.handleToggleExpanded,
-    handleRemovePill: useCase.handleRemovePill,
     handleFilterChapter: useCase.handleFilterChapter,
     handleClearAllChapters: useCase.handleClearAllChapters,
-    handleRemoveChapterPill: useCase.handleRemoveChapterPill,
   };
 
   return <TrusteeDistrictFilterView viewModel={viewModel}></TrusteeDistrictFilterView>;
