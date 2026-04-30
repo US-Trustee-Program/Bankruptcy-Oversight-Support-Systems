@@ -61,6 +61,7 @@ describe('trustee district filter use case tests', () => {
   ];
 
   const mockOnFilterDistrict = vi.fn();
+  const mockOnFilterChapter = vi.fn();
 
   const mockStore: TrusteeDistrictFilterStore = {
     districts: mockDistricts,
@@ -71,6 +72,8 @@ describe('trustee district filter use case tests', () => {
     setSelectedDistricts: vi.fn(),
     defaultDistricts: [],
     setDefaultDistricts: vi.fn(),
+    selectedChapters: [],
+    setSelectedChapters: vi.fn(),
     isExpanded: false,
     setIsExpanded: vi.fn(),
   };
@@ -88,24 +91,31 @@ describe('trustee district filter use case tests', () => {
 
   const mockControls: TrusteeDistrictFilterControls = {
     districtFilterRef: comboBoxRef,
+    chapterFilterRef: comboBoxRef,
   };
 
   const previousDistrictsRef = { current: undefined as ComboOption[] | undefined };
+  const previousChaptersRef = { current: undefined as ComboOption[] | undefined };
 
   const useCase = trusteeDistrictFilterUseCase(
     mockStore,
     mockControls,
     mockOnFilterDistrict,
     previousDistrictsRef,
+    mockOnFilterChapter,
+    previousChaptersRef,
   );
 
   beforeEach(() => {
     mockStore.defaultDistricts = [];
     mockStore.setSelectedDistricts = vi.fn();
+    mockStore.setSelectedChapters = vi.fn();
     setSelectedDistrictsSpy = vi.spyOn(mockStore, 'setSelectedDistricts');
     mockOnFilterDistrict.mockReset();
+    mockOnFilterChapter.mockReset();
     mockTrackEvent.mockReset();
-    previousDistrictsRef.current = undefined; // Reset ref state between tests
+    previousDistrictsRef.current = undefined;
+    previousChaptersRef.current = undefined;
   });
 
   afterEach(() => {
@@ -444,6 +454,73 @@ describe('trustee district filter use case tests', () => {
       useCase.focusOnDistrictFilter();
 
       expect(focusInputSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('chaptersToComboOptions', () => {
+    test('should return all 5 chapter options with correct labels', () => {
+      const options = useCase.chaptersToComboOptions();
+
+      expect(options).toHaveLength(5);
+      expect(options).toEqual([
+        { value: '7', label: '7' },
+        { value: '11', label: '11' },
+        { value: '11-subchapter-v', label: '11 Subchapter V' },
+        { value: '12', label: '12' },
+        { value: '13', label: '13' },
+      ]);
+    });
+  });
+
+  describe('handleFilterChapter', () => {
+    test('should update selected chapters and trigger callback', () => {
+      const setSelectedChaptersSpy = vi.spyOn(mockStore, 'setSelectedChapters');
+      const chapters: ComboOption[] = [{ value: '7', label: '7' }];
+
+      useCase.handleFilterChapter(chapters);
+
+      expect(setSelectedChaptersSpy).toHaveBeenCalledWith(chapters);
+      expect(mockOnFilterChapter).toHaveBeenCalledWith(chapters);
+    });
+
+    test('should fire Trustee Chapter Filter Cleared only when transitioning non-empty to empty', () => {
+      useCase.handleFilterChapter([{ value: '7', label: '7' }]);
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+
+      useCase.handleFilterChapter([]);
+      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Chapter Filter Cleared' });
+    });
+
+    test('should not fire Trustee Chapter Filter Cleared on initial empty call', () => {
+      useCase.handleFilterChapter([]);
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleClearAllChapters', () => {
+    test('should clear selected chapters and notify', () => {
+      const setSelectedChaptersSpy = vi.spyOn(mockStore, 'setSelectedChapters');
+
+      useCase.handleClearAllChapters();
+
+      expect(setSelectedChaptersSpy).toHaveBeenCalledWith([]);
+      expect(mockOnFilterChapter).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('handleRemoveChapterPill', () => {
+    test('should remove the specified chapter from selection and notify', () => {
+      const chapters: ComboOption[] = [
+        { value: '7', label: '7' },
+        { value: '13', label: '13' },
+      ];
+      mockStore.selectedChapters = chapters;
+      const setSelectedChaptersSpy = vi.spyOn(mockStore, 'setSelectedChapters');
+
+      useCase.handleRemoveChapterPill(chapters[0]);
+
+      expect(setSelectedChaptersSpy).toHaveBeenCalledWith([chapters[1]]);
+      expect(mockOnFilterChapter).toHaveBeenCalledWith([chapters[1]]);
     });
   });
 

@@ -12,12 +12,15 @@ export interface TrusteeDistrictFilterStore {
   setSelectedDistricts(val: ComboOption[]): void;
   defaultDistricts: ComboOption[];
   setDefaultDistricts(val: ComboOption[]): void;
+  selectedChapters: ComboOption[];
+  setSelectedChapters(val: ComboOption[]): void;
   isExpanded: boolean;
   setIsExpanded(val: boolean): void;
 }
 
 export interface TrusteeDistrictFilterControls {
   districtFilterRef: React.RefObject<ComboBoxRef | null>;
+  chapterFilterRef: React.RefObject<ComboBoxRef | null>;
 }
 
 export type TrusteeDistrictFilterViewProps = {
@@ -28,13 +31,18 @@ export interface TrusteeDistrictFilterViewModel {
   districts: CourtDivisionDetails[];
   districtsError: boolean;
   selectedDistricts: ComboOption[];
+  selectedChapters: ComboOption[];
   isExpanded: boolean;
   districtFilterRef: React.RefObject<ComboBoxRef | null>;
+  chapterFilterRef: React.RefObject<ComboBoxRef | null>;
 
   districtsToComboOptions(districts: CourtDivisionDetails[]): ComboOption[];
+  chaptersToComboOptions(): ComboOption[];
   handleFilterChange(districts: ComboOption[]): void;
   handleClearAll(): void;
   handleToggleExpanded(): void;
+  handleFilterChapter(chapters: ComboOption[]): void;
+  handleClearAllChapters(): void;
 }
 
 export interface TrusteeDistrictFilterRef {
@@ -45,11 +53,13 @@ export interface TrusteeDistrictFilterRef {
 
 export type TrusteeDistrictFilterProps = {
   handleFilterDistrict(districts: ComboOption[]): void;
+  handleFilterChapter(chapters: ComboOption[]): void;
   onExpandedChange?: (isExpanded: boolean) => void;
 };
 
 export interface TrusteeDistrictFilterUseCase {
   districtsToComboOptions(districts: CourtDivisionDetails[]): ComboOption[];
+  chaptersToComboOptions(): ComboOption[];
   fetchDistricts(): Promise<void>;
   focusOnDistrictFilter(): void;
   getDefaultDistrictsFromSession(
@@ -59,4 +69,6 @@ export interface TrusteeDistrictFilterUseCase {
   handleFilterChange(districts: ComboOption[]): void;
   handleClearAll(): void;
   handleToggleExpanded(): void;
+  handleFilterChapter(chapters: ComboOption[]): void;
+  handleClearAllChapters(): void;
 }
