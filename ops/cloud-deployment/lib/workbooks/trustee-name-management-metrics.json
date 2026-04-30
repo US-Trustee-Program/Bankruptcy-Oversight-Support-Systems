@@ -173,26 +173,34 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | distinct session_Id;\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | extend DidSort = true\n    | distinct session_Id, DidSort;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize SortedSessions = countif(DidSort == true), UnsortedSessions = countif(isnull(DidSort))\n| evaluate narrow()\n| project Category = Column, Count = tolong(Value)",
-        "size": 3,
-        "title": "Sort Adoption Breakdown",
+        "query": "let sessions_with_load = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Loaded\"\n    | extend Day = startofday(timestamp)\n    | distinct session_Id, Day;\nlet sessions_with_sort = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee List Sort Changed\"\n    | extend DidSort = true\n    | distinct session_Id, DidSort;\nsessions_with_load\n| join kind=leftouter sessions_with_sort on session_Id\n| summarize TotalSessions = count(), SortedSessions = countif(DidSort == true) by Day\n| project Day, SortAdoptionPct = round(100.0 * SortedSessions / TotalSessions, 1)\n| order by Day asc",
+        "size": 0,
+        "title": "Sort Adoption Over Time",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "piechart",
+        "visualization": "linechart",
         "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
           "seriesLabelSettings": [
             {
-              "seriesName": "SortedSessions",
-              "label": "Sorted Sessions",
+              "seriesName": "SortAdoptionPct",
+              "label": "Sort Adoption %",
               "color": "blue"
-            },
-            {
-              "seriesName": "UnsortedSessions",
-              "label": "Unsorted Sessions",
-              "color": "gray"
             }
-          ]
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            },
+            "min": 0,
+            "max": 100
+          }
         }
       },
       "name": "sort-adoption-trend"
@@ -307,14 +315,16 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| extend isMigrated = tostring(customDimensions.isMigrated)\n| summarize\n    MigratedEdits = countif(isMigrated == \"true\"),\n    NonMigratedEdits = countif(isMigrated == \"false\")\n| evaluate narrow()\n| project Category = Column, Count = tolong(Value)",
-        "size": 3,
-        "title": "Name Edits — Migrated vs Non-Migrated",
+        "query": "app('{NodeApiAppInsights:name}').customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Edited\"\n| extend isMigrated = tostring(customDimensions.isMigrated)\n| summarize\n    MigratedEdits = countif(isMigrated == \"true\"),\n    NonMigratedEdits = countif(isMigrated == \"false\")\n    by Day = startofday(timestamp)\n| order by Day asc",
+        "size": 0,
+        "title": "Name Edits Over Time — Migrated vs Non-Migrated",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "piechart",
+        "visualization": "linechart",
         "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
           "seriesLabelSettings": [
             {
               "seriesName": "MigratedEdits",
@@ -326,7 +336,16 @@
               "label": "Non-Migrated Trustees",
               "color": "green"
             }
-          ]
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
         }
       },
       "name": "name-edits-trend"
