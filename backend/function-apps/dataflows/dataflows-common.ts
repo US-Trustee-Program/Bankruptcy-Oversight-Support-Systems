@@ -69,16 +69,52 @@ export function buildQueueName(...parts): string {
  * Builds an Azure blob storage container name that avoids duplicate names
  * by using the MODULE_NAME as a namespace and follows Azure naming requirements.
  *
+ * Azure blob container names must:
+ * - Be 3–63 characters
+ * - Start with a letter or number
+ * - Contain only lowercase letters, numbers, and hyphens
+ * - Have hyphens surrounded by alphanumeric characters (no leading/trailing or consecutive hyphens)
+ *
  * @param moduleName - The module name (e.g., ModuleNames.SYNC_OFFICE_STAFF)
  * @param direction - 'in' for input containers, 'out' for output containers
  * @returns Container name in format: [module-name]-[in|out]
+ * @throws Error if the resulting container name doesn't meet Azure naming requirements
  *
  * @example
  * buildContainerName('SYNC-OFFICE-STAFF', 'in')   // → 'sync-office-staff-in'
  * buildContainerName('MIGRATE_CASE_HISTORY', 'out') // → 'migrate-case-history-out'
  */
 export function buildContainerName(moduleName: string, direction: 'in' | 'out'): string {
-  return `${moduleName.toLowerCase().replace(/_/g, '-')}-${direction}`;
+  // Normalize the module name into a valid container-name "base" segment.
+  const normalizedBase = moduleName
+    .trim()
+    .toLowerCase()
+    // Replace any run of invalid characters (including spaces, underscores,
+    // dots, etc.) with a single hyphen.
+    .replace(/[^a-z0-9]+/g, '-')
+    // Remove leading/trailing hyphens.
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+
+  const containerName = `${normalizedBase}-${direction}`;
+
+  // Validate final container name against Azure rules.
+  // - length: 3–63 chars
+  // - pattern: starts with [a-z0-9], ends with [a-z0-9], only [a-z0-9-] inside
+  const isValid =
+    containerName.length >= 3 &&
+    containerName.length <= 63 &&
+    /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(containerName);
+
+  if (!isValid) {
+    throw new Error(
+      `Invalid Azure container name derived from module "${moduleName}": "${containerName}".` +
+        ' Container names must be 3–63 characters, start with a letter or number, and' +
+        ' contain only lowercase letters, numbers, and hyphens (with hyphens surrounded by alphanumerics).',
+    );
+  }
+
+  return containerName;
 }
 
 /**
@@ -170,9 +206,8 @@ export function ensureContainersExist(containerNames: string[], moduleName: stri
     return;
   }
 
-  // Kick off async container creation without blocking
-  // Use setImmediate to ensure it runs after current synchronous setup completes
-  setImmediate(async () => {
+  // Kick off async container creation without blocking function app startup
+  void (async () => {
     try {
       // Dynamic import to avoid circular dependencies and defer loading
       const { ensureContainersExistAsync } =
@@ -180,14 +215,23 @@ export function ensureContainersExist(containerNames: string[], moduleName: stri
       await ensureContainersExistAsync(containerNames, moduleName);
     } catch (error) {
       // Log error but don't fail function app startup
-      const logger = new (await import('../../lib/adapters/services/logger.service')).LoggerImpl(
-        'bootstrap',
-      );
-      logger.error(
-        moduleName,
-        `Failed to ensure containers exist: ${containerNames.join(', ')}`,
-        error,
-      );
+      // Guard logger import to prevent unhandled rejection
+      try {
+        const { LoggerImpl } = await import('../../lib/adapters/services/logger.service');
+        const logger = new LoggerImpl('bootstrap');
+        logger.error(
+          moduleName,
+          `Failed to ensure containers exist: ${containerNames.join(', ')}`,
+          error,
+        );
+      } catch (loggerError) {
+        // Fallback to console if logger import fails
+        console.error(
+          `[${moduleName}] Failed to ensure containers exist: ${containerNames.join(', ')}`,
+          error,
+        );
+        console.error('[bootstrap] Failed to load logger', loggerError);
+      }
     }
-  });
+  })();
 }
