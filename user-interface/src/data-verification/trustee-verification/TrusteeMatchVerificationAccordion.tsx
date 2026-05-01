@@ -108,6 +108,107 @@ function OtherMatchesPagination({
   );
 }
 
+type TrusteeCandidateRowProps = {
+  candidate: CandidateScore;
+  onApprove?: (candidate: CandidateScore) => void;
+  isProcessing?: boolean;
+};
+
+function TrusteeCandidateRow({ candidate, onApprove, isProcessing }: TrusteeCandidateRowProps) {
+  const rowAddressLines = candidate.address
+    ? [
+        candidate.address.address1,
+        candidate.address.address2,
+        candidate.address.address3,
+        `${candidate.address.city}, ${candidate.address.state} ${candidate.address.zipCode}`,
+      ].filter(Boolean)
+    : [];
+
+  return (
+    <div className="trustee-data-row grid-row grid-gap-lg">
+      <div
+        className="trustee-data-cell grid-col-2"
+        data-cell="Name"
+        data-testid={`candidate-name-${candidate.trusteeId}`}
+      >
+        <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
+      </div>
+
+      <div className="trustee-data-cell grid-col-2" data-cell="Address">
+        {rowAddressLines.length > 0
+          ? rowAddressLines.map((line, i, arr) => (
+              <span key={i}>
+                {line}
+                {i < arr.length - 1 && <br />}
+              </span>
+            ))
+          : 'Not Provided'}
+      </div>
+      <div className="trustee-data-cell grid-col-1" data-cell="Phone">
+        {candidate.phone
+          ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
+          : 'Not Provided'}
+      </div>
+      <div className="trustee-data-cell grid-col-2" data-cell="Email">
+        {candidate.email ?? 'Not Provided'}
+      </div>
+      <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
+        {candidate.appointments?.map((appt, i, arr) => (
+          <span key={i}>
+            {appt.courtName}
+            {appt.courtDivisionName ? ` (${appt.courtDivisionName})` : ''}: Chap{' '}
+            {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
+            {i < arr.length - 1 && <br />}
+          </span>
+        ))}
+      </div>
+      <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
+        {onApprove && (
+          <button
+            type="button"
+            data-testid={`approve-candidate-${candidate.trusteeId}`}
+            onClick={() => onApprove(candidate)}
+            disabled={isProcessing}
+            className="match-trustee-link"
+          >
+            <Icon name="check" />
+            Match Trustee
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+type CandidateTableProps = {
+  candidates: CandidateScore[];
+  onApprove?: (candidate: CandidateScore) => void;
+  isProcessing?: boolean;
+};
+
+function CandidateTable({ candidates, onApprove, isProcessing }: CandidateTableProps) {
+  return (
+    <div className="trustee-data-grid trustee-candidates-grid">
+      <div className="trustee-data-header grid-row grid-gap-lg">
+        <div className="trustee-data-cell grid-col-2">Name</div>
+        <div className="trustee-data-cell grid-col-2">Address</div>
+        <div className="trustee-data-cell grid-col-1">Phone</div>
+        <div className="trustee-data-cell grid-col-2">Email</div>
+        <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
+        <div className="trustee-data-cell grid-col-2">Action</div>
+      </div>
+      {candidates.map((candidate) => (
+        <TrusteeCandidateRow
+          key={candidate.trusteeId}
+          candidate={candidate}
+          onApprove={onApprove}
+          isProcessing={isProcessing}
+        />
+      ))}
+    </div>
+  );
+}
+
 function TrusteeSearchLink({
   linkLabel,
   linkMessage,
@@ -283,108 +384,6 @@ export function TrusteeMatchVerificationAccordion(props: TrusteeMatchVerificatio
       (c) => c.trusteeId === order.resolvedTrusteeId,
     )?.trusteeName;
     return order.resolvedTrusteeName ?? matchedCandidateName ?? order.resolvedTrusteeId ?? '';
-  }
-
-  type TrusteeCandidateRowProps = {
-    candidate: CandidateScore;
-    onApprove?: (candidate: CandidateScore) => void;
-    isProcessing?: boolean;
-  };
-
-  function TrusteeCandidateRow({ candidate, onApprove, isProcessing }: TrusteeCandidateRowProps) {
-    const rowAddressLines = candidate.address
-      ? [
-          candidate.address.address1,
-          candidate.address.address2,
-          candidate.address.address3,
-          `${candidate.address.city}, ${candidate.address.state} ${candidate.address.zipCode}`,
-        ].filter(Boolean)
-      : [];
-
-    return (
-      <div className="trustee-data-row grid-row grid-gap-lg">
-        <div
-          className="trustee-data-cell grid-col-2"
-          data-cell="Name"
-          data-testid={`candidate-name-${candidate.trusteeId}`}
-        >
-          <NewTabLink to={`/trustees/${candidate.trusteeId}`} label={candidate.trusteeName} />
-        </div>
-
-        <div className="trustee-data-cell grid-col-2" data-cell="Address">
-          {rowAddressLines.length > 0
-            ? rowAddressLines.map((line, i, arr) => (
-                <span key={i}>
-                  {line}
-                  {i < arr.length - 1 && <br />}
-                </span>
-              ))
-            : 'Not Provided'}
-        </div>
-        <div className="trustee-data-cell grid-col-1" data-cell="Phone">
-          {candidate.phone
-            ? `${candidate.phone.number}${candidate.phone.extension ? ` x${candidate.phone.extension}` : ''}`
-            : 'Not Provided'}
-        </div>
-        <div className="trustee-data-cell grid-col-2" data-cell="Email">
-          {candidate.email ?? 'Not Provided'}
-        </div>
-        <div className="trustee-data-cell grid-col-3" data-cell="Trustee Appt.">
-          {candidate.appointments?.map((appt, i, arr) => (
-            <span key={i}>
-              {appt.courtName}
-              {appt.courtDivisionName ? ` (${appt.courtDivisionName})` : ''}: Chap{' '}
-              {formatChapterType(appt.chapter)} - {formatAppointmentStatus(appt.status)}
-              {i < arr.length - 1 && <br />}
-            </span>
-          ))}
-        </div>
-        <div className="trustee-data-cell grid-col-2 text-no-wrap" data-cell="Action">
-          {onApprove && (
-            <button
-              type="button"
-              data-testid={`approve-candidate-${candidate.trusteeId}`}
-              onClick={() => onApprove(candidate)}
-              disabled={isProcessing}
-              className="match-trustee-link"
-            >
-              <Icon name="check" />
-              Match Trustee
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  type CandidateTableProps = {
-    candidates: CandidateScore[];
-
-    onApprove?: (candidate: CandidateScore) => void;
-    isProcessing?: boolean;
-  };
-
-  function CandidateTable({ candidates, onApprove, isProcessing }: CandidateTableProps) {
-    return (
-      <div className="trustee-data-grid trustee-candidates-grid">
-        <div className="trustee-data-header grid-row grid-gap-lg">
-          <div className="trustee-data-cell grid-col-2">Name</div>
-          <div className="trustee-data-cell grid-col-2">Address</div>
-          <div className="trustee-data-cell grid-col-1">Phone</div>
-          <div className="trustee-data-cell grid-col-2">Email</div>
-          <div className="trustee-data-cell grid-col-3">Trustee Appointment</div>
-          <div className="trustee-data-cell grid-col-2">Action</div>
-        </div>
-        {candidates.map((candidate) => (
-          <TrusteeCandidateRow
-            key={candidate.trusteeId}
-            candidate={candidate}
-            onApprove={onApprove}
-            isProcessing={isProcessing}
-          />
-        ))}
-      </div>
-    );
   }
 
   const caseLink = (
