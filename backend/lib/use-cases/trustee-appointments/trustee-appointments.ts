@@ -31,6 +31,7 @@ type AppointmentSnapshot = {
   appointmentType: AppointmentType;
   courtId: string;
   divisionCode: string;
+  divisionCodes?: string[];
   appointedDate: string;
   status: AppointmentStatus;
   effectiveDate: string;
@@ -55,6 +56,35 @@ export class TrusteeAppointmentsUseCase {
   private findCourtDistrict(courts: CourtDivisionDetails[], courtId: string): string | undefined {
     const court = courts.find((c) => c.courtId === courtId);
     return court?.courtName;
+  }
+
+  /**
+   * Normalize appointment data to ensure backward compatibility.
+   * Converts single divisionCode to divisionCodes array if needed.
+   */
+  private normalizeAppointmentData(
+    appointmentData: TrusteeAppointmentInput,
+  ): TrusteeAppointmentInput {
+    // If new format is provided, use it
+    if (appointmentData.divisionCodes && appointmentData.divisionCodes.length > 0) {
+      return {
+        ...appointmentData,
+        divisionCode: appointmentData.divisionCodes[0], // Keep first for backward compatibility
+        divisionCodes: appointmentData.divisionCodes,
+      };
+    }
+
+    // If old format is provided, convert to new format
+    if (appointmentData.divisionCode) {
+      return {
+        ...appointmentData,
+        divisionCode: appointmentData.divisionCode,
+        divisionCodes: [appointmentData.divisionCode],
+      };
+    }
+
+    // Neither provided - validation will catch this
+    return appointmentData;
   }
 
   private validateAppointmentData(appointmentData: TrusteeAppointmentInput): void {
@@ -174,13 +204,16 @@ export class TrusteeAppointmentsUseCase {
         });
       }
 
-      this.validateAppointmentData(appointmentData);
+      // Normalize data (convert old format to new format if needed)
+      const normalizedData = this.normalizeAppointmentData(appointmentData);
+
+      this.validateAppointmentData(normalizedData);
 
       const userReference = getCamsUserReference(context.session.user);
 
       const createdAppointment = await this.trusteeAppointmentsRepository.createAppointment(
         trusteeId,
-        appointmentData,
+        normalizedData,
         userReference,
       );
 
@@ -195,6 +228,7 @@ export class TrusteeAppointmentsUseCase {
           appointmentType: createdAppointment.appointmentType,
           courtId: createdAppointment.courtId,
           divisionCode: createdAppointment.divisionCode,
+          divisionCodes: createdAppointment.divisionCodes,
           appointedDate: createdAppointment.appointedDate,
           status: createdAppointment.status,
           effectiveDate: createdAppointment.effectiveDate,
@@ -226,7 +260,10 @@ export class TrusteeAppointmentsUseCase {
     appointmentData: TrusteeAppointmentInput,
   ): Promise<TrusteeAppointment> {
     try {
-      this.validateAppointmentData(appointmentData);
+      // Normalize data (convert old format to new format if needed)
+      const normalizedData = this.normalizeAppointmentData(appointmentData);
+
+      this.validateAppointmentData(normalizedData);
 
       const userReference = getCamsUserReference(context.session.user);
 
@@ -238,7 +275,7 @@ export class TrusteeAppointmentsUseCase {
       const updatedAppointment = await this.trusteeAppointmentsRepository.updateAppointment(
         trusteeId,
         appointmentId,
-        appointmentData,
+        normalizedData,
         userReference,
       );
 
@@ -253,6 +290,7 @@ export class TrusteeAppointmentsUseCase {
             appointmentType: existingAppointment.appointmentType,
             courtId: existingAppointment.courtId,
             divisionCode: existingAppointment.divisionCode,
+            divisionCodes: existingAppointment.divisionCodes,
             appointedDate: existingAppointment.appointedDate,
             status: existingAppointment.status,
             effectiveDate: existingAppointment.effectiveDate,
@@ -262,6 +300,7 @@ export class TrusteeAppointmentsUseCase {
             appointmentType: updatedAppointment.appointmentType,
             courtId: updatedAppointment.courtId,
             divisionCode: updatedAppointment.divisionCode,
+            divisionCodes: updatedAppointment.divisionCodes,
             appointedDate: updatedAppointment.appointedDate,
             status: updatedAppointment.status,
             effectiveDate: updatedAppointment.effectiveDate,

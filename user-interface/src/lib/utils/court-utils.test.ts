@@ -1,5 +1,12 @@
 import { describe, test, expect } from 'vitest';
-import { getStateNameFromCode, sortByCourtLocation } from './court-utils';
+import {
+  getStateNameFromCode,
+  sortByCourtLocation,
+  getUniqueDistricts,
+  getDivisionsForDistrict,
+  buildDivisionsDisplay,
+} from './court-utils';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
 describe('court-utils', () => {
   describe('getStateNameFromCode', () => {
@@ -394,6 +401,340 @@ describe('court-utils', () => {
         expect(sorted).toHaveLength(2);
         expect(sorted[0]).toEqual(sorted[1]);
       });
+    });
+  });
+
+  describe('getUniqueDistricts', () => {
+    test('should deduplicate districts by courtId', () => {
+      const courts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Juneau',
+          officeCode: '097-J',
+          courtId: '097',
+          courtName: 'District of Alaska',
+          courtDivisionCode: '710',
+          courtDivisionName: 'Juneau',
+          groupDesignator: 'AK',
+          regionId: '18',
+          regionName: 'Region 18',
+          state: 'AK',
+        },
+        {
+          officeName: 'Nome',
+          officeCode: '097-N',
+          courtId: '097',
+          courtName: 'District of Alaska',
+          courtDivisionCode: '711',
+          courtDivisionName: 'Nome',
+          groupDesignator: 'AK',
+          regionId: '18',
+          regionName: 'Region 18',
+          state: 'AK',
+        },
+      ];
+
+      const districts = getUniqueDistricts(courts);
+
+      expect(districts).toHaveLength(1);
+      expect(districts[0]).toEqual({
+        courtId: '097',
+        courtName: 'District of Alaska',
+        state: 'AK',
+      });
+    });
+
+    test('should sort districts by state name then court name', () => {
+      const courts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Manhattan',
+          officeCode: '081-M',
+          courtId: '081',
+          courtName: 'Southern District of New York',
+          courtDivisionCode: '501',
+          courtDivisionName: 'Manhattan',
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'Region 2',
+          state: 'NY',
+        },
+        {
+          officeName: 'Los Angeles',
+          officeCode: '052-LA',
+          courtId: '052',
+          courtName: 'Central District of California',
+          courtDivisionCode: '201',
+          courtDivisionName: 'Los Angeles',
+          groupDesignator: 'CA',
+          regionId: '15',
+          regionName: 'Region 15',
+          state: 'CA',
+        },
+        {
+          officeName: 'San Francisco',
+          officeCode: '053-SF',
+          courtId: '053',
+          courtName: 'Northern District of California',
+          courtDivisionCode: '301',
+          courtDivisionName: 'San Francisco',
+          groupDesignator: 'CA',
+          regionId: '15',
+          regionName: 'Region 15',
+          state: 'CA',
+        },
+      ];
+
+      const districts = getUniqueDistricts(courts);
+
+      expect(districts).toHaveLength(3);
+      // California < New York alphabetically
+      expect(districts[0].state).toBe('CA');
+      expect(districts[0].courtName).toBe('Central District of California');
+      expect(districts[1].state).toBe('CA');
+      expect(districts[1].courtName).toBe('Northern District of California');
+      expect(districts[2].state).toBe('NY');
+      expect(districts[2].courtName).toBe('Southern District of New York');
+    });
+
+    test('should handle empty array', () => {
+      const districts = getUniqueDistricts([]);
+      expect(districts).toEqual([]);
+    });
+
+    test('should handle missing state field', () => {
+      const courts: CourtDivisionDetails[] = [
+        {
+          officeName: 'Test Office',
+          officeCode: '999-T',
+          courtId: '999',
+          courtName: 'Test District',
+          courtDivisionCode: '001',
+          courtDivisionName: 'Test Division',
+          groupDesignator: 'XX',
+          regionId: '99',
+          regionName: 'Region 99',
+        },
+      ];
+
+      const districts = getUniqueDistricts(courts);
+
+      expect(districts).toHaveLength(1);
+      expect(districts[0]).toEqual({
+        courtId: '999',
+        courtName: 'Test District',
+        state: undefined,
+      });
+    });
+  });
+
+  describe('getDivisionsForDistrict', () => {
+    const courts: CourtDivisionDetails[] = [
+      {
+        officeName: 'Juneau',
+        officeCode: '097-J',
+        courtId: '097',
+        courtName: 'District of Alaska',
+        courtDivisionCode: '710',
+        courtDivisionName: 'Juneau',
+        groupDesignator: 'AK',
+        regionId: '18',
+        regionName: 'Region 18',
+        state: 'AK',
+      },
+      {
+        officeName: 'Nome',
+        officeCode: '097-N',
+        courtId: '097',
+        courtName: 'District of Alaska',
+        courtDivisionCode: '711',
+        courtDivisionName: 'Nome',
+        groupDesignator: 'AK',
+        regionId: '18',
+        regionName: 'Region 18',
+        state: 'AK',
+      },
+      {
+        officeName: 'Anchorage',
+        officeCode: '097-A',
+        courtId: '097',
+        courtName: 'District of Alaska',
+        courtDivisionCode: '709',
+        courtDivisionName: 'Anchorage',
+        groupDesignator: 'AK',
+        regionId: '18',
+        regionName: 'Region 18',
+        state: 'AK',
+      },
+      {
+        officeName: 'Manhattan',
+        officeCode: '081-M',
+        courtId: '081',
+        courtName: 'Southern District of New York',
+        courtDivisionCode: '501',
+        courtDivisionName: 'Manhattan',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'Region 2',
+        state: 'NY',
+      },
+    ];
+
+    test('should return divisions for a given courtId', () => {
+      const divisions = getDivisionsForDistrict(courts, '097');
+
+      expect(divisions).toHaveLength(3);
+      expect(divisions.map((d) => d.courtDivisionCode)).toContain('710');
+      expect(divisions.map((d) => d.courtDivisionCode)).toContain('711');
+      expect(divisions.map((d) => d.courtDivisionCode)).toContain('709');
+    });
+
+    test('should sort divisions alphabetically by division name', () => {
+      const divisions = getDivisionsForDistrict(courts, '097');
+
+      // Anchorage < Juneau < Nome alphabetically
+      expect(divisions[0].courtDivisionName).toBe('Anchorage');
+      expect(divisions[1].courtDivisionName).toBe('Juneau');
+      expect(divisions[2].courtDivisionName).toBe('Nome');
+    });
+
+    test('should return empty array for non-existent courtId', () => {
+      const divisions = getDivisionsForDistrict(courts, '999');
+      expect(divisions).toEqual([]);
+    });
+
+    test('should return empty array for empty input', () => {
+      const divisions = getDivisionsForDistrict([], '097');
+      expect(divisions).toEqual([]);
+    });
+
+    test('should handle district with single division', () => {
+      const divisions = getDivisionsForDistrict(courts, '081');
+
+      expect(divisions).toHaveLength(1);
+      expect(divisions[0]).toEqual({
+        courtDivisionCode: '501',
+        courtDivisionName: 'Manhattan',
+      });
+    });
+  });
+
+  describe('buildDivisionsDisplay', () => {
+    const alaskaCourts: CourtDivisionDetails[] = [
+      {
+        officeName: 'Anchorage',
+        officeCode: '097-A',
+        courtId: '097',
+        courtName: 'District of Alaska',
+        courtDivisionCode: '709',
+        courtDivisionName: 'Anchorage',
+        groupDesignator: 'AK',
+        regionId: '18',
+        regionName: 'Region 18',
+        state: 'AK',
+      },
+      {
+        officeName: 'Juneau',
+        officeCode: '097-J',
+        courtId: '097',
+        courtName: 'District of Alaska',
+        courtDivisionCode: '710',
+        courtDivisionName: 'Juneau',
+        groupDesignator: 'AK',
+        regionId: '18',
+        regionName: 'Region 18',
+        state: 'AK',
+      },
+      {
+        officeName: 'Nome',
+        officeCode: '097-N',
+        courtId: '097',
+        courtName: 'District of Alaska',
+        courtDivisionCode: '711',
+        courtDivisionName: 'Nome',
+        groupDesignator: 'AK',
+        regionId: '18',
+        regionName: 'Region 18',
+        state: 'AK',
+      },
+    ];
+
+    test('should return "All" when all divisions for a district are selected', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['709', '710', '711'] },
+        alaskaCourts,
+      );
+      expect(result).toBe('All');
+    });
+
+    test('should return sorted comma-separated names for partial division selection', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['711', '709'] },
+        alaskaCourts,
+      );
+      expect(result).toBe('Anchorage, Nome');
+    });
+
+    test('should return single division name when one division code is selected', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['710'] },
+        alaskaCourts,
+      );
+      expect(result).toBe('Juneau');
+    });
+
+    test('should fall back to raw codes when courts data is empty', () => {
+      const result = buildDivisionsDisplay({ courtId: '097', divisionCodes: ['710', '711'] }, []);
+      expect(result).toBe('710, 711');
+    });
+
+    test('should fall back to raw codes when courtId is missing', () => {
+      const result = buildDivisionsDisplay({ divisionCodes: ['710'] }, alaskaCourts);
+      expect(result).toBe('710');
+    });
+
+    test('should use courtDivisionName when provided (legacy enriched)', () => {
+      const result = buildDivisionsDisplay({ courtDivisionName: 'Juneau' }, alaskaCourts);
+      expect(result).toBe('Juneau');
+    });
+
+    test('should look up name from divisionCode when courts data is available', () => {
+      const result = buildDivisionsDisplay({ courtId: '097', divisionCode: '711' }, alaskaCourts);
+      expect(result).toBe('Nome');
+    });
+
+    test('should fall back to raw divisionCode when courts data is empty', () => {
+      const result = buildDivisionsDisplay({ courtId: '097', divisionCode: '711' }, []);
+      expect(result).toBe('711');
+    });
+
+    test('should fall back to raw divisionCode when courtId is missing', () => {
+      const result = buildDivisionsDisplay({ divisionCode: '711' }, alaskaCourts);
+      expect(result).toBe('711');
+    });
+
+    test('should return "Not specified" when no division data exists', () => {
+      const result = buildDivisionsDisplay({}, alaskaCourts);
+      expect(result).toBe('Not specified');
+    });
+
+    test('should return "Not specified" when divisionCodes is empty array', () => {
+      const result = buildDivisionsDisplay({ courtId: '097', divisionCodes: [] }, alaskaCourts);
+      expect(result).toBe('Not specified');
+    });
+
+    test('should fall back to code when division code is not found in courts data', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['999'] },
+        alaskaCourts,
+      );
+      expect(result).toBe('999');
+    });
+
+    test('should prefer divisionCodes over legacy divisionCode when both present', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['710', '711'], divisionCode: '709' },
+        alaskaCourts,
+      );
+      expect(result).toBe('Juneau, Nome');
     });
   });
 });

@@ -11,6 +11,8 @@ import { CamsRole } from '@common/cams/roles';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
+import useCourts from '@/lib/hooks/UseCourts';
+import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
@@ -42,6 +44,13 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   const formattedChapter = formatChapterType(chapter);
   const formattedAppointmentType = formatAppointmentType(appointmentType);
 
+  // Use shared courts hook to avoid redundant API calls
+  const { courts: allCourts, error: courtsError } = useCourts();
+
+  if (courtsError) {
+    console.error('Error loading courts:', courtsError);
+  }
+
   // Build district display with guards for missing data
   // Use court name (e.g., "Eastern District of Missouri") populated by backend enrichment
   // Only fallback to court ID if court name is not available
@@ -54,6 +63,8 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
   } else {
     districtDisplay = 'Court information not available';
   }
+
+  const divisionsDisplay = buildDivisionsDisplay(props.appointment, allCourts);
 
   const formattedEffectiveDate = formatAppointmentDate(props.appointment.effectiveDate);
   const formattedAppointedDate = formatAppointmentDate(props.appointment.appointedDate);
@@ -86,6 +97,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
           editTitle="Edit trustee appointment"
           fields={[
             { label: 'District', value: districtDisplay },
+            { label: 'Divisions', value: divisionsDisplay },
             { label: 'Chapter', value: formattedChapter },
             { label: 'Type', value: formattedAppointmentType },
             { label: 'Appointed', value: formattedAppointedDate },

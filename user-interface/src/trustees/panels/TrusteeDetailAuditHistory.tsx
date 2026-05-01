@@ -4,6 +4,9 @@ import LoadingIndicator from '@/lib/components/LoadingIndicator';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
+import { CourtDivisionDetails } from '@common/cams/courts';
+import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
+import useCourts from '@/lib/hooks/UseCourts';
 import {
   TrusteeHistory,
   TrusteeNameHistory,
@@ -255,10 +258,11 @@ function ShowTrusteeOversightHistory(props: ShowTrusteeOversightHistoryProps) {
 type ShowTrusteeAppointmentHistoryProps = Readonly<{
   history: TrusteeAppointmentHistory;
   idx: number;
+  allCourts: CourtDivisionDetails[];
 }>;
 
 function ShowTrusteeAppointmentHistory(props: ShowTrusteeAppointmentHistoryProps) {
-  const { history, idx } = props;
+  const { history, idx, allCourts } = props;
 
   const formatAppointmentData = (data: typeof history.before | typeof history.after) => {
     if (!data) return '(none)';
@@ -278,12 +282,22 @@ function ShowTrusteeAppointmentHistory(props: ShowTrusteeAppointmentHistoryProps
       districtDisplay = 'Court information not available';
     }
 
+    // Format divisions display using shared helper
+    const divisionsResult = buildDivisionsDisplay(data, allCourts);
+    const divisionsDisplay = divisionsResult !== 'Not specified' ? divisionsResult : null;
+
     return (
       <>
         Chapter: {getAppointmentDetails(chapter, appointmentType)}
         <br />
         District: {districtDisplay}
         <br />
+        {divisionsDisplay && (
+          <>
+            Divisions: {divisionsDisplay}
+            <br />
+          </>
+        )}
         Appointed: {formatDate(data.appointedDate)}
         <br />
         Status: {data.status.charAt(0).toUpperCase() + data.status.slice(1)}{' '}
@@ -459,8 +473,10 @@ function ShowTrusteeUpcomingKeyDatesHistory(props: ShowTrusteeUpcomingKeyDatesHi
   );
 }
 
-function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[] }>) {
-  const { trusteeHistory } = props;
+function RenderTrusteeHistory(
+  props: Readonly<{ trusteeHistory: TrusteeHistory[]; allCourts: CourtDivisionDetails[] }>,
+) {
+  const { trusteeHistory, allCourts } = props;
   return (
     <>
       {trusteeHistory.map((history, idx: number) => {
@@ -502,6 +518,7 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
                 key={`${history.trusteeId}-${idx}`}
                 history={history}
                 idx={idx}
+                allCourts={allCourts}
               />
             );
           case 'AUDIT_ASSISTANT':
@@ -529,6 +546,7 @@ function RenderTrusteeHistory(props: Readonly<{ trusteeHistory: TrusteeHistory[]
 export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailAuditHistoryProps>) {
   const [trusteeHistory, setTrusteeHistory] = useState<TrusteeHistory[]>([]);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
+  const { courts: allCourts } = useCourts();
 
   useEffect(() => {
     const fetchTrusteeHistory = async () => {
@@ -582,7 +600,7 @@ export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailA
                 </tr>
               </thead>
               <tbody>
-                <RenderTrusteeHistory trusteeHistory={trusteeHistory} />
+                <RenderTrusteeHistory trusteeHistory={trusteeHistory} allCourts={allCourts} />
               </tbody>
             </table>
           )}
