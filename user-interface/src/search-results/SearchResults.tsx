@@ -59,6 +59,36 @@ export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   row: (props: SearchResultsRowProps) => JSX.Element;
 };
 
+type ClosedCasesHintMessageProps = {
+  closedCasesCount?: number;
+  variant: 'generic' | 'count';
+  onIncludeClosedCases?: () => void;
+};
+
+function ClosedCasesHintMessage({
+  closedCasesCount = 0,
+  variant,
+  onIncludeClosedCases,
+}: ClosedCasesHintMessageProps) {
+  const text =
+    variant === 'count'
+      ? `${closedCasesCount} closed ${closedCasesCount === 1 ? 'case' : 'cases'} match your search filters.`
+      : 'There may be closed cases that match your search filters.';
+
+  return (
+    <p className="usa-alert__text">
+      {text}{' '}
+      <button
+        type="button"
+        className="usa-button usa-button--unstyled"
+        onClick={() => onIncludeClosedCases?.()}
+      >
+        Include Closed Cases
+      </button>
+    </p>
+  );
+}
+
 function SearchResults(props: SearchResultsProps) {
   const {
     id,
@@ -83,12 +113,13 @@ function SearchResults(props: SearchResultsProps) {
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
 
-  const baseLabels = showDebtorNameColumn
-    ? ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed']
-    : ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
-  const searchResultsHeaderLabels = showOpenClosedColumn
-    ? [...baseLabels, 'Open/Closed']
-    : baseLabels;
+  const searchResultsHeaderLabels = (() => {
+    const labels = ['Case Number (Division)', 'Case Title'];
+    if (showDebtorNameColumn) labels.push('Debtor Name');
+    labels.push('Chapter', 'Case Filed');
+    if (showOpenClosedColumn) labels.push('Open/Closed');
+    return labels;
+  })();
 
   const showClosedCasesHint =
     searchPredicate.excludeClosedCases === true && !searchPredicate.caseNumber;
@@ -207,17 +238,11 @@ function SearchResults(props: SearchResultsProps) {
             inline={true}
             role="alert"
           >
-            <p className="usa-alert__text">
-              {closedCasesCount} closed {closedCasesCount === 1 ? 'case' : 'cases'} match your
-              search filters.{' '}
-              <button
-                type="button"
-                className="usa-button usa-button--unstyled"
-                onClick={() => onIncludeClosedCases?.()}
-              >
-                Include Closed Cases
-              </button>
-            </p>
+            <ClosedCasesHintMessage
+              variant="count"
+              closedCasesCount={closedCasesCount}
+              onIncludeClosedCases={onIncludeClosedCases}
+            />
           </Alert>
         </div>
       )}
@@ -232,16 +257,7 @@ function SearchResults(props: SearchResultsProps) {
             inline={true}
             role="alert"
           >
-            <p className="usa-alert__text">
-              There may be closed cases that match your search filters.{' '}
-              <button
-                type="button"
-                className="usa-button usa-button--unstyled"
-                onClick={() => onIncludeClosedCases?.()}
-              >
-                Include Closed Cases
-              </button>
-            </p>
+            <ClosedCasesHintMessage variant="generic" onIncludeClosedCases={onIncludeClosedCases} />
           </Alert>
         </div>
       )}
@@ -283,17 +299,11 @@ function SearchResults(props: SearchResultsProps) {
             role="status"
             slim={true}
           >
-            <p className="usa-alert__text">
-              {closedCasesCount} closed {closedCasesCount === 1 ? 'case' : 'cases'} match your
-              search filters.{' '}
-              <button
-                type="button"
-                className="usa-button usa-button--unstyled"
-                onClick={() => onIncludeClosedCases?.()}
-              >
-                Include Closed Cases
-              </button>
-            </p>
+            <ClosedCasesHintMessage
+              variant="count"
+              closedCasesCount={closedCasesCount}
+              onIncludeClosedCases={onIncludeClosedCases}
+            />
           </Alert>
         </div>
       )}
@@ -308,16 +318,7 @@ function SearchResults(props: SearchResultsProps) {
             role="status"
             slim={true}
           >
-            <p className="usa-alert__text">
-              There may be closed cases that match your search filters.{' '}
-              <button
-                type="button"
-                className="usa-button usa-button--unstyled"
-                onClick={() => onIncludeClosedCases?.()}
-              >
-                Include Closed Cases
-              </button>
-            </p>
+            <ClosedCasesHintMessage variant="generic" onIncludeClosedCases={onIncludeClosedCases} />
           </Alert>
         </div>
       )}
