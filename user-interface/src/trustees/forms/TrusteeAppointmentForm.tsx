@@ -34,6 +34,7 @@ import {
 } from '@common/cams/trustees';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import PillBox from '@/lib/components/PillBox';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { useLocation } from 'react-router-dom';
@@ -530,6 +531,16 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     setFormData((prev) => ({ ...prev, divisionCodes: selectedValues }));
   };
 
+  // Handle pill removal from PillBox with "All Divisions" default behavior
+  const handlePillRemoval = (updatedSelections: ComboOption[]) => {
+    const newCodes = updatedSelections.map((opt) => opt.value);
+    // If removing last item, default back to "All Divisions"
+    setFormData((prev) => ({
+      ...prev,
+      divisionCodes: newCodes.length === 0 ? [ALL_DIVISIONS_VALUE] : newCodes,
+    }));
+  };
+
   // Handle when focus leaves the entire division dropdown component
   const handleDivisionBlur = (e: React.FocusEvent) => {
     const currentTarget = e.currentTarget;
@@ -652,43 +663,29 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                   </div>
 
                   {/* Division pills - display below dropdown */}
-                  {formData.divisionCodes.length > 0 && (
-                    <div className="division-pills-container">
-                      {getMultiSelections(formData.divisionCodes, divisionOptions)?.map(
-                        (division) => {
-                          const showRemoveButton = !(
-                            formData.divisionCodes.length === 1 &&
-                            formData.divisionCodes[0] === ALL_DIVISIONS_VALUE
-                          );
-                          return (
-                            <span key={division.value} className="usa-tag division-pill">
-                              {division.label}
-                              {showRemoveButton && (
-                                <button
-                                  type="button"
-                                  className="usa-tag__remove-button"
-                                  onClick={() => {
-                                    const newCodes = formData.divisionCodes.filter(
-                                      (code) => code !== division.value,
-                                    );
-                                    // If removing last item, default back to "All Divisions"
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      divisionCodes:
-                                        newCodes.length === 0 ? [ALL_DIVISIONS_VALUE] : newCodes,
-                                    }));
-                                  }}
-                                  aria-label={`Remove ${division.label}`}
-                                >
-                                  ×
-                                </button>
-                              )}
-                            </span>
-                          );
-                        },
-                      )}
-                    </div>
-                  )}
+                  {formData.divisionCodes.length > 0 &&
+                    getMultiSelections(formData.divisionCodes, divisionOptions) &&
+                    (formData.divisionCodes.length === 1 &&
+                    formData.divisionCodes[0] === ALL_DIVISIONS_VALUE ? (
+                      // Show non-interactive badge when only "All Divisions" is selected
+                      <div className="division-pills-container">
+                        <span className="pill usa-button--unstyled" style={{ cursor: 'default' }}>
+                          <div className="pill-text" style={{ maxWidth: '100%' }}>
+                            All Divisions
+                          </div>
+                        </span>
+                      </div>
+                    ) : (
+                      // Use PillBox for removable specific divisions
+                      <PillBox
+                        id="division-pills"
+                        className="division-pills-container"
+                        selections={getMultiSelections(formData.divisionCodes, divisionOptions)!}
+                        wrapPills={true}
+                        ariaLabelPrefix="Division"
+                        onSelectionChange={handlePillRemoval}
+                      />
+                    ))}
                 </div>
               </>
             ) : (
