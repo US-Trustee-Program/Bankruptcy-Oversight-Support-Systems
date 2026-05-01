@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import TrusteesList from './TrusteesList';
@@ -832,6 +832,222 @@ describe('TrusteesList Component', () => {
             selectedChapterValues: '7',
           }),
         );
+      });
+    });
+  });
+
+  describe('Name Filter', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    test('renders name filter input inside accordion when expanded', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' })],
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      await userEvent
+        .setup({ delay: null })
+        .click(screen.getByRole('button', { name: /filters/i }));
+
+      expect(screen.getByRole('textbox', { name: /trustee name/i })).toBeInTheDocument();
+    });
+
+    test('does not call searchTrustees when fewer than 2 characters typed', async () => {
+      const searchSpy = vi.spyOn(Api2, 'searchTrustees');
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' })],
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      await userEvent
+        .setup({ delay: null })
+        .click(screen.getByRole('button', { name: /filters/i }));
+      await userEvent
+        .setup({ delay: null })
+        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'S');
+
+      await vi.advanceTimersByTimeAsync(300);
+
+      expect(searchSpy).not.toHaveBeenCalled();
+      expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+    });
+
+    test('filters trustees by name when 2+ characters typed', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      const trustee2 = makeListItem({ trusteeId: 't2', firstName: 'Bob', lastName: 'Jones' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1, trustee2] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trustee1, appointments: [], matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      await userEvent
+        .setup({ delay: null })
+        .click(screen.getByRole('button', { name: /filters/i }));
+      await userEvent
+        .setup({ delay: null })
+        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
+        expect(screen.queryByText('Jones, Bob')).not.toBeInTheDocument();
+      });
+    });
+
+    test('shows zero results when name search returns no matches', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' })],
+      });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [] });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      await userEvent
+        .setup({ delay: null })
+        .click(screen.getByRole('button', { name: /filters/i }));
+      await userEvent
+        .setup({ delay: null })
+        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'xyz');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('0 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.queryByText('Smith, Alice')).not.toBeInTheDocument();
+      });
+    });
+
+    test('clears name filter and restores full list', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      const trustee2 = makeListItem({ trusteeId: 't2', firstName: 'Bob', lastName: 'Jones' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1, trustee2] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trustee1, appointments: [], matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: /^clear$/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
+        expect(screen.getByText('Jones, Bob')).toBeInTheDocument();
+      });
+    });
+
+    test('live region announces count after name filter interaction', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      const trustee2 = makeListItem({ trusteeId: 't2', firstName: 'Bob', lastName: 'Jones' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1, trustee2] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trustee1, appointments: [], matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion).toHaveTextContent('');
+
+      await userEvent
+        .setup({ delay: null })
+        .click(screen.getByRole('button', { name: /filters/i }));
+      await userEvent
+        .setup({ delay: null })
+        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        expect(liveRegion).toHaveTextContent('1 Trustees');
+      });
+    });
+
+    test('tracks Trustee Name Filter Changed AppInsights event', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trustee1, appointments: [], matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      await userEvent
+        .setup({ delay: null })
+        .click(screen.getByRole('button', { name: /filters/i }));
+      await userEvent
+        .setup({ delay: null })
+        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith(
+          { name: 'Trustee Name Filter Changed' },
+          expect.objectContaining({ queryLength: 2, districtCount: 0, chapterCount: 0 }),
+        );
+      });
+    });
+
+    test('tracks Trustee Name Filter Cleared AppInsights event', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trustee1, appointments: [], matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await user.click(screen.getByRole('button', { name: /^clear$/i }));
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Name Filter Cleared' });
       });
     });
   });
