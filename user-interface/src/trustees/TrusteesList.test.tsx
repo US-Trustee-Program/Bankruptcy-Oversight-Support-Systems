@@ -1022,7 +1022,13 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(mockTrackEvent).toHaveBeenCalledWith(
           { name: 'Trustee Name Filter Changed' },
-          expect.objectContaining({ queryLength: 2, districtCount: 0, chapterCount: 0 }),
+          expect.objectContaining({
+            queryLength: 2,
+            districtCount: 0,
+            chapterCount: 0,
+            hasDistrictFilter: false,
+            sessionSearchCount: 1,
+          }),
         );
       });
     });
@@ -1047,7 +1053,10 @@ describe('TrusteesList Component', () => {
       await user.click(screen.getByRole('button', { name: /^clear$/i }));
 
       await waitFor(() => {
-        expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Name Filter Cleared' });
+        expect(mockTrackEvent).toHaveBeenCalledWith(
+          { name: 'Trustee Name Filter Cleared' },
+          expect.objectContaining({ queryLength: 2, sessionSearchCount: 1 }),
+        );
       });
     });
   });

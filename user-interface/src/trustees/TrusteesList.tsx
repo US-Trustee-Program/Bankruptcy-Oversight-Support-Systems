@@ -70,6 +70,8 @@ export default function TrusteesList() {
   const pageLoadStart = useRef(performance.now());
   const isNameFilterInteracted = useRef(false);
   const previousNameSearchRef = useRef('');
+  const nameSearchCountRef = useRef(0);
+  const nameSearchStartRef = useRef<number | null>(null);
   const debounce = useDebounce();
 
   useEffect(() => {
@@ -123,12 +125,16 @@ export default function TrusteesList() {
       setNameSearchIds(null);
       return;
     }
+    nameSearchCountRef.current += 1;
+    const searchStart = performance.now();
     debounce(async () => {
       try {
         const response = await Api2.searchTrustees(name);
         const ids = new Set(response.data.map((r) => r.trusteeId));
+        nameSearchStartRef.current = performance.now() - searchStart;
         setNameSearchIds(ids);
       } catch {
+        nameSearchStartRef.current = null;
         setNameSearchIds(new Set());
       }
     }, 300);
@@ -213,7 +219,13 @@ export default function TrusteesList() {
     const isNowEmpty = nameSearch.length === 0;
 
     if (wasNonEmpty && isNowEmpty) {
-      getAppInsights().appInsights.trackEvent({ name: 'Trustee Name Filter Cleared' });
+      getAppInsights().appInsights.trackEvent(
+        { name: 'Trustee Name Filter Cleared' },
+        {
+          queryLength: previousNameSearchRef.current.length,
+          sessionSearchCount: nameSearchCountRef.current,
+        },
+      );
     }
 
     previousNameSearchRef.current = nameSearch;
@@ -227,6 +239,9 @@ export default function TrusteesList() {
         resultCount: filteredTrustees.length,
         districtCount: selectedDistricts.length,
         chapterCount: selectedChapters.length,
+        searchResponseMs: nameSearchStartRef.current ?? undefined,
+        hasDistrictFilter: selectedDistricts.length > 0,
+        sessionSearchCount: nameSearchCountRef.current,
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
