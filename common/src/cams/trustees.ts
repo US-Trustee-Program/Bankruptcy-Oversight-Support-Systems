@@ -216,6 +216,7 @@ type AppointmentData = {
   appointmentType: AppointmentType;
   courtId: string;
   divisionCode: string;
+  divisionCodes?: string[];
   courtName?: string;
   courtDivisionName?: string;
   appointedDate: string;
