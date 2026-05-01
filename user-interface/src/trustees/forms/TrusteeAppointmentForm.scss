@@ -1,3 +1,5 @@
+@use 'uswds-core' as *;
+
 .trustee-form-screen {
   // CSS variable for consistent field width
   --form-field-max-width: 385px;
@@ -40,8 +42,8 @@
       display: inline-flex;
       align-items: center;
       gap: 0.25rem;
-      background-color: #005ea2;
-      color: #ffffff;
+      background-color: color('primary');
+      color: color('white');
       height: 32px; // Figma spec
       padding: 0 0.75rem;
       border-radius: 99rem;
@@ -58,14 +60,14 @@
         background: transparent;
         border: none;
         cursor: pointer;
-        color: #ffffff;
+        color: color('white');
         font-size: 1.25rem;
         line-height: 1;
         width: 1rem;
         height: 1rem;
 
         &:hover {
-          color: #f0f0f0;
+          filter: brightness(0.9);
         }
       }
     }
