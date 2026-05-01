@@ -3,27 +3,16 @@ import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { parseChapterAndType, parseTodStatus, applyAppointmentOverrides } from './ats-mappings';
 
 /**
- * Division enrichment information
- */
-export type DivisionEnrichment = {
-  divisionCode: string;
-  courtName: string;
-  courtDivisionName: string;
-};
-
-/**
  * Transform cleansed ATS appointment record to CAMS format.
  * This is called ONLY for CLEAN or AUTO_RECOVERABLE appointments.
  *
  * @param cleanedRecord - Cleansed ATS record (district/state validated)
  * @param courtId - Pre-mapped court ID from cleansing pipeline
- * @param divisionInfo - Optional division enrichment (code, names)
  * @returns CAMS appointment input
  */
 export function transformAppointmentRecord(
   cleanedRecord: AtsAppointmentRecord,
   courtId: string,
-  divisionInfo?: DivisionEnrichment,
 ): TrusteeAppointmentInput {
   // Keep original chapter code for CBC lookup
   const originalChapter = cleanedRecord.CHAPTER?.trim().toUpperCase() || '';
@@ -68,7 +57,7 @@ export function transformAppointmentRecord(
     effectiveDate = '1970-01-01';
   }
 
-  const appointment: TrusteeAppointmentInput = {
+  return {
     chapter,
     appointmentType,
     courtId, // Use pre-mapped court ID from cleansing pipeline
@@ -76,13 +65,4 @@ export function transformAppointmentRecord(
     status,
     effectiveDate,
   };
-
-  // Add division enrichment if provided
-  if (divisionInfo) {
-    appointment.divisionCode = divisionInfo.divisionCode;
-    appointment.courtName = divisionInfo.courtName;
-    appointment.courtDivisionName = divisionInfo.courtDivisionName;
-  }
-
-  return appointment;
 }
