@@ -1732,7 +1732,8 @@ async function post<T = unknown>(
           caseId: `3E1-${caseNumber ?? randomCaseNumber()}`,
           chapter: '13',
           caseTitle: 'Test Debtor 4',
-          dateFiled: '2024-04-01',
+          dateFiled: '2022-04-01',
+          closedDate: '2023-04-01',
           debtorTypeCode: 'IC',
           debtorTypeLabel: 'Individual Consumer',
           _actions,
@@ -1752,12 +1753,26 @@ async function post<T = unknown>(
           caseId: `256-${caseNumber ?? randomCaseNumber()}`,
           chapter: '12',
           caseTitle: 'Test Debtor 5',
-          dateFiled: '2024-05-01',
+          dateFiled: '2022-05-01',
+          closedDate: '2023-05-01',
           debtorTypeCode: 'CB',
           debtorTypeLabel: 'Corporate Business',
           _actions,
         },
       ];
+    }
+    if (searchRequest?.excludeClosedCases === true) {
+      const allData = response.data as Array<{ closedDate?: string }>;
+      const closedCount = allData.filter((c) => !!c.closedDate).length;
+      response.data = allData.filter((c) => !c.closedDate);
+      if (searchRequest.caseNumber) {
+        response.pagination = {
+          count: (response.data as unknown[]).length,
+          limit: searchRequest.limit ?? 25,
+          currentPage: 1,
+          closedCasesCount: closedCount,
+        };
+      }
     }
     if (searchRequest?.chapters && searchRequest.chapters.length > 0) {
       response.data = (response.data as Array<{ chapter: string }>).filter((c) =>
