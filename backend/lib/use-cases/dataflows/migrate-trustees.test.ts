@@ -471,6 +471,7 @@ describe('Migrate Trustees Use Case', () => {
       // Mock offices gateway for district-to-divisions mapping
       const mockOfficesGateway = {
         getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
       };
       vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
 
