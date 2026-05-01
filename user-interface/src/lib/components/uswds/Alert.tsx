@@ -57,11 +57,7 @@ function Alert_(props: AlertProps, ref: React.Ref<AlertRefType>) {
   const isInlineClass = props.inline ? `inline-alert` : '';
   const [containerClasses, setContainerClasses] = useState<string>(`${isInlineClass}`);
 
-  if (props.slim && props.title) {
-    // Slim alert with title uses compact styling for NVDA compatibility
-    classes += ' usa-alert--compact-with-title';
-  } else if (props.slim) {
-    // Slim alert without title uses standard slim styling
+  if (props.slim) {
     classes += ' usa-alert--slim';
   }
   if (props.noIcon) classes += ' usa-alert--no-icon';

@@ -187,7 +187,6 @@ function SearchResults(props: SearchResultsProps) {
             show={true}
             inline={true}
             role="alert"
-            slim={true}
           ></Alert>
         </div>
       )}
@@ -201,7 +200,6 @@ function SearchResults(props: SearchResultsProps) {
             show={true}
             inline={true}
             role="alert"
-            slim={true}
           >
             <p className="usa-alert__text">
               There may be closed cases that match your search filters.{' '}
@@ -231,7 +229,6 @@ function SearchResults(props: SearchResultsProps) {
               show={true}
               inline={true}
               role="alert"
-              slim={true}
             ></Alert>
           </div>
         )}
