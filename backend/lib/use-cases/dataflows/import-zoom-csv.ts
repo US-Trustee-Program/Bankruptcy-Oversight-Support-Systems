@@ -309,26 +309,35 @@ function buildUnmatchedReportRow(row: ZoomMatchedRow, outcome: ProcessResult['ou
 }
 
 /**
- * Counts outcomes from report lines to ensure metrics match the actual written report.
- * The outcome column is at index 11 in the main report format.
- * Format: zoomName | zoomEmail | atsTruIds | matchedNames | matchCount | similarity |
- *         activeStatus | statusCodes | strategy | matchedTrusteeId | matchedTrusteeName | outcome | error
+ * Counts outcomes from report lines as a sanity check against in-loop metrics.
+ * Derives the outcome column index from the header to avoid hardcoding.
  */
-function countOutcomesFromReportLines(reportLines: string[]): ZoomImportResult {
+function countOutcomesFromReportLines(
+  context: ApplicationContext,
+  reportLines: string[],
+): ZoomImportResult {
+  const headers = reportLines[0]?.split('\t') ?? [];
+  const outcomeIndex = headers.indexOf('outcome');
+  if (outcomeIndex === -1) {
+    throw new Error('Outcome column not found in report headers');
+  }
+
   const result: ZoomImportResult = { total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 };
 
-  // Skip header line (index 0)
   for (let i = 1; i < reportLines.length; i++) {
     const line = reportLines[i].trim();
-    if (!line) continue; // Skip empty lines
+    if (!line) continue;
 
     const columns = line.split('\t');
-    if (columns.length < 12) {
-      // Malformed line (need at least 12 columns to get outcome at index 11), skip but continue
+    if (columns.length <= outcomeIndex) {
+      context.logger.warn(
+        MODULE_NAME,
+        `Malformed report line ${i}: expected at least ${outcomeIndex + 1} columns, got ${columns.length}`,
+      );
       continue;
     }
 
-    const outcome = columns[11]; // outcome is at index 11
+    const outcome = columns[outcomeIndex] as ProcessResult['outcome'];
     result.total++;
 
     switch (outcome) {
@@ -386,7 +395,7 @@ export async function processZoomMatchedRow(
         if (camsTrusteesMap.has(trustee.trusteeId)) {
           // This TRU_ID maps to a trustee we've already found - expected for deduplicated records
           deduplicatedTruIds.push(atsTruId);
-          context.logger.info(
+          context.logger.debug(
             MODULE_NAME,
             `Zoom "${row.zoomName}": TRU_ID ${atsTruId} mapped to already-found CAMS trustee ${trustee.trusteeId} - deduplicated ATS record`,
           );
@@ -501,11 +510,26 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
 
   const rows = parseZoomMatchedTsvFile(content);
 
+  const result: ZoomImportResult = {
+    total: rows.length,
+    matched: 0,
+    unmatched: 0,
+    ambiguous: 0,
+    errors: 0,
+  };
   const reportLines: string[] = [ZOOM_REPORT_HEADERS];
   const unmatchedRows: Array<{ row: ZoomMatchedRow; outcome: ProcessResult['outcome'] }> = [];
 
+  const outcomeToKey: Record<ProcessResult['outcome'], keyof ZoomImportResult> = {
+    matched: 'matched',
+    unmatched: 'unmatched',
+    ambiguous: 'ambiguous',
+    error: 'errors',
+  };
+
   for (const row of rows) {
     const processResult = await processZoomMatchedRow(context, row);
+    result[outcomeToKey[processResult.outcome]]++;
 
     // Collect unmatched, ambiguous, and error rows for remediation report
     if (
@@ -519,8 +543,14 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
     reportLines.push(buildMatchedReportRow(row, processResult));
   }
 
-  // Count outcomes from the actual report lines to ensure accuracy
-  const result = countOutcomesFromReportLines(reportLines);
+  // Sanity check: ensure in-loop metrics match the written report
+  const reportCounts = countOutcomesFromReportLines(context, reportLines);
+  if (JSON.stringify(result) !== JSON.stringify(reportCounts)) {
+    context.logger.warn(
+      MODULE_NAME,
+      `Mismatch between in-loop metrics ${JSON.stringify(result)} and report-derived metrics ${JSON.stringify(reportCounts)}`,
+    );
+  }
 
   context.logger.info(MODULE_NAME, `Import complete: ${JSON.stringify(result)}`);
 
