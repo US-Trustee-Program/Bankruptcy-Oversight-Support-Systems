@@ -81,6 +81,23 @@ export class CasesController implements CamsController {
       totalCount: cases.metadata.total,
     };
 
+    if (predicate.caseNumber && predicate.excludeClosedCases === true) {
+      const allCasesPredicate: CasesSearchPredicate = {
+        ...predicate,
+        excludeClosedCases: false,
+        limit: 1,
+        offset: 0,
+      };
+      const allCases = await this.caseManagement.searchCases(
+        this.applicationContext,
+        allCasesPredicate,
+        false,
+      );
+      const allTotal = allCases.metadata?.total ?? 0;
+      const openTotal = cases.metadata?.total ?? 0;
+      pagination.closedCasesCount = Math.max(0, allTotal - openTotal);
+    }
+
     if (pagination.currentPage < pagination.totalPages) {
       const next = new URL(url);
       next.searchParams.set('limit', predicate.limit.toString());

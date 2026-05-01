@@ -321,6 +321,169 @@ describe('SearchResults component tests', () => {
     expect(screen.getByTestId('header-open-closed')).toBeInTheDocument();
   });
 
+  test('shows count-specific hint above table when caseNumber search has closedCasesCount > 0', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      meta: { self: 'self-link' },
+      pagination: {
+        currentPage: 1,
+        limit: DEFAULT_SEARCH_LIMIT,
+        count: caseList.length,
+        closedCasesCount: 3,
+      },
+      data: caseList,
+    });
+
+    renderWithProps({
+      searchPredicate: {
+        caseNumber: '00-11111',
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    const hint = document.querySelector('#closed-cases-hint-alert');
+    expect(hint).toBeInTheDocument();
+    expect(hint).toHaveTextContent('3 closed cases match your search filters.');
+    expect(hint).toHaveTextContent('Include Closed Cases');
+  });
+
+  test('shows singular "1 closed case" in hint when closedCasesCount is 1', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      meta: { self: 'self-link' },
+      pagination: {
+        currentPage: 1,
+        limit: DEFAULT_SEARCH_LIMIT,
+        count: caseList.length,
+        closedCasesCount: 1,
+      },
+      data: caseList,
+    });
+
+    renderWithProps({
+      searchPredicate: {
+        caseNumber: '00-11111',
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    const hint = document.querySelector('#closed-cases-hint-alert');
+    expect(hint).toBeInTheDocument();
+    expect(hint).toHaveTextContent('1 closed case match your search filters.');
+  });
+
+  test('shows "No Open cases found" with count when no open results and closedCasesCount > 0', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      meta: { self: 'self-link' },
+      pagination: { currentPage: 0, limit: DEFAULT_SEARCH_LIMIT, count: 0, closedCasesCount: 5 },
+      data: [],
+    });
+
+    renderWithProps({
+      searchPredicate: {
+        caseNumber: '00-11111',
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      const alert = document.querySelector('#no-results-alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('No Open cases found');
+      expect(alert).toHaveTextContent('5 closed cases match your search filters.');
+      expect(alert).toHaveTextContent('Include Closed Cases');
+    });
+  });
+
+  test('shows generic "No cases found" when no open results and closedCasesCount is 0', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      meta: { self: 'self-link' },
+      pagination: { currentPage: 0, limit: DEFAULT_SEARCH_LIMIT, count: 0, closedCasesCount: 0 },
+      data: [],
+    });
+
+    renderWithProps({
+      searchPredicate: {
+        caseNumber: '00-11111',
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      const alert = document.querySelector('#no-results-alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('No cases found');
+      expect(alert).not.toHaveTextContent('Include Closed Cases');
+    });
+  });
+
+  test('clicking "Include Closed Cases" in count-specific hint calls onIncludeClosedCases', async () => {
+    const onIncludeClosedCases = vi.fn();
+
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      meta: { self: 'self-link' },
+      pagination: {
+        currentPage: 1,
+        limit: DEFAULT_SEARCH_LIMIT,
+        count: caseList.length,
+        closedCasesCount: 3,
+      },
+      data: caseList,
+    });
+
+    renderWithProps({
+      searchPredicate: {
+        caseNumber: '00-11111',
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+      onIncludeClosedCases,
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('#closed-cases-hint-alert')).toBeInTheDocument();
+    });
+
+    const button = screen.getByRole('button', { name: 'Include Closed Cases' });
+    fireEvent.click(button);
+
+    expect(onIncludeClosedCases).toHaveBeenCalledTimes(1);
+  });
+
+  test('non-case-number search still shows Slice 2 generic hint (regression check)', async () => {
+    renderWithProps({
+      searchPredicate: {
+        divisionCodes: ['081'],
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    const hint = document.querySelector('#closed-cases-hint-alert');
+    expect(hint).toBeInTheDocument();
+    expect(hint).toHaveTextContent('There may be closed cases that match your search filters.');
+  });
+
   test('does not render Open/Closed column header when showOpenClosedColumn is false', async () => {
     renderWithProps({ showOpenClosedColumn: false });
 

@@ -93,6 +93,12 @@ function SearchResults(props: SearchResultsProps) {
   const showClosedCasesHint =
     searchPredicate.excludeClosedCases === true && !searchPredicate.caseNumber;
 
+  const closedCasesCount = searchResults?.pagination?.closedCasesCount ?? 0;
+  const showCaseNumberClosedHint =
+    !!searchPredicate.caseNumber &&
+    searchPredicate.excludeClosedCases === true &&
+    closedCasesCount > 0;
+
   const pagination: PaginationModel | undefined = searchResults?.pagination;
 
   const noResultsMessage =
@@ -190,6 +196,31 @@ function SearchResults(props: SearchResultsProps) {
           ></Alert>
         </div>
       )}
+      {!isSearching && emptyResponse && !alertInfo && showCaseNumberClosedHint && (
+        <div className="search-alert">
+          <Alert
+            id="no-results-alert"
+            className="measure-6"
+            title="No Open cases found"
+            type={UswdsAlertStyle.Info}
+            show={true}
+            inline={true}
+            role="alert"
+          >
+            <p className="usa-alert__text">
+              {closedCasesCount} closed {closedCasesCount === 1 ? 'case' : 'cases'} match your
+              search filters.{' '}
+              <button
+                type="button"
+                className="usa-button usa-button--unstyled"
+                onClick={() => onIncludeClosedCases?.()}
+              >
+                Include Closed Cases
+              </button>
+            </p>
+          </Alert>
+        </div>
+      )}
       {!isSearching && emptyResponse && !alertInfo && showClosedCasesHint && (
         <div className="search-alert">
           <Alert
@@ -218,6 +249,7 @@ function SearchResults(props: SearchResultsProps) {
         emptyResponse &&
         !alertInfo &&
         !showClosedCasesHint &&
+        !showCaseNumberClosedHint &&
         !noResultsAlertProps && (
           <div className="search-alert">
             <Alert
@@ -239,6 +271,31 @@ function SearchResults(props: SearchResultsProps) {
       )}
       {isSearching && (
         <LoadingSpinner aria-label="Searching" role="status" caption="Searching..." />
+      )}
+      {!isSearching && !emptyResponse && showCaseNumberClosedHint && (
+        <div className="search-alert">
+          <Alert
+            id="closed-cases-hint-alert"
+            className="measure-6"
+            type={UswdsAlertStyle.Info}
+            show={true}
+            inline={true}
+            role="status"
+            slim={true}
+          >
+            <p className="usa-alert__text">
+              {closedCasesCount} closed {closedCasesCount === 1 ? 'case' : 'cases'} match your
+              search filters.{' '}
+              <button
+                type="button"
+                className="usa-button usa-button--unstyled"
+                onClick={() => onIncludeClosedCases?.()}
+              >
+                Include Closed Cases
+              </button>
+            </p>
+          </Alert>
+        </div>
       )}
       {!isSearching && !emptyResponse && showClosedCasesHint && (
         <div className="search-alert">
