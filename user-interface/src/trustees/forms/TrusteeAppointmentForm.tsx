@@ -73,7 +73,7 @@ function getDefaultAppointmentType(
 // Synthetic value for "All Divisions" option
 export const ALL_DIVISIONS_VALUE = '__ALL__';
 
-export type CourtDivisionInput = {
+type CourtDivisionInput = {
   courtId: string;
   divisionCodes: string[];
   districtKey: string;
