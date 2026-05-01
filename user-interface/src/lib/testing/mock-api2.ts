@@ -1764,10 +1764,25 @@ async function post<T = unknown>(
     if (searchRequest?.excludeClosedCases === true) {
       const allData = response.data as Array<{ closedDate?: string }>;
       const closedCount = allData.filter((c) => !!c.closedDate).length;
-      response.data = allData.filter((c) => !c.closedDate);
+      const openCases = allData.filter((c) => !c.closedDate);
+      response.data = openCases;
+      const updatedCount = openCases.length;
       if (searchRequest.caseNumber) {
         response.pagination = {
-          count: (response.data as unknown[]).length,
+          count: updatedCount,
+          limit: searchRequest.limit ?? 25,
+          currentPage: 1,
+          closedCasesCount: closedCount,
+        };
+      } else if (response.pagination) {
+        response.pagination = {
+          ...response.pagination,
+          count: updatedCount,
+          closedCasesCount: closedCount,
+        };
+      } else {
+        response.pagination = {
+          count: updatedCount,
           limit: searchRequest.limit ?? 25,
           currentPage: 1,
           closedCasesCount: closedCount,
