@@ -323,6 +323,18 @@ export default function SearchScreen() {
             onSubmit={handleSubmit}
             role="search"
           >
+            <div className="case-include-closed form-field">
+              <div className="usa-search usa-search--small">
+                <Checkbox
+                  id="include-closed"
+                  name="includeClosedCases"
+                  value="true"
+                  checked={!temporarySearchPredicate.excludeClosedCases}
+                  label="Include Closed Cases"
+                  onChange={handleIncludeClosedCheckbox}
+                />
+              </div>
+            </div>
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
                 <CaseNumberInput
@@ -394,18 +406,6 @@ export default function SearchScreen() {
                   ref={chapterSelectionRef}
                   singularLabel="chapter"
                   pluralLabel="chapters"
-                />
-              </div>
-            </div>
-            <div className="case-include-closed form-field">
-              <div className="usa-search usa-search--small">
-                <Checkbox
-                  id="include-closed"
-                  name="includeClosedCases"
-                  value="true"
-                  checked={!temporarySearchPredicate.excludeClosedCases}
-                  label="Include Closed Cases"
-                  onChange={handleIncludeClosedCheckbox}
                 />
               </div>
             </div>

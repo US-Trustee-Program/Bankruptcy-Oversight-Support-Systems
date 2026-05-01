@@ -475,6 +475,19 @@ describe('search screen', () => {
     });
   });
 
+  test('Include Closed Cases checkbox is the first field in the search form', async () => {
+    renderWithoutProps();
+
+    const form = screen.getByTestId('filter-and-search-panel');
+    await waitFor(() => {
+      expect(form).toBeInTheDocument();
+    });
+
+    const formFields = form.querySelectorAll('.form-field');
+    expect(formFields.length).toBeGreaterThan(0);
+    expect(formFields[0]).toContainElement(document.querySelector('#checkbox-include-closed'));
+  });
+
   test('should update search predicate when Include Closed Cases checkbox is toggled', async () => {
     renderWithoutProps();
     const caseNumberInput = screen.getByTestId('basic-search-field');
