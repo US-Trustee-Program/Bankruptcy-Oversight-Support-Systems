@@ -126,6 +126,7 @@ export default function TrusteesList() {
 
   useEffect(() => {
     if (nameSearch.length < 2) {
+      nameSearchQueryLengthRef.current = 0;
       setNameSearchIds(new Set());
       return;
     }
