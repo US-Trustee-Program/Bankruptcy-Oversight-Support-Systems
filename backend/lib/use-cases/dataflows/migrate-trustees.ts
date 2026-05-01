@@ -13,16 +13,53 @@ import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { CamsUserReference } from '@common/cams/users';
 import { LegacyAddress } from '@common/cams/parties';
 import { normalizeName } from './trustee-match.helpers';
+import { UstpOfficeDetails } from '@common/cams/offices';
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
 /**
- * Division information with metadata
+ * Division information extracted from DXTR offices data
  */
-type DivisionInfo = {
+export type DivisionInfo = {
   divisionCode: string;
+  courtId: string;
   courtName: string;
   courtDivisionName: string;
 };
+
+/**
+ * Build a map from district code (courtId) to array of divisions.
+ * This allows us to expand ATS district appointments into multiple division-specific appointments.
+ *
+ * @param offices - Array of USTP office details from DXTR
+ * @returns Map of district code → divisions
+ */
+export function buildDistrictToDivisionsMap(
+  offices: UstpOfficeDetails[],
+): Map<string, DivisionInfo[]> {
+  const districtMap = new Map<string, DivisionInfo[]>();
+
+  for (const office of offices) {
+    for (const group of office.groups) {
+      for (const division of group.divisions) {
+        const courtId = division.court.courtId;
+        const divisionInfo: DivisionInfo = {
+          divisionCode: division.divisionCode,
+          courtId,
+          courtName: division.court.courtName,
+          courtDivisionName: division.courtOffice.courtOfficeName,
+        };
+
+        if (!districtMap.has(courtId)) {
+          districtMap.set(courtId, []);
+        }
+
+        districtMap.get(courtId)!.push(divisionInfo);
+      }
+    }
+  }
+
+  return districtMap;
+}
 
 /**
  * Create a unique key for an appointment to prevent duplicates.
@@ -315,47 +352,45 @@ function expandAppointmentToDivisions(
  * Gateway handles ATS data fetching, cleansing, and transformation.
  * Returns both clean appointments (for storage) and failed appointments (for DLQ).
  *
- * @param districtToDivisionsMap - Optional map for expanding district appointments into divisions
+ * @param districtToDivisionsMap - Map for expanding district appointments into divisions (internal)
  */
-export async function getTrusteeAppointments(
+async function getTrusteeAppointments(
   context: ApplicationContext,
   trusteeId: number,
-  districtToDivisionsMap?: Map<string, DivisionInfo[]>,
+  districtToDivisionsMap: Map<string, DivisionInfo[]>,
 ): Promise<MaybeData<TrusteeAppointmentsResult>> {
   try {
     const atsGateway = factory.getAtsGateway(context);
     const result = await atsGateway.getTrusteeAppointments(context, trusteeId);
 
-    // If district-to-divisions map provided, expand district appointments into divisions
-    if (districtToDivisionsMap) {
-      const expandedAppointments: TrusteeAppointmentInput[] = [];
+    // Expand district appointments into divisions
+    const expandedAppointments: TrusteeAppointmentInput[] = [];
 
-      for (const appointment of result.cleanAppointments) {
-        const courtId = appointment.courtId;
-        const divisions = districtToDivisionsMap.get(courtId);
+    for (const appointment of result.cleanAppointments) {
+      const courtId = appointment.courtId;
+      const divisions = districtToDivisionsMap.get(courtId);
 
-        if (divisions && divisions.length > 0) {
-          // Expand into multiple division appointments
-          const divisionAppointments = expandAppointmentToDivisions(appointment, divisions);
-          expandedAppointments.push(...divisionAppointments);
+      if (divisions && divisions.length > 0) {
+        // Expand into multiple division appointments
+        const divisionAppointments = expandAppointmentToDivisions(appointment, divisions);
+        expandedAppointments.push(...divisionAppointments);
 
-          context.logger.debug(
-            MODULE_NAME,
-            `Expanded district ${courtId} appointment into ${divisions.length} divisions`,
-            {
-              trusteeId,
-              courtId,
-              divisionCodes: divisions.map((d) => d.divisionCode),
-            },
-          );
-        } else {
-          // No divisions found - keep original appointment
-          expandedAppointments.push(appointment);
-        }
+        context.logger.debug(
+          MODULE_NAME,
+          `Expanded district ${courtId} appointment into ${divisions.length} divisions`,
+          {
+            trusteeId,
+            courtId,
+            divisionCodes: divisions.map((d) => d.divisionCode),
+          },
+        );
+      } else {
+        // No divisions found - keep original appointment
+        expandedAppointments.push(appointment);
       }
-
-      result.cleanAppointments = expandedAppointments;
     }
+
+    result.cleanAppointments = expandedAppointments;
 
     context.logger.debug(
       MODULE_NAME,
@@ -583,13 +618,13 @@ export async function createAppointments(
  *
  * @param context - Application context
  * @param todIds - Array of TOD IDs to fetch appointments for
- * @param districtToDivisionsMap - Optional map for expanding district appointments into divisions
+ * @param districtToDivisionsMap - Map for expanding district appointments into divisions
  * @returns Aggregated appointments, failures, and statistics
  */
 async function fetchAndAggregateAppointments(
   context: ApplicationContext,
   todIds: string[],
-  districtToDivisionsMap?: Map<string, DivisionInfo[]>,
+  districtToDivisionsMap: Map<string, DivisionInfo[]>,
 ): Promise<{
   cleanAppointments: TrusteeAppointmentInput[];
   failedAppointments: FailedAppointment[];
@@ -717,13 +752,13 @@ export async function upsertProfessionalIds(
  *
  * @param context - Application context
  * @param mergedData - Merged trustee data from multiple TOD records
- * @param districtToDivisionsMap - Optional map for expanding district appointments into divisions
+ * @param districtToDivisionsMap - Map for expanding district appointments into divisions (internal)
  * @returns Processing result with trustee ID and appointment counts
  */
-export async function processTrusteeWithAppointments(
+async function processTrusteeWithAppointments(
   context: ApplicationContext,
   mergedData: MergedTrusteeData,
-  districtToDivisionsMap?: Map<string, DivisionInfo[]>,
+  districtToDivisionsMap: Map<string, DivisionInfo[]>,
 ): Promise<TrusteeProcessingResult> {
   const { primary, todIds } = mergedData;
 
@@ -823,13 +858,10 @@ export async function processTrusteeWithAppointments(
  * Deduplicates trustees by (firstName, lastName, state) before processing.
  * Gateway handles appointment cleansing internally.
  * Returns both processing stats and failed appointments for DLQ.
- *
- * @param districtToDivisionsMap - Optional map for expanding district appointments into divisions
  */
 export async function processPageOfTrustees(
   context: ApplicationContext,
   trustees: AtsTrusteeRecord[],
-  districtToDivisionsMap?: Map<string, DivisionInfo[]>,
 ): Promise<
   MaybeData<{
     processed: number;
@@ -838,6 +870,13 @@ export async function processPageOfTrustees(
     failedAppointments: FailedAppointment[];
   }>
 > {
+  // Fetch office data from DXTR via factory
+  const officesGateway = factory.getOfficesGateway(context);
+  const offices = await officesGateway.getOffices(context);
+
+  // Build district-to-divisions map from office data
+  const districtToDivisionsMap = buildDistrictToDivisionsMap(offices);
+
   // Deduplicate trustees in this page by (firstName, lastName, state)
   const deduplicatedMap = deduplicateTrusteesInPage(trustees);
 
