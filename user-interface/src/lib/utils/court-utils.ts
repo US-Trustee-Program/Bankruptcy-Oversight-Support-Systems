@@ -1,6 +1,7 @@
 import { usStates } from '@common/cams/us-states';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { TrusteeAppointment } from '@common/cams/trustee-appointments';
+import { caseInsensitiveCompare } from '@common/string-helper';
 
 /**
  * Maps a 2-letter state code to its full state name for sorting purposes.
@@ -29,18 +30,6 @@ export function getStateNameFromCode(stateCode: string): string {
 function getChapterNumber(chapter: string): number {
   const match = chapter.match(/^(\d+)/);
   return match ? parseInt(match[1], 10) : 0;
-}
-
-/**
- * Case-insensitive string comparison for sorting.
- * Uses locale-aware comparison with base sensitivity.
- *
- * @param a - First string to compare
- * @param b - Second string to compare
- * @returns Negative if a < b, positive if a > b, 0 if equal
- */
-function caseInsensitiveCompare(a: string, b: string): number {
-  return a.localeCompare(b, undefined, { sensitivity: 'base' });
 }
 
 /**
