@@ -1033,6 +1033,37 @@ describe('TrusteesList Component', () => {
       });
     });
 
+    test('tracks Trustee Name Filter Changed event only once per search', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trustee1, appointments: [], matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      await userEvent
+        .setup({ delay: null })
+        .click(screen.getByRole('button', { name: /filters/i }));
+      await userEvent
+        .setup({ delay: null })
+        .type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const changedCalls = mockTrackEvent.mock.calls.filter(
+        ([event]) => event.name === 'Trustee Name Filter Changed',
+      );
+      expect(changedCalls).toHaveLength(1);
+    });
+
     test('tracks Trustee Name Filter Cleared AppInsights event', async () => {
       const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
