@@ -1,55 +1,6 @@
 import { describe, test, expect } from 'vitest';
 import { CourtDivisionDetails } from '@common/cams/courts';
-
-// Re-export the helper for testing
-// Since extractCourtAndDivisions is defined inside the component, we'll test it via the component's behavior
-// For now, let's write tests that validate the logic conceptually
-
-const ALL_DIVISIONS_VALUE = '__ALL__';
-
-type FormData = {
-  courtId: string;
-  divisionCodes: string[];
-  districtKey: string;
-};
-
-/**
- * Extracted helper logic for testing
- */
-function extractCourtAndDivisions(
-  formData: Pick<FormData, 'courtId' | 'divisionCodes' | 'districtKey'>,
-  useSeparateFields: boolean,
-  allCourts: CourtDivisionDetails[],
-): { courtId: string; divisionCodes: string[] } | null {
-  if (useSeparateFields) {
-    if (!formData.courtId || formData.divisionCodes.length === 0) {
-      return null;
-    }
-
-    let divisionCodes = formData.divisionCodes;
-
-    if (divisionCodes.includes(ALL_DIVISIONS_VALUE)) {
-      divisionCodes = allCourts
-        .filter((c) => c.courtId === formData.courtId)
-        .map((d) => d.courtDivisionCode);
-    }
-
-    return {
-      courtId: formData.courtId,
-      divisionCodes,
-    };
-  } else {
-    if (!formData.districtKey) {
-      return null;
-    }
-
-    const [courtId, divisionCode] = formData.districtKey.split('|');
-    return {
-      courtId,
-      divisionCodes: [divisionCode],
-    };
-  }
-}
+import { extractCourtAndDivisions, ALL_DIVISIONS_VALUE } from './TrusteeAppointmentForm';
 
 describe('TrusteeAppointmentForm Helper Functions', () => {
   const mockCourts: CourtDivisionDetails[] = [
@@ -159,7 +110,7 @@ describe('TrusteeAppointmentForm Helper Functions', () => {
         const result = extractCourtAndDivisions(
           {
             courtId: '081-',
-            divisionCodes: ['__ALL__'],
+            divisionCodes: [ALL_DIVISIONS_VALUE],
             districtKey: '',
           },
           true,
@@ -168,8 +119,9 @@ describe('TrusteeAppointmentForm Helper Functions', () => {
 
         expect(result).toEqual({
           courtId: '081-',
-          divisionCodes: ['301', '303', '310'],
+          divisionCodes: expect.arrayContaining(['301', '303', '310']),
         });
+        expect(result!.divisionCodes).toHaveLength(3);
       });
 
       test('should expand "All Divisions" for correct district only', () => {
@@ -192,7 +144,7 @@ describe('TrusteeAppointmentForm Helper Functions', () => {
         const result = extractCourtAndDivisions(
           {
             courtId: '081-',
-            divisionCodes: ['__ALL__'],
+            divisionCodes: [ALL_DIVISIONS_VALUE],
             districtKey: '',
           },
           true,
@@ -202,8 +154,10 @@ describe('TrusteeAppointmentForm Helper Functions', () => {
         // Should only expand to Missouri divisions, not Alaska
         expect(result).toEqual({
           courtId: '081-',
-          divisionCodes: ['301', '303', '310'],
+          divisionCodes: expect.arrayContaining(['301', '303', '310']),
         });
+        expect(result!.divisionCodes).toHaveLength(3);
+        expect(result!.divisionCodes).not.toContain('710');
       });
     });
 
