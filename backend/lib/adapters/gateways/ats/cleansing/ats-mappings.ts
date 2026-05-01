@@ -372,21 +372,3 @@ export function transformAppointmentRecord(
     effectiveDate,
   };
 }
-
-/**
- * Validate that appointment type is valid for the chapter.
- *
- * @param chapter - Chapter type
- * @param appointmentType - Appointment type
- * @returns True if valid combination
- */
-/**
- * Create a unique key for an appointment to prevent duplicates.
- *
- * @param trusteeId - Trustee ID
- * @param appointment - Appointment data
- * @returns Unique key string
- */
-export function getAppointmentKey(trusteeId: string, appointment: TrusteeAppointmentInput): string {
-  return `${trusteeId}-${appointment.courtId}-${appointment.chapter}-${appointment.appointmentType}`;
-}

@@ -934,4 +934,95 @@ describe('Migrate Trustees Use Case', () => {
       expect(deleteAllSpy).toHaveBeenCalledTimes(3);
     });
   });
+
+  describe('district expansion integration', () => {
+    test('should expand district appointment into multiple divisions', async () => {
+      const mockOffices = [
+        {
+          officeCode: 'USTP_REGION_02_MANHATTAN',
+          officeName: 'Manhattan',
+          idpGroupName: 'USTP REGION 02 MANHATTAN',
+          regionId: '2',
+          regionName: 'New York',
+          groups: [
+            {
+              groupDesignator: 'MN',
+              divisions: [
+                {
+                  divisionCode: 'MAH',
+                  court: {
+                    courtId: '081',
+                    courtName: 'Southern District of New York',
+                    state: 'NY',
+                  },
+                  courtOffice: {
+                    courtOfficeCode: 'MAH',
+                    courtOfficeName: 'Manhattan Office',
+                  },
+                },
+                {
+                  divisionCode: 'MAN',
+                  court: {
+                    courtId: '081',
+                    courtName: 'Southern District of New York',
+                    state: 'NY',
+                  },
+                  courtOffice: {
+                    courtOfficeCode: 'MAN',
+                    courtOfficeName: 'Poughkeepsie Office',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      // Build district map from mock offices
+      const { buildDistrictToDivisionsMap } = await import('./district-division-mapper');
+      const districtMap = buildDistrictToDivisionsMap(mockOffices);
+
+      // Mock ATS gateway to return single unexpanded appointment for district 081
+      // (Use case will perform the expansion)
+      const atsGateway = factory.getAtsGateway(context);
+      const mockAppointment: TrusteeAppointmentInput[] = [
+        {
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          appointedDate: '2024-01-01',
+          status: 'active',
+          effectiveDate: '2024-01-01',
+        },
+      ];
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: mockAppointment,
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      // Get appointments with district map
+      const appointmentsResult = await getTrusteeAppointments(context, 1, districtMap);
+
+      // Should have 2 division appointments (expanded by gateway)
+      expect(appointmentsResult.data?.cleanAppointments).toHaveLength(2);
+
+      const appointments = appointmentsResult.data!.cleanAppointments;
+      expect(appointments[0].divisionCode).toBe('MAH');
+      expect(appointments[0].courtName).toBe('Southern District of New York');
+      expect(appointments[0].courtDivisionName).toBe('Manhattan Office');
+
+      expect(appointments[1].divisionCode).toBe('MAN');
+      expect(appointments[1].courtName).toBe('Southern District of New York');
+      expect(appointments[1].courtDivisionName).toBe('Poughkeepsie Office');
+    });
+  });
 });

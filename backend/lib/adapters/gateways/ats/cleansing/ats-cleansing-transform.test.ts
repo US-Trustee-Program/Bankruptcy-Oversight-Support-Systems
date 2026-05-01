@@ -431,5 +431,67 @@ describe('ATS Cleansing Transform', () => {
         status: 'active',
       });
     });
+
+    describe('enrichment with division info', () => {
+      test('should populate divisionCode, courtName, and courtDivisionName when provided', () => {
+        vi.spyOn(atsMappings, 'parseChapterAndType').mockReturnValue({ chapter: '7' });
+        vi.spyOn(atsMappings, 'parseTodStatus').mockReturnValue({
+          appointmentType: 'panel',
+          status: 'active',
+        });
+        vi.spyOn(atsMappings, 'applyAppointmentOverrides').mockReturnValue({
+          chapter: '7',
+          appointmentType: 'panel',
+          status: 'active',
+        });
+
+        const divisionInfo = {
+          divisionCode: 'MAH',
+          courtName: 'United States Bankruptcy Court for the Southern District of New York',
+          courtDivisionName: 'Manhattan Office',
+        };
+
+        const result = transformAppointmentRecord(baseRecord, '081', divisionInfo);
+
+        expect(result).toEqual({
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          divisionCode: 'MAH',
+          appointedDate: '2024-01-15',
+          status: 'active',
+          effectiveDate: '2024-01-20',
+          courtName: 'United States Bankruptcy Court for the Southern District of New York',
+          courtDivisionName: 'Manhattan Office',
+        });
+      });
+
+      test('should not include enrichment fields when divisionInfo not provided', () => {
+        vi.spyOn(atsMappings, 'parseChapterAndType').mockReturnValue({ chapter: '7' });
+        vi.spyOn(atsMappings, 'parseTodStatus').mockReturnValue({
+          appointmentType: 'panel',
+          status: 'active',
+        });
+        vi.spyOn(atsMappings, 'applyAppointmentOverrides').mockReturnValue({
+          chapter: '7',
+          appointmentType: 'panel',
+          status: 'active',
+        });
+
+        const result = transformAppointmentRecord(baseRecord, '081');
+
+        expect(result).toEqual({
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '081',
+          appointedDate: '2024-01-15',
+          status: 'active',
+          effectiveDate: '2024-01-20',
+        });
+        expect(result.divisionCode).toBeUndefined();
+        expect(result.courtName).toBeUndefined();
+        expect(result.courtDivisionName).toBeUndefined();
+      });
+    });
   });
 });

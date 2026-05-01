@@ -361,5 +361,39 @@ describe('trustee-appointments', () => {
         expect(result.valid).toBe(true);
       });
     });
+
+    describe('optional enrichment fields', () => {
+      test('should accept TrusteeAppointmentInput with courtName', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          courtName: 'United States Bankruptcy Court',
+        };
+        expect(appointment.courtName).toBe('United States Bankruptcy Court');
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should accept TrusteeAppointmentInput with courtDivisionName', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          courtDivisionName: 'Manhattan Office',
+        };
+        expect(appointment.courtDivisionName).toBe('Manhattan Office');
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+
+      test('should accept TrusteeAppointmentInput with both court enrichment fields', () => {
+        const appointment: TrusteeAppointmentInput = {
+          ...validAppointment,
+          courtName: 'United States Bankruptcy Court',
+          courtDivisionName: 'Manhattan Office',
+        };
+        expect(appointment.courtName).toBe('United States Bankruptcy Court');
+        expect(appointment.courtDivisionName).toBe('Manhattan Office');
+        const result = validateObject(TRUSTEE_APPOINTMENTS_INTERNAL_SPEC, appointment);
+        expect(result.valid).toBe(true);
+      });
+    });
   });
 });
