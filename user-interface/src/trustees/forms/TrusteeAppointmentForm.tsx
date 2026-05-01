@@ -1,6 +1,6 @@
 import './TrusteeContactForm.scss';
 import './TrusteeAppointmentForm.scss';
-import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useFeatureFlags, {
@@ -38,6 +38,10 @@ import PillBox from '@/lib/components/PillBox';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsNotice';
 import { useLocation } from 'react-router-dom';
+import { useDivisionSelection, ALL_DIVISIONS_VALUE } from './useDivisionSelection';
+import { findMergeTarget, buildMergeResult } from './appointmentMergeHelpers';
+// Re-export for backward compatibility with existing test imports
+export { ALL_DIVISIONS_VALUE } from './useDivisionSelection';
 
 const CHAPTER_OPTIONS: ComboOption<AppointmentChapterType>[] = [
   { value: '7', label: 'Chapter 7' },
@@ -69,9 +73,6 @@ function getDefaultAppointmentType(
   const types = getAvailableAppointmentTypes(chapter, isEditMode);
   return types.length === 1 ? types[0] : '';
 }
-
-// Synthetic value for "All Divisions" option
-export const ALL_DIVISIONS_VALUE = '__ALL__';
 
 type CourtDivisionInput = {
   courtId: string;
@@ -169,7 +170,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const [existingAppointments, setExistingAppointments] = useState<TrusteeAppointment[]>(
     appointmentsToUse ?? [],
   );
-  const divisionBlurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [formData, setFormData] = useState<FormData>(() => {
     if (appointment) {
       return {
@@ -201,19 +201,26 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
-  const divisionOptions = useMemo<ComboOption[]>(() => {
-    if (!formData.courtId || !allCourts.length) return [];
+  const handleDivisionCodesChange = useCallback(
+    (codes: string[]) => {
+      setFormData((prev) => ({ ...prev, divisionCodes: codes }));
+    },
+    [setFormData],
+  );
 
-    const divisions = getDivisionsForDistrict(allCourts, formData.courtId);
-
-    return [
-      { value: ALL_DIVISIONS_VALUE, label: 'All Divisions' },
-      ...divisions.map((div) => ({
-        value: div.courtDivisionCode,
-        label: div.courtDivisionName,
-      })),
-    ];
-  }, [formData.courtId, allCourts]);
+  const {
+    divisionOptions,
+    divisionSelections,
+    handleDivisionSelection,
+    handlePillRemoval,
+    handleDivisionBlur,
+  } = useDivisionSelection({
+    courtId: formData.courtId,
+    allCourts,
+    divisionCodes: formData.divisionCodes,
+    enabled: districtDivisionEnabled,
+    onDivisionCodesChange: handleDivisionCodesChange,
+  });
 
   const appointmentTypeOptions = useMemo<ComboOption<AppointmentType>[]>(() => {
     if (!formData.chapter) return [];
@@ -306,19 +313,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
     loadAppointments();
   }, [trusteeId, appointmentsToUse, globalAlert]);
-
-  // Auto-select "All Divisions" when district is selected
-  useEffect(() => {
-    if (districtDivisionEnabled && divisionOptions.length > 0) {
-      // Only auto-select if divisions are currently empty (fresh district selection)
-      if (formData.divisionCodes.length === 0) {
-        setFormData((prev) => ({
-          ...prev,
-          divisionCodes: [ALL_DIVISIONS_VALUE],
-        }));
-      }
-    }
-  }, [divisionOptions, districtDivisionEnabled, formData.divisionCodes.length]);
 
   // Validation: checks for overlapping active appointments
   const getValidationError = (
@@ -438,36 +432,19 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       if (isEditMode && appointment) {
         await Api2.putTrusteeAppointment(trusteeId, appointment.id, payload);
       } else {
-        // Check for mergeable appointment (same courtId/chapter/type, complementary divisions)
-        const mergeTarget = existingAppointments.find(
-          (appt) =>
-            appt.courtId === courtId &&
-            appt.chapter === formData.chapter &&
-            appt.appointmentType === formData.appointmentType &&
-            appt.status === 'active',
+        const mergeTarget = findMergeTarget(
+          courtId,
+          formData.chapter,
+          formData.appointmentType,
+          existingAppointments,
         );
+        const mergeResult = buildMergeResult(mergeTarget, payload, allCourts);
 
-        if (mergeTarget) {
-          const existingDivisions = (
-            mergeTarget.divisionCodes ?? [mergeTarget.divisionCode]
-          ).filter(Boolean) as string[];
-          const mergedDivisions = [...new Set([...existingDivisions, ...divisionCodes])];
-          const addedDivisions = divisionCodes.filter((code) => !existingDivisions.includes(code));
-
-          const mergePayload: TrusteeAppointmentInput = {
-            ...payload,
-            divisionCodes: mergedDivisions,
-            divisionCode: mergedDivisions[0],
-          };
-
-          await Api2.putTrusteeAppointment(trusteeId, mergeTarget.id, mergePayload);
-
-          const addedNames = addedDivisions.map((code) => {
-            const divisions = getDivisionsForDistrict(allCourts, courtId);
-            const div = divisions.find((d) => d.courtDivisionCode === code);
-            return div?.courtDivisionName ?? code;
-          });
-          globalAlert?.success(`Updated existing appointment to include ${addedNames.join(', ')}`);
+        if (mergeResult.type === 'merged') {
+          await Api2.putTrusteeAppointment(trusteeId, mergeResult.targetId, mergeResult.payload);
+          globalAlert?.success(
+            `Updated existing appointment to include ${mergeResult.addedNames.join(', ')}`,
+          );
           navigateToAppointments(trusteeId, navigate);
           return;
         }
@@ -528,99 +505,9 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     return selected ? [selected] : undefined;
   };
 
-  const getMultiSelections = (fieldValues: string[], options: ComboOption[]) => {
-    if (!fieldValues || fieldValues.length === 0) return undefined;
-    const selected = options.filter((opt) => fieldValues.includes(opt.value));
-    return selected.length > 0 ? selected : undefined;
-  };
-
   const handleComboBoxUpdate = (field: keyof FormData, options: ComboOption[]) => {
     handleFieldChange(field, options[0]?.value ?? '');
   };
-
-  // Handle division selection with mutually exclusive "All Divisions" logic
-  const handleDivisionSelection = (selectedOptions: ComboOption[]) => {
-    const selectedValues = selectedOptions.map((opt) => opt.value);
-    const prevValues = formData.divisionCodes;
-
-    // Edge case: User clicked X to clear "All Divisions" - prevent it by re-selecting
-    if (selectedValues.length === 0 && prevValues.includes(ALL_DIVISIONS_VALUE)) {
-      return; // Do nothing, keep "All Divisions" selected
-    }
-
-    // If both "All Divisions" and specific divisions are present
-    if (selectedValues.includes(ALL_DIVISIONS_VALUE) && selectedValues.length > 1) {
-      // Determine what was just added
-      const addedValues = selectedValues.filter((v) => !prevValues.includes(v));
-
-      if (addedValues.includes(ALL_DIVISIONS_VALUE)) {
-        // "All Divisions" was just added - keep only it
-        setFormData((prev) => ({ ...prev, divisionCodes: [ALL_DIVISIONS_VALUE] }));
-      } else {
-        // A specific division was just added - remove "All Divisions"
-        setFormData((prev) => ({
-          ...prev,
-          divisionCodes: selectedValues.filter((v) => v !== ALL_DIVISIONS_VALUE),
-        }));
-      }
-      return;
-    }
-
-    // Normal case: just update to whatever was selected
-    setFormData((prev) => ({ ...prev, divisionCodes: selectedValues }));
-  };
-
-  // Handle pill removal from PillBox with "All Divisions" default behavior
-  const handlePillRemoval = (updatedSelections: ComboOption[]) => {
-    const newCodes = updatedSelections.map((opt) => opt.value);
-    // If removing last item, default back to "All Divisions"
-    setFormData((prev) => ({
-      ...prev,
-      divisionCodes: newCodes.length === 0 ? [ALL_DIVISIONS_VALUE] : newCodes,
-    }));
-  };
-
-  // Handle when focus leaves the entire division dropdown component
-  const handleDivisionBlur = (e: React.FocusEvent) => {
-    const currentTarget = e.currentTarget;
-
-    // Clear any pending timeout
-    if (divisionBlurTimeoutRef.current) {
-      clearTimeout(divisionBlurTimeoutRef.current);
-    }
-
-    // Check if the new focus target is outside the division dropdown component
-    divisionBlurTimeoutRef.current = setTimeout(() => {
-      // If focus moved to an element outside this component
-      if (!currentTarget.contains(document.activeElement)) {
-        if (!formData.courtId || !allCourts.length) return;
-
-        const allAvailableDivisions = getDivisionsForDistrict(allCourts, formData.courtId).map(
-          (d) => d.courtDivisionCode,
-        );
-
-        // If user selected all individual divisions (and not already "All Divisions")
-        if (
-          !formData.divisionCodes.includes(ALL_DIVISIONS_VALUE) &&
-          formData.divisionCodes.length === allAvailableDivisions.length &&
-          formData.divisionCodes.length > 0 &&
-          allAvailableDivisions.every((code) => formData.divisionCodes.includes(code))
-        ) {
-          // Auto-convert to "All Divisions"
-          setFormData((prev) => ({ ...prev, divisionCodes: [ALL_DIVISIONS_VALUE] }));
-        }
-      }
-    }, 100);
-  };
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (divisionBlurTimeoutRef.current) {
-        clearTimeout(divisionBlurTimeoutRef.current);
-      }
-    };
-  }, []);
 
   const handleDateChange = (field: keyof FormData, e: React.ChangeEvent<HTMLInputElement>) => {
     handleFieldChange(field, e.target.value);
@@ -692,7 +579,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                       disabled={!formData.courtId}
                       options={divisionOptions}
                       ariaDescription="Divisions where this trustee will be assigned"
-                      selections={getMultiSelections(formData.divisionCodes, divisionOptions)}
+                      selections={divisionSelections}
                       onUpdateSelection={handleDivisionSelection}
                       hideClearAllButton={
                         formData.divisionCodes.length === 1 &&
@@ -703,7 +590,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
                   {/* Division pills - display below dropdown */}
                   {formData.divisionCodes.length > 0 &&
-                    getMultiSelections(formData.divisionCodes, divisionOptions) &&
+                    divisionSelections &&
                     (formData.divisionCodes.length === 1 &&
                     formData.divisionCodes[0] === ALL_DIVISIONS_VALUE ? (
                       // Show non-interactive badge when only "All Divisions" is selected
@@ -717,7 +604,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                       <PillBox
                         id="division-pills"
                         className="division-pills-container"
-                        selections={getMultiSelections(formData.divisionCodes, divisionOptions)!}
+                        selections={divisionSelections!}
                         wrapPills={true}
                         ariaLabelPrefix="Division"
                         onSelectionChange={handlePillRemoval}
