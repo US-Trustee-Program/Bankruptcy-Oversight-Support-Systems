@@ -175,7 +175,11 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       return {
         districtKey: `${appointment.courtId}|${appointment.divisionCode ?? ''}`,
         courtId: appointment.courtId,
-        divisionCodes: appointment.divisionCode ? [appointment.divisionCode] : [],
+        divisionCodes: appointment.divisionCodes?.length
+          ? appointment.divisionCodes
+          : appointment.divisionCode
+            ? [appointment.divisionCode]
+            : [],
         chapter: appointment.chapter,
         appointmentType: appointment.appointmentType,
         status: appointment.status,
@@ -243,7 +247,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         setAllCourts(courtsData); // Store raw data for division filtering
 
         // Build district options based on feature flag
-        if (districtDivisionEnabled && !isEditMode) {
+        if (districtDivisionEnabled) {
           // When flag is ON: build options from unique districts
           const uniqueDistricts = getUniqueDistricts(courtsData);
           const options = uniqueDistricts.map((district) => ({
@@ -252,7 +256,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
           }));
           setDistrictOptions(options);
         } else {
-          // When flag is OFF or edit mode: use existing combined format
+          // When flag is OFF: use existing combined format
           const sortedCourts = sortByCourtLocation(courtsData);
           const options = sortedCourts.map((district) => {
             // Build label with guards for missing data
@@ -281,7 +285,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     };
 
     loadDistricts();
-  }, [globalAlert, districtDivisionEnabled, isEditMode]);
+  }, [globalAlert, districtDivisionEnabled]);
 
   useEffect(() => {
     if (appointmentsToUse) {
@@ -305,7 +309,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
   // Auto-select "All Divisions" when district is selected
   useEffect(() => {
-    if (districtDivisionEnabled && !isEditMode && divisionOptions.length > 0) {
+    if (districtDivisionEnabled && divisionOptions.length > 0) {
       // Only auto-select if divisions are currently empty (fresh district selection)
       if (formData.divisionCodes.length === 0) {
         setFormData((prev) => ({
@@ -314,7 +318,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         }));
       }
     }
-  }, [divisionOptions, districtDivisionEnabled, isEditMode, formData.divisionCodes.length]);
+  }, [divisionOptions, districtDivisionEnabled, formData.divisionCodes.length]);
 
   // Validation: checks for overlapping active appointments
   const getValidationError = (
@@ -380,7 +384,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     return `An active appointment already exists for ${chapter?.label} - ${appointmentTypeLabel} in ${districtLabel}. Please end the existing appointment before creating a new one.`;
   };
 
-  const useSeparateFields = districtDivisionEnabled && !isEditMode;
+  const useSeparateFields = districtDivisionEnabled;
 
   const validationError = getValidationError(
     formData,
@@ -434,6 +438,40 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       if (isEditMode && appointment) {
         await Api2.putTrusteeAppointment(trusteeId, appointment.id, payload);
       } else {
+        // Check for mergeable appointment (same courtId/chapter/type, complementary divisions)
+        const mergeTarget = existingAppointments.find(
+          (appt) =>
+            appt.courtId === courtId &&
+            appt.chapter === formData.chapter &&
+            appt.appointmentType === formData.appointmentType &&
+            appt.status === 'active',
+        );
+
+        if (mergeTarget) {
+          const existingDivisions = (
+            mergeTarget.divisionCodes ?? [mergeTarget.divisionCode]
+          ).filter(Boolean) as string[];
+          const mergedDivisions = [...new Set([...existingDivisions, ...divisionCodes])];
+          const addedDivisions = divisionCodes.filter((code) => !existingDivisions.includes(code));
+
+          const mergePayload: TrusteeAppointmentInput = {
+            ...payload,
+            divisionCodes: mergedDivisions,
+            divisionCode: mergedDivisions[0],
+          };
+
+          await Api2.putTrusteeAppointment(trusteeId, mergeTarget.id, mergePayload);
+
+          const addedNames = addedDivisions.map((code) => {
+            const divisions = getDivisionsForDistrict(allCourts, courtId);
+            const div = divisions.find((d) => d.courtDivisionCode === code);
+            return div?.courtDivisionName ?? code;
+          });
+          globalAlert?.success(`Updated existing appointment to include ${addedNames.join(', ')}`);
+          navigateToAppointments(trusteeId, navigate);
+          return;
+        }
+
         await Api2.postTrusteeAppointment(trusteeId, payload);
       }
       navigateToAppointments(trusteeId, navigate);
@@ -688,7 +726,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                 </div>
               </>
             ) : (
-              /* Combined district dropdown when flag is OFF or edit mode */
+              /* Combined district dropdown when flag is OFF */
               <div className="field-group">
                 <ComboBox
                   id="district"
