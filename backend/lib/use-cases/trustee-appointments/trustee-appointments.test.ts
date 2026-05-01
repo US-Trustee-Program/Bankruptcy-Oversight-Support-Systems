@@ -1112,5 +1112,29 @@ describe('TrusteeAppointmentsUseCase tests', () => {
       expect(actualError.isCamsError).toBe(true);
       expect(actualError.message).toContain('At least one division must be specified');
     });
+
+    test('should reject appointment with only empty strings in divisionCodes', async () => {
+      const trusteeId = 'trustee-123';
+      const mockTrustee = MockData.getTrustee({ trusteeId });
+
+      const appointmentInput: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        divisionCodes: ['', ' '],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15',
+      };
+
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockTrustee);
+
+      const actualError = await getTheThrownError(() =>
+        trusteeAppointmentsUseCase.createAppointment(context, trusteeId, appointmentInput),
+      );
+
+      expect(actualError.isCamsError).toBe(true);
+      expect(actualError.message).toContain('At least one division must be specified');
+    });
   });
 });
