@@ -71,7 +71,13 @@ function getDefaultAppointmentType(
 }
 
 // Synthetic value for "All Divisions" option
-const ALL_DIVISIONS_VALUE = '__ALL__';
+export const ALL_DIVISIONS_VALUE = '__ALL__';
+
+export type CourtDivisionInput = {
+  courtId: string;
+  divisionCodes: string[];
+  districtKey: string;
+};
 
 /**
  * Extract court and division information from form data.
@@ -83,8 +89,8 @@ const ALL_DIVISIONS_VALUE = '__ALL__';
  * @param allCourts - All available court divisions (needed for "All Divisions" expansion)
  * @returns {courtId, divisionCodes} or null if required fields are missing
  */
-function extractCourtAndDivisions(
-  formData: Pick<FormData, 'courtId' | 'divisionCodes' | 'districtKey'>,
+export function extractCourtAndDivisions(
+  formData: CourtDivisionInput,
   useSeparateFields: boolean,
   allCourts: CourtDivisionDetails[],
 ): { courtId: string; divisionCodes: string[] } | null {
@@ -340,7 +346,9 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       }
 
       // Get existing appointment's divisions (could be array or single code for backward compat)
-      const existingDivisions = appointment.divisionCodes || [appointment.divisionCode];
+      const existingDivisions = (appointment.divisionCodes || [appointment.divisionCode]).filter(
+        Boolean,
+      ) as string[];
 
       // Check if ANY of the new divisions overlap with ANY of the existing divisions
       return divisionCodesToCheck.some((code) => existingDivisions.includes(code));
