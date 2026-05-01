@@ -1,6 +1,6 @@
 import { useEffect, useState, type JSX } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { CaseSummary, SyncedCase } from '@common/cams/cases';
+import { DxtrCase, SyncedCase } from '@common/cams/cases';
 import Table, { TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 
@@ -32,14 +32,16 @@ export type SearchResultsHeaderProps = {
   labels: string[];
   phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
+  showOpenClosedColumn?: boolean;
 };
 
 export type SearchResultsRowProps = TableRowProps & {
   idx: number;
-  bCase: CaseSummary;
+  bCase: DxtrCase;
   labels: string[];
   phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
+  showOpenClosedColumn?: boolean;
 };
 
 export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
@@ -47,8 +49,10 @@ export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   searchPredicate: CasesSearchPredicate;
   phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
+  showOpenClosedColumn?: boolean;
   onStartSearching?: () => void;
   onEndSearching?: () => void;
+  onIncludeClosedCases?: () => void;
   noResultsMessage?: string;
   noResultsAlertProps?: AlertProps;
   header: (props: SearchResultsHeaderProps) => JSX.Element;
@@ -61,8 +65,10 @@ function SearchResults(props: SearchResultsProps) {
     searchPredicate: searchPredicateProp,
     phoneticSearchEnabled = false,
     showDebtorNameColumn = false,
+    showOpenClosedColumn = false,
     onStartSearching,
     onEndSearching,
+    onIncludeClosedCases,
     noResultsMessage: noResultsMessageProp,
     noResultsAlertProps,
     header: Header,
@@ -77,9 +83,15 @@ function SearchResults(props: SearchResultsProps) {
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
 
-  const searchResultsHeaderLabels = showDebtorNameColumn
+  const baseLabels = showDebtorNameColumn
     ? ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed']
     : ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
+  const searchResultsHeaderLabels = showOpenClosedColumn
+    ? [...baseLabels, 'Open/Closed']
+    : baseLabels;
+
+  const showClosedCasesHint =
+    searchPredicate.excludeClosedCases === true && !searchPredicate.caseNumber;
 
   const pagination: PaginationModel | undefined = searchResults?.pagination;
 
@@ -179,21 +191,48 @@ function SearchResults(props: SearchResultsProps) {
           ></Alert>
         </div>
       )}
-      {!isSearching && emptyResponse && !alertInfo && !noResultsAlertProps && (
+      {!isSearching && emptyResponse && !alertInfo && showClosedCasesHint && (
         <div className="search-alert">
           <Alert
             id="no-results-alert"
             className="measure-6"
-            message={noResultsMessage}
-            title="No cases found"
+            title="No Open cases found"
             type={UswdsAlertStyle.Info}
             show={true}
             inline={true}
             role="alert"
             slim={true}
-          ></Alert>
+          >
+            There may be closed cases that match your search filters.{' '}
+            <button
+              type="button"
+              className="usa-button usa-button--unstyled"
+              onClick={() => onIncludeClosedCases?.()}
+            >
+              Include Closed Cases
+            </button>
+          </Alert>
         </div>
       )}
+      {!isSearching &&
+        emptyResponse &&
+        !alertInfo &&
+        !showClosedCasesHint &&
+        !noResultsAlertProps && (
+          <div className="search-alert">
+            <Alert
+              id="no-results-alert"
+              className="measure-6"
+              message={noResultsMessage}
+              title="No cases found"
+              type={UswdsAlertStyle.Info}
+              show={true}
+              inline={true}
+              role="alert"
+              slim={true}
+            ></Alert>
+          </div>
+        )}
       {!isSearching && emptyResponse && noResultsAlertProps && (
         <div className="search-alert">
           <Alert {...noResultsAlertProps} id="no-results-alert" className="measure-6"></Alert>
@@ -201,6 +240,28 @@ function SearchResults(props: SearchResultsProps) {
       )}
       {isSearching && (
         <LoadingSpinner aria-label="Searching" role="status" caption="Searching..." />
+      )}
+      {!isSearching && !emptyResponse && showClosedCasesHint && (
+        <div className="search-alert">
+          <Alert
+            id="closed-cases-hint-alert"
+            className="measure-6"
+            type={UswdsAlertStyle.Info}
+            show={true}
+            inline={true}
+            role="status"
+            slim={true}
+          >
+            There may be closed cases that match your search filters.{' '}
+            <button
+              type="button"
+              className="usa-button usa-button--unstyled"
+              onClick={() => onIncludeClosedCases?.()}
+            >
+              Include Closed Cases
+            </button>
+          </Alert>
+        </div>
       )}
       {!isSearching && !emptyResponse && (
         <div>
@@ -217,6 +278,7 @@ function SearchResults(props: SearchResultsProps) {
               labels={searchResultsHeaderLabels}
               phoneticSearchEnabled={phoneticSearchEnabled}
               showDebtorNameColumn={showDebtorNameColumn}
+              showOpenClosedColumn={showOpenClosedColumn}
             />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
@@ -226,6 +288,7 @@ function SearchResults(props: SearchResultsProps) {
                     labels={searchResultsHeaderLabels}
                     phoneticSearchEnabled={phoneticSearchEnabled}
                     showDebtorNameColumn={showDebtorNameColumn}
+                    showOpenClosedColumn={showOpenClosedColumn}
                     idx={idx}
                     key={idx}
                   />

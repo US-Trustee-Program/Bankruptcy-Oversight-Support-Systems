@@ -488,6 +488,68 @@ describe('search screen', () => {
     expect(formFields[0]).toContainElement(document.querySelector('#checkbox-include-closed'));
   });
 
+  test('shows closed cases hint alert after a non-case-number search returns results', async () => {
+    renderWithoutProps();
+
+    const expandButton = screen.getByTestId('button-case-chapter-search-expand');
+    await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
+    await userEvent.click(expandButton);
+
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+      expect(document.querySelector('#closed-cases-hint-alert')).toBeInTheDocument();
+    });
+  });
+
+  test('clicking Include Closed Cases link re-runs search with excludeClosedCases: false', async () => {
+    renderWithoutProps();
+
+    const expandButton = screen.getByTestId('button-case-chapter-search-expand');
+    await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
+    await userEvent.click(expandButton);
+
+    const searchButton = screen.getByTestId('button-search-submit');
+    await userEvent.click(searchButton);
+
+    await waitFor(() => {
+      expect(document.querySelector('#closed-cases-hint-alert')).toBeInTheDocument();
+    });
+
+    searchCasesSpy.mockClear();
+    const link = screen.getByRole('button', { name: 'Include Closed Cases' });
+    fireEvent.click(link);
+
+    await waitFor(() => {
+      expect(searchCasesSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ excludeClosedCases: false }),
+        { includeAssignments: true },
+      );
+    });
+  });
+
+  test('Include Closed Cases link checks the checkbox', async () => {
+    renderWithoutProps();
+
+    const expandButton = screen.getByTestId('button-case-chapter-search-expand');
+    await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
+    await userEvent.click(expandButton);
+
+    await userEvent.click(screen.getByTestId('button-search-submit'));
+
+    await waitFor(() => {
+      expect(document.querySelector('#closed-cases-hint-alert')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Include Closed Cases' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('checkbox-include-closed')).toBeChecked();
+    });
+  });
+
   test('should update search predicate when Include Closed Cases checkbox is toggled', async () => {
     renderWithoutProps();
     const caseNumberInput = screen.getByTestId('basic-search-field');

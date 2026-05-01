@@ -208,4 +208,126 @@ describe('SearchResults component tests', () => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
   });
+
+  test('shows "there may be closed cases" hint above table when results exist and excludeClosedCases is true with no caseNumber', async () => {
+    renderWithProps({
+      searchPredicate: {
+        divisionCodes: ['081'],
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    const hint = document.querySelector('#closed-cases-hint-alert');
+    expect(hint).toBeInTheDocument();
+    expect(hint).toHaveTextContent('There may be closed cases that match your search filters.');
+    expect(hint).toHaveTextContent('Include Closed Cases');
+  });
+
+  test('does not show closed cases hint when caseNumber is present', async () => {
+    renderWithProps({
+      searchPredicate: {
+        caseNumber: '00-11111',
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    expect(document.querySelector('#closed-cases-hint-alert')).not.toBeInTheDocument();
+  });
+
+  test('does not show closed cases hint when excludeClosedCases is false', async () => {
+    renderWithProps({
+      searchPredicate: {
+        divisionCodes: ['081'],
+        excludeClosedCases: false,
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    expect(document.querySelector('#closed-cases-hint-alert')).not.toBeInTheDocument();
+  });
+
+  test('shows "No Open cases found" alert when no results and excludeClosedCases is true with no caseNumber', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      meta: { self: 'self-link' },
+      pagination: { currentPage: 0, limit: DEFAULT_SEARCH_LIMIT, count: 0 },
+      data: [],
+    });
+
+    renderWithProps({
+      searchPredicate: {
+        divisionCodes: ['081'],
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+    });
+
+    await waitFor(() => {
+      const alert = document.querySelector('#no-results-alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('No Open cases found');
+      expect(alert).toHaveTextContent('There may be closed cases that match your search filters.');
+      expect(alert).toHaveTextContent('Include Closed Cases');
+    });
+  });
+
+  test('clicking "Include Closed Cases" link in hint alert calls onIncludeClosedCases', async () => {
+    const onIncludeClosedCases = vi.fn();
+
+    renderWithProps({
+      searchPredicate: {
+        divisionCodes: ['081'],
+        excludeClosedCases: true,
+        limit: 25,
+        offset: 0,
+      },
+      onIncludeClosedCases,
+    });
+
+    await waitFor(() => {
+      expect(document.querySelector('#closed-cases-hint-alert')).toBeInTheDocument();
+    });
+
+    const link = screen.getByRole('button', { name: 'Include Closed Cases' });
+    fireEvent.click(link);
+
+    expect(onIncludeClosedCases).toHaveBeenCalledTimes(1);
+  });
+
+  test('renders Open/Closed column header when showOpenClosedColumn is true', async () => {
+    renderWithProps({ showOpenClosedColumn: true });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('header-open-closed')).toBeInTheDocument();
+  });
+
+  test('does not render Open/Closed column header when showOpenClosedColumn is false', async () => {
+    renderWithProps({ showOpenClosedColumn: false });
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('header-open-closed')).not.toBeInTheDocument();
+  });
 });
