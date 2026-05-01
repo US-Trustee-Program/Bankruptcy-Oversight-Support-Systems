@@ -732,6 +732,265 @@ describe('TrusteeAppointmentsUseCase tests', () => {
     });
   });
 
+  describe('hasAppointmentChanged with divisionCodes', () => {
+    beforeEach(async () => {
+      context = await createMockApplicationContext();
+      trusteeAppointmentsUseCase = new TrusteeAppointmentsUseCase(context);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    test('should detect division addition as change', async () => {
+      const appointmentId = 'appointment-123';
+      const trusteeId = 'trustee-123';
+      const mockExisting = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '710',
+        divisionCodes: ['710'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+      const mockUpdated = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '710',
+        divisionCodes: ['710', '711'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '097',
+        divisionCode: '710',
+        divisionCodes: ['710', '711'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+
+      expect(historyCreateSpy).toHaveBeenCalled();
+    });
+
+    test('should detect division removal as change', async () => {
+      const appointmentId = 'appointment-123';
+      const trusteeId = 'trustee-123';
+      const mockExisting = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '710',
+        divisionCodes: ['710', '711'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+      const mockUpdated = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '711',
+        divisionCodes: ['711'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '097',
+        divisionCode: '711',
+        divisionCodes: ['711'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+
+      expect(historyCreateSpy).toHaveBeenCalled();
+    });
+
+    test('should not detect division reordering as change', async () => {
+      const appointmentId = 'appointment-123';
+      const trusteeId = 'trustee-123';
+      const mockExisting = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '710',
+        divisionCodes: ['710', '711'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+      const mockUpdated = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '710',
+        divisionCodes: ['711', '710'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '097',
+        divisionCode: '710',
+        divisionCodes: ['711', '710'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+
+      expect(historyCreateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should not detect format-only change (single to array with same value) as change', async () => {
+      const appointmentId = 'appointment-123';
+      const trusteeId = 'trustee-123';
+      // Legacy appointment: has divisionCode but no divisionCodes
+      const mockExisting = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '710',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+      // Clear divisionCodes to simulate legacy record
+      delete (mockExisting as Record<string, unknown>).divisionCodes;
+
+      const mockUpdated = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '710',
+        divisionCodes: ['710'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '097',
+        divisionCode: '710',
+        divisionCodes: ['710'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+
+      expect(historyCreateSpy).not.toHaveBeenCalled();
+    });
+
+    test('should detect combined changes (divisions + status) as change', async () => {
+      const appointmentId = 'appointment-123';
+      const trusteeId = 'trustee-123';
+      const mockExisting = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '710',
+        divisionCodes: ['710'],
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-15T00:00:00.000Z',
+      });
+      const mockUpdated = MockData.getTrusteeAppointment({
+        id: appointmentId,
+        trusteeId,
+        courtId: '097',
+        chapter: '7',
+        appointmentType: 'panel',
+        divisionCode: '710',
+        divisionCodes: ['710', '711'],
+        appointedDate: '2024-01-15',
+        status: 'voluntarily-suspended',
+        effectiveDate: '2024-02-01T00:00:00.000Z',
+      });
+
+      const historyCreateSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrusteeHistory')
+        .mockResolvedValue();
+      vi.spyOn(MockMongoRepository.prototype, 'read').mockResolvedValue(mockExisting);
+      vi.spyOn(MockMongoRepository.prototype, 'updateAppointment').mockResolvedValue(mockUpdated);
+      vi.spyOn(trusteeAppointmentsUseCase['courtsUseCase'], 'getCourts').mockResolvedValue([]);
+
+      await trusteeAppointmentsUseCase.updateAppointment(context, trusteeId, appointmentId, {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '097',
+        divisionCode: '710',
+        divisionCodes: ['710', '711'],
+        appointedDate: '2024-01-15',
+        status: 'voluntarily-suspended',
+        effectiveDate: '2024-02-01T00:00:00.000Z',
+      });
+
+      expect(historyCreateSpy).toHaveBeenCalled();
+    });
+  });
+
   describe('multi-division support', () => {
     beforeEach(async () => {
       context = await createMockApplicationContext();
