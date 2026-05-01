@@ -12,7 +12,7 @@ import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
 } from '@/lib/hooks/UseFeatureFlags';
 import useCourts from '@/lib/hooks/UseCourts';
-import { getDivisionsForDistrict } from '@/lib/utils/court-utils';
+import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
 
 export interface AppointmentCardProps {
   appointment: TrusteeAppointment;
@@ -64,50 +64,7 @@ export default function AppointmentCard(props: Readonly<AppointmentCardProps>) {
     districtDisplay = 'Court information not available';
   }
 
-  // Build divisions display
-  // Backend may return divisionCodes array or legacy single divisionCode
-  // Enrich on frontend by looking up division names from codes
-  let divisionsDisplay = 'Not specified';
-
-  if (props.appointment.divisionCodes && props.appointment.divisionCodes.length > 0) {
-    // New format: array of division codes
-    if (props.appointment.courtId && allCourts.length > 0) {
-      const divisions = getDivisionsForDistrict(allCourts, props.appointment.courtId);
-      const allDivisionCodes = divisions.map((d) => d.courtDivisionCode);
-
-      // Check if all divisions are selected
-      const hasAllDivisions =
-        props.appointment.divisionCodes.length === allDivisionCodes.length &&
-        props.appointment.divisionCodes.every((code) => allDivisionCodes.includes(code));
-
-      if (hasAllDivisions) {
-        divisionsDisplay = 'All';
-      } else {
-        // Look up names for each code
-        const divisionNames = props.appointment.divisionCodes
-          .map((code) => {
-            const division = divisions.find((d) => d.courtDivisionCode === code);
-            return division?.courtDivisionName || code;
-          })
-          .sort();
-        divisionsDisplay = divisionNames.join(', ');
-      }
-    } else {
-      // Can't look up names - show codes
-      divisionsDisplay = props.appointment.divisionCodes.join(', ');
-    }
-  } else if (props.appointment.courtDivisionName) {
-    // Backend provided the enriched name (legacy single division)
-    divisionsDisplay = props.appointment.courtDivisionName;
-  } else if (props.appointment.divisionCode && props.appointment.courtId && allCourts.length > 0) {
-    // Look up the division name from the code (legacy single division)
-    const divisions = getDivisionsForDistrict(allCourts, props.appointment.courtId);
-    const division = divisions.find((d) => d.courtDivisionCode === props.appointment.divisionCode);
-    divisionsDisplay = division?.courtDivisionName || props.appointment.divisionCode;
-  } else if (props.appointment.divisionCode) {
-    // Have code but can't look up name - show code (legacy single division)
-    divisionsDisplay = props.appointment.divisionCode;
-  }
+  const divisionsDisplay = buildDivisionsDisplay(props.appointment, allCourts);
 
   const formattedEffectiveDate = formatAppointmentDate(props.appointment.effectiveDate);
   const formattedAppointedDate = formatAppointmentDate(props.appointment.appointedDate);

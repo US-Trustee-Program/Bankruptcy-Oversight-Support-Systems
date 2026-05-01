@@ -5,6 +5,8 @@ import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 import { useEffect, useState } from 'react';
 import Api2 from '@/lib/models/api2';
 import { CourtDivisionDetails } from '@common/cams/courts';
+import { buildDivisionsDisplay } from '@/lib/utils/court-utils';
+import useCourts from '@/lib/hooks/UseCourts';
 import {
   TrusteeHistory,
   TrusteeNameHistory,
@@ -280,26 +282,9 @@ function ShowTrusteeAppointmentHistory(props: ShowTrusteeAppointmentHistoryProps
       districtDisplay = 'Court information not available';
     }
 
-    // Format divisions display (new multi-division feature)
-    let divisionsDisplay: string | null = null;
-    if (data.divisionCodes && data.divisionCodes.length > 0) {
-      // Look up division names from allCourts
-      const divisionNames = data.divisionCodes
-        .map((code) => {
-          const court = allCourts.find(
-            (c) => c.courtId === data.courtId && c.courtDivisionCode === code,
-          );
-          return court?.courtDivisionName || code;
-        })
-        .join(', ');
-      divisionsDisplay = divisionNames;
-    } else if (data.divisionCode) {
-      // Legacy single division - look up name
-      const court = allCourts.find(
-        (c) => c.courtId === data.courtId && c.courtDivisionCode === data.divisionCode,
-      );
-      divisionsDisplay = court?.courtDivisionName || data.divisionCode;
-    }
+    // Format divisions display using shared helper
+    const divisionsResult = buildDivisionsDisplay(data, allCourts);
+    const divisionsDisplay = divisionsResult !== 'Not specified' ? divisionsResult : null;
 
     return (
       <>
@@ -561,36 +546,27 @@ function RenderTrusteeHistory(
 export default function TrusteeDetailAuditHistory(props: Readonly<TrusteeDetailAuditHistoryProps>) {
   const [trusteeHistory, setTrusteeHistory] = useState<TrusteeHistory[]>([]);
   const [isAuditHistoryLoading, setIsAuditHistoryLoading] = useState<boolean>(false);
-  const [allCourts, setAllCourts] = useState<CourtDivisionDetails[]>([]);
+  const { courts: allCourts } = useCourts();
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchTrusteeHistory = async () => {
       setIsAuditHistoryLoading(true);
       try {
-        const [historyResponse, courtsResponse] = await Promise.all([
-          Api2.getTrusteeHistory(props.trusteeId),
-          Api2.getCourts(),
-        ]);
-
-        if (historyResponse) {
+        const response = await Api2.getTrusteeHistory(props.trusteeId);
+        if (response) {
           setTrusteeHistory(
-            historyResponse.data.sort((a: Auditable, b: Auditable) =>
+            response.data.sort((a: Auditable, b: Auditable) =>
               sortByDateReverse(a.updatedOn, b.updatedOn),
             ),
           );
         }
-
-        if (courtsResponse) {
-          setAllCourts(courtsResponse.data);
-        }
       } catch {
         setTrusteeHistory([]);
-        setAllCourts([]);
       } finally {
         setIsAuditHistoryLoading(false);
       }
     };
-    fetchData();
+    fetchTrusteeHistory();
   }, [props.trusteeId]);
 
   return (

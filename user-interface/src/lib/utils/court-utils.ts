@@ -298,7 +298,7 @@ export function sortTrusteeAppointments(appointments: TrusteeAppointment[]): Tru
 /**
  * Represents a unique district (court) for selection in a dropdown.
  */
-export interface DistrictOption {
+interface DistrictOption {
   courtId: string;
   courtName: string;
   state?: string;
@@ -307,7 +307,7 @@ export interface DistrictOption {
 /**
  * Represents a division within a district for selection in a dropdown.
  */
-export interface DivisionOption {
+interface DivisionOption {
   courtDivisionCode: string;
   courtDivisionName: string;
 }
@@ -379,4 +379,64 @@ export function getDivisionsForDistrict(
 
   // Sort alphabetically by division name
   return divisions.sort((a, b) => a.courtDivisionName.localeCompare(b.courtDivisionName));
+}
+
+/**
+ * Build a human-readable display string for an appointment's divisions.
+ *
+ * Handles multiple data shapes:
+ * - New format: divisionCodes array → looks up names, shows "All" if every division selected
+ * - Legacy format with enriched name: courtDivisionName already provided by backend
+ * - Legacy format with code only: looks up name from courts data, falls back to raw code
+ *
+ * @param appointment - Object containing division fields from the appointment
+ * @param allCourts - Full courts dataset for name lookups (may be empty if not yet loaded)
+ * @returns Display string such as "All", "Springfield, St. Louis", or "Not specified"
+ */
+export function buildDivisionsDisplay(
+  appointment: {
+    courtId?: string;
+    divisionCode?: string;
+    divisionCodes?: string[];
+    courtDivisionName?: string;
+  },
+  allCourts: CourtDivisionDetails[],
+): string {
+  if (appointment.divisionCodes && appointment.divisionCodes.length > 0) {
+    if (appointment.courtId && allCourts.length > 0) {
+      const divisions = getDivisionsForDistrict(allCourts, appointment.courtId);
+      const allDivisionCodes = divisions.map((d) => d.courtDivisionCode);
+
+      const hasAllDivisions =
+        appointment.divisionCodes.length === allDivisionCodes.length &&
+        appointment.divisionCodes.every((code) => allDivisionCodes.includes(code));
+
+      if (hasAllDivisions) return 'All';
+
+      return appointment.divisionCodes
+        .map((code) => {
+          const division = divisions.find((d) => d.courtDivisionCode === code);
+          return division?.courtDivisionName || code;
+        })
+        .sort()
+        .join(', ');
+    }
+    return appointment.divisionCodes.join(', ');
+  }
+
+  if (appointment.courtDivisionName) {
+    return appointment.courtDivisionName;
+  }
+
+  if (appointment.divisionCode && appointment.courtId && allCourts.length > 0) {
+    const divisions = getDivisionsForDistrict(allCourts, appointment.courtId);
+    const division = divisions.find((d) => d.courtDivisionCode === appointment.divisionCode);
+    return division?.courtDivisionName || appointment.divisionCode;
+  }
+
+  if (appointment.divisionCode) {
+    return appointment.divisionCode;
+  }
+
+  return 'Not specified';
 }

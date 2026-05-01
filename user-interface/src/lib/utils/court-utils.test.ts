@@ -4,6 +4,7 @@ import {
   sortByCourtLocation,
   getUniqueDistricts,
   getDivisionsForDistrict,
+  buildDivisionsDisplay,
 } from './court-utils';
 import { CourtDivisionDetails } from '@common/cams/courts';
 
@@ -613,6 +614,127 @@ describe('court-utils', () => {
         courtDivisionCode: '501',
         courtDivisionName: 'Manhattan',
       });
+    });
+  });
+
+  describe('buildDivisionsDisplay', () => {
+    const alaskaCourts: CourtDivisionDetails[] = [
+      {
+        officeName: 'Anchorage',
+        officeCode: '097-A',
+        courtId: '097',
+        courtName: 'District of Alaska',
+        courtDivisionCode: '709',
+        courtDivisionName: 'Anchorage',
+        groupDesignator: 'AK',
+        regionId: '18',
+        regionName: 'Region 18',
+        state: 'AK',
+      },
+      {
+        officeName: 'Juneau',
+        officeCode: '097-J',
+        courtId: '097',
+        courtName: 'District of Alaska',
+        courtDivisionCode: '710',
+        courtDivisionName: 'Juneau',
+        groupDesignator: 'AK',
+        regionId: '18',
+        regionName: 'Region 18',
+        state: 'AK',
+      },
+      {
+        officeName: 'Nome',
+        officeCode: '097-N',
+        courtId: '097',
+        courtName: 'District of Alaska',
+        courtDivisionCode: '711',
+        courtDivisionName: 'Nome',
+        groupDesignator: 'AK',
+        regionId: '18',
+        regionName: 'Region 18',
+        state: 'AK',
+      },
+    ];
+
+    test('should return "All" when all divisions for a district are selected', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['709', '710', '711'] },
+        alaskaCourts,
+      );
+      expect(result).toBe('All');
+    });
+
+    test('should return sorted comma-separated names for partial division selection', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['711', '709'] },
+        alaskaCourts,
+      );
+      expect(result).toBe('Anchorage, Nome');
+    });
+
+    test('should return single division name when one division code is selected', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['710'] },
+        alaskaCourts,
+      );
+      expect(result).toBe('Juneau');
+    });
+
+    test('should fall back to raw codes when courts data is empty', () => {
+      const result = buildDivisionsDisplay({ courtId: '097', divisionCodes: ['710', '711'] }, []);
+      expect(result).toBe('710, 711');
+    });
+
+    test('should fall back to raw codes when courtId is missing', () => {
+      const result = buildDivisionsDisplay({ divisionCodes: ['710'] }, alaskaCourts);
+      expect(result).toBe('710');
+    });
+
+    test('should use courtDivisionName when provided (legacy enriched)', () => {
+      const result = buildDivisionsDisplay({ courtDivisionName: 'Juneau' }, alaskaCourts);
+      expect(result).toBe('Juneau');
+    });
+
+    test('should look up name from divisionCode when courts data is available', () => {
+      const result = buildDivisionsDisplay({ courtId: '097', divisionCode: '711' }, alaskaCourts);
+      expect(result).toBe('Nome');
+    });
+
+    test('should fall back to raw divisionCode when courts data is empty', () => {
+      const result = buildDivisionsDisplay({ courtId: '097', divisionCode: '711' }, []);
+      expect(result).toBe('711');
+    });
+
+    test('should fall back to raw divisionCode when courtId is missing', () => {
+      const result = buildDivisionsDisplay({ divisionCode: '711' }, alaskaCourts);
+      expect(result).toBe('711');
+    });
+
+    test('should return "Not specified" when no division data exists', () => {
+      const result = buildDivisionsDisplay({}, alaskaCourts);
+      expect(result).toBe('Not specified');
+    });
+
+    test('should return "Not specified" when divisionCodes is empty array', () => {
+      const result = buildDivisionsDisplay({ courtId: '097', divisionCodes: [] }, alaskaCourts);
+      expect(result).toBe('Not specified');
+    });
+
+    test('should fall back to code when division code is not found in courts data', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['999'] },
+        alaskaCourts,
+      );
+      expect(result).toBe('999');
+    });
+
+    test('should prefer divisionCodes over legacy divisionCode when both present', () => {
+      const result = buildDivisionsDisplay(
+        { courtId: '097', divisionCodes: ['710', '711'], divisionCode: '709' },
+        alaskaCourts,
+      );
+      expect(result).toBe('Juneau, Nome');
     });
   });
 });
