@@ -65,13 +65,14 @@ export default function TrusteesList() {
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
   const [liveAnnouncement, setLiveAnnouncement] = useState<string>('');
   const [nameSearch, setNameSearch] = useState('');
-  const [nameSearchIds, setNameSearchIds] = useState<Set<string> | null>(null);
+  const [nameSearchIds, setNameSearchIds] = useState<Set<string>>(new Set());
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
   const pageLoadStart = useRef(performance.now());
   const isNameFilterInteracted = useRef(false);
   const previousNameSearchRef = useRef('');
   const nameSearchCountRef = useRef(0);
   const nameSearchStartRef = useRef<number | null>(null);
+  const nameSearchQueryLengthRef = useRef(0);
   const debounce = useDebounce();
 
   useEffect(() => {
@@ -121,15 +122,19 @@ export default function TrusteesList() {
   const handleFilterName = (name: string) => {
     isNameFilterInteracted.current = true;
     setNameSearch(name);
-    if (name.length < 2) {
-      setNameSearchIds(null);
+  };
+
+  useEffect(() => {
+    if (nameSearch.length < 2) {
+      setNameSearchIds(new Set());
       return;
     }
     nameSearchCountRef.current += 1;
+    nameSearchQueryLengthRef.current = nameSearch.length;
     const searchStart = performance.now();
     debounce(async () => {
       try {
-        const response = await Api2.searchTrustees(name);
+        const response = await Api2.searchTrustees(nameSearch);
         const ids = new Set(response.data.map((r) => r.trusteeId));
         nameSearchStartRef.current = performance.now() - searchStart;
         setNameSearchIds(ids);
@@ -138,12 +143,12 @@ export default function TrusteesList() {
         setNameSearchIds(new Set());
       }
     }, 300);
-  };
+  }, [nameSearch, debounce]);
 
   const { filteredTrustees } = useMemo(() => {
     let filtered = filterTrustees(trustees, selectedDistricts, selectedChapters);
 
-    if (nameSearchIds !== null) {
+    if (nameSearch.length >= 2) {
       filtered = filtered.filter((t) => nameSearchIds.has(t.trusteeId));
     }
 
@@ -169,7 +174,7 @@ export default function TrusteesList() {
     return {
       filteredTrustees: sortedWithAppointments,
     };
-  }, [trustees, selectedDistricts, selectedChapters, nameSearchIds, sortDirection]);
+  }, [trustees, selectedDistricts, selectedChapters, nameSearch, nameSearchIds, sortDirection]);
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
@@ -214,6 +219,25 @@ export default function TrusteesList() {
 
   useEffect(() => {
     if (!isNameFilterInteracted.current) return;
+    if (nameSearchQueryLengthRef.current < 2) return;
+
+    getAppInsights().appInsights.trackEvent(
+      { name: 'Trustee Name Filter Changed' },
+      {
+        queryLength: nameSearchQueryLengthRef.current,
+        resultCount: filteredTrustees.length,
+        districtCount: selectedDistricts.length,
+        chapterCount: selectedChapters.length,
+        searchResponseMs: nameSearchStartRef.current ?? undefined,
+        hasDistrictFilter: selectedDistricts.length > 0,
+        sessionSearchCount: nameSearchCountRef.current,
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nameSearchIds]);
+
+  useEffect(() => {
+    if (!isNameFilterInteracted.current) return;
 
     const wasNonEmpty = previousNameSearchRef.current.length > 0;
     const isNowEmpty = nameSearch.length === 0;
@@ -229,23 +253,7 @@ export default function TrusteesList() {
     }
 
     previousNameSearchRef.current = nameSearch;
-
-    if (nameSearch.length < 2) return;
-
-    getAppInsights().appInsights.trackEvent(
-      { name: 'Trustee Name Filter Changed' },
-      {
-        queryLength: nameSearch.length,
-        resultCount: filteredTrustees.length,
-        districtCount: selectedDistricts.length,
-        chapterCount: selectedChapters.length,
-        searchResponseMs: nameSearchStartRef.current ?? undefined,
-        hasDistrictFilter: selectedDistricts.length > 0,
-        sessionSearchCount: nameSearchCountRef.current,
-      },
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nameSearch, nameSearchIds]);
+  }, [nameSearch]);
 
   if (loading) {
     return <LoadingSpinner caption="Loading trustees..." />;
