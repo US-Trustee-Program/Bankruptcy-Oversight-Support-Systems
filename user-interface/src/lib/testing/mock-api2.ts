@@ -1759,6 +1759,17 @@ async function post<T = unknown>(
         },
       ];
     }
+    if (searchRequest?.chapters && searchRequest.chapters.length > 0) {
+      response.data = (response.data as Array<{ chapter: string }>).filter((c) =>
+        searchRequest.chapters!.includes(c.chapter),
+      );
+    }
+    if (searchRequest?.debtorName) {
+      const query = searchRequest.debtorName.toLowerCase();
+      response.data = (response.data as Array<{ caseTitle: string }>).filter((c) =>
+        c.caseTitle.toLowerCase().includes(query),
+      );
+    }
     return response as ResponseBody<T>;
   } else if (path.match(/^\/trustees$/)) {
     const input = body as TrusteeInput;

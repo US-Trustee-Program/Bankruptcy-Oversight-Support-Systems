@@ -171,7 +171,7 @@ function SearchResults(props: SearchResultsProps) {
     search();
   }, [searchPredicate]);
 
-  const totalCount = searchResults?.pagination?.totalCount ?? 0;
+  const totalCount = searchResults?.pagination?.totalCount ?? searchResults?.data?.length ?? 0;
   const displayCount = new Intl.NumberFormat('en-US').format(totalCount);
 
   return (
@@ -203,14 +203,16 @@ function SearchResults(props: SearchResultsProps) {
             role="alert"
             slim={true}
           >
-            There may be closed cases that match your search filters.{' '}
-            <button
-              type="button"
-              className="usa-button usa-button--unstyled"
-              onClick={() => onIncludeClosedCases?.()}
-            >
-              Include Closed Cases
-            </button>
+            <p className="usa-alert__text">
+              There may be closed cases that match your search filters.{' '}
+              <button
+                type="button"
+                className="usa-button usa-button--unstyled"
+                onClick={() => onIncludeClosedCases?.()}
+              >
+                Include Closed Cases
+              </button>
+            </p>
           </Alert>
         </div>
       )}
@@ -252,14 +254,16 @@ function SearchResults(props: SearchResultsProps) {
             role="status"
             slim={true}
           >
-            There may be closed cases that match your search filters.{' '}
-            <button
-              type="button"
-              className="usa-button usa-button--unstyled"
-              onClick={() => onIncludeClosedCases?.()}
-            >
-              Include Closed Cases
-            </button>
+            <p className="usa-alert__text">
+              There may be closed cases that match your search filters.{' '}
+              <button
+                type="button"
+                className="usa-button usa-button--unstyled"
+                onClick={() => onIncludeClosedCases?.()}
+              >
+                Include Closed Cases
+              </button>
+            </p>
           </Alert>
         </div>
       )}
