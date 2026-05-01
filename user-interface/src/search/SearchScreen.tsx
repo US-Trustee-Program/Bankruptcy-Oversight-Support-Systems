@@ -258,6 +258,15 @@ export default function SearchScreen() {
     });
   }
 
+  function handleIncludeClosedAndSearch() {
+    const updatedPredicate: CasesSearchPredicate = {
+      ...temporarySearchPredicate,
+      excludeClosedCases: false,
+    };
+    setTemporarySearchPredicate(updatedPredicate);
+    setSearchPredicate(updatedPredicate);
+  }
+
   function performSearch() {
     // Enable showing validation errors
     setShowCaseNumberError(true);
@@ -457,8 +466,10 @@ export default function SearchScreen() {
               searchPredicate={searchPredicate}
               phoneticSearchEnabled={phoneticSearchEnabled}
               showDebtorNameColumn={showDebtorNameColumn}
+              showOpenClosedColumn={true}
               onStartSearching={setStartSearching}
               onEndSearching={setEndSearching}
+              onIncludeClosedCases={handleIncludeClosedAndSearch}
               header={SearchResultsHeader}
               row={SearchResultsRow}
             />

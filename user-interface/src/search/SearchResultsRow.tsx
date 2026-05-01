@@ -3,6 +3,7 @@ import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
+import { isCaseClosed } from '@common/cams/cases';
 
 function formatDebtorNames(debtorName: string, jointDebtorName?: string): JSX.Element {
   if (!jointDebtorName) {
@@ -22,6 +23,7 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
     bCase,
     labels,
     showDebtorNameColumn = false,
+    showOpenClosedColumn = false,
     phoneticSearchEnabled,
     ...otherProps
   } = props;
@@ -58,9 +60,16 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
     </TableRowData>
   );
 
-  const cells = showDebtorNameColumn
+  const openClosedCell = (
+    <TableRowData key="open-closed" dataLabel={labels[labels.length - 1]}>
+      {isCaseClosed(bCase) ? 'Closed' : 'Open'}
+    </TableRowData>
+  );
+
+  const baseCells = showDebtorNameColumn
     ? [caseNumberCell, caseTitleCell, debtorNameCell, chapterCell, dateFiledCell]
     : [caseNumberCell, caseTitleCell, chapterCell, dateFiledCell];
+  const cells = showOpenClosedColumn ? [...baseCells, openClosedCell] : baseCells;
 
   return <TableRow {...otherProps}>{cells}</TableRow>;
 }
