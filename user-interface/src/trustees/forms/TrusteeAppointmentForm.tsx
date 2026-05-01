@@ -316,7 +316,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     }
   }, [divisionOptions, districtDivisionEnabled, isEditMode, formData.divisionCodes.length]);
 
-  // Pure validation function
+  // Validation: checks for overlapping active appointments
   const getValidationError = (
     data: FormData,
     appointments: TrusteeAppointment[],
@@ -390,22 +390,15 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     useSeparateFields,
   );
 
-  const isFormValid = useSeparateFields
-    ? !!formData.courtId &&
-      formData.divisionCodes.length > 0 &&
-      !!formData.chapter &&
-      !!formData.appointmentType &&
-      !!formData.status &&
-      (!isEditMode || !!formData.effectiveDate) &&
-      !!formData.appointedDate &&
-      !validationError
-    : !!formData.districtKey &&
-      !!formData.chapter &&
-      !!formData.appointmentType &&
-      !!formData.status &&
-      (!isEditMode || !!formData.effectiveDate) &&
-      !!formData.appointedDate &&
-      !validationError;
+  const hasCourtSelection = !!extractCourtAndDivisions(formData, useSeparateFields, allCourts);
+  const isFormValid =
+    hasCourtSelection &&
+    !!formData.chapter &&
+    !!formData.appointmentType &&
+    !!formData.status &&
+    (!isEditMode || !!formData.effectiveDate) &&
+    !!formData.appointedDate &&
+    !validationError;
 
   const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
     ev.preventDefault();
@@ -677,10 +670,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                     formData.divisionCodes[0] === ALL_DIVISIONS_VALUE ? (
                       // Show non-interactive badge when only "All Divisions" is selected
                       <div className="division-pills-container">
-                        <span className="pill usa-button--unstyled" style={{ cursor: 'default' }}>
-                          <div className="pill-text" style={{ maxWidth: '100%' }}>
-                            All Divisions
-                          </div>
+                        <span className="pill usa-button--unstyled division-pill-static">
+                          <div className="pill-text">All Divisions</div>
                         </span>
                       </div>
                     ) : (
