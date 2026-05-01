@@ -352,11 +352,11 @@ async function handleError(event: TrusteeEvent | QueueError, invocationContext: 
 /**
  * handleRetry
  *
- * Retry migrating a single trustee with retry limit tracking.
+ * Retry migrating a single trustee by requeueing to PAGE queue.
+ * Avoids duplicate processing logic - uses the same processPageOfTrustees flow.
  */
 async function handleRetry(event: TrusteeEvent, invocationContext: InvocationContext) {
-  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
-  const { logger } = context;
+  const logger = ApplicationContextCreator.getLogger(invocationContext);
 
   const RETRY_LIMIT = 3;
   if (event.retryCount) {
@@ -371,19 +371,15 @@ async function handleRetry(event: TrusteeEvent, invocationContext: InvocationCon
     return;
   }
 
-  // Wrap single trustee into MergedTrusteeData structure for processing
-  const mergedData = MigrateTrusteesUseCase.mergeTrusteeRecords([event]);
-  const result = await MigrateTrusteesUseCase.processTrusteeWithAppointments(context, mergedData);
+  // Requeue to PAGE queue for normal processing
+  // PAGE handler will fetch this trustee and process it through the standard flow
+  const cursorMessage: CursorMessage = { lastId: (event.ID - 1).toString() };
+  invocationContext.extraOutputs.set(PAGE, cursorMessage);
 
-  if (result.success) {
-    logger.info(
-      MODULE_NAME,
-      `Successfully retried migration for trustee ${event.ID} with ${result.appointmentsProcessed} appointments.`,
-    );
-  } else {
-    event.error = new Error(result.error ?? 'Unknown error');
-    invocationContext.extraOutputs.set(DLQ, [event]);
-  }
+  logger.info(
+    MODULE_NAME,
+    `Retry ${event.retryCount}: Requeued trustee ${event.ID} to PAGE queue.`,
+  );
 }
 
 function setup() {

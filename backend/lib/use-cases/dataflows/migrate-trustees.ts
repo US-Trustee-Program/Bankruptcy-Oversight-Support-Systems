@@ -19,7 +19,7 @@ const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 /**
  * Division information extracted from DXTR offices data
  */
-export type DivisionInfo = {
+type DivisionInfo = {
   divisionCode: string;
   courtId: string;
   courtName: string;
