@@ -308,57 +308,6 @@ function buildUnmatchedReportRow(row: ZoomMatchedRow, outcome: ProcessResult['ou
   ].join('\t');
 }
 
-/**
- * Counts outcomes from report lines as a sanity check against in-loop metrics.
- * Derives the outcome column index from the header to avoid hardcoding.
- */
-function countOutcomesFromReportLines(
-  context: ApplicationContext,
-  reportLines: string[],
-): ZoomImportResult {
-  const headers = reportLines[0]?.split('\t') ?? [];
-  const outcomeIndex = headers.indexOf('outcome');
-  if (outcomeIndex === -1) {
-    throw new Error('Outcome column not found in report headers');
-  }
-
-  const result: ZoomImportResult = { total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 };
-
-  for (let i = 1; i < reportLines.length; i++) {
-    const line = reportLines[i].trim();
-    if (!line) continue;
-
-    const columns = line.split('\t');
-    if (columns.length <= outcomeIndex) {
-      context.logger.warn(
-        MODULE_NAME,
-        `Malformed report line ${i}: expected at least ${outcomeIndex + 1} columns, got ${columns.length}`,
-      );
-      continue;
-    }
-
-    const outcome = columns[outcomeIndex] as ProcessResult['outcome'];
-    result.total++;
-
-    switch (outcome) {
-      case 'matched':
-        result.matched++;
-        break;
-      case 'unmatched':
-        result.unmatched++;
-        break;
-      case 'ambiguous':
-        result.ambiguous++;
-        break;
-      case 'error':
-        result.errors++;
-        break;
-    }
-  }
-
-  return result;
-}
-
 export async function processZoomMatchedRow(
   context: ApplicationContext,
   row: ZoomMatchedRow,
@@ -541,15 +490,6 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
     }
 
     reportLines.push(buildMatchedReportRow(row, processResult));
-  }
-
-  // Sanity check: ensure in-loop metrics match the written report
-  const reportCounts = countOutcomesFromReportLines(context, reportLines);
-  if (JSON.stringify(result) !== JSON.stringify(reportCounts)) {
-    context.logger.warn(
-      MODULE_NAME,
-      `Mismatch between in-loop metrics ${JSON.stringify(result)} and report-derived metrics ${JSON.stringify(reportCounts)}`,
-    );
   }
 
   context.logger.info(MODULE_NAME, `Import complete: ${JSON.stringify(result)}`);
