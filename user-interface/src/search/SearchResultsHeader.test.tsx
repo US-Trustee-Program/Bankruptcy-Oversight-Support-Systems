@@ -6,13 +6,7 @@ describe('SearchResultsHeader', () => {
   test('should render all columns when debtor name column is shown', () => {
     const labels = ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed'];
 
-    render(
-      <table>
-        <thead>
-          <SearchResultsHeader id="test-header" labels={labels} showDebtorNameColumn={true} />
-        </thead>
-      </table>,
-    );
+    render(<SearchResultsHeader id="test-header" labels={labels} showDebtorNameColumn={true} />);
 
     expect(screen.getByTestId('header-case-number')).toBeInTheDocument();
     expect(screen.getByTestId('header-case-title')).toBeInTheDocument();
@@ -24,13 +18,7 @@ describe('SearchResultsHeader', () => {
   test('should not render Debtor Name column when debtor name column is hidden', () => {
     const labels = ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
 
-    render(
-      <table>
-        <thead>
-          <SearchResultsHeader id="test-header" labels={labels} showDebtorNameColumn={false} />
-        </thead>
-      </table>,
-    );
+    render(<SearchResultsHeader id="test-header" labels={labels} showDebtorNameColumn={false} />);
 
     expect(screen.getByTestId('header-case-number')).toBeInTheDocument();
     expect(screen.getByTestId('header-case-title')).toBeInTheDocument();
@@ -42,13 +30,7 @@ describe('SearchResultsHeader', () => {
   test('should render Open/Closed column when showOpenClosedColumn is true', () => {
     const labels = ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed', 'Open/Closed'];
 
-    render(
-      <table>
-        <thead>
-          <SearchResultsHeader id="test-header" labels={labels} showOpenClosedColumn={true} />
-        </thead>
-      </table>,
-    );
+    render(<SearchResultsHeader id="test-header" labels={labels} showOpenClosedColumn={true} />);
 
     expect(screen.getByTestId('header-open-closed')).toBeInTheDocument();
     expect(screen.getByTestId('header-open-closed')).toHaveTextContent('Open/Closed');
@@ -57,13 +39,7 @@ describe('SearchResultsHeader', () => {
   test('should not render Open/Closed column when showOpenClosedColumn is false', () => {
     const labels = ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
 
-    render(
-      <table>
-        <thead>
-          <SearchResultsHeader id="test-header" labels={labels} showOpenClosedColumn={false} />
-        </thead>
-      </table>,
-    );
+    render(<SearchResultsHeader id="test-header" labels={labels} showOpenClosedColumn={false} />);
 
     expect(screen.queryByTestId('header-open-closed')).not.toBeInTheDocument();
   });

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
+import { CamsTableCell, CamsTableRow } from '@/lib/components/cams/CamsTable';
 import OpenModalButton from '@/lib/components/uswds/modal/OpenModalButton';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
@@ -26,7 +26,7 @@ type StaffAssignmentRowProps = SearchResultsRowProps & {
 };
 
 export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
-  const { bCase, idx, options, ...otherProps } = props;
+  const { bCase, idx, options } = props;
   const { modalId, modalRef } = options as StaffAssignmentRowOptions;
 
   const initialState = {
@@ -100,25 +100,33 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
     });
 
     return displayItems.map((item) => (
-      <span key={item.key} data-testid={item.testId}>
+      <div key={item.key} data-testid={item.testId}>
         {item.label}
-        <br />
-      </span>
+      </div>
     ));
   }
 
   return (
-    <TableRow {...otherProps} key={idx}>
-      <TableRowData>
+    <CamsTableRow>
+      <CamsTableCell className="col-case-number" data-cell="Case Number (Division)">
         <span className="no-wrap">
           <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
         </span>
-      </TableRowData>
-      <TableRowData>{bCase.caseTitle}</TableRowData>
-      <TableRowData>{bCase.chapter}</TableRowData>
-      <TableRowData>{formatDate(bCase.dateFiled)}</TableRowData>
-      <TableRowData data-testid={`attorney-list-${idx}`} className="attorney-list">
-        <span className="mobile-title">Assigned Attorney:</span>
+      </CamsTableCell>
+      <CamsTableCell className="col-case-title" data-cell="Case Title">
+        {bCase.caseTitle}
+      </CamsTableCell>
+      <CamsTableCell className="col-chapter" data-cell="Chapter">
+        {bCase.chapter}
+      </CamsTableCell>
+      <CamsTableCell className="col-date-filed" data-cell="Case Filed">
+        {formatDate(bCase.dateFiled)}
+      </CamsTableCell>
+      <CamsTableCell
+        data-testid={`attorney-list-${idx}`}
+        className="col-staff-assignment attorney-list"
+        data-cell="Staff Assignment"
+      >
         <div className="table-flex-container">
           <div className="attorney-list-container">
             {buildAssignmentList(state.assignments, state.bCase.leadTrialAttorney)}
@@ -127,7 +135,7 @@ export function StaffAssignmentRow(props: StaffAssignmentRowProps) {
             {Actions.contains(bCase, Actions.ManageAssignments) && buildActionButton()}
           </div>
         </div>
-      </TableRowData>
-    </TableRow>
+      </CamsTableCell>
+    </CamsTableRow>
   );
 }

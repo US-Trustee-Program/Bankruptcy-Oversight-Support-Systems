@@ -72,7 +72,7 @@ describe('search screen', () => {
     const searchButton = screen.getByTestId('button-search-submit');
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).not.toBeInTheDocument();
+      expect(document.querySelector('.search-results .cams-table')).not.toBeInTheDocument();
     });
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
@@ -85,10 +85,10 @@ describe('search screen', () => {
     });
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
     });
 
-    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
 
     expect(rows).toHaveLength(caseList.length);
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
@@ -105,7 +105,7 @@ describe('search screen', () => {
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
-    const table = document.querySelector('.search-results table');
+    const table = document.querySelector('.search-results .cams-table');
     expect(table).toBeVisible();
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
@@ -179,7 +179,7 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
     });
 
     const expandButton = screen.getByTestId('button-court-selections-search-expand');
@@ -203,10 +203,10 @@ describe('search screen', () => {
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
-    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
     expect(rows).toHaveLength(caseList.length);
 
     const divisionSearchPredicate = {
@@ -238,7 +238,7 @@ describe('search screen', () => {
     const loadingSpinner = document.querySelector('.loading-spinner');
     await waitFor(() => {
       expect(loadingSpinner).not.toBeInTheDocument();
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
@@ -287,17 +287,17 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
-    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
     expect(rows).toHaveLength(caseList.length);
 
     await userEvent.type(caseNumberInput, caseNumber);
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(casesSearchPredicate, includeAssignments);
@@ -321,10 +321,10 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
-    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
     expect(rows).toHaveLength(caseList.length);
 
     await userEvent.type(caseNumberInput, incompleteCaseNumber);
@@ -342,7 +342,7 @@ describe('search screen', () => {
     });
     renderWithoutProps();
 
-    let table = document.querySelector('.search-results table');
+    let table = document.querySelector('.search-results .cams-table');
     expect(table).not.toBeInTheDocument();
 
     let searchButton = screen.getByTestId('button-search-submit');
@@ -351,7 +351,7 @@ describe('search screen', () => {
     let noResultsAlert = document.querySelector('#no-results-alert');
 
     await waitFor(() => {
-      table = document.querySelector('.search-results table');
+      table = document.querySelector('.search-results .cams-table');
       expect(table).not.toBeInTheDocument();
 
       noResultsAlert = document.querySelector('#no-results-alert');
@@ -406,7 +406,7 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).not.toBeInTheDocument();
+      expect(document.querySelector('.search-results .cams-table')).not.toBeInTheDocument();
 
       const searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).toBeInTheDocument();
@@ -425,7 +425,7 @@ describe('search screen', () => {
       const searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).not.toBeInTheDocument();
     });
-    expect(document.querySelector('.search-results table')).toBeInTheDocument();
+    expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
   });
 
   test('should show an error alert if offices cannot be retrieved from API', async () => {
@@ -499,7 +499,7 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
       expect(document.querySelector('#closed-cases-hint-alert')).toBeInTheDocument();
     });
   });
@@ -548,6 +548,79 @@ describe('search screen', () => {
     await waitFor(() => {
       expect(screen.getByTestId('checkbox-include-closed')).toBeChecked();
     });
+  });
+
+  test('shows count-specific hint when caseNumber search returns closedCasesCount > 0', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      ...searchResponseBody,
+      pagination: {
+        count: caseList.length,
+        currentPage: 1,
+        limit: DEFAULT_SEARCH_LIMIT,
+        closedCasesCount: 3,
+      },
+    });
+
+    renderWithoutProps();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    await userEvent.type(caseNumberInput, '00-11111');
+    await userEvent.click(screen.getByTestId('button-search-submit'));
+
+    await waitFor(() => {
+      const hint = document.querySelector('#closed-cases-hint-alert');
+      expect(hint).toBeInTheDocument();
+      expect(hint).toHaveTextContent('3 closed cases match your search filters.');
+      expect(hint).toHaveTextContent('Include Closed Cases');
+    });
+  });
+
+  test('shows singular "1 closed case" in hint when closedCasesCount is 1', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      ...searchResponseBody,
+      pagination: {
+        count: caseList.length,
+        currentPage: 1,
+        limit: DEFAULT_SEARCH_LIMIT,
+        closedCasesCount: 1,
+      },
+    });
+
+    renderWithoutProps();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    await userEvent.type(caseNumberInput, '00-11111');
+    await userEvent.click(screen.getByTestId('button-search-submit'));
+
+    await waitFor(() => {
+      const hint = document.querySelector('#closed-cases-hint-alert');
+      expect(hint).toBeInTheDocument();
+      expect(hint).toHaveTextContent('1 closed case match your search filters.');
+    });
+  });
+
+  test('does not show count-specific hint when closedCasesCount is 0', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      ...searchResponseBody,
+      pagination: {
+        count: caseList.length,
+        currentPage: 1,
+        limit: DEFAULT_SEARCH_LIMIT,
+        closedCasesCount: 0,
+      },
+    });
+
+    renderWithoutProps();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    await userEvent.type(caseNumberInput, '00-11111');
+    await userEvent.click(screen.getByTestId('button-search-submit'));
+
+    await waitFor(() => {
+      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
+    });
+
+    expect(document.querySelector('#closed-cases-hint-alert')).not.toBeInTheDocument();
   });
 
   test('should update search predicate when Include Closed Cases checkbox is toggled', async () => {
@@ -616,10 +689,10 @@ describe('search screen', () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
-    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
     expect(rows).toHaveLength(caseList.length);
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -636,7 +709,7 @@ describe('search screen', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).not.toBeInTheDocument();
+      expect(document.querySelector('.search-results .cams-table')).not.toBeInTheDocument();
     });
 
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
@@ -654,10 +727,10 @@ describe('search screen', () => {
     });
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeInTheDocument();
+      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
     });
 
-    const rows = document.querySelectorAll('#search-results-table-body > tr');
+    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
 
     expect(rows).toHaveLength(caseList.length);
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
@@ -714,7 +787,7 @@ describe('search screen', () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -955,7 +1028,7 @@ describe('debtor name search', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -991,7 +1064,7 @@ describe('debtor name search', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -1023,7 +1096,7 @@ describe('debtor name search', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -1052,7 +1125,7 @@ describe('debtor name search', () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -1210,7 +1283,7 @@ describe('SearchScreen analytics integration', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results table')).toBeVisible();
+      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
     });
 
     // Should track first search action

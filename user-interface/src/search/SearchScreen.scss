@@ -1,7 +1,4 @@
-@use '../lib/components/uswds/Table.scss';
-
 .search-screen {
-
   h1 {
     display: inline-block;
     margin-right: 1rem;
@@ -17,37 +14,74 @@
     margin-top: 1.5rem;
   }
 
-}
+  .search-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+  }
 
-@media screen and (max-width: 850px) {
-  .search-screen {
-    .search-pane.grid-row.grid-gap-lg {
-      display: block;
-      margin: 0 10%;
+  .search-filters {
+    width: 100%;
+  }
 
-      .grid-col-1 {
-        width: 0;
-      }
-      .grid-col-2 {
-        width: auto;
-      }
-      .grid-col-8 {
-        width: auto;
-      }
-      .filter-and-search {
-        margin-bottom: 3rem;
-        .usa-form-group {
-          margin-top: 1rem;
-          padding: 0 0.5rem;
-          .usa-hint {
-            font-size: 0.8rem;
-          }
-          .pills-and-clear-all {
-            justify-content: left;
-          }
-        }
-      }
-      @include Table.small-table;
+  .search-results-panel {
+    width: 100%;
+  }
+
+  .case-list {
+    margin-top: 1.5rem;
+  }
+
+  // Tablet (641px+): side-by-side filters and results, table stays stacked
+  @media screen and (min-width: 641px) {
+    .search-pane {
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 1.5rem;
+    }
+
+    .search-filters {
+      flex: 0 0 220px;
+      width: 220px;
+    }
+
+    .search-results-panel {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+
+    // Undo the CamsTable flex-row layout — table stays stacked at this breakpoint
+    // because the filter panel leaves insufficient width for columns
+    .cams-table--responsive {
+      .cams-table__header-group { display: none; }
+      .cams-table__header-row,
+      .cams-table__row { display: block; }
+      .cams-table__cell { display: block; width: 100%; padding: 0.25rem 0; }
+      .cams-table__body .cams-table__cell[data-cell]::before { display: inline; }
+      .cams-table__body .cams-table__row { padding: 0.625rem 1rem; margin-bottom: 0.25rem; }
+    }
+  }
+
+  // Desktop (1025px+): wider filter panel, table switches to flex-row columns
+  @media screen and (min-width: 1025px) {
+    .search-filters {
+      flex: 0 0 280px;
+      width: 280px;
+    }
+
+    .cams-table--responsive {
+      .cams-table__header-group { display: block; font-weight: bold; border-bottom: 1px solid #1b1b1b; padding-bottom: 0.5rem; margin-bottom: 0; }
+      .cams-table__header-row,
+      .cams-table__row { display: flex; flex-direction: row; gap: 1rem; align-items: baseline; }
+      .cams-table__cell { flex: 1 1 0; min-width: 0; padding: 0.5rem 1rem; width: auto; }
+      .cams-table__body .cams-table__cell[data-cell]::before { display: none; }
+      .cams-table__body .cams-table__row { padding: 0; margin-bottom: 0; }
+      .col-case-number { flex: 3 1 0; }
+      .col-case-title  { flex: 3 1 0; }
+      .col-debtor-name { flex: 2 1 0; }
+      .col-chapter     { flex: 2 1 0; }
+      .col-date-filed  { flex: 2 1 0; }
+      .col-open-closed { flex: 2 1 0; }
     }
   }
 }
