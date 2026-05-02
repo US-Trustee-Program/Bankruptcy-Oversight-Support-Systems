@@ -499,6 +499,185 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data?.processed).toBe(2);
       expect(result.data?.errors).toBe(0);
     });
+
+    test('should expand district appointments to divisions', async () => {
+      const trustees: AtsTrusteeRecord[] = [
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' },
+      ];
+
+      // Mock offices with divisions for district 081
+      const mockOffices: UstpOfficeDetails[] = [
+        {
+          officeCode: 'USTP_REGION_02_MANHATTAN',
+          officeName: 'Manhattan',
+          idpGroupName: 'USTP REGION 02 MANHATTAN',
+          regionId: '2',
+          regionName: 'New York',
+          groups: [
+            {
+              groupDesignator: 'MN',
+              divisions: [
+                {
+                  divisionCode: 'MAH',
+                  court: {
+                    courtId: '081',
+                    courtName:
+                      'United States Bankruptcy Court for the Southern District of New York',
+                    state: 'NY',
+                  },
+                  courtOffice: {
+                    courtOfficeCode: 'MAH',
+                    courtOfficeName: 'Manhattan Office',
+                  },
+                },
+                {
+                  divisionCode: 'MAN',
+                  court: {
+                    courtId: '081',
+                    courtName:
+                      'United States Bankruptcy Court for the Southern District of New York',
+                    state: 'NY',
+                  },
+                  courtOffice: {
+                    courtOfficeCode: 'MAN',
+                    courtOfficeName: 'Poughkeepsie Office',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue(mockOffices),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue({
+        id: 'new-id',
+        trusteeId: 'trustee-123',
+        name: 'Test',
+      });
+
+      // Mock an appointment for district 081 (no divisionCode yet)
+      const districtAppointment: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-20',
+      };
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [districtAppointment],
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const createAppointmentSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createAppointment')
+        .mockResolvedValue({
+          id: 'appt-1',
+          trusteeId: 'trustee-123',
+        });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+
+      // Should have created 2 appointments (one per division)
+      expect(createAppointmentSpy).toHaveBeenCalledTimes(2);
+
+      // Check that appointments have division codes (second argument is the appointment)
+      const calls = createAppointmentSpy.mock.calls;
+      const divisionCodes = calls.map((call) => call[1].divisionCode).sort();
+      expect(divisionCodes).toEqual(['MAH', 'MAN']);
+
+      // Check that appointments have court names
+      const courtNames = calls.map((call) => call[1].courtName);
+      expect(courtNames[0]).toBe(
+        'United States Bankruptcy Court for the Southern District of New York',
+      );
+    });
+
+    test('should keep appointment unchanged when no divisions found', async () => {
+      const trustees: AtsTrusteeRecord[] = [
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' },
+      ];
+
+      // Mock empty offices (no divisions)
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue({
+        id: 'new-id',
+        trusteeId: 'trustee-123',
+        name: 'Test',
+      });
+
+      // Mock an appointment for district 999 (no divisions available)
+      const appointmentWithoutDivisions: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '999',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-20',
+      };
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [appointmentWithoutDivisions],
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const createAppointmentSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createAppointment')
+        .mockResolvedValue({
+          id: 'appt-1',
+          trusteeId: 'trustee-123',
+        });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+
+      // Should have created 1 appointment (no expansion)
+      expect(createAppointmentSpy).toHaveBeenCalledTimes(1);
+
+      // Check that appointment has no division code (second argument is the appointment)
+      const call = createAppointmentSpy.mock.calls[0];
+      expect(call[1].divisionCode).toBeUndefined();
+      expect(call[1].courtId).toBe('999');
+    });
   });
 
   describe('getTotalTrusteeCount', () => {
