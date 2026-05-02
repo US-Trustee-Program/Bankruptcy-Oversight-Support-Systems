@@ -10,7 +10,7 @@ test.describe('My Cases', () => {
 
   test('should not have accessibility issues with modal interaction', async ({ page }) => {
     await expect(page.locator('[data-testid="open-modal-button"]')).toBeVisible();
-    await expect(page.locator('#search-results-table-body')).toBeVisible();
+    await expect(page.locator('.cams-table__body')).toBeVisible();
 
     // Open modal and check accessibility with modal open
     await page.locator('[data-testid="open-modal-button"]').click();

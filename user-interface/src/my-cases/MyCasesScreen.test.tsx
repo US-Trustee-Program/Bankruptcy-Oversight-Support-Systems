@@ -80,7 +80,7 @@ describe('MyCasesScreen', () => {
       expect(loadingIndicator).not.toBeInTheDocument();
     });
 
-    const tableData = document.querySelectorAll('table tbody td');
+    const tableData = document.querySelectorAll('.cams-table__body .cams-table__cell');
 
     let dIndex = 0;
     for (let i = 0; i < 3; i++) {
@@ -129,7 +129,7 @@ describe('MyCasesScreen', () => {
       expect(loadingIndicator).not.toBeInTheDocument();
     });
 
-    const tableData = document.querySelectorAll('table tbody td');
+    const tableData = document.querySelectorAll('.cams-table__body .cams-table__cell');
 
     let dIndex = 0;
     for (let i = 0; i < 3; i++) {

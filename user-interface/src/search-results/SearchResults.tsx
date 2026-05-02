@@ -1,7 +1,7 @@
 import { useEffect, useState, type JSX } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
 import { CasesPagination, SyncedCase } from '@common/cams/cases';
-import Table, { TableBody, TableRowProps } from '@/lib/components/uswds/Table';
+import { CamsTable, CamsTableBody } from '@/lib/components/cams/CamsTable';
 import { CasesSearchPredicate } from '@common/api/search';
 
 import Alert, { AlertDetails, AlertProps, UswdsAlertStyle } from '@/lib/components/uswds/Alert';
@@ -34,7 +34,7 @@ export type SearchResultsHeaderProps = {
   showOpenClosedColumn?: boolean;
 };
 
-export type SearchResultsRowProps = TableRowProps & {
+export type SearchResultsRowProps = {
   idx: number;
   bCase: SyncedCase;
   labels: string[];
@@ -43,7 +43,7 @@ export type SearchResultsRowProps = TableRowProps & {
   showOpenClosedColumn?: boolean;
 };
 
-export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
+export type SearchResultsProps = {
   id: string;
   searchPredicate: CasesSearchPredicate;
   phoneticSearchEnabled?: boolean;
@@ -52,6 +52,7 @@ export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   onStartSearching?: () => void;
   onEndSearching?: () => void;
   onIncludeClosedCases?: () => void;
+  onResultsChanged?: (hasResults: boolean, closedCasesCount?: number) => void;
   noResultsMessage?: string;
   noResultsAlertProps?: AlertProps;
   header: (props: SearchResultsHeaderProps) => JSX.Element;
@@ -64,7 +65,7 @@ type ClosedCasesHintMessageProps = {
   onIncludeClosedCases?: () => void;
 };
 
-function ClosedCasesHintMessage({
+export function ClosedCasesHintMessage({
   closedCasesCount = 0,
   variant,
   onIncludeClosedCases,
@@ -98,11 +99,11 @@ function SearchResults(props: SearchResultsProps) {
     onStartSearching,
     onEndSearching,
     onIncludeClosedCases,
+    onResultsChanged,
     noResultsMessage: noResultsMessageProp,
     noResultsAlertProps,
     header: Header,
     row: Row,
-    ...otherProps
   } = props;
   const { reactPlugin } = getAppInsights();
   const trackSearchEvent = useTrackEvent(reactPlugin, 'search', {}, true);
@@ -139,9 +140,14 @@ function SearchResults(props: SearchResultsProps) {
     if (response) {
       setSearchResults(response);
       setEmptyResponse(response.data.length === 0);
+      onResultsChanged?.(
+        response.data.length > 0,
+        (response.pagination as CasesPagination | undefined)?.closedCasesCount,
+      );
     } else {
       setSearchResults(null);
       setEmptyResponse(true);
+      onResultsChanged?.(false);
     }
   }
 
@@ -212,7 +218,7 @@ function SearchResults(props: SearchResultsProps) {
   const displayCount = new Intl.NumberFormat('en-US').format(totalCount);
 
   return (
-    <div {...otherProps} className="search-results">
+    <div className="search-results">
       {alertInfo && (
         <div className="search-alert">
           <Alert
@@ -324,12 +330,10 @@ function SearchResults(props: SearchResultsProps) {
       )}
       {!isSearching && !emptyResponse && (
         <div>
-          <Table
+          <CamsTable
             id={id}
             className="case-list"
-            scrollable="true"
-            uswdsStyle={['striped']}
-            title="Search results"
+            aria-label="Search results"
             caption={`${displayCount} ${totalCount === 1 ? 'case' : 'cases'}`}
           >
             <Header
@@ -339,7 +343,7 @@ function SearchResults(props: SearchResultsProps) {
               showDebtorNameColumn={showDebtorNameColumn}
               showOpenClosedColumn={showOpenClosedColumn}
             />
-            <TableBody id={id}>
+            <CamsTableBody>
               {searchResults?.data.map((bCase, idx) => {
                 return (
                   <Row
@@ -353,8 +357,8 @@ function SearchResults(props: SearchResultsProps) {
                   />
                 );
               })}
-            </TableBody>
-          </Table>
+            </CamsTableBody>
+          </CamsTable>
           {pagination && (
             <Pagination<CasesSearchPredicate>
               paginationValues={pagination}

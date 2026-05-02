@@ -6,7 +6,7 @@
     .table-flex-container {
       display: flex;
       position: relative;
-      align-content: center;
+      align-items: flex-start;
 
       .attorney-list-container {
         .unassigned {
@@ -16,11 +16,20 @@
         padding-right: 20px;
       }
       .table-column-toolbar {
-        padding-left: 20px;
-        text-align: right;
+        position: relative;
+        width: 3rem;
+        flex-shrink: 0;
 
         button {
+          position: absolute;
+          top: 0.3125rem;
+          right: 0;
           padding: 0;
+        }
+
+        .cams-icon-label span {
+          padding-top: 0;
+          padding-bottom: 0;
         }
       }
     }

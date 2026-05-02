@@ -1,5 +1,5 @@
 import { type JSX } from 'react';
-import { TableRow, TableRowData } from '@/lib/components/uswds/Table';
+import { CamsTableCell, CamsTableRow } from '@/lib/components/cams/CamsTable';
 import { CaseNumber } from '@/lib/components/CaseNumber';
 import { formatDate } from '@/lib/utils/datetime';
 import { SearchResultsRowProps } from '@/search-results/SearchResults';
@@ -22,48 +22,59 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
   const {
     bCase,
     labels,
+    phoneticSearchEnabled: _phoneticSearchEnabled,
     showDebtorNameColumn = false,
     showOpenClosedColumn = false,
-    phoneticSearchEnabled,
-    ...otherProps
   } = props;
 
   const caseNumberCell = (
-    <TableRowData key="case-number" dataLabel={labels[0]}>
+    <CamsTableCell key="case-number" className="col-case-number" data-cell={labels[0]}>
       <span className="no-wrap">
         <CaseNumber caseId={bCase.caseId} /> ({bCase.courtDivisionName})
       </span>
-    </TableRowData>
+    </CamsTableCell>
   );
 
   const caseTitleCell = (
-    <TableRowData key="case-title" dataLabel={labels[1]}>
+    <CamsTableCell key="case-title" className="col-case-title" data-cell={labels[1]}>
       {bCase.caseTitle}
-    </TableRowData>
+    </CamsTableCell>
   );
 
   const debtorNameCell = (
-    <TableRowData key="debtor-name" dataLabel={labels[2]}>
+    <CamsTableCell key="debtor-name" className="col-debtor-name" data-cell={labels[2]}>
       {formatDebtorNames(bCase.debtor?.name ?? '', bCase.jointDebtor?.name)}
-    </TableRowData>
+    </CamsTableCell>
   );
 
   const chapterCell = (
-    <TableRowData key="chapter" dataLabel={labels[showDebtorNameColumn ? 3 : 2]}>
+    <CamsTableCell
+      key="chapter"
+      className="col-chapter"
+      data-cell={labels[showDebtorNameColumn ? 3 : 2]}
+    >
       {bCase.chapter}
-    </TableRowData>
+    </CamsTableCell>
   );
 
   const dateFiledCell = (
-    <TableRowData key="date-filed" dataLabel={labels[showDebtorNameColumn ? 4 : 3]}>
+    <CamsTableCell
+      key="date-filed"
+      className="col-date-filed"
+      data-cell={labels[showDebtorNameColumn ? 4 : 3]}
+    >
       {formatDate(bCase.dateFiled)}
-    </TableRowData>
+    </CamsTableCell>
   );
 
   const openClosedCell = (
-    <TableRowData key="open-closed" dataLabel={labels[labels.length - 1]}>
+    <CamsTableCell
+      key="open-closed"
+      className="col-open-closed"
+      data-cell={labels[labels.length - 1]}
+    >
       {isCaseClosed(bCase) ? 'Closed' : 'Open'}
-    </TableRowData>
+    </CamsTableCell>
   );
 
   const baseCells = showDebtorNameColumn
@@ -71,5 +82,5 @@ export function SearchResultsRow(props: SearchResultsRowProps) {
     : [caseNumberCell, caseTitleCell, chapterCell, dateFiledCell];
   const cells = showOpenClosedColumn ? [...baseCells, openClosedCell] : baseCells;
 
-  return <TableRow {...otherProps}>{cells}</TableRow>;
+  return <CamsTableRow>{cells}</CamsTableRow>;
 }

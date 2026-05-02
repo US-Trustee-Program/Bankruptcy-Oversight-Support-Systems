@@ -14,4 +14,13 @@
       text-decoration: none;
     }
   }
+
+  @media screen and (min-width: 641px) {
+    .cams-table--responsive .col-case-number { flex: 3 1 0; }
+    .cams-table--responsive .col-case-title  { flex: 3 1 0; }
+    .cams-table--responsive .col-debtor-name { flex: 2 1 0; }
+    .cams-table--responsive .col-chapter     { flex: 2 1 0; }
+    .cams-table--responsive .col-date-filed  { flex: 2 1 0; }
+    .cams-table--responsive .col-open-closed { flex: 2 1 0; }
+  }
 }
