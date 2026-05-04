@@ -53,7 +53,7 @@ export function TableRowData(props: TableRowDataProps) {
   );
 }
 
-export type TableRowProps = PropsWithChildren & JSX.IntrinsicElements['tr'];
+type TableRowProps = PropsWithChildren & JSX.IntrinsicElements['tr'];
 
 export function TableRow(props: TableRowProps) {
   const { children, ...otherProperties } = props;
@@ -138,7 +138,7 @@ export type UswdsTableStyle =
   | 'sticky-header'
   | 'striped';
 
-export type TableProps = PropsWithChildren &
+type TableProps = PropsWithChildren &
   JSX.IntrinsicElements['table'] & {
     uswdsStyle?: UswdsTableStyle[];
     scrollable?: 'true';

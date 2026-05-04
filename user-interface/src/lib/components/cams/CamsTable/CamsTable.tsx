@@ -16,15 +16,15 @@ export function CamsTable({
   caption,
   ...rest
 }: CamsTableProps): JSX.Element {
-  const classes = ['cams-table', 'cams-table--responsive', className].filter(Boolean).join(' ');
+  const wrapperClasses = ['cams-table', 'cams-table--responsive', className]
+    .filter(Boolean)
+    .join(' ');
   return (
-    <div id={id} className={classes} role="table" {...rest}>
-      {caption && (
-        <div className="cams-table__caption" role="caption">
-          {caption}
-        </div>
-      )}
-      {children}
+    <div id={id} className={wrapperClasses}>
+      {caption && <div className="cams-table__caption">{caption}</div>}
+      <div role="table" {...rest}>
+        {children}
+      </div>
     </div>
   );
 }
