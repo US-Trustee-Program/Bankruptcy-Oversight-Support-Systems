@@ -139,7 +139,7 @@ describe('Search Validators', () => {
   });
 
   describe('chapters validator', () => {
-    test.each([[['7']], [['11']], [['12']], [['13']], [['15']], [['7', '11', '13']]])(
+    test.each([[['7']], [['9']], [['11']], [['12']], [['13']], [['15']], [['7', '9', '11', '13']]])(
       'should accept valid chapters %j',
       (input) => {
         const result = validateEach([chapters], input);
@@ -148,8 +148,8 @@ describe('Search Validators', () => {
     );
 
     test.each([
-      [['9'], 'invalid chapter'],
-      [['7', '9'], 'mix of valid and invalid'],
+      [['8'], 'invalid chapter'],
+      [['7', '8'], 'mix of valid and invalid'],
       [['Chapter 7'], 'wrong format'],
     ])('should reject invalid chapters %j (%s)', (input, _reason) => {
       const result = validateEach([chapters], input);

@@ -19,7 +19,7 @@ const SEARCH_VALIDATION_MESSAGES = {
   DIVISION_CODE_NOT_A_STRING: 'Division code must be a string',
   DIVISION_CODE_INVALID: 'Invalid division code format',
   CHAPTER_NOT_A_STRING: 'Chapter must be a string',
-  CHAPTER_INVALID: 'Chapter must be one of: 7, 11, 12, 13, 15',
+  CHAPTER_INVALID: 'Chapter must be one of: 7, 9, 11, 12, 13, 15',
   CASE_ID_INVALID: 'Case ID must be a non-empty string',
   AT_LEAST_ONE_CRITERION: 'At least one search criterion is required',
 } as const;
@@ -85,7 +85,7 @@ export const chapters = V.optional(
         return { reasons: [SEARCH_VALIDATION_MESSAGES.CHAPTER_NOT_A_STRING] };
       }
       // Valid chapter values based on bankruptcy law
-      const validChapters = ['7', '11', '12', '13', '15'];
+      const validChapters = ['7', '9', '11', '12', '13', '15'];
       if (!validChapters.includes(value)) {
         return { reasons: [SEARCH_VALIDATION_MESSAGES.CHAPTER_INVALID] };
       }

@@ -1,6 +1,6 @@
 import { useEffect, useState, type JSX } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { CaseSummary, SyncedCase } from '@common/cams/cases';
+import { CasesPagination, SyncedCase } from '@common/cams/cases';
 import Table, { TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 
@@ -12,7 +12,6 @@ import { Pagination } from '@/lib/components/uswds/Pagination';
 import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
 import './SearchResults.scss';
-import { Pagination as PaginationModel } from '@common/api/pagination';
 import { deepEqual } from '@common/object-equality';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
@@ -32,14 +31,16 @@ export type SearchResultsHeaderProps = {
   labels: string[];
   phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
+  showOpenClosedColumn?: boolean;
 };
 
 export type SearchResultsRowProps = TableRowProps & {
   idx: number;
-  bCase: CaseSummary;
+  bCase: SyncedCase;
   labels: string[];
   phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
+  showOpenClosedColumn?: boolean;
 };
 
 export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
@@ -47,13 +48,45 @@ export type SearchResultsProps = JSX.IntrinsicElements['table'] & {
   searchPredicate: CasesSearchPredicate;
   phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
+  showOpenClosedColumn?: boolean;
   onStartSearching?: () => void;
   onEndSearching?: () => void;
+  onIncludeClosedCases?: () => void;
   noResultsMessage?: string;
   noResultsAlertProps?: AlertProps;
   header: (props: SearchResultsHeaderProps) => JSX.Element;
   row: (props: SearchResultsRowProps) => JSX.Element;
 };
+
+type ClosedCasesHintMessageProps = {
+  closedCasesCount?: number;
+  variant: 'generic' | 'count';
+  onIncludeClosedCases?: () => void;
+};
+
+function ClosedCasesHintMessage({
+  closedCasesCount = 0,
+  variant,
+  onIncludeClosedCases,
+}: ClosedCasesHintMessageProps) {
+  const text =
+    variant === 'count'
+      ? `${closedCasesCount} closed ${closedCasesCount === 1 ? 'case' : 'cases'} match your search filters.`
+      : 'There may be closed cases that match your search filters.';
+
+  return (
+    <p className="usa-alert__text">
+      {text}{' '}
+      <button
+        type="button"
+        className="usa-button usa-button--unstyled"
+        onClick={() => onIncludeClosedCases?.()}
+      >
+        Include Closed Cases
+      </button>
+    </p>
+  );
+}
 
 function SearchResults(props: SearchResultsProps) {
   const {
@@ -61,8 +94,10 @@ function SearchResults(props: SearchResultsProps) {
     searchPredicate: searchPredicateProp,
     phoneticSearchEnabled = false,
     showDebtorNameColumn = false,
+    showOpenClosedColumn = false,
     onStartSearching,
     onEndSearching,
+    onIncludeClosedCases,
     noResultsMessage: noResultsMessageProp,
     noResultsAlertProps,
     header: Header,
@@ -77,11 +112,25 @@ function SearchResults(props: SearchResultsProps) {
   const [alertInfo, setAlertInfo] = useState<AlertDetails | null>(null);
   const [searchResults, setSearchResults] = useState<ResponseBody<SyncedCase[]> | null>(null);
 
-  const searchResultsHeaderLabels = showDebtorNameColumn
-    ? ['Case Number (Division)', 'Case Title', 'Debtor Name', 'Chapter', 'Case Filed']
-    : ['Case Number (Division)', 'Case Title', 'Chapter', 'Case Filed'];
+  const searchResultsHeaderLabels = (() => {
+    const labels = ['Case Number (Division)', 'Case Title'];
+    if (showDebtorNameColumn) labels.push('Debtor Name');
+    labels.push('Chapter', 'Case Filed');
+    if (showOpenClosedColumn) labels.push('Open/Closed');
+    return labels;
+  })();
 
-  const pagination: PaginationModel | undefined = searchResults?.pagination;
+  const showClosedCasesHint =
+    searchPredicate.excludeClosedCases === true && !searchPredicate.caseNumber;
+
+  const casesPagination = searchResults?.pagination as CasesPagination | undefined;
+  const closedCasesCount = casesPagination?.closedCasesCount ?? 0;
+  const showCaseNumberClosedHint =
+    !!searchPredicate.caseNumber &&
+    searchPredicate.excludeClosedCases === true &&
+    closedCasesCount > 0;
+
+  const pagination = searchResults?.pagination;
 
   const noResultsMessage =
     noResultsMessageProp ?? 'Modify your search criteria to include more cases.';
@@ -159,7 +208,7 @@ function SearchResults(props: SearchResultsProps) {
     search();
   }, [searchPredicate]);
 
-  const totalCount = searchResults?.pagination?.totalCount ?? 0;
+  const totalCount = searchResults?.pagination?.totalCount ?? searchResults?.data?.length ?? 0;
   const displayCount = new Intl.NumberFormat('en-US').format(totalCount);
 
   return (
@@ -175,25 +224,62 @@ function SearchResults(props: SearchResultsProps) {
             show={true}
             inline={true}
             role="alert"
-            slim={true}
           ></Alert>
         </div>
       )}
-      {!isSearching && emptyResponse && !alertInfo && !noResultsAlertProps && (
+      {!isSearching && emptyResponse && !alertInfo && showCaseNumberClosedHint && (
         <div className="search-alert">
           <Alert
             id="no-results-alert"
             className="measure-6"
-            message={noResultsMessage}
-            title="No cases found"
+            title="No Open cases found"
             type={UswdsAlertStyle.Info}
             show={true}
             inline={true}
             role="alert"
-            slim={true}
-          ></Alert>
+          >
+            <ClosedCasesHintMessage
+              variant="count"
+              closedCasesCount={closedCasesCount}
+              onIncludeClosedCases={onIncludeClosedCases}
+            />
+          </Alert>
         </div>
       )}
+      {!isSearching && emptyResponse && !alertInfo && showClosedCasesHint && (
+        <div className="search-alert">
+          <Alert
+            id="no-results-alert"
+            className="measure-6"
+            title="No Open cases found"
+            type={UswdsAlertStyle.Info}
+            show={true}
+            inline={true}
+            role="alert"
+          >
+            <ClosedCasesHintMessage variant="generic" onIncludeClosedCases={onIncludeClosedCases} />
+          </Alert>
+        </div>
+      )}
+      {!isSearching &&
+        emptyResponse &&
+        !alertInfo &&
+        !showClosedCasesHint &&
+        !showCaseNumberClosedHint &&
+        !noResultsAlertProps && (
+          <div className="search-alert">
+            <Alert
+              id="no-results-alert"
+              className="measure-6"
+              message={noResultsMessage}
+              title="No cases found"
+              type={UswdsAlertStyle.Info}
+              show={true}
+              inline={true}
+              role="alert"
+            ></Alert>
+          </div>
+        )}
       {!isSearching && emptyResponse && noResultsAlertProps && (
         <div className="search-alert">
           <Alert {...noResultsAlertProps} id="no-results-alert" className="measure-6"></Alert>
@@ -201,6 +287,40 @@ function SearchResults(props: SearchResultsProps) {
       )}
       {isSearching && (
         <LoadingSpinner aria-label="Searching" role="status" caption="Searching..." />
+      )}
+      {!isSearching && !emptyResponse && showCaseNumberClosedHint && (
+        <div className="search-alert">
+          <Alert
+            id="closed-cases-hint-alert"
+            className="measure-6"
+            type={UswdsAlertStyle.Info}
+            show={true}
+            inline={true}
+            role="status"
+            slim={true}
+          >
+            <ClosedCasesHintMessage
+              variant="count"
+              closedCasesCount={closedCasesCount}
+              onIncludeClosedCases={onIncludeClosedCases}
+            />
+          </Alert>
+        </div>
+      )}
+      {!isSearching && !emptyResponse && showClosedCasesHint && (
+        <div className="search-alert">
+          <Alert
+            id="closed-cases-hint-alert"
+            className="measure-6"
+            type={UswdsAlertStyle.Info}
+            show={true}
+            inline={true}
+            role="status"
+            slim={true}
+          >
+            <ClosedCasesHintMessage variant="generic" onIncludeClosedCases={onIncludeClosedCases} />
+          </Alert>
+        </div>
       )}
       {!isSearching && !emptyResponse && (
         <div>
@@ -217,6 +337,7 @@ function SearchResults(props: SearchResultsProps) {
               labels={searchResultsHeaderLabels}
               phoneticSearchEnabled={phoneticSearchEnabled}
               showDebtorNameColumn={showDebtorNameColumn}
+              showOpenClosedColumn={showOpenClosedColumn}
             />
             <TableBody id={id}>
               {searchResults?.data.map((bCase, idx) => {
@@ -226,6 +347,7 @@ function SearchResults(props: SearchResultsProps) {
                     labels={searchResultsHeaderLabels}
                     phoneticSearchEnabled={phoneticSearchEnabled}
                     showDebtorNameColumn={showDebtorNameColumn}
+                    showOpenClosedColumn={showOpenClosedColumn}
                     idx={idx}
                     key={idx}
                   />

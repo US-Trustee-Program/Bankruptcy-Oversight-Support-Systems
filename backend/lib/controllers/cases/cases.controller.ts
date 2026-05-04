@@ -1,10 +1,9 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { ResponseBody } from '@common/api/response';
-import { CaseDetail, SyncedCase } from '@common/cams/cases';
+import { CaseDetail, CasesPagination, SyncedCase } from '@common/cams/cases';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CamsHttpRequest } from '../../adapters/types/http';
-import { Pagination } from '@common/api/pagination';
 import { httpSuccess } from '../../adapters/utils/http-response';
 import { ResourceActions } from '@common/cams/actions';
 import { CamsController } from '../controller';
@@ -73,13 +72,30 @@ export class CasesController implements CamsController {
       includeAssignments,
     );
 
-    const pagination: Pagination = {
+    const pagination: CasesPagination = {
       count: cases.data.length,
       limit: predicate.limit,
       currentPage: calculateCurrentPage(cases.data.length, predicate),
       totalPages: Math.ceil(cases.metadata.total / predicate.limit),
       totalCount: cases.metadata.total,
     };
+
+    if (predicate.caseNumber && predicate.excludeClosedCases === true) {
+      const allCasesPredicate: CasesSearchPredicate = {
+        ...predicate,
+        excludeClosedCases: false,
+        limit: 1,
+        offset: 0,
+      };
+      const allCases = await this.caseManagement.searchCases(
+        this.applicationContext,
+        allCasesPredicate,
+        false,
+      );
+      const allTotal = allCases.metadata?.total ?? 0;
+      const openTotal = cases.metadata?.total ?? 0;
+      pagination.closedCasesCount = Math.max(0, allTotal - openTotal);
+    }
 
     if (pagination.currentPage < pagination.totalPages) {
       const next = new URL(url);
