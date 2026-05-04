@@ -367,7 +367,6 @@ export default function DataVerificationScreen() {
                     show={true}
                     inline={true}
                     className="measure-6 margin-left-0"
-                    slim={true}
                   ></Alert>
                 )}
                 {visibleItemCount === 0 && orderList.length > 0 && (

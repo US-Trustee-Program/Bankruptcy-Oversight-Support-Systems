@@ -237,7 +237,7 @@ describe('Test Alert component', () => {
     });
   });
 
-  test('should have compact-with-title class when slim and title are provided', async () => {
+  test('should have slim class when slim is provided with title', async () => {
     const alertRef = React.createRef<AlertRefType>();
     render(
       <React.StrictMode>
@@ -256,8 +256,7 @@ describe('Test Alert component', () => {
 
     const alert = screen.getByTestId('alert');
     await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert--compact-with-title');
-      expect(alert).not.toHaveClass('usa-alert--slim');
+      expect(alert).toHaveClass('usa-alert--slim');
     });
   });
 
@@ -280,7 +279,6 @@ describe('Test Alert component', () => {
     const alert = screen.getByTestId('alert');
     await waitFor(() => {
       expect(alert).toHaveClass('usa-alert--slim');
-      expect(alert).not.toHaveClass('usa-alert--compact-with-title');
     });
   });
 

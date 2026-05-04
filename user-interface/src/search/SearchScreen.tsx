@@ -258,6 +258,15 @@ export default function SearchScreen() {
     });
   }
 
+  function handleIncludeClosedAndSearch() {
+    const updatedPredicate: CasesSearchPredicate = {
+      ...temporarySearchPredicate,
+      excludeClosedCases: false,
+    };
+    setTemporarySearchPredicate(updatedPredicate);
+    setSearchPredicate(updatedPredicate);
+  }
+
   function performSearch() {
     // Enable showing validation errors
     setShowCaseNumberError(true);
@@ -323,6 +332,18 @@ export default function SearchScreen() {
             onSubmit={handleSubmit}
             role="search"
           >
+            <div className="case-include-closed form-field">
+              <div className="usa-search usa-search--small">
+                <Checkbox
+                  id="include-closed"
+                  name="includeClosedCases"
+                  value="true"
+                  checked={!temporarySearchPredicate.excludeClosedCases}
+                  label="Include Closed Cases"
+                  onChange={handleIncludeClosedCheckbox}
+                />
+              </div>
+            </div>
             <div className="case-number-search form-field" data-testid="case-number-search">
               <div className="usa-search usa-search--small">
                 <CaseNumberInput
@@ -397,18 +418,6 @@ export default function SearchScreen() {
                 />
               </div>
             </div>
-            <div className="case-include-closed form-field">
-              <div className="usa-search usa-search--small">
-                <Checkbox
-                  id="include-closed"
-                  name="includeClosedCases"
-                  value="true"
-                  checked={!temporarySearchPredicate.excludeClosedCases}
-                  label="Include Closed Cases"
-                  onChange={handleIncludeClosedCheckbox}
-                />
-              </div>
-            </div>
             {hasAttemptedSearch && currentValidation.formValidationError && (
               <div className="search-validation-alert" data-testid="search-validation-alert">
                 <Alert
@@ -447,7 +456,6 @@ export default function SearchScreen() {
                 show={true}
                 inline={true}
                 role="alert"
-                slim={true}
               ></Alert>
             </div>
           )}
@@ -457,8 +465,10 @@ export default function SearchScreen() {
               searchPredicate={searchPredicate}
               phoneticSearchEnabled={phoneticSearchEnabled}
               showDebtorNameColumn={showDebtorNameColumn}
+              showOpenClosedColumn={true}
               onStartSearching={setStartSearching}
               onEndSearching={setEndSearching}
+              onIncludeClosedCases={handleIncludeClosedAndSearch}
               header={SearchResultsHeader}
               row={SearchResultsRow}
             />

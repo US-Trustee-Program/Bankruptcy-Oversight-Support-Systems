@@ -4,7 +4,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { CasesController } from './cases.controller';
-import { CaseDetail, SyncedCase } from '@common/cams/cases';
+import { CaseDetail, CasesPagination, SyncedCase } from '@common/cams/cases';
 import {
   mockCamsHttpRequest,
   mockRequestUrl,
@@ -413,6 +413,75 @@ describe('cases controller test', () => {
         expect(useCaseSpy).toHaveBeenCalledWith(expect.anything(), expected, args.result);
       },
     );
+
+    test('should populate closedCasesCount when caseNumber present and excludeClosedCases is true', async () => {
+      const caseNumber = '00-00000';
+      const openData = MockData.buildArray(MockData.getSyncedCase, 2);
+
+      vi.spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValueOnce({ metadata: { total: 2 }, data: openData })
+        .mockResolvedValueOnce({ metadata: { total: 5 }, data: [openData[0]] });
+
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, excludeClosedCases: true, limit, offset },
+      });
+
+      const actual = await controller.handleRequest(context);
+      expect((actual.body.pagination as CasesPagination).closedCasesCount).toBe(3);
+    });
+
+    test('should not populate closedCasesCount when caseNumber is absent', async () => {
+      const data = MockData.buildArray(MockData.getSyncedCase, 2);
+
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: 2 },
+        data,
+      });
+
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { divisionCodes: ['081'], excludeClosedCases: true, limit, offset },
+      });
+
+      const actual = await controller.handleRequest(context);
+      expect((actual.body.pagination as CasesPagination).closedCasesCount).toBeUndefined();
+    });
+
+    test('should not populate closedCasesCount when excludeClosedCases is false', async () => {
+      const caseNumber = '00-00000';
+      const data = MockData.buildArray(MockData.getSyncedCase, 2);
+
+      vi.spyOn(CaseManagement.prototype, 'searchCases').mockResolvedValue({
+        metadata: { total: 2 },
+        data,
+      });
+
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, excludeClosedCases: false, limit, offset },
+      });
+
+      const actual = await controller.handleRequest(context);
+      expect((actual.body.pagination as CasesPagination).closedCasesCount).toBeUndefined();
+    });
+
+    test('closedCasesCount should be 0 when all cases are open and secondary call returns same count', async () => {
+      const caseNumber = '00-00000';
+      const data = MockData.buildArray(MockData.getSyncedCase, 3);
+
+      vi.spyOn(CaseManagement.prototype, 'searchCases')
+        .mockResolvedValueOnce({ metadata: { total: 3 }, data })
+        .mockResolvedValueOnce({ metadata: { total: 3 }, data: [data[0]] });
+
+      context.request = mockCamsHttpRequest({
+        method: 'POST',
+        body: { caseNumber, excludeClosedCases: true, limit, offset },
+      });
+
+      const actual = await controller.handleRequest(context);
+      expect((actual.body.pagination as CasesPagination).closedCasesCount).toBe(0);
+    });
 
     test('should return an error if an error is encountered', async () => {
       const caseNumber = '00-00000';

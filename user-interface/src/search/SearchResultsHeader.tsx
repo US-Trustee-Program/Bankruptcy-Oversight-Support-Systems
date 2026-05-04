@@ -2,7 +2,7 @@ import { TableHeader, TableHeaderData } from '@/lib/components/uswds/Table';
 import { SearchResultsHeaderProps } from '@/search-results/SearchResults';
 
 export function SearchResultsHeader(props: SearchResultsHeaderProps) {
-  const { id, showDebtorNameColumn = false } = props;
+  const { id, showDebtorNameColumn = false, showOpenClosedColumn = false } = props;
 
   // Define all header cells
   const caseNumberHeader = (
@@ -55,10 +55,22 @@ export function SearchResultsHeader(props: SearchResultsHeaderProps) {
     </TableHeaderData>
   );
 
+  const openClosedHeader = (
+    <TableHeaderData
+      key="open-closed"
+      scope="col"
+      data-testid="header-open-closed"
+      className="grid-col-2"
+    >
+      {props.labels[props.labels.length - 1]}
+    </TableHeaderData>
+  );
+
   // Conditionally construct header array
-  const headers = showDebtorNameColumn
+  const baseHeaders = showDebtorNameColumn
     ? [caseNumberHeader, caseTitleHeader, debtorNameHeader, chapterHeader, dateFiledHeader]
     : [caseNumberHeader, caseTitleHeader, chapterHeader, dateFiledHeader];
+  const headers = showOpenClosedColumn ? [...baseHeaders, openClosedHeader] : baseHeaders;
 
   return (
     <TableHeader id={id} className="case-headings">
