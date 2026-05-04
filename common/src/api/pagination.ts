@@ -13,5 +13,4 @@ export type Pagination = {
   currentPage: number;
   totalPages?: number;
   totalCount?: number;
-  closedCasesCount?: number;
 };

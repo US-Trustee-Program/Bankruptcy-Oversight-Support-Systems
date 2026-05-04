@@ -6,6 +6,7 @@ import {
   CaseDocket,
   CaseNote,
   CaseNoteInput,
+  CasesPagination,
   CaseSummary,
   SyncedCase,
 } from '@common/cams/cases';
@@ -1773,20 +1774,20 @@ async function post<T = unknown>(
           limit: searchRequest.limit ?? 25,
           currentPage: 1,
           closedCasesCount: closedCount,
-        };
+        } as CasesPagination;
       } else if (response.pagination) {
         response.pagination = {
           ...response.pagination,
           count: updatedCount,
           closedCasesCount: closedCount,
-        };
+        } as CasesPagination;
       } else {
         response.pagination = {
           count: updatedCount,
           limit: searchRequest.limit ?? 25,
           currentPage: 1,
           closedCasesCount: closedCount,
-        };
+        } as CasesPagination;
       }
     }
     if (searchRequest?.chapters && searchRequest.chapters.length > 0) {

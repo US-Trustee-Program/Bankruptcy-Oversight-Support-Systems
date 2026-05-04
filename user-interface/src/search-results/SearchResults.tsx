@@ -1,6 +1,6 @@
 import { useEffect, useState, type JSX } from 'react';
 import { useTrackEvent } from '@microsoft/applicationinsights-react-js';
-import { DxtrCase, SyncedCase } from '@common/cams/cases';
+import { CasesPagination, SyncedCase } from '@common/cams/cases';
 import Table, { TableBody, TableRowProps } from '@/lib/components/uswds/Table';
 import { CasesSearchPredicate } from '@common/api/search';
 
@@ -12,7 +12,6 @@ import { Pagination } from '@/lib/components/uswds/Pagination';
 import Api2 from '@/lib/models/api2';
 import { ResponseBody } from '@common/api/response';
 import './SearchResults.scss';
-import { Pagination as PaginationModel } from '@common/api/pagination';
 import { deepEqual } from '@common/object-equality';
 
 export function isValidSearchPredicate(searchPredicate: CasesSearchPredicate): boolean {
@@ -37,7 +36,7 @@ export type SearchResultsHeaderProps = {
 
 export type SearchResultsRowProps = TableRowProps & {
   idx: number;
-  bCase: DxtrCase;
+  bCase: SyncedCase;
   labels: string[];
   phoneticSearchEnabled?: boolean;
   showDebtorNameColumn?: boolean;
@@ -124,13 +123,14 @@ function SearchResults(props: SearchResultsProps) {
   const showClosedCasesHint =
     searchPredicate.excludeClosedCases === true && !searchPredicate.caseNumber;
 
-  const closedCasesCount = searchResults?.pagination?.closedCasesCount ?? 0;
+  const casesPagination = searchResults?.pagination as CasesPagination | undefined;
+  const closedCasesCount = casesPagination?.closedCasesCount ?? 0;
   const showCaseNumberClosedHint =
     !!searchPredicate.caseNumber &&
     searchPredicate.excludeClosedCases === true &&
     closedCasesCount > 0;
 
-  const pagination: PaginationModel | undefined = searchResults?.pagination;
+  const pagination = searchResults?.pagination;
 
   const noResultsMessage =
     noResultsMessageProp ?? 'Modify your search criteria to include more cases.';

@@ -1,10 +1,9 @@
 import { ApplicationContext } from '../../adapters/types/basic';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { ResponseBody } from '@common/api/response';
-import { CaseDetail, SyncedCase } from '@common/cams/cases';
+import { CaseDetail, CasesPagination, SyncedCase } from '@common/cams/cases';
 import { CasesSearchPredicate } from '@common/api/search';
 import { CamsHttpRequest } from '../../adapters/types/http';
-import { Pagination } from '@common/api/pagination';
 import { httpSuccess } from '../../adapters/utils/http-response';
 import { ResourceActions } from '@common/cams/actions';
 import { CamsController } from '../controller';
@@ -73,7 +72,7 @@ export class CasesController implements CamsController {
       includeAssignments,
     );
 
-    const pagination: Pagination = {
+    const pagination: CasesPagination = {
       count: cases.data.length,
       limit: predicate.limit,
       currentPage: calculateCurrentPage(cases.data.length, predicate),
