@@ -47,14 +47,9 @@ function ClosedCasesHintMessage({
   variant,
   onIncludeClosedCases,
 }: ClosedCasesHintMessageProps) {
-  // TODO: Fix the message for pluralization and internationalization when we have that capability in the future.
-  // This is currently only used in English and the message is a bit clunky, but it is important to communicate the
-  // number of closed cases that match the search filters when the case number filter is used.
-  // The word match should be "matches" when the count is 1, but it is currently always "match" to avoid awkward
-  // pluralization in the case number filter scenario.
   const text =
     variant === 'count'
-      ? `${closedCasesCount} closed ${closedCasesCount === 1 ? 'case' : 'cases'} match your search filters.`
+      ? `${closedCasesCount} closed ${closedCasesCount === 1 ? 'case matches' : 'cases match'} your search filters.`
       : 'There may be closed cases that match your search filters.';
 
   return (
