@@ -12,10 +12,7 @@ import { ComboBoxRef, InputRef } from '@/lib/type-declarations/input-fields';
 import { getDivisionComboOptions } from '@/data-verification/dataVerificationHelper';
 import { sortByCourtLocation, separateDefaultOptions } from '@/lib/utils/court-utils';
 import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
-import SearchResults, {
-  ClosedCasesHintMessage,
-  isValidSearchPredicate,
-} from '@/search-results/SearchResults';
+import SearchResults, { isValidSearchPredicate } from '@/search-results/SearchResults';
 import { SearchResultsHeader } from './SearchResultsHeader';
 import { SearchResultsRow } from './SearchResultsRow';
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
@@ -37,6 +34,42 @@ import useFeatureFlags, {
   SHOW_DEBTOR_NAME_COLUMN,
 } from '@/lib/hooks/UseFeatureFlags';
 import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
+import { CamsHttpError } from '@/lib/models/api';
+
+type ClosedCasesHintMessageProps = {
+  closedCasesCount?: number;
+  variant: 'generic' | 'count';
+  onIncludeClosedCases?: () => void;
+};
+
+function ClosedCasesHintMessage({
+  closedCasesCount = 0,
+  variant,
+  onIncludeClosedCases,
+}: ClosedCasesHintMessageProps) {
+  // TODO: Fix the message for pluralization and internationalization when we have that capability in the future.
+  // This is currently only used in English and the message is a bit clunky, but it is important to communicate the
+  // number of closed cases that match the search filters when the case number filter is used.
+  // The word match should be "matches" when the count is 1, but it is currently always "match" to avoid awkward
+  // pluralization in the case number filter scenario.
+  const text =
+    variant === 'count'
+      ? `${closedCasesCount} closed ${closedCasesCount === 1 ? 'case' : 'cases'} match your search filters.`
+      : 'There may be closed cases that match your search filters.';
+
+  return (
+    <p className="usa-alert__text">
+      {text}{' '}
+      <button
+        type="button"
+        className="usa-button usa-button--unstyled"
+        onClick={() => onIncludeClosedCases?.()}
+      >
+        Include Closed Cases
+      </button>
+    </p>
+  );
+}
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -88,6 +121,26 @@ export default function SearchScreen() {
   const [hasResults, setHasResults] = useState<boolean>(false);
   const [closedCasesCount, setClosedCasesCount] = useState<number>(0);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<{ title: string; message: string } | null>(null);
+
+  function handleSearchError(error: unknown) {
+    setHasResults(false);
+    const isTimeout = error instanceof CamsHttpError && error.status === 504;
+    const persistentIssueMessage =
+      'If the problem persists, please submit a feedback request describing the issue.';
+    setSearchError({
+      title: isTimeout ? 'Unable to display search results' : 'Search results not available',
+      message: isTimeout
+        ? `Try narrowing your search filters and try again. ${persistentIssueMessage}`
+        : `We are unable to retrieve search results at this time. Please try again later. ${persistentIssueMessage}`,
+    });
+  }
+
+  function handleResultsChanged(hasResults: boolean, count?: number) {
+    setSearchError(null);
+    setHasResults(hasResults);
+    setClosedCasesCount(count ?? 0);
+  }
 
   const showNoResultsOpenOnlyHint =
     !isSearching &&
@@ -107,10 +160,6 @@ export default function SearchScreen() {
     !!searchPredicate.caseNumber &&
     closedCasesCount > 0;
 
-  function handleResultsChanged(hasResults: boolean, count?: number) {
-    setHasResults(hasResults);
-    setClosedCasesCount(count ?? 0);
-  }
   const [showCaseNumberError, setShowCaseNumberError] = useState<boolean>(false);
   const [showDebtorNameError, setShowDebtorNameError] = useState<boolean>(false);
   const [hasAttemptedSearch, setHasAttemptedSearch] = useState<boolean>(false);
@@ -490,6 +539,34 @@ export default function SearchScreen() {
               )}
               {isValidSearchPredicate(searchPredicate) && (
                 <>
+                  {searchError && (
+                    <div className="search-alert">
+                      <Alert
+                        id="search-error-alert"
+                        className="measure-6"
+                        message={searchError.message}
+                        title={searchError.title}
+                        type={UswdsAlertStyle.Error}
+                        show={true}
+                        inline={true}
+                        role="alert"
+                      ></Alert>
+                    </div>
+                  )}
+                  {!isSearching && !hasResults && !searchError && !showNoResultsOpenOnlyHint && (
+                    <div className="search-alert">
+                      <Alert
+                        id="no-results-alert"
+                        className="measure-6"
+                        message="Modify your search criteria to include more cases."
+                        title="No cases found"
+                        type={UswdsAlertStyle.Info}
+                        show={true}
+                        inline={true}
+                        role="alert"
+                      ></Alert>
+                    </div>
+                  )}
                   {showNoResultsOpenOnlyHint && (
                     <div className="search-alert">
                       <Alert
@@ -536,6 +613,7 @@ export default function SearchScreen() {
                     onStartSearching={setStartSearching}
                     onEndSearching={setEndSearching}
                     onResultsChanged={handleResultsChanged}
+                    onSearchError={handleSearchError}
                     header={SearchResultsHeader}
                     row={SearchResultsRow}
                   />
