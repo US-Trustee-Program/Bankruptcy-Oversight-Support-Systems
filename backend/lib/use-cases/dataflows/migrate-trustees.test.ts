@@ -19,7 +19,7 @@ import {
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
-import { AtsTrusteeRecord } from '../../adapters/types/ats.types';
+import { AtsTrusteeRecord, FailedAppointment } from '../../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AcmsGateway, AtsGateway } from '../../use-cases/gateways.types';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
@@ -727,11 +727,21 @@ describe('Migrate Trustees Use Case', () => {
       vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
 
       // ATS returns some clean and some failed appointments
-      const failedAppointments = [
+      const failedAppointments: FailedAppointment[] = [
         {
-          trusteeId: 1,
-          reason: 'Invalid court ID',
-          raw: { TODID: 1, chapter: '99', courtId: 'INVALID' },
+          atsAppointment: {
+            TRU_ID: 1,
+            DISTRICT: '053N',
+            STATE: 'NY',
+            CHAPTER: '99',
+            STATUS: 'A',
+            DATE_APPOINTED: new Date('2023-01-15'),
+            EFFECTIVE_DATE: new Date('2023-01-15'),
+          },
+          classification: 'PROBLEMATIC',
+          notes: ['Invalid court ID'],
+          mapType: 'DISTRICT_CHAPTER_TYPE',
+          timestamp: '2023-01-15T00:00:00.000Z',
         },
       ];
 
@@ -754,7 +764,7 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data?.processed).toBe(1);
       expect(result.data?.errors).toBe(0);
       expect(result.data?.failedAppointments).toHaveLength(1);
-      expect(result.data?.failedAppointments?.[0].reason).toBe('Invalid court ID');
+      expect(result.data?.failedAppointments?.[0].notes).toContain('Invalid court ID');
     });
 
     test('should return error when getOffices fails and not process any trustees', async () => {
