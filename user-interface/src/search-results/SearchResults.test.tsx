@@ -1,5 +1,5 @@
 import MockData from '@common/cams/test-utilities/mock-data';
-import { SyncedCase } from '@common/cams/cases';
+import { CasesPagination, SyncedCase } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { CasesSearchPredicate, DEFAULT_SEARCH_LIMIT } from '@common/api/search';
 import SearchResults, { SearchResultsProps } from './SearchResults';
@@ -329,7 +329,7 @@ describe('SearchResults component tests', () => {
         limit: DEFAULT_SEARCH_LIMIT,
         count: caseList.length,
         closedCasesCount: 3,
-      },
+      } as CasesPagination,
       data: caseList,
     });
 
@@ -360,7 +360,7 @@ describe('SearchResults component tests', () => {
         limit: DEFAULT_SEARCH_LIMIT,
         count: caseList.length,
         closedCasesCount: 1,
-      },
+      } as CasesPagination,
       data: caseList,
     });
 
@@ -385,7 +385,12 @@ describe('SearchResults component tests', () => {
   test('shows "No Open cases found" with count when no open results and closedCasesCount > 0', async () => {
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
       meta: { self: 'self-link' },
-      pagination: { currentPage: 0, limit: DEFAULT_SEARCH_LIMIT, count: 0, closedCasesCount: 5 },
+      pagination: {
+        currentPage: 0,
+        limit: DEFAULT_SEARCH_LIMIT,
+        count: 0,
+        closedCasesCount: 5,
+      } as CasesPagination,
       data: [],
     });
 
@@ -410,7 +415,12 @@ describe('SearchResults component tests', () => {
   test('shows generic "No cases found" when no open results and closedCasesCount is 0', async () => {
     vi.spyOn(Api2, 'searchCases').mockResolvedValue({
       meta: { self: 'self-link' },
-      pagination: { currentPage: 0, limit: DEFAULT_SEARCH_LIMIT, count: 0, closedCasesCount: 0 },
+      pagination: {
+        currentPage: 0,
+        limit: DEFAULT_SEARCH_LIMIT,
+        count: 0,
+        closedCasesCount: 0,
+      } as CasesPagination,
       data: [],
     });
 
@@ -441,7 +451,7 @@ describe('SearchResults component tests', () => {
         limit: DEFAULT_SEARCH_LIMIT,
         count: caseList.length,
         closedCasesCount: 3,
-      },
+      } as CasesPagination,
       data: caseList,
     });
 

@@ -10,6 +10,7 @@ import { CaseAssignment } from './assignments';
 import { Auditable } from './auditable';
 import { CamsUserReference } from './users';
 import { ConsolidationType } from './orders';
+import { Pagination } from '../api/pagination';
 
 export const VALID_CASEID_PATTERN = /^[\dA-Z]{3}-\d{2}-\d{5}$/;
 
@@ -182,6 +183,10 @@ export type SyncedCase = DxtrCase &
     movedToCaseId?: string;
     movedOn?: string;
   };
+
+export type CasesPagination = Pagination & {
+  closedCasesCount?: number;
+};
 
 export function isCaseClosed<T extends ClosedDismissedReopened>(bCase: T) {
   const { closedDate, reopenedDate } = bCase;

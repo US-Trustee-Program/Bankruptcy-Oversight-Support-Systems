@@ -7,17 +7,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import Api2 from '@/lib/models/api2';
 import { TRIAL_ATTORNEYS } from '@common/cams/test-utilities/attorneys.mock';
 import { BrowserRouter } from 'react-router-dom';
-import { getCaseNumber } from '@common/cams/cases';
+import { getCaseNumber, SyncedCase } from '@common/cams/cases';
 import { formatDate } from '@/lib/utils/datetime';
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import { CaseSummary } from '@common/cams/cases';
 import Actions, { ResourceActions } from '@common/cams/actions';
 import { Staff } from '@common/cams/users';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
 describe('StaffAssignmentRow tests', () => {
-  const bCase: ResourceActions<CaseSummary> = {
-    ...MockData.getCaseSummary(),
+  const bCase: ResourceActions<SyncedCase> = {
+    ...MockData.getSyncedCase(),
     _actions: [Actions.ManageAssignments],
   };
 
@@ -36,7 +35,7 @@ describe('StaffAssignmentRow tests', () => {
   }
 
   type TestComponentProps = {
-    bCase: ResourceActions<CaseSummary>;
+    bCase: ResourceActions<SyncedCase>;
     labels: [];
   };
 
