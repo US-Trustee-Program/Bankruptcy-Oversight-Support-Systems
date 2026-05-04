@@ -476,7 +476,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         type: mssql.VarChar,
         value: predicate.dxtrId,
       });
-      conditions.push('CS_CASEID = @dxtrId');
+      conditions.push('cs.CS_CASEID = @dxtrId');
     }
     if (predicate.courtId) {
       params.push({
@@ -484,7 +484,7 @@ class CasesDxtrGateway extends AbstractMssqlClient implements CasesInterface {
         type: mssql.VarChar,
         value: predicate.courtId,
       });
-      conditions.push('COURT_ID = @courtId');
+      conditions.push('cs.COURT_ID = @courtId');
     }
     const chapters: string[] = [];
     if (predicate.chapters) {
