@@ -7,17 +7,9 @@ import factory from '../../factory';
 import { CaseSyncEvent, OrphanedCaseMessage } from '@common/cams/dataflow-events';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
 import { CasesRepository } from '../gateways.types';
-import { CasesInterface } from '../cases/cases.interface';
 
 const MODULE_NAME = 'EXPORT-AND-LOAD';
 
-/**
- * Add search tokens (bigrams + phonetic codes) to a case's debtor and joint debtor names.
- * Bigrams are lowercase 2-char n-grams for substring matching.
- * Phonetic codes are uppercase Soundex + Metaphone for variant spelling matching.
- * @param bCase The case to add search tokens to
- * @returns A new case object with search tokens added (immutable)
- */
 function addPhoneticTokens(bCase: DxtrCase): DxtrCase {
   const result: DxtrCase = { ...bCase };
 
@@ -33,29 +25,6 @@ function addPhoneticTokens(bCase: DxtrCase): DxtrCase {
   }
 
   return result;
-}
-
-/**
- * When getCaseDetail raises a NotFoundError (the caseId no longer exists in DXTR because
- * the division code changed), look up the Cosmos SYNCED_CASE record to get the dxtrId/courtId,
- * then search DXTR for the current case. If DXTR returns a case with a different caseId, the
- * old caseId is an orphan and the new caseId is the current one.
- */
-async function resolveOrphanedCase(
-  context: ApplicationContext,
-  casesGateway: CasesInterface,
-  repo: CasesRepository,
-  orphanedCaseId: string,
-): Promise<OrphanedCaseMessage | null> {
-  const existing = await repo.getSyncedCase(orphanedCaseId);
-  const results = await casesGateway.searchCases(context, {
-    dxtrId: existing.dxtrId,
-    courtId: existing.courtId,
-  });
-  if (results.length > 0 && results[0].caseId !== orphanedCaseId) {
-    return { orphanedCaseId, currentCaseId: results[0].caseId };
-  }
-  return null;
 }
 
 async function detectDivisionChange(
@@ -106,18 +75,26 @@ async function exportAndLoad(
     } catch (originalError) {
       if (isNotFoundError(originalError)) {
         try {
-          const divisionChange = await resolveOrphanedCase(
-            context,
-            casesGateway,
-            repo,
-            event.caseId,
-          );
-          if (divisionChange) {
-            event.divisionChange = divisionChange;
+          const existing = await repo.getSyncedCase(event.caseId);
+          const results = await casesGateway.searchCases(context, {
+            dxtrId: existing.dxtrId,
+            courtId: existing.courtId,
+          });
+          if (results.length > 1) {
+            context.logger.warn(
+              MODULE_NAME,
+              `Ambiguous DXTR results for orphaned case ${event.caseId}: ${results.length} candidates`,
+            );
+          }
+          if (results.length > 0 && results[0].caseId !== event.caseId) {
+            event.divisionChange = {
+              orphanedCaseId: event.caseId,
+              currentCaseId: results[0].caseId,
+            };
             continue;
           }
         } catch (_lookupError) {
-          // fall through to set error below
+          // fall through
         }
       }
       event.error = getCamsError(
@@ -150,7 +127,7 @@ async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
 async function loadCase(context: ApplicationContext, event: CaseSyncEvent) {
   try {
     const casesRepo = factory.getCasesRepository(context);
-    const caseWithPhoneticTokens = addPhoneticTokens({ ...event.bCase });
+    const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
     const synced = createAuditRecord<SyncedCase>({
       ...caseWithPhoneticTokens,
       documentType: 'SYNCED_CASE',

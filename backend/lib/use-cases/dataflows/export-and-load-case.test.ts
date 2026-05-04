@@ -25,6 +25,10 @@ describe('Export and Load Case Tests', () => {
     context = await createMockApplicationContext();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   describe('exportAndLoadCase', () => {
     test('should return list of events with case details on each', async () => {
       const mockCaseDetails = MockData.getCaseDetail();
@@ -642,6 +646,50 @@ describe('Export and Load Case Tests', () => {
 
       expect(result.divisionChange).toBeUndefined();
       expect(result.error).toBeDefined();
+    });
+
+    test('should warn and still set divisionChange when searchCases returns multiple results', async () => {
+      const orphanedCaseId = '121-26-13490';
+      const currentCaseId = '081-26-13490';
+      const secondCaseId = '082-26-13490';
+      const dxtrId = '121-1234567';
+      const courtId = '121';
+
+      const syncedCase = MockData.getSyncedCase({
+        override: { caseId: orphanedCaseId, dxtrId, courtId },
+      });
+
+      const firstDxtrCase = MockData.getCaseDetail({
+        override: { caseId: currentCaseId, dxtrId, courtId },
+      });
+
+      const secondDxtrCase = MockData.getCaseDetail({
+        override: { caseId: secondCaseId, dxtrId, courtId },
+      });
+
+      const event = mockCaseSyncEvent({ caseId: orphanedCaseId });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(
+        new NotFoundError('TEST'),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+      vi.spyOn(CasesLocalGateway.prototype, 'searchCases').mockResolvedValue([
+        firstDxtrCase,
+        secondDxtrCase,
+      ]);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('Ambiguous DXTR results'),
+      );
+      expect(result.divisionChange).toEqual({
+        orphanedCaseId,
+        currentCaseId,
+      });
+      expect(result.error).toBeUndefined();
     });
   });
 });
