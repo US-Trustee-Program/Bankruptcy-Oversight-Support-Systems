@@ -40,8 +40,6 @@ import { FormRequirementsNotice } from '@/lib/components/uswds/FormRequirementsN
 import { useLocation } from 'react-router-dom';
 import { useDivisionSelection, ALL_DIVISIONS_VALUE } from './useDivisionSelection';
 import { findMergeTarget, buildMergeResult } from './appointmentMergeHelpers';
-// Re-export for backward compatibility with existing test imports
-export { ALL_DIVISIONS_VALUE } from './useDivisionSelection';
 
 const CHAPTER_OPTIONS: ComboOption<AppointmentChapterType>[] = [
   { value: '7', label: 'Chapter 7' },
