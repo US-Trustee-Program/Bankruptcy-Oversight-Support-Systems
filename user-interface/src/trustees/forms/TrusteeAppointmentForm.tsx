@@ -315,13 +315,13 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     appointments: TrusteeAppointment[],
     options: ComboOption[],
     currentAppointmentId?: string,
-    useSeparateFields?: boolean,
+    doUseSeparateFields?: boolean,
   ): string | null => {
     // Validate required fields
     if (!data.chapter || !data.appointmentType) return null;
 
     // Extract court and divisions using shared helper
-    const courtInfo = extractCourtAndDivisions(data, !!useSeparateFields, allCourts);
+    const courtInfo = extractCourtAndDivisions(data, !!doUseSeparateFields, allCourts);
     if (!courtInfo) return null;
 
     const { courtId, divisionCodes: divisionCodesToCheck } = courtInfo;
@@ -354,7 +354,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     const appointmentTypeLabel = formatAppointmentType(data.appointmentType);
 
     let districtLabel: string;
-    if (useSeparateFields) {
+    if (doUseSeparateFields) {
       // Find district name from allCourts
       const court = allCourts.find((c) => c.courtId === courtId);
       // Show the first conflicting division in the error message
@@ -373,17 +373,17 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     return `An active appointment already exists for ${chapter?.label} - ${appointmentTypeLabel} in ${districtLabel}. Please end the existing appointment before creating a new one.`;
   };
 
-  const useSeparateFields = districtDivisionEnabled;
+  const doUseSeparateFields = districtDivisionEnabled;
 
   const validationError = getValidationError(
     formData,
     existingAppointments,
     districtOptions,
     appointment?.id,
-    useSeparateFields,
+    doUseSeparateFields,
   );
 
-  const hasCourtSelection = !!extractCourtAndDivisions(formData, useSeparateFields, allCourts);
+  const hasCourtSelection = !!extractCourtAndDivisions(formData, doUseSeparateFields, allCourts);
   const isFormValid =
     hasCourtSelection &&
     !!formData.chapter &&
@@ -403,7 +403,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     setIsSubmitting(true);
 
     // Extract court and divisions using shared helper
-    const courtInfo = extractCourtAndDivisions(formData, useSeparateFields, allCourts);
+    const courtInfo = extractCourtAndDivisions(formData, doUseSeparateFields, allCourts);
     if (!courtInfo) {
       globalAlert?.warning('Missing required court or division information');
       setIsSubmitting(false);
@@ -462,7 +462,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   const handleFieldChange = (field: keyof FormData, value: string) => {
     setFormData((prev) => {
       // When district (courtId) changes, reset divisions to empty (useEffect will set to "All Divisions")
-      if (field === 'courtId' && useSeparateFields) {
+      if (field === 'courtId' && doUseSeparateFields) {
         return { ...prev, courtId: value, divisionCodes: [] };
       }
 
@@ -546,7 +546,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
         <div className="form-container">
           <div className="form-column">
-            {useSeparateFields ? (
+            {doUseSeparateFields ? (
               <>
                 {/* District dropdown when flag is ON */}
                 <div className="field-group">
