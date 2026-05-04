@@ -2,6 +2,7 @@ import './TrusteesList.scss';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { TrusteeListItem } from '@common/cams/trustees';
+import useDebounce from '@/lib/hooks/UseDebounce';
 import {
   formatChapterType,
   formatAppointmentType,
@@ -63,8 +64,16 @@ export default function TrusteesList() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
   const [liveAnnouncement, setLiveAnnouncement] = useState<string>('');
+  const [nameSearch, setNameSearch] = useState('');
+  const [nameSearchIds, setNameSearchIds] = useState<Set<string>>(new Set());
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
   const pageLoadStart = useRef(performance.now());
+  const isNameFilterInteracted = useRef(false);
+  const previousNameSearchRef = useRef('');
+  const nameSearchCountRef = useRef(0);
+  const nameSearchStartRef = useRef<number | null>(null);
+  const nameSearchQueryLengthRef = useRef(0);
+  const debounce = useDebounce();
 
   useEffect(() => {
     const fetchTrustees = () => {
@@ -110,8 +119,40 @@ export default function TrusteesList() {
     setLiveAnnouncement('');
   };
 
+  const handleFilterName = (name: string) => {
+    isNameFilterInteracted.current = true;
+    setNameSearch(name);
+  };
+
+  useEffect(() => {
+    if (nameSearch.length < 2) {
+      nameSearchQueryLengthRef.current = 0;
+      setNameSearchIds(new Set());
+      return;
+    }
+    nameSearchQueryLengthRef.current = nameSearch.length;
+    debounce(async () => {
+      const searchStart = performance.now();
+      try {
+        const response = await Api2.searchTrustees(nameSearch);
+        nameSearchCountRef.current += 1;
+        const ids = new Set(response.data.map((r) => r.trusteeId));
+        nameSearchStartRef.current = performance.now() - searchStart;
+        setNameSearchIds(ids);
+      } catch {
+        nameSearchStartRef.current = null;
+        setNameSearch('');
+        setNameSearchIds(new Set());
+      }
+    }, 300);
+  }, [nameSearch, debounce]);
+
   const { filteredTrustees } = useMemo(() => {
-    const filtered = filterTrustees(trustees, selectedDistricts, selectedChapters);
+    let filtered = filterTrustees(trustees, selectedDistricts, selectedChapters);
+
+    if (nameSearch.length >= 2) {
+      filtered = filtered.filter((t) => nameSearchIds.has(t.trusteeId));
+    }
 
     const sorted = [...filtered].sort((a, b) => {
       const lastCmp = (a.lastName ?? '').localeCompare(b.lastName ?? '', undefined, {
@@ -135,7 +176,7 @@ export default function TrusteesList() {
     return {
       filteredTrustees: sortedWithAppointments,
     };
-  }, [trustees, selectedDistricts, selectedChapters, sortDirection]);
+  }, [trustees, selectedDistricts, selectedChapters, nameSearch, nameSearchIds, sortDirection]);
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
@@ -158,7 +199,7 @@ export default function TrusteesList() {
   }, [selectedDistricts, selectedChapters, trustees]);
 
   useEffect(() => {
-    if (!isChapterFilterInteracted.current) return;
+    if (!isChapterFilterInteracted.current && !isNameFilterInteracted.current) return;
     setLiveAnnouncement(`${filteredTrustees.length} Trustees`);
   }, [filteredTrustees]);
 
@@ -177,6 +218,44 @@ export default function TrusteesList() {
       },
     );
   }, [selectedChapters, selectedDistricts, trustees]);
+
+  useEffect(() => {
+    if (!isNameFilterInteracted.current) return;
+    if (nameSearchQueryLengthRef.current < 2) return;
+
+    getAppInsights().appInsights.trackEvent(
+      { name: 'Trustee Name Filter Changed' },
+      {
+        queryLength: nameSearchQueryLengthRef.current,
+        resultCount: filteredTrustees.length,
+        districtCount: selectedDistricts.length,
+        chapterCount: selectedChapters.length,
+        searchResponseMs: nameSearchStartRef.current ?? undefined,
+        hasDistrictFilter: selectedDistricts.length > 0,
+        sessionSearchCount: nameSearchCountRef.current,
+      },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nameSearchIds]);
+
+  useEffect(() => {
+    if (!isNameFilterInteracted.current) return;
+
+    const wasNonEmpty = previousNameSearchRef.current.length > 0;
+    const isNowEmpty = nameSearch.length === 0;
+
+    if (wasNonEmpty && isNowEmpty) {
+      getAppInsights().appInsights.trackEvent(
+        { name: 'Trustee Name Filter Cleared' },
+        {
+          queryLength: previousNameSearchRef.current.length,
+          sessionSearchCount: nameSearchCountRef.current,
+        },
+      );
+    }
+
+    previousNameSearchRef.current = nameSearch;
+  }, [nameSearch]);
 
   if (loading) {
     return <LoadingSpinner caption="Loading trustees..." />;
@@ -213,6 +292,7 @@ export default function TrusteesList() {
         ref={filterRef}
         handleFilterDistrict={handleFilterDistrict}
         handleFilterChapter={handleFilterChapter}
+        handleFilterName={handleFilterName}
       />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
         {liveAnnouncement}

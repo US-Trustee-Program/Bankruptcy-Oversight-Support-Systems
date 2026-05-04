@@ -57,15 +57,17 @@ function renderFilter(
 ) {
   const mockHandleFilterDistrict = vi.fn();
   const mockHandleFilterChapter = vi.fn();
+  const mockHandleFilterName = vi.fn();
   render(
     <TrusteeDistrictFilter
       ref={overrides.ref}
       handleFilterDistrict={mockHandleFilterDistrict}
       handleFilterChapter={mockHandleFilterChapter}
+      handleFilterName={mockHandleFilterName}
       onExpandedChange={overrides.onExpandedChange}
     />,
   );
-  return { mockHandleFilterDistrict, mockHandleFilterChapter };
+  return { mockHandleFilterDistrict, mockHandleFilterChapter, mockHandleFilterName };
 }
 
 describe('TrusteeDistrictFilter Component', () => {
@@ -471,6 +473,95 @@ describe('TrusteeDistrictFilter Component', () => {
 
     await waitFor(() => {
       expect(mockHandleFilterDistrict).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('Name Filter', () => {
+    test('renders name input inside accordion when expanded', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderFilter();
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox', { name: /trustee name/i })).toBeInTheDocument();
+      });
+    });
+
+    test('does not show Clear button when name input is empty', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderFilter();
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox', { name: /trustee name/i })).toBeInTheDocument();
+      });
+
+      const clearButtons = screen.queryAllByRole('button', { name: /^clear$/i });
+      expect(clearButtons).toHaveLength(0);
+    });
+
+    test('shows Clear button when name input has text', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderFilter();
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox', { name: /trustee name/i })).toBeInTheDocument();
+      });
+
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Smith');
+
+      expect(screen.getByRole('button', { name: /^clear$/i })).toBeInTheDocument();
+    });
+
+    test('Clear button click empties input and calls handleFilterName with empty string', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      const { mockHandleFilterName } = renderFilter();
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox', { name: /trustee name/i })).toBeInTheDocument();
+      });
+
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Smith');
+      await user.click(screen.getByRole('button', { name: /^clear$/i }));
+
+      expect(screen.getByRole('textbox', { name: /trustee name/i })).toHaveValue('');
+      expect(mockHandleFilterName).toHaveBeenLastCalledWith('');
+    });
+
+    test('typing calls handleFilterName with current value', async () => {
+      const user = userEvent.setup();
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      const { mockHandleFilterName } = renderFilter();
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await user.click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('textbox', { name: /trustee name/i })).toBeInTheDocument();
+      });
+
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Smith');
+
+      expect(mockHandleFilterName).toHaveBeenLastCalledWith('Smith');
     });
   });
 
