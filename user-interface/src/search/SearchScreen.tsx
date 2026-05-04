@@ -89,6 +89,24 @@ export default function SearchScreen() {
   const [closedCasesCount, setClosedCasesCount] = useState<number>(0);
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
+  const showNoResultsOpenOnlyHint =
+    !isSearching &&
+    !hasResults &&
+    searchPredicate.excludeClosedCases === true &&
+    !searchPredicate.caseNumber;
+
+  const showGenericClosedHint =
+    !isSearching &&
+    hasResults &&
+    searchPredicate.excludeClosedCases === true &&
+    !searchPredicate.caseNumber;
+
+  const showCountClosedHint =
+    !isSearching &&
+    searchPredicate.excludeClosedCases === true &&
+    !!searchPredicate.caseNumber &&
+    closedCasesCount > 0;
+
   function handleResultsChanged(hasResults: boolean, count?: number) {
     setHasResults(hasResults);
     setClosedCasesCount(count ?? 0);
@@ -472,70 +490,43 @@ export default function SearchScreen() {
               )}
               {isValidSearchPredicate(searchPredicate) && (
                 <>
-                  {!isSearching &&
-                    !hasResults &&
-                    searchPredicate.excludeClosedCases === true &&
-                    !searchPredicate.caseNumber && (
-                      <div className="search-alert">
-                        <Alert
-                          id="no-results-alert"
-                          className="measure-6"
-                          title="No Open cases found"
-                          type={UswdsAlertStyle.Info}
-                          show={true}
-                          inline={true}
-                          role="alert"
-                        >
-                          <ClosedCasesHintMessage
-                            variant="generic"
-                            onIncludeClosedCases={handleIncludeClosedAndSearch}
-                          />
-                        </Alert>
-                      </div>
-                    )}
-                  {!isSearching &&
-                    hasResults &&
-                    searchPredicate.excludeClosedCases === true &&
-                    !searchPredicate.caseNumber && (
-                      <div className="search-alert">
-                        <Alert
-                          id="closed-cases-hint-alert"
-                          className="measure-6"
-                          type={UswdsAlertStyle.Info}
-                          show={true}
-                          inline={true}
-                          role="status"
-                          slim={true}
-                        >
-                          <ClosedCasesHintMessage
-                            variant="generic"
-                            onIncludeClosedCases={handleIncludeClosedAndSearch}
-                          />
-                        </Alert>
-                      </div>
-                    )}
-                  {!isSearching &&
-                    searchPredicate.excludeClosedCases === true &&
-                    !!searchPredicate.caseNumber &&
-                    closedCasesCount > 0 && (
-                      <div className="search-alert">
-                        <Alert
-                          id="closed-cases-hint-alert"
-                          className="measure-6"
-                          type={UswdsAlertStyle.Info}
-                          show={true}
-                          inline={true}
-                          role="status"
-                          slim={true}
-                        >
-                          <ClosedCasesHintMessage
-                            variant="count"
-                            closedCasesCount={closedCasesCount}
-                            onIncludeClosedCases={handleIncludeClosedAndSearch}
-                          />
-                        </Alert>
-                      </div>
-                    )}
+                  {showNoResultsOpenOnlyHint && (
+                    <div className="search-alert">
+                      <Alert
+                        id="no-results-alert"
+                        className="measure-6"
+                        title="No Open cases found"
+                        type={UswdsAlertStyle.Info}
+                        show={true}
+                        inline={true}
+                        role="alert"
+                      >
+                        <ClosedCasesHintMessage
+                          variant="generic"
+                          onIncludeClosedCases={handleIncludeClosedAndSearch}
+                        />
+                      </Alert>
+                    </div>
+                  )}
+                  {(showGenericClosedHint || showCountClosedHint) && (
+                    <div className="search-alert">
+                      <Alert
+                        id="closed-cases-hint-alert"
+                        className="measure-6"
+                        type={UswdsAlertStyle.Info}
+                        show={true}
+                        inline={true}
+                        role="status"
+                        slim={true}
+                      >
+                        <ClosedCasesHintMessage
+                          variant={showCountClosedHint ? 'count' : 'generic'}
+                          closedCasesCount={showCountClosedHint ? closedCasesCount : undefined}
+                          onIncludeClosedCases={handleIncludeClosedAndSearch}
+                        />
+                      </Alert>
+                    </div>
+                  )}
                   <SearchResults
                     id="search-results"
                     searchPredicate={searchPredicate}
