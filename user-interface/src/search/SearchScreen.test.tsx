@@ -595,7 +595,7 @@ describe('search screen', () => {
     await waitFor(() => {
       const hint = document.querySelector('#closed-cases-hint-alert');
       expect(hint).toBeInTheDocument();
-      expect(hint).toHaveTextContent('1 closed case match your search filters.');
+      expect(hint).toHaveTextContent('1 closed case matches your search filters.');
     });
   });
 
