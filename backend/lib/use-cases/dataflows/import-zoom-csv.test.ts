@@ -309,8 +309,8 @@ describe('import-zoom-csv', () => {
       );
     });
 
-    test('should throw error if outcome column not found in generated report', async () => {
-      // This tests the internal validation - if somehow we generate a report without outcome column
+    test('should validate generated report has outcome column', async () => {
+      // This validates that the generated report includes the outcome column
       // Note: parseZoomMatchedTsvFile validates input has required columns, so this tests the
       // countOutcomesFromReportLines validation of the GENERATED report format
 
@@ -320,9 +320,6 @@ describe('import-zoom-csv', () => {
       );
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
-      // Mock the internal report building to produce invalid headers (for testing only)
-      // In practice this should never happen, but the guard is there for safety
-      // Since we can't easily inject this, we'll test that valid reports work correctly
       const result = await importZoomCsv(context);
 
       // Valid report should succeed
