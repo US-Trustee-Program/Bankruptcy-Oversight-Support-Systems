@@ -152,8 +152,14 @@ const validateDivisionCodes: ValidatorFunction = (obj: unknown): ValidatorResult
   const appointment = obj as TrusteeAppointmentInput;
   const { divisionCode, divisionCodes } = appointment;
 
-  // At least one division must be specified (either old or new format)
-  if (!divisionCode && (!divisionCodes || divisionCodes.length === 0)) {
+  // Filter out empty/falsy entries from divisionCodes
+  const validDivisionCodes = divisionCodes?.filter((code) => !!code?.trim()) ?? [];
+
+  const hasLegacyDivision = typeof divisionCode === 'string' && divisionCode.trim().length > 0;
+  const hasNewDivision = validDivisionCodes.length > 0;
+
+  // At least one non-empty division must be specified (either old or new format)
+  if (!hasLegacyDivision && !hasNewDivision) {
     return {
       reasonMap: {
         $: {
