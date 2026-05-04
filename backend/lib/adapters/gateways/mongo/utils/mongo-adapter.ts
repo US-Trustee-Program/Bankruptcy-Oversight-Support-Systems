@@ -204,24 +204,24 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
     const mongoQuery = toMongoQuery(query);
     const insertFields = { ...insertOnlyFields, id: randomUUID() };
 
+    let result;
     try {
-      const result = await this.collectionHumble.upsertOne(
+      result = await this.collectionHumble.upsertOne(
         mongoQuery,
         setFields as MongoDocument,
         insertFields as MongoDocument,
       );
-      const unknownError = new UnknownError(this.moduleName, {
-        message: 'Failed to insert document into database.',
-      });
-
-      if (!result.acknowledged) {
-        throw unknownError;
-      }
     } catch (originalError) {
       throw this.handleError(originalError, `Failed to upsert item. ${originalError.message}`, {
         query,
         setFields,
         insertOnlyFields,
+      });
+    }
+
+    if (!result.acknowledged) {
+      throw new UnknownError(this.moduleName, {
+        message: 'Failed to insert document into database.',
       });
     }
   }

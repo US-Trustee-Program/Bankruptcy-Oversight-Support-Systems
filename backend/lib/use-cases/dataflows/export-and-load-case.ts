@@ -93,8 +93,11 @@ async function exportAndLoad(
             };
             continue;
           }
-        } catch (_lookupError) {
-          // fall through
+        } catch (lookupError) {
+          context.logger.warn(
+            MODULE_NAME,
+            `Division-change lookup failed for orphaned case ${event.caseId}: ${lookupError}`,
+          );
         }
       }
       event.error = getCamsError(

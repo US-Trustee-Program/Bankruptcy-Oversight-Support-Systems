@@ -257,19 +257,22 @@ export async function handlePage(
     };
     invocationContext.extraOutputs.set(PAGE, nextCursor);
   } else {
-    const successCount = processedEvents.length - failedEvents.length;
+    const successCount = processedEvents.length - failedEvents.length - divisionChanges.length;
     logger.info(
       MODULE_NAME,
-      `REMAINING_CASES_TOTAL=${remainingCount} — Resync complete. ${successCount} succeeded, ${failedEvents.length} failed.`,
+      `REMAINING_CASES_TOTAL=${remainingCount} — Resync complete. ${successCount} succeeded, ${failedEvents.length} failed, ${divisionChanges.length} division changes queued.`,
     );
   }
 
-  const successCount = processedEvents.length - failedEvents.length;
+  const successCount = processedEvents.length - failedEvents.length - divisionChanges.length;
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
     documentsWritten: successCount,
     documentsFailed: failedEvents.length,
     success: true,
-    details: { totalCases: String(caseIds.length) },
+    details: {
+      totalCases: String(caseIds.length),
+      divisionChangesQueued: String(divisionChanges.length),
+    },
   });
 }
 
@@ -356,6 +359,21 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
     return;
   }
 
+  if (processed.divisionChange) {
+    invocationContext.extraOutputs.set(FIX, [processed.divisionChange]);
+    logger.info(
+      MODULE_NAME,
+      `Division change detected on retry for ${filterToExtendedAscii(event.caseId)}`,
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { disposition: 'division-change-queued', retryCount: String(event.retryCount) },
+    });
+    return;
+  }
+
   logger.info(MODULE_NAME, `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}`);
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
     documentsWritten: 1,
@@ -391,7 +409,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: RETRY.queueName,
     handler: handleRetry,
-    extraOutputs: [DLQ, HARD_STOP],
+    extraOutputs: [DLQ, HARD_STOP, FIX],
   });
 }
 
