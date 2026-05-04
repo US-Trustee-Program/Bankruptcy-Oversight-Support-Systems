@@ -1090,6 +1090,109 @@ describe('TrusteesList Component', () => {
         );
       });
     });
+
+    test('sessionSearchCount reflects completed API calls, not keystrokes', async () => {
+      // Typing "Smith" (5 chars, each >= 2) should count as 1 search, not 4.
+      // Each keystroke triggers the effect but only the debounced callback fires once.
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trustee1, appointments: [], matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Smith');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      await waitFor(() => {
+        expect(mockTrackEvent).toHaveBeenCalledWith(
+          { name: 'Trustee Name Filter Changed' },
+          expect.objectContaining({ sessionSearchCount: 1 }),
+        );
+      });
+
+      const changedCalls = mockTrackEvent.mock.calls.filter(
+        ([event]) => event.name === 'Trustee Name Filter Changed',
+      );
+      // sessionSearchCount in the single event should be 1, not 4
+      expect(changedCalls[0][1].sessionSearchCount).toBe(1);
+    });
+
+    test('restores full list when name search API call fails', async () => {
+      // When searchTrustees throws, nameSearchIds is set to empty Set while
+      // nameSearch.length >= 2 stays true — filtering out every trustee.
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
+      vi.spyOn(Api2, 'searchTrustees').mockRejectedValue(new Error('Network error'));
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      // Should NOT silently show "0 Trustee(s)" — either full list restored or error surfaced
+      await waitFor(() => {
+        expect(screen.queryByText('0 Trustee(s)', { selector: 'p' })).not.toBeInTheDocument();
+      });
+    });
+
+    test('searchResponseMs measures only API latency, not the debounce delay', async () => {
+      // searchStart is currently captured before the debounce fires, inflating the metric by ~300ms.
+      // After the fix, the measured duration should be close to the actual API response time, not 300ms+.
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1] });
+
+      let resolveSearch!: () => void;
+      vi.spyOn(Api2, 'searchTrustees').mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveSearch = () =>
+              resolve({ data: [{ ...trustee1, appointments: [], matchType: 'exact' }] });
+          }),
+      );
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      // Advance past debounce — API call is now in-flight
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      // Resolve the API call immediately (simulates near-zero API latency)
+      await act(async () => {
+        resolveSearch();
+      });
+
+      await waitFor(() => {
+        const changedCalls = mockTrackEvent.mock.calls.filter(
+          ([event]) => event.name === 'Trustee Name Filter Changed',
+        );
+        expect(changedCalls.length).toBeGreaterThan(0);
+        const { searchResponseMs } = changedCalls[0][1];
+        // If searchStart is captured outside the debounce, this will be ~300ms+.
+        // After the fix it should be well under 300ms (near 0 since mock resolves instantly).
+        expect(searchResponseMs).toBeDefined();
+        expect(searchResponseMs).toBeLessThan(300);
+      });
+    });
   });
 
   describe('District Filtering', () => {
