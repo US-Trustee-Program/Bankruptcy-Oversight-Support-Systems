@@ -1320,6 +1320,35 @@ describe('TrusteesList Component', () => {
         expect(screen.queryByText('Jones, Bob')).not.toBeInTheDocument();
       });
     });
+
+    test('clears spinner and restores full list when query drops below 2 chars while in-flight', async () => {
+      const trustee1 = makeListItem({ trusteeId: 't1', firstName: 'Alice', lastName: 'Smith' });
+      const trustee2 = makeListItem({ trusteeId: 't2', firstName: 'Bob', lastName: 'Jones' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee1, trustee2] });
+      vi.spyOn(Api2, 'searchTrustees').mockImplementation(() => new Promise(() => {}));
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup({ delay: null });
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Sm');
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+
+      expect(screen.getByText('Searching trustees...')).toBeInTheDocument();
+
+      await user.clear(screen.getByRole('textbox', { name: /trustee name/i }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Searching trustees...')).not.toBeInTheDocument();
+        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
+        expect(screen.getByText('Jones, Bob')).toBeInTheDocument();
+      });
+    });
   });
 
   describe('District Filtering', () => {

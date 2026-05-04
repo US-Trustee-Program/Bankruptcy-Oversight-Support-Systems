@@ -211,8 +211,9 @@ export default function TrusteesList() {
 
   useEffect(() => {
     if (!isChapterFilterInteracted.current && !isNameFilterInteracted.current) return;
+    if (nameSearchLoading) return;
     setLiveAnnouncement(`${filteredTrustees.length} Trustees`);
-  }, [filteredTrustees]);
+  }, [filteredTrustees, nameSearchLoading]);
 
   useEffect(() => {
     if (!isChapterFilterInteracted.current) return;
