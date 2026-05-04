@@ -253,7 +253,6 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
         // Build district options based on feature flag
         if (districtDivisionEnabled) {
-          // When flag is ON: build options from unique districts
           const uniqueDistricts = getUniqueDistricts(courtsData);
           const options = uniqueDistricts.map((district) => ({
             value: district.courtId,
@@ -261,10 +260,8 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
           }));
           setDistrictOptions(options);
         } else {
-          // When flag is OFF: use existing combined format
           const sortedCourts = sortByCourtLocation(courtsData);
           const options = sortedCourts.map((district) => {
-            // Build label with guards for missing data
             let label: string;
             if (district.courtName && district.courtDivisionName) {
               label = `${district.courtName} (${district.courtDivisionName})`;
