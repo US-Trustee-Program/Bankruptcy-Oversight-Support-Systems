@@ -98,12 +98,22 @@ export class TrusteeAppointmentsUseCase {
     }
   }
 
+  private divisionsChanged(before: TrusteeAppointment, after: TrusteeAppointment): boolean {
+    const beforeSet = new Set(before.divisionCodes ?? [before.divisionCode].filter(Boolean));
+    const afterSet = new Set(after.divisionCodes ?? [after.divisionCode].filter(Boolean));
+    if (beforeSet.size !== afterSet.size) return true;
+    for (const code of beforeSet) {
+      if (!afterSet.has(code)) return true;
+    }
+    return false;
+  }
+
   private hasAppointmentChanged(before: TrusteeAppointment, after: TrusteeAppointment): boolean {
     return (
       before.chapter !== after.chapter ||
       before.appointmentType !== after.appointmentType ||
       before.courtId !== after.courtId ||
-      before.divisionCode !== after.divisionCode ||
+      this.divisionsChanged(before, after) ||
       before.appointedDate !== after.appointedDate ||
       before.status !== after.status ||
       before.effectiveDate !== after.effectiveDate
