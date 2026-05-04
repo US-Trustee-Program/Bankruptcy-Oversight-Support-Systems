@@ -42,6 +42,7 @@ describe('SearchResults component tests', () => {
       },
       onStartSearching: onStartSearchingSpy,
       onEndSearching: onEndSearchingSpy,
+      onIncludeClosedCases: vi.fn(),
       header: SearchResultsHeader,
       row: SearchResultsRow,
     };

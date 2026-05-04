@@ -121,12 +121,17 @@ function SearchResults(props: SearchResultsProps) {
     return labels;
   })();
 
-  const showClosedCasesHint =
-    searchPredicate.excludeClosedCases === true && !searchPredicate.caseNumber;
-
   const casesPagination = searchResults?.pagination as CasesPagination | undefined;
   const closedCasesCount = casesPagination?.closedCasesCount ?? 0;
+
+  // Only render internal hints when the caller provides onIncludeClosedCases.
+  // Callers that manage their own hint UI (e.g. SearchScreen) omit this prop.
+  const showClosedCasesHint =
+    !!onIncludeClosedCases &&
+    searchPredicate.excludeClosedCases === true &&
+    !searchPredicate.caseNumber;
   const showCaseNumberClosedHint =
+    !!onIncludeClosedCases &&
     !!searchPredicate.caseNumber &&
     searchPredicate.excludeClosedCases === true &&
     closedCasesCount > 0;
