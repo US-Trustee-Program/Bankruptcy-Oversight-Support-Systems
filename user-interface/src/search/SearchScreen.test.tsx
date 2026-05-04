@@ -1,5 +1,5 @@
 import MockData from '@common/cams/test-utilities/mock-data';
-import { SyncedCase } from '@common/cams/cases';
+import { CasesPagination, SyncedCase } from '@common/cams/cases';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -558,7 +558,7 @@ describe('search screen', () => {
         currentPage: 1,
         limit: DEFAULT_SEARCH_LIMIT,
         closedCasesCount: 3,
-      },
+      } as CasesPagination,
     });
 
     renderWithoutProps();
@@ -583,7 +583,7 @@ describe('search screen', () => {
         currentPage: 1,
         limit: DEFAULT_SEARCH_LIMIT,
         closedCasesCount: 1,
-      },
+      } as CasesPagination,
     });
 
     renderWithoutProps();
@@ -607,7 +607,7 @@ describe('search screen', () => {
         currentPage: 1,
         limit: DEFAULT_SEARCH_LIMIT,
         closedCasesCount: 0,
-      },
+      } as CasesPagination,
     });
 
     renderWithoutProps();
