@@ -155,6 +155,8 @@ export default function SearchScreen() {
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
 
+  const firstSearchTimeRef = useRef<number | null>(null);
+
   const globalAlert = useGlobalAlert();
   const debounce = useDebounce();
 
@@ -309,7 +311,15 @@ export default function SearchScreen() {
 
   function handleIncludeClosedCheckbox(ev: ChangeEvent<HTMLInputElement>) {
     if (ev.target.checked) {
-      getAppInsights().appInsights.trackEvent({ name: 'Include Closed Cases Checkbox Checked' });
+      getAppInsights().appInsights.trackEvent(
+        { name: 'Include Closed Cases Checkbox Checked' },
+        {
+          msFromFirstSearch:
+            firstSearchTimeRef.current !== null
+              ? Math.round(performance.now() - firstSearchTimeRef.current)
+              : undefined,
+        },
+      );
     }
     setTemporarySearchPredicate((previous) => {
       return {
@@ -320,7 +330,15 @@ export default function SearchScreen() {
   }
 
   function handleIncludeClosedAndSearch() {
-    getAppInsights().appInsights.trackEvent({ name: 'Include Closed Cases Link Clicked' });
+    getAppInsights().appInsights.trackEvent(
+      { name: 'Include Closed Cases Link Clicked' },
+      {
+        msFromFirstSearch:
+          firstSearchTimeRef.current !== null
+            ? Math.round(performance.now() - firstSearchTimeRef.current)
+            : undefined,
+      },
+    );
     const updatedPredicate: CasesSearchPredicate = {
       ...temporarySearchPredicate,
       excludeClosedCases: false,
@@ -343,6 +361,9 @@ export default function SearchScreen() {
 
     // Only perform search if validation passes
     if (validation.isValid) {
+      if (firstSearchTimeRef.current === null) {
+        firstSearchTimeRef.current = performance.now();
+      }
       setSearchPredicate(currentPredicate);
 
       // Track first search action for analytics
