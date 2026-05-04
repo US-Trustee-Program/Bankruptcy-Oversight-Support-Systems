@@ -16,6 +16,8 @@ export class StorageQueueHumbleObject {
   }
 
   async sendMessage(messageContent: string, visibilityTimeout?: number): Promise<void> {
-    await this.client.sendMessage(messageContent, { visibilityTimeout });
+    // The REST API requires XML-safe content; base64 is the standard encoding per the docs.
+    const encoded = Buffer.from(messageContent).toString('base64');
+    await this.client.sendMessage(encoded, { visibilityTimeout });
   }
 }
