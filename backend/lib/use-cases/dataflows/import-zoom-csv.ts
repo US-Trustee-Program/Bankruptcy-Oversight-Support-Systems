@@ -313,14 +313,12 @@ export async function processZoomMatchedRow(
     // Use a Map to track by CAMS trusteeId to handle deduplicated ATS records
     const camsTrusteesMap = new Map<string, Trustee>(); // Key: CAMS trusteeId
     const notFoundIds: string[] = [];
-    const deduplicatedTruIds: string[] = []; // Track which TRU_IDs mapped to existing trustee
 
     for (const atsTruId of atsTruIds) {
       const trustee = await repo.findTrusteeByLegacyTruId(atsTruId);
       if (trustee) {
         if (camsTrusteesMap.has(trustee.trusteeId)) {
           // This TRU_ID maps to a trustee we've already found - expected for deduplicated records
-          deduplicatedTruIds.push(atsTruId);
           context.logger.debug(
             MODULE_NAME,
             `Zoom "${row.zoomName}": TRU_ID ${atsTruId} mapped to already-found CAMS trustee ${trustee.trusteeId} - deduplicated ATS record`,
