@@ -4,7 +4,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsHttpResponseInit } from '../../adapters/utils/http-response';
 import CaseManagement from '../../use-cases/cases/case-management';
 import { CasesController } from './cases.controller';
-import { CaseDetail, SyncedCase } from '@common/cams/cases';
+import { CaseDetail, CasesPagination, SyncedCase } from '@common/cams/cases';
 import {
   mockCamsHttpRequest,
   mockRequestUrl,
@@ -428,7 +428,7 @@ describe('cases controller test', () => {
       });
 
       const actual = await controller.handleRequest(context);
-      expect(actual.body.pagination.closedCasesCount).toBe(3);
+      expect((actual.body.pagination as CasesPagination).closedCasesCount).toBe(3);
     });
 
     test('should not populate closedCasesCount when caseNumber is absent', async () => {
@@ -445,7 +445,7 @@ describe('cases controller test', () => {
       });
 
       const actual = await controller.handleRequest(context);
-      expect(actual.body.pagination.closedCasesCount).toBeUndefined();
+      expect((actual.body.pagination as CasesPagination).closedCasesCount).toBeUndefined();
     });
 
     test('should not populate closedCasesCount when excludeClosedCases is false', async () => {
@@ -463,7 +463,7 @@ describe('cases controller test', () => {
       });
 
       const actual = await controller.handleRequest(context);
-      expect(actual.body.pagination.closedCasesCount).toBeUndefined();
+      expect((actual.body.pagination as CasesPagination).closedCasesCount).toBeUndefined();
     });
 
     test('closedCasesCount should be 0 when all cases are open and secondary call returns same count', async () => {
@@ -480,7 +480,7 @@ describe('cases controller test', () => {
       });
 
       const actual = await controller.handleRequest(context);
-      expect(actual.body.pagination.closedCasesCount).toBe(0);
+      expect((actual.body.pagination as CasesPagination).closedCasesCount).toBe(0);
     });
 
     test('should return an error if an error is encountered', async () => {
