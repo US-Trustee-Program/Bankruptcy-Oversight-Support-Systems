@@ -756,6 +756,30 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data?.failedAppointments).toHaveLength(1);
       expect(result.data?.failedAppointments?.[0].reason).toBe('Invalid court ID');
     });
+
+    test('should return error when getOffices fails and not process any trustees', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Simulate DXTR offices gateway failure
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockRejectedValue(new Error('DXTR service unavailable')),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      // Should return error, not process any trustees
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to fetch DXTR office data');
+      expect(result.data).toBeUndefined();
+    });
   });
 
   describe('processTrusteeWithRetry - Retry Logic', () => {

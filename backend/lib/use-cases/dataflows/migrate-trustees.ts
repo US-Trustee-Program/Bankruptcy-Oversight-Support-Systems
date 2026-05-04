@@ -925,7 +925,19 @@ export async function processPageOfTrustees(
 > {
   // Fetch office data from DXTR via factory
   const officesGateway = factory.getOfficesGateway(context);
-  const offices = await officesGateway.getOffices(context);
+  let offices: UstpOfficeDetails[];
+
+  try {
+    offices = await officesGateway.getOffices(context);
+  } catch (originalError) {
+    return {
+      error: getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Failed to fetch DXTR office data for division mapping',
+      ),
+    };
+  }
 
   // Build district-to-divisions map from office data
   const districtToDivisionsMap = buildDistrictToDivisionsMap(offices);
