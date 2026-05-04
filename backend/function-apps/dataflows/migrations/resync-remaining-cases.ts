@@ -14,6 +14,7 @@ import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
 import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
+import { FIX_QUEUE_NAME } from './division-change-cleanup';
 
 const MODULE_NAME = 'RESYNC-REMAINING-CASES';
 const PAGE_SIZE = 100;
@@ -62,6 +63,11 @@ const RETRY = output.storageQueue({
 
 const HARD_STOP = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
+
+const FIX = output.storageQueue({
+  queueName: FIX_QUEUE_NAME,
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
@@ -224,6 +230,15 @@ export async function handlePage(
 
   const processedEvents = await ExportAndLoadCase.exportAndLoad(context, events);
 
+  const divisionChanges = processedEvents
+    .filter((event) => event.divisionChange !== undefined)
+    .map((event) => event.divisionChange!);
+
+  if (divisionChanges.length > 0) {
+    invocationContext.extraOutputs.set(FIX, divisionChanges);
+    logger.info(MODULE_NAME, `Queued ${divisionChanges.length} division changes to FIX`);
+  }
+
   const failedEvents = processedEvents.filter((event) => !!event.error);
   if (failedEvents.length > 0) {
     logger.warn(MODULE_NAME, `${failedEvents.length} events failed, sending to DLQ`);
@@ -358,7 +373,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: PAGE.queueName,
     handler: handlePage,
-    extraOutputs: [PAGE, DLQ],
+    extraOutputs: [PAGE, DLQ, FIX],
   });
 
   app.storageQueue(HANDLE_ERROR, {
