@@ -461,6 +461,462 @@ describe('Migrate Trustees Use Case', () => {
     });
   });
 
+  describe('processTrusteeWithAppointments - Error Handling', () => {
+    const mockTrustee = {
+      id: 'doc-id',
+      trusteeId: 'trustee-100',
+      firstName: 'Test',
+      lastName: 'Trustee',
+      name: 'Test Trustee',
+      status: 'active' as const,
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+      },
+      createdOn: '2023-01-01',
+      updatedOn: '2023-01-01',
+      updatedBy: { id: 'SYSTEM', name: 'System' },
+    };
+
+    beforeEach(() => {
+      // Mock offices gateway for all tests
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      // Stub ACMS gateway to prevent network calls
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+    });
+
+    test('should return error when trustee record is malformed (missing ID)', async () => {
+      const malformedTrustee: AtsTrusteeRecord = {
+        ID: undefined as unknown as number, // Force undefined ID
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      const trustees = [malformedTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(0); // Merge failed, so not processed
+      expect(result.data?.errors).toBe(1);
+      expect(result.data?.appointments).toBe(0);
+    });
+
+    test('should fail when upsert trustee fails and not process appointments', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Simulate database error during trustee upsert
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockRejectedValue(
+        new Error('Database connection lost'),
+      );
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(0); // Failed, so not counted as processed
+      expect(result.data?.errors).toBe(1);
+      expect(result.data?.appointments).toBe(0);
+    });
+
+    test('should succeed with trustee saved even when appointment creation fails', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Trustee upsert succeeds
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      // Appointments fetch succeeds
+      const cleanAppointments: TrusteeAppointmentInput[] = [
+        {
+          chapter: '7',
+          appointmentType: 'panel',
+          courtId: '053N',
+          appointedDate: '2023-01-15',
+          status: 'active',
+          effectiveDate: '2023-01-15',
+        },
+      ];
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments,
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+
+      // Appointment creation fails
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockRejectedValue(
+        new Error('Database write failed'),
+      );
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      // Trustee succeeded, so success count = 1
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      // But appointments failed
+      expect(result.data?.appointments).toBe(0);
+    });
+
+    test('should continue when appointment fetch fails for one TOD ID but succeed for trustee', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Trustee upsert succeeds
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      // Appointment fetch fails (ATS timeout, network error, etc.)
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockRejectedValue(
+        new Error('ATS gateway timeout'),
+      );
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      // Trustee is saved successfully despite appointment fetch failure
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(result.data?.appointments).toBe(0);
+    });
+
+    test('should continue when professional ID lookup fails', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Trustee upsert succeeds
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      // Appointments succeed with no appointments
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      // ACMS lookup fails
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockRejectedValue(new Error('ACMS service down')),
+      } as unknown as AcmsGateway);
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      // Trustee succeeded despite ACMS failure (non-fatal)
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+    });
+
+    test('should handle trustee with no appointments successfully', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Trustee upsert succeeds
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      // No appointments returned
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(result.data?.appointments).toBe(0);
+    });
+
+    test('should process multiple trustees with mixed success and failures', async () => {
+      const trustees: AtsTrusteeRecord[] = [
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }, // Will succeed
+        { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' }, // Will fail on upsert
+        { ID: 3, FIRST_NAME: 'Bob', LAST_NAME: 'Jones', STATE: 'TX' }, // Will succeed
+      ];
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockResolvedValueOnce(null) // John - not found, create new
+        .mockRejectedValueOnce(new Error('Database error')) // Jane - fails
+        .mockResolvedValueOnce(null); // Bob - not found, create new
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(2); // John and Bob succeeded
+      expect(result.data?.errors).toBe(1); // Only Jane failed
+    });
+
+    test('should track failed appointments from ATS gateway', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Trustee upsert succeeds
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      // ATS returns some clean and some failed appointments
+      const failedAppointments = [
+        {
+          trusteeId: 1,
+          reason: 'Invalid court ID',
+          raw: { TODID: 1, chapter: '99', courtId: 'INVALID' },
+        },
+      ];
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments,
+        stats: {
+          total: 1,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 1,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(result.data?.failedAppointments).toHaveLength(1);
+      expect(result.data?.failedAppointments?.[0].reason).toBe('Invalid court ID');
+    });
+  });
+
+  describe('processTrusteeWithRetry - Retry Logic', () => {
+    const mockTrustee = {
+      id: 'doc-id',
+      trusteeId: 'trustee-100',
+      firstName: 'Test',
+      lastName: 'Trustee',
+      name: 'Test Trustee',
+      status: 'active' as const,
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+      },
+      createdOn: '2023-01-01',
+      updatedOn: '2023-01-01',
+      updatedBy: { id: 'SYSTEM', name: 'System' },
+    };
+
+    beforeEach(() => {
+      // Mock offices gateway for all tests
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      // Stub ACMS gateway
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+
+      // Stub appointments
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+    });
+
+    test('should succeed on first attempt without retrying', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Trustee upsert succeeds immediately
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrustee')
+        .mockResolvedValue(mockTrustee);
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(createSpy).toHaveBeenCalledTimes(1); // Success on first attempt, no retries
+    });
+
+    test('should retry and succeed on second attempt', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Fail on first attempt, succeed on second
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockRejectedValueOnce(new Error('Transient database error'))
+        .mockResolvedValueOnce(null);
+
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrustee')
+        .mockResolvedValue(mockTrustee);
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1); // Eventually succeeded
+      expect(result.data?.errors).toBe(0);
+      expect(createSpy).toHaveBeenCalledTimes(1); // Called once after successful retry
+    });
+
+    test('should retry twice and succeed on third attempt', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Fail twice, succeed on third attempt (MAX_RETRY_ATTEMPTS = 2)
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockRejectedValueOnce(new Error('Transient error 1'))
+        .mockRejectedValueOnce(new Error('Transient error 2'))
+        .mockResolvedValueOnce(null);
+
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrustee')
+        .mockResolvedValue(mockTrustee);
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1); // Eventually succeeded
+      expect(result.data?.errors).toBe(0);
+      expect(createSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should fail after exhausting all retry attempts', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Fail on all attempts
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockRejectedValue(
+        new Error('Persistent database error'),
+      );
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(0); // Failed after all retries
+      expect(result.data?.errors).toBe(1);
+    }, 10000); // 10 second timeout for retry delays (1s + 2s)
+
+    test('should retry each failed trustee independently', async () => {
+      const trustees: AtsTrusteeRecord[] = [
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }, // Will fail then succeed
+        { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' }, // Will succeed immediately
+        { ID: 3, FIRST_NAME: 'Bob', LAST_NAME: 'Jones', STATE: 'TX' }, // Will fail permanently
+      ];
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockRejectedValueOnce(new Error('John fails first'))
+        .mockResolvedValueOnce(null) // John succeeds on retry
+        .mockResolvedValueOnce(null) // Jane succeeds immediately
+        .mockRejectedValue(new Error('Bob fails permanently')); // Bob fails all attempts
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(2); // John and Jane succeeded
+      expect(result.data?.errors).toBe(1); // Only Bob failed permanently
+    }, 15000); // 15 second timeout for retry delays
+  });
+
   describe('processPageOfTrustees', () => {
     test('should process multiple trustees', async () => {
       const trustees: AtsTrusteeRecord[] = [

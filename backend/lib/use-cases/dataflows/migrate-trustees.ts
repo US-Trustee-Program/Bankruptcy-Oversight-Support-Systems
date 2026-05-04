@@ -17,6 +17,12 @@ import { UstpOfficeDetails } from '@common/cams/offices';
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
 /**
+ * Maximum retry attempts for failed trustee processing.
+ * Transient failures (network issues, temporary DB locks) may succeed on retry.
+ */
+const MAX_RETRY_ATTEMPTS = 2;
+
+/**
  * Division information extracted from DXTR offices data
  */
 type DivisionInfo = {
@@ -746,6 +752,55 @@ export async function upsertProfessionalIds(
 }
 
 /**
+ * Retry wrapper for processing a trustee with fixed retry attempts.
+ * Handles exponential backoff and logging for retry attempts.
+ *
+ * @param context - Application context
+ * @param mergedData - Merged trustee data from multiple TOD records
+ * @param districtToDivisionsMap - Map for expanding district appointments into divisions
+ * @returns Processing result after all retry attempts
+ */
+async function processTrusteeWithRetry(
+  context: ApplicationContext,
+  mergedData: MergedTrusteeData,
+  districtToDivisionsMap: Map<string, DivisionInfo[]>,
+): Promise<TrusteeProcessingResult> {
+  let attempt = 0;
+  let result: TrusteeProcessingResult;
+
+  while (attempt <= MAX_RETRY_ATTEMPTS) {
+    result = await processTrusteeWithAppointments(context, mergedData, districtToDivisionsMap);
+
+    if (result.success) {
+      // Success - return immediately
+      return result;
+    }
+
+    // Failure - check if we should retry
+    attempt++;
+
+    if (attempt <= MAX_RETRY_ATTEMPTS) {
+      context.logger.warn(
+        MODULE_NAME,
+        `Trustee ${mergedData.todIds.join(', ')} failed (attempt ${attempt}/${MAX_RETRY_ATTEMPTS + 1}). Retrying...`,
+        { error: result.error },
+      );
+      // Exponential backoff: 1s, 2s
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    } else {
+      context.logger.error(
+        MODULE_NAME,
+        `Trustee ${mergedData.todIds.join(', ')} failed after ${attempt} attempts. Giving up.`,
+        { error: result.error },
+      );
+    }
+  }
+
+  // Return final failure result
+  return result!;
+}
+
+/**
  * Process a single merged trustee group with all their appointments.
  * This is the main unit of work for the migration with deduplication.
  * Gateway handles appointment cleansing - use case just stores clean data.
@@ -777,87 +832,85 @@ async function processTrusteeWithAppointments(
     };
   }
 
-  try {
-    // Upsert the trustee (with deduplication)
-    const trusteeResult = await upsertTrustee(context, mergedData);
-    if (trusteeResult.error) {
-      throw trusteeResult.error;
-    }
-
-    const trustee = trusteeResult.data;
-
-    // Fetch and aggregate appointments for all TOD IDs
-    const { cleanAppointments, failedAppointments, stats } = await fetchAndAggregateAppointments(
-      context,
-      todIds,
-      districtToDivisionsMap,
-    );
-
-    let appointmentsProcessed = 0;
-
-    // Process merged clean appointments
-    if (cleanAppointments.length > 0) {
-      const appointmentResult = await createAppointments(context, trustee, cleanAppointments);
-
-      if (appointmentResult.error) {
-        context.logger.error(
-          MODULE_NAME,
-          `Failed to process appointments for trustee TOD IDs ${todIds.join(', ')}`,
-          {
-            error: appointmentResult.error.message,
-          },
-        );
-      } else {
-        appointmentsProcessed = appointmentResult.data.successCount;
-      }
-    }
-
-    // Look up and store ACMS professional IDs (non-fatal)
-    const professionalIdsStored = await upsertProfessionalIds(
-      context,
-      trustee.trusteeId,
-      primary.FIRST_NAME ?? '',
-      primary.LAST_NAME ?? '',
-      primary.STATE ?? '',
-    );
-
-    // Log statistics
-    context.logger.info(MODULE_NAME, `Trustee TOD IDs ${todIds.join(', ')} stats:`, {
-      ...stats,
-      professionalIdsStored,
+  // 1. Upsert trustee (isolated error handling - FATAL)
+  const trusteeResult = await upsertTrustee(context, mergedData);
+  if (trusteeResult.error) {
+    context.logger.error(MODULE_NAME, `Failed to upsert trustee TOD IDs ${todIds.join(', ')}`, {
+      error: trusteeResult.error.message,
     });
-
-    return {
-      trusteeId: trustee.trusteeId,
-      todIds,
-      success: true,
-      appointmentsProcessed,
-      professionalIdsStored,
-      failedAppointments,
-    };
-  } catch (error) {
-    const camsError = getCamsError(error, MODULE_NAME);
-    context.logger.error(MODULE_NAME, `Failed to process trustee TOD IDs ${todIds.join(', ')}`, {
-      error: camsError.message,
-    });
-
     return {
       trusteeId: '',
       todIds,
       success: false,
       appointmentsProcessed: 0,
       failedAppointments: [],
-      error: camsError.message,
+      error: trusteeResult.error.message,
     };
   }
+
+  const trustee = trusteeResult.data;
+
+  // 2. Fetch and aggregate appointments (isolated error handling - NON-FATAL)
+  const { cleanAppointments, failedAppointments, stats } = await fetchAndAggregateAppointments(
+    context,
+    todIds,
+    districtToDivisionsMap,
+  );
+
+  let appointmentsProcessed = 0;
+
+  // 3. Create appointments (isolated error handling - NON-FATAL)
+  if (cleanAppointments.length > 0) {
+    const appointmentResult = await createAppointments(context, trustee, cleanAppointments);
+
+    if (appointmentResult.error) {
+      context.logger.error(
+        MODULE_NAME,
+        `Failed to create appointments for trustee ${trustee.trusteeId}`,
+        { error: appointmentResult.error.message },
+      );
+      // Continue - trustee is saved, just appointments failed
+    } else {
+      appointmentsProcessed = appointmentResult.data.successCount;
+    }
+  }
+
+  // 4. Professional IDs (isolated error handling - NON-FATAL, already handles errors internally)
+  const professionalIdsStored = await upsertProfessionalIds(
+    context,
+    trustee.trusteeId,
+    primary.FIRST_NAME ?? '',
+    primary.LAST_NAME ?? '',
+    primary.STATE ?? '',
+  );
+
+  // Log statistics
+  context.logger.info(MODULE_NAME, `Trustee TOD IDs ${todIds.join(', ')} stats:`, {
+    ...stats,
+    professionalIdsStored,
+  });
+
+  return {
+    trusteeId: trustee.trusteeId,
+    todIds,
+    success: true, // Trustee saved = success
+    appointmentsProcessed,
+    professionalIdsStored,
+    failedAppointments,
+  };
 }
 
 /**
- * Process a page of trustees with deduplication.
+ * Process a page of trustees with deduplication and automatic retry.
  * Main entry point for batch processing.
  * Deduplicates trustees by (firstName, lastName, state) before processing.
  * Gateway handles appointment cleansing internally.
+ * Retries failed trustees up to MAX_RETRY_ATTEMPTS times with exponential backoff.
  * Returns both processing stats and failed appointments for DLQ.
+ *
+ * @param context - Application context
+ * @param trustees - Array of ATS trustee records to process
+ * @returns Processing results with success/failure counts
  */
 export async function processPageOfTrustees(
   context: ApplicationContext,
@@ -892,19 +945,26 @@ export async function processPageOfTrustees(
 
   // Process each deduplicated group
   for (const [dedupeKey, trusteeGroup] of deduplicatedMap.entries()) {
-    // Merge the trustee group into a single entity
-    const mergedData = mergeTrusteeRecords(trusteeGroup);
+    let mergedData: MergedTrusteeData;
+
+    // Merge the trustee group into a single entity (handles malformed records)
+    try {
+      mergedData = mergeTrusteeRecords(trusteeGroup);
+    } catch (error) {
+      context.logger.error(MODULE_NAME, `Failed to merge trustee group: ${dedupeKey}`, {
+        error: getCamsError(error, MODULE_NAME).message,
+      });
+      errors++;
+      continue;
+    }
 
     context.logger.debug(
       MODULE_NAME,
       `Processing deduplicated trustee group: ${dedupeKey} (${trusteeGroup.length} TOD records)`,
     );
 
-    const result = await processTrusteeWithAppointments(
-      context,
-      mergedData,
-      districtToDivisionsMap,
-    );
+    // Process trustee with retry logic encapsulated in helper
+    const result = await processTrusteeWithRetry(context, mergedData, districtToDivisionsMap);
 
     if (result.success) {
       processed++;
