@@ -36,6 +36,7 @@ import useFeatureFlags, {
 import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
 import { CamsHttpError } from '@/lib/models/api';
 import { ClosedCasesHintMessage } from '@/lib/components/cams/ClosedCasesHintMessage/ClosedCasesHintMessage';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -307,6 +308,9 @@ export default function SearchScreen() {
   }
 
   function handleIncludeClosedCheckbox(ev: ChangeEvent<HTMLInputElement>) {
+    if (ev.target.checked) {
+      getAppInsights().appInsights.trackEvent({ name: 'Include Closed Cases Checkbox Checked' });
+    }
     setTemporarySearchPredicate((previous) => {
       return {
         ...previous,
@@ -316,6 +320,7 @@ export default function SearchScreen() {
   }
 
   function handleIncludeClosedAndSearch() {
+    getAppInsights().appInsights.trackEvent({ name: 'Include Closed Cases Link Clicked' });
     const updatedPredicate: CasesSearchPredicate = {
       ...temporarySearchPredicate,
       excludeClosedCases: false,
