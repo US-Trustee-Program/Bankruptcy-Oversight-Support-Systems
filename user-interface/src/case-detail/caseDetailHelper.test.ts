@@ -9,6 +9,12 @@ describe('caseDetailHelper', () => {
       expect(result).toBe('');
     });
 
+    test('should return empty string when caseDetail has no debtor', () => {
+      const caseDetail = MockData.getCaseDetail({ override: { debtor: undefined as never } });
+      const result = composeCaseTitle(caseDetail);
+      expect(result).toBe('');
+    });
+
     test('should return debtor name when there is no joint debtor', () => {
       const caseDetail = MockData.getCaseDetail({
         override: {
