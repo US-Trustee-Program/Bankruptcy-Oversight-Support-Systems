@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Case Search Metrics\nMonitor case search usage: search volume, search types, user behavior, and performance patterns."
+        "json": "# Closed Cases Visibility Metrics\n\nSuccess metrics for closed case visibility and user behavior on the Case Search page.\n\n**Instrumented events:**\n- `search` — fired on every search execution; dimensions: `excludeClosedCases`, `caseNumber`, `debtorNameUsed`, `divisionCodes`, `chapters`; boolean `excludeClosedCases=false` indicates closed cases were included\n- `First Search Action` — fired once per page visit on first search; dimensions: `searchType` (`case-number`, `debtor-name`, `other`), `timeToFirstSearch`, `featureFlagEnabled`\n- `Landing Page Navigation` — fired when user navigates away; dimensions: `toPage`, `timeOnLandingPage`"
       },
       "name": "header"
     },
@@ -15,50 +15,36 @@
         "parameters": [
           {
             "id": "TimeRange",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
             "type": 4,
             "isRequired": true,
             "value": {
-              "durationMs": 3600000
+              "durationMs": 172800000
             },
             "typeSettings": {
               "selectableValues": [
-                {
-                  "durationMs": 300000
-                },
-                {
-                  "durationMs": 900000
-                },
-                {
-                  "durationMs": 1800000
-                },
-                {
-                  "durationMs": 3600000
-                },
-                {
-                  "durationMs": 14400000
-                },
-                {
-                  "durationMs": 43200000
-                },
-                {
-                  "durationMs": 86400000
-                },
-                {
-                  "durationMs": 172800000
-                },
-                {
-                  "durationMs": 259200000
-                },
-                {
-                  "durationMs": 432000000
-                },
-                {
-                  "durationMs": 604800000
-                }
+                { "durationMs": 300000 },
+                { "durationMs": 900000 },
+                { "durationMs": 1800000 },
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 },
+                { "durationMs": 172800000 },
+                { "durationMs": 259200000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 1209600000 },
+                { "durationMs": 2419200000 },
+                { "durationMs": 2592000000 },
+                { "durationMs": 5184000000 },
+                { "durationMs": 7776000000 }
               ]
             },
-            "name": "TimeRange",
-            "label": "Time Range"
+            "label": "Time Range",
+            "timeContext": {
+              "durationMs": 86400000
+            }
           }
         ],
         "style": "pills",
@@ -70,73 +56,166 @@
     {
       "type": 1,
       "content": {
-        "json": "## Search Activity Overview"
+        "json": "---\n## Usage Tracking\nHow often users include closed cases in their searches and how they trigger it."
       },
-      "name": "overview-header"
+      "name": "usage-header"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| summarize TotalSearches = count(),\n            UniqueUsers = dcount(user_Id),\n            AvgTimeToSearch = avg(todouble(customMeasurements.timeToFirstSearch)) / 1000\n| project TotalSearches, UniqueUsers, AvgTimeToSearchSeconds = round(AvgTimeToSearch, 1)",
-        "size": 4,
-        "title": "Search Summary",
+        "query": "let SearchPageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/search\"\n    | summarize by operation_Id;\nlet TotalVisits = toscalar(SearchPageVisits | count);\nlet ClosedIncludedVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"search\"\n    | where tostring(customDimensions.excludeClosedCases) == \"false\"\n    | project operation_Id\n    | join kind=inner SearchPageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    ClosedIncludedVisits = ClosedIncludedVisits,\n    IncludeClosedRate = round(iif(TotalVisits > 0, todouble(ClosedIncludedVisits) / todouble(TotalVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Page Visits Where Closed Cases Were Included",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": {
-            "columnMatch": "Column",
-            "formatter": 1
-          },
+          "titleContent": {},
           "leftContent": {
-            "columnMatch": "Value",
+            "columnMatch": "IncludeClosedRate",
             "formatter": 12,
             "formatOptions": {
-              "palette": "auto"
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
             }
           },
-          "showBorder": false
+          "secondaryContent": {
+            "columnMatch": "TotalVisits",
+            "formatter": 1
+          },
+          "showBorder": true
         }
       },
-      "name": "search-summary"
-    },
-    {
-      "type": 1,
-      "content": {
-        "json": "## Search Volume Over Time"
-      },
-      "name": "volume-header"
+      "customWidth": "25",
+      "name": "include-closed-rate-kpi"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| summarize SearchCount = count() by bin(timestamp, 1h)\n| order by timestamp asc",
-        "size": 0,
-        "title": "Searches Per Hour",
+        "query": "let SearchPageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/search\"\n    | summarize by operation_Id;\nlet TotalVisits = toscalar(SearchPageVisits | count);\nlet CaseNumberSearches =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"search\"\n    | where isnotempty(tostring(customDimensions.caseNumber))\n    | project operation_Id;\nlet CaseNumberClosedVisits = toscalar(\n    CaseNumberSearches\n    | join kind=inner SearchPageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    CaseNumberClosedVisits = CaseNumberClosedVisits,\n    CaseNumberSearchRate = round(iif(TotalVisits > 0, todouble(CaseNumberClosedVisits) / todouble(TotalVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Page Visits Using Case Number Search",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "barchart",
-        "chartSettings": {
-          "xAxis": "timestamp",
-          "yAxis": ["SearchCount"],
-          "seriesLabelSettings": [
-            {
-              "seriesName": "SearchCount",
-              "label": "Searches"
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "CaseNumberSearchRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
             }
-          ]
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalVisits",
+            "formatter": 1
+          },
+          "showBorder": true
         }
       },
-      "name": "searches-per-hour"
+      "customWidth": "25",
+      "name": "case-number-search-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let CaseNumberWithClosedEvents =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"search\"\n    | where isnotempty(tostring(customDimensions.caseNumber))\n    | where tostring(customDimensions.excludeClosedCases) == \"false\"\n    | project operation_Id;\nlet TotalCaseNumberSearchVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"search\"\n    | where isnotempty(tostring(customDimensions.caseNumber))\n    | summarize by operation_Id\n    | count\n);\nlet ClosedCaseNumberVisits = toscalar(\n    CaseNumberWithClosedEvents\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalCaseNumberVisits = TotalCaseNumberSearchVisits,\n    ClosedCaseNumberVisits = ClosedCaseNumberVisits,\n    Rate = round(iif(TotalCaseNumberSearchVisits > 0, todouble(ClosedCaseNumberVisits) / todouble(TotalCaseNumberSearchVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Case Number Searches That Included Closed Cases",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "Rate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalCaseNumberVisits",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "case-number-closed-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let OtherWithClosedEvents =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"search\"\n    | where isempty(tostring(customDimensions.caseNumber))\n    | where tostring(customDimensions.excludeClosedCases) == \"false\"\n    | project operation_Id;\nlet TotalOtherVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"search\"\n    | where isempty(tostring(customDimensions.caseNumber))\n    | summarize by operation_Id\n    | count\n);\nlet ClosedOtherVisits = toscalar(\n    OtherWithClosedEvents\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalOtherVisits = TotalOtherVisits,\n    ClosedOtherVisits = ClosedOtherVisits,\n    Rate = round(iif(TotalOtherVisits > 0, todouble(ClosedOtherVisits) / todouble(TotalOtherVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Other Searches (Non-Case-Number) That Included Closed Cases",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "Rate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalOtherVisits",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "other-search-closed-rate-kpi"
     },
     {
       "type": 1,
       "content": {
-        "json": "## Search Type Distribution"
+        "json": "---\n## Search Type Breakdown\nDistribution of search types across all Case Search page visits."
       },
       "name": "search-type-header"
     },
@@ -144,50 +223,43 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| extend searchType = tostring(customDimensions.searchType)\n| summarize Count = count() by searchType\n| order by Count desc",
-        "size": 0,
-        "title": "Search Types",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| where tostring(customDimensions.landingPage) == \"case-search\"\n| extend searchType = tostring(customDimensions.searchType)\n| summarize Count = count() by searchType\n| order by Count desc",
+        "size": 3,
+        "title": "Search Type Distribution (First Search per Visit)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "piechart"
-      },
-      "name": "search-types"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| extend searchType = tostring(customDimensions.searchType)\n| summarize Count = count() by searchType, bin(timestamp, 1h)\n| order by timestamp asc",
-        "size": 0,
-        "title": "Search Types Over Time",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "linechart",
-        "chartSettings": {
-          "xAxis": "timestamp",
-          "yAxis": ["Count"],
-          "group": "searchType",
-          "createOtherGroup": 0
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "searchType"
+          },
+          "leftContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "showBorder": true
         }
       },
-      "name": "search-types-over-time"
-    },
-    {
-      "type": 1,
-      "content": {
-        "json": "## Time to First Search"
-      },
-      "name": "time-to-search-header"
+      "customWidth": "33",
+      "name": "search-type-distribution-kpi"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| extend timeToSearchMs = todouble(customMeasurements.timeToFirstSearch)\n| extend timeToSearchSeconds = timeToSearchMs / 1000\n| summarize \n    AvgTime = avg(timeToSearchSeconds),\n    MedianTime = percentile(timeToSearchSeconds, 50),\n    P90Time = percentile(timeToSearchSeconds, 90),\n    P95Time = percentile(timeToSearchSeconds, 95)\n| project \n    ['Average (s)'] = round(AvgTime, 1),\n    ['Median (s)'] = round(MedianTime, 1),\n    ['90th Percentile (s)'] = round(P90Time, 1),\n    ['95th Percentile (s)'] = round(P95Time, 1)",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"search\"\n| extend hasCaseNumber = isnotempty(tostring(customDimensions.caseNumber))\n| extend hasDebtorName = tostring(customDimensions.debtorNameUsed) == \"true\"\n| extend includesClosed = tostring(customDimensions.excludeClosedCases) == \"false\"\n| extend SearchType = case(\n    hasCaseNumber, \"Case Number\",\n    hasDebtorName, \"Debtor Name\",\n    \"Other\"\n  )\n| summarize\n    TotalSearches = count(),\n    WithClosed = countif(includesClosed),\n    WithoutClosed = countif(not(includesClosed))\n    by SearchType\n| extend PctWithClosed = round(iif(TotalSearches > 0, todouble(WithClosed) / todouble(TotalSearches) * 100, 0.0), 1)\n| order by TotalSearches desc",
         "size": 0,
-        "title": "Time to First Search Distribution",
+        "title": "Search Type vs. Include Closed Cases",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -195,69 +267,294 @@
         "gridSettings": {
           "formatters": [
             {
-              "columnMatch": "$gen_group",
-              "formatter": 13,
+              "columnMatch": "PctWithClosed",
+              "formatter": 8,
               "formatOptions": {
-                "linkTarget": null,
-                "showIcon": true
+                "palette": "blue",
+                "min": 0,
+                "max": 100
+              },
+              "numberFormat": {
+                "unit": 1,
+                "options": {
+                  "style": "decimal",
+                  "minimumFractionDigits": 1,
+                  "maximumFractionDigits": 1
+                }
               }
             }
           ]
         }
       },
-      "name": "time-to-search-stats"
-    },
-    {
-      "type": 3,
-      "content": {
-        "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| extend timeToSearchMs = todouble(customMeasurements.timeToFirstSearch)\n| extend timeToSearchSeconds = timeToSearchMs / 1000\n| extend TimeBucket = case(\n    timeToSearchSeconds < 5, \"0-5s\",\n    timeToSearchSeconds < 10, \"5-10s\",\n    timeToSearchSeconds < 30, \"10-30s\",\n    timeToSearchSeconds < 60, \"30-60s\",\n    timeToSearchSeconds < 300, \"1-5m\",\n    \"5m+\"\n)\n| summarize Count = count() by TimeBucket\n| order by TimeBucket asc",
-        "size": 0,
-        "title": "Time to First Search Histogram",
-        "timeContextFromParameter": "TimeRange",
-        "queryType": 0,
-        "resourceType": "microsoft.insights/components",
-        "visualization": "barchart"
-      },
-      "name": "time-to-search-histogram"
+      "customWidth": "67",
+      "name": "search-type-closed-breakdown"
     },
     {
       "type": 1,
       "content": {
-        "json": "## Navigation Patterns"
+        "json": "---\n## \"No Open Cases Found\" Message Exposure\nHow often users encounter the \"No Open cases found\" state, indicating closed cases exist for their search criteria."
       },
-      "name": "navigation-header"
+      "name": "no-open-cases-header"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Landing Page Navigation\"\n| extend fromPage = tostring(customDimensions.fromPage)\n| extend toPage = tostring(customDimensions.toPage)\n| where fromPage == \"case-search\"\n| summarize Count = count() by toPage\n| order by Count desc\n| take 10",
-        "size": 0,
-        "title": "Top Destinations from Case Search",
+        "query": "let SearchPageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/search\"\n    | summarize by operation_Id;\nlet TotalVisits = toscalar(SearchPageVisits | count);\n// Proxy: case number search with excludeClosedCases=true that returns no open results\n// We detect this via searches where excludeClosedCases=true + caseNumber is set,\n// then a subsequent search in same session with excludeClosedCases=false (user acted on the hint)\nlet HintActedVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"search\"\n    | where isnotempty(tostring(customDimensions.caseNumber))\n    | summarize\n        hadExcluded = countif(tostring(customDimensions.excludeClosedCases) == \"true\"),\n        thenIncluded = countif(tostring(customDimensions.excludeClosedCases) == \"false\")\n        by operation_Id\n    | where hadExcluded > 0 and thenIncluded > 0\n    | join kind=inner SearchPageVisits on operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    HintActedVisits = HintActedVisits,\n    HintActedRate = round(iif(TotalVisits > 0, todouble(HintActedVisits) / todouble(TotalVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Visits Where User Switched from Excluded to Included Closed Cases (Same Session)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "table"
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "HintActedRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalVisits",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
       },
-      "name": "navigation-from-search"
+      "customWidth": "33",
+      "name": "hint-acted-rate-kpi"
     },
     {
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Landing Page Navigation\"\n| extend timeOnPage = todouble(customMeasurements.timeOnLandingPage) / 1000\n| extend fromPage = tostring(customDimensions.fromPage)\n| where fromPage == \"case-search\"\n| summarize \n    AvgTime = avg(timeOnPage),\n    MedianTime = percentile(timeOnPage, 50)\n| project \n    ['Average Time on Search Page (s)'] = round(AvgTime, 1),\n    ['Median Time on Search Page (s)'] = round(MedianTime, 1)",
-        "size": 0,
-        "title": "Time Spent on Search Page",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"search\"\n| where isnotempty(tostring(customDimensions.caseNumber))\n| summarize\n    hadExcluded = countif(tostring(customDimensions.excludeClosedCases) == \"true\"),\n    thenIncluded = countif(tostring(customDimensions.excludeClosedCases) == \"false\")\n    by operation_Id\n| where hadExcluded > 0 and thenIncluded > 0\n| extend timeToSwitch = \"switched\"\n| summarize SwitchedSessions = count()\n| extend NotSwitched = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"search\"\n    | where isnotempty(tostring(customDimensions.caseNumber))\n    | summarize\n        hadExcluded = countif(tostring(customDimensions.excludeClosedCases) == \"true\"),\n        thenIncluded = countif(tostring(customDimensions.excludeClosedCases) == \"false\")\n        by operation_Id\n    | where hadExcluded > 0 and thenIncluded == 0\n    | count\n)\n| project SwitchedSessions, NotSwitched",
+        "size": 3,
+        "title": "Sessions: Switched to Include Closed vs. Did Not (Case Number Searches)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
-        "visualization": "table"
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "SwitchedSessions",
+            "formatter": 1
+          },
+          "leftContent": {
+            "columnMatch": "SwitchedSessions",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "NotSwitched",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
       },
-      "name": "time-on-search-page"
+      "customWidth": "33",
+      "name": "switch-vs-no-switch-kpi"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Trends Over Time\nDaily trends for include-closed-cases adoption and search type usage."
+      },
+      "name": "trends-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"search\"\n| extend includesClosed = tostring(customDimensions.excludeClosedCases) == \"false\"\n| extend hasCaseNumber = isnotempty(tostring(customDimensions.caseNumber))\n| summarize\n    TotalSearches = count(),\n    WithClosed = countif(includesClosed),\n    CaseNumberSearches = countif(hasCaseNumber),\n    CaseNumberWithClosed = countif(hasCaseNumber and includesClosed)\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "size": 0,
+        "title": "Search Activity Over Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "TotalSearches",
+              "label": "Total Searches",
+              "color": "blue"
+            },
+            {
+              "seriesName": "WithClosed",
+              "label": "Included Closed Cases",
+              "color": "green"
+            },
+            {
+              "seriesName": "CaseNumberSearches",
+              "label": "Case Number Searches",
+              "color": "orange"
+            },
+            {
+              "seriesName": "CaseNumberWithClosed",
+              "label": "Case Number + Closed",
+              "color": "purple"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "search-activity-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"First Search Action\"\n| where tostring(customDimensions.landingPage) == \"case-search\"\n| extend searchType = tostring(customDimensions.searchType)\n| summarize\n    CaseNumber = countif(searchType == \"case-number\"),\n    DebtorName = countif(searchType == \"debtor-name\"),\n    Other = countif(searchType == \"other\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "size": 0,
+        "title": "First Search Type Over Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "CaseNumber",
+              "label": "Case Number",
+              "color": "orange"
+            },
+            {
+              "seriesName": "DebtorName",
+              "label": "Debtor Name",
+              "color": "blue"
+            },
+            {
+              "seriesName": "Other",
+              "label": "Other",
+              "color": "green"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "first-search-type-trend"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Performance Tracking\nSearch response time with and without closed cases included."
+      },
+      "name": "performance-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp {TimeRange}\n| where url contains \"/api/cases\" or name contains \"searchCases\"\n| extend includesClosed = url !contains \"excludeClosedCases=true\"\n| extend SearchMode = iif(includesClosed, \"With Closed Cases\", \"Exclude Closed Cases\")\n| where success == true\n| summarize\n    P50Ms = round(percentile(duration, 50), 0),\n    P95Ms = round(percentile(duration, 95), 0),\n    SampleCount = count()\n    by SearchMode\n| project\n    SearchMode,\n    ['P50 Response (ms)'] = P50Ms,\n    ['P95 Response (ms)'] = P95Ms,\n    ['Sample Count'] = SampleCount",
+        "size": 3,
+        "title": "Search Response Time: Closed Cases Excluded vs. Included",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "SearchMode",
+            "formatter": 1
+          },
+          "leftContent": {
+            "columnMatch": "P50 Response (ms)",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "greenRed"
+            },
+            "numberFormat": {
+              "unit": 23,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 0,
+                "maximumFractionDigits": 0
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "P95 Response (ms)",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "50",
+      "name": "search-response-time-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where timestamp {TimeRange}\n| where url contains \"/api/cases\" or name contains \"searchCases\"\n| where success == true\n| extend includesClosed = url !contains \"excludeClosedCases=true\"\n| summarize\n    P50Ms = round(percentile(duration, 50), 0),\n    P95Ms = round(percentile(duration, 95), 0)\n    by Day = bin(timestamp, 1d), includesClosed\n| extend Mode = iif(includesClosed, \"With Closed\", \"Exclude Closed\")\n| project Day, Mode, P50Ms, P95Ms\n| order by Day asc",
+        "size": 0,
+        "title": "Search Response Time Trend (P50)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "yAxis": ["P50Ms"],
+          "splitBy": "Mode",
+          "showDataPoints": true,
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 23,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 0,
+                "maximumFractionDigits": 0
+              }
+            }
+          }
+        }
+      },
+      "customWidth": "50",
+      "name": "search-response-time-trend"
     }
   ],
-  "fallbackResourceIds": [],
-  "fromTemplateId": "sentinel-UserWorkbook",
+  "fallbackResourceIds": [
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-b2abcd/providers/Microsoft.Insights/components/appi-ustp-cams-dev-b2abcd-webapp"
+  ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
