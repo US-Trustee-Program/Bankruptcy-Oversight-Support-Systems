@@ -623,6 +623,33 @@ describe('search screen', () => {
     expect(document.querySelector('#closed-cases-hint-alert')).not.toBeInTheDocument();
   });
 
+  test('shows "No Open cases found" with count when caseNumber search returns no open results but closed cases exist', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({
+      meta: { self: 'self-url' },
+      pagination: {
+        count: 0,
+        currentPage: 0,
+        limit: DEFAULT_SEARCH_LIMIT,
+        closedCasesCount: 4,
+      } as CasesPagination,
+      data: [],
+    });
+
+    renderWithoutProps();
+
+    const caseNumberInput = screen.getByTestId('basic-search-field');
+    await userEvent.type(caseNumberInput, '00-11111');
+    await userEvent.click(screen.getByTestId('button-search-submit'));
+
+    await waitFor(() => {
+      const alert = document.querySelector('#no-results-alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('No Open cases found');
+      expect(alert).toHaveTextContent('4 closed cases match your search filters.');
+      expect(alert).toHaveTextContent('Include Closed Cases');
+    });
+  });
+
   test('should update search predicate when Include Closed Cases checkbox is toggled', async () => {
     renderWithoutProps();
     const caseNumberInput = screen.getByTestId('basic-search-field');

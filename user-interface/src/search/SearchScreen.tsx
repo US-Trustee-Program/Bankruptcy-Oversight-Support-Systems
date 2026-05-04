@@ -151,6 +151,14 @@ export default function SearchScreen() {
 
   const showCountClosedHint =
     !isSearching &&
+    hasResults &&
+    searchPredicate.excludeClosedCases === true &&
+    !!searchPredicate.caseNumber &&
+    closedCasesCount > 0;
+
+  const showNoResultsWithCountHint =
+    !isSearching &&
+    !hasResults &&
     searchPredicate.excludeClosedCases === true &&
     !!searchPredicate.caseNumber &&
     closedCasesCount > 0;
@@ -548,20 +556,24 @@ export default function SearchScreen() {
                       ></Alert>
                     </div>
                   )}
-                  {!isSearching && !hasResults && !searchError && !showNoResultsOpenOnlyHint && (
-                    <div className="search-alert">
-                      <Alert
-                        id="no-results-alert"
-                        className="measure-6"
-                        message="Modify your search criteria to include more cases."
-                        title="No cases found"
-                        type={UswdsAlertStyle.Info}
-                        show={true}
-                        inline={true}
-                        role="alert"
-                      ></Alert>
-                    </div>
-                  )}
+                  {!isSearching &&
+                    !hasResults &&
+                    !searchError &&
+                    !showNoResultsOpenOnlyHint &&
+                    !showNoResultsWithCountHint && (
+                      <div className="search-alert">
+                        <Alert
+                          id="no-results-alert"
+                          className="measure-6"
+                          message="Modify your search criteria to include more cases."
+                          title="No cases found"
+                          type={UswdsAlertStyle.Info}
+                          show={true}
+                          inline={true}
+                          role="alert"
+                        ></Alert>
+                      </div>
+                    )}
                   {showNoResultsOpenOnlyHint && (
                     <div className="search-alert">
                       <Alert
@@ -575,6 +587,25 @@ export default function SearchScreen() {
                       >
                         <ClosedCasesHintMessage
                           variant="generic"
+                          onIncludeClosedCases={handleIncludeClosedAndSearch}
+                        />
+                      </Alert>
+                    </div>
+                  )}
+                  {showNoResultsWithCountHint && (
+                    <div className="search-alert">
+                      <Alert
+                        id="no-results-alert"
+                        className="measure-6"
+                        title="No Open cases found"
+                        type={UswdsAlertStyle.Info}
+                        show={true}
+                        inline={true}
+                        role="alert"
+                      >
+                        <ClosedCasesHintMessage
+                          variant="count"
+                          closedCasesCount={closedCasesCount}
                           onIncludeClosedCases={handleIncludeClosedAndSearch}
                         />
                       </Alert>
