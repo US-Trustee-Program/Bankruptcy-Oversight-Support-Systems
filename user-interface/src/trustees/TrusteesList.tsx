@@ -66,6 +66,8 @@ export default function TrusteesList() {
   const [liveAnnouncement, setLiveAnnouncement] = useState<string>('');
   const [nameSearch, setNameSearch] = useState('');
   const [nameSearchIds, setNameSearchIds] = useState<Set<string>>(new Set());
+  const [nameSearchLoading, setNameSearchLoading] = useState(false);
+  const stableCountRef = useRef<number | null>(null);
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
   const pageLoadStart = useRef(performance.now());
   const isNameFilterInteracted = useRef(false);
@@ -121,6 +123,7 @@ export default function TrusteesList() {
 
   const handleFilterName = (name: string) => {
     isNameFilterInteracted.current = true;
+    if (name.length >= 2) setNameSearchLoading(true);
     setNameSearch(name);
   };
 
@@ -128,9 +131,11 @@ export default function TrusteesList() {
     if (nameSearch.length < 2) {
       nameSearchQueryLengthRef.current = 0;
       setNameSearchIds(new Set());
+      setNameSearchLoading(false);
       return;
     }
     nameSearchQueryLengthRef.current = nameSearch.length;
+    setNameSearchLoading(true);
     debounce(async () => {
       const searchStart = performance.now();
       try {
@@ -143,6 +148,8 @@ export default function TrusteesList() {
         nameSearchStartRef.current = null;
         setNameSearch('');
         setNameSearchIds(new Set());
+      } finally {
+        setNameSearchLoading(false);
       }
     }, 300);
   }, [nameSearch, debounce]);
@@ -198,10 +205,15 @@ export default function TrusteesList() {
     );
   }, [selectedDistricts, selectedChapters, trustees]);
 
+  if (!nameSearchLoading) {
+    stableCountRef.current = filteredTrustees.length;
+  }
+
   useEffect(() => {
     if (!isChapterFilterInteracted.current && !isNameFilterInteracted.current) return;
+    if (nameSearchLoading) return;
     setLiveAnnouncement(`${filteredTrustees.length} Trustees`);
-  }, [filteredTrustees]);
+  }, [filteredTrustees, nameSearchLoading]);
 
   useEffect(() => {
     if (!isChapterFilterInteracted.current) return;
@@ -297,7 +309,12 @@ export default function TrusteesList() {
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
         {liveAnnouncement}
       </div>
-      <p className="trustees-list-count">{filteredTrustees.length} Trustee(s)</p>
+      <p className="trustees-list-count">
+        {nameSearchLoading
+          ? (stableCountRef.current ?? filteredTrustees.length)
+          : filteredTrustees.length}{' '}
+        Trustee(s)
+      </p>
       <div
         className="trustees-list-grid"
         role="table"
@@ -351,72 +368,76 @@ export default function TrusteesList() {
           </div>
         </div>
         <div role="rowgroup">
-          {filteredTrustees.map((trustee) => {
-            const rows = trustee.appointments.length === 0 ? [null] : trustee.appointments;
+          {nameSearchLoading ? (
+            <LoadingSpinner caption="Searching trustees..." />
+          ) : (
+            filteredTrustees.map((trustee) => {
+              const rows = trustee.appointments.length === 0 ? [null] : trustee.appointments;
 
-            return (
-              <div key={trustee.trusteeId} className="trustee-group">
-                {rows.map((appt, idx) => (
-                  <div
-                    key={`${trustee.trusteeId}-${idx}`}
-                    className={`trustees-list-row${idx > 0 ? ' trustees-list-row--continuation' : ''}`}
-                    role="row"
-                  >
+              return (
+                <div key={trustee.trusteeId} className="trustee-group">
+                  {rows.map((appt, idx) => (
                     <div
-                      className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[0])}`}
-                      role="cell"
-                      {...(idx === 0 ? { 'data-cell': COLUMN_HEADERS[0] } : {})}
+                      key={`${trustee.trusteeId}-${idx}`}
+                      className={`trustees-list-row${idx > 0 ? ' trustees-list-row--continuation' : ''}`}
+                      role="row"
                     >
-                      {idx === 0 ? (
-                        <NavLink
-                          to={`/trustees/${trustee.trusteeId}`}
-                          data-testid={`trustee-link-${trustee.trusteeId}`}
-                          className="usa-link"
-                        >
-                          {formatTrusteeListName(
-                            trustee.firstName,
-                            trustee.middleName,
-                            trustee.lastName,
-                            trustee.name,
-                          )}
-                        </NavLink>
-                      ) : (
-                        <span aria-hidden="true"></span>
-                      )}
+                      <div
+                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[0])}`}
+                        role="cell"
+                        {...(idx === 0 ? { 'data-cell': COLUMN_HEADERS[0] } : {})}
+                      >
+                        {idx === 0 ? (
+                          <NavLink
+                            to={`/trustees/${trustee.trusteeId}`}
+                            data-testid={`trustee-link-${trustee.trusteeId}`}
+                            className="usa-link"
+                          >
+                            {formatTrusteeListName(
+                              trustee.firstName,
+                              trustee.middleName,
+                              trustee.lastName,
+                              trustee.name,
+                            )}
+                          </NavLink>
+                        ) : (
+                          <span aria-hidden="true"></span>
+                        )}
+                      </div>
+                      <div
+                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[1])}`}
+                        role="cell"
+                        data-cell={COLUMN_HEADERS[1]}
+                      >
+                        {appt ? formatDistrict(appt) : ''}
+                      </div>
+                      <div
+                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[2])}`}
+                        role="cell"
+                        data-cell={COLUMN_HEADERS[2]}
+                      >
+                        {appt ? formatChapterType(appt.chapter) : ''}
+                      </div>
+                      <div
+                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[3])}`}
+                        role="cell"
+                        data-cell={COLUMN_HEADERS[3]}
+                      >
+                        {appt ? formatAppointmentType(appt.appointmentType) : ''}
+                      </div>
+                      <div
+                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[4])}`}
+                        role="cell"
+                        data-cell={COLUMN_HEADERS[4]}
+                      >
+                        {appt ? formatAppointmentStatus(appt.status) : ''}
+                      </div>
                     </div>
-                    <div
-                      className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[1])}`}
-                      role="cell"
-                      data-cell={COLUMN_HEADERS[1]}
-                    >
-                      {appt ? formatDistrict(appt) : ''}
-                    </div>
-                    <div
-                      className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[2])}`}
-                      role="cell"
-                      data-cell={COLUMN_HEADERS[2]}
-                    >
-                      {appt ? formatChapterType(appt.chapter) : ''}
-                    </div>
-                    <div
-                      className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[3])}`}
-                      role="cell"
-                      data-cell={COLUMN_HEADERS[3]}
-                    >
-                      {appt ? formatAppointmentType(appt.appointmentType) : ''}
-                    </div>
-                    <div
-                      className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[4])}`}
-                      role="cell"
-                      data-cell={COLUMN_HEADERS[4]}
-                    >
-                      {appt ? formatAppointmentStatus(appt.status) : ''}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            );
-          })}
+                  ))}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>

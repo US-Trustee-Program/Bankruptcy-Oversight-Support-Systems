@@ -3,23 +3,29 @@
 
   .usa-accordion__heading {
     margin-bottom: 1.5rem;
+
     .usa-accordion__button {
       padding-left: 1rem;
     }
   }
+
   .usa-accordion__heading.usa-accordion--expanded {
     margin-bottom: 0;
   }
+
   .usa-accordion__content {
     padding: 1rem 1.25rem 1rem 1rem;
+
     .filter-content {
       margin-top: 0.5rem;
+
       .usa-form-group {
         margin-top: 0;
       }
     }
   }
-  .usa-accordion__content:not([hidden]) + .filter-pills-container {
+
+  .usa-accordion__content:not([hidden])+.filter-pills-container {
     margin-top: 0.25rem;
   }
 
@@ -51,6 +57,10 @@
   .filter-content {
     margin-top: 1rem;
     animation: slideDown 0.2s ease-out;
+
+    #trustee-name-filter {
+      margin-top: .75rem;
+    }
 
     .filter-controls-row {
       display: flex;
@@ -117,6 +127,7 @@
       opacity: 0;
       transform: translateY(-10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
