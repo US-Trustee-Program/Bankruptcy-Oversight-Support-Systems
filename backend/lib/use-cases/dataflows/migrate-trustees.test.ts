@@ -1,15 +1,14 @@
 import { describe, expect, test, vi, beforeEach, afterEach } from 'vitest';
 import {
   getPageOfTrustees,
-  getTrusteeAppointments,
   upsertTrustee,
   createAppointments,
-  processTrusteeWithAppointments,
   processPageOfTrustees,
   getTotalTrusteeCount,
   deleteAllTrusteesAndAppointments,
   mergeTrusteeRecords,
   upsertProfessionalIds,
+  buildDistrictToDivisionsMap,
 } from './migrate-trustees';
 import {
   getOrCreateMigrationState,
@@ -20,10 +19,11 @@ import {
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
-import { AtsTrusteeRecord } from '../../adapters/types/ats.types';
+import { AtsTrusteeRecord, FailedAppointment } from '../../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
 import { AcmsGateway, AtsGateway } from '../../use-cases/gateways.types';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
+import { UstpOfficeDetails } from '@common/cams/offices';
 
 /**
  * Helper function to wrap a single trustee for the new merged data format.
@@ -134,51 +134,6 @@ describe('Migrate Trustees Use Case', () => {
 
       expect(result.error).toBeDefined();
       expect(result.error?.message).toContain('Failed to get page of trustees');
-      expect(result.data).toBeUndefined();
-    });
-  });
-
-  describe('getTrusteeAppointments', () => {
-    test('should get appointments for a trustee', async () => {
-      const mockAppointments: TrusteeAppointmentInput[] = [
-        {
-          chapter: '7',
-          appointmentType: 'panel',
-          courtId: '053N',
-          appointedDate: '2023-01-15',
-          status: 'active',
-          effectiveDate: '2023-01-15',
-        },
-      ];
-
-      const getTrusteeAppointmentsSpy = vi
-        .spyOn(atsGateway, 'getTrusteeAppointments')
-        .mockResolvedValue({
-          cleanAppointments: mockAppointments,
-          failedAppointments: [],
-          stats: {
-            total: 1,
-            clean: 1,
-            autoRecoverable: 0,
-            problematic: 0,
-            uncleansable: 0,
-            skipped: 0,
-          },
-        });
-
-      const result = await getTrusteeAppointments(context, 1);
-
-      expect(result.data?.cleanAppointments).toEqual(mockAppointments);
-      expect(getTrusteeAppointmentsSpy).toHaveBeenCalledWith(context, 1);
-    });
-
-    test('should handle error when getting appointments fails', async () => {
-      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockRejectedValue(new Error('Database error'));
-
-      const result = await getTrusteeAppointments(context, 1);
-
-      expect(result.error).toBeDefined();
-      expect(result.error?.message).toContain('Failed to get appointments for trustee 1');
       expect(result.data).toBeUndefined();
     });
   });
@@ -506,15 +461,53 @@ describe('Migrate Trustees Use Case', () => {
     });
   });
 
-  describe('processTrusteeWithAppointments', () => {
+  describe('processTrusteeWithAppointments - Error Handling', () => {
+    const mockTrustee = {
+      id: 'doc-id',
+      trusteeId: 'trustee-100',
+      firstName: 'Test',
+      lastName: 'Trustee',
+      name: 'Test Trustee',
+      status: 'active' as const,
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+      },
+      createdOn: '2023-01-01',
+      updatedOn: '2023-01-01',
+      updatedBy: { id: 'SYSTEM', name: 'System' },
+    };
+
     beforeEach(() => {
-      // Stub ACMS gateway so upsertProfessionalIds does not reach the network
+      // Mock offices gateway for all tests
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      // Stub ACMS gateway to prevent network calls
       vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
         getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
       } as unknown as AcmsGateway);
     });
 
-    test('should process trustee with appointments successfully', async () => {
+    test('should return error when trustee record is malformed (missing ID)', async () => {
+      const malformedTrustee: AtsTrusteeRecord = {
+        ID: undefined as unknown as number, // Force undefined ID
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      const trustees = [malformedTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(0); // Merge failed, so not processed
+      expect(result.data?.errors).toBe(1);
+      expect(result.data?.appointments).toBe(0);
+    });
+
+    test('should fail when upsert trustee fails and not process appointments', async () => {
       const atsTrustee: AtsTrusteeRecord = {
         ID: 1,
         FIRST_NAME: 'John',
@@ -522,13 +515,32 @@ describe('Migrate Trustees Use Case', () => {
         STATE: 'NY',
       };
 
-      const createdTrustee = {
-        id: 'new-id',
-        trusteeId: 'trustee-123',
-        name: 'John Doe',
+      // Simulate database error during trustee upsert
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockRejectedValue(
+        new Error('Database connection lost'),
+      );
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(0); // Failed, so not counted as processed
+      expect(result.data?.errors).toBe(1);
+      expect(result.data?.appointments).toBe(0);
+    });
+
+    test('should succeed with trustee saved even when appointment creation fails', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
       };
 
-      // Gateway returns clean CAMS types
+      // Trustee upsert succeeds
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      // Appointments fetch succeeds
       const cleanAppointments: TrusteeAppointmentInput[] = [
         {
           chapter: '7',
@@ -540,8 +552,6 @@ describe('Migrate Trustees Use Case', () => {
         },
       ];
 
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
-      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(createdTrustee);
       vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
         cleanAppointments,
         failedAppointments: [],
@@ -554,34 +564,63 @@ describe('Migrate Trustees Use Case', () => {
           skipped: 0,
         },
       });
+
       vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockResolvedValue({});
 
-      const mergedData = wrapTrusteeForProcessing(atsTrustee);
-      const result = await processTrusteeWithAppointments(context, mergedData);
+      // Appointment creation fails
+      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockRejectedValue(
+        new Error('Database write failed'),
+      );
 
-      expect(result.success).toBe(true);
-      expect(result.trusteeId).toBe('trustee-123');
-      expect(result.todIds).toEqual(['1']);
-      expect(result.appointmentsProcessed).toBe(1);
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      // Trustee succeeded, so success count = 1
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      // But appointments failed
+      expect(result.data?.appointments).toBe(0);
     });
 
-    test('should handle trustee with no appointments', async () => {
+    test('should continue when appointment fetch fails for one TOD ID but succeed for trustee', async () => {
       const atsTrustee: AtsTrusteeRecord = {
-        ID: 2,
-        FIRST_NAME: 'Jane',
-        LAST_NAME: 'Smith',
-        STATE: 'CA',
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
       };
 
-      const createdTrustee = {
-        id: 'new-id',
-        trusteeId: 'trustee-456',
-        name: 'Jane Smith',
-      };
-
+      // Trustee upsert succeeds
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
-      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(createdTrustee);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      // Appointment fetch fails (ATS timeout, network error, etc.)
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockRejectedValue(
+        new Error('ATS gateway timeout'),
+      );
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      // Trustee is saved successfully despite appointment fetch failure
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(result.data?.appointments).toBe(0);
+    });
+
+    test('should continue when professional ID lookup fails', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Trustee upsert succeeds
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      // Appointments succeed with no appointments
       vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
         cleanAppointments: [],
         failedAppointments: [],
@@ -595,114 +634,321 @@ describe('Migrate Trustees Use Case', () => {
         },
       });
 
-      const mergedData = wrapTrusteeForProcessing(atsTrustee);
-      const result = await processTrusteeWithAppointments(context, mergedData);
+      // ACMS lookup fails
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockRejectedValue(new Error('ACMS service down')),
+      } as unknown as AcmsGateway);
 
-      expect(result.success).toBe(true);
-      expect(result.appointmentsProcessed).toBe(0);
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      // Trustee succeeded despite ACMS failure (non-fatal)
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
     });
 
-    test('should handle error when upserting trustee fails', async () => {
+    test('should handle trustee with no appointments successfully', async () => {
       const atsTrustee: AtsTrusteeRecord = {
-        ID: 3,
-        FIRST_NAME: 'Bob',
-        LAST_NAME: 'Johnson',
-        STATE: 'TX',
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
       };
 
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockRejectedValue(
-        new Error('Database connection lost'),
-      );
-
-      const mergedData = wrapTrusteeForProcessing(atsTrustee);
-      const result = await processTrusteeWithAppointments(context, mergedData);
-
-      expect(result.success).toBe(false);
-      expect(result.todIds).toEqual(['3']);
-      expect(result.appointmentsProcessed).toBe(0);
-      expect(result.error).toBeDefined();
-    });
-
-    test('should continue processing trustee when getting appointments fails', async () => {
-      const atsTrustee: AtsTrusteeRecord = {
-        ID: 4,
-        FIRST_NAME: 'Alice',
-        LAST_NAME: 'Williams',
-        STATE: 'FL',
-      };
-
-      const createdTrustee = {
-        id: 'new-id',
-        trusteeId: 'trustee-789',
-        name: 'Alice Williams',
-      };
-
+      // Trustee upsert succeeds
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
-      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(createdTrustee);
-      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockRejectedValue(
-        new Error('ATS connection timeout'),
-      );
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
 
-      const mergedData = wrapTrusteeForProcessing(atsTrustee);
-      const result = await processTrusteeWithAppointments(context, mergedData);
-
-      // Trustee should be processed successfully even though appointments failed
-      expect(result.success).toBe(true);
-      expect(result.trusteeId).toBe('trustee-789');
-      expect(result.appointmentsProcessed).toBe(0);
-    });
-
-    test('should continue processing trustee when creating appointments fails', async () => {
-      const atsTrustee: AtsTrusteeRecord = {
-        ID: 5,
-        FIRST_NAME: 'Charlie',
-        LAST_NAME: 'Brown',
-        STATE: 'IL',
-      };
-
-      const createdTrustee = {
-        id: 'new-id',
-        trusteeId: 'trustee-999',
-        name: 'Charlie Brown',
-      };
-
-      const cleanAppointments: TrusteeAppointmentInput[] = [
-        {
-          chapter: '7',
-          appointmentType: 'panel',
-          courtId: '053N',
-          appointedDate: '2023-01-15',
-          status: 'active',
-          effectiveDate: '2023-01-15',
-        },
-      ];
-
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
-      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(createdTrustee);
+      // No appointments returned
       vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
-        cleanAppointments,
+        cleanAppointments: [],
         failedAppointments: [],
         stats: {
-          total: 1,
-          clean: 1,
+          total: 0,
+          clean: 0,
           autoRecoverable: 0,
           problematic: 0,
           uncleansable: 0,
           skipped: 0,
         },
       });
-      vi.spyOn(MockMongoRepository.prototype, 'createAppointment').mockRejectedValue(
-        new Error('Appointment database error'),
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(result.data?.appointments).toBe(0);
+    });
+
+    test('should process multiple trustees with mixed success and failures', async () => {
+      const trustees: AtsTrusteeRecord[] = [
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }, // Will succeed
+        { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' }, // Will fail on upsert
+        { ID: 3, FIRST_NAME: 'Bob', LAST_NAME: 'Jones', STATE: 'TX' }, // Will succeed
+      ];
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockResolvedValueOnce(null) // John - not found, create new
+        .mockRejectedValueOnce(new Error('Database error')) // Jane - fails
+        .mockResolvedValueOnce(null); // Bob - not found, create new
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(2); // John and Bob succeeded
+      expect(result.data?.errors).toBe(1); // Only Jane failed
+    });
+
+    test('should track failed appointments from ATS gateway', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Trustee upsert succeeds
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      // ATS returns some clean and some failed appointments
+      const failedAppointments: FailedAppointment[] = [
+        {
+          atsAppointment: {
+            TRU_ID: 1,
+            DISTRICT: '053N',
+            STATE: 'NY',
+            CHAPTER: '99',
+            STATUS: 'A',
+            DATE_APPOINTED: new Date('2023-01-15'),
+            EFFECTIVE_DATE: new Date('2023-01-15'),
+          },
+          classification: 'PROBLEMATIC',
+          notes: ['Invalid court ID'],
+          mapType: 'DISTRICT_CHAPTER_TYPE',
+          timestamp: '2023-01-15T00:00:00.000Z',
+        },
+      ];
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments,
+        stats: {
+          total: 1,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 1,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(result.data?.failedAppointments).toHaveLength(1);
+      expect(result.data?.failedAppointments?.[0].notes).toContain('Invalid court ID');
+    });
+
+    test('should return error when getOffices fails and not process any trustees', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Simulate DXTR offices gateway failure
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockRejectedValue(new Error('DXTR service unavailable')),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      // Should return error, not process any trustees
+      expect(result.error).toBeDefined();
+      expect(result.error?.message).toContain('Failed to fetch DXTR office data');
+      expect(result.data).toBeUndefined();
+    });
+  });
+
+  describe('processTrusteeWithRetry - Retry Logic', () => {
+    const mockTrustee = {
+      id: 'doc-id',
+      trusteeId: 'trustee-100',
+      firstName: 'Test',
+      lastName: 'Trustee',
+      name: 'Test Trustee',
+      status: 'active' as const,
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+      },
+      createdOn: '2023-01-01',
+      updatedOn: '2023-01-01',
+      updatedBy: { id: 'SYSTEM', name: 'System' },
+    };
+
+    beforeEach(() => {
+      // Mock offices gateway for all tests
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      // Stub ACMS gateway
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+
+      // Stub appointments
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+    });
+
+    test('should succeed on first attempt without retrying', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Trustee upsert succeeds immediately
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrustee')
+        .mockResolvedValue(mockTrustee);
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(createSpy).toHaveBeenCalledTimes(1); // Success on first attempt, no retries
+    });
+
+    test('should retry and succeed on second attempt', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Fail on first attempt, succeed on second
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockRejectedValueOnce(new Error('Transient database error'))
+        .mockResolvedValueOnce(null);
+
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrustee')
+        .mockResolvedValue(mockTrustee);
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1); // Eventually succeeded
+      expect(result.data?.errors).toBe(0);
+      expect(createSpy).toHaveBeenCalledTimes(1); // Called once after successful retry
+    });
+
+    test('should retry twice and succeed on third attempt', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Fail twice, succeed on third attempt (MAX_RETRY_ATTEMPTS = 2)
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockRejectedValueOnce(new Error('Transient error 1'))
+        .mockRejectedValueOnce(new Error('Transient error 2'))
+        .mockResolvedValueOnce(null);
+
+      const createSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createTrustee')
+        .mockResolvedValue(mockTrustee);
+
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1); // Eventually succeeded
+      expect(result.data?.errors).toBe(0);
+      expect(createSpy).toHaveBeenCalledTimes(1);
+    });
+
+    test('should fail after exhausting all retry attempts', async () => {
+      const atsTrustee: AtsTrusteeRecord = {
+        ID: 1,
+        FIRST_NAME: 'John',
+        LAST_NAME: 'Doe',
+        STATE: 'NY',
+      };
+
+      // Fail on all attempts
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockRejectedValue(
+        new Error('Persistent database error'),
       );
 
-      const mergedData = wrapTrusteeForProcessing(atsTrustee);
-      const result = await processTrusteeWithAppointments(context, mergedData);
+      const trustees = [atsTrustee];
+      const result = await processPageOfTrustees(context, trustees);
 
-      // Trustee should be processed successfully even though appointments failed
-      expect(result.success).toBe(true);
-      expect(result.trusteeId).toBe('trustee-999');
-      expect(result.appointmentsProcessed).toBe(0);
-    });
+      expect(result.data?.processed).toBe(0); // Failed after all retries
+      expect(result.data?.errors).toBe(1);
+    }, 10000); // 10 second timeout for retry delays (1s + 2s)
+
+    test('should retry each failed trustee independently', async () => {
+      const trustees: AtsTrusteeRecord[] = [
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }, // Will fail then succeed
+        { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' }, // Will succeed immediately
+        { ID: 3, FIRST_NAME: 'Bob', LAST_NAME: 'Jones', STATE: 'TX' }, // Will fail permanently
+      ];
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState')
+        .mockRejectedValueOnce(new Error('John fails first'))
+        .mockResolvedValueOnce(null) // John succeeds on retry
+        .mockResolvedValueOnce(null) // Jane succeeds immediately
+        .mockRejectedValue(new Error('Bob fails permanently')); // Bob fails all attempts
+
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(2); // John and Jane succeeded
+      expect(result.data?.errors).toBe(1); // Only Bob failed permanently
+    }, 15000); // 15 second timeout for retry delays
   });
 
   describe('processPageOfTrustees', () => {
@@ -711,6 +957,13 @@ describe('Migrate Trustees Use Case', () => {
         { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' },
         { ID: 2, FIRST_NAME: 'Jane', LAST_NAME: 'Smith', STATE: 'CA' },
       ];
+
+      // Mock offices gateway for district-to-divisions mapping
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
 
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
       vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue({
@@ -735,6 +988,185 @@ describe('Migrate Trustees Use Case', () => {
 
       expect(result.data?.processed).toBe(2);
       expect(result.data?.errors).toBe(0);
+    });
+
+    test('should expand district appointments to divisions', async () => {
+      const trustees: AtsTrusteeRecord[] = [
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' },
+      ];
+
+      // Mock offices with divisions for district 081
+      const mockOffices: UstpOfficeDetails[] = [
+        {
+          officeCode: 'USTP_REGION_02_MANHATTAN',
+          officeName: 'Manhattan',
+          idpGroupName: 'USTP REGION 02 MANHATTAN',
+          regionId: '2',
+          regionName: 'New York',
+          groups: [
+            {
+              groupDesignator: 'MN',
+              divisions: [
+                {
+                  divisionCode: 'MAH',
+                  court: {
+                    courtId: '081',
+                    courtName:
+                      'United States Bankruptcy Court for the Southern District of New York',
+                    state: 'NY',
+                  },
+                  courtOffice: {
+                    courtOfficeCode: 'MAH',
+                    courtOfficeName: 'Manhattan Office',
+                  },
+                },
+                {
+                  divisionCode: 'MAN',
+                  court: {
+                    courtId: '081',
+                    courtName:
+                      'United States Bankruptcy Court for the Southern District of New York',
+                    state: 'NY',
+                  },
+                  courtOffice: {
+                    courtOfficeCode: 'MAN',
+                    courtOfficeName: 'Poughkeepsie Office',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ];
+
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue(mockOffices),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue({
+        id: 'new-id',
+        trusteeId: 'trustee-123',
+        name: 'Test',
+      });
+
+      // Mock an appointment for district 081 (no divisionCode yet)
+      const districtAppointment: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '081',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-20',
+      };
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [districtAppointment],
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const createAppointmentSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createAppointment')
+        .mockResolvedValue({
+          id: 'appt-1',
+          trusteeId: 'trustee-123',
+        });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+
+      // Should have created 2 appointments (one per division)
+      expect(createAppointmentSpy).toHaveBeenCalledTimes(2);
+
+      // Check that appointments have division codes (second argument is the appointment)
+      const calls = createAppointmentSpy.mock.calls;
+      const divisionCodes = calls.map((call) => call[1].divisionCode).sort();
+      expect(divisionCodes).toEqual(['MAH', 'MAN']);
+
+      // Check that appointments have court names
+      const courtNames = calls.map((call) => call[1].courtName);
+      expect(courtNames[0]).toBe(
+        'United States Bankruptcy Court for the Southern District of New York',
+      );
+    });
+
+    test('should keep appointment unchanged when no divisions found', async () => {
+      const trustees: AtsTrusteeRecord[] = [
+        { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' },
+      ];
+
+      // Mock empty offices (no divisions)
+      const mockOfficesGateway = {
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      };
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue({
+        id: 'new-id',
+        trusteeId: 'trustee-123',
+        name: 'Test',
+      });
+
+      // Mock an appointment for district 999 (no divisions available)
+      const appointmentWithoutDivisions: TrusteeAppointmentInput = {
+        chapter: '7',
+        appointmentType: 'panel',
+        courtId: '999',
+        appointedDate: '2024-01-15',
+        status: 'active',
+        effectiveDate: '2024-01-20',
+      };
+
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [appointmentWithoutDivisions],
+        failedAppointments: [],
+        stats: {
+          total: 1,
+          clean: 1,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const createAppointmentSpy = vi
+        .spyOn(MockMongoRepository.prototype, 'createAppointment')
+        .mockResolvedValue({
+          id: 'appt-1',
+          trusteeId: 'trustee-123',
+        });
+
+      vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
+
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+
+      // Should have created 1 appointment (no expansion)
+      expect(createAppointmentSpy).toHaveBeenCalledTimes(1);
+
+      // Check that appointment has no division code (second argument is the appointment)
+      const call = createAppointmentSpy.mock.calls[0];
+      expect(call[1].divisionCode).toBeUndefined();
+      expect(call[1].courtId).toBe('999');
     });
   });
 
@@ -932,6 +1364,131 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.error?.message).toContain('Failed to delete all trustees and appointments');
       expect(result.data).toBeUndefined();
       expect(deleteAllSpy).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('buildDistrictToDivisionsMap', () => {
+    const mockOffices: UstpOfficeDetails[] = [
+      {
+        officeCode: 'USTP_REGION_02_MANHATTAN',
+        officeName: 'Manhattan',
+        idpGroupName: 'USTP REGION 02 MANHATTAN',
+        regionId: '2',
+        regionName: 'New York',
+        groups: [
+          {
+            groupDesignator: 'MN',
+            divisions: [
+              {
+                divisionCode: 'MAH',
+                court: {
+                  courtId: '081',
+                  courtName: 'United States Bankruptcy Court for the Southern District of New York',
+                  state: 'NY',
+                },
+                courtOffice: {
+                  courtOfficeCode: 'MAH',
+                  courtOfficeName: 'Manhattan Office',
+                },
+              },
+              {
+                divisionCode: 'MAN',
+                court: {
+                  courtId: '081',
+                  courtName: 'United States Bankruptcy Court for the Southern District of New York',
+                  state: 'NY',
+                },
+                courtOffice: {
+                  courtOfficeCode: 'MAN',
+                  courtOfficeName: 'Poughkeepsie Office',
+                },
+              },
+              {
+                divisionCode: 'MAW',
+                court: {
+                  courtId: '081',
+                  courtName: 'United States Bankruptcy Court for the Southern District of New York',
+                  state: 'NY',
+                },
+                courtOffice: {
+                  courtOfficeCode: 'MAW',
+                  courtOfficeName: 'White Plains Office',
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        officeCode: 'USTP_REGION_03_PHILADELPHIA',
+        officeName: 'Philadelphia',
+        idpGroupName: 'USTP REGION 03 PHILADELPHIA',
+        regionId: '3',
+        regionName: 'Pennsylvania',
+        groups: [
+          {
+            groupDesignator: 'PH',
+            divisions: [
+              {
+                divisionCode: 'PAE',
+                court: {
+                  courtId: '231',
+                  courtName:
+                    'United States Bankruptcy Court for the Eastern District of Pennsylvania',
+                  state: 'PA',
+                },
+                courtOffice: {
+                  courtOfficeCode: 'PAE',
+                  courtOfficeName: 'Philadelphia Office',
+                },
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    test('should map district 081 to all its divisions', () => {
+      const districtMap = buildDistrictToDivisionsMap(mockOffices);
+
+      const divisions = districtMap.get('081');
+      expect(divisions).toBeDefined();
+      expect(divisions).toHaveLength(3);
+
+      const divisionCodes = divisions!.map((d) => d.divisionCode);
+      expect(divisionCodes).toContain('MAH');
+      expect(divisionCodes).toContain('MAN');
+      expect(divisionCodes).toContain('MAW');
+    });
+
+    test('should include court information for each division', () => {
+      const districtMap = buildDistrictToDivisionsMap(mockOffices);
+
+      const divisions = districtMap.get('081');
+      const mahDivision = divisions!.find((d) => d.divisionCode === 'MAH');
+
+      expect(mahDivision).toBeDefined();
+      expect(mahDivision!.courtId).toBe('081');
+      expect(mahDivision!.courtName).toBe(
+        'United States Bankruptcy Court for the Southern District of New York',
+      );
+      expect(mahDivision!.courtDivisionName).toBe('Manhattan Office');
+    });
+
+    test('should map district 231 to its single division', () => {
+      const districtMap = buildDistrictToDivisionsMap(mockOffices);
+
+      const divisions = districtMap.get('231');
+      expect(divisions).toBeDefined();
+      expect(divisions).toHaveLength(1);
+      expect(divisions![0].divisionCode).toBe('PAE');
+      expect(divisions![0].courtId).toBe('231');
+    });
+
+    test('should return empty map for empty offices array', () => {
+      const districtMap = buildDistrictToDivisionsMap([]);
+
+      expect(districtMap.size).toBe(0);
     });
   });
 });

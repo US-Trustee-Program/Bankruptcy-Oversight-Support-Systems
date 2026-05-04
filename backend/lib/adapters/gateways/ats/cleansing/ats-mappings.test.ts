@@ -7,7 +7,6 @@ import {
   formatZipCode,
   transformTrusteeRecord,
   transformAppointmentRecord,
-  getAppointmentKey,
   applyAppointmentOverrides,
 } from './ats-mappings';
 import { AtsTrusteeRecord, AtsAppointmentRecord } from '../../../../adapters/types/ats.types';
@@ -928,23 +927,6 @@ describe('ATS Mappings', () => {
       expect(result.chapter).toBe('12');
       expect(result.appointmentType).toBe('case-by-case');
       expect(result.status).toBe('inactive');
-    });
-  });
-
-  describe('getAppointmentKey', () => {
-    test('should create unique key for appointment', () => {
-      const appointment = {
-        chapter: '7' as const,
-        appointmentType: 'panel' as const,
-        courtId: '0208',
-        appointedDate: '2023-01-15',
-        status: 'active' as const,
-        effectiveDate: '2023-01-15',
-      };
-
-      const key = getAppointmentKey('123', appointment);
-
-      expect(key).toBe('123-0208-7-panel');
     });
   });
 });

@@ -270,7 +270,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
           stats.autoRecoverable++;
         }
 
-        // Handle multi-expansion (1:N mapping)
+        // Handle multi-expansion (1:N mapping from cleansing - e.g., regional patterns)
         if (!cleansingResult.appointment && cleansingResult.courtIds.length > 1) {
           context.logger.debug(
             MODULE_NAME,
@@ -286,7 +286,7 @@ export class AtsGatewayImpl extends AbstractMssqlClient implements AtsGateway {
             cleanAppointments.push(appointmentInput);
           }
         } else if (cleansingResult.appointment) {
-          // Single appointment (1:1 mapping)
+          // Single appointment - use as-is
           cleanAppointments.push(cleansingResult.appointment);
         }
       }
