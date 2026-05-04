@@ -78,7 +78,8 @@ export type TrusteeAppointmentInput = {
   chapter: AppointmentChapterType;
   appointmentType: AppointmentType;
   courtId: string;
-  divisionCode?: string;
+  divisionCode?: string; // Deprecated: kept for backward compatibility
+  divisionCodes?: string[]; // New: array of division codes
   appointedDate: string;
   status: AppointmentStatus;
   effectiveDate: string;
@@ -90,7 +91,8 @@ export type TrusteeAppointment = Auditable &
     chapter: AppointmentChapterType;
     appointmentType: AppointmentType;
     courtId: string;
-    divisionCode?: string;
+    divisionCode?: string; // Deprecated: kept for backward compatibility
+    divisionCodes?: string[]; // New: array of division codes
     appointedDate: string;
     status: AppointmentStatus;
     effectiveDate: string;
@@ -146,9 +148,31 @@ const validateStatusForChapterAndAppointmentType: ValidatorFunction = (
   return VALID;
 };
 
+const validateDivisionCodes: ValidatorFunction = (obj: unknown): ValidatorResult => {
+  const appointment = obj as TrusteeAppointmentInput;
+  const { divisionCode, divisionCodes } = appointment;
+
+  // At least one division must be specified (either old or new format)
+  if (!divisionCode && (!divisionCodes || divisionCodes.length === 0)) {
+    return {
+      reasonMap: {
+        $: {
+          reasons: ['At least one division must be specified'],
+        },
+      },
+    };
+  }
+
+  return VALID;
+};
+
 export const TRUSTEE_APPOINTMENTS_INTERNAL_SPEC: Readonly<ValidationSpec<TrusteeAppointmentInput>> =
   {
-    $: [validateAppointmentTypeForChapter, validateStatusForChapterAndAppointmentType],
+    $: [
+      validateAppointmentTypeForChapter,
+      validateStatusForChapterAndAppointmentType,
+      validateDivisionCodes,
+    ],
   };
 
 export type CaseAppointmentInput = {
