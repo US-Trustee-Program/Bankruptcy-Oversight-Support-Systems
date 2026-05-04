@@ -16,7 +16,6 @@ export class StorageQueueHumbleObject {
   }
 
   async sendMessage(messageContent: string, visibilityTimeout?: number): Promise<void> {
-    const encoded = Buffer.from(messageContent).toString('base64');
-    await this.client.sendMessage(encoded, { visibilityTimeout });
+    await this.client.sendMessage(messageContent, { visibilityTimeout });
   }
 }

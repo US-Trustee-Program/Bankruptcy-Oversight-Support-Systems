@@ -186,16 +186,20 @@ export async function handlePage(
       return;
     }
 
-    const nonTransientError: CamsError | undefined = result.error;
+    const nonTransientError: CamsError =
+      result.error ??
+      new CamsError(MODULE_NAME, {
+        message: 'Failed to get page of remaining cases: no data returned.',
+      });
     logger.error(
       MODULE_NAME,
-      `Failed to get page of remaining cases: ${nonTransientError?.message}`,
+      `Failed to get page of remaining cases: ${nonTransientError.message}`,
     );
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,
-      error: nonTransientError?.message,
+      error: nonTransientError.message,
     });
     throw nonTransientError;
   }

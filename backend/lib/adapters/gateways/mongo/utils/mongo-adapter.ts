@@ -445,17 +445,20 @@ export class MongoCollectionAdapter<T> implements DocumentCollectionAdapter<T> {
   }
 }
 
-// Cosmos DB signals 429 via error code 16500; some driver versions surface it only in the message.
+// Cosmos DB signals 429 via error code 16500; some driver versions surface it only in the message
+// or via HTTP status codes. Checks are intentionally broad to guard against driver version variance.
 function isRateLimitError(error: unknown): boolean {
-  if (
-    error instanceof Object &&
-    'code' in error &&
-    (error as Record<string, unknown>)['code'] === 16500
-  ) {
-    return true;
+  if (error instanceof Object) {
+    const err = error as Record<string, unknown>;
+    if (err['code'] === 16500 || err['code'] === '16500') {
+      return true;
+    }
+    if (err['statusCode'] === 429 || err['status'] === 429) {
+      return true;
+    }
   }
   const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
-  return message.includes('Request rate is large');
+  return /request rate is large/i.test(message);
 }
 
 function isTimeoutError(error: unknown): boolean {
