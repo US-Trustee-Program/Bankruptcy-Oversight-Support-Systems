@@ -10,12 +10,72 @@ import factory from '../../factory';
 import { MaybeData } from './queue-types';
 import { Trustee } from '@common/cams/trustees';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { getAppointmentKey } from '../../adapters/gateways/ats/cleansing/ats-cleansing-utils';
 import { CamsUserReference } from '@common/cams/users';
 import { LegacyAddress } from '@common/cams/parties';
 import { normalizeName } from './trustee-match.helpers';
-
+import { UstpOfficeDetails } from '@common/cams/offices';
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
+
+/**
+ * Maximum retry attempts for failed trustee processing.
+ * Transient failures (network issues, temporary DB locks) may succeed on retry.
+ */
+const MAX_RETRY_ATTEMPTS = 2;
+
+/**
+ * Division information extracted from DXTR offices data
+ */
+type DivisionInfo = {
+  divisionCode: string;
+  courtId: string;
+  courtName: string;
+  courtDivisionName: string;
+};
+
+/**
+ * Build a map from district code (courtId) to array of divisions.
+ * This allows us to expand ATS district appointments into multiple division-specific appointments.
+ *
+ * @param offices - Array of USTP office details from DXTR
+ * @returns Map of district code → divisions
+ */
+export function buildDistrictToDivisionsMap(
+  offices: UstpOfficeDetails[],
+): Map<string, DivisionInfo[]> {
+  const districtMap = new Map<string, DivisionInfo[]>();
+
+  for (const office of offices) {
+    for (const group of office.groups) {
+      for (const division of group.divisions) {
+        const courtId = division.court.courtId;
+        const divisionInfo: DivisionInfo = {
+          divisionCode: division.divisionCode,
+          courtId,
+          courtName: division.court.courtName,
+          courtDivisionName: division.courtOffice.courtOfficeName,
+        };
+
+        if (!districtMap.has(courtId)) {
+          districtMap.set(courtId, []);
+        }
+
+        districtMap.get(courtId)!.push(divisionInfo);
+      }
+    }
+  }
+
+  return districtMap;
+}
+
+/**
+ * Create a unique key for an appointment to prevent duplicates.
+ * Key format: trusteeId-courtId-divisionCode-chapter-appointmentType
+ * Division is included after courtId if present (DXTR enrichment).
+ */
+function getAppointmentKey(trusteeId: string, appointment: TrusteeAppointmentInput): string {
+  const divisionPart = appointment.divisionCode ? `-${appointment.divisionCode}` : '';
+  return `${trusteeId}-${appointment.courtId}${divisionPart}-${appointment.chapter}-${appointment.appointmentType}`;
+}
 
 /**
  * System user reference for audit trail
@@ -274,17 +334,69 @@ export async function getPageOfTrustees(
 }
 
 /**
+ * Expand a single district appointment into multiple division-specific appointments.
+ * Enriches each appointment with division code, court name, and court division name.
+ *
+ * @param appointment - Base appointment with courtId (district)
+ * @param divisions - Array of divisions for this district
+ * @returns Array of enriched appointments (one per division)
+ */
+function expandAppointmentToDivisions(
+  appointment: TrusteeAppointmentInput,
+  divisions: DivisionInfo[],
+): TrusteeAppointmentInput[] {
+  return divisions.map((division) => ({
+    ...appointment,
+    divisionCode: division.divisionCode,
+    courtName: division.courtName,
+    courtDivisionName: division.courtDivisionName,
+  }));
+}
+
+/**
  * Get cleansed appointments for a trustee from ATS gateway.
  * Gateway handles ATS data fetching, cleansing, and transformation.
  * Returns both clean appointments (for storage) and failed appointments (for DLQ).
+ *
+ * @param districtToDivisionsMap - Map for expanding district appointments into divisions (internal)
  */
-export async function getTrusteeAppointments(
+async function getTrusteeAppointments(
   context: ApplicationContext,
   trusteeId: number,
+  districtToDivisionsMap: Map<string, DivisionInfo[]>,
 ): Promise<MaybeData<TrusteeAppointmentsResult>> {
   try {
     const atsGateway = factory.getAtsGateway(context);
     const result = await atsGateway.getTrusteeAppointments(context, trusteeId);
+
+    // Expand district appointments into divisions
+    const expandedAppointments: TrusteeAppointmentInput[] = [];
+
+    for (const appointment of result.cleanAppointments) {
+      const courtId = appointment.courtId;
+      const divisions = districtToDivisionsMap.get(courtId);
+
+      if (divisions && divisions.length > 0) {
+        // Expand into multiple division appointments
+        const divisionAppointments = expandAppointmentToDivisions(appointment, divisions);
+        expandedAppointments.push(...divisionAppointments);
+
+        context.logger.debug(
+          MODULE_NAME,
+          `Expanded district ${courtId} appointment into ${divisions.length} divisions`,
+          {
+            trusteeId,
+            courtId,
+            divisionCodes: divisions.map((d) => d.divisionCode),
+          },
+        );
+      } else {
+        // No divisions found - keep original appointment
+        expandedAppointments.push(appointment);
+      }
+    }
+
+    result.cleanAppointments = expandedAppointments;
 
     context.logger.debug(
       MODULE_NAME,
@@ -512,11 +624,13 @@ export async function createAppointments(
  *
  * @param context - Application context
  * @param todIds - Array of TOD IDs to fetch appointments for
+ * @param districtToDivisionsMap - Map for expanding district appointments into divisions
  * @returns Aggregated appointments, failures, and statistics
  */
 async function fetchAndAggregateAppointments(
   context: ApplicationContext,
   todIds: string[],
+  districtToDivisionsMap: Map<string, DivisionInfo[]>,
 ): Promise<{
   cleanAppointments: TrusteeAppointmentInput[];
   failedAppointments: FailedAppointment[];
@@ -541,7 +655,11 @@ async function fetchAndAggregateAppointments(
   };
 
   for (const todId of todIds) {
-    const appointmentsResult = await getTrusteeAppointments(context, parseInt(todId, 10));
+    const appointmentsResult = await getTrusteeAppointments(
+      context,
+      parseInt(todId, 10),
+      districtToDivisionsMap,
+    );
     if (appointmentsResult.error) {
       // Log error but continue processing other TOD IDs
       context.logger.error(MODULE_NAME, `Failed to get appointments for TOD ID ${todId}`, {
@@ -634,17 +752,68 @@ export async function upsertProfessionalIds(
 }
 
 /**
+ * Retry wrapper for processing a trustee with fixed retry attempts.
+ * Handles exponential backoff and logging for retry attempts.
+ *
+ * @param context - Application context
+ * @param mergedData - Merged trustee data from multiple TOD records
+ * @param districtToDivisionsMap - Map for expanding district appointments into divisions
+ * @returns Processing result after all retry attempts
+ */
+async function processTrusteeWithRetry(
+  context: ApplicationContext,
+  mergedData: MergedTrusteeData,
+  districtToDivisionsMap: Map<string, DivisionInfo[]>,
+): Promise<TrusteeProcessingResult> {
+  let attempt = 0;
+  let result: TrusteeProcessingResult;
+
+  while (attempt <= MAX_RETRY_ATTEMPTS) {
+    result = await processTrusteeWithAppointments(context, mergedData, districtToDivisionsMap);
+
+    if (result.success) {
+      // Success - return immediately
+      return result;
+    }
+
+    // Failure - check if we should retry
+    attempt++;
+
+    if (attempt <= MAX_RETRY_ATTEMPTS) {
+      context.logger.warn(
+        MODULE_NAME,
+        `Trustee ${mergedData.todIds.join(', ')} failed (attempt ${attempt}/${MAX_RETRY_ATTEMPTS + 1}). Retrying...`,
+        { error: result.error },
+      );
+      // Exponential backoff: 1s, 2s
+      await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    } else {
+      context.logger.error(
+        MODULE_NAME,
+        `Trustee ${mergedData.todIds.join(', ')} failed after ${attempt} attempts. Giving up.`,
+        { error: result.error },
+      );
+    }
+  }
+
+  // Return final failure result
+  return result!;
+}
+
+/**
  * Process a single merged trustee group with all their appointments.
  * This is the main unit of work for the migration with deduplication.
  * Gateway handles appointment cleansing - use case just stores clean data.
  *
  * @param context - Application context
  * @param mergedData - Merged trustee data from multiple TOD records
+ * @param districtToDivisionsMap - Map for expanding district appointments into divisions (internal)
  * @returns Processing result with trustee ID and appointment counts
  */
-export async function processTrusteeWithAppointments(
+async function processTrusteeWithAppointments(
   context: ApplicationContext,
   mergedData: MergedTrusteeData,
+  districtToDivisionsMap: Map<string, DivisionInfo[]>,
 ): Promise<TrusteeProcessingResult> {
   const { primary, todIds } = mergedData;
 
@@ -663,86 +832,85 @@ export async function processTrusteeWithAppointments(
     };
   }
 
-  try {
-    // Upsert the trustee (with deduplication)
-    const trusteeResult = await upsertTrustee(context, mergedData);
-    if (trusteeResult.error) {
-      throw trusteeResult.error;
-    }
-
-    const trustee = trusteeResult.data;
-
-    // Fetch and aggregate appointments for all TOD IDs
-    const { cleanAppointments, failedAppointments, stats } = await fetchAndAggregateAppointments(
-      context,
-      todIds,
-    );
-
-    let appointmentsProcessed = 0;
-
-    // Process merged clean appointments
-    if (cleanAppointments.length > 0) {
-      const appointmentResult = await createAppointments(context, trustee, cleanAppointments);
-
-      if (appointmentResult.error) {
-        context.logger.error(
-          MODULE_NAME,
-          `Failed to process appointments for trustee TOD IDs ${todIds.join(', ')}`,
-          {
-            error: appointmentResult.error.message,
-          },
-        );
-      } else {
-        appointmentsProcessed = appointmentResult.data.successCount;
-      }
-    }
-
-    // Look up and store ACMS professional IDs (non-fatal)
-    const professionalIdsStored = await upsertProfessionalIds(
-      context,
-      trustee.trusteeId,
-      primary.FIRST_NAME ?? '',
-      primary.LAST_NAME ?? '',
-      primary.STATE ?? '',
-    );
-
-    // Log statistics
-    context.logger.info(MODULE_NAME, `Trustee TOD IDs ${todIds.join(', ')} stats:`, {
-      ...stats,
-      professionalIdsStored,
+  // 1. Upsert trustee (isolated error handling - FATAL)
+  const trusteeResult = await upsertTrustee(context, mergedData);
+  if (trusteeResult.error) {
+    context.logger.error(MODULE_NAME, `Failed to upsert trustee TOD IDs ${todIds.join(', ')}`, {
+      error: trusteeResult.error.message,
     });
-
-    return {
-      trusteeId: trustee.trusteeId,
-      todIds,
-      success: true,
-      appointmentsProcessed,
-      professionalIdsStored,
-      failedAppointments,
-    };
-  } catch (error) {
-    const camsError = getCamsError(error, MODULE_NAME);
-    context.logger.error(MODULE_NAME, `Failed to process trustee TOD IDs ${todIds.join(', ')}`, {
-      error: camsError.message,
-    });
-
     return {
       trusteeId: '',
       todIds,
       success: false,
       appointmentsProcessed: 0,
       failedAppointments: [],
-      error: camsError.message,
+      error: trusteeResult.error.message,
     };
   }
+
+  const trustee = trusteeResult.data;
+
+  // 2. Fetch and aggregate appointments (isolated error handling - NON-FATAL)
+  const { cleanAppointments, failedAppointments, stats } = await fetchAndAggregateAppointments(
+    context,
+    todIds,
+    districtToDivisionsMap,
+  );
+
+  let appointmentsProcessed = 0;
+
+  // 3. Create appointments (isolated error handling - NON-FATAL)
+  if (cleanAppointments.length > 0) {
+    const appointmentResult = await createAppointments(context, trustee, cleanAppointments);
+
+    if (appointmentResult.error) {
+      context.logger.error(
+        MODULE_NAME,
+        `Failed to create appointments for trustee ${trustee.trusteeId}`,
+        { error: appointmentResult.error.message },
+      );
+      // Continue - trustee is saved, just appointments failed
+    } else {
+      appointmentsProcessed = appointmentResult.data.successCount;
+    }
+  }
+
+  // 4. Professional IDs (isolated error handling - NON-FATAL, already handles errors internally)
+  const professionalIdsStored = await upsertProfessionalIds(
+    context,
+    trustee.trusteeId,
+    primary.FIRST_NAME ?? '',
+    primary.LAST_NAME ?? '',
+    primary.STATE ?? '',
+  );
+
+  // Log statistics
+  context.logger.info(MODULE_NAME, `Trustee TOD IDs ${todIds.join(', ')} stats:`, {
+    ...stats,
+    professionalIdsStored,
+  });
+
+  return {
+    trusteeId: trustee.trusteeId,
+    todIds,
+    success: true, // Trustee saved = success
+    appointmentsProcessed,
+    professionalIdsStored,
+    failedAppointments,
+  };
 }
 
 /**
- * Process a page of trustees with deduplication.
+ * Process a page of trustees with deduplication and automatic retry.
  * Main entry point for batch processing.
  * Deduplicates trustees by (firstName, lastName, state) before processing.
  * Gateway handles appointment cleansing internally.
+ * Retries failed trustees up to MAX_RETRY_ATTEMPTS times with exponential backoff.
  * Returns both processing stats and failed appointments for DLQ.
+ *
+ * @param context - Application context
+ * @param trustees - Array of ATS trustee records to process
+ * @returns Processing results with success/failure counts
  */
 export async function processPageOfTrustees(
   context: ApplicationContext,
@@ -755,6 +923,25 @@ export async function processPageOfTrustees(
     failedAppointments: FailedAppointment[];
   }>
 > {
+  // Fetch office data from DXTR via factory
+  const officesGateway = factory.getOfficesGateway(context);
+  let offices: UstpOfficeDetails[];
+
+  try {
+    offices = await officesGateway.getOffices(context);
+  } catch (originalError) {
+    return {
+      error: getCamsError(
+        originalError,
+        MODULE_NAME,
+        'Failed to fetch DXTR office data for division mapping',
+      ),
+    };
+  }
+
+  // Build district-to-divisions map from office data
+  const districtToDivisionsMap = buildDistrictToDivisionsMap(offices);
+
   // Deduplicate trustees in this page by (firstName, lastName, state)
   const deduplicatedMap = deduplicateTrusteesInPage(trustees);
 
@@ -770,15 +957,26 @@ export async function processPageOfTrustees(
 
   // Process each deduplicated group
   for (const [dedupeKey, trusteeGroup] of deduplicatedMap.entries()) {
-    // Merge the trustee group into a single entity
-    const mergedData = mergeTrusteeRecords(trusteeGroup);
+    let mergedData: MergedTrusteeData;
+
+    // Merge the trustee group into a single entity (handles malformed records)
+    try {
+      mergedData = mergeTrusteeRecords(trusteeGroup);
+    } catch (error) {
+      context.logger.error(MODULE_NAME, `Failed to merge trustee group: ${dedupeKey}`, {
+        error: getCamsError(error, MODULE_NAME).message,
+      });
+      errors++;
+      continue;
+    }
 
     context.logger.debug(
       MODULE_NAME,
       `Processing deduplicated trustee group: ${dedupeKey} (${trusteeGroup.length} TOD records)`,
     );
 
-    const result = await processTrusteeWithAppointments(context, mergedData);
+    // Process trustee with retry logic encapsulated in helper
+    const result = await processTrusteeWithRetry(context, mergedData, districtToDivisionsMap);
 
     if (result.success) {
       processed++;

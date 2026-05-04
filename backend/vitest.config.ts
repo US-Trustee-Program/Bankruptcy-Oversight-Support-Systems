@@ -41,6 +41,7 @@ export default defineConfig({
         '.*.d.ts',
         '**/dist/',
         '**/coverage/',
+        '**/temp/**',
         'vitest.*config.ts',
         ...coverageConfigDefaults.exclude,
       ],

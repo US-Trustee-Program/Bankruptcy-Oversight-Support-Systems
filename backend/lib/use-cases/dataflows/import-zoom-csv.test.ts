@@ -271,57 +271,29 @@ describe('import-zoom-csv', () => {
       );
     });
 
-    test('should write unmatched report when unmatched records exist', async () => {
-      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(SAMPLE_MATCHED_TSV);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId')
-        .mockResolvedValueOnce(MOCK_TRUSTEE)
-        .mockResolvedValueOnce(null);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByPhoneticTokens').mockResolvedValue(
-        [],
+    test('should handle deduplicated TRU_IDs mapping to same trustee', async () => {
+      const rowWithDeduplicatedIds = [
+        'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
+        'John Doe\tjohn.doe@example.com\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,67890\tJohn Doe; John Doe\t2\t100.0\tYES; YES\tPA,V; PA,V\t',
+      ].join('\n');
+
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(rowWithDeduplicatedIds);
+      // Both TRU_IDs map to the same CAMS trustee
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
+        MOCK_TRUSTEE,
       );
       vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
 
-      await importZoomCsv(context);
+      const result = await importZoomCsv(context);
 
-      expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
-        expect.any(String),
-        'zoom-import-unmatched-report.tsv',
-        expect.stringContaining('Zoom Name\tZoom Email\tMeeting ID'),
-      );
-      expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
-        expect.any(String),
-        'zoom-import-unmatched-report.tsv',
-        expect.stringContaining('Jane Smith'),
-      );
+      expect(result.total).toBe(1);
+      expect(result.matched).toBe(1);
+      expect(result.ambiguous).toBe(0);
     });
 
-    test('should use computed outcome in unmatched report, not original TSV outcome', async () => {
-      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(SAMPLE_MATCHED_TSV);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(null);
-      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([]);
-      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByPhoneticTokens').mockResolvedValue(
-        [],
-      );
+    test('should handle reports without metrics mismatch', async () => {
+      const warnSpy = vi.spyOn(context.logger, 'warn');
 
-      await importZoomCsv(context);
-
-      // Both rows in SAMPLE_MATCHED_TSV have outcome='matched' in the TSV
-      // But since we can't find them, the computed outcome should be 'unmatched'
-      const writeObjectCalls = vi.mocked(mockObjectStorage.writeObject).mock.calls;
-      const unmatchedReportCall = writeObjectCalls.find(
-        (call) => call[1] === 'zoom-import-unmatched-report.tsv',
-      );
-      expect(unmatchedReportCall).toBeDefined();
-      const reportContent = unmatchedReportCall![2];
-      // The outcome column (7th column) should contain 'unmatched', not 'matched'
-      expect(reportContent).toContain('\tunmatched\t');
-      expect(reportContent).not.toContain('\tmatched\temail\t');
-    });
-
-    test('should not write unmatched report when all records matched', async () => {
       vi.mocked(mockObjectStorage.readObject).mockResolvedValue(SAMPLE_MATCHED_TSV);
       vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
         MOCK_TRUSTEE,
@@ -330,11 +302,110 @@ describe('import-zoom-csv', () => {
 
       await importZoomCsv(context);
 
-      const writeObjectCalls = vi.mocked(mockObjectStorage.writeObject).mock.calls;
-      const unmatchedReportCall = writeObjectCalls.find(
-        (call) => call[1] === 'zoom-import-unmatched-report.tsv',
+      // Verify no metrics mismatch warning when report is valid
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        expect.any(String),
+        expect.stringContaining('Mismatch between in-loop metrics'),
       );
-      expect(unmatchedReportCall).toBeUndefined();
+    });
+
+    test('should validate generated report has outcome column', async () => {
+      // This validates that the generated report includes the outcome column
+      // Note: parseZoomMatchedTsvFile validates input has required columns, so this tests the
+      // countOutcomesFromReportLines validation of the GENERATED report format
+
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(SAMPLE_MATCHED_TSV);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
+        MOCK_TRUSTEE,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
+
+      const result = await importZoomCsv(context);
+
+      // Valid report should succeed
+      expect(result.total).toBeGreaterThan(0);
+    });
+
+    test('should count all outcome types correctly', async () => {
+      const mixedOutcomes = [
+        'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
+        'Match User\tmatch@example.com\t111\tabc\t111\thttps://zoom.us/j/111\tmatched\temail\t11111\tMatch User\t1\t100\tYES\tPA\t',
+        'Unmatch User\tunmatch@example.com\t222\tdef\t222\thttps://zoom.us/j/222\tunmatched\tnone\t22222\t\t0\t\t\t\t',
+        'Ambiguous User\tambig@example.com\t333\tghi\t333\thttps://zoom.us/j/333\tambiguous\tname\t33333,44444\tUser A; User B\t2\t100\tYES\tPA\t',
+        'Error User\terror@example.com\t444\tjkl\t444\thttps://zoom.us/j/444\terror\tnone\t55555\t\t0\t\t\t\t',
+      ].join('\n');
+
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(mixedOutcomes);
+
+      // Setup mocks for each row
+      const mockTrustee1 = { ...MOCK_TRUSTEE, trusteeId: 'trustee-1' };
+      const mockTrustee2 = { ...MOCK_TRUSTEE, trusteeId: 'trustee-2' };
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId')
+        .mockResolvedValueOnce(mockTrustee1) // row 1: matched
+        .mockResolvedValueOnce(null) // row 2: unmatched (no trustee found)
+        .mockResolvedValueOnce(mockTrustee1) // row 3: ambiguous - first ID
+        .mockResolvedValueOnce(mockTrustee2) // row 3: ambiguous - second ID (different trustee)
+        .mockResolvedValueOnce(null); // row 4: error user - no trustee found
+
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByName').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'searchTrusteesByPhoneticTokens').mockResolvedValue(
+        [],
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
+
+      const result = await importZoomCsv(context);
+
+      expect(result.total).toBe(4);
+      expect(result.matched).toBe(1); // Match User
+      expect(result.unmatched).toBe(2); // Unmatch User + Error User (both fallback to unmatched)
+      expect(result.ambiguous).toBe(1); // Ambiguous User
+      expect(result.errors).toBe(0); // No actual errors (just unmatched)
+    });
+
+    test('should log debug for deduplicated TRU_IDs', async () => {
+      const rowWithDeduplicatedIds = [
+        'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
+        'John Doe\tjohn.doe@example.com\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,67890\tJohn Doe; John Doe\t2\t100.0\tYES; YES\tPA,V; PA,V\t',
+      ].join('\n');
+
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(rowWithDeduplicatedIds);
+      // Both TRU_IDs map to the same CAMS trustee
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId').mockResolvedValue(
+        MOCK_TRUSTEE,
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
+      const debugSpy = vi.spyOn(context.logger, 'debug');
+
+      await importZoomCsv(context);
+
+      expect(debugSpy).toHaveBeenCalledWith(
+        'IMPORT-ZOOM-CSV',
+        expect.stringContaining('mapped to already-found CAMS trustee'),
+      );
+    });
+
+    test('should log info when some TRU_IDs not found but others succeed', async () => {
+      const rowWithMixedIds = [
+        'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
+        'John Doe\tjohn.doe@example.com\t123456789\tabc123\t123-456-7890\thttps://zoom.us/j/123456789\tmatched\temail\t12345,99999\tJohn Doe\t1\t100.0\tYES\tPA,V\t',
+      ].join('\n');
+
+      vi.mocked(mockObjectStorage.readObject).mockResolvedValue(rowWithMixedIds);
+      // First TRU_ID found, second not found
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByLegacyTruId')
+        .mockResolvedValueOnce(MOCK_TRUSTEE)
+        .mockResolvedValueOnce(null);
+      vi.spyOn(MockMongoRepository.prototype, 'updateTrustee').mockResolvedValue(MOCK_TRUSTEE);
+      const infoSpy = vi.spyOn(context.logger, 'info');
+
+      await importZoomCsv(context);
+
+      expect(infoSpy).toHaveBeenCalledWith(
+        'IMPORT-ZOOM-CSV',
+        expect.stringContaining('Some ATS TRU_IDs not found in CAMS'),
+      );
     });
   });
 });

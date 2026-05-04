@@ -285,29 +285,6 @@ function buildMatchedReportRow(row: ZoomMatchedRow, processResult: ProcessResult
   ].join('\t');
 }
 
-/**
- * Builds a TSV row for the unmatched report.
- */
-function buildUnmatchedReportRow(row: ZoomMatchedRow, outcome: ProcessResult['outcome']): string {
-  return [
-    row.zoomName,
-    row.zoomEmail,
-    row.meetingId,
-    row.passcode,
-    row.phone,
-    row.link,
-    outcome, // Use computed outcome, not original TSV outcome
-    row.strategy,
-    row.atsTruIds,
-    row.matchedNames,
-    row.matchCount,
-    row.similarity,
-    row.activeStatus,
-    row.statusCodes,
-    row.ambiguousCandidates,
-  ].join('\t');
-}
-
 export async function processZoomMatchedRow(
   context: ApplicationContext,
   row: ZoomMatchedRow,
@@ -333,17 +310,28 @@ export async function processZoomMatchedRow(
     }
 
     // For each ATS TRU_ID, find the corresponding CAMS trustee
-    const camsTrustees: Trustee[] = [];
+    // Use a Map to track by CAMS trusteeId to handle deduplicated ATS records
+    const camsTrusteesMap = new Map<string, Trustee>(); // Key: CAMS trusteeId
     const notFoundIds: string[] = [];
 
     for (const atsTruId of atsTruIds) {
       const trustee = await repo.findTrusteeByLegacyTruId(atsTruId);
       if (trustee) {
-        camsTrustees.push(trustee);
+        if (camsTrusteesMap.has(trustee.trusteeId)) {
+          // This TRU_ID maps to a trustee we've already found - expected for deduplicated records
+          context.logger.debug(
+            MODULE_NAME,
+            `Zoom "${row.zoomName}": TRU_ID ${atsTruId} mapped to already-found CAMS trustee ${trustee.trusteeId} - deduplicated ATS record`,
+          );
+        } else {
+          camsTrusteesMap.set(trustee.trusteeId, trustee);
+        }
       } else {
         notFoundIds.push(atsTruId);
       }
     }
+
+    const camsTrustees = Array.from(camsTrusteesMap.values());
 
     // If no trustees found by TRU_ID, fall back to name-based matching
     if (camsTrustees.length === 0) {
@@ -432,8 +420,6 @@ export async function processZoomMatchedRow(
 }
 
 export async function importZoomCsv(context: ApplicationContext): Promise<ZoomImportResult> {
-  const result: ZoomImportResult = { total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 };
-
   const containerName = process.env.CAMS_OBJECT_CONTAINER ?? 'migration-files';
   const objectStorage = factory.getObjectStorageGateway(context);
   const content = await objectStorage.readObject(containerName, ZOOM_MATCHED_TSV_BLOB_NAME);
@@ -443,14 +429,19 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
       MODULE_NAME,
       'No zoom matching report found in object storage — skipping import',
     );
-    return result;
+    return { total: 0, matched: 0, unmatched: 0, ambiguous: 0, errors: 0 };
   }
 
   const rows = parseZoomMatchedTsvFile(content);
-  result.total = rows.length;
 
+  const result: ZoomImportResult = {
+    total: rows.length,
+    matched: 0,
+    unmatched: 0,
+    ambiguous: 0,
+    errors: 0,
+  };
   const reportLines: string[] = [ZOOM_REPORT_HEADERS];
-  const unmatchedRows: Array<{ row: ZoomMatchedRow; outcome: ProcessResult['outcome'] }> = [];
 
   const outcomeToKey: Record<ProcessResult['outcome'], keyof ZoomImportResult> = {
     matched: 'matched',
@@ -463,15 +454,6 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
     const processResult = await processZoomMatchedRow(context, row);
     result[outcomeToKey[processResult.outcome]]++;
 
-    // Collect unmatched, ambiguous, and error rows for remediation report
-    if (
-      processResult.outcome === 'unmatched' ||
-      processResult.outcome === 'ambiguous' ||
-      processResult.outcome === 'error'
-    ) {
-      unmatchedRows.push({ row, outcome: processResult.outcome });
-    }
-
     reportLines.push(buildMatchedReportRow(row, processResult));
   }
 
@@ -479,30 +461,6 @@ export async function importZoomCsv(context: ApplicationContext): Promise<ZoomIm
 
   await objectStorage.writeObject(containerName, ZOOM_REPORT_BLOB_NAME, reportLines.join('\n'));
   context.logger.info(MODULE_NAME, `Report saved to ${containerName}/${ZOOM_REPORT_BLOB_NAME}`);
-
-  // Write unmatched report
-  if (unmatchedRows.length > 0) {
-    const unmatchedReportLines: string[] = [
-      'Zoom Name\tZoom Email\tMeeting ID\tPasscode\tPhone\tLink\tOutcome\tStrategy\tATS TRU_IDs\tMatched Names\tMatch Count\tSimilarity %\tActive Status\tStatus Codes\tAmbiguous Candidates',
-    ];
-
-    for (const { row, outcome } of unmatchedRows) {
-      unmatchedReportLines.push(buildUnmatchedReportRow(row, outcome));
-    }
-
-    const UNMATCHED_REPORT_BLOB_NAME = 'zoom-import-unmatched-report.tsv';
-    await objectStorage.writeObject(
-      containerName,
-      UNMATCHED_REPORT_BLOB_NAME,
-      unmatchedReportLines.join('\n'),
-    );
-    context.logger.info(
-      MODULE_NAME,
-      `Unmatched report saved to ${containerName}/${UNMATCHED_REPORT_BLOB_NAME} (${unmatchedRows.length} records)`,
-    );
-  } else {
-    context.logger.info(MODULE_NAME, 'No unmatched records to report');
-  }
 
   return result;
 }
