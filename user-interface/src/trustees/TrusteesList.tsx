@@ -67,7 +67,7 @@ export default function TrusteesList() {
   const [nameSearch, setNameSearch] = useState('');
   const [nameSearchIds, setNameSearchIds] = useState<Set<string>>(new Set());
   const [nameSearchLoading, setNameSearchLoading] = useState(false);
-  const [displayedCount, setDisplayedCount] = useState<number | null>(null);
+  const stableCountRef = useRef<number | null>(null);
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
   const pageLoadStart = useRef(performance.now());
   const isNameFilterInteracted = useRef(false);
@@ -205,11 +205,9 @@ export default function TrusteesList() {
     );
   }, [selectedDistricts, selectedChapters, trustees]);
 
-  useEffect(() => {
-    if (!nameSearchLoading) {
-      setDisplayedCount(filteredTrustees.length);
-    }
-  }, [filteredTrustees, nameSearchLoading]);
+  if (!nameSearchLoading) {
+    stableCountRef.current = filteredTrustees.length;
+  }
 
   useEffect(() => {
     if (!isChapterFilterInteracted.current && !isNameFilterInteracted.current) return;
@@ -311,7 +309,9 @@ export default function TrusteesList() {
         {liveAnnouncement}
       </div>
       <p className="trustees-list-count">
-        {nameSearchLoading ? (displayedCount ?? filteredTrustees.length) : filteredTrustees.length}{' '}
+        {nameSearchLoading
+          ? (stableCountRef.current ?? filteredTrustees.length)
+          : filteredTrustees.length}{' '}
         Trustee(s)
       </p>
       <div
