@@ -693,6 +693,67 @@ describe('TrusteeAppointmentForm Tests', () => {
     });
   });
 
+  describe('"All Divisions" Validation Logic', () => {
+    // These tests verify the validation logic works with the new divisionCodes array format
+    // Unit tests for the helper functions are in TrusteeAppointmentForm.helpers.test.ts
+
+    test('should detect conflict when existing appointment has multiple divisions', async () => {
+      const mockMultiDivisionAppointment: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        id: 'appointment-multi',
+        divisionCode: '710', // Backward compat
+        divisionCodes: ['710', '720'], // Multiple divisions
+      };
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockMultiDivisionAppointment],
+      });
+
+      // Try to create overlapping appointment with same district/chapter/type
+      await setAppointmentTypeOnDefaultCompleteForm(userEvent, 'Panel');
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/An active appointment already exists for Chapter 7 - Panel/i),
+        ).toBeInTheDocument();
+      });
+
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      expect(submitButton).toBeDisabled();
+    });
+
+    test('should allow appointment when existing has divisionCodes but no overlap', async () => {
+      const mockDifferentDivisionAppointment: TrusteeAppointment = {
+        ...mockActiveAppointment,
+        id: 'appointment-diff',
+        courtId: '097-',
+        divisionCode: '720', // Nome
+        divisionCodes: ['720'], // Single division, different from default
+        courtDivisionName: 'Nome',
+      };
+
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockDifferentDivisionAppointment],
+      });
+
+      // Create appointment for Juneau (710) - no overlap with Nome (720)
+      await fillCompleteForm(userEvent, {
+        district: courtDivisionName.alaskaJ, // Juneau - different division
+        chapter: chapter.seven,
+        appointmentType: 'Panel',
+        appointedDate: TEST_APPOINTED_DATE,
+      });
+
+      // No validation error - different divisions
+      expect(screen.queryByText(/An active appointment already exists/i)).not.toBeInTheDocument();
+
+      const submitButton = screen.getByRole('button', { name: /save/i });
+      expect(submitButton).not.toBeDisabled();
+    });
+  });
+
   describe('Dynamic Status Options Tests', () => {
     test('should not show status dropdown in create mode', async () => {
       renderWithProps();

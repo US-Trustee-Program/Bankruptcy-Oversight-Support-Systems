@@ -32,6 +32,40 @@ function getChapterNumber(chapter: string): number {
 }
 
 /**
+ * Case-insensitive string comparison for sorting.
+ * Uses locale-aware comparison with base sensitivity.
+ *
+ * @param a - First string to compare
+ * @param b - Second string to compare
+ * @returns Negative if a < b, positive if a > b, 0 if equal
+ */
+function caseInsensitiveCompare(a: string, b: string): number {
+  return a.localeCompare(b, undefined, { sensitivity: 'base' });
+}
+
+/**
+ * Compare function for sorting by state name (from code) then court name.
+ * Use with Array.sort() for consistent state+court ordering across the application.
+ *
+ * @param a - First item with state and courtName properties
+ * @param b - Second item with state and courtName properties
+ * @returns Negative if a < b, positive if a > b, 0 if equal
+ */
+function compareByStateAndCourt<T extends { state?: string; courtName?: string }>(
+  a: T,
+  b: T,
+): number {
+  // Sort by state name (mapped from code to full name)
+  const stateA = getStateNameFromCode(a.state || '');
+  const stateB = getStateNameFromCode(b.state || '');
+  const stateComparison = stateA.localeCompare(stateB);
+  if (stateComparison !== 0) return stateComparison;
+
+  // Sort by court name within state
+  return (a.courtName || '').localeCompare(b.courtName || '');
+}
+
+/**
  * Item with court location properties for sorting.
  * Properties are optional to support types like TrusteeAppointment where they may be undefined.
  */
@@ -68,15 +102,9 @@ export function sortByCourtLocation<T extends CourtLocationSortable>(
   options?: SortOptions,
 ): T[] {
   return [...items].sort((a, b) => {
-    // 1. Sort by state name (mapped from state code to full name)
-    const stateA = getStateNameFromCode(a.state || '');
-    const stateB = getStateNameFromCode(b.state || '');
-    const stateComparison = stateA.localeCompare(stateB);
-    if (stateComparison !== 0) return stateComparison;
-
-    // 2. Sort by court name within state
-    const courtComparison = (a.courtName || '').localeCompare(b.courtName || '');
-    if (courtComparison !== 0) return courtComparison;
+    // 1-2. Sort by state name then court name
+    const locationComparison = compareByStateAndCourt(a, b);
+    if (locationComparison !== 0) return locationComparison;
 
     // 3. Sort by division name within court
     const divisionComparison = (a.courtDivisionName || '').localeCompare(b.courtDivisionName || '');
@@ -246,13 +274,11 @@ export function sortTrusteeAppointments(appointments: TrusteeAppointment[]): Tru
     })
     .sort((a, b) => {
       // 1. Sort by state name alphabetically
-      const stateComparison = a.state.localeCompare(b.state, undefined, { sensitivity: 'base' });
+      const stateComparison = caseInsensitiveCompare(a.state, b.state);
       if (stateComparison !== 0) return stateComparison;
 
       // 2. Sort by region (Eastern, Northern, Southern, Western, etc.)
-      const regionComparison = a.region.localeCompare(b.region, undefined, {
-        sensitivity: 'base',
-      });
+      const regionComparison = caseInsensitiveCompare(a.region, b.region);
       if (regionComparison !== 0) return regionComparison;
 
       // 3. Sort by chapter number
@@ -264,7 +290,153 @@ export function sortTrusteeAppointments(appointments: TrusteeAppointment[]): Tru
       // 4. Sort by appointment type
       const typeA = a.appointment.appointmentType ?? '';
       const typeB = b.appointment.appointmentType ?? '';
-      return typeA.localeCompare(typeB, undefined, { sensitivity: 'base' });
+      return caseInsensitiveCompare(typeA, typeB);
     })
     .map((wrapper) => wrapper.appointment);
+}
+
+/**
+ * Represents a unique district (court) for selection in a dropdown.
+ */
+interface DistrictOption {
+  courtId: string;
+  courtName: string;
+  state?: string;
+}
+
+/**
+ * Represents a division within a district for selection in a dropdown.
+ */
+interface DivisionOption {
+  courtDivisionCode: string;
+  courtDivisionName: string;
+}
+
+/**
+ * Extracts unique districts from a flat array of CourtDivisionDetails.
+ * Deduplicates by courtId and sorts by state name then court name.
+ *
+ * @param courts - Flat array of court division details (one entry per division)
+ * @returns Array of unique districts sorted by state and court name
+ *
+ * @example
+ * const courts = [
+ *   { courtId: '097', courtName: 'District of Alaska', state: 'AK', ... },
+ *   { courtId: '097', courtName: 'District of Alaska', state: 'AK', ... }, // duplicate
+ *   { courtId: '081', courtName: 'Northern District of California', state: 'CA', ... }
+ * ];
+ * getUniqueDistricts(courts);
+ * // Returns: [
+ * //   { courtId: '097', courtName: 'District of Alaska', state: 'AK' },
+ * //   { courtId: '081', courtName: 'Northern District of California', state: 'CA' }
+ * // ]
+ */
+export function getUniqueDistricts(courts: CourtDivisionDetails[]): DistrictOption[] {
+  // Deduplicate by courtId using a Map
+  const districtMap = new Map<string, DistrictOption>();
+
+  for (const court of courts) {
+    if (!districtMap.has(court.courtId)) {
+      districtMap.set(court.courtId, {
+        courtId: court.courtId,
+        courtName: court.courtName,
+        state: court.state,
+      });
+    }
+  }
+
+  // Convert to array and sort by state then court name
+  const districts = Array.from(districtMap.values());
+
+  return districts.sort(compareByStateAndCourt);
+}
+
+/**
+ * Gets all divisions for a specific district (court).
+ * Returns divisions sorted alphabetically by division name.
+ *
+ * @param courts - Flat array of court division details
+ * @param courtId - The court ID to filter by
+ * @returns Array of divisions for the specified court, sorted alphabetically
+ *
+ * @example
+ * getDivisionsForDistrict(courts, '097');
+ * // Returns: [
+ * //   { courtDivisionCode: '710', courtDivisionName: 'Juneau' },
+ * //   { courtDivisionCode: '711', courtDivisionName: 'Nome' }
+ * // ]
+ */
+export function getDivisionsForDistrict(
+  courts: CourtDivisionDetails[],
+  courtId: string,
+): DivisionOption[] {
+  const divisions = courts
+    .filter((court) => court.courtId === courtId)
+    .map((court) => ({
+      courtDivisionCode: court.courtDivisionCode,
+      courtDivisionName: court.courtDivisionName,
+    }));
+
+  // Sort alphabetically by division name
+  return divisions.sort((a, b) => a.courtDivisionName.localeCompare(b.courtDivisionName));
+}
+
+/**
+ * Build a human-readable display string for an appointment's divisions.
+ *
+ * Handles multiple data shapes:
+ * - New format: divisionCodes array → looks up names, shows "All" if every division selected
+ * - Legacy format with enriched name: courtDivisionName already provided by backend
+ * - Legacy format with code only: looks up name from courts data, falls back to raw code
+ *
+ * @param appointment - Object containing division fields from the appointment
+ * @param allCourts - Full courts dataset for name lookups (may be empty if not yet loaded)
+ * @returns Display string such as "All", "Springfield, St. Louis", or "Not specified"
+ */
+export function buildDivisionsDisplay(
+  appointment: {
+    courtId?: string;
+    divisionCode?: string;
+    divisionCodes?: string[];
+    courtDivisionName?: string;
+  },
+  allCourts: CourtDivisionDetails[],
+): string {
+  if (appointment.divisionCodes && appointment.divisionCodes.length > 0) {
+    if (appointment.courtId && allCourts.length > 0) {
+      const divisions = getDivisionsForDistrict(allCourts, appointment.courtId);
+      const allDivisionCodes = divisions.map((d) => d.courtDivisionCode);
+
+      const hasAllDivisions =
+        appointment.divisionCodes.length === allDivisionCodes.length &&
+        appointment.divisionCodes.every((code) => allDivisionCodes.includes(code));
+
+      if (hasAllDivisions) return 'All';
+
+      return appointment.divisionCodes
+        .map((code) => {
+          const division = divisions.find((d) => d.courtDivisionCode === code);
+          return division?.courtDivisionName || code;
+        })
+        .sort()
+        .join(', ');
+    }
+    return appointment.divisionCodes.join(', ');
+  }
+
+  if (appointment.courtDivisionName) {
+    return appointment.courtDivisionName;
+  }
+
+  if (appointment.divisionCode && appointment.courtId && allCourts.length > 0) {
+    const divisions = getDivisionsForDistrict(allCourts, appointment.courtId);
+    const division = divisions.find((d) => d.courtDivisionCode === appointment.divisionCode);
+    return division?.courtDivisionName || appointment.divisionCode;
+  }
+
+  if (appointment.divisionCode) {
+    return appointment.divisionCode;
+  }
+
+  return 'Not specified';
 }

@@ -210,7 +210,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   const handleCancel = useCallback(() => {
     setFieldErrors({});
     navigate.navigateTo(cancelTo);
-  }, [navigate, cancelTo]);
+  }, [navigate, cancelTo, setFieldErrors]);
 
   const validateFormAndUpdateErrors = (formData: TrusteePublicFormData): boolean => {
     const results = validateObject(trusteePublicSpec, formData);
