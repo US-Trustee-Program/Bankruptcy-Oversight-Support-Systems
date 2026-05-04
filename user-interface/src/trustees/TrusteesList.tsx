@@ -130,17 +130,18 @@ export default function TrusteesList() {
       setNameSearchIds(new Set());
       return;
     }
-    nameSearchCountRef.current += 1;
     nameSearchQueryLengthRef.current = nameSearch.length;
-    const searchStart = performance.now();
     debounce(async () => {
+      const searchStart = performance.now();
       try {
         const response = await Api2.searchTrustees(nameSearch);
+        nameSearchCountRef.current += 1;
         const ids = new Set(response.data.map((r) => r.trusteeId));
         nameSearchStartRef.current = performance.now() - searchStart;
         setNameSearchIds(ids);
       } catch {
         nameSearchStartRef.current = null;
+        setNameSearch('');
         setNameSearchIds(new Set());
       }
     }, 300);
