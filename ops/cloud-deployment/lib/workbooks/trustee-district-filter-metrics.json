@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Trustee Filter Metrics\n\nSuccess metrics for trustee filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`; measurements: `selectedCount`, `resultCount`, `chapterCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee Chapter Filter Changed` — fired on any chapter selection change; dimensions: `selectedChapterValues`; measurements: `selectedCount`, `resultCount`, `districtCount`\n- `Trustee List Loaded` — fired when trustee data first renders; measurements: `trusteeCount`, `loadMs`"
+        "json": "# Trustee Filter Metrics\n\nSuccess metrics for trustee filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`; measurements: `selectedCount`, `resultCount`, `chapterCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee Chapter Filter Changed` — fired on any chapter selection change; dimensions: `selectedChapterValues`; measurements: `selectedCount`, `resultCount`, `districtCount`\n- `Trustee Name Filter Changed` — fired after each debounced search API call (2+ chars); dimensions: `hasDistrictFilter`; measurements: `queryLength`, `resultCount`, `districtCount`, `chapterCount`, `searchResponseMs`, `sessionSearchCount`\n- `Trustee Name Filter Cleared` — fired when user clears the name input; measurements: `queryLength`, `sessionSearchCount`\n- `Trustee List Loaded` — fired when trustee data first renders; measurements: `trusteeCount`, `loadMs`"
       },
       "name": "header"
     },
@@ -391,9 +391,9 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"Trustee District Filter Changed\", \"Trustee District Filter Cleared\", \"Trustee Chapter Filter Changed\")\n| summarize\n    DistrictModifications = countif(name == \"Trustee District Filter Changed\" and tostring(customDimensions.isDefault) != \"true\"),\n    DefaultClears = countif(name == \"Trustee District Filter Cleared\"),\n    ChapterModifications = countif(name == \"Trustee Chapter Filter Changed\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"Trustee District Filter Changed\", \"Trustee District Filter Cleared\", \"Trustee Chapter Filter Changed\", \"Trustee Name Filter Changed\", \"Trustee Name Filter Cleared\")\n| summarize\n    DistrictModifications = countif(name == \"Trustee District Filter Changed\" and tostring(customDimensions.isDefault) != \"true\"),\n    DefaultClears = countif(name == \"Trustee District Filter Cleared\"),\n    ChapterModifications = countif(name == \"Trustee Chapter Filter Changed\"),\n    NameSearches = countif(name == \"Trustee Name Filter Changed\"),\n    NameSearchClears = countif(name == \"Trustee Name Filter Cleared\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
         "size": 0,
-        "title": "Filter Activity Over Time (District + Chapter)",
+        "title": "Filter Activity Over Time (District + Chapter + Name)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -416,6 +416,16 @@
               "seriesName": "ChapterModifications",
               "label": "Chapter Filter Modified",
               "color": "green"
+            },
+            {
+              "seriesName": "NameSearches",
+              "label": "Name Searches",
+              "color": "purple"
+            },
+            {
+              "seriesName": "NameSearchClears",
+              "label": "Name Search Cleared",
+              "color": "pink"
             }
           ],
           "ySettings": {
@@ -520,6 +530,243 @@
       },
       "customWidth": "50",
       "name": "combined-filter-usage-kpi"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Name Search Usage\nHow frequently users search by name, average query length, and combination with district filter."
+      },
+      "name": "name-search-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet NameSearchVisits =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Name Filter Changed\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet SearchedVisits = toscalar(\n    NameSearchVisits\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    SearchedVisits = SearchedVisits,\n    SearchUsageRate = round(iif(TotalVisits > 0, todouble(SearchedVisits) / todouble(TotalVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Page Visits Where Name Search Was Used",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "SearchUsageRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalVisits",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "name-search-usage-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet TotalSearches = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Name Filter Changed\"\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    TotalSearches = TotalSearches,\n    AvgSearchesPerVisit = round(iif(TotalVisits > 0, todouble(TotalSearches) / todouble(TotalVisits), 0.0), 2)",
+        "size": 3,
+        "title": "Avg Name Searches per Page Visit",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "AvgSearchesPerVisit",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 2,
+                "maximumFractionDigits": 2
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalVisits"
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "name-search-avg-per-visit-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Filter Changed\"\n| extend queryLength = toint(customMeasurements.queryLength)\n| where isnotnull(queryLength)\n| summarize\n    AvgQueryLength = round(avg(queryLength), 1),\n    P50QueryLength = round(todouble(percentile(queryLength, 50)), 0),\n    P95QueryLength = round(todouble(percentile(queryLength, 95)), 0),\n    SampleCount = count()\n| project\n    ['Avg Length'] = AvgQueryLength,\n    ['P50 Length'] = P50QueryLength,\n    ['P95 Length'] = P95QueryLength,\n    ['Sample Count'] = SampleCount",
+        "size": 3,
+        "title": "Search Query Length (chars)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "Avg Length",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "P50 Length",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "name-search-query-length-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TotalSearches = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Name Filter Changed\"\n    | count\n);\nlet CombinedSearches = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Name Filter Changed\"\n    | where tostring(customDimensions.hasDistrictFilter) == \"true\"\n    | count\n);\nprint\n    TotalSearches = TotalSearches,\n    CombinedSearches = CombinedSearches,\n    CombinedRate = round(iif(TotalSearches > 0, todouble(CombinedSearches) / todouble(TotalSearches) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Name Searches with District Filter Active",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "CombinedRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "CombinedSearches",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "name-search-combined-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Filter Changed\"\n| extend resultCount = toint(customMeasurements.resultCount)\n| extend ResultBucket = case(\n    resultCount == 0, \"0 trustees\",\n    resultCount <= 5, \"1–5 trustees\",\n    resultCount <= 10, \"6–10 trustees\",\n    resultCount <= 20, \"11–20 trustees\",\n    resultCount <= 50, \"21–50 trustees\",\n    \"51+ trustees\"\n  )\n| summarize SearchCount = count() by ResultBucket\n| order by ResultBucket asc",
+        "size": 3,
+        "title": "Trustee Count Distribution After Name Search",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "ResultBucket"
+          },
+          "leftContent": {
+            "columnMatch": "SearchCount",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "50",
+      "name": "name-search-result-distribution-kpi"
+    },
+    {
+      "type": 1,
+      "content": {
+        "json": "---\n## Name Search Performance\nSearch API response time as measured from the client (debounce-fire to response received)."
+      },
+      "name": "name-search-performance-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee Name Filter Changed\"\n| extend searchResponseMs = todouble(customMeasurements.searchResponseMs)\n| where isnotnull(searchResponseMs)\n| summarize\n    P50Ms = round(percentile(searchResponseMs, 50), 0),\n    P95Ms = round(percentile(searchResponseMs, 95), 0),\n    SampleCount = count()\n| project\n    ['P50 Response (ms)'] = P50Ms,\n    ['P95 Response (ms)'] = P95Ms,\n    ['Sample Count'] = SampleCount",
+        "size": 3,
+        "title": "Name Search API Response Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "P50 Response (ms)",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "greenRed"
+            },
+            "numberFormat": {
+              "unit": 23,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 0,
+                "maximumFractionDigits": 0
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "P95 Response (ms)",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "50",
+      "name": "name-search-response-time-kpi"
     },
     {
       "type": 1,

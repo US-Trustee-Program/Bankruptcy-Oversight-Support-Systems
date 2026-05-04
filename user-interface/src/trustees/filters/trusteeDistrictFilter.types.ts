@@ -35,6 +35,7 @@ export interface TrusteeDistrictFilterViewModel {
   isExpanded: boolean;
   districtFilterRef: React.RefObject<ComboBoxRef | null>;
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;
+  nameSearch: string;
 
   districtsToComboOptions(districts: CourtDivisionDetails[]): ComboOption[];
   chaptersToComboOptions(): ComboOption[];
@@ -43,6 +44,7 @@ export interface TrusteeDistrictFilterViewModel {
   handleToggleExpanded(): void;
   handleFilterChapter(chapters: ComboOption[]): void;
   handleClearAllChapters(): void;
+  handleFilterName(name: string): void;
 }
 
 export interface TrusteeDistrictFilterRef {
@@ -54,6 +56,7 @@ export interface TrusteeDistrictFilterRef {
 export type TrusteeDistrictFilterProps = {
   handleFilterDistrict(districts: ComboOption[]): void;
   handleFilterChapter(chapters: ComboOption[]): void;
+  handleFilterName(name: string): void;
   onExpandedChange?: (isExpanded: boolean) => void;
 };
 

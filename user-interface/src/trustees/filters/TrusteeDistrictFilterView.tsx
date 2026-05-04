@@ -27,6 +27,31 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             )}
 
             <div className="filter-controls-row">
+              <div className="filter-control">
+                <div className="filter-control-header">
+                  <span className="filter-control-label">Trustee Name</span>
+                  {viewModel.nameSearch.length > 0 && (
+                    <button
+                      type="button"
+                      className="filter-clear-link"
+                      onClick={() => viewModel.handleFilterName('')}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <input
+                  id="trustee-name-filter"
+                  type="text"
+                  className="usa-input"
+                  aria-label="Trustee Name"
+                  value={viewModel.nameSearch}
+                  onChange={(e) => viewModel.handleFilterName(e.target.value)}
+                  placeholder="Search by name"
+                  autoComplete="off"
+                />
+              </div>
+
               {showDistrictFilter && (
                 <div className="filter-control">
                   <div className="filter-control-header">
