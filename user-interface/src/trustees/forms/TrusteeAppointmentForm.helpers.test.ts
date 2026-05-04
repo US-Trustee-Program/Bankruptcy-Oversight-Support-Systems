@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest';
 import { CourtDivisionDetails } from '@common/cams/courts';
-import { extractCourtAndDivisions, ALL_DIVISIONS_VALUE } from './TrusteeAppointmentForm';
+import { extractCourtAndDivisions } from './TrusteeAppointmentForm';
+import { ALL_DIVISIONS_VALUE } from './useDivisionSelection';
 
 describe('TrusteeAppointmentForm Helper Functions', () => {
   const mockCourts: CourtDivisionDetails[] = [
