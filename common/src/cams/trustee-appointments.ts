@@ -83,6 +83,8 @@ export type TrusteeAppointmentInput = {
   appointedDate: string;
   status: AppointmentStatus;
   effectiveDate: string;
+  courtName?: string;
+  courtDivisionName?: string;
 };
 
 export type TrusteeAppointment = Auditable &

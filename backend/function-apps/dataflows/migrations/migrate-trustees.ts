@@ -15,7 +15,6 @@ import { buildQueueError, QueueError } from '../../../lib/use-cases/dataflows/qu
 import { CamsError } from '../../../lib/common-errors/cams-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import ModuleNames from '../module-names';
-import { AtsTrusteeRecord } from '../../../lib/adapters/types/ats.types';
 import { TrusteeMigrationStartEvent } from '@common/cams/dataflow-events';
 
 const MODULE_NAME = ModuleNames.MIGRATE_TRUSTEES;
@@ -42,27 +41,11 @@ const FAILED_APPOINTMENTS = output.storageQueue({
   connection: 'AzureWebJobsStorage',
 });
 
-const RETRY = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'retry'),
-  connection: 'AzureWebJobsStorage',
-});
-
-const HARD_STOP = output.storageQueue({
-  queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
-  connection: 'AzureWebJobsStorage',
-});
-
 // Registered function names
 const HANDLE_START = buildFunctionName(MODULE_NAME, 'handleStart');
 const HANDLE_PAGE = buildFunctionName(MODULE_NAME, 'handlePage');
 const HANDLE_ERROR = buildFunctionName(MODULE_NAME, 'handleError');
-const HANDLE_RETRY = buildFunctionName(MODULE_NAME, 'handleRetry');
 const HTTP_TRIGGER = buildFunctionName(MODULE_NAME, 'httpTrigger');
-
-type TrusteeEvent = AtsTrusteeRecord & {
-  retryCount?: number;
-  error?: Error;
-};
 
 type MigrationStartMessage = StartMessage & TrusteeMigrationStartEvent;
 
@@ -230,6 +213,7 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
     `Processing ${trustees.length} trustees. Cursor: ${cursor.lastId ?? 'start'} -> ${lastTrusteeId}.`,
   );
 
+  // Process page with retry logic handled in use case
   const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(context, trustees);
 
   if (processResult.error) {
@@ -319,71 +303,21 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
 /**
  * handleError
  *
- * Route failed events to retry queue for another attempt.
- * Distinguishes between:
- * - QueueError payloads (infrastructure failures) → HARD_STOP
- * - TrusteeEvent payloads (individual trustee failures) → RETRY
+ * Handle infrastructure failures by logging to DLQ.
+ * Individual trustee failures are now handled with retry logic in the use case.
  */
-async function handleError(event: TrusteeEvent | QueueError, invocationContext: InvocationContext) {
+async function handleError(event: QueueError, invocationContext: InvocationContext) {
   const logger = ApplicationContextCreator.getLogger(invocationContext);
 
-  // Check if this is a QUEUE_ERROR (infrastructure failure)
-  if ('type' in event && event.type === 'QUEUE_ERROR') {
-    const queueError = event as unknown as QueueError;
-    logger.error(
-      MODULE_NAME,
-      `Infrastructure error in ${queueError.activityName}: ${queueError.error?.message ?? 'Unknown error'}. Routing to hard-stop.`,
-    );
-    invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    return;
-  }
-
-  // Otherwise treat as TrusteeEvent for retry
-  const trusteeEvent = event as TrusteeEvent;
+  // Log infrastructure failure
+  const queueError = event as QueueError;
   logger.error(
     MODULE_NAME,
-    `Error encountered migrating trustee ${trusteeEvent.ID}: ${trusteeEvent.error?.message ?? 'Unknown error'}.`,
+    `Infrastructure error in ${queueError.activityName}: ${queueError.error?.message ?? 'Unknown error'}. Logged to DLQ for manual review.`,
   );
 
-  delete trusteeEvent.error;
-  invocationContext.extraOutputs.set(RETRY, [trusteeEvent]);
-}
-
-/**
- * handleRetry
- *
- * Retry migrating a single trustee with retry limit tracking.
- */
-async function handleRetry(event: TrusteeEvent, invocationContext: InvocationContext) {
-  const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
-  const { logger } = context;
-
-  const RETRY_LIMIT = 3;
-  if (event.retryCount) {
-    event.retryCount += 1;
-  } else {
-    event.retryCount = 1;
-  }
-
-  if (event.retryCount > RETRY_LIMIT) {
-    invocationContext.extraOutputs.set(HARD_STOP, [event]);
-    logger.error(MODULE_NAME, `Too many retry attempts for trustee ${event.ID}.`);
-    return;
-  }
-
-  // Wrap single trustee into MergedTrusteeData structure for processing
-  const mergedData = MigrateTrusteesUseCase.mergeTrusteeRecords([event]);
-  const result = await MigrateTrusteesUseCase.processTrusteeWithAppointments(context, mergedData);
-
-  if (result.success) {
-    logger.info(
-      MODULE_NAME,
-      `Successfully retried migration for trustee ${event.ID} with ${result.appointmentsProcessed} appointments.`,
-    );
-  } else {
-    event.error = new Error(result.error ?? 'Unknown error');
-    invocationContext.extraOutputs.set(DLQ, [event]);
-  }
+  // Error already in DLQ (this handler processes DLQ messages)
+  // Just log for visibility - no further action needed
 }
 
 function setup() {
@@ -405,14 +339,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: DLQ.queueName,
     handler: handleError,
-    extraOutputs: [RETRY, HARD_STOP],
-  });
-
-  app.storageQueue(HANDLE_RETRY, {
-    connection: STORAGE_QUEUE_CONNECTION,
-    queueName: RETRY.queueName,
-    handler: handleRetry,
-    extraOutputs: [DLQ, HARD_STOP],
+    extraOutputs: [],
   });
 
   app.http(HTTP_TRIGGER, {
