@@ -1067,6 +1067,32 @@ describe('Test DXTR Gateway', () => {
       );
     });
 
+    test('should use table-qualified cs.CS_CASEID when dxtrId predicate is supplied', async () => {
+      await testCasesDxtrGateway.searchCases(applicationContext, {
+        dxtrId: testCase.dxtrId,
+        courtId: testCase.courtId,
+      });
+
+      expect(querySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('cs.CS_CASEID = @dxtrId'),
+        expect.anything(),
+      );
+    });
+
+    test('should use table-qualified cs.COURT_ID when courtId predicate is supplied', async () => {
+      await testCasesDxtrGateway.searchCases(applicationContext, {
+        dxtrId: testCase.dxtrId,
+        courtId: testCase.courtId,
+      });
+
+      expect(querySpy).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('cs.COURT_ID = @courtId'),
+        expect.anything(),
+      );
+    });
+
     test('should return an error', async () => {
       vi.resetAllMocks();
       querySpy = vi.spyOn(AbstractMssqlClient.prototype, 'executeQuery');
