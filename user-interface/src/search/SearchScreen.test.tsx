@@ -17,6 +17,13 @@ import * as UseFeatureFlagsModule from '@/lib/hooks/UseFeatureFlags';
 import * as courtUtils from '@/lib/utils/court-utils';
 import * as UseLandingPageAnalyticsModule from '@/lib/hooks/UseLandingPageAnalytics';
 
+const getResultsTable = () => document.querySelector('.search-results .cams-table');
+const getResultRows = () =>
+  document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
+const getSearchButton = () => screen.getByTestId('button-search-submit');
+const getCaseNumberInput = (): HTMLInputElement =>
+  screen.getByTestId('basic-search-field') as HTMLInputElement;
+
 describe('search screen', () => {
   const userOffices = [REGION_02_GROUP_NY];
   const user = MockData.getCamsUser({ offices: userOffices });
@@ -69,10 +76,10 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).not.toBeInTheDocument();
+      expect(getResultsTable()).not.toBeInTheDocument();
     });
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
 
@@ -85,10 +92,10 @@ describe('search screen', () => {
     });
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
+      expect(getResultsTable()).toBeInTheDocument();
     });
 
-    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
+    const rows = getResultRows();
 
     expect(rows).toHaveLength(caseList.length);
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
@@ -105,7 +112,7 @@ describe('search screen', () => {
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
     });
-    const table = document.querySelector('.search-results .cams-table');
+    const table = getResultsTable();
     expect(table).toBeVisible();
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
@@ -175,11 +182,11 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
+      expect(getResultsTable()).toBeInTheDocument();
     });
 
     const expandButton = screen.getByTestId('button-court-selections-search-expand');
@@ -203,10 +210,10 @@ describe('search screen', () => {
 
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner')).not.toBeInTheDocument();
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
-    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
+    const rows = getResultRows();
     expect(rows).toHaveLength(caseList.length);
 
     const divisionSearchPredicate = {
@@ -238,7 +245,7 @@ describe('search screen', () => {
     const loadingSpinner = document.querySelector('.loading-spinner');
     await waitFor(() => {
       expect(loadingSpinner).not.toBeInTheDocument();
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
@@ -275,7 +282,7 @@ describe('search screen', () => {
 
     searchCasesSpy.mockClear();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     expect(caseNumberInput).toBeInTheDocument();
 
     await waitFor(() => {
@@ -283,21 +290,21 @@ describe('search screen', () => {
     });
 
     await userEvent.type(caseNumberInput, caseNumber);
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
-    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
+    const rows = getResultRows();
     expect(rows).toHaveLength(caseList.length);
 
     await userEvent.type(caseNumberInput, caseNumber);
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
+      expect(getResultsTable()).toBeInTheDocument();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(casesSearchPredicate, includeAssignments);
@@ -309,7 +316,7 @@ describe('search screen', () => {
 
     searchCasesSpy.mockClear();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     expect(caseNumberInput).toBeInTheDocument();
 
     await waitFor(() => {
@@ -317,14 +324,14 @@ describe('search screen', () => {
     });
 
     await userEvent.type(caseNumberInput, '00-00000');
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
-    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
+    const rows = getResultRows();
     expect(rows).toHaveLength(caseList.length);
 
     await userEvent.type(caseNumberInput, incompleteCaseNumber);
@@ -342,16 +349,16 @@ describe('search screen', () => {
     });
     renderWithoutProps();
 
-    let table = document.querySelector('.search-results .cams-table');
+    let table = getResultsTable();
     expect(table).not.toBeInTheDocument();
 
-    let searchButton = screen.getByTestId('button-search-submit');
+    let searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     let noResultsAlert = document.querySelector('#no-results-alert');
 
     await waitFor(() => {
-      table = document.querySelector('.search-results .cams-table');
+      table = getResultsTable();
       expect(table).not.toBeInTheDocument();
 
       noResultsAlert = document.querySelector('#no-results-alert');
@@ -361,12 +368,12 @@ describe('search screen', () => {
 
     emptySpy.mockResolvedValue(searchResponseBody);
 
-    const caseNumberInput: HTMLInputElement = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     await userEvent.type(caseNumberInput, '00-11111');
     await waitFor(() => {
       expect(caseNumberInput['value']).toEqual('00-11111');
     });
-    searchButton = screen.getByTestId('button-search-submit');
+    searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
@@ -390,8 +397,8 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    const caseNumberInput: HTMLInputElement = screen.getByTestId('basic-search-field');
-    const searchButton = screen.getByTestId('button-search-submit');
+    const caseNumberInput = getCaseNumberInput();
+    const searchButton = getSearchButton();
     expect(document.querySelector('#search-error-alert')).not.toBeInTheDocument();
 
     await waitFor(() => {
@@ -406,7 +413,7 @@ describe('search screen', () => {
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).not.toBeInTheDocument();
+      expect(getResultsTable()).not.toBeInTheDocument();
 
       const searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).toBeInTheDocument();
@@ -425,7 +432,7 @@ describe('search screen', () => {
       const searchErrorAlert = document.querySelector('#search-error-alert');
       expect(searchErrorAlert).not.toBeInTheDocument();
     });
-    expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
+    expect(getResultsTable()).toBeInTheDocument();
   });
 
   test('should show an error alert if offices cannot be retrieved from API', async () => {
@@ -459,7 +466,7 @@ describe('search screen', () => {
     renderWithoutProps();
     await TestingUtilities.waitForDocumentBody();
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     expect(searchButton).toBeDisabled();
   });
 
@@ -495,11 +502,11 @@ describe('search screen', () => {
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
     await userEvent.click(expandButton);
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
+      expect(getResultsTable()).toBeInTheDocument();
       expect(document.querySelector('#closed-cases-hint-alert')).toBeInTheDocument();
     });
   });
@@ -511,7 +518,7 @@ describe('search screen', () => {
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
     await userEvent.click(expandButton);
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
@@ -537,7 +544,7 @@ describe('search screen', () => {
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
     await userEvent.click(expandButton);
 
-    await userEvent.click(screen.getByTestId('button-search-submit'));
+    await userEvent.click(getSearchButton());
 
     await waitFor(() => {
       expect(document.querySelector('#closed-cases-hint-alert')).toBeInTheDocument();
@@ -563,9 +570,9 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     await userEvent.type(caseNumberInput, '00-11111');
-    await userEvent.click(screen.getByTestId('button-search-submit'));
+    await userEvent.click(getSearchButton());
 
     await waitFor(() => {
       const hint = document.querySelector('#closed-cases-hint-alert');
@@ -588,9 +595,9 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     await userEvent.type(caseNumberInput, '00-11111');
-    await userEvent.click(screen.getByTestId('button-search-submit'));
+    await userEvent.click(getSearchButton());
 
     await waitFor(() => {
       const hint = document.querySelector('#closed-cases-hint-alert');
@@ -612,12 +619,12 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     await userEvent.type(caseNumberInput, '00-11111');
-    await userEvent.click(screen.getByTestId('button-search-submit'));
+    await userEvent.click(getSearchButton());
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
+      expect(getResultsTable()).toBeInTheDocument();
     });
 
     expect(document.querySelector('#closed-cases-hint-alert')).not.toBeInTheDocument();
@@ -637,9 +644,9 @@ describe('search screen', () => {
 
     renderWithoutProps();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     await userEvent.type(caseNumberInput, '00-11111');
-    await userEvent.click(screen.getByTestId('button-search-submit'));
+    await userEvent.click(getSearchButton());
 
     await waitFor(() => {
       const alert = document.querySelector('#no-results-alert');
@@ -652,7 +659,7 @@ describe('search screen', () => {
 
   test('should update search predicate when Include Closed Cases checkbox is toggled', async () => {
     renderWithoutProps();
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     await userEvent.type(caseNumberInput, '1100000');
 
     const initialCheckbox = screen.getByTestId('checkbox-include-closed');
@@ -660,7 +667,7 @@ describe('search screen', () => {
 
     await userEvent.click(document.querySelector('#checkbox-include-closed-click-target')!);
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
@@ -703,7 +710,7 @@ describe('search screen', () => {
 
     searchCasesSpy.mockClear();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     expect(caseNumberInput).toBeInTheDocument();
 
     await waitFor(() => {
@@ -716,10 +723,10 @@ describe('search screen', () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
-    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
+    const rows = getResultRows();
     expect(rows).toHaveLength(caseList.length);
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -736,7 +743,7 @@ describe('search screen', () => {
     renderWithoutProps();
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).not.toBeInTheDocument();
+      expect(getResultsTable()).not.toBeInTheDocument();
     });
 
     await TestingUtilities.toggleComboBoxItemSelection('case-chapter-search', 2);
@@ -754,10 +761,10 @@ describe('search screen', () => {
     });
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeInTheDocument();
+      expect(getResultsTable()).toBeInTheDocument();
     });
 
-    const rows = document.querySelectorAll('.search-results .cams-table__body .cams-table__row');
+    const rows = getResultRows();
 
     expect(rows).toHaveLength(caseList.length);
     expect(searchCasesSpy).toHaveBeenLastCalledWith(
@@ -778,7 +785,7 @@ describe('search screen', () => {
 
     searchCasesSpy.mockClear();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
 
     await waitFor(() => {
       expect(caseNumberInput).toBeEnabled();
@@ -803,7 +810,7 @@ describe('search screen', () => {
 
     searchCasesSpy.mockClear();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
 
     await waitFor(() => {
       expect(caseNumberInput).toBeEnabled();
@@ -814,7 +821,7 @@ describe('search screen', () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -854,7 +861,7 @@ describe('search screen', () => {
     renderWithoutProps();
     await TestingUtilities.waitForDocumentBody();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
 
     await waitFor(() => {
       expect(caseNumberInput).toBeEnabled();
@@ -870,7 +877,7 @@ describe('search screen', () => {
       { timeout: 1000 },
     );
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     expect(searchButton).toBeDisabled();
   });
 
@@ -879,7 +886,7 @@ describe('search screen', () => {
 
     searchCasesSpy.mockClear();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
 
     await waitFor(() => {
       expect(caseNumberInput).toBeEnabled();
@@ -906,7 +913,7 @@ describe('search screen', () => {
       { timeout: 1000 },
     );
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     expect(searchButton).not.toBeDisabled();
   });
 
@@ -918,7 +925,7 @@ describe('search screen', () => {
     renderWithoutProps();
     await TestingUtilities.waitForDocumentBody();
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
 
     expect(searchButton).toBeDisabled();
 
@@ -928,7 +935,7 @@ describe('search screen', () => {
   test('should not show form validation error when at least one criterion is selected', async () => {
     renderWithoutProps();
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
 
     await waitFor(() => {
       expect(searchButton).not.toBeDisabled();
@@ -1051,11 +1058,11 @@ describe('debtor name search', () => {
     const debtorName = 'John Smith';
     await userEvent.type(debtorNameInput, debtorName);
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -1074,7 +1081,7 @@ describe('debtor name search', () => {
     searchCasesSpy.mockClear();
 
     const debtorNameInput = await screen.findByLabelText(/debtor name/i);
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
 
     await waitFor(() => {
       expect(debtorNameInput).toBeEnabled();
@@ -1087,11 +1094,11 @@ describe('debtor name search', () => {
     await userEvent.type(debtorNameInput, debtorName);
     await userEvent.type(caseNumberInput, caseNumber);
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -1119,11 +1126,11 @@ describe('debtor name search', () => {
     const expandButton = screen.getByTestId('button-case-chapter-search-expand');
     await userEvent.click(expandButton);
 
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -1152,7 +1159,7 @@ describe('debtor name search', () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
     expect(searchCasesSpy).toHaveBeenCalledWith(
@@ -1300,17 +1307,17 @@ describe('SearchScreen analytics integration', () => {
     // After removing LandingPageContext, SearchScreen now tracks first search for any user on /search
     renderWithoutProps();
 
-    const caseNumberInput = screen.getByTestId('basic-search-field');
+    const caseNumberInput = getCaseNumberInput();
     await waitFor(() => {
       expect(caseNumberInput).toBeEnabled();
     });
 
     await userEvent.type(caseNumberInput, '00-11111');
-    const searchButton = screen.getByTestId('button-search-submit');
+    const searchButton = getSearchButton();
     await userEvent.click(searchButton);
 
     await waitFor(() => {
-      expect(document.querySelector('.search-results .cams-table')).toBeVisible();
+      expect(getResultsTable()).toBeVisible();
     });
 
     // Should track first search action
