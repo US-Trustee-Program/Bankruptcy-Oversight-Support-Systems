@@ -3,10 +3,12 @@ import { app, InvocationContext, output } from '@azure/functions';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import {
+  buildContainerName,
   buildFunctionName,
   buildQueueName,
   buildStartQueueHttpTrigger,
   CursorMessage,
+  ensureContainersExist,
   StartMessage,
 } from '../dataflows-common';
 import * as MigrateTrusteesUseCase from '../../../lib/use-cases/dataflows/migrate-trustees';
@@ -321,6 +323,8 @@ async function handleError(event: QueueError, invocationContext: InvocationConte
 }
 
 function setup() {
+  ensureContainersExist([buildContainerName(MODULE_NAME, 'out')], MODULE_NAME);
+
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
