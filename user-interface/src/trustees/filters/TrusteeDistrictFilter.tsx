@@ -19,12 +19,15 @@ import React, {
 import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
+import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
 
 const TrusteeDistrictFilter_ = (
   props: TrusteeDistrictFilterProps,
   ref: React.Ref<TrusteeDistrictFilterRef>,
 ) => {
   const { handleFilterName, onExpandedChange, onCourtsLoaded } = props;
+  const flags = useFeatureFlags();
+  const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
   const [nameSearch, setNameSearch] = useState('');
   const store: TrusteeDistrictFilterStore = useTrusteeDistrictFilterStoreReact();
   const controls: TrusteeDistrictFilterControls = useTrusteeDistrictFilterControlsReact();
@@ -45,6 +48,7 @@ const TrusteeDistrictFilter_ = (
     previousDistrictsRef,
     props.handleFilterChapter,
     previousChaptersRef,
+    districtDivisionEnabled,
   );
   const globalAlert = useGlobalAlert();
 

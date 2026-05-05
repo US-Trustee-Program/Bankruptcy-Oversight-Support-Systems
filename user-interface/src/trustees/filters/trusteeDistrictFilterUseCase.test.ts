@@ -106,6 +106,16 @@ describe('trustee district filter use case tests', () => {
     previousChaptersRef,
   );
 
+  const useCaseWithFlag = trusteeDistrictFilterUseCase(
+    mockStore,
+    mockControls,
+    mockOnFilterDistrict,
+    previousDistrictsRef,
+    mockOnFilterChapter,
+    previousChaptersRef,
+    true,
+  );
+
   beforeEach(() => {
     mockStore.defaultDistricts = [];
     mockStore.setSelectedDistricts = vi.fn();
@@ -134,6 +144,27 @@ describe('trustee district filter use case tests', () => {
       });
       expect(comboOptions[1]).toEqual({
         value: '088',
+        label: 'District of Vermont',
+      });
+    });
+
+    test('flag OFF: returns options with comma-joined division codes as value', () => {
+      const comboOptions = useCase.districtsToComboOptions(mockDistricts);
+
+      expect(comboOptions[0].value).toBe('081,087');
+      expect(comboOptions[1].value).toBe('088');
+    });
+
+    test('flag ON: returns options with courtId as value', () => {
+      const comboOptions = useCaseWithFlag.districtsToComboOptions(mockDistricts);
+
+      expect(comboOptions).toHaveLength(2);
+      expect(comboOptions[0]).toEqual({
+        value: 'NYSB',
+        label: 'Southern District of New York',
+      });
+      expect(comboOptions[1]).toEqual({
+        value: 'VTB',
         label: 'District of Vermont',
       });
     });

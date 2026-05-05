@@ -546,9 +546,9 @@ describe('TrusteesList Component', () => {
     });
 
     test('should AND-filter when both district and chapter filters are active', async () => {
-      const apptA = makeAppointment({ chapter: '7', divisionCode: '081' });
-      const apptB = makeAppointment({ chapter: '13', divisionCode: '081' });
-      const apptC = makeAppointment({ chapter: '7', divisionCode: '088' });
+      const apptA = makeAppointment({ chapter: '7', courtId: 'NYSB', divisionCode: '081' });
+      const apptB = makeAppointment({ chapter: '13', courtId: 'NYSB', divisionCode: '081' });
+      const apptC = makeAppointment({ chapter: '7', courtId: 'VTB', divisionCode: '088' });
       const trusteeA = makeListItem({
         trusteeId: 'a',
         firstName: 'Alice',
@@ -1745,6 +1745,271 @@ describe('TrusteesList Component', () => {
 
       // Should remove the filter and show all trustees
       await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('District Filter - courtId matching (flag ON)', () => {
+    beforeEach(() => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York Region',
+          },
+        ],
+      });
+    });
+
+    test('flag ON: trustee with divisionCodes only (no divisionCode) appears when courtId district is selected', async () => {
+      const appt = makeAppointment({
+        courtId: 'NYSB',
+        divisionCode: undefined,
+        divisionCodes: ['081'],
+      });
+      const trusteeNY = makeListItem({
+        trusteeId: 'ny',
+        firstName: 'New',
+        lastName: 'York',
+        appointments: [appt],
+      });
+      const trusteeOther = makeListItem({
+        trusteeId: 'other',
+        firstName: 'Other',
+        lastName: 'Trustee',
+        appointments: [makeAppointment({ courtId: 'VTB', divisionCodes: ['088'] })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY, trusteeOther] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('York, New')).toBeInTheDocument();
+        expect(screen.queryByText('Trustee, Other')).not.toBeInTheDocument();
+      });
+    });
+
+    test('flag ON: trustee with empty divisionCodes (all divisions) appears when courtId district is selected', async () => {
+      const appt = makeAppointment({
+        courtId: 'NYSB',
+        divisionCode: undefined,
+        divisionCodes: [],
+      });
+      const trustee = makeListItem({
+        trusteeId: 'ny',
+        firstName: 'All',
+        lastName: 'Divisions',
+        appointments: [appt],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Divisions, All')).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+    });
+
+    test('flag ON: trustee in a different district does NOT appear', async () => {
+      const apptNY = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
+      const apptCA = makeAppointment({ courtId: 'CAB', divisionCodes: ['099'] });
+      const trusteeNY = makeListItem({
+        trusteeId: 'ny',
+        firstName: 'New',
+        lastName: 'York',
+        appointments: [apptNY],
+      });
+      const trusteeCA = makeListItem({
+        trusteeId: 'ca',
+        firstName: 'Cali',
+        lastName: 'Fornia',
+        appointments: [apptCA],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY, trusteeCA] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('York, New')).toBeInTheDocument();
+        expect(screen.queryByText('Fornia, Cali')).not.toBeInTheDocument();
+      });
+    });
+
+    test('flag ON: no district selected — all trustees appear', async () => {
+      const trusteeNY = makeListItem({
+        trusteeId: 'ny',
+        firstName: 'New',
+        lastName: 'York',
+        appointments: [makeAppointment({ courtId: 'NYSB' })],
+      });
+      const trusteeCA = makeListItem({
+        trusteeId: 'ca',
+        firstName: 'Cali',
+        lastName: 'Fornia',
+        appointments: [makeAppointment({ courtId: 'CAB' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY, trusteeCA] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('York, New')).toBeInTheDocument();
+        expect(screen.getByText('Fornia, Cali')).toBeInTheDocument();
+      });
+    });
+
+    test('flag OFF: filter still uses division code matching (existing behavior)', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
+
+      const appt = makeAppointment({ courtId: 'NYSB', divisionCode: '081' });
+      const trusteeNY = makeListItem({
+        trusteeId: 'ny',
+        firstName: 'New',
+        lastName: 'York',
+        appointments: [appt],
+      });
+      const trusteeOther = makeListItem({
+        trusteeId: 'other',
+        firstName: 'Other',
+        lastName: 'Person',
+        appointments: [makeAppointment({ courtId: 'VTB', divisionCode: '088' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY, trusteeOther] });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('York, New')).toBeInTheDocument();
+        expect(screen.queryByText('Person, Other')).not.toBeInTheDocument();
         expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
       });
     });
