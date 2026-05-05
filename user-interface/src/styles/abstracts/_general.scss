@@ -1,1 +1,27 @@
 $borderRadius: 5px;
+
+// Visually hidden but accessible to screen readers.
+// Use anywhere an element needs to be hidden from sighted users
+// while remaining in the accessibility tree.
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+// Reverses visually-hidden — restores an element to normal flow.
+// Use in media queries to un-hide an element that was hidden with visually-hidden.
+@mixin visually-shown {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
