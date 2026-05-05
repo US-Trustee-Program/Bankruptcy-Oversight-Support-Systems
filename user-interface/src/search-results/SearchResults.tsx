@@ -119,13 +119,14 @@ function SearchResults(props: SearchResultsProps) {
       onStartSearching();
     }
     const searchStart = performance.now();
+    const { excludeClosedCases } = searchPredicate;
     Api2.searchCases(searchPredicate, { includeAssignments: true })
       .then((response) => {
         getAppInsights().appInsights.trackEvent(
           { name: 'Case Search Performance' },
           {
             durationMs: Math.round(performance.now() - searchStart),
-            excludeClosedCases: searchPredicate.excludeClosedCases ?? true,
+            excludeClosedCases: excludeClosedCases ?? true,
           },
         );
         handleSearchResults(response);
