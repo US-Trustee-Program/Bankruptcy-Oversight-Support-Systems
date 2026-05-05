@@ -48,16 +48,7 @@ describe('StaffAssignmentRow tests', () => {
     };
     return (
       <div>
-        <table>
-          <tbody>
-            <StaffAssignmentRow
-              labels={props.labels}
-              bCase={props.bCase}
-              idx={0}
-              options={options}
-            />
-          </tbody>
-        </table>
+        <StaffAssignmentRow labels={props.labels} bCase={props.bCase} idx={0} options={options} />
         <AssignAttorneyModal
           modalId={'test-modal-id'}
           ref={modalRef}
@@ -75,36 +66,38 @@ describe('StaffAssignmentRow tests', () => {
 
   vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({ data: mockStaffByRole });
 
+  function getCells() {
+    return document.querySelectorAll('.cams-table__row .cams-table__cell');
+  }
+
   test('should render a row', async () => {
     const assignedAttorney = MockData.getAttorneyAssignment();
 
     renderWithProps({ bCase: { ...bCase, assignments: [assignedAttorney] } });
 
-    let rows: NodeListOf<HTMLTableCellElement> | undefined;
+    let cells: NodeListOf<Element> | undefined;
     await waitFor(() => {
-      const firstTable = document.querySelector('table');
-      rows = firstTable?.querySelectorAll('td');
-      expect(rows?.length).toEqual(5);
+      cells = getCells();
+      expect(cells?.length).toEqual(5);
     });
-    expect(rows?.[0]).toHaveTextContent(getCaseNumber(bCase.caseId));
-    expect(rows?.[0]).toHaveTextContent(bCase.courtDivisionName);
-    expect(rows?.[1]).toHaveTextContent(bCase.caseTitle);
-    expect(rows?.[2]).toHaveTextContent(bCase.chapter);
-    expect(rows?.[3]).toHaveTextContent(formatDate(bCase.dateFiled));
-    expect(rows?.[4]).toHaveTextContent(assignedAttorney.name);
+    expect(cells?.[0]).toHaveTextContent(getCaseNumber(bCase.caseId));
+    expect(cells?.[0]).toHaveTextContent(bCase.courtDivisionName);
+    expect(cells?.[1]).toHaveTextContent(bCase.caseTitle);
+    expect(cells?.[2]).toHaveTextContent(bCase.chapter);
+    expect(cells?.[3]).toHaveTextContent(formatDate(bCase.dateFiled));
+    expect(cells?.[4]).toHaveTextContent(assignedAttorney.name);
     expect(screen.getByTestId('attorney-list-0')).toBeVisible();
   });
 
   test('should show "unassigned" if there is not an assigned attorney', async () => {
     renderWithProps();
 
-    let cols: NodeListOf<HTMLTableCellElement> | undefined;
+    let cells: NodeListOf<Element> | undefined;
     await waitFor(() => {
-      const firstTable = document.querySelector('table');
-      cols = firstTable?.querySelectorAll('td');
-      expect(cols?.[4]).toHaveTextContent('(unassigned)');
+      cells = getCells();
+      expect(cells?.[4]).toHaveTextContent('(unassigned)');
     });
-    const button = cols?.[4].querySelector('button');
+    const button = cells?.[4].querySelector('button');
     expect(button).toHaveClass(UswdsButtonStyle.Unstyled);
     expect(button).toHaveTextContent('Edit');
     expect(button).toHaveAttribute('title', 'Edit Staff Assignments');
@@ -120,11 +113,10 @@ describe('StaffAssignmentRow tests', () => {
     renderWithProps({ bCase: { ...bCase, assignments } });
 
     await waitFor(() => {
-      const firstTable = document.querySelector('table');
-      const cols = firstTable?.querySelectorAll('td');
+      const cells = getCells();
       assignments.forEach((assignment) => {
-        expect(cols?.[4]).toHaveTextContent(assignment.name);
-        const button = cols?.[4].querySelector('button');
+        expect(cells?.[4]).toHaveTextContent(assignment.name);
+        const button = cells?.[4].querySelector('button');
         expect(button).toHaveClass(UswdsButtonStyle.Unstyled);
         expect(button).toHaveTextContent('Edit');
         expect(button).toHaveAttribute('title', 'Edit Staff Assignments');
@@ -143,11 +135,10 @@ describe('StaffAssignmentRow tests', () => {
     renderWithProps({ bCase: myCase });
 
     await waitFor(() => {
-      const firstTable = document.querySelector('table');
-      const cols = firstTable?.querySelectorAll('td');
+      const cells = getCells();
       assignments.forEach((assignment) => {
-        expect(cols?.[4]).toHaveTextContent(assignment.name);
-        const button = cols?.[4].querySelector('button');
+        expect(cells?.[4]).toHaveTextContent(assignment.name);
+        const button = cells?.[4].querySelector('button');
         expect(button).not.toBeInTheDocument();
       });
     });

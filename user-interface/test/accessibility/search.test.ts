@@ -15,7 +15,7 @@ test.describe('Search', () => {
     // Scenario 1: Successful search with results
     await page.locator('[data-testid="basic-search-field"]').fill('00-00000');
     await page.locator('#search-submit').click();
-    await expect(page.locator('#search-results > table')).toBeVisible();
+    await expect(page.locator('#search-results.cams-table')).toBeVisible();
 
     // Check accessibility for search results scenario
     await page.waitForTimeout(ANALYZE_DELAY);

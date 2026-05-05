@@ -1,80 +1,88 @@
-import { TableHeader, TableHeaderData } from '@/lib/components/uswds/Table';
+import { CamsTableHeader, CamsTableHeaderCell } from '@/lib/components/cams/CamsTable';
 import { SearchResultsHeaderProps } from '@/search-results/SearchResults';
 
 export function SearchResultsHeader(props: SearchResultsHeaderProps) {
-  const { id, showDebtorNameColumn = false, showOpenClosedColumn = false } = props;
+  const { showDebtorNameColumn = false, showOpenClosedColumn = false } = props;
 
-  // Define all header cells
-  const caseNumberHeader = (
-    <TableHeaderData
-      key="case-number"
-      scope="col"
-      data-testid="header-case-number"
-      className={showDebtorNameColumn ? 'grid-col-2' : 'grid-col-3'}
-    >
-      {props.labels[0]}
-    </TableHeaderData>
-  );
-
-  const caseTitleHeader = (
-    <TableHeaderData
-      key="case-title"
-      scope="col"
-      data-testid="header-case-title"
-      className={showDebtorNameColumn ? 'grid-col-3' : 'grid-col-4'}
-    >
-      {props.labels[1]}
-    </TableHeaderData>
-  );
-
-  const debtorNameHeader = (
-    <TableHeaderData
-      key="debtor-name"
-      scope="col"
-      data-testid="header-debtor-name"
-      className="grid-col-3"
-    >
-      {props.labels[2]}
-    </TableHeaderData>
-  );
-
-  const chapterHeader = (
-    <TableHeaderData key="chapter" scope="col" data-testid="header-chapter" className="grid-col-2">
-      {props.labels[showDebtorNameColumn ? 3 : 2]}
-    </TableHeaderData>
-  );
-
-  const dateFiledHeader = (
-    <TableHeaderData
-      key="date-filed"
-      scope="col"
-      data-testid="header-date-filed"
-      className={showDebtorNameColumn ? 'grid-col-2' : 'grid-col-3'}
-    >
-      {props.labels[showDebtorNameColumn ? 4 : 3]}
-    </TableHeaderData>
-  );
-
-  const openClosedHeader = (
-    <TableHeaderData
-      key="open-closed"
-      scope="col"
-      data-testid="header-open-closed"
-      className="grid-col-2"
-    >
-      {props.labels[props.labels.length - 1]}
-    </TableHeaderData>
-  );
-
-  // Conditionally construct header array
   const baseHeaders = showDebtorNameColumn
-    ? [caseNumberHeader, caseTitleHeader, debtorNameHeader, chapterHeader, dateFiledHeader]
-    : [caseNumberHeader, caseTitleHeader, chapterHeader, dateFiledHeader];
-  const headers = showOpenClosedColumn ? [...baseHeaders, openClosedHeader] : baseHeaders;
+    ? [
+        {
+          key: 'case-number',
+          testId: 'header-case-number',
+          label: props.labels[0],
+          className: 'col-case-number',
+        },
+        {
+          key: 'case-title',
+          testId: 'header-case-title',
+          label: props.labels[1],
+          className: 'col-case-title',
+        },
+        {
+          key: 'debtor-name',
+          testId: 'header-debtor-name',
+          label: props.labels[2],
+          className: 'col-debtor-name',
+        },
+        {
+          key: 'chapter',
+          testId: 'header-chapter',
+          label: props.labels[3],
+          className: 'col-chapter',
+        },
+        {
+          key: 'date-filed',
+          testId: 'header-date-filed',
+          label: props.labels[4],
+          className: 'col-date-filed',
+        },
+      ]
+    : [
+        {
+          key: 'case-number',
+          testId: 'header-case-number',
+          label: props.labels[0],
+          className: 'col-case-number',
+        },
+        {
+          key: 'case-title',
+          testId: 'header-case-title',
+          label: props.labels[1],
+          className: 'col-case-title',
+        },
+        {
+          key: 'chapter',
+          testId: 'header-chapter',
+          label: props.labels[2],
+          className: 'col-chapter',
+        },
+        {
+          key: 'date-filed',
+          testId: 'header-date-filed',
+          label: props.labels[3],
+          className: 'col-date-filed',
+        },
+      ];
+
+  const headers = showOpenClosedColumn
+    ? [
+        ...baseHeaders,
+        {
+          key: 'open-closed',
+          testId: 'header-open-closed',
+          label: props.labels[props.labels.length - 1],
+          className: 'col-open-closed',
+        },
+      ]
+    : baseHeaders;
 
   return (
-    <TableHeader id={id} className="case-headings">
-      {headers}
-    </TableHeader>
+    <CamsTableHeader>
+      {headers.map(({ key, testId, label, className }) => (
+        <CamsTableHeaderCell key={key} data-testid={testId} className={className}>
+          {label}
+        </CamsTableHeaderCell>
+      ))}
+    </CamsTableHeader>
   );
 }

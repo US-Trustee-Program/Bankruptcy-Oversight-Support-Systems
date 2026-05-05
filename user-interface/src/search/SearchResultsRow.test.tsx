@@ -10,16 +10,12 @@ describe('SearchResultsRow', () => {
     const bCase = MockData.getSyncedCase({ override: overrides });
     render(
       <BrowserRouter>
-        <table>
-          <tbody>
-            <SearchResultsRow
-              bCase={bCase}
-              labels={[...labels, 'Open/Closed']}
-              idx={0}
-              showOpenClosedColumn={showOpenClosedColumn}
-            />
-          </tbody>
-        </table>
+        <SearchResultsRow
+          bCase={bCase}
+          labels={[...labels, 'Open/Closed']}
+          idx={0}
+          showOpenClosedColumn={showOpenClosedColumn}
+        />
       </BrowserRouter>,
     );
   }
