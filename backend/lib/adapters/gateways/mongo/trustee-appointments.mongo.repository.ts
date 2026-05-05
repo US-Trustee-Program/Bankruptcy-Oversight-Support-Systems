@@ -1,5 +1,8 @@
 import { ApplicationContext } from '../../types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../../common-errors/error-utilities';
+import { TrusteeCaseListItem } from '@common/cams/trustee-cases';
+import { PaginationParameters } from '@common/api/pagination';
+import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { NotFoundError } from '../../../common-errors/not-found-error';
 import {
   TrusteeAppointmentsRepository,
@@ -528,6 +531,68 @@ export class TrusteeAppointmentsMongoRepository
     } catch (originalError) {
       throw getCamsErrorWithStack(originalError, MODULE_NAME, {
         message: 'Failed to delete all trustee appointments.',
+      });
+    }
+  }
+
+  async getCasesForTrustee(
+    trusteeId: string,
+    predicate: PaginationParameters,
+  ): Promise<CamsPaginationResponse<TrusteeCaseListItem>> {
+    try {
+      const offset = predicate.offset ?? 0;
+      const limit = predicate.limit ?? 25;
+
+      const rawPipeline = [
+        {
+          $match: {
+            documentType: 'CASE_APPOINTMENT',
+            trusteeId,
+            unassignedOn: { $exists: false },
+          },
+        },
+        {
+          $lookup: {
+            from: 'cases',
+            localField: 'caseId',
+            foreignField: 'caseId',
+            as: 'caseDoc',
+          },
+        },
+        { $unwind: '$caseDoc' },
+        {
+          $addFields: {
+            caseId: '$caseDoc.caseId',
+            caseNumber: '$caseDoc.caseNumber',
+            caseTitle: '$caseDoc.caseTitle',
+            chapter: '$caseDoc.chapter',
+            dateFiled: '$caseDoc.dateFiled',
+            closedDate: '$caseDoc.closedDate',
+            reopenedDate: '$caseDoc.reopenedDate',
+            officeName: '$caseDoc.officeName',
+            courtDivisionName: '$caseDoc.courtDivisionName',
+          },
+        },
+        { $sort: { dateFiled: -1 } },
+        {
+          $facet: {
+            metadata: [{ $count: 'total' }],
+            data: [{ $skip: offset }, { $limit: limit }],
+          },
+        },
+      ];
+
+      const collection = this.client.database(this.databaseName).collection(this.collectionName);
+      const cursor = await collection.aggregate(rawPipeline);
+      const result = await cursor.next();
+
+      return {
+        metadata: result?.metadata?.[0] ?? { total: 0 },
+        data: (result?.data ?? []) as TrusteeCaseListItem[],
+      };
+    } catch (originalError) {
+      throw getCamsErrorWithStack(originalError, MODULE_NAME, {
+        message: `Failed to retrieve cases for trustee ${trusteeId}.`,
       });
     }
   }

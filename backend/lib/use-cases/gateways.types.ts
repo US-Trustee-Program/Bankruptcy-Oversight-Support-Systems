@@ -63,6 +63,8 @@ import {
 import { Creatable } from '@common/cams/creatable';
 import { Identifiable } from '@common/cams/document';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import { PaginationParameters } from '@common/api/pagination';
+import { TrusteeCaseListItem } from '@common/cams/trustee-cases';
 
 export type ReplaceResult = {
   id: string;
@@ -394,6 +396,10 @@ export interface TrusteeAppointmentsRepository extends Releasable {
   getChapter7DueDateMetricsAggregation(): Promise<TrusteeDueDateMetricsAggregation>;
   delete(id: string): Promise<void>;
   deleteAll(): Promise<number>;
+  getCasesForTrustee(
+    trusteeId: string,
+    predicate: PaginationParameters,
+  ): Promise<CamsPaginationResponse<TrusteeCaseListItem>>;
 }
 
 export interface TrusteeAssistantsRepository extends Releasable {

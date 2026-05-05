@@ -354,6 +354,10 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getCasesForTrustee(..._ignore: any[]): Promise<any> {
+    throw new Error('Method not implemented.');
+  }
+
   getTrusteeAssistants(..._ignore): Promise<any[]> {
     throw new Error('Method not implemented.');
   }

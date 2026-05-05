@@ -14,8 +14,10 @@ import { CamsUserReference } from '@common/cams/users';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
+import { CollectionHumble } from '../../../humble-objects/mongo-humble';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import { NotFoundError } from '../../../common-errors/not-found-error';
+import { TrusteeCaseListItem } from '@common/cams/trustee-cases';
 
 describe('TrusteeAppointmentsMongoRepository', () => {
   let context: ApplicationContext;
@@ -704,6 +706,44 @@ describe('TrusteeAppointmentsMongoRepository', () => {
         condition: 'EQUALS',
         leftOperand: { name: 'documentType' },
         rightOperand: 'TRUSTEE_APPOINTMENT',
+      });
+    });
+  });
+
+  describe('getCasesForTrustee', () => {
+    const sampleCaseListItem: TrusteeCaseListItem = {
+      caseId: '111-24-00001',
+      caseTitle: 'Smith, John',
+      chapter: '7',
+      dateFiled: '2024-01-15',
+      appointedDate: '2024-01-20',
+    };
+
+    test('should return cases for a trustee', async () => {
+      const mockResult = { metadata: [{ total: 1 }], data: [sampleCaseListItem] };
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue({
+        next: vi.fn().mockResolvedValue(mockResult),
+      } as unknown as Awaited<ReturnType<CollectionHumble<unknown>['aggregate']>>);
+
+      const result = await repository.getCasesForTrustee('trustee-1', { offset: 0, limit: 25 });
+
+      expect(result).toEqual({
+        metadata: { total: 1 },
+        data: [sampleCaseListItem],
+      });
+    });
+
+    test('should return empty results when no cases found', async () => {
+      const mockResult = { metadata: [], data: [] };
+      vi.spyOn(CollectionHumble.prototype, 'aggregate').mockResolvedValue({
+        next: vi.fn().mockResolvedValue(mockResult),
+      } as unknown as Awaited<ReturnType<CollectionHumble<unknown>['aggregate']>>);
+
+      const result = await repository.getCasesForTrustee('trustee-1', { offset: 0, limit: 25 });
+
+      expect(result).toEqual({
+        metadata: { total: 0 },
+        data: [],
       });
     });
   });
