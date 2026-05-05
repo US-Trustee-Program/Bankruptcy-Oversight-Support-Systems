@@ -39,6 +39,7 @@ import {
   TrusteePatchBody,
 } from '@common/cams/trustees';
 import { CaseAppointment, TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
+import { TrusteeCaseListItem } from '@common/cams/trustee-cases';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
@@ -2713,6 +2714,16 @@ async function putTrusteeAppointment(
   return put(`/trustees/${trusteeId}/appointments/${appointmentId}`, appointment, {});
 }
 
+async function getTrusteeCases(
+  _trusteeId: string,
+  _limit: number,
+  _offset: number,
+): Promise<ResponseBody<TrusteeCaseListItem[]>> {
+  return {
+    data: [] as TrusteeCaseListItem[],
+  };
+}
+
 async function getTrusteeAssistants(_trusteeId: string) {
   return {
     data: [] as TrusteeAssistant[],
@@ -2917,6 +2928,7 @@ const MockApi2 = {
   getTrusteeAppointments,
   postTrusteeAppointment,
   putTrusteeAppointment,
+  getTrusteeCases,
   getTrusteeAssistants,
   getAssistant,
   createTrusteeAssistant,

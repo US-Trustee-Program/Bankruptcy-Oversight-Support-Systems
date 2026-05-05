@@ -1,12 +1,18 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { setCurrentNav, createNavStateMapper } from '@/lib/utils/navigation';
-import useFeatureFlags, { TRUSTEE_ASSIGNED_STAFF_ENABLED } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  TRUSTEE_ASSIGNED_STAFF_ENABLED,
+  TRUSTEE_CASE_TAB,
+} from '@/lib/hooks/UseFeatureFlags';
+import LocalStorage from '@/lib/utils/local-storage';
+import { CamsRole } from '@common/cams/roles';
 
 export enum TrusteeNavState {
   TRUSTEE_PROFILE,
   APPOINTMENTS,
   ASSIGNED_STAFF,
+  CASES,
   NOTES,
   AUDIT_HISTORY,
 }
@@ -15,6 +21,7 @@ export const mapTrusteeDetailNavState = createNavStateMapper<TrusteeNavState>(
   {
     appointments: TrusteeNavState.APPOINTMENTS,
     'assigned-staff': TrusteeNavState.ASSIGNED_STAFF,
+    cases: TrusteeNavState.CASES,
     notes: TrusteeNavState.NOTES,
     'audit-history': TrusteeNavState.AUDIT_HISTORY,
   },
@@ -35,6 +42,9 @@ export default function TrusteeDetailNavigation({
   const [activeNav, setActiveNav] = useState<TrusteeNavState>(initiallySelectedNavLink);
   const flags = useFeatureFlags();
   const showAssignedStaff = !!flags[TRUSTEE_ASSIGNED_STAFF_ENABLED];
+  const session = LocalStorage.getSession();
+  const showCasesTab =
+    !!flags[TRUSTEE_CASE_TAB] && !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
   return (
     <>
@@ -76,6 +86,19 @@ export default function TrusteeDetailNavigation({
                 title="View staff assigned to the current trustee"
               >
                 Assigned Staff
+              </NavLink>
+            </li>
+          )}
+          {showCasesTab && (
+            <li className="usa-sidenav__item">
+              <NavLink
+                to={`/trustees/${trusteeId}/cases`}
+                data-testid="trustee-cases-nav-link"
+                className={`usa-sidenav__link ${setCurrentNav(activeNav, TrusteeNavState.CASES)}`}
+                onClick={() => setActiveNav(TrusteeNavState.CASES)}
+                title="View cases assigned to the current trustee"
+              >
+                Cases
               </NavLink>
             </li>
           )}

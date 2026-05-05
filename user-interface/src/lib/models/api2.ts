@@ -52,6 +52,7 @@ import {
 } from '@common/cams/trustee-appointments';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
+import { TrusteeCaseListItem } from '@common/cams/trustee-cases';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { OversightRoleType } from '@common/cams/roles';
 import {
@@ -293,6 +294,12 @@ async function putTrusteeAppointment(
   appointment: TrusteeAppointmentInput,
 ) {
   return api().put(`/trustees/${trusteeId}/appointments/${appointmentId}`, appointment);
+}
+
+async function getTrusteeCases(trusteeId: string, limit: number, offset: number) {
+  return api().get<TrusteeCaseListItem[]>(
+    `/trustees/${trusteeId}/cases?limit=${limit}&offset=${offset}`,
+  );
 }
 
 async function getTrusteeAssistants(trusteeId: string) {
@@ -605,6 +612,7 @@ export const _Api2 = {
   getTrusteeAppointments,
   postTrusteeAppointment,
   putTrusteeAppointment,
+  getTrusteeCases,
   getTrusteeAssistants,
   getAssistant,
   createTrusteeAssistant,

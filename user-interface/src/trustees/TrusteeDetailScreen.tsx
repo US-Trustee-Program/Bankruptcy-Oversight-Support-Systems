@@ -28,6 +28,7 @@ import UpcomingKeyDatesForm from './forms/UpcomingKeyDatesForm';
 import PastKeyDatesForm from './forms/PastKeyDatesForm';
 import TrusteeMeetingOfCreditorsInfoForm from './forms/TrusteeMeetingOfCreditorsInfoForm';
 import TrusteeNotes from '@/trustees/panels/trustee-notes/TrusteeNotes';
+import TrusteeCaseList from './panels/TrusteeCaseList';
 import useFeatureFlags, {
   DISPLAY_CHPT7_PANEL_UPCOMING_KEY_DATES,
   TRUSTEE_SOFTWARE_BANK_DISPLAY,
@@ -268,6 +269,20 @@ export default function TrusteeDetailScreen() {
           </div>
           <div className="main-content-area">
             <TrusteeAssignedStaff trusteeId={trusteeId} />
+          </div>
+        </div>
+      ),
+    },
+    {
+      path: 'cases',
+      subHeading: 'Trustee',
+      content: (
+        <div className="trustee-detail-screen-info-container">
+          <div className="left-navigation-pane-container">
+            <TrusteeDetailNavigation trusteeId={trusteeId} initiallySelectedNavLink={navState} />
+          </div>
+          <div className="main-content-area">
+            <TrusteeCaseList trusteeId={trusteeId} />
           </div>
         </div>
       ),
