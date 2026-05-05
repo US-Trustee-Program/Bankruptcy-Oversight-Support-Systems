@@ -1,3 +1,5 @@
+@use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+
 .search-screen {
   h1 {
     display: inline-block;
@@ -52,14 +54,7 @@
 
     // Undo the CamsTable flex-row layout — table stays stacked at this breakpoint
     // because the filter panel leaves insufficient width for columns
-    .cams-table--responsive {
-      .cams-table__header-group { display: none; }
-      .cams-table__header-row,
-      .cams-table__row { display: block; }
-      .cams-table__cell { display: block; width: 100%; padding: 0.25rem 0; }
-      .cams-table__body .cams-table__cell[data-cell]::before { display: inline; }
-      .cams-table__body .cams-table__row { padding: 0.625rem 1rem; margin-bottom: 0.25rem; }
-    }
+    .cams-table--responsive { @include cams-table.cams-table-stacked; }
   }
 
   // Desktop (1025px+): wider filter panel, table switches to flex-row columns
@@ -70,12 +65,7 @@
     }
 
     .cams-table--responsive {
-      .cams-table__header-group { display: block; font-weight: bold; border-bottom: 1px solid #1b1b1b; padding-bottom: 0.5rem; margin-bottom: 0; }
-      .cams-table__header-row,
-      .cams-table__row { display: flex; flex-direction: row; gap: 1rem; align-items: baseline; }
-      .cams-table__cell { flex: 1 1 0; min-width: 0; padding: 0.5rem 1rem; width: auto; }
-      .cams-table__body .cams-table__cell[data-cell]::before { display: none; }
-      .cams-table__body .cams-table__row { padding: 0; margin-bottom: 0; }
+      @include cams-table.cams-table-flex-row;
       .col-case-number { flex: 3 1 0; }
       .col-case-title  { flex: 3 1 0; }
       .col-debtor-name { flex: 2 1 0; }
