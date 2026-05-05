@@ -10,6 +10,7 @@ export const EXTERNAL_DEPENDENCIES = [
   // This avoids platform-specific binary issues with native modules
   '@azure/functions',
   '@azure/storage-blob',
+  '@azure/storage-queue',
   'mssql',
   'mongodb',
   'applicationinsights',

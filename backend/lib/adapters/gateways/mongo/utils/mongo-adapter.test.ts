@@ -4,6 +4,7 @@ import QueryBuilder from '../../../../query/query-builder';
 import QueryPipeline from '../../../../query/query-pipeline';
 import { MongoCollectionAdapter, removeIds } from './mongo-adapter';
 import { GatewayTimeoutError } from '../../../../common-errors/gateway-timeout';
+import { TooManyRequestsError } from '../../../../common-errors/too-many-requests-error';
 
 const { and, orderBy } = QueryBuilder;
 
@@ -48,7 +49,7 @@ describe('Mongo adapter', () => {
   const adapter = new MongoCollectionAdapter<TestType>(MODULE_NAME, humbleCollection);
 
   afterEach(() => {
-    vi.resetAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should return an instance of the adapter from newAdapter', () => {
@@ -387,6 +388,72 @@ describe('Mongo adapter', () => {
         module: ADAPTER_MODULE_NAME,
       }),
     );
+  });
+
+  test('should throw TooManyRequestsError when a 429 rate limit error occurs via error code', async () => {
+    const rateLimitError = new Error('Request rate is large. More Request Units may be needed');
+    (rateLimitError as unknown as Record<string, unknown>)['code'] = 16500;
+    aggregate.mockRejectedValue(rateLimitError);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(
+      expect.objectContaining({
+        status: 429,
+        message: 'Service is temporarily unavailable. Please retry later.',
+      }),
+    );
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
+  });
+
+  test('should throw TooManyRequestsError when a 429 rate limit error is detected via message only', async () => {
+    const rateLimitError = new Error('Request rate is large. More Request Units may be needed');
+    aggregate.mockRejectedValue(rateLimitError);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
+  });
+
+  test('should throw TooManyRequestsError when error code is the string "16500"', async () => {
+    const rateLimitError = new Error('Some rate limit error');
+    (rateLimitError as unknown as Record<string, unknown>)['code'] = '16500';
+    aggregate.mockRejectedValue(rateLimitError);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
+  });
+
+  test('should throw TooManyRequestsError when rate limit message is all lowercase', async () => {
+    const rateLimitError = new Error('request rate is large. more request units may be needed');
+    aggregate.mockRejectedValue(rateLimitError);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
+  });
+
+  test('should throw TooManyRequestsError when rate limit message is all uppercase', async () => {
+    const rateLimitError = new Error('REQUEST RATE IS LARGE. MORE REQUEST UNITS MAY BE NEEDED');
+    aggregate.mockRejectedValue(rateLimitError);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
+  });
+
+  test('should throw TooManyRequestsError when error has statusCode 429', async () => {
+    const rateLimitError = new Error('Too Many Requests');
+    (rateLimitError as unknown as Record<string, unknown>)['statusCode'] = 429;
+    aggregate.mockRejectedValue(rateLimitError);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
+  });
+
+  test('should throw TooManyRequestsError when error has status 429', async () => {
+    const rateLimitError = new Error('Too Many Requests');
+    (rateLimitError as unknown as Record<string, unknown>)['status'] = 429;
+    aggregate.mockRejectedValue(rateLimitError);
+
+    await expect(adapter.paginate(testQuery)).rejects.toThrow(TooManyRequestsError);
+  });
+
+  test('should NOT throw TooManyRequestsError for unrelated errors', async () => {
+    const unrelatedError = new Error('Some completely unrelated database error');
+    aggregate.mockRejectedValue(unrelatedError);
+
+    await expect(adapter.paginate(testQuery)).rejects.not.toThrow(TooManyRequestsError);
   });
 
   test('should throw GatewayTimeoutError when a timeout error occurs', async () => {

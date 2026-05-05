@@ -32,6 +32,20 @@ export class CollectionHumble<T> {
     return this.collection.updateOne(query, { $set: item });
   }
 
+  public async upsertOne(
+    query: DocumentQuery,
+    setFields: MongoDocument,
+    insertOnlyFields: MongoDocument,
+  ) {
+    return this.collection.updateOne(
+      query,
+      { $set: setFields, $setOnInsert: insertOnlyFields } as Parameters<
+        Collection<T>['updateOne']
+      >[1],
+      { upsert: true },
+    );
+  }
+
   public async updateMany(query: DocumentQuery, update: MongoDocument) {
     return this.collection.updateMany(query, update);
   }

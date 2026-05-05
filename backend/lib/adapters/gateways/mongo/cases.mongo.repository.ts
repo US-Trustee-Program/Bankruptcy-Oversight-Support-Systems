@@ -257,8 +257,9 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       doc('caseId').equals(bCase.caseId),
       doc('documentType').equals('SYNCED_CASE'),
     );
+    const { createdOn, createdBy, id, ...setFields } = bCase;
     try {
-      await this.getAdapter<SyncedCase>().replaceOne(query, bCase, true);
+      await this.getAdapter<SyncedCase>().upsertOne(query, setFields, { createdOn, createdBy });
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
     }
@@ -589,8 +590,7 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
     limit: number,
   ): Promise<{ caseId: string; _id: string }[]> {
     try {
-      type SyncedCaseQueryable = SyncedCase & { _id: string };
-      const doc = using<SyncedCaseQueryable>();
+      const doc = using<SyncedCase & { _id: string }>();
 
       const conditions = [
         doc('documentType').equals('SYNCED_CASE'),
@@ -602,8 +602,8 @@ export class CasesMongoRepository extends BaseMongoRepository implements CasesRe
       }
 
       const query = and(...conditions);
-      const sortSpec = QueryBuilder.orderBy<SyncedCaseQueryable>(['_id', 'ASCENDING']);
-      const adapter = this.getAdapter<SyncedCaseQueryable>();
+      const sortSpec = QueryBuilder.orderBy<SyncedCase & { _id: string }>(['_id', 'ASCENDING']);
+      const adapter = this.getAdapter<SyncedCase & { _id: string }>();
       return await adapter.find(query, sortSpec, limit);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME);
