@@ -5,6 +5,7 @@
 @use 'uswds/index' as uswds;
 @use 'styles/theme';
 @use 'styles/abstracts/colors';
+@use 'styles/abstracts/general' as general;
 @use 'styles/abstracts/tables';
 
 /* Overriding USWDS Grid row large gap negative margins because they force
@@ -48,14 +49,7 @@ body {
     Use this class anywhere you need screen readers to get more context, such as with aria-describedby sections.
   */
   .screen-reader-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-    border: 0;
+    @include general.visually-hidden;
   }
 
   .cams-content {

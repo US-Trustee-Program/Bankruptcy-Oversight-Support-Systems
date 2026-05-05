@@ -1,3 +1,5 @@
+@use 'styles/abstracts/general' as general;
+
 // Base responsive styles applied automatically to every CamsTable.
 // To override breakpoint behavior in a screen, use the mixins in _cams-table-mixins.scss:
 //   @use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
@@ -14,9 +16,10 @@
     margin-bottom: 0.5rem;
   }
 
-  // Header hidden on mobile — column labels shown via data-cell ::before
+  // Header visually hidden on mobile so AT retains column context,
+  // while data-cell ::before labels provide the visible inline labels.
   .cams-table__header-group {
-    display: none;
+    @include general.visually-hidden;
   }
 
   .cams-table__header-row,
@@ -50,6 +53,7 @@
   // Tablet (641px+): flex row, equal columns, show header
   @media screen and (min-width: 641px) {
     .cams-table__header-group {
+      @include general.visually-shown;
       display: block;
       font-weight: bold;
       border-bottom: 1px solid #1b1b1b;
