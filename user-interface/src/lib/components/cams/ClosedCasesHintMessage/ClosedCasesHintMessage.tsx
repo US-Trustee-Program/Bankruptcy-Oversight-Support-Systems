@@ -1,6 +1,6 @@
 import { type JSX } from 'react';
 
-export type ClosedCasesHintMessageProps = {
+type ClosedCasesHintMessageProps = {
   message: string;
   onIncludeClosedCases?: () => void;
 };
