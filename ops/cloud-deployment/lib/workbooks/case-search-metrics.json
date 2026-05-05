@@ -321,7 +321,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"search\"\n| extend hasCaseNumber = isnotempty(tostring(customDimensions.caseNumber))\n| extend hasDebtorName = tostring(customDimensions.debtorNameUsed) == \"true\"\n| extend includesClosed = tostring(customDimensions.excludeClosedCases) == \"false\"\n| extend SearchType = case(\n    hasCaseNumber, \"Case Number\",\n    hasDebtorName, \"Debtor Name\",\n    \"Other\"\n  )\n| summarize\n    TotalSearches = count(),\n    WithClosed = countif(includesClosed),\n    WithoutClosed = countif(not(includesClosed))\n    by SearchType\n| extend PctWithClosed = round(iif(TotalSearches > 0, todouble(WithClosed) / todouble(TotalSearches) * 100, 0.0), 1)\n| order by TotalSearches desc",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"search\"\n| extend hasCaseNumber = isnotempty(tostring(customDimensions.caseNumber))\n| extend hasDebtorName = tostring(customDimensions.debtorNameUsed) == \"true\"\n| extend includesClosed = tostring(customDimensions.excludeClosedCases) == \"false\"\n| extend SearchType = case(\n    hasCaseNumber, \"Case Number\",\n    hasDebtorName, \"Debtor Name\",\n    \"Other\"\n  )\n| summarize\n    TotalSearches = count(),\n    WithClosed = countif(includesClosed),\n    WithoutClosed = countif(not(includesClosed))\n    by SearchType\n| extend ['Percentage with Closed'] = round(iif(TotalSearches > 0, todouble(WithClosed) / todouble(TotalSearches) * 100, 0.0), 1)\n| order by TotalSearches desc",
         "size": 0,
         "title": "Search Type vs. Include Closed Cases",
         "timeContextFromParameter": "TimeRange",
@@ -331,7 +331,7 @@
         "gridSettings": {
           "formatters": [
             {
-              "columnMatch": "PctWithClosed",
+              "columnMatch": "Percentage with Closed",
               "formatter": 8,
               "formatOptions": {
                 "palette": "blue",
@@ -506,7 +506,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let defaults = datatable(SearchMode: string) [\"Exclude Closed Cases\", \"Include Closed Cases\"];\nlet actual =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Case Search Performance\"\n    | extend durationMs = todouble(customMeasurements.durationMs)\n    | extend excludesClosed = tostring(customDimensions.excludeClosedCases) == \"true\"\n    | extend SearchMode = iif(excludesClosed, \"Exclude Closed Cases\", \"Include Closed Cases\")\n    | summarize\n        P50Ms = round(percentile(durationMs, 50), 0),\n        P95Ms = round(percentile(durationMs, 95), 0),\n        SampleCount = count()\n        by SearchMode;\ndefaults\n| join kind=leftouter actual on SearchMode\n| project\n    SearchMode,\n    ['P50 (ms)'] = coalesce(P50Ms, 0.0),\n    ['P95 (ms)'] = coalesce(P95Ms, 0.0),\n    ['Sample Count'] = coalesce(SampleCount, 0)",
+        "query": "let defaults = datatable(SearchMode: string) [\"Exclude Closed Cases\", \"Include Closed Cases\"];\nlet actual =\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Case Search Performance\"\n    | extend durationMs = todouble(customMeasurements.durationMs)\n    | extend excludesClosed = tostring(customMeasurements.excludeClosedCases) == \"true\"\n    | extend SearchMode = iif(excludesClosed, \"Exclude Closed Cases\", \"Include Closed Cases\")\n    | summarize\n        P50Ms = round(percentile(durationMs, 50), 0),\n        P95Ms = round(percentile(durationMs, 95), 0),\n        SampleCount = count()\n        by SearchMode;\ndefaults\n| join kind=leftouter actual on SearchMode\n| project\n    SearchMode,\n    ['P50 (ms)'] = coalesce(P50Ms, 0.0),\n    ['P95 (ms)'] = coalesce(P95Ms, 0.0),\n    ['Sample Count'] = coalesce(SampleCount, 0)",
         "size": 3,
         "title": "Client-Side Search Duration: Closed vs. Open Only (KPIs)",
         "timeContextFromParameter": "TimeRange",
@@ -547,7 +547,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Case Search Performance\"\n| extend durationMs = todouble(customMeasurements.durationMs)\n| extend excludesClosed = tostring(customDimensions.excludeClosedCases) == \"true\"\n| extend SearchMode = iif(excludesClosed, \"Exclude Closed Cases\", \"Include Closed Cases\")\n| summarize\n    P50Ms = round(percentile(durationMs, 50), 0),\n    P95Ms = round(percentile(durationMs, 95), 0)\n    by Day = bin(timestamp, 1d), SearchMode\n| order by Day asc",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Case Search Performance\"\n| extend durationMs = todouble(customMeasurements.durationMs)\n| extend excludesClosed = tostring(customMeasurements.excludeClosedCases) == \"true\"\n| extend SearchMode = iif(excludesClosed, \"Exclude Closed Cases\", \"Include Closed Cases\")\n| summarize\n    P50Ms = round(percentile(durationMs, 50), 0),\n    P95Ms = round(percentile(durationMs, 95), 0)\n    by Day = bin(timestamp, 1d), SearchMode\n| order by Day asc",
         "size": 0,
         "title": "Client-Side Search Duration Trend (P50)",
         "timeContextFromParameter": "TimeRange",
