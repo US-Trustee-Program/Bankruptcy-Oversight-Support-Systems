@@ -9,7 +9,7 @@ repos:
       - id: check-added-large-files
         exclude: '^backend/lib/adapters/gateways/ats/cleansing/test-data/.*\.tsv$'
   - repo: https://github.com/pre-commit/mirrors-eslint
-    rev: 'v10.2.1' # Use the sha / tag you want to point at
+    rev: 'v10.3.0' # Use the sha / tag you want to point at
     hooks:
       - id: eslint
         files: \.[jt]sx?$ # *.js, *.jsx, *.ts and *.tsx
@@ -39,7 +39,7 @@ repos:
         args: ['--baseline', '.secrets.baseline']
         exclude: package.lock.json
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.37.1
+    rev: 0.37.2
     hooks:
       - id: check-github-workflows
         args: ['--verbose']
