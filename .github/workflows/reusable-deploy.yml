@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.ghaEnvironment }}
     steps:
-      - uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98 # main
+      - uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231 # main
 
       - uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3
         with:
