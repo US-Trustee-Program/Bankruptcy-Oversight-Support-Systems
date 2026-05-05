@@ -1,6 +1,7 @@
 // Base responsive styles applied automatically to every CamsTable.
-// Consumers only need to add column flex values in their own SCSS:
-//   .my-screen .col-case-number { flex: 3 1 0; }
+// To override breakpoint behavior in a screen, use the mixins in _cams-table-mixins.scss:
+//   @use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+//   .cams-table--responsive { @include cams-table.cams-table-stacked; }
 
 .cams-table--responsive {
   overflow-x: auto;
