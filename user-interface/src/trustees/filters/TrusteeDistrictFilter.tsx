@@ -24,7 +24,7 @@ const TrusteeDistrictFilter_ = (
   props: TrusteeDistrictFilterProps,
   ref: React.Ref<TrusteeDistrictFilterRef>,
 ) => {
-  const { handleFilterName } = props;
+  const { handleFilterName, onExpandedChange, onCourtsLoaded } = props;
   const [nameSearch, setNameSearch] = useState('');
   const store: TrusteeDistrictFilterStore = useTrusteeDistrictFilterStoreReact();
   const controls: TrusteeDistrictFilterControls = useTrusteeDistrictFilterControlsReact();
@@ -71,10 +71,17 @@ const TrusteeDistrictFilter_ = (
 
   // Notify parent when expanded state changes
   useEffect(() => {
-    if (props.onExpandedChange) {
-      props.onExpandedChange(store.isExpanded);
+    if (onExpandedChange) {
+      onExpandedChange(store.isExpanded);
     }
-  }, [store.isExpanded, props.onExpandedChange]);
+  }, [store.isExpanded, onExpandedChange]);
+
+  // Notify parent when courts data is loaded
+  useEffect(() => {
+    if (onCourtsLoaded && store.districts.length > 0) {
+      onCourtsLoaded(store.districts);
+    }
+  }, [store.districts, onCourtsLoaded]);
 
   const viewModel: TrusteeDistrictFilterViewModel = {
     districts: store.districts,

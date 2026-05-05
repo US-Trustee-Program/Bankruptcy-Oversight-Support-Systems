@@ -10,6 +10,8 @@ import { vi } from 'vitest';
 import MockData from '@common/cams/test-utilities/mock-data';
 import LocalStorage from '@/lib/utils/local-storage';
 import React from 'react';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import { FeatureFlagSet } from '@common/feature-flags';
 
 const mockTrackEvent = vi.fn();
 vi.mock('@/lib/hooks/UseApplicationInsights', () => ({
@@ -1744,6 +1746,172 @@ describe('TrusteesList Component', () => {
       // Should remove the filter and show all trustees
       await waitFor(() => {
         expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Division Column (Feature Flag)', () => {
+    beforeEach(() => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York Region',
+          },
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '087',
+            officeName: 'White Plains',
+            courtDivisionCode: '087',
+            courtDivisionName: 'White Plains',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York Region',
+          },
+        ],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+    });
+
+    test('should display Division column header when feature flag is ON', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+
+      const trustee = makeListItem({
+        trusteeId: 't1',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        appointments: [makeAppointment({ courtId: 'NYSB', divisionCode: '081' })],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      const headers = screen.getAllByRole('columnheader');
+      const headerTexts = headers.map((h) => h.textContent);
+      expect(headerTexts).toContain('Division');
+    });
+
+    test('should NOT display Division column header when feature flag is OFF', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
+
+      const trustee = makeListItem({
+        trusteeId: 't1',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        appointments: [makeAppointment({ courtId: 'NYSB', divisionCode: '081' })],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('trustees-table')).toBeInTheDocument();
+      });
+
+      const headers = screen.getAllByRole('columnheader');
+      const headerTexts = headers.map((h) => h.textContent);
+      expect(headerTexts).not.toContain('Division');
+    });
+
+    test('should display "All" when appointment covers all divisions in a district', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+
+      const trustee = makeListItem({
+        trusteeId: 't1',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        appointments: [
+          makeAppointment({
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            divisionCodes: ['081', '087'],
+          }),
+        ],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        const divisionCell = document.querySelector('[data-cell="Division"]') as HTMLElement;
+        expect(divisionCell).toBeInTheDocument();
+        expect(within(divisionCell).getByText('All')).toBeInTheDocument();
+      });
+    });
+
+    test('should display specific division names for partial assignments', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+
+      const trustee = makeListItem({
+        trusteeId: 't1',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        appointments: [
+          makeAppointment({
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            divisionCodes: ['081'],
+          }),
+        ],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        const divisionCell = document.querySelector('[data-cell="Division"]') as HTMLElement;
+        expect(divisionCell).toBeInTheDocument();
+        expect(within(divisionCell).getByText('Manhattan')).toBeInTheDocument();
+      });
+    });
+
+    test('should display legacy courtDivisionName when no divisionCodes exist', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+
+      const trustee = makeListItem({
+        trusteeId: 't1',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        appointments: [
+          makeAppointment({
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            courtDivisionName: 'Manhattan',
+            divisionCode: '081',
+            divisionCodes: undefined,
+          }),
+        ],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        const divisionCell = document.querySelector('[data-cell="Division"]') as HTMLElement;
+        expect(divisionCell).toBeInTheDocument();
+        expect(within(divisionCell).getByText('Manhattan')).toBeInTheDocument();
       });
     });
   });

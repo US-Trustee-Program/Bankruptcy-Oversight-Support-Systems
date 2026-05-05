@@ -58,6 +58,7 @@ export type TrusteeDistrictFilterProps = {
   handleFilterChapter(chapters: ComboOption[]): void;
   handleFilterName(name: string): void;
   onExpandedChange?: (isExpanded: boolean) => void;
+  onCourtsLoaded?: (courts: CourtDivisionDetails[]) => void;
 };
 
 export interface TrusteeDistrictFilterUseCase {

@@ -134,7 +134,8 @@
       white-space: normal;
     }
 
-    .col-district {
+    .col-district,
+    .col-division {
       flex: 2 1 0;
       min-width: 0;
       max-width: none;
@@ -150,8 +151,13 @@
     }
 
     .col-district {
-      flex: 3 1 0;
-      min-width: 300px;
+      flex: 2 1 0;
+      min-width: 200px;
+    }
+
+    .col-division {
+      flex: 2 1 0;
+      min-width: 150px;
     }
 
     .col-chapter,

@@ -16,9 +16,12 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
 import Icon from '@/lib/components/uswds/Icon';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { sortTrusteeAppointments } from '@/lib/utils/court-utils';
+import { sortTrusteeAppointments, buildDivisionsDisplay } from '@/lib/utils/court-utils';
+import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
+import { CourtDivisionDetails } from '@common/cams/courts';
 
-const COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
+const BASE_COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
+const DIVISION_COLUMN_HEADERS = ['Name', 'District', 'Division', 'Chapter', 'Type', 'Status'];
 
 function filterTrustees(
   trustees: TrusteeListItem[],
@@ -67,6 +70,10 @@ export default function TrusteesList() {
   const [nameSearch, setNameSearch] = useState('');
   const [nameSearchIds, setNameSearchIds] = useState<Set<string>>(new Set());
   const [nameSearchLoading, setNameSearchLoading] = useState(false);
+  const [allCourts, setAllCourts] = useState<CourtDivisionDetails[]>([]);
+  const flags = useFeatureFlags();
+  const districtDivisionEnabled = !!flags[TRUSTEE_DISTRICT_DIVISION];
+  const COLUMN_HEADERS = districtDivisionEnabled ? DIVISION_COLUMN_HEADERS : BASE_COLUMN_HEADERS;
   const stableCountRef = useRef<number | null>(null);
   const filterRef = useRef<TrusteeDistrictFilterRef>(null);
   const pageLoadStart = useRef(performance.now());
@@ -305,6 +312,7 @@ export default function TrusteesList() {
         handleFilterDistrict={handleFilterDistrict}
         handleFilterChapter={handleFilterChapter}
         handleFilterName={handleFilterName}
+        onCourtsLoaded={setAllCourts}
       />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
         {liveAnnouncement}
@@ -383,9 +391,9 @@ export default function TrusteesList() {
                       role="row"
                     >
                       <div
-                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[0])}`}
+                        className="trustees-list-cell col-name"
                         role="cell"
-                        {...(idx === 0 ? { 'data-cell': COLUMN_HEADERS[0] } : {})}
+                        {...(idx === 0 ? { 'data-cell': 'Name' } : {})}
                       >
                         {idx === 0 ? (
                           <NavLink
@@ -405,31 +413,32 @@ export default function TrusteesList() {
                         )}
                       </div>
                       <div
-                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[1])}`}
+                        className="trustees-list-cell col-district"
                         role="cell"
-                        data-cell={COLUMN_HEADERS[1]}
+                        data-cell="District"
                       >
                         {appt ? formatDistrict(appt) : ''}
                       </div>
+                      {districtDivisionEnabled && (
+                        <div
+                          className="trustees-list-cell col-division"
+                          role="cell"
+                          data-cell="Division"
+                        >
+                          {appt ? buildDivisionsDisplay(appt, allCourts) : ''}
+                        </div>
+                      )}
                       <div
-                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[2])}`}
+                        className="trustees-list-cell col-chapter"
                         role="cell"
-                        data-cell={COLUMN_HEADERS[2]}
+                        data-cell="Chapter"
                       >
                         {appt ? formatChapterType(appt.chapter) : ''}
                       </div>
-                      <div
-                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[3])}`}
-                        role="cell"
-                        data-cell={COLUMN_HEADERS[3]}
-                      >
+                      <div className="trustees-list-cell col-type" role="cell" data-cell="Type">
                         {appt ? formatAppointmentType(appt.appointmentType) : ''}
                       </div>
-                      <div
-                        className={`trustees-list-cell ${toColClass(COLUMN_HEADERS[4])}`}
-                        role="cell"
-                        data-cell={COLUMN_HEADERS[4]}
-                      >
+                      <div className="trustees-list-cell col-status" role="cell" data-cell="Status">
                         {appt ? formatAppointmentStatus(appt.status) : ''}
                       </div>
                     </div>
