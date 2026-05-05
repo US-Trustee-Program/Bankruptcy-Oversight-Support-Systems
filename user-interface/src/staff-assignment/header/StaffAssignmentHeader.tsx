@@ -1,15 +1,14 @@
-import { TableHeader, TableHeaderData } from '@/lib/components/uswds/Table';
+import { CamsTableHeader, CamsTableHeaderCell } from '@/lib/components/cams/CamsTable';
 import { SearchResultsHeaderProps } from '@/search-results/SearchResults';
 
-export function StaffAssignmentHeader(props: SearchResultsHeaderProps) {
-  const { id } = props;
+export function StaffAssignmentHeader(_props: SearchResultsHeaderProps) {
   return (
-    <TableHeader id={id} className="case-headings">
-      <TableHeaderData className="grid-col-3">Case Number (Division)</TableHeaderData>
-      <TableHeaderData className="grid-col-3">Case Title</TableHeaderData>
-      <TableHeaderData className="grid-col-1">Chapter</TableHeaderData>
-      <TableHeaderData className="grid-col-1">Case Filed</TableHeaderData>
-      <TableHeaderData className="grid-col-4">Staff Assignment</TableHeaderData>
-    </TableHeader>
+    <CamsTableHeader>
+      <CamsTableHeaderCell className="col-case-number">Case Number (Division)</CamsTableHeaderCell>
+      <CamsTableHeaderCell className="col-case-title">Case Title</CamsTableHeaderCell>
+      <CamsTableHeaderCell className="col-chapter">Chapter</CamsTableHeaderCell>
+      <CamsTableHeaderCell className="col-date-filed">Case Filed</CamsTableHeaderCell>
+      <CamsTableHeaderCell className="col-staff-assignment">Staff Assignment</CamsTableHeaderCell>
+    </CamsTableHeader>
   );
 }

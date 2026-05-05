@@ -1,3 +1,5 @@
+@use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+
 .staff-assignment {
   .screen-heading {
     h1 {
@@ -29,6 +31,23 @@
       svg {
         top: 0;
       }
+    }
+  }
+
+  // Tablet (641px+): undo CamsTable flex — not enough width without filter context
+  @media screen and (min-width: 641px) {
+    .cams-table--responsive { @include cams-table.cams-table-stacked; }
+  }
+
+  // Desktop (1025px+): full flex-row table with column proportions
+  @media screen and (min-width: 1025px) {
+    .cams-table--responsive {
+      @include cams-table.cams-table-flex-row;
+      .col-case-number      { flex: 3 1 0; }
+      .col-case-title       { flex: 3 1 0; }
+      .col-chapter          { flex: 1 1 0; }
+      .col-date-filed       { flex: 1 1 0; }
+      .col-staff-assignment { flex: 4 1 0; }
     }
   }
 }

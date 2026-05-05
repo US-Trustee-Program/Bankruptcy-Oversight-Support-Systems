@@ -18,6 +18,7 @@ import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
 import ToggleButton from '@/lib/components/cams/ToggleButton/ToggleButton';
 import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { CamsHttpError } from '@/lib/models/api';
 import LocalFormCache from '@/lib/utils/local-form-cache';
 import { CaseNoteInput } from '@common/cams/cases';
 import { CaseNumber } from '@/lib/components/CaseNumber';
@@ -42,6 +43,26 @@ export const MyCasesScreen = () => {
   const [doShowClosedCases, setDoShowClosedCases] = useState(false);
   const [draftNotesCaseIds, setDraftNotesCaseIds] = useState<string[]>([]);
   const [draftNotes, setDraftNotes] = useState<Cacheable<CaseNoteInput>[]>([]);
+  const [hasResults, setHasResults] = useState<boolean | null>(null);
+  const [searchError, setSearchError] = useState<{ title: string; message: string } | null>(null);
+
+  function handleSearchError(error: unknown) {
+    setHasResults(false);
+    const isTimeout = error instanceof CamsHttpError && error.status === 504;
+    const persistentIssueMessage =
+      'If the problem persists, please submit a feedback request describing the issue.';
+    setSearchError({
+      title: isTimeout ? 'Unable to load cases' : 'Cases not available',
+      message: isTimeout
+        ? `Please try again later. ${persistentIssueMessage}`
+        : `We are unable to retrieve your cases at this time. Please try again later. ${persistentIssueMessage}`,
+    });
+  }
+
+  function handleResultsChanged(results: boolean) {
+    setSearchError(null);
+    setHasResults(results);
+  }
 
   if (!session || !session.user.offices) {
     // TODO: This renders a blank pane with no notice to the user. Maybe this should at least return a <Stop> component with a message.
@@ -197,12 +218,41 @@ export const MyCasesScreen = () => {
             </div>
           </div>
 
+          {searchError && (
+            <div className="search-alert">
+              <Alert
+                id="search-error-alert"
+                className="measure-6"
+                message={searchError.message}
+                title={searchError.title}
+                type={UswdsAlertStyle.Error}
+                show={true}
+                inline={true}
+                role="alert"
+              ></Alert>
+            </div>
+          )}
+          {hasResults === false && !searchError && (
+            <div className="search-alert">
+              <Alert
+                id="no-results-alert"
+                className="measure-6"
+                message="No cases currently assigned."
+                title="No cases found"
+                type={UswdsAlertStyle.Info}
+                show={true}
+                inline={true}
+                role="alert"
+              ></Alert>
+            </div>
+          )}
           <SearchResults
             id="search-results"
             searchPredicate={searchPredicate}
             phoneticSearchEnabled={phoneticSearchEnabled}
             showDebtorNameColumn={showDebtorNameColumn}
-            noResultsMessage="No cases currently assigned."
+            onResultsChanged={handleResultsChanged}
+            onSearchError={handleSearchError}
             header={MyCasesResultsHeader}
             row={MyCasesResultsRow}
           ></SearchResults>

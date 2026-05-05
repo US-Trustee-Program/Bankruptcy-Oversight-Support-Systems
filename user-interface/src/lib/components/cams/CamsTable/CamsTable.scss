@@ -1,0 +1,85 @@
+// Base responsive styles applied automatically to every CamsTable.
+// To override breakpoint behavior in a screen, use the mixins in _cams-table-mixins.scss:
+//   @use '@/lib/components/cams/CamsTable/cams-table-mixins' as cams-table;
+//   .cams-table--responsive { @include cams-table.cams-table-stacked; }
+
+.cams-table--responsive {
+  overflow-x: auto;
+  font-size: 1rem;
+  line-height: 1.5;
+
+  .cams-table__caption {
+    font-size: 1rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+  }
+
+  // Header hidden on mobile — column labels shown via data-cell ::before
+  .cams-table__header-group {
+    display: none;
+  }
+
+  .cams-table__header-row,
+  .cams-table__row {
+    display: block;
+  }
+
+  .cams-table__cell {
+    display: block;
+    width: 100%;
+    padding: 0.25rem 0;
+    word-wrap: break-word;
+    white-space: normal;
+    box-sizing: border-box;
+  }
+
+  // Mobile: inline label from data-cell attribute
+  .cams-table__body .cams-table__cell[data-cell]::before {
+    content: attr(data-cell) ': ';
+    font-weight: 700;
+    display: inline;
+  }
+
+  .cams-table__body .cams-table__row {
+    border-bottom: 1px solid #1b1b1b;
+    padding: 0.625rem 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+
+  // Tablet (641px+): flex row, equal columns, show header
+  @media screen and (min-width: 641px) {
+    .cams-table__header-group {
+      display: block;
+      font-weight: bold;
+      border-bottom: 1px solid #1b1b1b;
+      padding-bottom: 0.5rem;
+      margin-bottom: 0;
+    }
+
+    .cams-table__header-row,
+    .cams-table__row {
+      display: flex;
+      flex-direction: row;
+      gap: 1rem;
+      align-items: baseline;
+    }
+
+    .cams-table__cell {
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 0.5rem 1rem;
+    }
+
+    .cams-table__body .cams-table__cell[data-cell]::before {
+      display: none;
+    }
+
+    .cams-table__body .cams-table__row {
+      border-bottom: 1px solid #1b1b1b;
+      padding: 0;
+      margin-bottom: 0;
+    }
+
+  }
+}

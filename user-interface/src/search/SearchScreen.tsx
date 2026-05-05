@@ -34,6 +34,8 @@ import useFeatureFlags, {
   SHOW_DEBTOR_NAME_COLUMN,
 } from '@/lib/hooks/UseFeatureFlags';
 import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
+import { CamsHttpError } from '@/lib/models/api';
+import { ClosedCasesHintMessage } from '@/lib/components/cams/ClosedCasesHintMessage/ClosedCasesHintMessage';
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -82,6 +84,59 @@ export default function SearchScreen() {
   const [temporarySearchPredicate, setTemporarySearchPredicate] =
     useState<CasesSearchPredicate>(defaultSearchPredicate);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
+  const [hasResults, setHasResults] = useState<boolean | null>(null);
+  const [closedCasesCount, setClosedCasesCount] = useState<number>(0);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [searchError, setSearchError] = useState<{ title: string; message: string } | null>(null);
+
+  function handleSearchError(error: unknown) {
+    setHasResults(false);
+    const isTimeout = error instanceof CamsHttpError && error.status === 504;
+    const persistentIssueMessage =
+      'If the problem persists, please submit a feedback request describing the issue.';
+    setSearchError({
+      title: isTimeout ? 'Unable to display search results' : 'Search results not available',
+      message: isTimeout
+        ? `Try narrowing your search filters and try again. ${persistentIssueMessage}`
+        : `We are unable to retrieve search results at this time. Please try again later. ${persistentIssueMessage}`,
+    });
+  }
+
+  function handleResultsChanged(hasResults: boolean, count?: number) {
+    setSearchError(null);
+    setHasResults(hasResults);
+    setClosedCasesCount(count ?? 0);
+  }
+
+  const showNoResultsOpenOnlyHint =
+    !isSearching &&
+    hasResults === false &&
+    searchPredicate.excludeClosedCases === true &&
+    !searchPredicate.caseNumber;
+
+  const showGenericClosedHint =
+    !isSearching &&
+    hasResults === true &&
+    searchPredicate.excludeClosedCases === true &&
+    !searchPredicate.caseNumber;
+
+  const showCountClosedHint =
+    !isSearching &&
+    hasResults === true &&
+    searchPredicate.excludeClosedCases === true &&
+    !!searchPredicate.caseNumber &&
+    closedCasesCount > 0;
+
+  const showNoResultsWithCountHint =
+    !isSearching &&
+    hasResults === false &&
+    searchPredicate.excludeClosedCases === true &&
+    !!searchPredicate.caseNumber &&
+    closedCasesCount > 0;
+
+  const closedCasesCountMessage = `${closedCasesCount} closed ${closedCasesCount === 1 ? 'case matches' : 'cases match'} your search filters.`;
+  const closedCasesGenericMessage = 'There may be closed cases that match your search filters.';
+
   const [showCaseNumberError, setShowCaseNumberError] = useState<boolean>(false);
   const [showDebtorNameError, setShowDebtorNameError] = useState<boolean>(false);
   const [hasAttemptedSearch, setHasAttemptedSearch] = useState<boolean>(false);
@@ -178,10 +233,12 @@ export default function SearchScreen() {
 
   function setStartSearching() {
     disableSearchForm(true);
+    setIsSearching(true);
   }
 
   function setEndSearching() {
     disableSearchForm(false);
+    setIsSearching(false);
   }
 
   function handleFilterFormElementFocus(ev: React.FocusEvent<HTMLElement>) {
@@ -321,158 +378,251 @@ export default function SearchScreen() {
             Case Search
             <ScreenInfoButton infoModalRef={infoModalRef} modalId={infoModalId} />
           </h1>
-        </div>
-      </div>
-      <div className="grid-row grid-gap-lg search-pane">
-        <div className="grid-col-3">
-          <h2>Search By</h2>
-          <form
-            className="filter-and-search"
-            data-testid="filter-and-search-panel"
-            onSubmit={handleSubmit}
-            role="search"
-          >
-            <div className="case-include-closed form-field">
-              <div className="usa-search usa-search--small">
-                <Checkbox
-                  id="include-closed"
-                  name="includeClosedCases"
-                  value="true"
-                  checked={!temporarySearchPredicate.excludeClosedCases}
-                  label="Include Closed Cases"
-                  onChange={handleIncludeClosedCheckbox}
-                />
-              </div>
-            </div>
-            <div className="case-number-search form-field" data-testid="case-number-search">
-              <div className="usa-search usa-search--small">
-                <CaseNumberInput
-                  className="search-icon"
-                  id="basic-search-field"
-                  name="basic-search"
-                  label="Case Number"
-                  autoComplete="off"
-                  onChange={handleCaseNumberChange}
-                  onFocus={handleFilterFormElementFocus}
-                  allowEnterKey={true}
-                  allowPartialCaseNumber={true}
-                  aria-label="Find case by Case Number."
-                  ref={caseNumberInputRef}
-                  errorMessage={fieldErrors.caseNumber?.reasons?.[0]}
-                />
-              </div>
-            </div>
-            {phoneticSearchEnabled && (
-              <div className="debtor-name-search form-field" data-testid="debtor-name-search">
-                <div className="usa-search usa-search--small">
-                  <Input
-                    id="debtor-name-search-field"
-                    name="debtor-name-search"
-                    label="Debtor Name"
-                    autoComplete="off"
-                    onChange={handleDebtorNameChange}
-                    onFocus={handleFilterFormElementFocus}
-                    aria-label="Find case by Debtor Name."
-                    ref={debtorNameInputRef}
-                    value={temporarySearchPredicate.debtorName || ''}
-                    errorMessage={fieldErrors.debtorName?.reasons?.[0]}
-                  />
-                </div>
-              </div>
-            )}
-            <div className="case-district-search form-field" data-testid="case-district-search">
-              <div className="usa-search usa-search--small">
-                <ComboBox
-                  id={'court-selections-search'}
-                  className="new-court__select"
-                  label="District (Division)"
-                  aria-live="off"
-                  onUpdateSelection={handleCourtSelection}
-                  onFocus={handleFilterFormElementFocus}
-                  options={officesList}
-                  required={false}
-                  multiSelect={true}
-                  wrapPills={true}
-                  ref={courtSelectionRef}
-                  singularLabel="division"
-                  pluralLabel="divisions"
-                  overflowStrategy="ellipsis"
-                />
-              </div>
-            </div>
-            <div className="case-chapter-search form-field" data-testid="case-chapter-search">
-              <div className="usa-search usa-search--small">
-                <ComboBox
-                  id={'case-chapter-search'}
-                  className="case-chapter__select"
-                  label="Chapter"
-                  aria-live="off"
-                  onUpdateSelection={handleChapterSelection}
-                  onFocus={handleFilterFormElementFocus}
-                  options={chapterList}
-                  required={false}
-                  multiSelect={true}
-                  ref={chapterSelectionRef}
-                  singularLabel="chapter"
-                  pluralLabel="chapters"
-                />
-              </div>
-            </div>
-            {hasAttemptedSearch && currentValidation.formValidationError && (
-              <div className="search-validation-alert" data-testid="search-validation-alert">
-                <Alert
-                  message={currentValidation.formValidationError}
-                  type={UswdsAlertStyle.Error}
-                  show={true}
-                  slim={true}
-                  inline={true}
-                  role="alert"
-                ></Alert>
-              </div>
-            )}
-            <div className="search-form-submit form-field">
-              <Button
-                id="search-submit"
-                className="search-submit-button"
-                uswdsStyle={UswdsButtonStyle.Default}
-                type="submit"
-                ref={submitButtonRef}
-                disabled={!currentValidation.isValid}
+          <div className="search-pane">
+            <div className="search-filters">
+              <h2>Search By</h2>
+              <form
+                className="filter-and-search"
+                data-testid="filter-and-search-panel"
+                onSubmit={handleSubmit}
+                role="search"
               >
-                Search
-              </Button>
+                <div className="case-include-closed form-field">
+                  <div className="usa-search usa-search--small">
+                    <Checkbox
+                      id="include-closed"
+                      name="includeClosedCases"
+                      value="true"
+                      checked={!temporarySearchPredicate.excludeClosedCases}
+                      label="Include Closed Cases"
+                      onChange={handleIncludeClosedCheckbox}
+                    />
+                  </div>
+                </div>
+                <div className="case-number-search form-field" data-testid="case-number-search">
+                  <div className="usa-search usa-search--small">
+                    <CaseNumberInput
+                      className="search-icon"
+                      id="basic-search-field"
+                      name="basic-search"
+                      label="Case Number"
+                      autoComplete="off"
+                      onChange={handleCaseNumberChange}
+                      onFocus={handleFilterFormElementFocus}
+                      allowEnterKey={true}
+                      allowPartialCaseNumber={true}
+                      aria-label="Find case by Case Number."
+                      ref={caseNumberInputRef}
+                      errorMessage={fieldErrors.caseNumber?.reasons?.[0]}
+                    />
+                  </div>
+                </div>
+                {phoneticSearchEnabled && (
+                  <div className="debtor-name-search form-field" data-testid="debtor-name-search">
+                    <div className="usa-search usa-search--small">
+                      <Input
+                        id="debtor-name-search-field"
+                        name="debtor-name-search"
+                        label="Debtor Name"
+                        autoComplete="off"
+                        onChange={handleDebtorNameChange}
+                        onFocus={handleFilterFormElementFocus}
+                        aria-label="Find case by Debtor Name."
+                        ref={debtorNameInputRef}
+                        value={temporarySearchPredicate.debtorName || ''}
+                        errorMessage={fieldErrors.debtorName?.reasons?.[0]}
+                      />
+                    </div>
+                  </div>
+                )}
+                <div className="case-district-search form-field" data-testid="case-district-search">
+                  <div className="usa-search usa-search--small">
+                    <ComboBox
+                      id={'court-selections-search'}
+                      className="new-court__select"
+                      label="District (Division)"
+                      aria-live="off"
+                      onUpdateSelection={handleCourtSelection}
+                      onFocus={handleFilterFormElementFocus}
+                      options={officesList}
+                      required={false}
+                      multiSelect={true}
+                      wrapPills={true}
+                      ref={courtSelectionRef}
+                      singularLabel="division"
+                      pluralLabel="divisions"
+                      overflowStrategy="ellipsis"
+                    />
+                  </div>
+                </div>
+                <div className="case-chapter-search form-field" data-testid="case-chapter-search">
+                  <div className="usa-search usa-search--small">
+                    <ComboBox
+                      id={'case-chapter-search'}
+                      className="case-chapter__select"
+                      label="Chapter"
+                      aria-live="off"
+                      onUpdateSelection={handleChapterSelection}
+                      onFocus={handleFilterFormElementFocus}
+                      options={chapterList}
+                      required={false}
+                      multiSelect={true}
+                      ref={chapterSelectionRef}
+                      singularLabel="chapter"
+                      pluralLabel="chapters"
+                    />
+                  </div>
+                </div>
+                {hasAttemptedSearch && currentValidation.formValidationError && (
+                  <div className="search-validation-alert" data-testid="search-validation-alert">
+                    <Alert
+                      message={currentValidation.formValidationError}
+                      type={UswdsAlertStyle.Error}
+                      show={true}
+                      slim={true}
+                      inline={true}
+                      role="alert"
+                    ></Alert>
+                  </div>
+                )}
+                <div className="search-form-submit form-field">
+                  <Button
+                    id="search-submit"
+                    className="search-submit-button"
+                    uswdsStyle={UswdsButtonStyle.Default}
+                    type="submit"
+                    ref={submitButtonRef}
+                    disabled={!currentValidation.isValid}
+                  >
+                    Search
+                  </Button>
+                </div>
+              </form>
             </div>
-          </form>
-        </div>
-        <div className="grid-col-8" role="status" aria-live="polite">
-          <h2>Results</h2>
-          {!isValidSearchPredicate(searchPredicate) && (
-            <div className="search-alert">
-              <Alert
-                id="default-state-alert"
-                message="Use the Search Filters to find cases."
-                title="Enter search terms"
-                type={UswdsAlertStyle.Info}
-                show={true}
-                inline={true}
-                role="alert"
-              ></Alert>
+            <div className="search-results-panel" role="status" aria-live="polite">
+              <h2>Results</h2>
+              {!isValidSearchPredicate(searchPredicate) && (
+                <div className="search-alert">
+                  <Alert
+                    id="default-state-alert"
+                    message="Use the Search Filters to find cases."
+                    title="Enter search terms"
+                    type={UswdsAlertStyle.Info}
+                    show={true}
+                    inline={true}
+                    role="alert"
+                  ></Alert>
+                </div>
+              )}
+              {isValidSearchPredicate(searchPredicate) && (
+                <>
+                  {searchError && (
+                    <div className="search-alert">
+                      <Alert
+                        id="search-error-alert"
+                        className="measure-6"
+                        message={searchError.message}
+                        title={searchError.title}
+                        type={UswdsAlertStyle.Error}
+                        show={true}
+                        inline={true}
+                        role="alert"
+                      ></Alert>
+                    </div>
+                  )}
+                  {!isSearching &&
+                    hasResults === false &&
+                    !searchError &&
+                    !showNoResultsOpenOnlyHint &&
+                    !showNoResultsWithCountHint && (
+                      <div className="search-alert">
+                        <Alert
+                          id="no-results-alert"
+                          className="measure-6"
+                          message="Modify your search criteria to include more cases."
+                          title="No cases found"
+                          type={UswdsAlertStyle.Info}
+                          show={true}
+                          inline={true}
+                          role="alert"
+                        ></Alert>
+                      </div>
+                    )}
+                  {showNoResultsOpenOnlyHint && (
+                    <div className="search-alert">
+                      <Alert
+                        id="no-results-alert"
+                        className="measure-6"
+                        title="No Open cases found"
+                        type={UswdsAlertStyle.Info}
+                        show={true}
+                        inline={true}
+                        role="alert"
+                      >
+                        <ClosedCasesHintMessage
+                          message={closedCasesGenericMessage}
+                          onIncludeClosedCases={handleIncludeClosedAndSearch}
+                        />
+                      </Alert>
+                    </div>
+                  )}
+                  {showNoResultsWithCountHint && (
+                    <div className="search-alert">
+                      <Alert
+                        id="no-results-alert"
+                        className="measure-6"
+                        title="No Open cases found"
+                        type={UswdsAlertStyle.Info}
+                        show={true}
+                        inline={true}
+                        role="alert"
+                      >
+                        <ClosedCasesHintMessage
+                          message={closedCasesCountMessage}
+                          onIncludeClosedCases={handleIncludeClosedAndSearch}
+                        />
+                      </Alert>
+                    </div>
+                  )}
+                  {(showGenericClosedHint || showCountClosedHint) && (
+                    <div className="search-alert">
+                      <Alert
+                        id="closed-cases-hint-alert"
+                        className="measure-6"
+                        type={UswdsAlertStyle.Info}
+                        show={true}
+                        inline={true}
+                        role="status"
+                        slim={true}
+                      >
+                        <ClosedCasesHintMessage
+                          message={
+                            showCountClosedHint
+                              ? closedCasesCountMessage
+                              : closedCasesGenericMessage
+                          }
+                          onIncludeClosedCases={handleIncludeClosedAndSearch}
+                        />
+                      </Alert>
+                    </div>
+                  )}
+                  <SearchResults
+                    id="search-results"
+                    searchPredicate={searchPredicate}
+                    phoneticSearchEnabled={phoneticSearchEnabled}
+                    showDebtorNameColumn={showDebtorNameColumn}
+                    showOpenClosedColumn={true}
+                    onStartSearching={setStartSearching}
+                    onEndSearching={setEndSearching}
+                    onResultsChanged={handleResultsChanged}
+                    onSearchError={handleSearchError}
+                    header={SearchResultsHeader}
+                    row={SearchResultsRow}
+                  />
+                </>
+              )}
             </div>
-          )}
-          {isValidSearchPredicate(searchPredicate) && (
-            <SearchResults
-              id="search-results"
-              searchPredicate={searchPredicate}
-              phoneticSearchEnabled={phoneticSearchEnabled}
-              showDebtorNameColumn={showDebtorNameColumn}
-              showOpenClosedColumn={true}
-              onStartSearching={setStartSearching}
-              onEndSearching={setEndSearching}
-              onIncludeClosedCases={handleIncludeClosedAndSearch}
-              header={SearchResultsHeader}
-              row={SearchResultsRow}
-            />
-          )}
+          </div>
         </div>
       </div>
       <Modal

@@ -16,7 +16,6 @@ import { getCourtDivisionCodes } from '@common/cams/users';
 import { FeatureFlagSet } from '@common/feature-flags';
 import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
 import { MOCKED_USTP_OFFICES_ARRAY } from '@common/cams/test-utilities/offices.mock';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
 
 describe('StaffAssignmentScreen', () => {
   let mockFeatureFlags: FeatureFlagSet;
@@ -110,17 +109,12 @@ describe('StaffAssignmentScreen', () => {
     await userEvent.click(document.body);
 
     expect(SearchResults).toHaveBeenCalledWith(
-      {
+      expect.objectContaining({
         id: 'search-results',
-        noResultsAlertProps: {
-          message: 'There are no cases currently assigned.',
-          title: 'No Cases Assigned',
-          type: UswdsAlertStyle.Warning,
-        },
         searchPredicate: expectedPredicate,
         header: expect.anything(),
         row: expect.anything(),
-      },
+      }),
       undefined,
     );
   });
@@ -154,17 +148,12 @@ describe('StaffAssignmentScreen', () => {
     renderWithoutProps();
 
     expect(SearchResults).toHaveBeenCalledWith(
-      {
+      expect.objectContaining({
         id: 'search-results',
-        noResultsAlertProps: {
-          message: 'There are no cases currently assigned.',
-          title: 'No Cases Assigned',
-          type: UswdsAlertStyle.Warning,
-        },
         searchPredicate: expectedPredicate,
         header: expect.anything(),
         row: expect.anything(),
-      },
+      }),
       undefined,
     );
   });
@@ -213,17 +202,14 @@ describe('StaffAssignmentScreen', () => {
       expect(SearchResults.mock.calls.length).toBeGreaterThan(1);
     });
 
-    expect(SearchResults.mock.calls[1][0]).toEqual({
-      id: 'search-results',
-      noResultsAlertProps: {
-        message: 'There are no more cases to be assigned.',
-        title: 'All Cases Assigned',
-        type: UswdsAlertStyle.Info,
-      },
-      searchPredicate: expectedPredicate,
-      header: expect.anything(),
-      row: expect.anything(),
-    });
+    expect(SearchResults.mock.calls[1][0]).toEqual(
+      expect.objectContaining({
+        id: 'search-results',
+        searchPredicate: expectedPredicate,
+        header: expect.anything(),
+        row: expect.anything(),
+      }),
+    );
   });
 
   describe('StaffAssignmentScreen - other errors', () => {

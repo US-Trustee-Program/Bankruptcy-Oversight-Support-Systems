@@ -8,7 +8,9 @@ import { StaffAssignmentHeader } from '../header/StaffAssignmentHeader';
 import AssignAttorneyModal from '../modal/AssignAttorneyModal';
 import StaffAssignmentFilter from '../filters/StaffAssignmentFilter';
 import { StaffAssignmentScreenViewProps } from './StaffAssignment.types';
-import { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import { CamsHttpError } from '@/lib/models/api';
+import { useState } from 'react';
 
 export function StaffAssignmentScreenView(props: Readonly<StaffAssignmentScreenViewProps>) {
   const { viewModel } = props;
@@ -18,6 +20,27 @@ export function StaffAssignmentScreenView(props: Readonly<StaffAssignmentScreenV
     viewModel.session!.user,
     viewModel.staffAssignmentFilter,
   );
+
+  const [hasResults, setHasResults] = useState<boolean | null>(null);
+  const [searchError, setSearchError] = useState<{ title: string; message: string } | null>(null);
+
+  function handleSearchError(error: unknown) {
+    setHasResults(false);
+    const isTimeout = error instanceof CamsHttpError && error.status === 504;
+    const persistentIssueMessage =
+      'If the problem persists, please submit a feedback request describing the issue.';
+    setSearchError({
+      title: isTimeout ? 'Unable to load cases' : 'Cases not available',
+      message: isTimeout
+        ? `Please try again later. ${persistentIssueMessage}`
+        : `We are unable to retrieve cases at this time. Please try again later. ${persistentIssueMessage}`,
+    });
+  }
+
+  function handleResultsChanged(results: boolean) {
+    setSearchError(null);
+    setHasResults(results);
+  }
 
   const noResultsAlertProps = searchPredicate.includeOnlyUnassigned
     ? {
@@ -67,10 +90,37 @@ export function StaffAssignmentScreenView(props: Readonly<StaffAssignmentScreenV
                 ref={viewModel.filterRef}
                 handleFilterAssignee={viewModel.handleFilterAssignee}
               />
+              {searchError && (
+                <div className="search-alert">
+                  <Alert
+                    id="search-error-alert"
+                    className="measure-6"
+                    message={searchError.message}
+                    title={searchError.title}
+                    type={UswdsAlertStyle.Error}
+                    show={true}
+                    inline={true}
+                    role="alert"
+                  ></Alert>
+                </div>
+              )}
+              {hasResults === false && !searchError && (
+                <div className="search-alert">
+                  <Alert
+                    {...noResultsAlertProps}
+                    id="no-results-alert"
+                    className="measure-6"
+                    show={true}
+                    inline={true}
+                    role="alert"
+                  ></Alert>
+                </div>
+              )}
               <SearchResults
                 id="search-results"
                 searchPredicate={searchPredicate}
-                noResultsAlertProps={noResultsAlertProps}
+                onResultsChanged={handleResultsChanged}
+                onSearchError={handleSearchError}
                 header={StaffAssignmentHeader}
                 row={viewModel.StaffAssignmentRowClosure}
               ></SearchResults>
