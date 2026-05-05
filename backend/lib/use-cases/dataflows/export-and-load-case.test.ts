@@ -4,6 +4,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CasesLocalGateway } from '../../adapters/gateways/cases.local.gateway';
 import { getCamsError } from '../../common-errors/error-utilities';
 import { UnknownError } from '../../common-errors/unknown-error';
+import { NotFoundError } from '../../common-errors/not-found-error';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { CaseSyncEvent } from '@common/cams/dataflow-events';
@@ -22,6 +23,10 @@ describe('Export and Load Case Tests', () => {
 
   beforeAll(async () => {
     context = await createMockApplicationContext();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('exportAndLoadCase', () => {
@@ -517,6 +522,174 @@ describe('Export and Load Case Tests', () => {
 
       expect(result[1].divisionChange).toBeUndefined();
       expect(result[1].error).toBeUndefined();
+    });
+  });
+
+  describe('exportAndLoad - NotFoundError recovery via division change lookup', () => {
+    test('should set divisionChange and clear error when getCaseDetail throws NotFoundError and DXTR returns a case with a different caseId', async () => {
+      const orphanedCaseId = '121-26-13490';
+      const currentCaseId = '081-26-13490';
+      const dxtrId = '121-1234567';
+      const courtId = '121';
+
+      const syncedCase = MockData.getSyncedCase({
+        override: { caseId: orphanedCaseId, dxtrId, courtId },
+      });
+
+      const dxtrCase = MockData.getCaseDetail({
+        override: { caseId: currentCaseId, dxtrId, courtId },
+      });
+
+      const event = mockCaseSyncEvent({ caseId: orphanedCaseId });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(
+        new NotFoundError('TEST'),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+      vi.spyOn(CasesLocalGateway.prototype, 'searchCases').mockResolvedValue([dxtrCase]);
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(result.divisionChange).toEqual({
+        orphanedCaseId,
+        currentCaseId,
+      });
+      expect(result.error).toBeUndefined();
+    });
+
+    test('should set error when getCaseDetail throws NotFoundError and DXTR returns a case with the same caseId', async () => {
+      const caseId = '121-26-13490';
+      const dxtrId = '121-1234567';
+      const courtId = '121';
+
+      const syncedCase = MockData.getSyncedCase({ override: { caseId, dxtrId, courtId } });
+      const dxtrCase = MockData.getCaseDetail({ override: { caseId, dxtrId, courtId } });
+
+      const event = mockCaseSyncEvent({ caseId });
+
+      const notFoundError = new NotFoundError('TEST');
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(notFoundError);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+      vi.spyOn(CasesLocalGateway.prototype, 'searchCases').mockResolvedValue([dxtrCase]);
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(result.divisionChange).toBeUndefined();
+      expect(result.error).toBeDefined();
+    });
+
+    test('should set error when getCaseDetail throws NotFoundError and DXTR returns an empty array', async () => {
+      const caseId = '121-26-13490';
+      const dxtrId = '121-1234567';
+      const courtId = '121';
+
+      const syncedCase = MockData.getSyncedCase({ override: { caseId, dxtrId, courtId } });
+
+      const event = mockCaseSyncEvent({ caseId });
+
+      const notFoundError = new NotFoundError('TEST');
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(notFoundError);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+      vi.spyOn(CasesLocalGateway.prototype, 'searchCases').mockResolvedValue([]);
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(result.divisionChange).toBeUndefined();
+      expect(result.error).toBeDefined();
+    });
+
+    test('should set error when getCaseDetail throws NotFoundError and getSyncedCase throws', async () => {
+      const caseId = '121-26-13490';
+      const event = mockCaseSyncEvent({ caseId });
+
+      const notFoundError = new NotFoundError('TEST');
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(notFoundError);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockRejectedValue(
+        new Error('Cosmos lookup failed'),
+      );
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(result.divisionChange).toBeUndefined();
+      expect(result.error).toBeDefined();
+    });
+
+    test('should set error when getCaseDetail throws NotFoundError and searchCases throws', async () => {
+      const caseId = '121-26-13490';
+      const dxtrId = '121-1234567';
+      const courtId = '121';
+
+      const syncedCase = MockData.getSyncedCase({ override: { caseId, dxtrId, courtId } });
+      const event = mockCaseSyncEvent({ caseId });
+
+      const notFoundError = new NotFoundError('TEST');
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(notFoundError);
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+      vi.spyOn(CasesLocalGateway.prototype, 'searchCases').mockRejectedValue(
+        new Error('DXTR search failed'),
+      );
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(result.divisionChange).toBeUndefined();
+      expect(result.error).toBeDefined();
+    });
+
+    test('should set error when getCaseDetail throws a non-NotFoundError', async () => {
+      const event = mockCaseSyncEvent();
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(
+        new Error('some other error'),
+      );
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(result.divisionChange).toBeUndefined();
+      expect(result.error).toBeDefined();
+    });
+
+    test('should warn and still set divisionChange when searchCases returns multiple results', async () => {
+      const orphanedCaseId = '121-26-13490';
+      const currentCaseId = '081-26-13490';
+      const secondCaseId = '082-26-13490';
+      const dxtrId = '121-1234567';
+      const courtId = '121';
+
+      const syncedCase = MockData.getSyncedCase({
+        override: { caseId: orphanedCaseId, dxtrId, courtId },
+      });
+
+      const firstDxtrCase = MockData.getCaseDetail({
+        override: { caseId: currentCaseId, dxtrId, courtId },
+      });
+
+      const secondDxtrCase = MockData.getCaseDetail({
+        override: { caseId: secondCaseId, dxtrId, courtId },
+      });
+
+      const event = mockCaseSyncEvent({ caseId: orphanedCaseId });
+
+      vi.spyOn(CasesLocalGateway.prototype, 'getCaseDetail').mockRejectedValue(
+        new NotFoundError('TEST'),
+      );
+      vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
+      vi.spyOn(CasesLocalGateway.prototype, 'searchCases').mockResolvedValue([
+        firstDxtrCase,
+        secondDxtrCase,
+      ]);
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      const [result] = await ExportAndLoadCase.exportAndLoad(context, [event]);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        'EXPORT-AND-LOAD',
+        expect.stringContaining('Ambiguous DXTR results'),
+      );
+      expect(result.divisionChange).toEqual({
+        orphanedCaseId,
+        currentCaseId,
+      });
+      expect(result.error).toBeUndefined();
     });
   });
 });

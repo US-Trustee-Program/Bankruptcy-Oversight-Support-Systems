@@ -2,6 +2,7 @@ import { createAuditRecord } from '@common/cams/auditable';
 import { DxtrCase, SyncedCase } from '@common/cams/cases';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { getCamsError, getCamsErrorWithStack } from '../../common-errors/error-utilities';
+import { isNotFoundError } from '../../common-errors/not-found-error';
 import factory from '../../factory';
 import { CaseSyncEvent, OrphanedCaseMessage } from '@common/cams/dataflow-events';
 import { generateSearchTokens } from '../../adapters/utils/phonetic-helper';
@@ -9,13 +10,6 @@ import { CasesRepository } from '../gateways.types';
 
 const MODULE_NAME = 'EXPORT-AND-LOAD';
 
-/**
- * Add search tokens (bigrams + phonetic codes) to a case's debtor and joint debtor names.
- * Bigrams are lowercase 2-char n-grams for substring matching.
- * Phonetic codes are uppercase Soundex + Metaphone for variant spelling matching.
- * @param bCase The case to add search tokens to
- * @returns A new case object with search tokens added (immutable)
- */
 function addPhoneticTokens(bCase: DxtrCase): DxtrCase {
   const result: DxtrCase = { ...bCase };
 
@@ -79,6 +73,33 @@ async function exportAndLoad(
 
       await repo.syncDxtrCase(createAuditRecord<SyncedCase>(syncedCase));
     } catch (originalError) {
+      if (isNotFoundError(originalError)) {
+        try {
+          const existing = await repo.getSyncedCase(event.caseId);
+          const results = await casesGateway.searchCases(context, {
+            dxtrId: existing.dxtrId,
+            courtId: existing.courtId,
+          });
+          if (results.length > 1) {
+            context.logger.warn(
+              MODULE_NAME,
+              `Ambiguous DXTR results for orphaned case ${event.caseId}: ${results.length} candidates`,
+            );
+          }
+          if (results.length > 0 && results[0].caseId !== event.caseId) {
+            event.divisionChange = {
+              orphanedCaseId: event.caseId,
+              currentCaseId: results[0].caseId,
+            };
+            continue;
+          }
+        } catch (lookupError) {
+          context.logger.warn(
+            MODULE_NAME,
+            `Division-change lookup failed for orphaned case ${event.caseId}: ${lookupError}`,
+          );
+        }
+      }
       event.error = getCamsError(
         originalError,
         MODULE_NAME,
@@ -109,7 +130,7 @@ async function exportCase(context: ApplicationContext, event: CaseSyncEvent) {
 async function loadCase(context: ApplicationContext, event: CaseSyncEvent) {
   try {
     const casesRepo = factory.getCasesRepository(context);
-    const caseWithPhoneticTokens = addPhoneticTokens({ ...event.bCase });
+    const caseWithPhoneticTokens = addPhoneticTokens(event.bCase);
     const synced = createAuditRecord<SyncedCase>({
       ...caseWithPhoneticTokens,
       documentType: 'SYNCED_CASE',

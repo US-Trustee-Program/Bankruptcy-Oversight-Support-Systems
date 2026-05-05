@@ -5,12 +5,16 @@ import ApplicationContextCreator from '../../azure/application-context-creator';
 import { buildFunctionName, buildQueueName } from '../dataflows-common';
 import ResyncRemainingCasesUseCase from '../../../lib/use-cases/dataflows/resync-remaining-cases';
 import ExportAndLoadCase from '../../../lib/use-cases/dataflows/export-and-load-case';
+import { CamsError } from '../../../lib/common-errors/cams-error';
 import { isNotFoundError } from '../../../lib/common-errors/not-found-error';
+import { isTooManyRequestsError } from '../../../lib/common-errors/too-many-requests-error';
 import { STORAGE_QUEUE_CONNECTION } from '../../../lib/storage-queues';
 import { filterToExtendedAscii } from '@common/cams/sanitization';
 import { LoggerImpl } from '../../../lib/adapters/services/logger.service';
 import { AppInsightsObservability } from '../../../lib/adapters/services/observability';
 import { completeDataflowTrace } from '../../../lib/use-cases/dataflows/dataflow-telemetry';
+import { StorageQueueHumbleObject } from '../../../lib/humble-objects/storage-queue-humble';
+import { FIX_QUEUE_NAME } from './division-change-cleanup';
 
 const MODULE_NAME = 'RESYNC-REMAINING-CASES';
 const PAGE_SIZE = 100;
@@ -23,7 +27,19 @@ type ResyncRemainingCursorMessage = {
   cutoffDate: string;
   lastId: string | null;
   remainingCount: number;
+  retryCount?: number;
 };
+
+const RATE_LIMIT_RETRY_LIMIT = 10;
+const RATE_LIMIT_BASE_DELAY_SECONDS = 30;
+const RATE_LIMIT_MAX_DELAY_SECONDS = 600;
+
+function computeBackoffSeconds(retryCount: number): number {
+  return Math.min(
+    Math.pow(2, retryCount) * RATE_LIMIT_BASE_DELAY_SECONDS,
+    RATE_LIMIT_MAX_DELAY_SECONDS,
+  );
+}
 
 const START = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'start'),
@@ -47,6 +63,11 @@ const RETRY = output.storageQueue({
 
 const HARD_STOP = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'hard-stop'),
+  connection: STORAGE_QUEUE_CONNECTION,
+});
+
+const FIX = output.storageQueue({
+  queueName: FIX_QUEUE_NAME,
   connection: STORAGE_QUEUE_CONNECTION,
 });
 
@@ -91,13 +112,20 @@ async function handleStart(
   });
 }
 
-async function handlePage(
+export async function handlePage(
   cursor: ResyncRemainingCursorMessage,
   invocationContext: InvocationContext,
 ) {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage;
+  if (!connectionString) {
+    throw new Error('Missing required environment variable: AzureWebJobsDataflowsStorage');
+  }
+
   const context = await ApplicationContextCreator.getApplicationContext({ invocationContext });
   const { logger } = context;
   const trace = context.observability.startTrace(invocationContext.invocationId);
+
+  const currentRetryCount = Math.max(0, Math.min(cursor.retryCount ?? 0, RATE_LIMIT_RETRY_LIMIT));
 
   const result = await ResyncRemainingCasesUseCase.getPageOfRemainingCasesByCursor(
     context,
@@ -107,14 +135,73 @@ async function handlePage(
   );
 
   if (result.error || !result.data) {
-    logger.error(MODULE_NAME, `Failed to get page of remaining cases: ${result.error?.message}`);
+    if (isTooManyRequestsError(result.error)) {
+      if (currentRetryCount >= RATE_LIMIT_RETRY_LIMIT) {
+        logger.error(
+          MODULE_NAME,
+          `Rate limit retry limit reached (${RATE_LIMIT_RETRY_LIMIT}) for cursor at ${cursor.lastId ?? 'start'}. Giving up.`,
+        );
+        completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+          documentsWritten: 0,
+          documentsFailed: 0,
+          success: false,
+          error: 'rate-limit-retry-exhausted',
+        });
+        return;
+      }
+
+      const nextRetryCount = currentRetryCount + 1;
+      const visibilityTimeout = computeBackoffSeconds(currentRetryCount);
+      const nextCursor: ResyncRemainingCursorMessage = {
+        ...cursor,
+        retryCount: nextRetryCount,
+      };
+
+      logger.warn(
+        MODULE_NAME,
+        `Rate limited (429) fetching page at cursor ${cursor.lastId ?? 'start'}. Retrying in ${visibilityTimeout}s (attempt ${nextRetryCount}/${RATE_LIMIT_RETRY_LIMIT}).`,
+      );
+      logger.info(
+        MODULE_NAME,
+        JSON.stringify({
+          event: 'rate-limit-backoff',
+          cursor: cursor.lastId ?? 'start',
+          retryCount: nextRetryCount,
+          visibilityTimeoutSeconds: visibilityTimeout,
+        }),
+      );
+
+      const queueClient = StorageQueueHumbleObject.fromConnectionString(
+        connectionString,
+        PAGE.queueName,
+      );
+      await queueClient.sendMessage(JSON.stringify(nextCursor), visibilityTimeout);
+
+      completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
+        documentsWritten: 0,
+        documentsFailed: 0,
+        success: true,
+        details: { reason: 'rate-limited-requeued', visibilityTimeout: String(visibilityTimeout) },
+      });
+      return;
+    }
+
+    const nonTransientError: CamsError =
+      result.error ??
+      new CamsError(MODULE_NAME, {
+        message: 'Failed to get page of remaining cases: no data returned.',
+      });
+    logger.error(
+      MODULE_NAME,
+      `Failed to get page of remaining cases: ${nonTransientError.message}`,
+    );
     completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
       documentsWritten: 0,
       documentsFailed: 0,
       success: false,
-      error: result.error?.message,
+      error: nonTransientError.message,
     });
-    throw result.error;
+    throw nonTransientError;
   }
 
   const { caseIds, lastId: newLastId, hasMore } = result.data;
@@ -147,6 +234,15 @@ async function handlePage(
 
   const processedEvents = await ExportAndLoadCase.exportAndLoad(context, events);
 
+  const divisionChanges = processedEvents
+    .filter((event) => event.divisionChange !== undefined)
+    .map((event) => event.divisionChange!);
+
+  if (divisionChanges.length > 0) {
+    invocationContext.extraOutputs.set(FIX, divisionChanges);
+    logger.info(MODULE_NAME, `Queued ${divisionChanges.length} division changes to FIX`);
+  }
+
   const failedEvents = processedEvents.filter((event) => !!event.error);
   if (failedEvents.length > 0) {
     logger.warn(MODULE_NAME, `${failedEvents.length} events failed, sending to DLQ`);
@@ -161,19 +257,22 @@ async function handlePage(
     };
     invocationContext.extraOutputs.set(PAGE, nextCursor);
   } else {
-    const successCount = processedEvents.length - failedEvents.length;
+    const successCount = processedEvents.length - failedEvents.length - divisionChanges.length;
     logger.info(
       MODULE_NAME,
-      `REMAINING_CASES_TOTAL=${remainingCount} — Resync complete. ${successCount} succeeded, ${failedEvents.length} failed.`,
+      `REMAINING_CASES_TOTAL=${remainingCount} — Resync complete. ${successCount} succeeded, ${failedEvents.length} failed, ${divisionChanges.length} division changes queued.`,
     );
   }
 
-  const successCount = processedEvents.length - failedEvents.length;
+  const successCount = processedEvents.length - failedEvents.length - divisionChanges.length;
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handlePage', logger, {
     documentsWritten: successCount,
     documentsFailed: failedEvents.length,
     success: true,
-    details: { totalCases: String(caseIds.length) },
+    details: {
+      totalCases: String(caseIds.length),
+      divisionChangesQueued: String(divisionChanges.length),
+    },
   });
 }
 
@@ -260,6 +359,21 @@ async function handleRetry(event: CaseSyncEvent, invocationContext: InvocationCo
     return;
   }
 
+  if (processed.divisionChange) {
+    invocationContext.extraOutputs.set(FIX, [processed.divisionChange]);
+    logger.info(
+      MODULE_NAME,
+      `Division change detected on retry for ${filterToExtendedAscii(event.caseId)}`,
+    );
+    completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
+      documentsWritten: 0,
+      documentsFailed: 0,
+      success: true,
+      details: { disposition: 'division-change-queued', retryCount: String(event.retryCount) },
+    });
+    return;
+  }
+
   logger.info(MODULE_NAME, `Successfully retried to sync ${filterToExtendedAscii(event.caseId)}`);
   completeDataflowTrace(context.observability, trace, MODULE_NAME, 'handleRetry', logger, {
     documentsWritten: 1,
@@ -281,7 +395,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: PAGE.queueName,
     handler: handlePage,
-    extraOutputs: [PAGE, DLQ],
+    extraOutputs: [PAGE, DLQ, FIX],
   });
 
   app.storageQueue(HANDLE_ERROR, {
@@ -295,7 +409,7 @@ function setup() {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: RETRY.queueName,
     handler: handleRetry,
-    extraOutputs: [DLQ, HARD_STOP],
+    extraOutputs: [DLQ, HARD_STOP, FIX],
   });
 }
 
