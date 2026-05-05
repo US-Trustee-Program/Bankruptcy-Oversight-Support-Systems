@@ -14,6 +14,8 @@ import { CamsUserReference } from '@common/cams/users';
 import { LegacyAddress } from '@common/cams/parties';
 import { normalizeName } from './trustee-match.helpers';
 import { UstpOfficeDetails } from '@common/cams/offices';
+import { ObjectStorageGateway } from '../gateways.types';
+import { buildContainerName } from '../../../function-apps/dataflows/dataflows-common';
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
 /**
@@ -995,6 +997,10 @@ export async function processPageOfTrustees(
     `Page complete: ${processed} unique trustees, ${appointments} appointments, ${failedAppointments.length} failed, ${errors} errors`,
   );
 
+  if (failedAppointments.length > 0) {
+    await writeFailedAppointments(context, failedAppointments);
+  }
+
   return {
     data: {
       processed,
@@ -1003,6 +1009,29 @@ export async function processPageOfTrustees(
       failedAppointments,
     },
   };
+}
+
+async function writeFailedAppointments(
+  context: ApplicationContext,
+  failedAppointments: FailedAppointment[],
+): Promise<void> {
+  const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
+  const outputContainer = buildContainerName(MODULE_NAME, 'out');
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const fileName = `failed-appointments-${timestamp}.jsonl`;
+  const content = failedAppointments.map((appt) => JSON.stringify(appt)).join('\n');
+
+  try {
+    await objectStorage.writeObject(outputContainer, fileName, content);
+    context.logger.info(
+      MODULE_NAME,
+      `Wrote ${failedAppointments.length} failed appointments to ${outputContainer}/${fileName}`,
+    );
+  } catch (originalError) {
+    context.logger.warn(MODULE_NAME, `Failed to write failed appointments file — continuing`, {
+      error: getCamsError(originalError, MODULE_NAME).message,
+    });
+  }
 }
 
 /**
