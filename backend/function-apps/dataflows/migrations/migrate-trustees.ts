@@ -84,9 +84,10 @@ async function performDeleteAllIfRequested(
     return false;
   }
 
+  const { deletedTrustees, deletedAppointments, deletedProfessionalIds } = deleteResult.data;
   logger.info(
     MODULE_NAME,
-    `Successfully deleted ${deleteResult.data.deletedTrustees} trustees and ${deleteResult.data.deletedAppointments} appointments.`,
+    `Successfully deleted ${deletedTrustees} trustees, ${deletedAppointments} appointments, and ${deletedProfessionalIds} professional ID mappings.`,
   );
 
   const resetResult = await MigrationStateService.resetMigrationState(context);
@@ -117,7 +118,10 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
     return; // DLQ already populated
   }
 
-  const stateResult = await MigrationStateService.getOrCreateMigrationState(context, !!start.reset);
+  const stateResult = await MigrationStateService.getOrCreateMigrationState(
+    context,
+    !!(start.reset || start.deleteAll),
+  );
 
   if (stateResult.error) {
     invocationContext.extraOutputs.set(
