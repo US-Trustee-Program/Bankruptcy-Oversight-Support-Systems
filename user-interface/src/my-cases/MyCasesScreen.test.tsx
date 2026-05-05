@@ -16,6 +16,7 @@ import useFeatureFlags, {
   PHONETIC_SEARCH_ENABLED,
   SHOW_DEBTOR_NAME_COLUMN,
 } from '@/lib/hooks/UseFeatureFlags';
+import { CamsHttpError } from '@/lib/models/api';
 
 vi.mock('@/lib/hooks/UseFeatureFlags');
 const mockUseFeatureFlags = vi.mocked(useFeatureFlags);
@@ -271,5 +272,61 @@ describe('MyCasesScreen', () => {
     expect(alertMessage).toHaveTextContent(
       `The draft on case number ${getCaseNumber(duplicatedId)} expires on ${formatDateTime(new Date(earlierDate))}.`,
     );
+  });
+
+  test('should show error alert on generic fetch failure', async () => {
+    vi.spyOn(Api2, 'searchCases').mockRejectedValue(new Error('network error'));
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      const alert = document.querySelector('#search-error-alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('Cases not available');
+    });
+  });
+
+  test('should show timeout-specific error message on 504', async () => {
+    const timeoutError = new CamsHttpError(504, 'gateway timeout');
+    vi.spyOn(Api2, 'searchCases').mockRejectedValue(timeoutError);
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      const alert = document.querySelector('#search-error-alert');
+      expect(alert).toBeInTheDocument();
+      expect(alert).toHaveTextContent('Unable to load cases');
+    });
+  });
+
+  test('should show no-results alert when search returns empty results', async () => {
+    vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [] });
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('#no-results-alert')).toBeInTheDocument();
+    });
+  });
+
+  test('should clear error alert when a subsequent search succeeds', async () => {
+    const searchSpy = vi
+      .spyOn(Api2, 'searchCases')
+      .mockRejectedValueOnce(new Error('network error'))
+      .mockResolvedValue({ data: MockData.buildArray(MockData.getSyncedCase, 2) });
+
+    renderWithoutProps();
+
+    await waitFor(() => {
+      expect(document.querySelector('#search-error-alert')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('closed-cases-toggle'));
+
+    await waitFor(() => {
+      expect(document.querySelector('#search-error-alert')).not.toBeInTheDocument();
+    });
+
+    expect(searchSpy).toHaveBeenCalledTimes(2);
   });
 });

@@ -35,36 +35,7 @@ import useFeatureFlags, {
 } from '@/lib/hooks/UseFeatureFlags';
 import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
 import { CamsHttpError } from '@/lib/models/api';
-
-type ClosedCasesHintMessageProps = {
-  closedCasesCount?: number;
-  variant: 'generic' | 'count';
-  onIncludeClosedCases?: () => void;
-};
-
-function ClosedCasesHintMessage({
-  closedCasesCount = 0,
-  variant,
-  onIncludeClosedCases,
-}: ClosedCasesHintMessageProps) {
-  const text =
-    variant === 'count'
-      ? `${closedCasesCount} closed ${closedCasesCount === 1 ? 'case matches' : 'cases match'} your search filters.`
-      : 'There may be closed cases that match your search filters.';
-
-  return (
-    <p className="usa-alert__text">
-      {text}{' '}
-      <button
-        type="button"
-        className="usa-button usa-button--unstyled"
-        onClick={() => onIncludeClosedCases?.()}
-      >
-        Include Closed Cases
-      </button>
-    </p>
-  );
-}
+import { ClosedCasesHintMessage } from '@/lib/components/cams/ClosedCasesHintMessage/ClosedCasesHintMessage';
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -113,7 +84,7 @@ export default function SearchScreen() {
   const [temporarySearchPredicate, setTemporarySearchPredicate] =
     useState<CasesSearchPredicate>(defaultSearchPredicate);
   const [searchPredicate, setSearchPredicate] = useState<CasesSearchPredicate>({});
-  const [hasResults, setHasResults] = useState<boolean>(false);
+  const [hasResults, setHasResults] = useState<boolean | null>(null);
   const [closedCasesCount, setClosedCasesCount] = useState<number>(0);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [searchError, setSearchError] = useState<{ title: string; message: string } | null>(null);
@@ -139,29 +110,32 @@ export default function SearchScreen() {
 
   const showNoResultsOpenOnlyHint =
     !isSearching &&
-    !hasResults &&
+    hasResults === false &&
     searchPredicate.excludeClosedCases === true &&
     !searchPredicate.caseNumber;
 
   const showGenericClosedHint =
     !isSearching &&
-    hasResults &&
+    hasResults === true &&
     searchPredicate.excludeClosedCases === true &&
     !searchPredicate.caseNumber;
 
   const showCountClosedHint =
     !isSearching &&
-    hasResults &&
+    hasResults === true &&
     searchPredicate.excludeClosedCases === true &&
     !!searchPredicate.caseNumber &&
     closedCasesCount > 0;
 
   const showNoResultsWithCountHint =
     !isSearching &&
-    !hasResults &&
+    hasResults === false &&
     searchPredicate.excludeClosedCases === true &&
     !!searchPredicate.caseNumber &&
     closedCasesCount > 0;
+
+  const closedCasesCountMessage = `${closedCasesCount} closed ${closedCasesCount === 1 ? 'case matches' : 'cases match'} your search filters.`;
+  const closedCasesGenericMessage = 'There may be closed cases that match your search filters.';
 
   const [showCaseNumberError, setShowCaseNumberError] = useState<boolean>(false);
   const [showDebtorNameError, setShowDebtorNameError] = useState<boolean>(false);
@@ -557,7 +531,7 @@ export default function SearchScreen() {
                     </div>
                   )}
                   {!isSearching &&
-                    !hasResults &&
+                    hasResults === false &&
                     !searchError &&
                     !showNoResultsOpenOnlyHint &&
                     !showNoResultsWithCountHint && (
@@ -586,7 +560,7 @@ export default function SearchScreen() {
                         role="alert"
                       >
                         <ClosedCasesHintMessage
-                          variant="generic"
+                          message={closedCasesGenericMessage}
                           onIncludeClosedCases={handleIncludeClosedAndSearch}
                         />
                       </Alert>
@@ -604,8 +578,7 @@ export default function SearchScreen() {
                         role="alert"
                       >
                         <ClosedCasesHintMessage
-                          variant="count"
-                          closedCasesCount={closedCasesCount}
+                          message={closedCasesCountMessage}
                           onIncludeClosedCases={handleIncludeClosedAndSearch}
                         />
                       </Alert>
@@ -623,8 +596,11 @@ export default function SearchScreen() {
                         slim={true}
                       >
                         <ClosedCasesHintMessage
-                          variant={showCountClosedHint ? 'count' : 'generic'}
-                          closedCasesCount={showCountClosedHint ? closedCasesCount : undefined}
+                          message={
+                            showCountClosedHint
+                              ? closedCasesCountMessage
+                              : closedCasesGenericMessage
+                          }
                           onIncludeClosedCases={handleIncludeClosedAndSearch}
                         />
                       </Alert>
