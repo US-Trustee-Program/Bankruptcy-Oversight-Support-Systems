@@ -19,12 +19,16 @@ import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees
 const toDistrictOption = (
   district: CourtDivisionDetails,
   divisionCodes: string[],
+  districtDivisionEnabled: boolean,
 ): ComboOption => ({
-  value: divisionCodes.join(','),
+  value: districtDivisionEnabled ? district.courtId : divisionCodes.join(','),
   label: district.courtName,
 });
 
-const buildDistrictOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
+const buildDistrictOptions = (
+  districts: CourtDivisionDetails[],
+  districtDivisionEnabled: boolean,
+): ComboOption[] => {
   const districtMap = groupDivisionsByDistrict(districts);
 
   const sortedDistricts = sortByCourtLocation(
@@ -36,42 +40,9 @@ const buildDistrictOptions = (districts: CourtDivisionDetails[]): ComboOption[] 
     return toDistrictOption(
       district,
       divisions.map((d) => d.courtDivisionCode),
+      districtDivisionEnabled,
     );
   });
-};
-
-const getDefaultDistrictsFromSession = (
-  session: CamsSession | null,
-  allDistricts: CourtDivisionDetails[],
-): ComboOption[] => {
-  if (!session?.user?.offices || session.user.offices.length === 0) {
-    return [];
-  }
-
-  const userDivisionCodes = new Set<string>();
-  session.user.offices.forEach((office) => {
-    office.groups?.forEach((group) => {
-      group.divisions?.forEach((division) => {
-        if (division.divisionCode) {
-          userDivisionCodes.add(division.divisionCode);
-        }
-      });
-    });
-  });
-
-  // Find which districts contain the user's divisions
-  const userDistricts = allDistricts.filter((district) =>
-    userDivisionCodes.has(district.courtDivisionCode),
-  );
-  const userDistrictNames = new Set(userDistricts.map((d) => d.courtName));
-
-  // Group ALL divisions for those districts (not just user's divisions)
-  const allDistrictsForUser = allDistricts.filter((district) =>
-    userDistrictNames.has(district.courtName),
-  );
-
-  // Convert to ComboOptions, one per unique district with ALL division codes
-  return buildDistrictOptions(allDistrictsForUser);
 };
 
 const CHAPTER_OPTIONS: AppointmentChapterType[] = ['7', '11', '11-subchapter-v', '12', '13'];
@@ -86,10 +57,41 @@ const trusteeDistrictFilterUseCase = (
   previousDistrictsRef: { current: ComboOption[] | undefined },
   onFilterChapter: (chapters: ComboOption[]) => void,
   previousChaptersRef: { current: ComboOption[] | undefined },
+  districtDivisionEnabled: boolean = false,
 ): TrusteeDistrictFilterUseCase => {
+  const getDefaultDistrictsFromSession = (
+    session: CamsSession | null,
+    allDistricts: CourtDivisionDetails[],
+  ): ComboOption[] => {
+    if (!session?.user?.offices || session.user.offices.length === 0) {
+      return [];
+    }
+
+    const userDivisionCodes = new Set<string>();
+    session.user.offices.forEach((office) => {
+      office.groups?.forEach((group) => {
+        group.divisions?.forEach((division) => {
+          if (division.divisionCode) {
+            userDivisionCodes.add(division.divisionCode);
+          }
+        });
+      });
+    });
+
+    const userDistricts = allDistricts.filter((district) =>
+      userDivisionCodes.has(district.courtDivisionCode),
+    );
+    const userDistrictNames = new Set(userDistricts.map((d) => d.courtName));
+
+    const allDistrictsForUser = allDistricts.filter((district) =>
+      userDistrictNames.has(district.courtName),
+    );
+
+    return buildDistrictOptions(allDistrictsForUser, districtDivisionEnabled);
+  };
+
   const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
-    // Build base options (grouped by district, sorted by court location)
-    const allOptions = buildDistrictOptions(districts);
+    const allOptions = buildDistrictOptions(districts, districtDivisionEnabled);
 
     // Separate defaults from non-defaults and mark them
     const defaultCodesFlat = new Set(
