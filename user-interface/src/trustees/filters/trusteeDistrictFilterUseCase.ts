@@ -145,6 +145,7 @@ const trusteeDistrictFilterUseCase = (
                 selectedLabel: court.courtDivisionName,
               }));
           });
+          store.setDefaultDivisions(defaultDivisions);
           store.setSelectedDivisions(defaultDivisions);
           onFilterDivision(defaultDivisions);
         }

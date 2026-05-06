@@ -77,6 +77,8 @@ describe('trustee district filter use case tests', () => {
     setSelectedChapters: vi.fn(),
     selectedDivisions: [],
     setSelectedDivisions: vi.fn(),
+    defaultDivisions: [],
+    setDefaultDivisions: vi.fn(),
     isExpanded: false,
     setIsExpanded: vi.fn(),
   };
@@ -127,9 +129,11 @@ describe('trustee district filter use case tests', () => {
 
   beforeEach(() => {
     mockStore.defaultDistricts = [];
+    mockStore.defaultDivisions = [];
     mockStore.setSelectedDistricts = vi.fn();
     mockStore.setSelectedChapters = vi.fn();
     mockStore.setSelectedDivisions = vi.fn();
+    mockStore.setDefaultDivisions = vi.fn();
     setSelectedDistrictsSpy = vi.spyOn(mockStore, 'setSelectedDistricts');
     mockOnFilterDistrict.mockReset();
     mockOnFilterChapter.mockReset();
@@ -611,6 +615,101 @@ describe('trustee district filter use case tests', () => {
       await useCase.fetchDistricts();
 
       expect(setDistrictsErrorSpy).toHaveBeenCalledWith(true);
+    });
+
+    test('flag ON: sets default divisions from user session and calls onFilterDivision', async () => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
+      const session: CamsSession = {
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      const setDefaultDivisionsSpy = vi.spyOn(mockStore, 'setDefaultDivisions');
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+
+      await useCaseWithFlag.fetchDistricts();
+
+      const expectedDivisions = [
+        {
+          value: 'NYSB|081',
+          label: 'Southern District of New York (Manhattan)',
+          selectedLabel: 'Manhattan',
+        },
+      ];
+      expect(setDefaultDivisionsSpy).toHaveBeenCalledWith(expectedDivisions);
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith(expectedDivisions);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith(expectedDivisions);
+    });
+
+    test('flag ON: only includes divisions the user belongs to, not all district divisions', async () => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
+      const session: CamsSession = {
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+
+      await useCaseWithFlag.fetchDistricts();
+
+      const divisionCall = mockOnFilterDivision.mock.calls[0][0] as ComboOption[];
+      expect(divisionCall).toHaveLength(1);
+      expect(divisionCall[0].value).toBe('NYSB|081');
+      expect(divisionCall.find((d) => d.value === 'NYSB|087')).toBeUndefined();
+    });
+
+    test('flag ON: does not call onFilterDivision when session has no offices', async () => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      await useCaseWithFlag.fetchDistricts();
+
+      expect(mockOnFilterDivision).not.toHaveBeenCalled();
     });
   });
 

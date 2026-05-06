@@ -1566,6 +1566,9 @@ describe('TrusteesList Component', () => {
     });
 
     test('should render pills above trustee count when filter is expanded', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
       const user = userEvent.setup();
       const trusteeWithAppt = makeListItem({
         trusteeId: 't1',
@@ -1656,6 +1659,9 @@ describe('TrusteesList Component', () => {
     });
 
     test('should delegate pill removal to filter ref when X clicked on expanded pills', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
       const user = userEvent.setup();
       const trusteeWithAppt = makeListItem({
         trusteeId: 't1',
@@ -2609,6 +2615,49 @@ describe('TrusteesList Component', () => {
           }),
         ).toBeInTheDocument();
       });
+    });
+
+    test('default session divisions appear at top of combined dropdown with divider', async () => {
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [makeListItem({ trusteeId: 't1' })],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      });
+
+      const combinedCombobox = screen.getByLabelText('District (Division)');
+      await userEvent.setup().click(combinedCombobox);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('option', {
+            name: /option: Southern District of New York \(Manhattan\)/i,
+          }),
+        ).toBeInTheDocument();
+      });
+
+      const allOptions = screen.getAllByRole('option');
+      const manhattanIndex = allOptions.findIndex((o) =>
+        o.textContent?.includes('Southern District of New York (Manhattan)'),
+      );
+      const vermontIndex = allOptions.findIndex((o) =>
+        o.textContent?.includes('District of Vermont'),
+      );
+
+      expect(manhattanIndex).toBeGreaterThanOrEqual(0);
+      if (vermontIndex >= 0) {
+        expect(manhattanIndex).toBeLessThan(vermontIndex);
+      }
     });
 
     test('division filter not shown when feature flag is OFF', async () => {

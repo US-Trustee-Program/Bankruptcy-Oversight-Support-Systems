@@ -11,8 +11,9 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
     !viewModel.districtDivisionEnabled &&
     viewModel.districts.length > 0 &&
     !viewModel.districtsError;
+  const pillDistricts = viewModel.districtDivisionEnabled ? [] : viewModel.selectedDistricts;
   const hasPills =
-    viewModel.selectedDistricts.length > 0 ||
+    pillDistricts.length > 0 ||
     viewModel.selectedChapters.length > 0 ||
     viewModel.selectedDivisions.length > 0;
 
@@ -159,12 +160,12 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
           id="filter-pills"
           className="filter-pills-container"
           selections={[
-            ...viewModel.selectedDistricts,
+            ...pillDistricts,
             ...viewModel.selectedDivisions,
             ...viewModel.selectedChapters,
           ]}
           onSelectionChange={(updatedPills) => {
-            const districtValues = new Set(viewModel.selectedDistricts.map((d) => d.value));
+            const districtValues = new Set(pillDistricts.map((d) => d.value));
             const divisionValues = new Set(viewModel.selectedDivisions.map((d) => d.value));
             const chapterValues = new Set(viewModel.selectedChapters.map((c) => c.value));
 
@@ -172,7 +173,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             const updatedDivisions = updatedPills.filter((p) => divisionValues.has(p.value));
             const updatedChapters = updatedPills.filter((p) => chapterValues.has(p.value));
 
-            if (updatedDistricts.length !== viewModel.selectedDistricts.length) {
+            if (updatedDistricts.length !== pillDistricts.length) {
               viewModel.handleFilterChange(updatedDistricts);
             }
             if (updatedDivisions.length !== viewModel.selectedDivisions.length) {

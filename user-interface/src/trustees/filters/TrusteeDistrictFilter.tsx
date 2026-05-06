@@ -20,6 +20,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
+import { separateDefaultOptions } from '@/lib/utils/court-utils';
 
 const TrusteeDistrictFilter_ = (
   props: TrusteeDistrictFilterProps,
@@ -92,6 +93,11 @@ const TrusteeDistrictFilter_ = (
 
   const showDivisionFilter = districtDivisionEnabled && store.selectedDistricts.length > 0;
 
+  const defaultDivisionValues = new Set((store.defaultDivisions ?? []).map((d) => d.value));
+  const orderedCombinedOptions = districtDivisionEnabled
+    ? separateDefaultOptions(props.combinedDistrictDivisionOptions, defaultDivisionValues)
+    : props.combinedDistrictDivisionOptions;
+
   const viewModel: TrusteeDistrictFilterViewModel = {
     districts: store.districts,
     districtsError: store.districtsError,
@@ -99,7 +105,7 @@ const TrusteeDistrictFilter_ = (
     selectedChapters: store.selectedChapters,
     selectedDivisions: store.selectedDivisions,
     availableDivisionOptions: props.availableDivisionOptions,
-    combinedDistrictDivisionOptions: props.combinedDistrictDivisionOptions,
+    combinedDistrictDivisionOptions: orderedCombinedOptions,
     showDivisionFilter,
     districtDivisionEnabled,
     isExpanded: store.isExpanded,
@@ -133,6 +139,7 @@ function useTrusteeDistrictFilterStoreReact() {
   const [defaultDistricts, setDefaultDistricts] = useState<ComboOption[]>([]);
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
   const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
+  const [defaultDivisions, setDefaultDivisions] = useState<ComboOption[]>([]);
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   return {
@@ -148,6 +155,8 @@ function useTrusteeDistrictFilterStoreReact() {
     setSelectedChapters,
     selectedDivisions,
     setSelectedDivisions,
+    defaultDivisions,
+    setDefaultDivisions,
     isExpanded,
     setIsExpanded,
   };
