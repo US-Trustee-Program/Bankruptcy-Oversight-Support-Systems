@@ -41,6 +41,7 @@ function makeConsolidationFrom(
     consolidationType: 'substantive',
     createdBy: { id: 'u1', name: 'User One' },
     updatedBy: { id: 'u1', name: 'User One' },
+    updatedOn: '2024-01-01',
   };
 }
 
@@ -57,6 +58,7 @@ function makeConsolidationTo(
     consolidationType: 'substantive',
     createdBy: { id: 'u1', name: 'User One' },
     updatedBy: { id: 'u1', name: 'User One' },
+    updatedOn: '2024-01-01',
   };
 }
 
