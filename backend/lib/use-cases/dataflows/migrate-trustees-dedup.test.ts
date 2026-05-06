@@ -910,7 +910,7 @@ describe('Trustee Deduplication', () => {
         name: 'Test',
       });
 
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       // Should create 2 unique trustees (John Doe merged, Jane Smith separate)
       expect(result.data?.processed).toBe(2);
@@ -959,7 +959,7 @@ describe('Trustee Deduplication', () => {
         },
       });
 
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       // Should create 1 trustee with 4 TOD IDs
       expect(result.data?.processed).toBe(1);
