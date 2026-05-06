@@ -4,6 +4,74 @@ import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
 
+function renderDistrictFilter(
+  viewModel: TrusteeDistrictFilterViewProps['viewModel'],
+  showLegacyDistrictFilter: boolean,
+) {
+  if (viewModel.districtDivisionEnabled) {
+    return (
+      <div className="filter-control">
+        <div className="filter-control-header">
+          <span className="filter-control-label">District (Division)</span>
+          {viewModel.selectedDivisions.length > 0 && (
+            <button
+              type="button"
+              className="filter-clear-link"
+              onClick={viewModel.handleClearAllDivisions}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        <ComboBox
+          id="district-division-combobox"
+          label="District (Division)"
+          options={viewModel.combinedDistrictDivisionOptions}
+          selections={viewModel.selectedDivisions}
+          onUpdateSelection={viewModel.handleFilterCombined}
+          multiSelect={true}
+          wrapPills={true}
+          pluralLabel="divisions"
+          singularLabel="division"
+          placeholder="- Select one or more -"
+          ref={viewModel.divisionFilterRef}
+          hideClearAllButton={true}
+        />
+      </div>
+    );
+  }
+
+  if (!showLegacyDistrictFilter) return null;
+
+  return (
+    <div className="filter-control">
+      <div className="filter-control-header">
+        <span className="filter-control-label">District</span>
+        {viewModel.selectedDistricts.length > 0 && (
+          <button type="button" className="filter-clear-link" onClick={viewModel.handleClearAll}>
+            Clear
+          </button>
+        )}
+      </div>
+      <ComboBox
+        id="district-combobox"
+        label="District"
+        options={viewModel.districtsToComboOptions(viewModel.districts)}
+        selections={viewModel.selectedDistricts}
+        onUpdateSelection={viewModel.handleFilterChange}
+        multiSelect={true}
+        wrapPills={true}
+        pluralLabel="districts"
+        singularLabel="district"
+        placeholder="- Select one or more -"
+        scrollToSelected={true}
+        ref={viewModel.districtFilterRef}
+        hideClearAllButton={true}
+      />
+    </div>
+  );
+}
+
 function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   const { viewModel } = props;
 
@@ -59,68 +127,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                 />
               </div>
 
-              {viewModel.districtDivisionEnabled ? (
-                <div className="filter-control">
-                  <div className="filter-control-header">
-                    <span className="filter-control-label">District (Division)</span>
-                    {viewModel.selectedDivisions.length > 0 && (
-                      <button
-                        type="button"
-                        className="filter-clear-link"
-                        onClick={viewModel.handleClearAllDivisions}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  <ComboBox
-                    id="district-division-combobox"
-                    label="District (Division)"
-                    options={viewModel.combinedDistrictDivisionOptions}
-                    selections={viewModel.selectedDivisions}
-                    onUpdateSelection={viewModel.handleFilterCombined}
-                    multiSelect={true}
-                    wrapPills={true}
-                    pluralLabel="divisions"
-                    singularLabel="division"
-                    placeholder="- Select one or more -"
-                    ref={viewModel.divisionFilterRef}
-                    hideClearAllButton={true}
-                  />
-                </div>
-              ) : (
-                showLegacyDistrictFilter && (
-                  <div className="filter-control">
-                    <div className="filter-control-header">
-                      <span className="filter-control-label">District</span>
-                      {viewModel.selectedDistricts.length > 0 && (
-                        <button
-                          type="button"
-                          className="filter-clear-link"
-                          onClick={viewModel.handleClearAll}
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <ComboBox
-                      id="district-combobox"
-                      label="District"
-                      options={viewModel.districtsToComboOptions(viewModel.districts)}
-                      selections={viewModel.selectedDistricts}
-                      onUpdateSelection={viewModel.handleFilterChange}
-                      multiSelect={true}
-                      wrapPills={true}
-                      pluralLabel="districts"
-                      singularLabel="district"
-                      placeholder="- Select one or more -"
-                      scrollToSelected={true}
-                      ref={viewModel.districtFilterRef}
-                      hideClearAllButton={true}
-                    />
-                  </div>
-                )
-              )}
+              {renderDistrictFilter(viewModel, showLegacyDistrictFilter)}
 
               <div className="filter-control">
                 <div className="filter-control-header">
