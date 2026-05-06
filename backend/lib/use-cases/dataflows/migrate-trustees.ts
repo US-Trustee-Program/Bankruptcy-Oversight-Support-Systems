@@ -15,7 +15,6 @@ import { LegacyAddress } from '@common/cams/parties';
 import { normalizeName } from './trustee-match.helpers';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { ObjectStorageGateway } from '../gateways.types';
-import { buildContainerName } from '../../../function-apps/dataflows/dataflows-common';
 const MODULE_NAME = 'MIGRATE-TRUSTEES-USE-CASE';
 
 /**
@@ -913,6 +912,7 @@ async function processTrusteeWithAppointments(
 export async function processPageOfTrustees(
   context: ApplicationContext,
   trustees: AtsTrusteeRecord[],
+  outputContainerName: string,
 ): Promise<
   MaybeData<{
     processed: number;
@@ -994,7 +994,7 @@ export async function processPageOfTrustees(
   );
 
   if (failedAppointments.length > 0) {
-    await writeFailedAppointments(context, failedAppointments);
+    await writeFailedAppointments(context, failedAppointments, outputContainerName);
   }
 
   return {
@@ -1010,9 +1010,10 @@ export async function processPageOfTrustees(
 async function writeFailedAppointments(
   context: ApplicationContext,
   failedAppointments: FailedAppointment[],
+  outputContainerName: string,
 ): Promise<void> {
   const objectStorage: ObjectStorageGateway = factory.getObjectStorageGateway(context);
-  const outputContainer = buildContainerName(MODULE_NAME, 'out');
+  const outputContainer = outputContainerName;
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const fileName = `failed-appointments-${timestamp}.jsonl`;
   const content = failedAppointments.map((appt) => JSON.stringify(appt)).join('\n');
