@@ -1,8 +1,15 @@
 import './TrusteeDistrictFilter.scss';
-import ComboBox from '@/lib/components/combobox/ComboBox';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
+
+type FilterPillKind = 'district' | 'division' | 'chapter';
+type FilterPill = ComboOption & { kind: FilterPillKind };
+
+function tagPills(options: ComboOption[], kind: FilterPillKind): FilterPill[] {
+  return options.map((o) => ({ ...o, kind }));
+}
 
 function renderDistrictFilter(
   viewModel: TrusteeDistrictFilterViewProps['viewModel'],
@@ -167,18 +174,15 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
           id="filter-pills"
           className="filter-pills-container"
           selections={[
-            ...pillDistricts,
-            ...viewModel.selectedDivisions,
-            ...viewModel.selectedChapters,
+            ...tagPills(pillDistricts, 'district'),
+            ...tagPills(viewModel.selectedDivisions, 'division'),
+            ...tagPills(viewModel.selectedChapters, 'chapter'),
           ]}
           onSelectionChange={(updatedPills) => {
-            const districtValues = new Set(pillDistricts.map((d) => d.value));
-            const divisionValues = new Set(viewModel.selectedDivisions.map((d) => d.value));
-            const chapterValues = new Set(viewModel.selectedChapters.map((c) => c.value));
-
-            const updatedDistricts = updatedPills.filter((p) => districtValues.has(p.value));
-            const updatedDivisions = updatedPills.filter((p) => divisionValues.has(p.value));
-            const updatedChapters = updatedPills.filter((p) => chapterValues.has(p.value));
+            const pills = updatedPills as FilterPill[];
+            const updatedDistricts = pills.filter((p) => p.kind === 'district');
+            const updatedDivisions = pills.filter((p) => p.kind === 'division');
+            const updatedChapters = pills.filter((p) => p.kind === 'chapter');
 
             if (updatedDistricts.length !== pillDistricts.length) {
               viewModel.handleFilterChange(updatedDistricts);
