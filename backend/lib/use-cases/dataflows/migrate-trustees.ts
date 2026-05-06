@@ -71,12 +71,10 @@ export function buildDistrictToDivisionsMap(
 
 /**
  * Create a unique key for an appointment to prevent duplicates.
- * Key format: trusteeId-courtId-divisionCode-chapter-appointmentType
- * Division is included after courtId if present (DXTR enrichment).
+ * Key format: trusteeId-courtId-chapter-appointmentType (one appointment per district)
  */
 function getAppointmentKey(trusteeId: string, appointment: TrusteeAppointmentInput): string {
-  const divisionPart = appointment.divisionCode ? `-${appointment.divisionCode}` : '';
-  return `${trusteeId}-${appointment.courtId}${divisionPart}-${appointment.chapter}-${appointment.appointmentType}`;
+  return `${trusteeId}-${appointment.courtId}-${appointment.chapter}-${appointment.appointmentType}`;
 }
 
 /**
@@ -336,23 +334,23 @@ export async function getPageOfTrustees(
 }
 
 /**
- * Expand a single district appointment into multiple division-specific appointments.
- * Enriches each appointment with division code, court name, and court division name.
+ * Enrich a district appointment with all division codes for that district.
+ * Collects all division codes into divisionCodes array on a single appointment.
  *
  * @param appointment - Base appointment with courtId (district)
  * @param divisions - Array of divisions for this district
- * @returns Array of enriched appointments (one per division)
+ * @returns Single enriched appointment with all division codes
  */
-function expandAppointmentToDivisions(
+function enrichAppointmentWithDivisions(
   appointment: TrusteeAppointmentInput,
   divisions: DivisionInfo[],
-): TrusteeAppointmentInput[] {
-  return divisions.map((division) => ({
+): TrusteeAppointmentInput {
+  return {
     ...appointment,
-    divisionCode: division.divisionCode,
-    courtName: division.courtName,
-    courtDivisionName: division.courtDivisionName,
-  }));
+    divisionCodes: divisions.map((d) => d.divisionCode),
+    courtName: divisions[0]?.courtName,
+    courtDivisionName: divisions[0]?.courtDivisionName,
+  };
 }
 
 /**
@@ -379,13 +377,11 @@ async function getTrusteeAppointments(
       const divisions = districtToDivisionsMap.get(courtId);
 
       if (divisions && divisions.length > 0) {
-        // Expand into multiple division appointments
-        const divisionAppointments = expandAppointmentToDivisions(appointment, divisions);
-        expandedAppointments.push(...divisionAppointments);
+        expandedAppointments.push(enrichAppointmentWithDivisions(appointment, divisions));
 
         context.logger.debug(
           MODULE_NAME,
-          `Expanded district ${courtId} appointment into ${divisions.length} divisions`,
+          `Enriched district ${courtId} appointment with ${divisions.length} division codes`,
           {
             trusteeId,
             courtId,

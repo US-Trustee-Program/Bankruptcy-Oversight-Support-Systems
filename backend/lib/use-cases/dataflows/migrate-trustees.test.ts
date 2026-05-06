@@ -990,7 +990,7 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data?.errors).toBe(0);
     });
 
-    test('should expand district appointments to divisions', async () => {
+    test('should enrich district appointments with all division codes', async () => {
       const trustees: AtsTrusteeRecord[] = [
         { ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' },
       ];
@@ -1089,17 +1089,18 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.data?.processed).toBe(1);
       expect(result.data?.errors).toBe(0);
 
-      // Should have created 2 appointments (one per division)
-      expect(createAppointmentSpy).toHaveBeenCalledTimes(2);
+      // Should have created 1 appointment (district-level, with all division codes)
+      expect(createAppointmentSpy).toHaveBeenCalledTimes(1);
 
-      // Check that appointments have division codes (second argument is the appointment)
-      const calls = createAppointmentSpy.mock.calls;
-      const divisionCodes = calls.map((call) => call[1].divisionCode).sort();
-      expect(divisionCodes).toEqual(['MAH', 'MAN']);
+      // Check that the single appointment has all division codes
+      const call = createAppointmentSpy.mock.calls[0];
+      const appointment = call[1];
+      expect(appointment.divisionCodes).toEqual(expect.arrayContaining(['MAH', 'MAN']));
+      expect(appointment.divisionCodes).toHaveLength(2);
+      expect(appointment.divisionCode).toBeUndefined();
 
-      // Check that appointments have court names
-      const courtNames = calls.map((call) => call[1].courtName);
-      expect(courtNames[0]).toBe(
+      // Check that the appointment has the court name from the first division
+      expect(appointment.courtName).toBe(
         'United States Bankruptcy Court for the Southern District of New York',
       );
     });
