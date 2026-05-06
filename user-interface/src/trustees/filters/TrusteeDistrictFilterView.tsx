@@ -8,7 +8,10 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   const { viewModel } = props;
 
   const showDistrictFilter = viewModel.districts.length > 0 && !viewModel.districtsError;
-  const hasPills = viewModel.selectedDistricts.length > 0 || viewModel.selectedChapters.length > 0;
+  const hasPills =
+    viewModel.selectedDistricts.length > 0 ||
+    viewModel.selectedChapters.length > 0 ||
+    viewModel.selectedDivisions.length > 0;
 
   return (
     <section className="trustee-district-filter" aria-label="Trustee filter controls">
@@ -84,6 +87,37 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                 </div>
               )}
 
+              {viewModel.showDivisionFilter && (
+                <div className="filter-control">
+                  <div className="filter-control-header">
+                    <span className="filter-control-label">Division</span>
+                    {viewModel.selectedDivisions.length > 0 && (
+                      <button
+                        type="button"
+                        className="filter-clear-link"
+                        onClick={viewModel.handleClearAllDivisions}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <ComboBox
+                    id="division-combobox"
+                    label="Division"
+                    options={viewModel.availableDivisionOptions}
+                    selections={viewModel.selectedDivisions}
+                    onUpdateSelection={viewModel.handleFilterDivision}
+                    multiSelect={true}
+                    wrapPills={true}
+                    pluralLabel="divisions"
+                    singularLabel="division"
+                    placeholder="- Select one or more -"
+                    ref={viewModel.divisionFilterRef}
+                    hideClearAllButton={true}
+                  />
+                </div>
+              )}
+
               <div className="filter-control">
                 <div className="filter-control-header">
                   <span className="filter-control-label">Chapter</span>
@@ -121,18 +155,25 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
         <PillBox
           id="filter-pills"
           className="filter-pills-container"
-          selections={[...viewModel.selectedDistricts, ...viewModel.selectedChapters]}
+          selections={[
+            ...viewModel.selectedDistricts,
+            ...viewModel.selectedDivisions,
+            ...viewModel.selectedChapters,
+          ]}
           onSelectionChange={(updatedPills) => {
-            // Separate district and chapter pills
             const districtValues = new Set(viewModel.selectedDistricts.map((d) => d.value));
+            const divisionValues = new Set(viewModel.selectedDivisions.map((d) => d.value));
             const chapterValues = new Set(viewModel.selectedChapters.map((c) => c.value));
 
             const updatedDistricts = updatedPills.filter((p) => districtValues.has(p.value));
+            const updatedDivisions = updatedPills.filter((p) => divisionValues.has(p.value));
             const updatedChapters = updatedPills.filter((p) => chapterValues.has(p.value));
 
-            // Update both filters
             if (updatedDistricts.length !== viewModel.selectedDistricts.length) {
               viewModel.handleFilterChange(updatedDistricts);
+            }
+            if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
+              viewModel.handleFilterDivision(updatedDivisions);
             }
             if (updatedChapters.length !== viewModel.selectedChapters.length) {
               viewModel.handleFilterChapter(updatedChapters);

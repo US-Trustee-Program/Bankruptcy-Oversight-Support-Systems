@@ -2180,4 +2180,297 @@ describe('TrusteesList Component', () => {
       });
     });
   });
+
+  describe('Division Filter (Slice 3, flag ON)', () => {
+    const nysbCourts = [
+      {
+        courtId: 'NYSB',
+        courtName: 'Southern District of New York',
+        officeCode: '081',
+        officeName: 'Manhattan',
+        courtDivisionCode: '081',
+        courtDivisionName: 'Manhattan',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'New York Region',
+      },
+      {
+        courtId: 'NYSB',
+        courtName: 'Southern District of New York',
+        officeCode: '087',
+        officeName: 'White Plains',
+        courtDivisionCode: '087',
+        courtDivisionName: 'White Plains',
+        groupDesignator: 'NY',
+        regionId: '02',
+        regionName: 'New York Region',
+      },
+    ];
+
+    const nysbSession = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '081',
+            officeName: 'Manhattan',
+            idpGroupName: 'Manhattan',
+            regionId: '02',
+            regionName: 'New York Region',
+            groups: [
+              {
+                groupDesignator: 'NY',
+                divisions: [
+                  {
+                    divisionCode: '081',
+                    court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                    courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    beforeEach(() => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: nysbCourts });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(nysbSession);
+    });
+
+    test('filterTrustees: filters by specific division code when flag ON and division selected', async () => {
+      const apptManhattan = makeAppointment({
+        courtId: 'NYSB',
+        divisionCodes: ['081'],
+      });
+      const apptWhitePlains = makeAppointment({
+        courtId: 'NYSB',
+        divisionCodes: ['087'],
+      });
+      const trusteeManhattan = makeListItem({
+        trusteeId: 'manhattan',
+        firstName: 'Alice',
+        lastName: 'Manhattan',
+        appointments: [apptManhattan],
+      });
+      const trusteeWhitePlains = makeListItem({
+        trusteeId: 'whiteplains',
+        firstName: 'Bob',
+        lastName: 'WhitePlains',
+        appointments: [apptWhitePlains],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [trusteeManhattan, trusteeWhitePlains],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Division')).toBeInTheDocument();
+      });
+
+      const divisionCombobox = screen.getByLabelText('Division');
+      await userEvent.setup().click(divisionCombobox);
+
+      await waitFor(() => {
+        expect(screen.getByRole('option', { name: /option: Manhattan/i })).toBeInTheDocument();
+      });
+
+      await userEvent.setup().click(screen.getByRole('option', { name: /option: Manhattan/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
+        expect(screen.queryByText('WhitePlains, Bob')).not.toBeInTheDocument();
+      });
+    });
+
+    test('filterTrustees: "All Divisions" trustee (empty divisionCodes) always matches any division selection', async () => {
+      const apptAllDivisions = makeAppointment({
+        courtId: 'NYSB',
+        divisionCodes: [],
+      });
+      const apptSpecific = makeAppointment({
+        courtId: 'NYSB',
+        divisionCodes: ['087'],
+      });
+      const trusteeAllDivisions = makeListItem({
+        trusteeId: 'alldiv',
+        firstName: 'Alice',
+        lastName: 'AllDivisions',
+        appointments: [apptAllDivisions],
+      });
+      const trusteeSpecific = makeListItem({
+        trusteeId: 'specific',
+        firstName: 'Bob',
+        lastName: 'WhitePlains',
+        appointments: [apptSpecific],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [trusteeAllDivisions, trusteeSpecific],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Division')).toBeInTheDocument();
+      });
+
+      const divisionCombobox = screen.getByLabelText('Division');
+      await userEvent.setup().click(divisionCombobox);
+
+      await waitFor(() => {
+        expect(screen.getByRole('option', { name: /option: White Plains/i })).toBeInTheDocument();
+      });
+
+      await userEvent.setup().click(screen.getByRole('option', { name: /option: White Plains/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('AllDivisions, Alice')).toBeInTheDocument();
+        expect(screen.getByText('WhitePlains, Bob')).toBeInTheDocument();
+      });
+    });
+
+    test('division filter hidden when no district is selected', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [makeListItem({ trusteeId: 't1' })],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('District')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText('Division')).not.toBeInTheDocument();
+    });
+
+    test('division filter shown when district is selected', async () => {
+      const appt = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [makeListItem({ trusteeId: 't1', appointments: [appt] })],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Division')).toBeInTheDocument();
+      });
+    });
+
+    test('division selection cleared when district changes', async () => {
+      const apptNY = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
+      const trusteeNY = makeListItem({
+        trusteeId: 'ny',
+        firstName: 'Alice',
+        lastName: 'New York',
+        appointments: [apptNY],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY] });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('Division')).toBeInTheDocument();
+      });
+
+      const divisionCombobox = screen.getByLabelText('Division');
+      await userEvent.setup().click(divisionCombobox);
+
+      await waitFor(() => {
+        expect(screen.getByRole('option', { name: /option: Manhattan/i })).toBeInTheDocument();
+      });
+
+      await userEvent.setup().click(screen.getByRole('option', { name: /option: Manhattan/i }));
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', { name: /manhattan selected.*click to deselect/i }),
+        ).toBeInTheDocument();
+      });
+
+      // Clear the district filter by clicking the district pill
+      const districtPill = screen.getByRole('button', {
+        name: /southern district of new york selected.*click to deselect/i,
+      });
+      await userEvent.setup().click(districtPill);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', { name: /manhattan selected.*click to deselect/i }),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    test('division filter not shown when feature flag is OFF', async () => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': false,
+      } as FeatureFlagSet);
+
+      const appt = makeAppointment({ courtId: 'NYSB', divisionCode: '081' });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [makeListItem({ trusteeId: 't1', appointments: [appt] })],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('District')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByLabelText('Division')).not.toBeInTheDocument();
+    });
+  });
 });
