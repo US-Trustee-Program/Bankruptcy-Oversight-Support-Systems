@@ -153,14 +153,20 @@ export default function TrusteesList() {
   const defaultDistrictsRef = useRef<ComboOption[]>([]);
   const isDefaultApplied = useRef(false);
   const isChapterFilterInteracted = useRef(false);
+  const isDistrictFilterInteracted = useRef(false);
+  const lastFilterChanged = useRef<'district' | 'chapter' | 'name' | null>(null);
 
   const handleFilterDistrict = (districts: ComboOption[]) => {
     if (!isDefaultApplied.current) {
       defaultDistrictsRef.current = districts;
       isDefaultApplied.current = true;
+    } else {
+      isDistrictFilterInteracted.current = true;
+      lastFilterChanged.current = 'district';
     }
     setSelectedDivisions([]);
     setSelectedDistricts(districts);
+    setLiveAnnouncement('');
   };
 
   const handleFilterDivision = (divisions: ComboOption[]) => {
@@ -169,12 +175,14 @@ export default function TrusteesList() {
 
   const handleFilterChapter = (chapters: ComboOption[]) => {
     isChapterFilterInteracted.current = true;
-    setSelectedChapters(chapters);
+    lastFilterChanged.current = 'chapter';
     setLiveAnnouncement('');
+    setSelectedChapters(chapters);
   };
 
   const handleFilterName = (name: string) => {
     isNameFilterInteracted.current = true;
+    lastFilterChanged.current = 'name';
     if (name.length >= 2) setNameSearchLoading(true);
     setNameSearch(name);
   };
@@ -300,9 +308,12 @@ export default function TrusteesList() {
   }
 
   useEffect(() => {
-    if (!isChapterFilterInteracted.current && !isNameFilterInteracted.current) return;
+    if (!isNameFilterInteracted.current && !isDistrictFilterInteracted.current) return;
+    if (lastFilterChanged.current === 'chapter') return;
     if (nameSearchLoading) return;
-    setLiveAnnouncement(`${filteredTrustees.length} Trustees`);
+    setLiveAnnouncement(
+      `${filteredTrustees.length} Trustee${filteredTrustees.length !== 1 ? 's' : ''}`,
+    );
   }, [filteredTrustees, nameSearchLoading]);
 
   useEffect(() => {
@@ -419,12 +430,18 @@ export default function TrusteesList() {
         {nameSearchLoading
           ? (stableCountRef.current ?? filteredTrustees.length)
           : filteredTrustees.length}{' '}
-        Trustee(s)
+        {(nameSearchLoading
+          ? (stableCountRef.current ?? filteredTrustees.length)
+          : filteredTrustees.length) === 1
+          ? 'Trustee'
+          : 'Trustees'}
       </p>
       <div
         className="trustees-list-grid"
         role="table"
         aria-label="Trustees"
+        aria-live="off"
+        aria-atomic="false"
         data-testid="trustees-table"
       >
         <div role="rowgroup">

@@ -111,16 +111,21 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             <div className="filter-controls-row">
               <div className="filter-control">
                 <div className="filter-control-header">
-                  <span className="filter-control-label">Trustee Name</span>
-                  {viewModel.nameSearch.length > 0 && (
+                  <span className="filter-control-label" aria-hidden="true">
+                    Trustee Name
+                  </span>
+                  <div aria-live="off" aria-atomic="false">
                     <button
                       type="button"
                       className="filter-clear-link"
                       onClick={() => viewModel.handleFilterName('')}
+                      aria-label="Clear Trustee Name filter"
+                      style={{ visibility: viewModel.nameSearch.length > 0 ? 'visible' : 'hidden' }}
+                      disabled={viewModel.nameSearch.length === 0}
                     >
                       Clear
                     </button>
-                  )}
+                  </div>
                 </div>
                 <input
                   id="trustee-name-filter"
@@ -138,20 +143,28 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
 
               <div className="filter-control">
                 <div className="filter-control-header">
-                  <span className="filter-control-label">Chapter</span>
-                  {viewModel.selectedChapters.length > 0 && (
+                  <span className="filter-control-label" aria-hidden="true">
+                    Chapter
+                  </span>
+                  <div aria-live="off" aria-atomic="false">
                     <button
                       type="button"
                       className="filter-clear-link"
                       onClick={viewModel.handleClearAllChapters}
+                      aria-label="Clear Chapter filter"
+                      style={{
+                        visibility: viewModel.selectedChapters.length > 0 ? 'visible' : 'hidden',
+                      }}
+                      disabled={viewModel.selectedChapters.length === 0}
                     >
                       Clear
                     </button>
-                  )}
+                  </div>
                 </div>
                 <ComboBox
                   id="chapter-combobox"
                   label="Chapter"
+                  ariaLabelPrefix="Chapter"
                   options={viewModel.chaptersToComboOptions()}
                   selections={viewModel.selectedChapters}
                   onUpdateSelection={viewModel.handleFilterChapter}
@@ -170,31 +183,33 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
       </AccordionGroup>
 
       {hasPills && (
-        <PillBox
-          id="filter-pills"
-          className="filter-pills-container"
-          selections={[
-            ...tagPills(pillDistricts, 'district'),
-            ...tagPills(viewModel.selectedDivisions, 'division'),
-            ...tagPills(viewModel.selectedChapters, 'chapter'),
-          ]}
-          onSelectionChange={(updatedPills) => {
-            const pills = updatedPills as FilterPill[];
-            const updatedDistricts = pills.filter((p) => p.kind === 'district');
-            const updatedDivisions = pills.filter((p) => p.kind === 'division');
-            const updatedChapters = pills.filter((p) => p.kind === 'chapter');
+        <div aria-live="off" aria-atomic="false">
+          <PillBox
+            id="filter-pills"
+            className="filter-pills-container"
+            selections={[
+              ...tagPills(pillDistricts, 'district'),
+              ...tagPills(viewModel.selectedDivisions, 'division'),
+              ...tagPills(viewModel.selectedChapters, 'chapter'),
+            ]}
+            onSelectionChange={(updatedPills) => {
+              const pills = updatedPills as FilterPill[];
+              const updatedDistricts = pills.filter((p) => p.kind === 'district');
+              const updatedDivisions = pills.filter((p) => p.kind === 'division');
+              const updatedChapters = pills.filter((p) => p.kind === 'chapter');
 
-            if (updatedDistricts.length !== pillDistricts.length) {
-              viewModel.handleFilterChange(updatedDistricts);
-            }
-            if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
-              viewModel.handleFilterDivision(updatedDivisions);
-            }
-            if (updatedChapters.length !== viewModel.selectedChapters.length) {
-              viewModel.handleFilterChapter(updatedChapters);
-            }
-          }}
-        />
+              if (updatedDistricts.length !== pillDistricts.length) {
+                viewModel.handleFilterChange(updatedDistricts);
+              }
+              if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
+                viewModel.handleFilterDivision(updatedDivisions);
+              }
+              if (updatedChapters.length !== viewModel.selectedChapters.length) {
+                viewModel.handleFilterChapter(updatedChapters);
+              }
+            }}
+          />
+        </div>
       )}
     </section>
   );
