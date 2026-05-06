@@ -602,6 +602,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               aria-live="off"
               ref={comboBoxListRef}
             >
+              {/* eslint-disable jsx-a11y/role-has-required-aria-props */}
               {props.options
                 .filter(
                   (option) => !filter || option.label.toLowerCase().includes(filter.toLowerCase()),
@@ -611,7 +612,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     id={`option-${option.value}`}
                     className={setListItemClass(idx, option)}
                     role="option"
-                    aria-selected={selectedMap.has(option.value)}
                     data-value={option.value}
                     data-testid={`${comboBoxId}-option-item-${idx}`}
                     key={`${comboBoxId}-${idx}`}
@@ -631,6 +631,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     </span>
                   </li>
                 ))}
+              {/* eslint-enable jsx-a11y/role-has-required-aria-props */}
             </ul>
           </div>
         )}
