@@ -500,7 +500,7 @@ describe('Migrate Trustees Use Case', () => {
       };
 
       const trustees = [malformedTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(0); // Merge failed, so not processed
       expect(result.data?.errors).toBe(1);
@@ -521,7 +521,7 @@ describe('Migrate Trustees Use Case', () => {
       );
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(0); // Failed, so not counted as processed
       expect(result.data?.errors).toBe(1);
@@ -573,7 +573,7 @@ describe('Migrate Trustees Use Case', () => {
       );
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       // Trustee succeeded, so success count = 1
       expect(result.data?.processed).toBe(1);
@@ -600,7 +600,7 @@ describe('Migrate Trustees Use Case', () => {
       );
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       // Trustee is saved successfully despite appointment fetch failure
       expect(result.data?.processed).toBe(1);
@@ -640,7 +640,7 @@ describe('Migrate Trustees Use Case', () => {
       } as unknown as AcmsGateway);
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       // Trustee succeeded despite ACMS failure (non-fatal)
       expect(result.data?.processed).toBe(1);
@@ -674,7 +674,7 @@ describe('Migrate Trustees Use Case', () => {
       });
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(1);
       expect(result.data?.errors).toBe(0);
@@ -708,7 +708,7 @@ describe('Migrate Trustees Use Case', () => {
         },
       });
 
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(2); // John and Bob succeeded
       expect(result.data?.errors).toBe(1); // Only Jane failed
@@ -759,7 +759,7 @@ describe('Migrate Trustees Use Case', () => {
       });
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(1);
       expect(result.data?.errors).toBe(0);
@@ -783,7 +783,7 @@ describe('Migrate Trustees Use Case', () => {
       vi.spyOn(factory, 'getOfficesGateway').mockReturnValue(mockOfficesGateway);
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       // Should return error, not process any trustees
       expect(result.error).toBeDefined();
@@ -851,7 +851,7 @@ describe('Migrate Trustees Use Case', () => {
         .mockResolvedValue(mockTrustee);
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(1);
       expect(result.data?.errors).toBe(0);
@@ -876,7 +876,7 @@ describe('Migrate Trustees Use Case', () => {
         .mockResolvedValue(mockTrustee);
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(1); // Eventually succeeded
       expect(result.data?.errors).toBe(0);
@@ -902,7 +902,7 @@ describe('Migrate Trustees Use Case', () => {
         .mockResolvedValue(mockTrustee);
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(1); // Eventually succeeded
       expect(result.data?.errors).toBe(0);
@@ -923,7 +923,7 @@ describe('Migrate Trustees Use Case', () => {
       );
 
       const trustees = [atsTrustee];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(0); // Failed after all retries
       expect(result.data?.errors).toBe(1);
@@ -944,7 +944,7 @@ describe('Migrate Trustees Use Case', () => {
 
       vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
 
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(2); // John and Jane succeeded
       expect(result.data?.errors).toBe(1); // Only Bob failed permanently
@@ -984,7 +984,7 @@ describe('Migrate Trustees Use Case', () => {
         },
       });
 
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(2);
       expect(result.data?.errors).toBe(0);
@@ -1084,7 +1084,7 @@ describe('Migrate Trustees Use Case', () => {
 
       vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
 
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(1);
       expect(result.data?.errors).toBe(0);
@@ -1156,7 +1156,7 @@ describe('Migrate Trustees Use Case', () => {
 
       vi.spyOn(MockMongoRepository.prototype, 'getTrusteeAppointments').mockResolvedValue([]);
 
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(1);
       expect(result.data?.errors).toBe(0);
@@ -1434,12 +1434,12 @@ describe('Migrate Trustees Use Case', () => {
       vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
 
       const trustees = [{ ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(result.data?.processed).toBe(1);
       expect(result.data?.failedAppointments).toHaveLength(1);
       expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
-        expect.stringContaining('migrate-trustees-use-case'),
+        'migrate-trustees-out',
         expect.stringMatching(/^failed-appointments-.*\.jsonl$/),
         expect.stringContaining('"classification":"PROBLEMATIC"'),
       );
@@ -1453,7 +1453,7 @@ describe('Migrate Trustees Use Case', () => {
       vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
 
       const trustees = [{ ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }];
-      const result = await processPageOfTrustees(context, trustees);
+      const result = await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       // Migration result is unaffected by blob write failure
       expect(result.data?.processed).toBe(1);
@@ -1483,7 +1483,7 @@ describe('Migrate Trustees Use Case', () => {
       vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
 
       const trustees = [{ ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }];
-      await processPageOfTrustees(context, trustees);
+      await processPageOfTrustees(context, trustees, 'migrate-trustees-out');
 
       expect(mockObjectStorage.writeObject).not.toHaveBeenCalled();
     });

@@ -220,7 +220,11 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   );
 
   // Process page with retry logic handled in use case
-  const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(context, trustees);
+  const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(
+    context,
+    trustees,
+    buildContainerName(MODULE_NAME, 'out'),
+  );
 
   if (processResult.error) {
     await MigrationStateService.failMigration(context, currentState, processResult.error.message);
