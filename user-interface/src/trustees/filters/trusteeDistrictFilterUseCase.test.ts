@@ -662,4 +662,84 @@ describe('trustee district filter use case tests', () => {
       expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
     });
   });
+
+  describe('handleFilterCombined', () => {
+    test('should update divisions and trigger callback', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      const selections: ComboOption[] = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      ];
+
+      useCase.handleFilterCombined(selections);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith(selections);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith(selections);
+    });
+
+    test('should clear divisions when empty array passed', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+
+      useCase.handleFilterCombined([]);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([]);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
+    });
+
+    test('adding ALL option removes specific divisions for that court', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      ];
+
+      const selections: ComboOption[] = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ];
+
+      useCase.handleFilterCombined(selections);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ]);
+    });
+
+    test('adding specific division removes ALL option for that court', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ];
+
+      const selections: ComboOption[] = [
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      ];
+
+      useCase.handleFilterCombined(selections);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      ]);
+    });
+
+    test('mutual exclusion does not affect selections from a different court', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+        { value: 'VTB|ALL', label: 'District of Vermont (All)' },
+      ];
+
+      const selections: ComboOption[] = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+        { value: 'VTB|ALL', label: 'District of Vermont (All)' },
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ];
+
+      useCase.handleFilterCombined(selections);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([
+        { value: 'VTB|ALL', label: 'District of Vermont (All)' },
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ]);
+    });
+  });
 });

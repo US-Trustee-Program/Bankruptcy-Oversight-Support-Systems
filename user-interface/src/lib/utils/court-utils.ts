@@ -302,6 +302,50 @@ interface DivisionOption {
 }
 
 /**
+ * Builds combined "District (Division)" ComboBox options from a flat courts list.
+ *
+ * For each district, prepends an "All [CourtName]" option (value: `${courtId}|ALL`)
+ * followed by individual divisions (value: `${courtId}|${courtDivisionCode}`).
+ * Options are sorted by state then court name; divisions within a court are sorted
+ * alphabetically by division name.
+ *
+ * @param courts - Flat array of court division details
+ * @returns Ordered ComboOption-shaped array for use in a combined district/division combobox
+ */
+export function getDistrictDivisionComboOptions(
+  courts: CourtDivisionDetails[],
+): { value: string; label: string; selectedLabel?: string }[] {
+  const districtMap = groupDivisionsByDistrict(courts);
+  const uniqueDistricts = sortByCourtLocation(
+    Array.from(districtMap.values()).map((divisions) => divisions[0]),
+  );
+
+  const options: { value: string; label: string; selectedLabel?: string }[] = [];
+
+  for (const district of uniqueDistricts) {
+    const divisions = districtMap
+      .get(district.courtName)!
+      .sort((a, b) => a.courtDivisionName.localeCompare(b.courtDivisionName));
+
+    options.push({
+      value: `${district.courtId}|ALL`,
+      label: `${district.courtName} (All)`,
+      selectedLabel: `${district.courtName} (All)`,
+    });
+
+    for (const div of divisions) {
+      options.push({
+        value: `${district.courtId}|${div.courtDivisionCode}`,
+        label: `${district.courtName} (${div.courtDivisionName})`,
+        selectedLabel: `${div.courtDivisionName}`,
+      });
+    }
+  }
+
+  return options;
+}
+
+/**
  * Extracts unique districts from a flat array of CourtDivisionDetails.
  * Deduplicates by courtId and sorts by state name then court name.
  *

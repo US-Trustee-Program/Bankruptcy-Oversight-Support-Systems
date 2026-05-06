@@ -2243,7 +2243,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(nysbSession);
     });
 
-    test('filterTrustees: filters by specific division code when flag ON and division selected', async () => {
+    test('filterTrustees: filters by specific division code when flag ON and combined filter selected', async () => {
       const apptManhattan = makeAppointment({
         courtId: 'NYSB',
         divisionCodes: ['081'],
@@ -2279,17 +2279,25 @@ describe('TrusteesList Component', () => {
       await userEvent.setup().click(toggleButton);
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Division')).toBeInTheDocument();
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
-      const divisionCombobox = screen.getByLabelText('Division');
-      await userEvent.setup().click(divisionCombobox);
+      const combinedCombobox = screen.getByLabelText('District (Division)');
+      await userEvent.setup().click(combinedCombobox);
 
       await waitFor(() => {
-        expect(screen.getByRole('option', { name: /option: Manhattan/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', {
+            name: /option: Southern District of New York \(Manhattan\)/i,
+          }),
+        ).toBeInTheDocument();
       });
 
-      await userEvent.setup().click(screen.getByRole('option', { name: /option: Manhattan/i }));
+      await userEvent.setup().click(
+        screen.getByRole('option', {
+          name: /option: Southern District of New York \(Manhattan\)/i,
+        }),
+      );
 
       await waitFor(() => {
         expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
@@ -2334,17 +2342,25 @@ describe('TrusteesList Component', () => {
       await userEvent.setup().click(toggleButton);
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Division')).toBeInTheDocument();
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
-      const divisionCombobox = screen.getByLabelText('Division');
-      await userEvent.setup().click(divisionCombobox);
+      const combinedCombobox = screen.getByLabelText('District (Division)');
+      await userEvent.setup().click(combinedCombobox);
 
       await waitFor(() => {
-        expect(screen.getByRole('option', { name: /option: White Plains/i })).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', {
+            name: /option: Southern District of New York \(White Plains\)/i,
+          }),
+        ).toBeInTheDocument();
       });
 
-      await userEvent.setup().click(screen.getByRole('option', { name: /option: White Plains/i }));
+      await userEvent.setup().click(
+        screen.getByRole('option', {
+          name: /option: Southern District of New York \(White Plains\)/i,
+        }),
+      );
 
       await waitFor(() => {
         expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
@@ -2353,7 +2369,7 @@ describe('TrusteesList Component', () => {
       });
     });
 
-    test('division filter hidden when no district is selected', async () => {
+    test('combined district/division filter shown when flag is ON', async () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
         data: [makeListItem({ trusteeId: 't1' })],
@@ -2369,13 +2385,14 @@ describe('TrusteesList Component', () => {
       await userEvent.setup().click(toggleButton);
 
       await waitFor(() => {
-        expect(screen.getByLabelText('District')).toBeInTheDocument();
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
+      expect(screen.queryByLabelText('District')).not.toBeInTheDocument();
       expect(screen.queryByLabelText('Division')).not.toBeInTheDocument();
     });
 
-    test('division filter shown when district is selected', async () => {
+    test('combined filter shows all district/division options', async () => {
       const appt = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
         data: [makeListItem({ trusteeId: 't1', appointments: [appt] })],
@@ -2391,11 +2408,99 @@ describe('TrusteesList Component', () => {
       await userEvent.setup().click(toggleButton);
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Division')).toBeInTheDocument();
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      });
+
+      const combinedCombobox = screen.getByLabelText('District (Division)');
+      await userEvent.setup().click(combinedCombobox);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('option', {
+            name: /option: Southern District of New York \(All\)/i,
+          }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', {
+            name: /option: Southern District of New York \(Manhattan\)/i,
+          }),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByRole('option', {
+            name: /option: Southern District of New York \(White Plains\)/i,
+          }),
+        ).toBeInTheDocument();
       });
     });
 
-    test('division selection cleared when district changes', async () => {
+    test('selecting All after specific division shows all trustees in that court', async () => {
+      const apptManhattan = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
+      const apptWhitePlains = makeAppointment({ courtId: 'NYSB', divisionCodes: ['087'] });
+      const trusteeManhattan = makeListItem({
+        trusteeId: 'manhattan',
+        firstName: 'Alice',
+        lastName: 'Manhattan',
+        appointments: [apptManhattan],
+      });
+      const trusteeWhitePlains = makeListItem({
+        trusteeId: 'whiteplains',
+        firstName: 'Bob',
+        lastName: 'WhitePlains',
+        appointments: [apptWhitePlains],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [trusteeManhattan, trusteeWhitePlains],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
+      });
+
+      const combinedCombobox = screen.getByLabelText('District (Division)');
+      await userEvent.setup().click(combinedCombobox);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('option', {
+            name: /option: Southern District of New York \(Manhattan\)/i,
+          }),
+        ).toBeInTheDocument();
+      });
+      await userEvent.setup().click(
+        screen.getByRole('option', {
+          name: /option: Southern District of New York \(Manhattan\)/i,
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
+        expect(screen.queryByText('WhitePlains, Bob')).not.toBeInTheDocument();
+      });
+
+      const manhattanPill = screen.getByRole('button', {
+        name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
+      });
+      await userEvent.setup().click(manhattanPill);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
+        expect(screen.getByText('WhitePlains, Bob')).toBeInTheDocument();
+      });
+    });
+
+    test('clearing all combined selections shows all trustees', async () => {
       const apptNY = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
       const trusteeNY = makeListItem({
         trusteeId: 'ny',
@@ -2416,33 +2521,44 @@ describe('TrusteesList Component', () => {
       await userEvent.setup().click(toggleButton);
 
       await waitFor(() => {
-        expect(screen.getByLabelText('Division')).toBeInTheDocument();
+        expect(screen.getByLabelText('District (Division)')).toBeInTheDocument();
       });
 
-      const divisionCombobox = screen.getByLabelText('Division');
-      await userEvent.setup().click(divisionCombobox);
-
-      await waitFor(() => {
-        expect(screen.getByRole('option', { name: /option: Manhattan/i })).toBeInTheDocument();
-      });
-
-      await userEvent.setup().click(screen.getByRole('option', { name: /option: Manhattan/i }));
+      const combinedCombobox = screen.getByLabelText('District (Division)');
+      await userEvent.setup().click(combinedCombobox);
 
       await waitFor(() => {
         expect(
-          screen.getByRole('button', { name: /manhattan selected.*click to deselect/i }),
+          screen.getByRole('option', {
+            name: /option: Southern District of New York \(Manhattan\)/i,
+          }),
         ).toBeInTheDocument();
       });
 
-      // Clear the district filter by clicking the district pill
-      const districtPill = screen.getByRole('button', {
-        name: /southern district of new york selected.*click to deselect/i,
-      });
-      await userEvent.setup().click(districtPill);
+      await userEvent.setup().click(
+        screen.getByRole('option', {
+          name: /option: Southern District of New York \(Manhattan\)/i,
+        }),
+      );
 
       await waitFor(() => {
         expect(
-          screen.queryByRole('button', { name: /manhattan selected.*click to deselect/i }),
+          screen.getByRole('button', {
+            name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
+          }),
+        ).toBeInTheDocument();
+      });
+
+      const divisionPill = screen.getByRole('button', {
+        name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
+      });
+      await userEvent.setup().click(divisionPill);
+
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('button', {
+            name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
+          }),
         ).not.toBeInTheDocument();
       });
     });

@@ -7,7 +7,10 @@ import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
 function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
   const { viewModel } = props;
 
-  const showDistrictFilter = viewModel.districts.length > 0 && !viewModel.districtsError;
+  const showLegacyDistrictFilter =
+    !viewModel.districtDivisionEnabled &&
+    viewModel.districts.length > 0 &&
+    !viewModel.districtsError;
   const hasPills =
     viewModel.selectedDistricts.length > 0 ||
     viewModel.selectedChapters.length > 0 ||
@@ -55,42 +58,10 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                 />
               </div>
 
-              {showDistrictFilter && (
+              {viewModel.districtDivisionEnabled ? (
                 <div className="filter-control">
                   <div className="filter-control-header">
-                    <span className="filter-control-label">District</span>
-                    {viewModel.selectedDistricts.length > 0 && (
-                      <button
-                        type="button"
-                        className="filter-clear-link"
-                        onClick={viewModel.handleClearAll}
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  <ComboBox
-                    id="district-combobox"
-                    label="District"
-                    options={viewModel.districtsToComboOptions(viewModel.districts)}
-                    selections={viewModel.selectedDistricts}
-                    onUpdateSelection={viewModel.handleFilterChange}
-                    multiSelect={true}
-                    wrapPills={true}
-                    pluralLabel="districts"
-                    singularLabel="district"
-                    placeholder="- Select one or more -"
-                    scrollToSelected={true}
-                    ref={viewModel.districtFilterRef}
-                    hideClearAllButton={true}
-                  />
-                </div>
-              )}
-
-              {viewModel.showDivisionFilter && (
-                <div className="filter-control">
-                  <div className="filter-control-header">
-                    <span className="filter-control-label">Division</span>
+                    <span className="filter-control-label">District (Division)</span>
                     {viewModel.selectedDivisions.length > 0 && (
                       <button
                         type="button"
@@ -102,11 +73,11 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                     )}
                   </div>
                   <ComboBox
-                    id="division-combobox"
-                    label="Division"
-                    options={viewModel.availableDivisionOptions}
+                    id="district-division-combobox"
+                    label="District (Division)"
+                    options={viewModel.combinedDistrictDivisionOptions}
                     selections={viewModel.selectedDivisions}
-                    onUpdateSelection={viewModel.handleFilterDivision}
+                    onUpdateSelection={viewModel.handleFilterCombined}
                     multiSelect={true}
                     wrapPills={true}
                     pluralLabel="divisions"
@@ -116,6 +87,38 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                     hideClearAllButton={true}
                   />
                 </div>
+              ) : (
+                showLegacyDistrictFilter && (
+                  <div className="filter-control">
+                    <div className="filter-control-header">
+                      <span className="filter-control-label">District</span>
+                      {viewModel.selectedDistricts.length > 0 && (
+                        <button
+                          type="button"
+                          className="filter-clear-link"
+                          onClick={viewModel.handleClearAll}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <ComboBox
+                      id="district-combobox"
+                      label="District"
+                      options={viewModel.districtsToComboOptions(viewModel.districts)}
+                      selections={viewModel.selectedDistricts}
+                      onUpdateSelection={viewModel.handleFilterChange}
+                      multiSelect={true}
+                      wrapPills={true}
+                      pluralLabel="districts"
+                      singularLabel="district"
+                      placeholder="- Select one or more -"
+                      scrollToSelected={true}
+                      ref={viewModel.districtFilterRef}
+                      hideClearAllButton={true}
+                    />
+                  </div>
+                )
               )}
 
               <div className="filter-control">

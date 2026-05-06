@@ -99,7 +99,9 @@ const TrusteeDistrictFilter_ = (
     selectedChapters: store.selectedChapters,
     selectedDivisions: store.selectedDivisions,
     availableDivisionOptions: props.availableDivisionOptions,
+    combinedDistrictDivisionOptions: props.combinedDistrictDivisionOptions,
     showDivisionFilter,
+    districtDivisionEnabled,
     isExpanded: store.isExpanded,
     districtFilterRef: controls.districtFilterRef,
     chapterFilterRef: controls.chapterFilterRef,
@@ -115,6 +117,7 @@ const TrusteeDistrictFilter_ = (
     handleFilterName: handleNameChange,
     handleFilterDivision: useCase.handleFilterDivision,
     handleClearAllDivisions: useCase.handleClearAllDivisions,
+    handleFilterCombined: useCase.handleFilterCombined,
   };
 
   return <TrusteeDistrictFilterView viewModel={viewModel}></TrusteeDistrictFilterView>;
