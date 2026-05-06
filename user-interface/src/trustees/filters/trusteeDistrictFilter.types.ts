@@ -38,6 +38,8 @@ export interface TrusteeDistrictFilterViewModel {
   selectedDivisions: ComboOption[];
   availableDivisionOptions: ComboOption[];
   showDivisionFilter: boolean;
+  combinedDistrictDivisionOptions: ComboOption[];
+  districtDivisionEnabled: boolean;
   isExpanded: boolean;
   districtFilterRef: React.RefObject<ComboBoxRef | null>;
   chapterFilterRef: React.RefObject<ComboBoxRef | null>;
@@ -54,6 +56,7 @@ export interface TrusteeDistrictFilterViewModel {
   handleFilterName(name: string): void;
   handleFilterDivision(divisions: ComboOption[]): void;
   handleClearAllDivisions(): void;
+  handleFilterCombined(selections: ComboOption[]): void;
 }
 
 export interface TrusteeDistrictFilterRef {
@@ -68,6 +71,7 @@ export type TrusteeDistrictFilterProps = {
   handleFilterName(name: string): void;
   handleFilterDivision(divisions: ComboOption[]): void;
   availableDivisionOptions: ComboOption[];
+  combinedDistrictDivisionOptions: ComboOption[];
   onExpandedChange?: (isExpanded: boolean) => void;
   onCourtsLoaded?: (courts: CourtDivisionDetails[]) => void;
 };
@@ -88,4 +92,5 @@ export interface TrusteeDistrictFilterUseCase {
   handleClearAllChapters(): void;
   handleFilterDivision(divisions: ComboOption[]): void;
   handleClearAllDivisions(): void;
+  handleFilterCombined(selections: ComboOption[]): void;
 }

@@ -20,6 +20,7 @@ import {
   sortTrusteeAppointments,
   buildDivisionsDisplay,
   getDivisionsForDistrict,
+  getDistrictDivisionComboOptions,
 } from '@/lib/utils/court-utils';
 import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
 import { CourtDivisionDetails } from '@common/cams/courts';
@@ -43,22 +44,29 @@ function filterTrustees(
   const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
   return trustees.filter((trustee) => {
     let districtMatch: boolean;
-    if (selectedDistricts.length === 0) {
-      districtMatch = true;
-    } else if (districtDivisionEnabled) {
-      const selectedCourtIds = new Set(selectedDistricts.map((d) => d.value));
+    if (districtDivisionEnabled) {
       if (selectedDivisions.length > 0) {
-        const selectedDivisionCodes = new Set(selectedDivisions.map((d) => d.value));
-        districtMatch = trustee.appointments.some(
-          (appt) =>
-            selectedCourtIds.has(appt.courtId) &&
-            (!appt.divisionCodes ||
-              appt.divisionCodes.length === 0 ||
-              appt.divisionCodes.some((code) => selectedDivisionCodes.has(code))),
-        );
-      } else {
+        const courtFilter = new Map<string, Set<string>>();
+        for (const opt of selectedDivisions) {
+          const [courtId, code] = opt.value.split('|');
+          if (!courtFilter.has(courtId)) courtFilter.set(courtId, new Set());
+          courtFilter.get(courtId)!.add(code);
+        }
+        districtMatch = trustee.appointments.some((appt) => {
+          const allowed = courtFilter.get(appt.courtId);
+          if (!allowed) return false;
+          if (allowed.has('ALL')) return true;
+          if (!appt.divisionCodes || appt.divisionCodes.length === 0) return true;
+          return appt.divisionCodes.some((code) => allowed.has(code));
+        });
+      } else if (selectedDistricts.length > 0) {
+        const selectedCourtIds = new Set(selectedDistricts.map((d) => d.value));
         districtMatch = trustee.appointments.some((appt) => selectedCourtIds.has(appt.courtId));
+      } else {
+        districtMatch = true;
       }
+    } else if (selectedDistricts.length === 0) {
+      districtMatch = true;
     } else {
       const selectedDivisionCodes = new Set(selectedDistricts.flatMap((d) => d.value.split(',')));
       districtMatch = trustee.appointments.some(
@@ -223,6 +231,11 @@ export default function TrusteesList() {
     }
     return options;
   }, [trustees, selectedDistricts, allCourts, districtDivisionEnabled]);
+
+  const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
+    if (!districtDivisionEnabled || allCourts.length === 0) return [];
+    return getDistrictDivisionComboOptions(allCourts) as ComboOption[];
+  }, [allCourts, districtDivisionEnabled]);
 
   const { filteredTrustees } = useMemo(() => {
     let filtered = filterTrustees(
@@ -404,6 +417,7 @@ export default function TrusteesList() {
         handleFilterName={handleFilterName}
         handleFilterDivision={handleFilterDivision}
         availableDivisionOptions={availableDivisionOptions}
+        combinedDistrictDivisionOptions={combinedDistrictDivisionOptions}
         onCourtsLoaded={setAllCourts}
       />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">

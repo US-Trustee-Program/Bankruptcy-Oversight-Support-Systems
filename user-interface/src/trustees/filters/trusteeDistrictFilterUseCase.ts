@@ -147,8 +147,37 @@ const trusteeDistrictFilterUseCase = (
     handleFilterDivision([]);
   };
 
+  const handleFilterCombined = (selections: ComboOption[]) => {
+    if (selections.length === 0) {
+      handleFilterDivision([]);
+      return;
+    }
+
+    const previousValues = new Set((previousDivisionsRef.current ?? []).map((s) => s.value));
+    const added = selections.filter((s) => !previousValues.has(s.value));
+
+    if (added.length === 0) {
+      handleFilterDivision(selections);
+      return;
+    }
+
+    let resolved = [...selections];
+    for (const newOption of added) {
+      const [courtId, code] = newOption.value.split('|');
+      if (code === 'ALL') {
+        resolved = resolved.filter((s) => {
+          const [sCourt, sCode] = s.value.split('|');
+          return !(sCourt === courtId && sCode !== 'ALL');
+        });
+      } else {
+        resolved = resolved.filter((s) => s.value !== `${courtId}|ALL`);
+      }
+    }
+
+    handleFilterDivision(resolved);
+  };
+
   const handleFilterChange = (districts: ComboOption[]) => {
-    // Only track "cleared" when transitioning from non-empty to empty
     const wasNonEmpty = previousDistrictsRef.current && previousDistrictsRef.current.length > 0;
     const isNowEmpty = districts.length === 0;
 
@@ -158,7 +187,6 @@ const trusteeDistrictFilterUseCase = (
 
     previousDistrictsRef.current = districts;
     store.setSelectedDistricts(districts);
-    // Cascading: clear division selection when district changes
     handleClearAllDivisions();
     notifySelectionChange(districts);
   };
@@ -201,6 +229,7 @@ const trusteeDistrictFilterUseCase = (
     handleClearAllChapters,
     handleFilterDivision,
     handleClearAllDivisions,
+    handleFilterCombined,
   };
 };
 
