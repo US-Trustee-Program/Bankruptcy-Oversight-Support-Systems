@@ -13,6 +13,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
+import { Pipeline } from '../../../query/query-pipeline';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import {
   createMockApplicationContext,
@@ -899,7 +900,7 @@ describe('Cases repository', () => {
       await repo.searchCasesWithPhoneticTokens(predicate);
 
       expect(paginateSpy).toHaveBeenCalled();
-      const spec = paginateSpy.mock.calls[0][0];
+      const spec = paginateSpy.mock.calls[0][0] as Pipeline;
       expect(spec.stages).toHaveLength(5);
       const firstMatchStage = spec.stages[0];
       expect(JSON.stringify(firstMatchStage)).not.toContain('CONTAINS');
