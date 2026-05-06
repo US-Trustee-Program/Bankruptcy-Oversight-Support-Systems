@@ -140,6 +140,10 @@ function SearchResults(props: SearchResultsProps) {
       });
   }
 
+  function handleSearchError(error: unknown) {
+    onSearchError?.(error);
+  }
+
   function handlePagination(predicate: CasesSearchPredicate) {
     setSearchPredicate(predicate);
   }
