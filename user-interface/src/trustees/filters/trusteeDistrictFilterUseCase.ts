@@ -57,6 +57,8 @@ const trusteeDistrictFilterUseCase = (
   previousDistrictsRef: { current: ComboOption[] | undefined },
   onFilterChapter: (chapters: ComboOption[]) => void,
   previousChaptersRef: { current: ComboOption[] | undefined },
+  onFilterDivision: (divisions: ComboOption[]) => void,
+  previousDivisionsRef: { current: ComboOption[] | undefined },
   districtDivisionEnabled: boolean = false,
 ): TrusteeDistrictFilterUseCase => {
   const getDefaultDistrictsFromSession = (
@@ -128,6 +130,23 @@ const trusteeDistrictFilterUseCase = (
     controls.districtFilterRef.current?.focusInput();
   };
 
+  const handleFilterDivision = (divisions: ComboOption[]) => {
+    const wasNonEmpty = previousDivisionsRef.current && previousDivisionsRef.current.length > 0;
+    const isNowEmpty = divisions.length === 0;
+
+    if (wasNonEmpty && isNowEmpty) {
+      getAppInsights().appInsights.trackEvent({ name: 'Trustee Division Filter Cleared' });
+    }
+
+    previousDivisionsRef.current = divisions;
+    store.setSelectedDivisions(divisions);
+    onFilterDivision(divisions);
+  };
+
+  const handleClearAllDivisions = () => {
+    handleFilterDivision([]);
+  };
+
   const handleFilterChange = (districts: ComboOption[]) => {
     // Only track "cleared" when transitioning from non-empty to empty
     const wasNonEmpty = previousDistrictsRef.current && previousDistrictsRef.current.length > 0;
@@ -139,6 +158,8 @@ const trusteeDistrictFilterUseCase = (
 
     previousDistrictsRef.current = districts;
     store.setSelectedDistricts(districts);
+    // Cascading: clear division selection when district changes
+    handleClearAllDivisions();
     notifySelectionChange(districts);
   };
 
@@ -178,6 +199,8 @@ const trusteeDistrictFilterUseCase = (
     handleToggleExpanded,
     handleFilterChapter,
     handleClearAllChapters,
+    handleFilterDivision,
+    handleClearAllDivisions,
   };
 };
 

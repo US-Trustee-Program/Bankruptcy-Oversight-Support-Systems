@@ -58,16 +58,24 @@ function renderFilter(
   const mockHandleFilterDistrict = vi.fn();
   const mockHandleFilterChapter = vi.fn();
   const mockHandleFilterName = vi.fn();
+  const mockHandleFilterDivision = vi.fn();
   render(
     <TrusteeDistrictFilter
       ref={overrides.ref}
       handleFilterDistrict={mockHandleFilterDistrict}
       handleFilterChapter={mockHandleFilterChapter}
       handleFilterName={mockHandleFilterName}
+      handleFilterDivision={mockHandleFilterDivision}
+      availableDivisionOptions={[]}
       onExpandedChange={overrides.onExpandedChange}
     />,
   );
-  return { mockHandleFilterDistrict, mockHandleFilterChapter, mockHandleFilterName };
+  return {
+    mockHandleFilterDistrict,
+    mockHandleFilterChapter,
+    mockHandleFilterName,
+    mockHandleFilterDivision,
+  };
 }
 
 describe('TrusteeDistrictFilter Component', () => {

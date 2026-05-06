@@ -62,6 +62,7 @@ describe('trustee district filter use case tests', () => {
 
   const mockOnFilterDistrict = vi.fn();
   const mockOnFilterChapter = vi.fn();
+  const mockOnFilterDivision = vi.fn();
 
   const mockStore: TrusteeDistrictFilterStore = {
     districts: mockDistricts,
@@ -74,6 +75,8 @@ describe('trustee district filter use case tests', () => {
     setDefaultDistricts: vi.fn(),
     selectedChapters: [],
     setSelectedChapters: vi.fn(),
+    selectedDivisions: [],
+    setSelectedDivisions: vi.fn(),
     isExpanded: false,
     setIsExpanded: vi.fn(),
   };
@@ -92,10 +95,12 @@ describe('trustee district filter use case tests', () => {
   const mockControls: TrusteeDistrictFilterControls = {
     districtFilterRef: comboBoxRef,
     chapterFilterRef: comboBoxRef,
+    divisionFilterRef: comboBoxRef,
   };
 
   const previousDistrictsRef = { current: undefined as ComboOption[] | undefined };
   const previousChaptersRef = { current: undefined as ComboOption[] | undefined };
+  const previousDivisionsRef = { current: undefined as ComboOption[] | undefined };
 
   const useCase = trusteeDistrictFilterUseCase(
     mockStore,
@@ -104,6 +109,8 @@ describe('trustee district filter use case tests', () => {
     previousDistrictsRef,
     mockOnFilterChapter,
     previousChaptersRef,
+    mockOnFilterDivision,
+    previousDivisionsRef,
   );
 
   const useCaseWithFlag = trusteeDistrictFilterUseCase(
@@ -113,6 +120,8 @@ describe('trustee district filter use case tests', () => {
     previousDistrictsRef,
     mockOnFilterChapter,
     previousChaptersRef,
+    mockOnFilterDivision,
+    previousDivisionsRef,
     true,
   );
 
@@ -120,12 +129,15 @@ describe('trustee district filter use case tests', () => {
     mockStore.defaultDistricts = [];
     mockStore.setSelectedDistricts = vi.fn();
     mockStore.setSelectedChapters = vi.fn();
+    mockStore.setSelectedDivisions = vi.fn();
     setSelectedDistrictsSpy = vi.spyOn(mockStore, 'setSelectedDistricts');
     mockOnFilterDistrict.mockReset();
     mockOnFilterChapter.mockReset();
+    mockOnFilterDivision.mockReset();
     mockTrackEvent.mockReset();
     previousDistrictsRef.current = undefined;
     previousChaptersRef.current = undefined;
+    previousDivisionsRef.current = undefined;
   });
 
   afterEach(() => {
@@ -599,6 +611,55 @@ describe('trustee district filter use case tests', () => {
       await useCase.fetchDistricts();
 
       expect(setDistrictsErrorSpy).toHaveBeenCalledWith(true);
+    });
+  });
+
+  describe('handleFilterDivision', () => {
+    test('should update selected divisions and trigger callback', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      const divisions: ComboOption[] = [{ value: '081', label: 'Manhattan' }];
+
+      useCase.handleFilterDivision(divisions);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith(divisions);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith(divisions);
+    });
+
+    test('should fire Trustee Division Filter Cleared only when transitioning non-empty to empty', () => {
+      useCase.handleFilterDivision([{ value: '081', label: 'Manhattan' }]);
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+
+      useCase.handleFilterDivision([]);
+      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Division Filter Cleared' });
+    });
+
+    test('should not fire Trustee Division Filter Cleared on initial empty call', () => {
+      useCase.handleFilterDivision([]);
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleClearAllDivisions', () => {
+    test('should clear selected divisions and notify', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+
+      useCase.handleClearAllDivisions();
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([]);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('handleFilterChange (cascading division clear)', () => {
+    test('should clear divisions when district filter changes', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [{ value: '081', label: 'Manhattan' }];
+
+      const newDistricts: ComboOption[] = [{ value: 'VTB', label: 'District of Vermont' }];
+      useCase.handleFilterChange(newDistricts);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([]);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
     });
   });
 });

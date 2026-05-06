@@ -16,7 +16,11 @@ import { ComboOption } from '@/lib/components/combobox/ComboBox';
 import { TrusteeDistrictFilterRef } from './filters/trusteeDistrictFilter.types';
 import Icon from '@/lib/components/uswds/Icon';
 import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
-import { sortTrusteeAppointments, buildDivisionsDisplay } from '@/lib/utils/court-utils';
+import {
+  sortTrusteeAppointments,
+  buildDivisionsDisplay,
+  getDivisionsForDistrict,
+} from '@/lib/utils/court-utils';
 import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
 import { CourtDivisionDetails } from '@common/cams/courts';
 
@@ -28,8 +32,14 @@ function filterTrustees(
   selectedDistricts: ComboOption[],
   selectedChapters: ComboOption[],
   districtDivisionEnabled: boolean = false,
+  selectedDivisions: ComboOption[] = [],
 ): TrusteeListItem[] {
-  if (selectedDistricts.length === 0 && selectedChapters.length === 0) return trustees;
+  if (
+    selectedDistricts.length === 0 &&
+    selectedChapters.length === 0 &&
+    selectedDivisions.length === 0
+  )
+    return trustees;
   const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
   return trustees.filter((trustee) => {
     let districtMatch: boolean;
@@ -37,7 +47,18 @@ function filterTrustees(
       districtMatch = true;
     } else if (districtDivisionEnabled) {
       const selectedCourtIds = new Set(selectedDistricts.map((d) => d.value));
-      districtMatch = trustee.appointments.some((appt) => selectedCourtIds.has(appt.courtId));
+      if (selectedDivisions.length > 0) {
+        const selectedDivisionCodes = new Set(selectedDivisions.map((d) => d.value));
+        districtMatch = trustee.appointments.some(
+          (appt) =>
+            selectedCourtIds.has(appt.courtId) &&
+            (!appt.divisionCodes ||
+              appt.divisionCodes.length === 0 ||
+              appt.divisionCodes.some((code) => selectedDivisionCodes.has(code))),
+        );
+      } else {
+        districtMatch = trustee.appointments.some((appt) => selectedCourtIds.has(appt.courtId));
+      }
     } else {
       const selectedDivisionCodes = new Set(selectedDistricts.flatMap((d) => d.value.split(',')));
       districtMatch = trustee.appointments.some(
@@ -71,6 +92,7 @@ export default function TrusteesList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDistricts, setSelectedDistricts] = useState<ComboOption[]>([]);
+  const [selectedDivisions, setSelectedDivisions] = useState<ComboOption[]>([]);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedChapters, setSelectedChapters] = useState<ComboOption[]>([]);
   const [liveAnnouncement, setLiveAnnouncement] = useState<string>('');
@@ -126,7 +148,12 @@ export default function TrusteesList() {
       defaultDistrictsRef.current = districts;
       isDefaultApplied.current = true;
     }
+    setSelectedDivisions([]);
     setSelectedDistricts(districts);
+  };
+
+  const handleFilterDivision = (divisions: ComboOption[]) => {
+    setSelectedDivisions(divisions);
   };
 
   const handleFilterChapter = (chapters: ComboOption[]) => {
@@ -168,12 +195,42 @@ export default function TrusteesList() {
     }, 300);
   }, [nameSearch, debounce]);
 
+  const availableDivisionOptions = useMemo((): ComboOption[] => {
+    if (!districtDivisionEnabled || selectedDistricts.length === 0) return [];
+    const selectedCourtIds = new Set(selectedDistricts.map((d) => d.value));
+    const divisionCodeSet = new Set<string>();
+    trustees.forEach((trustee) => {
+      trustee.appointments.forEach((appt) => {
+        if (
+          selectedCourtIds.has(appt.courtId) &&
+          appt.divisionCodes &&
+          appt.divisionCodes.length > 0
+        ) {
+          appt.divisionCodes.forEach((code) => divisionCodeSet.add(code));
+        }
+      });
+    });
+    const options: ComboOption[] = [];
+    const seen = new Set<string>();
+    for (const courtId of selectedCourtIds) {
+      const divisions = getDivisionsForDistrict(allCourts, courtId);
+      divisions.forEach((div) => {
+        if (divisionCodeSet.has(div.courtDivisionCode) && !seen.has(div.courtDivisionCode)) {
+          seen.add(div.courtDivisionCode);
+          options.push({ value: div.courtDivisionCode, label: div.courtDivisionName });
+        }
+      });
+    }
+    return options;
+  }, [trustees, selectedDistricts, allCourts, districtDivisionEnabled]);
+
   const { filteredTrustees } = useMemo(() => {
     let filtered = filterTrustees(
       trustees,
       selectedDistricts,
       selectedChapters,
       districtDivisionEnabled,
+      selectedDivisions,
     );
 
     if (nameSearch.length >= 2) {
@@ -202,7 +259,15 @@ export default function TrusteesList() {
     return {
       filteredTrustees: sortedWithAppointments,
     };
-  }, [trustees, selectedDistricts, selectedChapters, nameSearch, nameSearchIds, sortDirection]);
+  }, [
+    trustees,
+    selectedDistricts,
+    selectedChapters,
+    selectedDivisions,
+    nameSearch,
+    nameSearchIds,
+    sortDirection,
+  ]);
 
   useEffect(() => {
     if (!isDefaultApplied.current) return;
@@ -216,6 +281,7 @@ export default function TrusteesList() {
       selectedDistricts,
       selectedChapters,
       districtDivisionEnabled,
+      selectedDivisions,
     ).length;
 
     getAppInsights().appInsights.trackEvent(
@@ -225,9 +291,10 @@ export default function TrusteesList() {
         selectedCount: selectedDistricts.length,
         resultCount,
         chapterCount: selectedChapters.length,
+        divisionCount: selectedDivisions.length,
       },
     );
-  }, [selectedDistricts, selectedChapters, trustees]);
+  }, [selectedDistricts, selectedChapters, selectedDivisions, trustees]);
 
   if (!nameSearchLoading) {
     stableCountRef.current = filteredTrustees.length;
@@ -247,6 +314,7 @@ export default function TrusteesList() {
       selectedDistricts,
       selectedChapters,
       districtDivisionEnabled,
+      selectedDivisions,
     ).length;
 
     getAppInsights().appInsights.trackEvent(
@@ -258,7 +326,7 @@ export default function TrusteesList() {
         selectedChapterValues: selectedChapters.map((c) => c.value).join(','),
       },
     );
-  }, [selectedChapters, selectedDistricts, trustees]);
+  }, [selectedChapters, selectedDistricts, selectedDivisions, trustees]);
 
   useEffect(() => {
     if (!isNameFilterInteracted.current) return;
@@ -334,6 +402,8 @@ export default function TrusteesList() {
         handleFilterDistrict={handleFilterDistrict}
         handleFilterChapter={handleFilterChapter}
         handleFilterName={handleFilterName}
+        handleFilterDivision={handleFilterDivision}
+        availableDivisionOptions={availableDivisionOptions}
         onCourtsLoaded={setAllCourts}
       />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
