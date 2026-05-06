@@ -3,10 +3,12 @@ import { app, InvocationContext, output } from '@azure/functions';
 import ApplicationContextCreator from '../../azure/application-context-creator';
 import { ApplicationContext } from '../../../lib/adapters/types/basic';
 import {
+  buildContainerName,
   buildFunctionName,
   buildQueueName,
   buildStartQueueHttpTrigger,
   CursorMessage,
+  ensureContainersExist,
   StartMessage,
 } from '../dataflows-common';
 import * as MigrateTrusteesUseCase from '../../../lib/use-cases/dataflows/migrate-trustees';
@@ -82,9 +84,10 @@ async function performDeleteAllIfRequested(
     return false;
   }
 
+  const { deletedTrustees, deletedAppointments, deletedProfessionalIds } = deleteResult.data;
   logger.info(
     MODULE_NAME,
-    `Successfully deleted ${deleteResult.data.deletedTrustees} trustees and ${deleteResult.data.deletedAppointments} appointments.`,
+    `Successfully deleted ${deletedTrustees} trustees, ${deletedAppointments} appointments, and ${deletedProfessionalIds} professional ID mappings.`,
   );
 
   const resetResult = await MigrationStateService.resetMigrationState(context);
@@ -115,7 +118,10 @@ async function handleStart(start: MigrationStartMessage, invocationContext: Invo
     return; // DLQ already populated
   }
 
-  const stateResult = await MigrationStateService.getOrCreateMigrationState(context, !!start.reset);
+  const stateResult = await MigrationStateService.getOrCreateMigrationState(
+    context,
+    !!(start.reset || start.deleteAll),
+  );
 
   if (stateResult.error) {
     invocationContext.extraOutputs.set(
@@ -214,7 +220,11 @@ async function handlePage(cursor: CursorMessage, invocationContext: InvocationCo
   );
 
   // Process page with retry logic handled in use case
-  const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(context, trustees);
+  const processResult = await MigrateTrusteesUseCase.processPageOfTrustees(
+    context,
+    trustees,
+    buildContainerName(MODULE_NAME, 'out'),
+  );
 
   if (processResult.error) {
     await MigrationStateService.failMigration(context, currentState, processResult.error.message);
@@ -321,6 +331,8 @@ async function handleError(event: QueueError, invocationContext: InvocationConte
 }
 
 function setup() {
+  ensureContainersExist([buildContainerName(MODULE_NAME, 'out')], MODULE_NAME);
+
   app.storageQueue(HANDLE_START, {
     connection: STORAGE_QUEUE_CONNECTION,
     queueName: START.queueName,
