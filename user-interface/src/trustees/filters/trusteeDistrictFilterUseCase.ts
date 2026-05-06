@@ -36,7 +36,7 @@ const buildDistrictOptions = (
   );
 
   return sortedDistricts.map((district) => {
-    const divisions = districtMap.get(district.courtName)!;
+    const divisions = districtMap.get(district.courtId)!;
     return toDistrictOption(
       district,
       divisions.map((d) => d.courtDivisionCode),
