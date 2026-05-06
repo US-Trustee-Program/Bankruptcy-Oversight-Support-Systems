@@ -123,18 +123,18 @@ export function sortByCourtLocation<T extends CourtLocationSortable>(
  * This function groups all divisions under their parent district.
  *
  * @param divisions - Array of court division details
- * @returns Map where key is courtName and value is array of all divisions in that district
+ * @returns Map where key is courtId and value is array of all divisions in that district
  *
  * @example
  * const divisions = [
- *   { courtName: "Southern District of New York", courtDivisionCode: "081", ... },
- *   { courtName: "Southern District of New York", courtDivisionCode: "087", ... },
- *   { courtName: "District of Vermont", courtDivisionCode: "088", ... }
+ *   { courtId: "NYSB", courtName: "Southern District of New York", courtDivisionCode: "081", ... },
+ *   { courtId: "NYSB", courtName: "Southern District of New York", courtDivisionCode: "087", ... },
+ *   { courtId: "VTB", courtName: "District of Vermont", courtDivisionCode: "088", ... }
  * ];
  * const grouped = groupDivisionsByDistrict(divisions);
  * // Map {
- * //   "Southern District of New York" => [{ code: "081", ... }, { code: "087", ... }],
- * //   "District of Vermont" => [{ code: "088", ... }]
+ * //   "NYSB" => [{ code: "081", ... }, { code: "087", ... }],
+ * //   "VTB" => [{ code: "088", ... }]
  * // }
  */
 export function groupDivisionsByDistrict(
@@ -142,7 +142,7 @@ export function groupDivisionsByDistrict(
 ): Map<string, CourtDivisionDetails[]> {
   const districtMap = new Map<string, CourtDivisionDetails[]>();
   divisions.forEach((division) => {
-    const key = division.courtName;
+    const key = division.courtId;
     if (!districtMap.has(key)) {
       districtMap.set(key, []);
     }
@@ -324,7 +324,7 @@ export function getDistrictDivisionComboOptions(
 
   for (const district of uniqueDistricts) {
     const divisions = districtMap
-      .get(district.courtName)!
+      .get(district.courtId)!
       .sort((a, b) => a.courtDivisionName.localeCompare(b.courtDivisionName));
 
     options.push({
