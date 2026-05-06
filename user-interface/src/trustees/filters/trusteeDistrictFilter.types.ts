@@ -16,6 +16,8 @@ export interface TrusteeDistrictFilterStore {
   setSelectedChapters(val: ComboOption[]): void;
   selectedDivisions: ComboOption[];
   setSelectedDivisions(val: ComboOption[]): void;
+  defaultDivisions: ComboOption[];
+  setDefaultDivisions(val: ComboOption[]): void;
   isExpanded: boolean;
   setIsExpanded(val: boolean): void;
 }
