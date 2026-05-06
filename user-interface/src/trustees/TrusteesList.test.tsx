@@ -2577,6 +2577,55 @@ describe('TrusteesList Component', () => {
       });
     });
 
+    test('flag ON: clearing all combined filter selections reveals trustees from all districts', async () => {
+      // Regression: with flag ON, selectedDistricts (set by session default) was silently applied
+      // even though the district combo was not accessible in the UI. Clearing selectedDivisions
+      // back to [] must show ALL trustees, not just those in the session's district.
+      const trusteeManhattan = makeListItem({
+        trusteeId: 'manhattan',
+        firstName: 'Alice',
+        lastName: 'Manhattan',
+        appointments: [makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] })],
+      });
+      const trusteeOtherDistrict = makeListItem({
+        trusteeId: 'other',
+        firstName: 'Out',
+        lastName: 'OfDistrict',
+        appointments: [makeAppointment({ courtId: 'CAB', divisionCodes: ['099'] })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [trusteeManhattan, trusteeOtherDistrict],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      // Session default (NYSB Manhattan) is applied on mount — only Manhattan trustee visible
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
+        expect(screen.queryByText('OfDistrict, Out')).not.toBeInTheDocument();
+      });
+
+      // Expand filters to access pills
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      // Remove the default Manhattan division pill — clears selectedDivisions to []
+      const pill = await screen.findByRole('button', {
+        name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
+      });
+      await userEvent.setup().click(pill);
+
+      // With no active filters, trustees from ALL districts must appear.
+      // The bug would have kept selectedDistricts = [NYSB] active, showing only 1 trustee.
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
+        expect(screen.getByText('OfDistrict, Out')).toBeInTheDocument();
+      });
+    });
+
     test('defaults to user session divisions when flag is ON', async () => {
       const apptManhattan = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
       const apptWhitePlains = makeAppointment({ courtId: 'NYSB', divisionCodes: ['087'] });
