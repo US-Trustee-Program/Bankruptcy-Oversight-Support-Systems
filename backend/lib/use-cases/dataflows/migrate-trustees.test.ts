@@ -21,7 +21,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
 import { AtsTrusteeRecord, FailedAppointment } from '../../adapters/types/ats.types';
 import { TrusteeAppointmentInput } from '@common/cams/trustee-appointments';
-import { AcmsGateway, AtsGateway } from '../../use-cases/gateways.types';
+import { AcmsGateway, AtsGateway, ObjectStorageGateway } from '../../use-cases/gateways.types';
 import { MockMongoRepository } from '../../testing/mock-gateways/mock-mongo.repository';
 import { UstpOfficeDetails } from '@common/cams/offices';
 
@@ -1364,6 +1364,127 @@ describe('Migrate Trustees Use Case', () => {
       expect(result.error?.message).toContain('Failed to delete all trustees and appointments');
       expect(result.data).toBeUndefined();
       expect(deleteAllSpy).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('writeFailedAppointments (via processPageOfTrustees)', () => {
+    const mockTrustee = {
+      id: 'doc-id',
+      trusteeId: 'trustee-100',
+      firstName: 'Test',
+      lastName: 'Trustee',
+      name: 'Test Trustee',
+      status: 'active' as const,
+      public: {
+        address: { address1: '', city: '', state: '', zipCode: '', countryCode: 'US' as const },
+      },
+      createdOn: '2023-01-01',
+      updatedOn: '2023-01-01',
+      updatedBy: { id: 'SYSTEM', name: 'System' },
+    };
+
+    const failedAppointments: FailedAppointment[] = [
+      {
+        atsAppointment: {
+          TRU_ID: 1,
+          DISTRICT: '053N',
+          STATE: 'NY',
+          CHAPTER: '99',
+          STATUS: 'A',
+          DATE_APPOINTED: new Date('2023-01-15'),
+          EFFECTIVE_DATE: new Date('2023-01-15'),
+        },
+        classification: 'PROBLEMATIC',
+        notes: ['Invalid court ID'],
+        mapType: 'DISTRICT_CHAPTER_TYPE',
+        timestamp: '2023-01-15T00:00:00.000Z',
+      },
+    ];
+
+    beforeEach(() => {
+      vi.spyOn(factory, 'getOfficesGateway').mockReturnValue({
+        getOffices: vi.fn().mockResolvedValue([]),
+        getOfficeName: vi.fn().mockReturnValue(''),
+      });
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getTrusteeProfessionalIds: vi.fn().mockResolvedValue([]),
+      } as unknown as AcmsGateway);
+      vi.spyOn(MockMongoRepository.prototype, 'findTrusteeByNameAndState').mockResolvedValue(null);
+      vi.spyOn(MockMongoRepository.prototype, 'createTrustee').mockResolvedValue(mockTrustee);
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments,
+        stats: {
+          total: 1,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 1,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+    });
+
+    test('should write failed appointments to blob storage when they exist', async () => {
+      const mockObjectStorage: ObjectStorageGateway = {
+        readObject: vi.fn(),
+        writeObject: vi.fn().mockResolvedValue(undefined),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+
+      const trustees = [{ ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }];
+      const result = await processPageOfTrustees(context, trustees);
+
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.failedAppointments).toHaveLength(1);
+      expect(mockObjectStorage.writeObject).toHaveBeenCalledWith(
+        expect.stringContaining('migrate-trustees-use-case'),
+        expect.stringMatching(/^failed-appointments-.*\.jsonl$/),
+        expect.stringContaining('"classification":"PROBLEMATIC"'),
+      );
+    });
+
+    test('should continue and not throw when blob write fails', async () => {
+      const mockObjectStorage: ObjectStorageGateway = {
+        readObject: vi.fn(),
+        writeObject: vi.fn().mockRejectedValue(new Error('Blob storage unavailable')),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+
+      const trustees = [{ ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }];
+      const result = await processPageOfTrustees(context, trustees);
+
+      // Migration result is unaffected by blob write failure
+      expect(result.data?.processed).toBe(1);
+      expect(result.data?.errors).toBe(0);
+      expect(result.data?.failedAppointments).toHaveLength(1);
+      expect(mockObjectStorage.writeObject).toHaveBeenCalled();
+    });
+
+    test('should not call writeObject when there are no failed appointments', async () => {
+      vi.spyOn(atsGateway, 'getTrusteeAppointments').mockResolvedValue({
+        cleanAppointments: [],
+        failedAppointments: [],
+        stats: {
+          total: 0,
+          clean: 0,
+          autoRecoverable: 0,
+          problematic: 0,
+          uncleansable: 0,
+          skipped: 0,
+        },
+      });
+
+      const mockObjectStorage: ObjectStorageGateway = {
+        readObject: vi.fn(),
+        writeObject: vi.fn(),
+      };
+      vi.spyOn(factory, 'getObjectStorageGateway').mockReturnValue(mockObjectStorage);
+
+      const trustees = [{ ID: 1, FIRST_NAME: 'John', LAST_NAME: 'Doe', STATE: 'NY' }];
+      await processPageOfTrustees(context, trustees);
+
+      expect(mockObjectStorage.writeObject).not.toHaveBeenCalled();
     });
   });
 
