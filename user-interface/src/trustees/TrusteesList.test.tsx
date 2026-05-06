@@ -2244,6 +2244,8 @@ describe('TrusteesList Component', () => {
     });
 
     test('filterTrustees: filters by specific division code when flag ON and combined filter selected', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
       const apptManhattan = makeAppointment({
         courtId: 'NYSB',
         divisionCodes: ['081'],
@@ -2307,6 +2309,8 @@ describe('TrusteesList Component', () => {
     });
 
     test('filterTrustees: "All Divisions" trustee (empty divisionCodes) always matches any division selection', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
       const apptAllDivisions = makeAppointment({
         courtId: 'NYSB',
         divisionCodes: [],
@@ -2434,6 +2438,8 @@ describe('TrusteesList Component', () => {
     });
 
     test('selecting All after specific division shows all trustees in that court', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
       const apptManhattan = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
       const apptWhitePlains = makeAppointment({ courtId: 'NYSB', divisionCodes: ['087'] });
       const trusteeManhattan = makeListItem({
@@ -2501,6 +2507,8 @@ describe('TrusteesList Component', () => {
     });
 
     test('clearing all combined selections shows all trustees', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
       const apptNY = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
       const trusteeNY = makeListItem({
         trusteeId: 'ny',
@@ -2560,6 +2568,46 @@ describe('TrusteesList Component', () => {
             name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
           }),
         ).not.toBeInTheDocument();
+      });
+    });
+
+    test('defaults to user session divisions when flag is ON', async () => {
+      const apptManhattan = makeAppointment({ courtId: 'NYSB', divisionCodes: ['081'] });
+      const apptWhitePlains = makeAppointment({ courtId: 'NYSB', divisionCodes: ['087'] });
+      const trusteeManhattan = makeListItem({
+        trusteeId: 'manhattan',
+        firstName: 'Alice',
+        lastName: 'Manhattan',
+        appointments: [apptManhattan],
+      });
+      const trusteeWhitePlains = makeListItem({
+        trusteeId: 'whiteplains',
+        firstName: 'Bob',
+        lastName: 'WhitePlains',
+        appointments: [apptWhitePlains],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({
+        data: [trusteeManhattan, trusteeWhitePlains],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
+        expect(screen.queryByText('WhitePlains, Bob')).not.toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('button', {
+            name: /southern district of new york \(manhattan\) selected.*click to deselect/i,
+          }),
+        ).toBeInTheDocument();
       });
     });
 
