@@ -6,6 +6,34 @@ import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gatewa
 import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
 import { UserSessionUseCase } from './use-cases/user-session/user-session';
 import { createMockApplicationContext } from './testing/testing-utilities';
+import CasesDxtrGateway from './adapters/gateways/dxtr/cases.dxtr.gateway';
+import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
+import DxtrOrdersGateway from './adapters/gateways/dxtr/orders.dxtr.gateway';
+import OfficesDxtrGateway from './adapters/gateways/dxtr/offices.dxtr.gateway';
+import { CaseAssignmentMongoRepository } from './adapters/gateways/mongo/case-assignment.mongo.repository';
+import { CaseNotesMongoRepository } from './adapters/gateways/mongo/case-notes.mongo.repository';
+import { TrusteeNotesMongoRepository } from './adapters/gateways/mongo/trustee-notes.mongo.repository';
+import { OrdersMongoRepository } from './adapters/gateways/mongo/orders.mongo.repository';
+import ConsolidationOrdersMongoRepository from './adapters/gateways/mongo/consolidations.mongo.repository';
+import { CasesMongoRepository } from './adapters/gateways/mongo/cases.mongo.repository';
+import { ArchivedCasesMongoRepository } from './adapters/gateways/mongo/archived-cases.mongo.repository';
+import { UserSessionCacheMongoRepository } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
+import { RuntimeStateMongoRepository } from './adapters/gateways/mongo/runtime-state.mongo.repository';
+import { UsersMongoRepository } from './adapters/gateways/mongo/user.repository';
+import { OfficesMongoRepository } from './adapters/gateways/mongo/offices.mongo.repository';
+import { OfficeAssigneeMongoRepository } from './adapters/gateways/mongo/office-assignee.mongo.repository';
+import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
+import { TrusteesMongoRepository } from './adapters/gateways/mongo/trustees.mongo.repository';
+import { TrusteeAppointmentsMongoRepository } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
+import { TrusteeAssistantsMongoRepository } from './adapters/gateways/mongo/trustee-assistants.mongo.repository';
+import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
+import { TrusteeUpcomingKeyDatesMongoRepository } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
+import { TrusteeMatchVerificationMongoRepository } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
+import { TrusteeProfessionalIdsMongoRepository } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
+import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
+import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
+import { AtsGatewayImpl } from './adapters/gateways/ats/ats.gateway';
+import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 
 describe('Factory', () => {
   let dbContext: ApplicationContext;
@@ -34,53 +62,135 @@ describe('Factory', () => {
   }
 
   test.each([
-    ['getCasesGateway', (f, ctx) => f.getCasesGateway(ctx)],
-    ['getCaseDocketUseCase', (f, ctx) => f.getCaseDocketUseCase(ctx)],
-    ['getOrdersGateway', (f, ctx) => f.getOrdersGateway(ctx)],
-    ['getOfficesGateway', (f, ctx) => f.getOfficesGateway(ctx)],
-    ['getAssignmentRepository', (f, ctx) => f.getAssignmentRepository(ctx)],
-    ['getCaseNotesRepository', (f, ctx) => f.getCaseNotesRepository(ctx)],
-    ['getTrusteeNotesRepository', (f, ctx) => f.getTrusteeNotesRepository(ctx)],
-    ['getOrdersRepository', (f, ctx) => f.getOrdersRepository(ctx)],
-    ['getConsolidationOrdersRepository', (f, ctx) => f.getConsolidationOrdersRepository(ctx)],
-    ['getCasesRepository', (f, ctx) => f.getCasesRepository(ctx)],
-    ['getArchivedCasesRepository', (f, ctx) => f.getArchivedCasesRepository(ctx)],
-    ['getUserSessionCacheRepository', (f, ctx) => f.getUserSessionCacheRepository(ctx)],
-    ['getRuntimeStateRepository', (f, ctx) => f.getRuntimeStateRepository(ctx)],
-    ['getOrderSyncStateRepo', (f, ctx) => f.getOrderSyncStateRepo(ctx)],
-    ['getOfficeStaffSyncStateRepo', (f, ctx) => f.getOfficeStaffSyncStateRepo(ctx)],
-    ['getCasesSyncStateRepo', (f, ctx) => f.getCasesSyncStateRepo(ctx)],
-    ['getPhoneticBackfillStateRepo', (f, ctx) => f.getPhoneticBackfillStateRepo(ctx)],
+    ['getCasesGateway', (f, ctx) => f.getCasesGateway(ctx), CasesDxtrGateway],
+    ['getCaseDocketUseCase', (f, ctx) => f.getCaseDocketUseCase(ctx), CaseDocketUseCase],
+    ['getOrdersGateway', (f, ctx) => f.getOrdersGateway(ctx), DxtrOrdersGateway],
+    ['getOfficesGateway', (f, ctx) => f.getOfficesGateway(ctx), OfficesDxtrGateway],
+    [
+      'getAssignmentRepository',
+      (f, ctx) => f.getAssignmentRepository(ctx),
+      CaseAssignmentMongoRepository,
+    ],
+    ['getCaseNotesRepository', (f, ctx) => f.getCaseNotesRepository(ctx), CaseNotesMongoRepository],
+    [
+      'getTrusteeNotesRepository',
+      (f, ctx) => f.getTrusteeNotesRepository(ctx),
+      TrusteeNotesMongoRepository,
+    ],
+    ['getOrdersRepository', (f, ctx) => f.getOrdersRepository(ctx), OrdersMongoRepository],
+    [
+      'getConsolidationOrdersRepository',
+      (f, ctx) => f.getConsolidationOrdersRepository(ctx),
+      ConsolidationOrdersMongoRepository,
+    ],
+    ['getCasesRepository', (f, ctx) => f.getCasesRepository(ctx), CasesMongoRepository],
+    [
+      'getArchivedCasesRepository',
+      (f, ctx) => f.getArchivedCasesRepository(ctx),
+      ArchivedCasesMongoRepository,
+    ],
+    [
+      'getUserSessionCacheRepository',
+      (f, ctx) => f.getUserSessionCacheRepository(ctx),
+      UserSessionCacheMongoRepository,
+    ],
+    [
+      'getRuntimeStateRepository',
+      (f, ctx) => f.getRuntimeStateRepository(ctx),
+      RuntimeStateMongoRepository,
+    ],
+    [
+      'getOrderSyncStateRepo',
+      (f, ctx) => f.getOrderSyncStateRepo(ctx),
+      RuntimeStateMongoRepository,
+    ],
+    [
+      'getOfficeStaffSyncStateRepo',
+      (f, ctx) => f.getOfficeStaffSyncStateRepo(ctx),
+      RuntimeStateMongoRepository,
+    ],
+    [
+      'getCasesSyncStateRepo',
+      (f, ctx) => f.getCasesSyncStateRepo(ctx),
+      RuntimeStateMongoRepository,
+    ],
+    [
+      'getPhoneticBackfillStateRepo',
+      (f, ctx) => f.getPhoneticBackfillStateRepo(ctx),
+      RuntimeStateMongoRepository,
+    ],
     [
       'getCaseAppointmentDateBackfillStateRepo',
       (f, ctx) => f.getCaseAppointmentDateBackfillStateRepo(ctx),
+      RuntimeStateMongoRepository,
     ],
-    ['getTrusteeAppointmentsSyncStateRepo', (f, ctx) => f.getTrusteeAppointmentsSyncStateRepo(ctx)],
-    ['getTrusteeNotesMetricsSyncStateRepo', (f, ctx) => f.getTrusteeNotesMetricsSyncStateRepo(ctx)],
-    ['getUsersRepository', (f, ctx) => f.getUsersRepository(ctx)],
-    ['getOfficesRepository', (f, ctx) => f.getOfficesRepository(ctx)],
-    ['getOfficeAssigneesRepository', (f, ctx) => f.getOfficeAssigneesRepository(ctx)],
-    ['getUserGroupsRepository', (f, ctx) => f.getUserGroupsRepository(ctx)],
-    ['getTrusteesRepository', (f, ctx) => f.getTrusteesRepository(ctx)],
-    ['getTrusteeAppointmentsRepository', (f, ctx) => f.getTrusteeAppointmentsRepository(ctx)],
-    ['getTrusteeAssistantsRepository', (f, ctx) => f.getTrusteeAssistantsRepository(ctx)],
-    ['getListsGateway', (f, ctx) => f.getListsGateway(ctx)],
+    [
+      'getTrusteeAppointmentsSyncStateRepo',
+      (f, ctx) => f.getTrusteeAppointmentsSyncStateRepo(ctx),
+      RuntimeStateMongoRepository,
+    ],
+    [
+      'getTrusteeNotesMetricsSyncStateRepo',
+      (f, ctx) => f.getTrusteeNotesMetricsSyncStateRepo(ctx),
+      RuntimeStateMongoRepository,
+    ],
+    ['getUsersRepository', (f, ctx) => f.getUsersRepository(ctx), UsersMongoRepository],
+    ['getOfficesRepository', (f, ctx) => f.getOfficesRepository(ctx), OfficesMongoRepository],
+    [
+      'getOfficeAssigneesRepository',
+      (f, ctx) => f.getOfficeAssigneesRepository(ctx),
+      OfficeAssigneeMongoRepository,
+    ],
+    [
+      'getUserGroupsRepository',
+      (f, ctx) => f.getUserGroupsRepository(ctx),
+      UserGroupsMongoRepository,
+    ],
+    ['getTrusteesRepository', (f, ctx) => f.getTrusteesRepository(ctx), TrusteesMongoRepository],
+    [
+      'getTrusteeAppointmentsRepository',
+      (f, ctx) => f.getTrusteeAppointmentsRepository(ctx),
+      TrusteeAppointmentsMongoRepository,
+    ],
+    [
+      'getTrusteeAssistantsRepository',
+      (f, ctx) => f.getTrusteeAssistantsRepository(ctx),
+      TrusteeAssistantsMongoRepository,
+    ],
+    ['getListsGateway', (f, ctx) => f.getListsGateway(ctx), ListsMongoRepository],
     [
       'getTrusteeUpcomingKeyDatesRepository',
       (f, ctx) => f.getTrusteeUpcomingKeyDatesRepository(ctx),
+      TrusteeUpcomingKeyDatesMongoRepository,
     ],
     [
       'getTrusteeMatchVerificationRepository',
       (f, ctx) => f.getTrusteeMatchVerificationRepository(ctx),
+      TrusteeMatchVerificationMongoRepository,
     ],
-    ['getTrusteeProfessionalIdsRepository', (f, ctx) => f.getTrusteeProfessionalIdsRepository(ctx)],
-    ['getStorageGateway', (f, ctx) => f.getStorageGateway(ctx)],
-    ['getObjectStorageGateway', (f, ctx) => f.getObjectStorageGateway(ctx)],
-    ['getAcmsGateway', (f, ctx) => f.getAcmsGateway(ctx)],
-    ['getAtsGateway', (f, ctx) => f.getAtsGateway(ctx)],
-    ['getApiToDataflowsGateway', (f, ctx) => f.getApiToDataflowsGateway(ctx)],
-  ] as const)('%s returns a defined instance', (_label, getter) => {
-    expect(getter(factory, dbContext)).toBeDefined();
+    [
+      'getTrusteeProfessionalIdsRepository',
+      (f, ctx) => f.getTrusteeProfessionalIdsRepository(ctx),
+      TrusteeProfessionalIdsMongoRepository,
+    ],
+    [
+      'getObjectStorageGateway',
+      (f, ctx) => f.getObjectStorageGateway(ctx),
+      AzureBlobObjectStorageGateway,
+    ],
+    ['getAcmsGateway', (f, ctx) => f.getAcmsGateway(ctx), AcmsGatewayImpl],
+    ['getAtsGateway', (f, ctx) => f.getAtsGateway(ctx), AtsGatewayImpl],
+    [
+      'getApiToDataflowsGateway',
+      (f, ctx) => f.getApiToDataflowsGateway(ctx),
+      ApiToDataflowsGatewayImpl,
+    ],
+  ] as const)('%s returns an instance of the expected type', (_label, getter, ExpectedType) => {
+    expect(getter(factory, dbContext)).toBeInstanceOf(ExpectedType);
+  });
+
+  test('getStorageGateway returns a defined instance', () => {
+    expect(factory.getStorageGateway(dbContext)).toBeDefined();
   });
 
   test('getAuthorizationGateway returns OktaGateway, MockOpenIdConnectGateway, or null by provider', () => {
