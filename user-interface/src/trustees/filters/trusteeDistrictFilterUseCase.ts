@@ -214,7 +214,9 @@ const trusteeDistrictFilterUseCase = (
 
     previousDistrictsRef.current = districts;
     store.setSelectedDistricts(districts);
-    handleClearAllDivisions();
+    if (districtDivisionEnabled) {
+      handleClearAllDivisions();
+    }
     notifySelectionChange(districts);
   };
 

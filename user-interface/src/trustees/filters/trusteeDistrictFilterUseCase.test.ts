@@ -750,15 +750,25 @@ describe('trustee district filter use case tests', () => {
   });
 
   describe('handleFilterChange (cascading division clear)', () => {
-    test('should clear divisions when district filter changes', () => {
+    test('should clear divisions when district filter changes and flag is ON', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [{ value: '081', label: 'Manhattan' }];
+
+      const newDistricts: ComboOption[] = [{ value: 'VTB', label: 'District of Vermont' }];
+      useCaseWithFlag.handleFilterChange(newDistricts);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([]);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
+    });
+
+    test('should NOT clear divisions when district filter changes and flag is OFF', () => {
       const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
       previousDivisionsRef.current = [{ value: '081', label: 'Manhattan' }];
 
       const newDistricts: ComboOption[] = [{ value: 'VTB', label: 'District of Vermont' }];
       useCase.handleFilterChange(newDistricts);
 
-      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([]);
-      expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
+      expect(setSelectedDivisionsSpy).not.toHaveBeenCalledWith([]);
     });
   });
 
