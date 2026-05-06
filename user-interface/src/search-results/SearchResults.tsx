@@ -118,15 +118,30 @@ function SearchResults(props: SearchResultsProps) {
     if (onStartSearching) {
       onStartSearching();
     }
+    const searchStart = performance.now();
+    const { excludeClosedCases } = searchPredicate;
     Api2.searchCases(searchPredicate, { includeAssignments: true })
-      .then(handleSearchResults)
-      .catch(onSearchError)
+      .then((response) => {
+        getAppInsights().appInsights.trackEvent(
+          { name: 'Case Search Performance' },
+          {
+            durationMs: Math.round(performance.now() - searchStart),
+            excludeClosedCases: excludeClosedCases ?? true,
+          },
+        );
+        handleSearchResults(response);
+      })
+      .catch(handleSearchError)
       .finally(() => {
         setIsSearching(false);
         if (onEndSearching) {
           onEndSearching();
         }
       });
+  }
+
+  function handleSearchError(error: unknown) {
+    onSearchError?.(error);
   }
 
   function handlePagination(predicate: CasesSearchPredicate) {

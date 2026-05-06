@@ -36,6 +36,7 @@ import useFeatureFlags, {
 import { useLandingPageAnalytics } from '@/lib/hooks/UseLandingPageAnalytics';
 import { CamsHttpError } from '@/lib/models/api';
 import { ClosedCasesHintMessage } from '@/lib/components/cams/ClosedCasesHintMessage/ClosedCasesHintMessage';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 /**
  * Centralized validation function that validates form data and returns both field-level
@@ -153,6 +154,8 @@ export default function SearchScreen() {
   const courtSelectionRef = useRef<ComboBoxRef>(null);
   const chapterSelectionRef = useRef<ComboBoxRef>(null);
   const submitButtonRef = useRef<ButtonRef>(null);
+
+  const firstSearchTimeRef = useRef<number | null>(null);
 
   const globalAlert = useGlobalAlert();
   const debounce = useDebounce();
@@ -307,6 +310,17 @@ export default function SearchScreen() {
   }
 
   function handleIncludeClosedCheckbox(ev: ChangeEvent<HTMLInputElement>) {
+    if (ev.target.checked) {
+      getAppInsights().appInsights.trackEvent(
+        { name: 'Include Closed Cases Checkbox Checked' },
+        {
+          msFromFirstSearch:
+            firstSearchTimeRef.current !== null
+              ? Math.round(performance.now() - firstSearchTimeRef.current)
+              : undefined,
+        },
+      );
+    }
     setTemporarySearchPredicate((previous) => {
       return {
         ...previous,
@@ -316,6 +330,15 @@ export default function SearchScreen() {
   }
 
   function handleIncludeClosedAndSearch() {
+    getAppInsights().appInsights.trackEvent(
+      { name: 'Include Closed Cases Link Clicked' },
+      {
+        msFromFirstSearch:
+          firstSearchTimeRef.current !== null
+            ? Math.round(performance.now() - firstSearchTimeRef.current)
+            : undefined,
+      },
+    );
     const updatedPredicate: CasesSearchPredicate = {
       ...temporarySearchPredicate,
       excludeClosedCases: false,
@@ -338,6 +361,9 @@ export default function SearchScreen() {
 
     // Only perform search if validation passes
     if (validation.isValid) {
+      if (firstSearchTimeRef.current === null) {
+        firstSearchTimeRef.current = performance.now();
+      }
       setSearchPredicate(currentPredicate);
 
       // Track first search action for analytics
