@@ -28,18 +28,23 @@ import { CourtDivisionDetails } from '@common/cams/courts';
 const BASE_COLUMN_HEADERS = ['Name', 'District', 'Chapter', 'Type', 'Status'];
 const DIVISION_COLUMN_HEADERS = ['Name', 'District', 'Division', 'Chapter', 'Type', 'Status'];
 
-function isUserInSelectedDivision(trustee: TrusteeListItem, selectedDivisions: ComboOption[]) {
-  if (selectedDivisions.length === 0) return true;
+type DivisionFilterMap = Map<string, Set<string>>;
 
+function buildDivisionFilterMap(selectedDivisions: ComboOption[]): DivisionFilterMap {
   const courtFilter = new Map<string, Set<string>>();
   for (const opt of selectedDivisions) {
     const [courtId, code] = opt.value.split('|');
     if (!courtFilter.has(courtId)) courtFilter.set(courtId, new Set());
     courtFilter.get(courtId)!.add(code);
   }
+  return courtFilter;
+}
+
+function isUserInSelectedDivision(trustee: TrusteeListItem, divisionFilter: DivisionFilterMap) {
+  if (divisionFilter.size === 0) return true;
 
   return trustee.appointments.some((appt) => {
-    const allowed = courtFilter.get(appt.courtId);
+    const allowed = divisionFilter.get(appt.courtId);
     if (!allowed) return false;
     if (allowed.has('ALL')) return true;
     if (!appt.divisionCodes || appt.divisionCodes.length === 0) return true;
@@ -52,12 +57,12 @@ function filterTrustees(
   selectedDistricts: ComboOption[],
   selectedChapters: ComboOption[],
   districtDivisionEnabled: boolean = false,
-  selectedDivisions: ComboOption[] = [],
+  divisionFilterMap: DivisionFilterMap = new Map(),
 ): TrusteeListItem[] {
   if (
     selectedDistricts.length === 0 &&
     selectedChapters.length === 0 &&
-    selectedDivisions.length === 0
+    divisionFilterMap.size === 0
   )
     return trustees;
   const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
@@ -75,7 +80,7 @@ function filterTrustees(
       );
     }
 
-    return isUserInSelectedDivision(trustee, selectedDivisions);
+    return isUserInSelectedDivision(trustee, divisionFilterMap);
   });
 }
 
@@ -236,13 +241,18 @@ export default function TrusteesList() {
     return getDistrictDivisionComboOptions(allCourts) as ComboOption[];
   }, [allCourts, districtDivisionEnabled]);
 
+  const divisionFilterMap = useMemo(
+    () => buildDivisionFilterMap(selectedDivisions),
+    [selectedDivisions],
+  );
+
   const { filteredTrustees } = useMemo(() => {
     let filtered = filterTrustees(
       trustees,
       selectedDistricts,
       selectedChapters,
       districtDivisionEnabled,
-      selectedDivisions,
+      divisionFilterMap,
     );
 
     if (nameSearch.length >= 2) {
@@ -275,7 +285,7 @@ export default function TrusteesList() {
     trustees,
     selectedDistricts,
     selectedChapters,
-    selectedDivisions,
+    divisionFilterMap,
     nameSearch,
     nameSearchIds,
     sortDirection,
@@ -293,7 +303,7 @@ export default function TrusteesList() {
       selectedDistricts,
       selectedChapters,
       districtDivisionEnabled,
-      selectedDivisions,
+      divisionFilterMap,
     ).length;
 
     getAppInsights().appInsights.trackEvent(
@@ -326,7 +336,7 @@ export default function TrusteesList() {
       selectedDistricts,
       selectedChapters,
       districtDivisionEnabled,
-      selectedDivisions,
+      divisionFilterMap,
     ).length;
 
     getAppInsights().appInsights.trackEvent(
