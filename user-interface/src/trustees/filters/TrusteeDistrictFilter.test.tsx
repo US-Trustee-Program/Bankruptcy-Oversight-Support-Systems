@@ -68,7 +68,6 @@ function renderFilter(
       handleFilterChapter={mockHandleFilterChapter}
       handleFilterName={mockHandleFilterName}
       handleFilterDivision={mockHandleFilterDivision}
-      availableDivisionOptions={[]}
       combinedDistrictDivisionOptions={[]}
       onExpandedChange={overrides.onExpandedChange}
     />,

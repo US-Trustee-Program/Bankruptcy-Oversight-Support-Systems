@@ -38,8 +38,6 @@ export interface TrusteeDistrictFilterViewModel {
   selectedDistricts: ComboOption[];
   selectedChapters: ComboOption[];
   selectedDivisions: ComboOption[];
-  availableDivisionOptions: ComboOption[];
-  showDivisionFilter: boolean;
   combinedDistrictDivisionOptions: ComboOption[];
   districtDivisionEnabled: boolean;
   isExpanded: boolean;
@@ -72,7 +70,6 @@ export type TrusteeDistrictFilterProps = {
   handleFilterChapter(chapters: ComboOption[]): void;
   handleFilterName(name: string): void;
   handleFilterDivision(divisions: ComboOption[]): void;
-  availableDivisionOptions: ComboOption[];
   combinedDistrictDivisionOptions: ComboOption[];
   onExpandedChange?: (isExpanded: boolean) => void;
   onCourtsLoaded?: (courts: CourtDivisionDetails[]) => void;

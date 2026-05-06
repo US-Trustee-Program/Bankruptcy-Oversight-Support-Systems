@@ -91,8 +91,6 @@ const TrusteeDistrictFilter_ = (
     }
   }, [store.districts, onCourtsLoaded]);
 
-  const showDivisionFilter = districtDivisionEnabled && store.selectedDistricts.length > 0;
-
   const defaultDivisionValues = new Set((store.defaultDivisions ?? []).map((d) => d.value));
   const orderedCombinedOptions = districtDivisionEnabled
     ? separateDefaultOptions(props.combinedDistrictDivisionOptions, defaultDivisionValues)
@@ -104,9 +102,7 @@ const TrusteeDistrictFilter_ = (
     selectedDistricts: store.selectedDistricts,
     selectedChapters: store.selectedChapters,
     selectedDivisions: store.selectedDivisions,
-    availableDivisionOptions: props.availableDivisionOptions,
     combinedDistrictDivisionOptions: orderedCombinedOptions,
-    showDivisionFilter,
     districtDivisionEnabled,
     isExpanded: store.isExpanded,
     districtFilterRef: controls.districtFilterRef,

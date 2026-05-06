@@ -19,7 +19,6 @@ import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 import {
   sortTrusteeAppointments,
   buildDivisionsDisplay,
-  getDivisionsForDistrict,
   getDistrictDivisionComboOptions,
 } from '@/lib/utils/court-utils';
 import useFeatureFlags, { TRUSTEE_DISTRICT_DIVISION } from '@/lib/hooks/UseFeatureFlags';
@@ -207,35 +206,6 @@ export default function TrusteesList() {
     }, 300);
   }, [nameSearch, debounce]);
 
-  const availableDivisionOptions = useMemo((): ComboOption[] => {
-    if (!districtDivisionEnabled || selectedDistricts.length === 0) return [];
-    const selectedCourtIds = new Set(selectedDistricts.map((d) => d.value));
-    const divisionCodeSet = new Set<string>();
-    trustees.forEach((trustee) => {
-      trustee.appointments.forEach((appt) => {
-        if (
-          selectedCourtIds.has(appt.courtId) &&
-          appt.divisionCodes &&
-          appt.divisionCodes.length > 0
-        ) {
-          appt.divisionCodes.forEach((code) => divisionCodeSet.add(code));
-        }
-      });
-    });
-    const options: ComboOption[] = [];
-    const seen = new Set<string>();
-    for (const courtId of selectedCourtIds) {
-      const divisions = getDivisionsForDistrict(allCourts, courtId);
-      divisions.forEach((div) => {
-        if (divisionCodeSet.has(div.courtDivisionCode) && !seen.has(div.courtDivisionCode)) {
-          seen.add(div.courtDivisionCode);
-          options.push({ value: div.courtDivisionCode, label: div.courtDivisionName });
-        }
-      });
-    }
-    return options;
-  }, [trustees, selectedDistricts, allCourts, districtDivisionEnabled]);
-
   const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
     if (!districtDivisionEnabled || allCourts.length === 0) return [];
     return getDistrictDivisionComboOptions(allCourts) as ComboOption[];
@@ -316,7 +286,14 @@ export default function TrusteesList() {
         divisionCount: selectedDivisions.length,
       },
     );
-  }, [selectedDistricts, selectedChapters, selectedDivisions, trustees]);
+  }, [
+    selectedDistricts,
+    selectedChapters,
+    selectedDivisions,
+    trustees,
+    districtDivisionEnabled,
+    divisionFilterMap,
+  ]);
 
   if (!nameSearchLoading) {
     stableCountRef.current = filteredTrustees.length;
@@ -348,7 +325,14 @@ export default function TrusteesList() {
         selectedChapterValues: selectedChapters.map((c) => c.value).join(','),
       },
     );
-  }, [selectedChapters, selectedDistricts, selectedDivisions, trustees]);
+  }, [
+    selectedChapters,
+    selectedDistricts,
+    selectedDivisions,
+    trustees,
+    districtDivisionEnabled,
+    divisionFilterMap,
+  ]);
 
   useEffect(() => {
     if (!isNameFilterInteracted.current) return;
@@ -425,7 +409,6 @@ export default function TrusteesList() {
         handleFilterChapter={handleFilterChapter}
         handleFilterName={handleFilterName}
         handleFilterDivision={handleFilterDivision}
-        availableDivisionOptions={availableDivisionOptions}
         combinedDistrictDivisionOptions={combinedDistrictDivisionOptions}
         onCourtsLoaded={setAllCourts}
       />
