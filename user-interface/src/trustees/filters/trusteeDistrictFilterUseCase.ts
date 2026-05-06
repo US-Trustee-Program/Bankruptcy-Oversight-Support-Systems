@@ -43,6 +43,18 @@ export function resolveCombinedSelections(
   return resolved;
 }
 
+export function getUserDivisionCodes(session: CamsSession | null): Set<string> {
+  const codes = new Set<string>();
+  session?.user?.offices?.forEach((office) => {
+    office.groups?.forEach((group) => {
+      group.divisions?.forEach((division) => {
+        if (division.divisionCode) codes.add(division.divisionCode);
+      });
+    });
+  });
+  return codes;
+}
+
 const toDistrictOption = (
   district: CourtDivisionDetails,
   divisionCodes: string[],
@@ -96,16 +108,7 @@ const trusteeDistrictFilterUseCase = (
       return [];
     }
 
-    const userDivisionCodes = new Set<string>();
-    session.user.offices.forEach((office) => {
-      office.groups?.forEach((group) => {
-        group.divisions?.forEach((division) => {
-          if (division.divisionCode) {
-            userDivisionCodes.add(division.divisionCode);
-          }
-        });
-      });
-    });
+    const userDivisionCodes = getUserDivisionCodes(session);
 
     const userDistricts = allDistricts.filter((district) =>
       userDivisionCodes.has(district.courtDivisionCode),
@@ -148,15 +151,7 @@ const trusteeDistrictFilterUseCase = (
       if (defaultDistricts.length > 0) {
         notifySelectionChange(defaultDistricts);
         if (districtDivisionEnabled) {
-          const session = LocalStorage.getSession();
-          const userDivisionCodes = new Set<string>();
-          session?.user?.offices?.forEach((office) => {
-            office.groups?.forEach((group) => {
-              group.divisions?.forEach((division) => {
-                if (division.divisionCode) userDivisionCodes.add(division.divisionCode);
-              });
-            });
-          });
+          const userDivisionCodes = getUserDivisionCodes(session);
 
           const defaultDivisions = defaultDistricts.flatMap((d) => {
             const courtId = d.value;
