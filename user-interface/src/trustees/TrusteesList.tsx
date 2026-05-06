@@ -62,10 +62,10 @@ function filterTrustees(
     return trustees;
   const selectedChapterValues = new Set(selectedChapters.map((c) => c.value));
   return trustees.filter((trustee) => {
-    const userNotInSelectedChapter =
+    const trusteeMatchesChapter =
       selectedChapters.length === 0 ||
       trustee.appointments.some((appt) => selectedChapterValues.has(appt.chapter));
-    if (!userNotInSelectedChapter) return false;
+    if (!trusteeMatchesChapter) return false;
 
     if (!districtDivisionEnabled) {
       if (selectedDistricts.length === 0) return true;
