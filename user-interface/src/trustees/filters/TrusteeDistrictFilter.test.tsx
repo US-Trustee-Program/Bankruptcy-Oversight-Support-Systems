@@ -9,6 +9,8 @@ import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeDistrictFilterRef } from './trusteeDistrictFilter.types';
 import React from 'react';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import { FeatureFlagSet } from '@common/feature-flags';
 
 const mockDistricts: CourtDivisionDetails[] = [
   {
@@ -82,6 +84,9 @@ function renderFilter(
 describe('TrusteeDistrictFilter Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+      'trustee-district-division': false,
+    } as FeatureFlagSet);
     const mockResponse: ResponseBody<CourtDivisionDetails[]> = { data: mockDistricts };
     vi.spyOn(Api2, 'getCourts').mockResolvedValue(mockResponse);
   });

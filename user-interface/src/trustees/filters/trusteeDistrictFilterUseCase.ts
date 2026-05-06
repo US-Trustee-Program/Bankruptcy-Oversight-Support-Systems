@@ -120,6 +120,34 @@ const trusteeDistrictFilterUseCase = (
 
       if (defaultDistricts.length > 0) {
         notifySelectionChange(defaultDistricts);
+        if (districtDivisionEnabled) {
+          const session = LocalStorage.getSession();
+          const userDivisionCodes = new Set<string>();
+          session?.user?.offices?.forEach((office) => {
+            office.groups?.forEach((group) => {
+              group.divisions?.forEach((division) => {
+                if (division.divisionCode) userDivisionCodes.add(division.divisionCode);
+              });
+            });
+          });
+
+          const defaultDivisions = defaultDistricts.flatMap((d) => {
+            const courtId = d.value;
+            return districts
+              .filter(
+                (court) =>
+                  court.courtId === courtId && userDivisionCodes.has(court.courtDivisionCode),
+              )
+              .sort((a, b) => a.courtDivisionName.localeCompare(b.courtDivisionName))
+              .map((court) => ({
+                value: `${courtId}|${court.courtDivisionCode}`,
+                label: `${court.courtName} (${court.courtDivisionName})`,
+                selectedLabel: court.courtDivisionName,
+              }));
+          });
+          store.setSelectedDivisions(defaultDivisions);
+          onFilterDivision(defaultDivisions);
+        }
       }
     } catch (_e) {
       store.setDistrictsError(true);
