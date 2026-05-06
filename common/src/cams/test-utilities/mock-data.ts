@@ -156,7 +156,7 @@ function randomDate(year = '2024') {
 
 function someDateAfterThisDate(thisDateString: string, days?: number): string {
   const thisDate = new Date(Date.parse(thisDateString));
-  const daysToAdd = days || randomInt(1000);
+  const daysToAdd = days ?? randomInt(999) + 1;
   const someDate = new Date(thisDate.setDate(thisDate.getDate() + daysToAdd));
   return getIsoDate(someDate);
 }
