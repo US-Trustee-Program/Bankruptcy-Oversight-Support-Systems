@@ -16,6 +16,33 @@ import {
 } from '@/lib/utils/court-utils';
 import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
 
+export function resolveCombinedSelections(
+  previous: ComboOption[],
+  next: ComboOption[],
+): ComboOption[] {
+  if (next.length === 0) return [];
+
+  const previousValues = new Set(previous.map((s) => s.value));
+  const added = next.filter((s) => !previousValues.has(s.value));
+
+  if (added.length === 0) return next;
+
+  let resolved = [...next];
+  for (const newOption of added) {
+    const [courtId, code] = newOption.value.split('|');
+    if (code === 'ALL') {
+      resolved = resolved.filter((s) => {
+        const [sCourt, sCode] = s.value.split('|');
+        return !(sCourt === courtId && sCode !== 'ALL');
+      });
+    } else {
+      resolved = resolved.filter((s) => s.value !== `${courtId}|ALL`);
+    }
+  }
+
+  return resolved;
+}
+
 const toDistrictOption = (
   district: CourtDivisionDetails,
   divisionCodes: string[],
@@ -177,32 +204,8 @@ const trusteeDistrictFilterUseCase = (
   };
 
   const handleFilterCombined = (selections: ComboOption[]) => {
-    if (selections.length === 0) {
-      handleFilterDivision([]);
-      return;
-    }
-
-    const previousValues = new Set((previousDivisionsRef.current ?? []).map((s) => s.value));
-    const added = selections.filter((s) => !previousValues.has(s.value));
-
-    if (added.length === 0) {
-      handleFilterDivision(selections);
-      return;
-    }
-
-    let resolved = [...selections];
-    for (const newOption of added) {
-      const [courtId, code] = newOption.value.split('|');
-      if (code === 'ALL') {
-        resolved = resolved.filter((s) => {
-          const [sCourt, sCode] = s.value.split('|');
-          return !(sCourt === courtId && sCode !== 'ALL');
-        });
-      } else {
-        resolved = resolved.filter((s) => s.value !== `${courtId}|ALL`);
-      }
-    }
-
+    const previous = previousDivisionsRef.current ?? [];
+    const resolved = resolveCombinedSelections(previous, selections);
     handleFilterDivision(resolved);
   };
 
