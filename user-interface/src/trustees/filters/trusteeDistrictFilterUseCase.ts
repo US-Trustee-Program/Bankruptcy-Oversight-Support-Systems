@@ -16,15 +16,58 @@ import {
 } from '@/lib/utils/court-utils';
 import { AppointmentChapterType, formatChapterType } from '@common/cams/trustees';
 
+export function resolveCombinedSelections(
+  previous: ComboOption[],
+  next: ComboOption[],
+): ComboOption[] {
+  if (next.length === 0) return [];
+
+  const previousValues = new Set(previous.map((s) => s.value));
+  const added = next.filter((s) => !previousValues.has(s.value));
+
+  if (added.length === 0) return next;
+
+  let resolved = [...next];
+  for (const newOption of added) {
+    const [courtId, code] = newOption.value.split('|');
+    if (code === 'ALL') {
+      resolved = resolved.filter((s) => {
+        const [sCourt, sCode] = s.value.split('|');
+        return !(sCourt === courtId && sCode !== 'ALL');
+      });
+    } else {
+      resolved = resolved.filter((s) => s.value !== `${courtId}|ALL`);
+    }
+  }
+
+  return resolved;
+}
+
+export function getUserDivisionCodes(session: CamsSession | null): Set<string> {
+  const codes = new Set<string>();
+  session?.user?.offices?.forEach((office) => {
+    office.groups?.forEach((group) => {
+      group.divisions?.forEach((division) => {
+        if (division.divisionCode) codes.add(division.divisionCode);
+      });
+    });
+  });
+  return codes;
+}
+
 const toDistrictOption = (
   district: CourtDivisionDetails,
   divisionCodes: string[],
+  districtDivisionEnabled: boolean,
 ): ComboOption => ({
-  value: divisionCodes.join(','),
+  value: districtDivisionEnabled ? district.courtId : divisionCodes.join(','),
   label: district.courtName,
 });
 
-const buildDistrictOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
+const buildDistrictOptions = (
+  districts: CourtDivisionDetails[],
+  districtDivisionEnabled: boolean,
+): ComboOption[] => {
   const districtMap = groupDivisionsByDistrict(districts);
 
   const sortedDistricts = sortByCourtLocation(
@@ -32,46 +75,13 @@ const buildDistrictOptions = (districts: CourtDivisionDetails[]): ComboOption[] 
   );
 
   return sortedDistricts.map((district) => {
-    const divisions = districtMap.get(district.courtName)!;
+    const divisions = districtMap.get(district.courtId)!;
     return toDistrictOption(
       district,
       divisions.map((d) => d.courtDivisionCode),
+      districtDivisionEnabled,
     );
   });
-};
-
-const getDefaultDistrictsFromSession = (
-  session: CamsSession | null,
-  allDistricts: CourtDivisionDetails[],
-): ComboOption[] => {
-  if (!session?.user?.offices || session.user.offices.length === 0) {
-    return [];
-  }
-
-  const userDivisionCodes = new Set<string>();
-  session.user.offices.forEach((office) => {
-    office.groups?.forEach((group) => {
-      group.divisions?.forEach((division) => {
-        if (division.divisionCode) {
-          userDivisionCodes.add(division.divisionCode);
-        }
-      });
-    });
-  });
-
-  // Find which districts contain the user's divisions
-  const userDistricts = allDistricts.filter((district) =>
-    userDivisionCodes.has(district.courtDivisionCode),
-  );
-  const userDistrictNames = new Set(userDistricts.map((d) => d.courtName));
-
-  // Group ALL divisions for those districts (not just user's divisions)
-  const allDistrictsForUser = allDistricts.filter((district) =>
-    userDistrictNames.has(district.courtName),
-  );
-
-  // Convert to ComboOptions, one per unique district with ALL division codes
-  return buildDistrictOptions(allDistrictsForUser);
 };
 
 const CHAPTER_OPTIONS: AppointmentChapterType[] = ['7', '11', '11-subchapter-v', '12', '13'];
@@ -86,10 +96,34 @@ const trusteeDistrictFilterUseCase = (
   previousDistrictsRef: { current: ComboOption[] | undefined },
   onFilterChapter: (chapters: ComboOption[]) => void,
   previousChaptersRef: { current: ComboOption[] | undefined },
+  onFilterDivision: (divisions: ComboOption[]) => void,
+  previousDivisionsRef: { current: ComboOption[] | undefined },
+  districtDivisionEnabled: boolean = false,
 ): TrusteeDistrictFilterUseCase => {
+  const getDefaultDistrictsFromSession = (
+    session: CamsSession | null,
+    allDistricts: CourtDivisionDetails[],
+  ): ComboOption[] => {
+    if (!session?.user?.offices || session.user.offices.length === 0) {
+      return [];
+    }
+
+    const userDivisionCodes = getUserDivisionCodes(session);
+
+    const userDistricts = allDistricts.filter((district) =>
+      userDivisionCodes.has(district.courtDivisionCode),
+    );
+    const userDistrictNames = new Set(userDistricts.map((d) => d.courtName));
+
+    const allDistrictsForUser = allDistricts.filter((district) =>
+      userDistrictNames.has(district.courtName),
+    );
+
+    return buildDistrictOptions(allDistrictsForUser, districtDivisionEnabled);
+  };
+
   const districtsToComboOptions = (districts: CourtDivisionDetails[]): ComboOption[] => {
-    // Build base options (grouped by district, sorted by court location)
-    const allOptions = buildDistrictOptions(districts);
+    const allOptions = buildDistrictOptions(districts, districtDivisionEnabled);
 
     // Separate defaults from non-defaults and mark them
     const defaultCodesFlat = new Set(
@@ -116,6 +150,27 @@ const trusteeDistrictFilterUseCase = (
 
       if (defaultDistricts.length > 0) {
         notifySelectionChange(defaultDistricts);
+        if (districtDivisionEnabled) {
+          const userDivisionCodes = getUserDivisionCodes(session);
+
+          const defaultDivisions = defaultDistricts.flatMap((d) => {
+            const courtId = d.value;
+            return districts
+              .filter(
+                (court) =>
+                  court.courtId === courtId && userDivisionCodes.has(court.courtDivisionCode),
+              )
+              .sort((a, b) => a.courtDivisionName.localeCompare(b.courtDivisionName))
+              .map((court) => ({
+                value: `${courtId}|${court.courtDivisionCode}`,
+                label: `${court.courtName} (${court.courtDivisionName})`,
+                selectedLabel: court.courtDivisionName,
+              }));
+          });
+          store.setDefaultDivisions(defaultDivisions);
+          store.setSelectedDivisions(defaultDivisions);
+          onFilterDivision(defaultDivisions);
+        }
       }
     } catch (_e) {
       store.setDistrictsError(true);
@@ -126,8 +181,30 @@ const trusteeDistrictFilterUseCase = (
     controls.districtFilterRef.current?.focusInput();
   };
 
+  const handleFilterDivision = (divisions: ComboOption[]) => {
+    const wasNonEmpty = previousDivisionsRef.current && previousDivisionsRef.current.length > 0;
+    const isNowEmpty = divisions.length === 0;
+
+    if (wasNonEmpty && isNowEmpty) {
+      getAppInsights().appInsights.trackEvent({ name: 'Trustee Division Filter Cleared' });
+    }
+
+    previousDivisionsRef.current = divisions;
+    store.setSelectedDivisions(divisions);
+    onFilterDivision(divisions);
+  };
+
+  const handleClearAllDivisions = () => {
+    handleFilterDivision([]);
+  };
+
+  const handleFilterCombined = (selections: ComboOption[]) => {
+    const previous = previousDivisionsRef.current ?? [];
+    const resolved = resolveCombinedSelections(previous, selections);
+    handleFilterDivision(resolved);
+  };
+
   const handleFilterChange = (districts: ComboOption[]) => {
-    // Only track "cleared" when transitioning from non-empty to empty
     const wasNonEmpty = previousDistrictsRef.current && previousDistrictsRef.current.length > 0;
     const isNowEmpty = districts.length === 0;
 
@@ -137,6 +214,9 @@ const trusteeDistrictFilterUseCase = (
 
     previousDistrictsRef.current = districts;
     store.setSelectedDistricts(districts);
+    if (districtDivisionEnabled) {
+      handleClearAllDivisions();
+    }
     notifySelectionChange(districts);
   };
 
@@ -176,6 +256,9 @@ const trusteeDistrictFilterUseCase = (
     handleToggleExpanded,
     handleFilterChapter,
     handleClearAllChapters,
+    handleFilterDivision,
+    handleClearAllDivisions,
+    handleFilterCombined,
   };
 };
 

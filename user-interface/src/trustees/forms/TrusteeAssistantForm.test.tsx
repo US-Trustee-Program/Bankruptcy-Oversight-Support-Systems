@@ -547,7 +547,19 @@ describe('TrusteeAssistantForm', () => {
     });
 
     test('should submit form with complete address', async () => {
-      const { assistant, container } = renderEditMode();
+      // Pre-populate state as 'NY' so the test does not depend on a timing-sensitive
+      // combobox interaction to change a random faker state to a specific value.
+      const { assistant } = renderEditMode({
+        contact: {
+          address: {
+            address1: '1 Old St',
+            city: 'OldCity',
+            state: 'NY',
+            zipCode: '00000',
+            countryCode: 'US',
+          },
+        },
+      });
 
       const updateSpy = vi
         .spyOn(Api2, 'updateTrusteeAssistant')
@@ -574,15 +586,6 @@ describe('TrusteeAssistantForm', () => {
       await userEvent.type(screen.getByTestId('assistant-extension'), '999');
       await userEvent.clear(screen.getByTestId('assistant-email'));
       await userEvent.type(screen.getByTestId('assistant-email'), 'test@example.com');
-
-      // State might already be selected, but ensure NY is set
-      const stateCombobox = container.querySelector('#assistant-state [role="combobox"]');
-      if (stateCombobox) {
-        await userEvent.click(stateCombobox);
-        const nyOptions = await screen.findAllByText(/NY.*New York/i, {}, { timeout: 1000 });
-        // Click the last option (the one in the dropdown, not the screen reader text)
-        await userEvent.click(nyOptions[nyOptions.length - 1]);
-      }
 
       const submitButton = screen.getByRole('button', { name: 'Save' });
       await userEvent.click(submitButton);

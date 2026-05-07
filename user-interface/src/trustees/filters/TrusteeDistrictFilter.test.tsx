@@ -9,6 +9,8 @@ import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { TrusteeDistrictFilterRef } from './trusteeDistrictFilter.types';
 import React from 'react';
+import * as FeatureFlagHook from '@/lib/hooks/UseFeatureFlags';
+import { FeatureFlagSet } from '@common/feature-flags';
 
 const mockDistricts: CourtDivisionDetails[] = [
   {
@@ -58,21 +60,32 @@ function renderFilter(
   const mockHandleFilterDistrict = vi.fn();
   const mockHandleFilterChapter = vi.fn();
   const mockHandleFilterName = vi.fn();
+  const mockHandleFilterDivision = vi.fn();
   render(
     <TrusteeDistrictFilter
       ref={overrides.ref}
       handleFilterDistrict={mockHandleFilterDistrict}
       handleFilterChapter={mockHandleFilterChapter}
       handleFilterName={mockHandleFilterName}
+      handleFilterDivision={mockHandleFilterDivision}
+      combinedDistrictDivisionOptions={[]}
       onExpandedChange={overrides.onExpandedChange}
     />,
   );
-  return { mockHandleFilterDistrict, mockHandleFilterChapter, mockHandleFilterName };
+  return {
+    mockHandleFilterDistrict,
+    mockHandleFilterChapter,
+    mockHandleFilterName,
+    mockHandleFilterDivision,
+  };
 }
 
 describe('TrusteeDistrictFilter Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+      'trustee-district-division': false,
+    } as FeatureFlagSet);
     const mockResponse: ResponseBody<CourtDivisionDetails[]> = { data: mockDistricts };
     vi.spyOn(Api2, 'getCourts').mockResolvedValue(mockResponse);
   });
