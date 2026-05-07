@@ -48,6 +48,10 @@ qodana.yaml
 *.tar.gz
 *.rar
 
+/.stryker-tmp/
+**/.stryker-tmp/
+**/reports/mutation/
+
 # OS X
 .DS_Store
 */**/.DS_Store
