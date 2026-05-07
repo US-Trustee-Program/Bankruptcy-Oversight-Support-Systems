@@ -146,20 +146,6 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   <span className="filter-control-label" aria-hidden="true">
                     Chapter
                   </span>
-                  <div aria-live="off" aria-atomic="false">
-                    <button
-                      type="button"
-                      className="filter-clear-link"
-                      onClick={viewModel.handleClearAllChapters}
-                      aria-label="Clear Chapter filter"
-                      style={{
-                        visibility: viewModel.selectedChapters.length > 0 ? 'visible' : 'hidden',
-                      }}
-                      disabled={viewModel.selectedChapters.length === 0}
-                    >
-                      Clear
-                    </button>
-                  </div>
                 </div>
                 <ComboBox
                   id="chapter-combobox"
@@ -176,6 +162,20 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   ref={viewModel.chapterFilterRef}
                   hideClearAllButton={true}
                 />
+                <div aria-live="off" aria-atomic="false">
+                  <button
+                    type="button"
+                    className="filter-clear-link"
+                    onClick={viewModel.handleClearAllChapters}
+                    aria-label="Clear Chapter filter"
+                    style={{
+                      visibility: viewModel.selectedChapters.length > 0 ? 'visible' : 'hidden',
+                    }}
+                    disabled={viewModel.selectedChapters.length === 0}
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
             </div>
           </div>
