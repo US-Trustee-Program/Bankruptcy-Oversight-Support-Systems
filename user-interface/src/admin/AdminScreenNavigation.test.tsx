@@ -35,6 +35,14 @@ describe('Admin screen navigation tests', () => {
     );
   });
 
+  test('should render Banks nav link', () => {
+    renderWithoutProps();
+    const navLink = screen.getByTestId('banks-nav-link');
+    expect(navLink).toBeInTheDocument();
+    expect(navLink).toHaveTextContent('Banks');
+    expect(navLink).toHaveAttribute('href', '/admin/banks');
+  });
+
   describe('Feature flag tests for Privileged Identity nav link', () => {
     test('should display Privileged Identity nav link when PRIVILEGED_IDENTITY_MANAGEMENT flag is true', () => {
       // Mock the feature flags to enable the PRIVILEGED_IDENTITY_MANAGEMENT flag

@@ -14,6 +14,9 @@ vi.mock('./bankruptcy-software/BankruptcySoftware', () => ({
 vi.mock('./case-reload/CaseReload', () => ({
   CaseReload: () => <div data-testid="mocked-case-reload" />,
 }));
+vi.mock('./banks/Banks', () => ({
+  Banks: () => <div data-testid="mocked-banks" />,
+}));
 
 describe('Admin screen tests', () => {
   beforeEach(async () => {
@@ -79,5 +82,10 @@ describe('Admin screen tests', () => {
     renderAtPath('/admin/case-reload');
     const navLink = screen.getByTestId('case-reload-nav-link');
     expect(navLink).toHaveClass('usa-current');
+  });
+
+  test('should render Banks component when navigating to /admin/banks', () => {
+    renderAtPath('/admin/banks');
+    expect(screen.getByTestId('mocked-banks')).toBeInTheDocument();
   });
 });
