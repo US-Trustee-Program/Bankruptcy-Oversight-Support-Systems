@@ -18,6 +18,7 @@
     "mutate": "stryker run",
     "mutate:incremental": "stryker run --incremental",
     "mutate:coverage": "node mutation-coverage.mjs",
+    "mutate:overlap": "node mutation-overlap.mjs",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "typecheck": "npx tsc --noEmit"
