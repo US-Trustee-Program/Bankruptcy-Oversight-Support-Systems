@@ -4,7 +4,10 @@ import {
   TrusteeDistrictFilterStore,
 } from './trusteeDistrictFilter.types';
 import MockData from '@common/cams/test-utilities/mock-data';
-import trusteeDistrictFilterUseCase from './trusteeDistrictFilterUseCase';
+import trusteeDistrictFilterUseCase, {
+  resolveCombinedSelections,
+  getUserDivisionCodes,
+} from './trusteeDistrictFilterUseCase';
 import { MockInstance } from 'vitest';
 import { CourtDivisionDetails } from '@common/cams/courts';
 import { CamsSession } from '@common/cams/session';
@@ -62,6 +65,7 @@ describe('trustee district filter use case tests', () => {
 
   const mockOnFilterDistrict = vi.fn();
   const mockOnFilterChapter = vi.fn();
+  const mockOnFilterDivision = vi.fn();
 
   const mockStore: TrusteeDistrictFilterStore = {
     districts: mockDistricts,
@@ -74,6 +78,10 @@ describe('trustee district filter use case tests', () => {
     setDefaultDistricts: vi.fn(),
     selectedChapters: [],
     setSelectedChapters: vi.fn(),
+    selectedDivisions: [],
+    setSelectedDivisions: vi.fn(),
+    defaultDivisions: [],
+    setDefaultDivisions: vi.fn(),
     isExpanded: false,
     setIsExpanded: vi.fn(),
   };
@@ -92,10 +100,12 @@ describe('trustee district filter use case tests', () => {
   const mockControls: TrusteeDistrictFilterControls = {
     districtFilterRef: comboBoxRef,
     chapterFilterRef: comboBoxRef,
+    divisionFilterRef: comboBoxRef,
   };
 
   const previousDistrictsRef = { current: undefined as ComboOption[] | undefined };
   const previousChaptersRef = { current: undefined as ComboOption[] | undefined };
+  const previousDivisionsRef = { current: undefined as ComboOption[] | undefined };
 
   const useCase = trusteeDistrictFilterUseCase(
     mockStore,
@@ -104,18 +114,37 @@ describe('trustee district filter use case tests', () => {
     previousDistrictsRef,
     mockOnFilterChapter,
     previousChaptersRef,
+    mockOnFilterDivision,
+    previousDivisionsRef,
+  );
+
+  const useCaseWithFlag = trusteeDistrictFilterUseCase(
+    mockStore,
+    mockControls,
+    mockOnFilterDistrict,
+    previousDistrictsRef,
+    mockOnFilterChapter,
+    previousChaptersRef,
+    mockOnFilterDivision,
+    previousDivisionsRef,
+    true,
   );
 
   beforeEach(() => {
     mockStore.defaultDistricts = [];
+    mockStore.defaultDivisions = [];
     mockStore.setSelectedDistricts = vi.fn();
     mockStore.setSelectedChapters = vi.fn();
+    mockStore.setSelectedDivisions = vi.fn();
+    mockStore.setDefaultDivisions = vi.fn();
     setSelectedDistrictsSpy = vi.spyOn(mockStore, 'setSelectedDistricts');
     mockOnFilterDistrict.mockReset();
     mockOnFilterChapter.mockReset();
+    mockOnFilterDivision.mockReset();
     mockTrackEvent.mockReset();
     previousDistrictsRef.current = undefined;
     previousChaptersRef.current = undefined;
+    previousDivisionsRef.current = undefined;
   });
 
   afterEach(() => {
@@ -134,6 +163,27 @@ describe('trustee district filter use case tests', () => {
       });
       expect(comboOptions[1]).toEqual({
         value: '088',
+        label: 'District of Vermont',
+      });
+    });
+
+    test('flag OFF: returns options with comma-joined division codes as value', () => {
+      const comboOptions = useCase.districtsToComboOptions(mockDistricts);
+
+      expect(comboOptions[0].value).toBe('081,087');
+      expect(comboOptions[1].value).toBe('088');
+    });
+
+    test('flag ON: returns options with courtId as value', () => {
+      const comboOptions = useCaseWithFlag.districtsToComboOptions(mockDistricts);
+
+      expect(comboOptions).toHaveLength(2);
+      expect(comboOptions[0]).toEqual({
+        value: 'NYSB',
+        label: 'Southern District of New York',
+      });
+      expect(comboOptions[1]).toEqual({
+        value: 'VTB',
         label: 'District of Vermont',
       });
     });
@@ -569,5 +619,357 @@ describe('trustee district filter use case tests', () => {
 
       expect(setDistrictsErrorSpy).toHaveBeenCalledWith(true);
     });
+
+    test('flag ON: sets default divisions from user session and calls onFilterDivision', async () => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
+      const session: CamsSession = {
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+      const setDefaultDivisionsSpy = vi.spyOn(mockStore, 'setDefaultDivisions');
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+
+      await useCaseWithFlag.fetchDistricts();
+
+      const expectedDivisions = [
+        {
+          value: 'NYSB|081',
+          label: 'Southern District of New York (Manhattan)',
+          selectedLabel: 'Manhattan',
+        },
+      ];
+      expect(setDefaultDivisionsSpy).toHaveBeenCalledWith(expectedDivisions);
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith(expectedDivisions);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith(expectedDivisions);
+    });
+
+    test('flag ON: only includes divisions the user belongs to, not all district divisions', async () => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
+      const session: CamsSession = {
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
+
+      await useCaseWithFlag.fetchDistricts();
+
+      const divisionCall = mockOnFilterDivision.mock.calls[0][0] as ComboOption[];
+      expect(divisionCall).toHaveLength(1);
+      expect(divisionCall[0].value).toBe('NYSB|081');
+      expect(divisionCall.find((d) => d.value === 'NYSB|087')).toBeUndefined();
+    });
+
+    test('flag ON: does not call onFilterDivision when session has no offices', async () => {
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+
+      await useCaseWithFlag.fetchDistricts();
+
+      expect(mockOnFilterDivision).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleFilterDivision', () => {
+    test('should update selected divisions and trigger callback', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      const divisions: ComboOption[] = [{ value: '081', label: 'Manhattan' }];
+
+      useCase.handleFilterDivision(divisions);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith(divisions);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith(divisions);
+    });
+
+    test('should fire Trustee Division Filter Cleared only when transitioning non-empty to empty', () => {
+      useCase.handleFilterDivision([{ value: '081', label: 'Manhattan' }]);
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+
+      useCase.handleFilterDivision([]);
+      expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Division Filter Cleared' });
+    });
+
+    test('should not fire Trustee Division Filter Cleared on initial empty call', () => {
+      useCase.handleFilterDivision([]);
+      expect(mockTrackEvent).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleClearAllDivisions', () => {
+    test('should clear selected divisions and notify', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+
+      useCase.handleClearAllDivisions();
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([]);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('handleFilterChange (cascading division clear)', () => {
+    test('should clear divisions when district filter changes and flag is ON', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [{ value: '081', label: 'Manhattan' }];
+
+      const newDistricts: ComboOption[] = [{ value: 'VTB', label: 'District of Vermont' }];
+      useCaseWithFlag.handleFilterChange(newDistricts);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([]);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
+    });
+
+    test('should NOT clear divisions when district filter changes and flag is OFF', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [{ value: '081', label: 'Manhattan' }];
+
+      const newDistricts: ComboOption[] = [{ value: 'VTB', label: 'District of Vermont' }];
+      useCase.handleFilterChange(newDistricts);
+
+      expect(setSelectedDivisionsSpy).not.toHaveBeenCalledWith([]);
+    });
+  });
+
+  describe('handleFilterCombined', () => {
+    test('should update divisions and trigger callback', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      const selections: ComboOption[] = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      ];
+
+      useCase.handleFilterCombined(selections);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith(selections);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith(selections);
+    });
+
+    test('should clear divisions when empty array passed', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+
+      useCase.handleFilterCombined([]);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([]);
+      expect(mockOnFilterDivision).toHaveBeenCalledWith([]);
+    });
+
+    test('adding ALL option removes specific divisions for that court', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      ];
+
+      const selections: ComboOption[] = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ];
+
+      useCase.handleFilterCombined(selections);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ]);
+    });
+
+    test('adding specific division removes ALL option for that court', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ];
+
+      const selections: ComboOption[] = [
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      ];
+
+      useCase.handleFilterCombined(selections);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+      ]);
+    });
+
+    test('mutual exclusion does not affect selections from a different court', () => {
+      const setSelectedDivisionsSpy = vi.spyOn(mockStore, 'setSelectedDivisions');
+      previousDivisionsRef.current = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+        { value: 'VTB|ALL', label: 'District of Vermont (All)' },
+      ];
+
+      const selections: ComboOption[] = [
+        { value: 'NYSB|081', label: 'Southern District of New York (Manhattan)' },
+        { value: 'VTB|ALL', label: 'District of Vermont (All)' },
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ];
+
+      useCase.handleFilterCombined(selections);
+
+      expect(setSelectedDivisionsSpy).toHaveBeenCalledWith([
+        { value: 'VTB|ALL', label: 'District of Vermont (All)' },
+        { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      ]);
+    });
+  });
+});
+
+describe('resolveCombinedSelections', () => {
+  test('returns empty array when next is empty', () => {
+    const previous = [{ value: 'NYSB|081', label: 'Manhattan' }];
+    expect(resolveCombinedSelections(previous, [])).toEqual([]);
+  });
+
+  test('returns next unchanged when no new options were added', () => {
+    const selections = [{ value: 'NYSB|081', label: 'Manhattan' }];
+    expect(resolveCombinedSelections(selections, selections)).toEqual(selections);
+  });
+
+  test('selecting ALL removes specific divisions for that court', () => {
+    const previous = [{ value: 'NYSB|081', label: 'Manhattan' }];
+    const next = [
+      { value: 'NYSB|081', label: 'Manhattan' },
+      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+    ];
+    expect(resolveCombinedSelections(previous, next)).toEqual([
+      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+    ]);
+  });
+
+  test('selecting a specific division removes ALL for that court', () => {
+    const previous = [{ value: 'NYSB|ALL', label: 'Southern District of New York (All)' }];
+    const next = [
+      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+      { value: 'NYSB|081', label: 'Manhattan' },
+    ];
+    expect(resolveCombinedSelections(previous, next)).toEqual([
+      { value: 'NYSB|081', label: 'Manhattan' },
+    ]);
+  });
+
+  test('mutual exclusion only applies within the same court', () => {
+    const previous = [{ value: 'VTB|088', label: 'Rutland' }];
+    const next = [
+      { value: 'VTB|088', label: 'Rutland' },
+      { value: 'NYSB|ALL', label: 'Southern District of New York (All)' },
+    ];
+    const result = resolveCombinedSelections(previous, next);
+    expect(result).toContainEqual({ value: 'VTB|088', label: 'Rutland' });
+    expect(result).toContainEqual({
+      value: 'NYSB|ALL',
+      label: 'Southern District of New York (All)',
+    });
+  });
+});
+
+describe('getUserDivisionCodes', () => {
+  test('returns empty set when session is null', () => {
+    expect(getUserDivisionCodes(null).size).toBe(0);
+  });
+
+  test('returns empty set when session has no offices', () => {
+    const session = {
+      ...MockData.getCamsSession(),
+      user: { ...MockData.getCamsSession().user, offices: [] },
+    };
+    expect(getUserDivisionCodes(session).size).toBe(0);
+  });
+
+  test('collects division codes from all offices and groups', () => {
+    const session: CamsSession = {
+      ...MockData.getCamsSession(),
+      user: {
+        ...MockData.getCamsSession().user,
+        offices: [
+          {
+            officeCode: '081',
+            officeName: 'Manhattan',
+            idpGroupName: 'Manhattan',
+            regionId: '02',
+            regionName: 'New York',
+            groups: [
+              {
+                groupDesignator: 'NY',
+                divisions: [
+                  {
+                    divisionCode: '081',
+                    court: { courtId: 'NYSB', courtName: 'SDNY' },
+                    courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                  },
+                  {
+                    divisionCode: '087',
+                    court: { courtId: 'NYSB', courtName: 'SDNY' },
+                    courtOffice: { courtOfficeCode: '087', courtOfficeName: 'White Plains' },
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            officeCode: '088',
+            officeName: 'Rutland',
+            idpGroupName: 'Rutland',
+            regionId: '01',
+            regionName: 'Boston',
+            groups: [
+              {
+                groupDesignator: 'VT',
+                divisions: [
+                  {
+                    divisionCode: '088',
+                    court: { courtId: 'VTB', courtName: 'Vermont' },
+                    courtOffice: { courtOfficeCode: '088', courtOfficeName: 'Rutland' },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    const codes = getUserDivisionCodes(session);
+    expect(codes).toEqual(new Set(['081', '087', '088']));
   });
 });
