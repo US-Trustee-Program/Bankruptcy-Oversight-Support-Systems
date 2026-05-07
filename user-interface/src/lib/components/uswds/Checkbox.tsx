@@ -134,15 +134,16 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
         id={labelTestId}
         data-testid={`button-${labelTestId}`}
         className={`usa-button usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
-        onClick={clickHandler}
-        onKeyDown={keyDownHandler}
-        onKeyUp={keyUpHandler}
-        onFocus={focusHandler}
+        onClick={props.disabled ? undefined : clickHandler}
+        onKeyDown={props.disabled ? undefined : keyDownHandler}
+        onKeyUp={props.disabled ? undefined : keyUpHandler}
+        onFocus={props.disabled ? undefined : focusHandler}
         title={props.title}
         aria-label={props.label ? undefined : `check ${props.value}`}
         role="checkbox"
         aria-checked={isChecked}
-        tabIndex={0}
+        aria-disabled={props.disabled}
+        tabIndex={props.disabled ? -1 : 0}
       >
         {props.label ?? <>&nbsp;</>}
       </span>
