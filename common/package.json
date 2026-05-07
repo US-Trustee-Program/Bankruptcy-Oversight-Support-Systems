@@ -15,6 +15,8 @@
     "format": "prettier --write './**/*.{js,ts,css,md,json}' --config ./.prettierrc",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "mutate": "stryker run",
+    "mutate:incremental": "stryker run --incremental",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "typecheck": "npx tsc --noEmit"
@@ -26,6 +28,9 @@
   "devDependencies": {
     "@eslint/js": "10.0.0",
     "@faker-js/faker": "9.9.0",
+    "@stryker-mutator/core": "9.6.1",
+    "@stryker-mutator/typescript-checker": "9.6.1",
+    "@stryker-mutator/vitest-runner": "9.6.1",
     "@types/node": "24.12.2",
     "@typescript-eslint/parser": "8.59.0",
     "@vitest/coverage-v8": "4.1.5",
