@@ -7,13 +7,14 @@
   "workspaces": {
     ".": {
       "ignore": [],
-      "ignoreFiles": ["test/migration/**", ".claude/**"]
+      "ignoreFiles": ["test/migration/**", ".claude/**", "mutation-cross-module.mjs"]
     },
     "backend": {
       "entry": [
         "function-apps/**/*.function.ts",
         "function-apps/dataflows/dataflows.ts",
-        "**/*.test.ts"
+        "**/*.test.ts",
+        "vitest.stryker.config.ts"
       ],
       "project": ["**/*.ts"],
       "ignore": [],
