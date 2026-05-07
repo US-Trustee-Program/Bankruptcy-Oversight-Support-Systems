@@ -17,6 +17,7 @@
     "lint:fix": "eslint . --fix",
     "mutate": "stryker run",
     "mutate:incremental": "stryker run --incremental",
+    "mutate:coverage": "node mutation-coverage.mjs",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "typecheck": "npx tsc --noEmit"
