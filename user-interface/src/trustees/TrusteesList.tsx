@@ -192,18 +192,38 @@ export default function TrusteesList() {
       nameSearchQueryLengthRef.current = 0;
       setNameSearchIds(new Set());
       setNameSearchLoading(false);
+
+      // Announce when clearing name filter (only if user explicitly cleared it)
+      if (isNameFilterInteracted.current && hasExpandedOnceRef.current && nameSearch.length === 0) {
+        const filtered = filterTrustees(trustees, selectedDistricts, selectedChapters);
+        const announcement = filtered.length + ' Trustee' + (filtered.length === 1 ? '' : 's');
+        setLiveAnnouncement(announcement);
+      }
       return;
     }
     nameSearchQueryLengthRef.current = nameSearch.length;
     setNameSearchLoading(true);
     debounce(async () => {
       const searchStart = performance.now();
+      const searchTerm = nameSearch; // Capture current search term
+      setLiveAnnouncement('');
       try {
         const response = await Api2.searchTrustees(nameSearch);
         nameSearchCountRef.current += 1;
         const ids = new Set(response.data.map((r) => r.trusteeId));
         nameSearchStartRef.current = performance.now() - searchStart;
         setNameSearchIds(ids);
+
+        // Announce after search completes and user stops typing
+        setTimeout(() => {
+          if (searchTerm !== nameSearch || nameSearch.length < 2) return;
+          if (!hasExpandedOnceRef.current) return;
+
+          let filtered = filterTrustees(trustees, selectedDistricts, selectedChapters);
+          filtered = filtered.filter((t) => ids.has(t.trusteeId));
+          const announcement = filtered.length + ' Trustee' + (filtered.length === 1 ? '' : 's');
+          setLiveAnnouncement(announcement);
+        }, 500);
       } catch {
         nameSearchStartRef.current = null;
         setNameSearch('');
@@ -212,7 +232,7 @@ export default function TrusteesList() {
         setNameSearchLoading(false);
       }
     }, 300);
-  }, [nameSearch, debounce]);
+  }, [nameSearch, debounce, trustees, selectedDistricts, selectedChapters]);
 
   const combinedDistrictDivisionOptions = useMemo((): ComboOption[] => {
     if (!districtDivisionEnabled || allCourts.length === 0) return [];
@@ -223,6 +243,52 @@ export default function TrusteesList() {
     () => buildDivisionFilterMap(selectedDivisions),
     [selectedDivisions],
   );
+
+  const hasExpandedOnceRef = useRef(false);
+
+  const handleFilterExpanded = (isExpanded: boolean) => {
+    if (isExpanded && !hasExpandedOnceRef.current) {
+      hasExpandedOnceRef.current = true;
+      const resultCount = filteredTrustees.length;
+      const districtCount = selectedDistricts.length;
+      const chapterCount = selectedChapters.length;
+
+      let announcement = resultCount + ' Trustees';
+
+      if (districtCount > 0) {
+        announcement += ' filtered by districts';
+      }
+
+      if (chapterCount > 0) {
+        if (districtCount > 0) {
+          announcement += ' and chapters';
+        } else {
+          announcement += ' filtered by chapters';
+        }
+      }
+
+      setLiveAnnouncement(announcement);
+    } else if (!isExpanded) {
+      // Reset when closing
+      hasExpandedOnceRef.current = false;
+      setLiveAnnouncement('');
+    }
+  };
+
+  // Announce on district/chapter filter changes after first expand
+  useEffect(() => {
+    if (!hasExpandedOnceRef.current) return;
+    if (!isDistrictFilterInteracted.current && !isChapterFilterInteracted.current) return;
+    if (lastFilterChanged.current === 'name') return;
+
+    let filtered = filterTrustees(trustees, selectedDistricts, selectedChapters);
+    if (nameSearch.length >= 2) {
+      filtered = filtered.filter((t) => nameSearchIds.has(t.trusteeId));
+    }
+
+    const announcement = filtered.length + ' Trustee' + (filtered.length === 1 ? '' : 's');
+    setLiveAnnouncement(announcement);
+  }, [selectedDistricts, selectedChapters]);
 
   const { filteredTrustees } = useMemo(() => {
     let filtered = filterTrustees(
@@ -306,15 +372,6 @@ export default function TrusteesList() {
   if (!nameSearchLoading) {
     stableCountRef.current = filteredTrustees.length;
   }
-
-  useEffect(() => {
-    if (!isNameFilterInteracted.current && !isDistrictFilterInteracted.current) return;
-    if (lastFilterChanged.current === 'chapter') return;
-    if (nameSearchLoading) return;
-    setLiveAnnouncement(
-      `${filteredTrustees.length} Trustee${filteredTrustees.length !== 1 ? 's' : ''}`,
-    );
-  }, [filteredTrustees, nameSearchLoading]);
 
   useEffect(() => {
     if (!isChapterFilterInteracted.current) return;
@@ -422,11 +479,12 @@ export default function TrusteesList() {
         handleFilterDivision={handleFilterDivision}
         combinedDistrictDivisionOptions={combinedDistrictDivisionOptions}
         onCourtsLoaded={setAllCourts}
+        onExpandedChange={handleFilterExpanded}
       />
       <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
         {liveAnnouncement}
       </div>
-      <p className="trustees-list-count">
+      <p className="trustees-list-count" aria-live="off" aria-atomic="false">
         {nameSearchLoading
           ? (stableCountRef.current ?? filteredTrustees.length)
           : filteredTrustees.length}{' '}
