@@ -4,7 +4,7 @@
     {
       "type": 1,
       "content": {
-        "json": "# Trustee Filter Metrics\n\nSuccess metrics for trustee filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`; measurements: `selectedCount`, `resultCount`, `chapterCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee Chapter Filter Changed` — fired on any chapter selection change; dimensions: `selectedChapterValues`; measurements: `selectedCount`, `resultCount`, `districtCount`\n- `Trustee Name Filter Changed` — fired after each debounced search API call (2+ chars); dimensions: `hasDistrictFilter`; measurements: `queryLength`, `resultCount`, `districtCount`, `chapterCount`, `searchResponseMs`, `sessionSearchCount`\n- `Trustee Name Filter Cleared` — fired when user clears the name input; measurements: `queryLength`, `sessionSearchCount`\n- `Trustee List Loaded` — fired when trustee data first renders; measurements: `trusteeCount`, `loadMs`"
+        "json": "# Trustee Filter Metrics\n\nSuccess metrics for trustee filter usage and performance on the Trustee Management page.\n\n**Instrumented events:**\n- `Trustee District Filter Changed` — fired on any selection change; dimensions: `isDefault`; measurements: `selectedCount`, `resultCount`, `chapterCount`, `divisionCount`\n- `Trustee District Filter Cleared` — fired when user clicks Clear (restores defaults)\n- `Trustee Division Filter Cleared` — fired when user explicitly clears all division selections\n- `Trustee Chapter Filter Changed` — fired on any chapter selection change; dimensions: `selectedChapterValues`; measurements: `selectedCount`, `resultCount`, `districtCount`\n- `Trustee Name Filter Changed` — fired after each debounced search API call (2+ chars); dimensions: `hasDistrictFilter`; measurements: `queryLength`, `resultCount`, `districtCount`, `chapterCount`, `searchResponseMs`, `sessionSearchCount`\n- `Trustee Name Filter Cleared` — fired when user clears the name input; measurements: `queryLength`, `sessionSearchCount`\n- `Trustee List Loaded` — fired when trustee data first renders; measurements: `trusteeCount`, `loadMs`"
       },
       "name": "header"
     },
@@ -240,6 +240,205 @@
     {
       "type": 1,
       "content": {
+        "json": "---\n## Division Filter Usage\nHow frequently users use the division filter relative to the district filter, and whether users tend to refine by division after selecting a district."
+      },
+      "name": "division-filter-header"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet DistrictVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nlet DivisionVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where toint(customMeasurements.divisionCount) > 0\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    DistrictFilterRate = round(iif(TotalVisits > 0, todouble(DistrictVisits) / todouble(TotalVisits) * 100, 0.0), 1),\n    DivisionFilterRate = round(iif(TotalVisits > 0, todouble(DivisionVisits) / todouble(TotalVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "District vs. Division Filter Usage Rate (% of Page Visits)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "DistrictFilterRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "DivisionFilterRate",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "district-vs-division-usage-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet DistrictThenDivisionVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | where toint(customMeasurements.divisionCount) > 0\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nlet DistrictOnlyVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    DistrictThenDivisionVisits = DistrictThenDivisionVisits,\n    RefinedWithDivisionRate = round(iif(DistrictOnlyVisits > 0, todouble(DistrictThenDivisionVisits) / todouble(DistrictOnlyVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of District Filter Sessions That Also Used Division Filter",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "RefinedWithDivisionRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "DistrictThenDivisionVisits",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "district-then-division-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\"\n| extend divisionCount = toint(customMeasurements.divisionCount)\n| extend selectedCount = toint(customMeasurements.selectedCount)\n| extend FilterMode = case(\n    selectedCount == 0, \"No district\",\n    divisionCount == 0, \"District only\",\n    \"District + Division\"\n  )\n| summarize Events = count() by FilterMode\n| order by Events desc",
+        "size": 3,
+        "title": "Filter Mode: District Only vs. District + Division",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {
+            "columnMatch": "FilterMode"
+          },
+          "leftContent": {
+            "columnMatch": "Events",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 0,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "division-filter-mode-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet DivisionClearedVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee Division Filter Cleared\"\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    DivisionClearedVisits = DivisionClearedVisits,\n    DivisionClearedRate = round(iif(TotalVisits > 0, todouble(DivisionClearedVisits) / todouble(TotalVisits) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of Page Visits Where Division Filter Was Explicitly Cleared",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "DivisionClearedRate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "DivisionClearedVisits",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "division-filter-clear-rate-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"Trustee District Filter Changed\", \"Trustee Division Filter Cleared\")\n| summarize\n    DistrictModifications = countif(name == \"Trustee District Filter Changed\" and tostring(customDimensions.isDefault) != \"true\"),\n    DivisionActive = countif(name == \"Trustee District Filter Changed\" and toint(customMeasurements.divisionCount) > 0),\n    DivisionClears = countif(name == \"Trustee Division Filter Cleared\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "size": 0,
+        "title": "Division Filter Activity Over Time",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "DistrictModifications",
+              "label": "District Filter Modified",
+              "color": "blue"
+            },
+            {
+              "seriesName": "DivisionActive",
+              "label": "Events with Division Active",
+              "color": "green"
+            },
+            {
+              "seriesName": "DivisionClears",
+              "label": "Division Filter Cleared",
+              "color": "orange"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 0,
+              "options": {
+                "style": "decimal",
+                "useGrouping": true
+              }
+            }
+          }
+        }
+      },
+      "name": "division-filter-activity-trend"
+    },
+    {
+      "type": 1,
+      "content": {
         "json": "---\n## Chapter Filter Usage\nHow frequently users apply the chapter filter and what results they see."
       },
       "name": "chapter-filter-header"
@@ -391,9 +590,9 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"Trustee District Filter Changed\", \"Trustee District Filter Cleared\", \"Trustee Chapter Filter Changed\", \"Trustee Name Filter Changed\", \"Trustee Name Filter Cleared\")\n| summarize\n    DistrictModifications = countif(name == \"Trustee District Filter Changed\" and tostring(customDimensions.isDefault) != \"true\"),\n    DefaultClears = countif(name == \"Trustee District Filter Cleared\"),\n    ChapterModifications = countif(name == \"Trustee Chapter Filter Changed\"),\n    NameSearches = countif(name == \"Trustee Name Filter Changed\"),\n    NameSearchClears = countif(name == \"Trustee Name Filter Cleared\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"Trustee District Filter Changed\", \"Trustee District Filter Cleared\", \"Trustee Division Filter Cleared\", \"Trustee Chapter Filter Changed\", \"Trustee Name Filter Changed\", \"Trustee Name Filter Cleared\")\n| summarize\n    DistrictModifications = countif(name == \"Trustee District Filter Changed\" and tostring(customDimensions.isDefault) != \"true\"),\n    DefaultClears = countif(name == \"Trustee District Filter Cleared\"),\n    DivisionActive = countif(name == \"Trustee District Filter Changed\" and toint(customMeasurements.divisionCount) > 0),\n    DivisionClears = countif(name == \"Trustee Division Filter Cleared\"),\n    ChapterModifications = countif(name == \"Trustee Chapter Filter Changed\"),\n    NameSearches = countif(name == \"Trustee Name Filter Changed\"),\n    NameSearchClears = countif(name == \"Trustee Name Filter Cleared\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
         "size": 0,
-        "title": "Filter Activity Over Time (District + Chapter + Name)",
+        "title": "Filter Activity Over Time (District + Division + Chapter + Name)",
         "timeContextFromParameter": "TimeRange",
         "queryType": 0,
         "resourceType": "microsoft.insights/components",
@@ -411,6 +610,16 @@
               "seriesName": "DefaultClears",
               "label": "District Default Cleared",
               "color": "orange"
+            },
+            {
+              "seriesName": "DivisionActive",
+              "label": "Events with Division Active",
+              "color": "teal"
+            },
+            {
+              "seriesName": "DivisionClears",
+              "label": "Division Filter Cleared",
+              "color": "yellow"
             },
             {
               "seriesName": "ChapterModifications",
