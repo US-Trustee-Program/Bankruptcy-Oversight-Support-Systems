@@ -99,6 +99,7 @@
     "launchdarkly-react-client-sdk",
     "react-router-dom",
     "common",
-    "globals"
+    "globals",
+    "@stryker-mutator/api"
   ]
 }
