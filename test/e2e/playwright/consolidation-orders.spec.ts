@@ -62,7 +62,7 @@ test.describe('Consolidation Orders', () => {
       // Clicking the label did not seem to fire the click event on the checkbox input.
       await page
         .locator(
-          `button[data-testid="button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-${i}-click-target"]`,
+          `[data-testid="button-checkbox-case-selection-case-list-${pendingConsolidationOrder.id}-${i}-click-target"]`,
         )
         .click();
     }

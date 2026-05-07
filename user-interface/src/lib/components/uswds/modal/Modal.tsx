@@ -165,12 +165,9 @@ function Modal_(props: ModalProps, ref: React.Ref<ModalRefType>) {
               }
             }
           } else if (firstEl.classList.contains('usa-checkbox__input')) {
-            const inputLabel = firstEl.parentElement?.querySelector('label');
-            if (inputLabel) {
-              const labelButton = inputLabel.querySelector('button.usa-checkbox__label');
-              if (labelButton) {
-                firstEl = labelButton as HTMLElement;
-              }
+            const labelSpan = firstEl.parentElement?.querySelector('.usa-checkbox__label');
+            if (labelSpan) {
+              firstEl = labelSpan as HTMLElement;
             }
           }
         }
