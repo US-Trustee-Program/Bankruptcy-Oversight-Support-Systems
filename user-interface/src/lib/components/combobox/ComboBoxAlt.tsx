@@ -107,16 +107,13 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function clearFilter() {
     setFilter(null);
-    if (filterRef.current) {
-      filterRef.current.value = '';
-    }
   }
 
   function closeDropdown(shouldFocus: boolean = true) {
     setExpanded(false);
     clearFilter();
     if (shouldFocus) {
-      focusCombobox();
+      focusInput();
     }
     if (onClose) {
       onClose([...selectedMap.values()]);
@@ -127,6 +124,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setExpanded(true);
     setCurrentListItem(null);
     // Don't clear filter on open - let it be cleared when user starts typing
+    // Don't focus input here - let caller decide if focus is needed
   }
 
   function disable(shouldDisable: boolean) {
@@ -184,7 +182,8 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         targetX < boundingRect.x ||
         targetX > containerRight ||
         targetY < boundingRect.y ||
-        targetY > containerBottom
+        targetY > containerBottom ||
+        selectedMap.size === 0
       ) {
         closeDropdown(false);
       }
@@ -192,7 +191,11 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   }
 
   function getInputClassName(): string {
-    return 'usa-tooltip combo-box-input';
+    const classes = ['usa-tooltip', 'combo-box-input'];
+    if (overflowStrategy === 'ellipsis') {
+      classes.push('ellipsis');
+    }
+    return classes.join(' ');
   }
 
   function setListItemClass(_index: number, option: ComboOption) {
@@ -367,57 +370,68 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   function handleOnInputClick(ev: React.MouseEvent<HTMLInputElement>) {
     ev.currentTarget.focus();
-    ev.preventDefault();
-    ev.stopPropagation();
+    // Don't stopPropagation - let click bubble to container to trigger toggle
   }
 
-  function handleKeyDownOnToggleButton(ev: React.KeyboardEvent) {
+  const isAlphanumeric = (key: string) => /^[a-zA-Z0-9]$/.test(key);
+
+  function handleToggleButtonKeyDown(ev: React.KeyboardEvent) {
+    if (comboboxDisabled) {
+      return;
+    }
+
+    // Check for alphanumeric keys to open dropdown and start filtering
+    if (!expanded && isAlphanumeric(ev.key)) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      setToggleKey(ev.key);
+      handleToggleDropdown();
+    } else {
+      // For other keys, delegate to handleKeyDown
+      handleKeyDown(ev, 0);
+    }
+  }
+
+  function handleInputKeyDown(ev: React.KeyboardEvent) {
     if (comboboxDisabled) {
       return;
     }
 
     switch (ev.key) {
-      case 'Tab':
-        // Close dropdown and allow normal tab behavior
-        if (expanded) {
-          closeDropdown(false);
-          setCurrentListItem(null);
-        }
-        // Don't prevent default - let Tab move to next element naturally
+      case 'Enter':
+        // Enter toggles dropdown open/closed
+        handleToggleDropdown();
         break;
       case 'ArrowDown':
         if (!expanded) {
           // Closed: open dropdown
           handleToggleDropdown();
         } else {
-          // Open: move into list (navigate to first item)
+          // Open: delegate to handleKeyDown for navigation
+          handleKeyDown(ev, 0);
+        }
+        break;
+      case 'Escape':
+        if (expanded) {
           ev.preventDefault();
           ev.stopPropagation();
-          const newId = navigateList('down', -1, comboBoxListRef);
-          if (newId) {
-            setCurrentListItem(newId);
-          }
+          closeDropdown(true);
+          setCurrentListItem(null);
         }
         break;
-      case 'Enter':
-        // Toggle dropdown (open/close)
-        handleToggleDropdown();
-        break;
+      case 'Tab':
       case 'ArrowUp':
-        ev.preventDefault();
-        ev.stopPropagation();
-        // No action on ArrowUp from input (matches old ComboBox)
+        // Delegate to handleKeyDown
+        handleKeyDown(ev, 0);
         break;
-
       default:
-        if (!expanded && isAlphanumeric(ev.key)) {
-          setToggleKey(ev.key);
-          handleToggleDropdown();
+        // For other keys, if dropdown is open, delegate to handleKeyDown
+        if (expanded) {
+          handleKeyDown(ev, 0);
         }
+        break;
     }
   }
-
-  const isAlphanumeric = (key: string) => /^[a-zA-Z0-9]$/.test(key);
 
   function handleToggleDropdown() {
     if (comboboxDisabled) {
@@ -443,6 +457,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       closeDropdown();
     } else {
       openDropdown();
+      focusInput();
     }
   }
 
@@ -506,7 +521,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     clearSelections,
     disable,
     focusInput,
-    focus: focusCombobox,
+    focus: focusInput,
   }));
 
   // ========== JSX ==========
@@ -532,12 +547,14 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         </div>
       )}
       <div className="usa-combo-box">
-        <span id={`${comboBoxId}-instructions`} hidden>
+        <span id={`${comboBoxId}-filter-input-aria-description`} hidden>
           Enter text to filter options. Use up and down arrows to select a filtered item from the
           list.
         </span>
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
         <div
           className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''} ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
+          onClick={() => !comboboxDisabled && !expanded && openDropdown()}
         >
           <div className="combo-box-input-container" role="presentation">
             <Icon name="search"></Icon>
@@ -551,7 +568,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               aria-expanded={expanded}
               aria-controls={`${comboBoxId}-item-list`}
               aria-labelledby={comboBoxId + '-label'}
-              aria-describedby={`${comboBoxId}-instructions`}
+              aria-describedby={`${comboBoxId}-filter-input-aria-description`}
               aria-autocomplete="list"
               aria-activedescendant={currentListItem ?? ''}
               aria-live="off"
@@ -559,11 +576,12 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               value={filter !== null ? filter : selectedMap.size > 0 ? getSelectedLabel() : ''}
               placeholder={!expanded && selectedMap.size === 0 ? placeholder : undefined}
               onChange={handleInputFilter}
-              onKeyDown={handleKeyDownOnToggleButton}
+              onKeyDown={handleInputKeyDown}
               onFocus={handleOnInputFocus}
               onClick={handleOnInputClick}
               disabled={comboboxDisabled}
               autoComplete={'off'}
+              tabIndex={0}
               ref={filterRef}
             />
           </div>
@@ -573,7 +591,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             className="expand-button"
             uswdsStyle={UswdsButtonStyle.Unstyled}
             onClick={() => handleToggleDropdown()}
-            onKeyDown={(ev) => handleKeyDown(ev, 0)}
+            onKeyDown={handleToggleButtonKeyDown}
             disabled={comboboxDisabled}
             tabIndex={-1}
             type="button"
@@ -619,10 +637,12 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
                     aria-label={
-                      (option.isAriaDefault ? 'Default ' : '') +
+                      (option.isAriaDefault ? `Default ${singularLabel} ` : '') +
+                      (multiSelect ? 'multi-select' : 'single-select') +
+                      ' option: ' +
                       (ariaLabelPrefix ? ariaLabelPrefix + ' ' : '') +
                       option.label +
-                      (selectedMap.has(option.value) ? ', selected' : ', not selected')
+                      (selectedMap.has(option.value) ? ' selected' : ' unselected')
                     }
                   >
                     <span aria-hidden="true">

@@ -1,5 +1,5 @@
 import './TrusteeDistrictFilter.scss';
-import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBoxAlt';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
