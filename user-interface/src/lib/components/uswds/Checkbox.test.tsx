@@ -155,6 +155,22 @@ describe('Test Checkbox component', async () => {
     expect(span).toHaveAttribute('aria-checked', 'true');
   });
 
+  test('should expose disabled state to assistive technology and remove from tab order', () => {
+    renderWithProps({ id: 'test', disabled: true });
+    const span = screen.getByRole('checkbox');
+    expect(span).toHaveAttribute('aria-disabled', 'true');
+    expect(span).toHaveAttribute('tabindex', '-1');
+  });
+
+  test('should not toggle when disabled', async () => {
+    const checkboxOnClick = vi.fn();
+    renderWithProps({ onChange: checkboxOnClick, disabled: true });
+    const span = screen.getByRole('checkbox');
+    fireEvent.click(span, { detail: 1 });
+    fireEvent.keyUp(span, { key: ' ' });
+    expect(checkboxOnClick).not.toHaveBeenCalled();
+  });
+
   test('should ignore keyboard-initiated native clicks', async () => {
     const checkboxOnClick = vi.fn();
     renderWithProps({ onChange: checkboxOnClick });
