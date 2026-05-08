@@ -7,16 +7,17 @@ import { vi } from 'vitest';
 
 const comboboxId = 'test-combobox';
 
+// Test constants
+const DEFAULT_OPTION_COUNT = 25;
+const TEST_OPTION_LABEL_PREFIX = 'option ';
+const TEST_OPTION_VALUE_PREFIX = 'o';
+
 // Helper functions
-const getDefaultOptions = (count: number = 25): ComboOption[] => {
-  const defaultOptions: ComboOption[] = [];
-  for (let i = 0; i < count; i++) {
-    defaultOptions.push({
-      label: 'option ' + i,
-      value: 'o' + i,
-    });
-  }
-  return defaultOptions;
+const getDefaultOptions = (count: number = DEFAULT_OPTION_COUNT): ComboOption[] => {
+  return Array.from({ length: count }, (_, i) => ({
+    label: `${TEST_OPTION_LABEL_PREFIX}${i}`,
+    value: `${TEST_OPTION_VALUE_PREFIX}${i}`,
+  }));
 };
 
 async function toggleDropdown(id: string = comboboxId) {
@@ -258,31 +259,28 @@ describe('ComboBoxAlt', () => {
     test('The arrow icon on the toggle button should change directions depending on whether the dropdown list is open or closed', async () => {
       renderWithProps();
 
+      // Closed state should show expand_more icon
       const toggleIcon = document.querySelector('.expand-button svg use');
-      const attributeValue = toggleIcon?.getAttribute('xlink:href');
-      let containsValueMore = attributeValue?.indexOf('expand_more');
-      expect(containsValueMore).toBeGreaterThan(-1);
+      expect(toggleIcon).toHaveAttribute('xlink:href', expect.stringContaining('expand_more'));
 
+      // Open dropdown - should show expand_less icon
       await toggleDropdown();
       await waitFor(() => {
         const toggleIcon = document.querySelector('.expand-button svg use');
-        const attributeValue = toggleIcon?.getAttribute('xlink:href');
-        const containsValueLess = attributeValue?.indexOf('expand_less');
-        expect(containsValueLess).toBeGreaterThan(-1);
+        expect(toggleIcon).toHaveAttribute('xlink:href', expect.stringContaining('expand_less'));
       });
 
+      // Close again - should show expand_more icon
       await toggleDropdown();
       await waitFor(() => {
         const toggleIcon = document.querySelector('.expand-button svg use');
-        const attributeValue = toggleIcon?.getAttribute('xlink:href');
-        containsValueMore = attributeValue?.indexOf('expand_more');
-        expect(containsValueMore).toBeGreaterThan(-1);
+        expect(toggleIcon).toHaveAttribute('xlink:href', expect.stringContaining('expand_more'));
       });
     });
   });
 
   describe('Keyboard Navigation', () => {
-    test('Up and down arrow cursor keys should traverse the list. In multi-select mode, focus should return to the input field when using Up Arrow once the user reaches the top of the list. All list items with the hidden class should be skipped', async () => {
+    test('should traverse list items with down arrow key', async () => {
       const options = [
         { label: 'option1', value: 'option1' },
         { label: 'option4', value: 'option4' },
@@ -290,7 +288,6 @@ describe('ComboBoxAlt', () => {
       ];
 
       renderWithProps({ options });
-
       await toggleDropdownByKeystroke();
       expect(isDropdownClosed()).toBeFalsy();
 
@@ -309,18 +306,57 @@ describe('ComboBoxAlt', () => {
       expect(listItems[2]).toHaveFocus();
       expect(listItems[2]).toHaveAttribute('data-value', 'option5');
 
+      // At bottom - should stay on last item
       await userEvent.keyboard('{ArrowDown}');
-      expect(listItems[2]).toHaveAttribute('data-value', 'option5');
+      expect(listItems[2]).toHaveFocus();
+    });
 
+    test('should traverse list items with up arrow key', async () => {
+      const options = [
+        { label: 'option1', value: 'option1' },
+        { label: 'option4', value: 'option4' },
+        { label: 'option5', value: 'option5' },
+      ];
+
+      renderWithProps({ options });
+      await toggleDropdownByKeystroke();
+      await expectInputToHaveFocus();
+
+      // Navigate to last item
+      await userEvent.keyboard('{ArrowDown}');
+      await userEvent.keyboard('{ArrowDown}');
+      await userEvent.keyboard('{ArrowDown}');
+
+      const listItems = document.querySelectorAll('li');
+      expect(listItems[2]).toHaveFocus();
+
+      // Navigate back up
       await userEvent.keyboard('{ArrowUp}');
       expect(listItems[1]).toHaveFocus();
 
       await userEvent.keyboard('{ArrowUp}');
       expect(listItems[0]).toHaveFocus();
+    });
 
+    test('should return focus to input when pressing up arrow from first item in multi-select', async () => {
+      const options = [
+        { label: 'option1', value: 'option1' },
+        { label: 'option4', value: 'option4' },
+      ];
+
+      renderWithProps({ options });
+      await toggleDropdownByKeystroke();
+      await expectInputToHaveFocus();
+
+      await userEvent.keyboard('{ArrowDown}');
+      const listItems = document.querySelectorAll('li');
+      expect(listItems[0]).toHaveFocus();
+
+      // Press up from first item - should return to input
       await userEvent.keyboard('{ArrowUp}');
       await expectInputToHaveFocus();
 
+      // Press up again from input - should close dropdown
       await userEvent.keyboard('{ArrowUp}');
       expect(isDropdownClosed()).toBeTruthy();
     });
@@ -533,7 +569,10 @@ describe('ComboBoxAlt', () => {
       await toggleDropdown();
 
       await waitFor(() => {
-        expect(getClearAllButton()).toBeInTheDocument();
+        const clearButton = getClearAllButton();
+        expect(clearButton).toBeInTheDocument();
+        expect(clearButton).toBeVisible();
+        expect(clearButton).toBeEnabled();
       });
 
       expect(input.value).toEqual(optionToSelect1.selectedLabel);
@@ -1486,7 +1525,10 @@ describe('ComboBoxAlt', () => {
 
       await toggleDropdown(comboboxId);
 
-      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      const listbox = screen.getByRole('listbox');
+      expect(listbox).toBeInTheDocument();
+      expect(listbox).toBeVisible();
+      expect(listbox).toHaveAttribute('id', `${comboboxId}-item-list`);
 
       await toggleDropdown(comboboxId);
     });
@@ -1495,6 +1537,28 @@ describe('ComboBoxAlt', () => {
       renderWithProps({});
 
       expect(screen.getByRole('combobox')).toBeInTheDocument();
+    });
+
+    test('should handle dropdown positioning when bottomYPos is undefined', async () => {
+      renderWithProps({});
+
+      const comboBoxElement = document.querySelector(`#${comboboxId}`) as HTMLElement;
+      const originalGetBoundingClientRect =
+        comboBoxElement.getBoundingClientRect.bind(comboBoxElement);
+
+      comboBoxElement.getBoundingClientRect = vi.fn().mockReturnValue({
+        ...originalGetBoundingClientRect(),
+        top: window.innerHeight * 0.6,
+        bottom: undefined,
+      });
+
+      await toggleDropdown(comboboxId);
+
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+
+      const itemListContainer = document.querySelector('.item-list-container');
+      const style = itemListContainer?.getAttribute('style');
+      expect(style === null || !style.includes('bottom')).toBe(true);
     });
 
     test('should apply error styling when errorMessage is provided', () => {
@@ -1893,6 +1957,324 @@ describe('ComboBoxAlt', () => {
       });
 
       expect(onUpdateSelection).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('scrollToSelected Feature', () => {
+    test('should scroll to first selected item when scrollToSelected is true', async () => {
+      const options = getDefaultOptions(50);
+      const selections = [options[25]];
+      const mockScrollIntoView = vi.fn();
+
+      renderWithProps({ options, selections, scrollToSelected: true });
+      await toggleDropdown(comboboxId);
+
+      await waitFor(() => {
+        const selectedElement = document.querySelector(
+          `li[data-value="${options[25].value}"]`,
+        ) as HTMLElement;
+        expect(selectedElement).toBeInTheDocument();
+      });
+
+      const selectedElement = document.querySelector(
+        `li[data-value="${options[25].value}"]`,
+      ) as HTMLElement;
+      selectedElement.scrollIntoView = mockScrollIntoView;
+
+      await toggleDropdown(comboboxId);
+      await toggleDropdown(comboboxId);
+
+      await waitFor(() => {
+        expect(mockScrollIntoView).toHaveBeenCalledWith({ block: 'nearest', behavior: 'auto' });
+      });
+    });
+
+    test('should handle scrollToSelected gracefully when no selections exist', async () => {
+      const options = getDefaultOptions(50);
+      renderWithProps({ options, selections: [], scrollToSelected: true });
+      await toggleDropdown(comboboxId);
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+      expect(isDropdownOpen()).toBeTruthy();
+    });
+
+    test('should handle scrollToSelected when scrollIntoView is not available', async () => {
+      const options = getDefaultOptions(10);
+      const selections = [options[5]];
+      renderWithProps({ options, selections, scrollToSelected: true });
+      await toggleDropdown(comboboxId);
+
+      await waitFor(() => {
+        const selectedElement = document.querySelector(
+          `li[data-value="${options[5].value}"]`,
+        ) as HTMLElement;
+        expect(selectedElement).toBeInTheDocument();
+        delete (selectedElement as HTMLElement & { scrollIntoView?: unknown }).scrollIntoView;
+      });
+
+      await toggleDropdown(comboboxId);
+      await toggleDropdown(comboboxId);
+      expect(screen.getByRole('listbox')).toBeInTheDocument();
+    });
+
+    test('should not scroll when scrollToSelected is false', async () => {
+      const options = getDefaultOptions(25);
+      const selections = [options[15]];
+      const mockScrollIntoView = vi.fn();
+      renderWithProps({ options, selections, scrollToSelected: false });
+      await toggleDropdown(comboboxId);
+
+      await waitFor(() => {
+        const selectedElement = document.querySelector(
+          `li[data-value="${options[15].value}"]`,
+        ) as HTMLElement;
+        if (selectedElement) selectedElement.scrollIntoView = mockScrollIntoView;
+      });
+
+      expect(mockScrollIntoView).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Outside Click Boundary Detection', () => {
+    test('should close dropdown when clicking left of combobox', async () => {
+      renderWithProps();
+      await toggleDropdown(comboboxId);
+      expect(isDropdownOpen()).toBeTruthy();
+
+      const comboBoxElement = document.querySelector(`#${comboboxId}`) as HTMLElement;
+      const rect = comboBoxElement.getBoundingClientRect();
+      const clickEvent = new MouseEvent('mousedown', {
+        clientX: rect.x - 10,
+        clientY: rect.y + 10,
+        bubbles: true,
+      });
+      document.dispatchEvent(clickEvent);
+
+      await waitFor(() => {
+        expect(isDropdownClosed()).toBeTruthy();
+      });
+    });
+
+    test('should close dropdown when clicking right of combobox', async () => {
+      renderWithProps();
+      await toggleDropdown(comboboxId);
+      expect(isDropdownOpen()).toBeTruthy();
+
+      const comboBoxElement = document.querySelector(`#${comboboxId}`) as HTMLElement;
+      const rect = comboBoxElement.getBoundingClientRect();
+      const clickEvent = new MouseEvent('mousedown', {
+        clientX: rect.x + rect.width + 10,
+        clientY: rect.y + 10,
+        bubbles: true,
+      });
+      document.dispatchEvent(clickEvent);
+
+      await waitFor(() => {
+        expect(isDropdownClosed()).toBeTruthy();
+      });
+    });
+
+    test('should close dropdown when clicking above combobox', async () => {
+      renderWithProps();
+      await toggleDropdown(comboboxId);
+      expect(isDropdownOpen()).toBeTruthy();
+
+      const comboBoxElement = document.querySelector(`#${comboboxId}`) as HTMLElement;
+      const rect = comboBoxElement.getBoundingClientRect();
+      const clickEvent = new MouseEvent('mousedown', {
+        clientX: rect.x + 10,
+        clientY: rect.y - 10,
+        bubbles: true,
+      });
+      document.dispatchEvent(clickEvent);
+
+      await waitFor(() => {
+        expect(isDropdownClosed()).toBeTruthy();
+      });
+    });
+
+    test('should close dropdown when clicking below combobox', async () => {
+      renderWithProps();
+      await toggleDropdown(comboboxId);
+      expect(isDropdownOpen()).toBeTruthy();
+
+      const comboBoxElement = document.querySelector(`#${comboboxId}`) as HTMLElement;
+      const rect = comboBoxElement.getBoundingClientRect();
+      const clickEvent = new MouseEvent('mousedown', {
+        clientX: rect.x + 10,
+        clientY: rect.y + rect.height + 10,
+        bubbles: true,
+      });
+      document.dispatchEvent(clickEvent);
+
+      await waitFor(() => {
+        expect(isDropdownClosed()).toBeTruthy();
+      });
+    });
+
+    test('should close dropdown when clicking outside with no selections', async () => {
+      renderWithProps();
+      await toggleDropdown(comboboxId);
+      expect(isDropdownOpen()).toBeTruthy();
+
+      const otherInput = document.querySelector('.input1');
+      await userEvent.click(otherInput!);
+
+      await waitFor(() => {
+        expect(isDropdownClosed()).toBeTruthy();
+      });
+      expect(getClearAllButton()).not.toBeInTheDocument();
+    });
+
+    test('should not close dropdown when clicking inside combobox bounds', async () => {
+      renderWithProps();
+      await toggleDropdown(comboboxId);
+      expect(isDropdownOpen()).toBeTruthy();
+
+      const comboBoxElement = document.querySelector(`#${comboboxId}`) as HTMLElement;
+      const rect = comboBoxElement.getBoundingClientRect();
+      const clickEvent = new MouseEvent('mousedown', {
+        clientX: rect.x + rect.width / 2,
+        clientY: rect.y + rect.height / 2,
+        bubbles: true,
+      });
+      document.dispatchEvent(clickEvent);
+
+      expect(isDropdownOpen()).toBeTruthy();
+    });
+  });
+
+  describe('Complete User Journeys', () => {
+    test('should support complete multi-select workflow from keyboard', async () => {
+      const onUpdateSelection = vi.fn();
+      const options = getDefaultOptions(10);
+      renderWithProps({ options, onUpdateSelection });
+
+      const input = document.querySelector(`#${comboboxId}-combo-box-input`) as HTMLInputElement;
+      input.focus();
+      await userEvent.keyboard('{ArrowDown}');
+
+      await waitFor(() => {
+        expect(isDropdownOpen()).toBeTruthy();
+        expect(input).toHaveFocus();
+      });
+
+      await userEvent.keyboard('{ArrowDown}');
+      const firstItem = document.querySelectorAll('li[role="option"]')[0];
+      expect(firstItem).toHaveFocus();
+
+      await userEvent.keyboard(' ');
+      await waitFor(() => {
+        expect(onUpdateSelection).toHaveBeenCalledTimes(1);
+        expect(firstItem).toHaveClass('selected');
+      });
+
+      await userEvent.keyboard('{ArrowDown}');
+      const secondItem = document.querySelectorAll('li[role="option"]')[1];
+      expect(secondItem).toHaveFocus();
+
+      await userEvent.keyboard('{Enter}');
+      await waitFor(() => {
+        expect(onUpdateSelection).toHaveBeenCalledTimes(2);
+        expect(secondItem).toHaveClass('selected');
+      });
+
+      await userEvent.keyboard('{Escape}');
+      await waitFor(() => {
+        expect(isDropdownClosed()).toBeTruthy();
+        expect(input).toHaveFocus();
+      });
+
+      const clearButton = getClearAllButton();
+      expect(clearButton).toBeInTheDocument();
+
+      await userEvent.tab();
+      expect(clearButton).toHaveFocus();
+
+      await userEvent.keyboard('{Enter}');
+      await waitFor(() => {
+        expect(onUpdateSelection).toHaveBeenLastCalledWith([]);
+        expect(getClearAllButton()).not.toBeInTheDocument();
+      });
+    });
+
+    test('should support complete single-select workflow from mouse', async () => {
+      const onUpdateSelection = vi.fn();
+      const onClose = vi.fn();
+      const options = getDefaultOptions(5);
+
+      renderWithProps({ options, onUpdateSelection, onClose, multiSelect: false });
+
+      const toggleButton = document.querySelector(`#${comboboxId}-expand`);
+      await userEvent.click(toggleButton!);
+      await waitFor(() => {
+        expect(isDropdownOpen()).toBeTruthy();
+      });
+
+      const input = document.querySelector(`#${comboboxId}-combo-box-input`) as HTMLInputElement;
+      expect(input).toHaveFocus();
+      await userEvent.type(input, '2');
+
+      await waitFor(() => {
+        const listItems = document.querySelectorAll('li[role="option"]:not(.hidden)');
+        expect(listItems.length).toBeGreaterThan(0);
+      });
+
+      const listItems = document.querySelectorAll('li[role="option"]:not(.hidden)');
+      await userEvent.click(listItems[0]);
+
+      await waitFor(() => {
+        expect(isDropdownClosed()).toBeTruthy();
+      });
+
+      expect(onUpdateSelection).toHaveBeenCalledWith([
+        expect.objectContaining({ label: 'option 2' }),
+      ]);
+      expect(onClose).toHaveBeenCalledWith([expect.objectContaining({ label: 'option 2' })]);
+    });
+
+    test('should support filter, select, clear filter, verify selection persists workflow', async () => {
+      const onUpdateFilter = vi.fn();
+      const onUpdateSelection = vi.fn();
+      const options = [
+        { label: 'Apple', value: 'apple' },
+        { label: 'Apricot', value: 'apricot' },
+        { label: 'Banana', value: 'banana' },
+        { label: 'Cherry', value: 'cherry' },
+      ];
+
+      renderWithProps({ options, onUpdateFilter, onUpdateSelection });
+
+      await toggleDropdown(comboboxId);
+      const input = document.querySelector(`#${comboboxId}-combo-box-input`) as HTMLInputElement;
+      await userEvent.type(input, 'ap');
+
+      expect(onUpdateFilter).toHaveBeenCalledWith('a');
+      expect(onUpdateFilter).toHaveBeenCalledWith('ap');
+
+      await waitFor(() => {
+        const visibleItems = document.querySelectorAll('li[role="option"]:not(.hidden)');
+        expect(visibleItems.length).toBe(2);
+      });
+
+      const visibleItems = document.querySelectorAll('li[role="option"]:not(.hidden)');
+      await userEvent.click(visibleItems[0]);
+
+      await waitFor(() => {
+        expect(onUpdateSelection).toHaveBeenCalledWith([
+          expect.objectContaining({ value: 'apple' }),
+        ]);
+      });
+
+      await userEvent.clear(input);
+      expect(onUpdateFilter).toHaveBeenCalledWith('');
+
+      await waitFor(() => {
+        const allItems = document.querySelectorAll('li[role="option"]:not(.hidden)');
+        expect(allItems.length).toBe(4);
+      });
+
+      const selectedItem = document.querySelector(`li[data-value="apple"]`);
+      expect(selectedItem).toHaveClass('selected');
     });
   });
 });
