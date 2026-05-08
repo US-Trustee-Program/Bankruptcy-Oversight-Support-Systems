@@ -204,7 +204,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   }
 
   return (
-    <div className="trustee-form-screen">
+    <div className="trustee-internal-contact-form-screen">
       <form aria-label="Edit Trustee" data-testid="trustee-internal-form" onSubmit={handleSubmit}>
         <div className="form-container">
           <div className="form-column">

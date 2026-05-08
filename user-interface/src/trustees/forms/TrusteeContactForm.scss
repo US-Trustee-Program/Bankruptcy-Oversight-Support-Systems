@@ -1,4 +1,5 @@
-.trustee-form-screen {
+.trustee-internal-contact-form-screen,
+.trustee-public-contact-form-screen {
   h1.create-trustee {
     display: block;
     margin: 1rem 0 1.5rem 0;
@@ -24,9 +25,7 @@
           .usa-form-group.trustee-phone-input {
             max-width: 220px;
             width: 100%;
-            margin-right: 15px;
           }
-
           .usa-form-group.trustee-extension-input {
             max-width: 150px;
             width: 100%;
@@ -56,14 +55,13 @@
 }
 
 @media screen and (max-width: 1023px) {
-  .trustee-form-screen form {
+  .trustee-internal-contact-form-screen form,
+.trustee-public-contact-form-screen form {
     .form-container {
       .form-column {
         min-width: 200px;
-
         .field-group {
           gap: 0;
-
           .usa-form-group.trustee-zip-input,
           .usa-form-group.trustee-phone-input,
           .usa-form-group.trustee-extension-input {
@@ -76,7 +74,8 @@
 }
 
 @media screen and (max-width: 599px) {
-  .trustee-form-screen form {
+  .trustee-internal-contact-form-screen form,
+.trustee-public-contact-form-screen form {
     .form-container {
       flex-direction: column;
       gap: 0;

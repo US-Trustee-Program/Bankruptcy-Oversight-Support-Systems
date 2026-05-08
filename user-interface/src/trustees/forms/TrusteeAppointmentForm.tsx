@@ -575,7 +575,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   }
 
   return (
-    <div className="trustee-form-screen">
+    <div className="trustee-appointment-form-screen">
       <form
         aria-label={isEditMode ? 'Edit Trustee Appointment' : 'Add Trustee Appointment'}
         data-testid="trustee-appointment-form"
