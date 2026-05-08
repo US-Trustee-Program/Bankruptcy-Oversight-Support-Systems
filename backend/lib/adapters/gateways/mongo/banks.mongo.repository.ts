@@ -42,6 +42,15 @@ export class BanksMongoRepository extends BaseMongoRepository implements BanksRe
     BanksMongoRepository.dropInstance();
   }
 
+  async getBank(id: string): Promise<BankProfile> {
+    const query = doc('id').equals(id);
+    try {
+      return await this.getAdapter<BankProfile>().findOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bank.');
+    }
+  }
+
   async getBanks(): Promise<BankProfile[]> {
     const query = doc('documentType').equals('BANK_PROFILE');
     try {
@@ -61,6 +70,16 @@ export class BanksMongoRepository extends BaseMongoRepository implements BanksRe
       return await this.getAdapter<BankProfile>().findOne(query);
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to create bank.');
+    }
+  }
+
+  async updateBank(id: string, bank: BankProfile): Promise<BankProfile> {
+    const query = doc('id').equals(id);
+    try {
+      await this.getAdapter<BankProfile>().replaceOne(query, bank);
+      return await this.getAdapter<BankProfile>().findOne(query);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to update bank.');
     }
   }
 

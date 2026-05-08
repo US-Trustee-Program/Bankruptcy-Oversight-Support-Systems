@@ -17,6 +17,42 @@ export class BanksUseCase {
     return this.repository.getBanks();
   }
 
+  async getBank(id: string): Promise<BankProfile> {
+    return this.repository.getBank(id);
+  }
+
+  async updateBank(
+    id: string,
+    input: { name: string; status: 'active' | 'inactive' },
+  ): Promise<BankProfile> {
+    const userRef = getCamsUserReference(this.context.session.user);
+    const existing = await this.repository.getBank(id);
+
+    const bankData: BankProfile = {
+      ...existing,
+      name: input.name,
+      status: input.status,
+      updatedOn: new Date().toISOString(),
+      updatedBy: userRef,
+    };
+
+    const updated = await this.repository.updateBank(id, bankData);
+
+    await this.repository.createBankAuditRecord(
+      createAuditRecord(
+        {
+          documentType: 'AUDIT_BANK',
+          bankId: id,
+          before: existing,
+          after: updated,
+        },
+        userRef,
+      ),
+    );
+
+    return updated;
+  }
+
   async createBank(input: { name: string }): Promise<BankProfile> {
     const userRef = getCamsUserReference(this.context.session.user);
 
