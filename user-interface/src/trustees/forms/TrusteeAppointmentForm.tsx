@@ -589,7 +589,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         </div>
 
         {validationError && (
-          <div ref={validationAlertRef} tabIndex={-1}>
+          <div ref={validationAlertRef} tabIndex={-1} className="trustee-error-alert-form-screen">
             <Alert
               type={UswdsAlertStyle.Error}
               inline={true}

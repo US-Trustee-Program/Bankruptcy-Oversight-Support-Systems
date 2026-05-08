@@ -317,15 +317,17 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
           </div>
         </div>
 
-        <Alert
-          role="alert"
-          className="form-field-warning"
-          type={UswdsAlertStyle.Error}
-          inline={true}
-          slim={false}
-          ref={partialAddressAlertRef}
-          message={saveAlert ?? ''}
-        />
+        <div className="trustee-error-alert-form-screen">
+          <Alert
+            role="alert"
+            className="form-field-warning"
+            type={UswdsAlertStyle.Error}
+            inline={true}
+            slim={false}
+            ref={partialAddressAlertRef}
+            message={saveAlert ?? ''}
+          />
+        </div>
         <div className="usa-button-group">
           <Button id="submit-button" type="submit">
             {isSubmitting ? 'Saving…' : 'Save'}
