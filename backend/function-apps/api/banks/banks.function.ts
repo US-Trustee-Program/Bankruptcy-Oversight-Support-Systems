@@ -42,5 +42,5 @@ app.http('banks', {
   methods: ['GET', 'POST'],
   authLevel: 'anonymous',
   handler,
-  route: 'banks/{bankId?}',
+  route: 'banks',
 });

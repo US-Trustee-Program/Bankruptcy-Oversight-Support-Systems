@@ -2842,8 +2842,19 @@ async function getBanks() {
   };
 }
 
-async function createBank(_ignore: Pick<BankProfile, 'name'>) {
-  return;
+async function createBank(data: Pick<BankProfile, 'name'>) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: crypto.randomUUID(),
+      documentType: 'BANK_PROFILE' as const,
+      name: data.name,
+      status: 'active' as const,
+      updatedOn: now,
+      updatedBy: mockUser,
+    } as BankProfile,
+  };
 }
 
 async function postCaseReload(_caseId: string) {
