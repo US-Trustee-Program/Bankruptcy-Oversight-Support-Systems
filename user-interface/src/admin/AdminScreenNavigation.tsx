@@ -7,6 +7,7 @@ export enum AdminNavState {
   PRIVILEGED_IDENTITY,
   BANKRUPTCY_SOFTWARE,
   CASE_RELOAD,
+  BANKS,
 }
 
 export function setCurrentAdminNav(activeNav: AdminNavState, stateToCheck: AdminNavState): string {
@@ -51,6 +52,17 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             title="Manage bankruptcy software"
           >
             Bankruptcy Software
+          </NavLink>
+        </li>
+        <li className="usa-sidenav__item">
+          <NavLink
+            to="/admin/banks"
+            data-testid="banks-nav-link"
+            className={'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKS)}
+            onClick={() => setActiveNav(AdminNavState.BANKS)}
+            title="Manage banks"
+          >
+            Banks
           </NavLink>
         </li>
         <li className="usa-sidenav__item">
