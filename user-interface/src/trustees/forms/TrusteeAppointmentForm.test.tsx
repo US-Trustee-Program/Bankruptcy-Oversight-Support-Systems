@@ -1448,4 +1448,84 @@ describe('TrusteeAppointmentForm Tests', () => {
       });
     });
   });
+
+  describe('Accessibility Enhancements', () => {
+    beforeEach(() => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-management': true,
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+    });
+
+    test('should move focus to validation error when overlap is detected', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [mockActiveAppointment],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      await selectDistrict(userEvent, 'District of Alaska');
+      await selectChapter(userEvent, chapter.seven);
+      await selectAppointmentType(userEvent, 'Panel');
+
+      await waitFor(() => {
+        expect(screen.getByText(/An active appointment already exists/i)).toBeInTheDocument();
+      });
+
+      // Verify focus moved to the validation alert container
+      await waitFor(() => {
+        const alertContainer = screen.getByRole('alert').closest('[tabindex="-1"]');
+        expect(alertContainer).not.toBeNull();
+        expect(document.activeElement).toBe(alertContainer);
+      });
+    });
+
+    test('should announce "All Divisions" via live region when district is selected', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      await selectDistrict(userEvent, 'District of Alaska');
+
+      // Verify live region contains the announcement
+      await waitFor(() => {
+        const liveRegion = screen.getByRole('status');
+        expect(liveRegion).toHaveTextContent('All Divisions selected for District of Alaska');
+      });
+    });
+
+    test('should show dynamic ariaDescription based on district selection state', async () => {
+      renderWithProps({
+        trusteeId: TEST_TRUSTEE_ID,
+        existingAppointments: [],
+      });
+
+      await waitFor(() => {
+        expect(document.querySelector('#district')).toBeInTheDocument();
+      });
+
+      // Before district is selected: division should indicate to select a district first
+      const divisionHint = document.querySelector('#division-hint');
+      expect(divisionHint).toHaveTextContent(
+        'Select a district first to enable division selection',
+      );
+
+      // After selecting a district: should include the district name
+      await selectDistrict(userEvent, 'District of Alaska');
+
+      await waitFor(() => {
+        expect(divisionHint).toHaveTextContent(
+          'Divisions where this trustee will be assigned in District of Alaska',
+        );
+      });
+    });
+  });
 });
