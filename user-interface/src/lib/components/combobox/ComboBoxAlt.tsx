@@ -22,8 +22,6 @@ export type ComboOption<T = string> = {
   isAriaDefault?: boolean;
 };
 
-export type ComboOptionList<T = string> = ComboOption<T> | Array<ComboOption<T>>;
-
 type InputProps = JSX.IntrinsicElements['input'] &
   JSX.IntrinsicElements['select'] &
   PropsWithChildren;
