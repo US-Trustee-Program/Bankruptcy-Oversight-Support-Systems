@@ -575,7 +575,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   }
 
   return (
-    <div className="trustee-appointment-form-screen">
+    <div className="appointment-trustee-form-screen">
       <form
         aria-label={isEditMode ? 'Edit Trustee Appointment' : 'Add Trustee Appointment'}
         data-testid="trustee-appointment-form"
@@ -589,7 +589,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         </div>
 
         {validationError && (
-          <div ref={validationAlertRef} tabIndex={-1} className="trustee-error-alert-form-screen">
+          <div ref={validationAlertRef} tabIndex={-1} className="error-alert-trustee-form-screen">
             <Alert
               type={UswdsAlertStyle.Error}
               inline={true}

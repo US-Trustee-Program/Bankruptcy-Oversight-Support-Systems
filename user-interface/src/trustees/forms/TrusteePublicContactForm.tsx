@@ -260,7 +260,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   }
 
   return (
-    <div className="trustee-public-contact-form-screen">
+    <div className="public-contact-trustee-form-screen">
       <div className="form-header">
         {isCreate && (
           <h1 className="text-no-wrap display-inline-block margin-right-1 create-trustee">

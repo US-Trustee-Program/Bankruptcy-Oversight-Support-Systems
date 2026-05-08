@@ -204,7 +204,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   }
 
   return (
-    <div className="trustee-internal-contact-form-screen">
+    <div className="internal-contact-trustee-form-screen">
       <form aria-label="Edit Trustee" data-testid="trustee-internal-form" onSubmit={handleSubmit}>
         <div className="form-container">
           <div className="form-column">
@@ -317,7 +317,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
           </div>
         </div>
 
-        <div className="trustee-error-alert-form-screen">
+        <div className="error-alert-trustee-form-screen">
           <Alert
             role="alert"
             className="form-field-warning"
