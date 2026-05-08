@@ -28,6 +28,9 @@ export function AdminScreen() {
     if (location.pathname.includes('/admin/case-reload')) {
       return AdminNavState.CASE_RELOAD;
     }
+    if (location.pathname.includes('/admin/banks')) {
+      return AdminNavState.BANKS;
+    }
     return AdminNavState.UNKNOWN;
   };
 
@@ -59,7 +62,7 @@ export function AdminScreen() {
             <div className="grid-col-10">
               <Routes>
                 <Route path="privileged-identity" element={<PrivilegedIdentity />} />
-                <Route path="banks/*" element={<Banks />} />
+                <Route path="banks" element={<Banks />} />
                 <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
                 <Route path="case-reload" element={<CaseReload />} />
                 <Route path="*" element={<div data-testid={'no-admin-panel-selected'} />} />

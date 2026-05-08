@@ -88,4 +88,10 @@ describe('Admin screen tests', () => {
     renderAtPath('/admin/banks');
     expect(screen.getByTestId('mocked-banks')).toBeInTheDocument();
   });
+
+  test('should select banks nav when path matches', () => {
+    renderAtPath('/admin/banks');
+    const navLink = screen.getByTestId('banks-nav-link');
+    expect(navLink).toHaveClass('usa-current');
+  });
 });

@@ -5,6 +5,7 @@ import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
 import { ModalRefType } from '@/lib/components/uswds/modal/modal-refs';
 import { BankProfile } from '@common/cams/banks';
 import Api2 from '@/lib/models/api2';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
 
 export type AddBankModalRef = {
   show: () => void;
@@ -56,7 +57,7 @@ export const AddBankModal = forwardRef<AddBankModalRef, AddBankModalProps>(funct
       modalRef.current?.hide();
       alert?.success('Bank added successfully.');
     } catch (error) {
-      console.error(error);
+      getAppInsights().appInsights.trackException({ exception: error as Error });
       alert?.error('Failed to add bank. Please try again.');
     }
   }
