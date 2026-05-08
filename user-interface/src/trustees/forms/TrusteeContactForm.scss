@@ -1,12 +1,10 @@
-.trustee-error-alert-form-screen {
+.error-alert-trustee-form-screen {
   .usa-alert-container {
     margin-left: 0;
   }
 }
 
-.trustee-appointment-form-screen,
-.trustee-internal-contact-form-screen,
-.trustee-public-contact-form-screen {
+[class$="-trustee-form-screen"]:not(.error-alert-trustee-form-screen) {
   h1.create-trustee {
     display: block;
     margin: 1rem 0 1.5rem 0;
@@ -62,9 +60,7 @@
 }
 
 @media screen and (max-width: 1023px) {
-  .trustee-appointment-form-screen form,
-  .trustee-internal-contact-form-screen form,
-  .trustee-public-contact-form-screen form {
+  [class$="-trustee-form-screen"]:not(.error-alert-trustee-form-screen) form {
     .form-container {
       .form-column {
         min-width: 200px;
@@ -82,9 +78,7 @@
 }
 
 @media screen and (max-width: 599px) {
-  .trustee-appointment-form-screen form,
-  .trustee-internal-contact-form-screen form,
-  .trustee-public-contact-form-screen form {
+  [class$="-trustee-form-screen"]:not(.error-alert-trustee-form-screen) form {
     .form-container {
       flex-direction: column;
       gap: 0;

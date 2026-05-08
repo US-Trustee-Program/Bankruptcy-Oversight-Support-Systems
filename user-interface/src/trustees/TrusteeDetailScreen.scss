@@ -4,11 +4,7 @@
   }
 }
 .trustee-detail-screen,
-.trustee-appointment-form-screen,
-.trustee-assistant-form-screen,
-.trustee-internal-contact-form-screen,
-.trustee-public-contact-form-screen,
-.trustee-edit-appointment-form-screen {
+[class$="-trustee-form-screen"] {
   .field-group {
     .usa-form-group {
       margin-top: 0;
