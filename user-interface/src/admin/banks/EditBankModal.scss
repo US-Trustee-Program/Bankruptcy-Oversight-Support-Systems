@@ -1,0 +1,7 @@
+@use '@/styles/abstracts/general';
+
+.status-radio-group {
+  legend {
+    @include general.visually-hidden;
+  }
+}

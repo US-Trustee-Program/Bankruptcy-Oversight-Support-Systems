@@ -489,6 +489,19 @@ describe('_Api2 functions', async () => {
     expect(postSpy).toHaveBeenCalledWith('/banks', bank, {});
   });
 
+  test('should call api.get function when calling getBank', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: {} });
+    api2.default.getBank('bank-1');
+    expect(getSpy).toHaveBeenCalledWith('/banks/bank-1', {});
+  });
+
+  test('should call api.put function when calling updateBank', () => {
+    const putSpy = vi.spyOn(api.default, 'put').mockResolvedValue({ data: {} });
+    const update = { name: 'Updated', status: 'inactive' as const };
+    api2.default.updateBank('bank-1', update);
+    expect(putSpy).toHaveBeenCalledWith('/banks/bank-1', update, {});
+  });
+
   test('should call api.post function when calling postBankruptcySoftware', () => {
     const postSpy = vi
       .spyOn(api.default, 'post')

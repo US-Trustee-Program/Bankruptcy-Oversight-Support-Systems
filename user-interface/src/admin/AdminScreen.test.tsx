@@ -19,6 +19,9 @@ vi.mock('./case-reload/CaseReload', () => ({
 vi.mock('./banks/Banks', () => ({
   Banks: () => <div data-testid="mocked-banks" />,
 }));
+vi.mock('./banks/BankDetail', () => ({
+  BankDetail: () => <div data-testid="mocked-bank-detail" />,
+}));
 
 describe('Admin screen tests', () => {
   beforeEach(async () => {
@@ -99,5 +102,15 @@ describe('Admin screen tests', () => {
     renderAtPath('/admin/banks');
     const navLink = screen.getByTestId('banks-nav-link');
     expect(navLink).toHaveClass('usa-current');
+  });
+
+  test('should render BankDetail component when navigating to /admin/banks/:bankId', () => {
+    renderAtPath('/admin/banks/bank-1');
+    expect(screen.getByTestId('mocked-bank-detail')).toBeInTheDocument();
+  });
+
+  test('should not show admin nav when viewing bank detail', () => {
+    renderAtPath('/admin/banks/bank-1');
+    expect(screen.queryByTestId('banks-nav-link')).not.toBeInTheDocument();
   });
 });

@@ -71,6 +71,78 @@ describe('BanksController', () => {
     });
   });
 
+  describe('handleGetOne', () => {
+    test('should return 200 with single bank for SuperUser', async () => {
+      context.request.params = { bankId: 'bank-1' };
+      vi.spyOn(BanksUseCase.prototype, 'getBank').mockResolvedValue(mockBanks[0]);
+
+      const result = await controller.handleGetOne(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data).toEqual(mockBanks[0]);
+    });
+
+    test('should throw ForbiddenError when user lacks SuperUser role', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request.params = { bankId: 'bank-1' };
+
+      await expect(controller.handleGetOne(context)).rejects.toThrow(
+        expect.objectContaining({ status: 403 }),
+      );
+    });
+  });
+
+  describe('handlePut', () => {
+    test('should return 200 with updated bank for SuperUser', async () => {
+      const updatedBank: BankProfile = { ...mockBanks[0], name: 'Updated', status: 'inactive' };
+      context.request.params = { bankId: 'bank-1' };
+      context.request.body = { name: 'Updated', status: 'inactive' };
+      vi.spyOn(BanksUseCase.prototype, 'updateBank').mockResolvedValue(updatedBank);
+
+      const result = await controller.handlePut(context);
+
+      expect(result.statusCode).toBe(200);
+      expect(result.body.data).toEqual(updatedBank);
+    });
+
+    test('should throw ForbiddenError when user lacks SuperUser role', async () => {
+      context.session.user.roles = [CamsRole.TrialAttorney];
+      context.request.params = { bankId: 'bank-1' };
+      context.request.body = { name: 'Updated', status: 'active' };
+
+      await expect(controller.handlePut(context)).rejects.toThrow(
+        expect.objectContaining({ status: 403 }),
+      );
+    });
+
+    test('should throw BadRequestError when name is missing', async () => {
+      context.request.params = { bankId: 'bank-1' };
+      context.request.body = { status: 'active' };
+
+      await expect(controller.handlePut(context)).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when status is invalid', async () => {
+      context.request.params = { bankId: 'bank-1' };
+      context.request.body = { name: 'Bank', status: 'unknown' };
+
+      await expect(controller.handlePut(context)).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+
+    test('should throw BadRequestError when body is null', async () => {
+      context.request.params = { bankId: 'bank-1' };
+      context.request.body = null;
+
+      await expect(controller.handlePut(context)).rejects.toThrow(
+        expect.objectContaining({ status: 400 }),
+      );
+    });
+  });
+
   describe('handlePost', () => {
     test('should return 201 with created bank for SuperUser', async () => {
       context.request.body = { name: 'New Bank' };

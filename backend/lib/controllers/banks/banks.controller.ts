@@ -24,6 +24,38 @@ export class BanksController {
     });
   }
 
+  async handleGetOne(context: ApplicationContext): Promise<CamsHttpResponseInit<BankProfile>> {
+    this.requireSuperUser(context);
+    const { bankId } = context.request.params;
+    const bank = await this.useCase.getBank(bankId);
+    return httpSuccess({
+      statusCode: 200,
+      body: { meta: { self: context.request.url }, data: bank },
+    });
+  }
+
+  async handlePut(context: ApplicationContext): Promise<CamsHttpResponseInit<BankProfile>> {
+    this.requireSuperUser(context);
+    const { bankId } = context.request.params;
+    const body = context.request.body as { name?: string; status?: string } | null;
+    if (!body || !body.name || !body.name.trim()) {
+      throw new BadRequestError(MODULE_NAME, { message: 'Bank name is required.' });
+    }
+    if (body.status !== 'active' && body.status !== 'inactive') {
+      throw new BadRequestError(MODULE_NAME, {
+        message: 'Bank status must be active or inactive.',
+      });
+    }
+    const bank = await this.useCase.updateBank(bankId, {
+      name: body.name.trim(),
+      status: body.status,
+    });
+    return httpSuccess({
+      statusCode: 200,
+      body: { meta: { self: context.request.url }, data: bank },
+    });
+  }
+
   async handlePost(context: ApplicationContext): Promise<CamsHttpResponseInit<BankProfile>> {
     this.requireSuperUser(context);
     const body = context.request.body as { name?: string } | null;

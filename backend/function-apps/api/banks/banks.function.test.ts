@@ -11,11 +11,15 @@ import {
 import { BanksController } from '../../../lib/controllers/banks/banks.controller';
 import { BankProfile } from '@common/cams/banks';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 
 describe('Banks Function tests', () => {
   let context: InvocationContext;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const camsContext = await createMockApplicationContext();
+    camsContext.session = MockData.getCamsSession();
+    vi.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
     vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
       MockData.getCamsSession(),
     );
@@ -60,6 +64,39 @@ describe('Banks Function tests', () => {
       { statusCode: 201 },
     );
     vi.spyOn(BanksController.prototype, 'handlePost').mockResolvedValue(camsHttpResponse);
+
+    const response = await handler(request, context);
+
+    expect(response).toEqual(azureHttpResponse);
+  });
+
+  test('should return 200 with single bank for GET /banks/{bankId}', async () => {
+    const bank = mockBanks[0];
+    const request = createMockAzureFunctionRequest({
+      method: 'GET',
+      params: { bankId: 'bank-1' },
+    });
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<BankProfile>({
+      data: bank,
+    });
+    vi.spyOn(BanksController.prototype, 'handleGetOne').mockResolvedValue(camsHttpResponse);
+
+    const response = await handler(request, context);
+
+    expect(response).toEqual(azureHttpResponse);
+  });
+
+  test('should return 200 with updated bank for PUT /banks/{bankId}', async () => {
+    const updated = { ...mockBanks[0], name: 'Updated', status: 'inactive' as const };
+    const request = createMockAzureFunctionRequest({
+      method: 'PUT',
+      params: { bankId: 'bank-1' },
+      body: { name: 'Updated', status: 'inactive' },
+    });
+    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<BankProfile>({
+      data: updated,
+    });
+    vi.spyOn(BanksController.prototype, 'handlePut').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 

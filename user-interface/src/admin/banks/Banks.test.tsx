@@ -91,11 +91,11 @@ describe('Banks component', () => {
     });
   });
 
-  test('should render each bank name as plain text', async () => {
+  test('should render each bank name as a link to its detail page', async () => {
     renderComponent();
     await waitFor(() => {
-      expect(screen.getByText('Alpha Bank')).toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: 'Alpha Bank' })).not.toBeInTheDocument();
+      const link = screen.getByRole('link', { name: 'Alpha Bank' });
+      expect(link).toHaveAttribute('href', '/admin/banks/bank-1');
     });
   });
 
