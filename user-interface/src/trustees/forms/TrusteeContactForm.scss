@@ -1,3 +1,4 @@
+.trustee-appointment-form-screen,
 .trustee-internal-contact-form-screen,
 .trustee-public-contact-form-screen {
   h1.create-trustee {
@@ -55,8 +56,9 @@
 }
 
 @media screen and (max-width: 1023px) {
+  .trustee-appointment-form-screen form,
   .trustee-internal-contact-form-screen form,
-.trustee-public-contact-form-screen form {
+  .trustee-public-contact-form-screen form {
     .form-container {
       .form-column {
         min-width: 200px;
@@ -74,8 +76,9 @@
 }
 
 @media screen and (max-width: 599px) {
+  .trustee-appointment-form-screen form,
   .trustee-internal-contact-form-screen form,
-.trustee-public-contact-form-screen form {
+  .trustee-public-contact-form-screen form {
     .form-container {
       flex-direction: column;
       gap: 0;
