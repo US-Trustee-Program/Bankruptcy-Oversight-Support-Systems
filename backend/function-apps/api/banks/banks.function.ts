@@ -18,8 +18,8 @@ export default async function handler(
       request,
     });
 
-    const controller = new BanksController(context);
     context.session = await ContextCreator.getApplicationContextSession(context);
+    const controller = new BanksController(context);
 
     const method = request.method;
     let responseBody;
