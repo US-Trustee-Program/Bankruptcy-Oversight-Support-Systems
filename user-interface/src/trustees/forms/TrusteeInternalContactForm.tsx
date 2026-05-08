@@ -317,7 +317,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
           </div>
         </div>
 
-        <div className="error-alert-trustee-form-screen">
+        <div className="trustee-form-error-wrapper">
           <Alert
             role="alert"
             className="form-field-warning"
