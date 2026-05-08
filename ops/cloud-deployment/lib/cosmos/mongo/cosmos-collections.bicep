@@ -515,3 +515,33 @@ resource trusteeProfessionalIdsCollection 'Microsoft.DocumentDB/databaseAccounts
     }
   }
 }
+
+resource banksCollection 'Microsoft.DocumentDB/databaseAccounts/mongodbDatabases/collections@2023-11-15' = {
+  parent: database
+  name: 'banks'
+  properties: {
+    resource: {
+      id: 'banks'
+      shardKey: {
+        documentType: 'Hash'
+      }
+      indexes: [
+        {
+          key: {
+            keys: ['_id']
+          }
+        }
+        {
+          key: {
+            keys: ['documentType']
+          }
+        }
+        {
+          key: {
+            keys: ['name']
+          }
+        }
+      ]
+    }
+  }
+}

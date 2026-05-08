@@ -1,3 +1,4 @@
+import './Banks.scss';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
@@ -48,7 +49,7 @@ export function Banks() {
 
   return (
     <div className="banks-admin-panel" data-testid="banks-panel">
-      <h2>Banks</h2>
+      <h2 className="screen-reader-only">Banks</h2>
       {!isLoaded && <LoadingSpinner caption="Loading..." />}
       {isLoaded && loadError && (
         <Alert
@@ -71,22 +72,26 @@ export function Banks() {
               </Button>
             </div>
           </div>
-          <CamsTable aria-label="Banks" data-testid="banks-table">
-            <CamsTableHeader>
-              <CamsTableHeaderCell>Bank name</CamsTableHeaderCell>
-              <CamsTableHeaderCell>Status</CamsTableHeaderCell>
-            </CamsTableHeader>
-            <CamsTableBody>
-              {banks.map((bank) => (
-                <CamsTableRow key={bank.id}>
-                  <CamsTableCell>
-                    <Link to={`/admin/banks/${bank.id}`}>{bank.name}</Link>
-                  </CamsTableCell>
-                  <CamsTableCell>{bank.status === 'active' ? 'Active' : 'Inactive'}</CamsTableCell>
-                </CamsTableRow>
-              ))}
-            </CamsTableBody>
-          </CamsTable>
+          <div className="banks-table-container">
+            <CamsTable aria-label="Banks" data-testid="banks-table">
+              <CamsTableHeader>
+                <CamsTableHeaderCell>Bank name</CamsTableHeaderCell>
+                <CamsTableHeaderCell className="banks-table-status-col">Status</CamsTableHeaderCell>
+              </CamsTableHeader>
+              <CamsTableBody>
+                {banks.map((bank) => (
+                  <CamsTableRow key={bank.id}>
+                    <CamsTableCell>
+                      <Link to={`/admin/banks/${bank.id}`}>{bank.name}</Link>
+                    </CamsTableCell>
+                    <CamsTableCell>
+                      {bank.status === 'active' ? 'Active' : 'Inactive'}
+                    </CamsTableCell>
+                  </CamsTableRow>
+                ))}
+              </CamsTableBody>
+            </CamsTable>
+          </div>
         </>
       )}
       <AddBankModal ref={addBankModalRef} modalId="add-bank-modal" onSuccess={handleBankAdded} />

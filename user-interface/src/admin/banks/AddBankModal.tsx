@@ -89,7 +89,7 @@ export const AddBankModal = forwardRef<AddBankModalRef, AddBankModalProps>(funct
         <div>
           <Input
             id={`${modalId}-bank-name`}
-            label="Bank Name *"
+            label="Bank Name"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
