@@ -613,7 +613,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             <ul
               id={`${comboBoxId}-item-list`}
               role="listbox"
-              aria-label={`${label} options`}
+              aria-label={`${label} ${multiSelect ? 'multi-select' : 'single-select'} options`}
               aria-multiselectable={multiSelect === true ? 'true' : 'false'}
               aria-live="off"
               ref={comboBoxListRef}
@@ -635,12 +635,10 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
                     aria-label={
-                      (option.isAriaDefault ? `Default ${singularLabel} ` : '') +
-                      (multiSelect ? 'multi-select' : 'single-select') +
-                      ' option: ' +
+                      (option.isAriaDefault ? 'Default ' : '') +
                       (ariaLabelPrefix ? ariaLabelPrefix + ' ' : '') +
                       option.label +
-                      (selectedMap.has(option.value) ? ' selected' : ' unselected')
+                      (selectedMap.has(option.value) ? ', selected' : ', not selected')
                     }
                   >
                     <span aria-hidden="true">

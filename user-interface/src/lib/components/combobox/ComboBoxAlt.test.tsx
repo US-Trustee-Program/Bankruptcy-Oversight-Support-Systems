@@ -637,56 +637,56 @@ describe('ComboBoxAlt', () => {
         multiSelect: false,
         ariaLabelPrefix: '',
         option: { label: 'theThing', value: '0', isAriaDefault: false },
-        expected: 'single-select option: theThing',
+        expected: 'theThing',
       },
       {
         testName: 'single select with default',
         multiSelect: false,
         ariaLabelPrefix: '',
         option: { label: 'theThing', value: '0', isAriaDefault: true },
-        expected: 'Default thing single-select option: theThing',
+        expected: 'Default theThing',
       },
       {
         testName: 'single select with default and aria label prefix',
         multiSelect: false,
         ariaLabelPrefix: 'prefix',
         option: { label: 'theThing', value: '0', isAriaDefault: true },
-        expected: 'Default thing single-select option: prefix theThing',
+        expected: 'Default prefix theThing',
       },
       {
         testName: 'single select without default and aria label prefix',
         multiSelect: false,
         ariaLabelPrefix: 'prefix',
         option: { label: 'theThing', value: '0', isAriaDefault: false },
-        expected: 'single-select option: prefix theThing',
+        expected: 'prefix theThing',
       },
       {
         testName: 'multi select nominal',
         multiSelect: true,
         ariaLabelPrefix: '',
         option: { label: 'theThing', value: '0', isAriaDefault: false },
-        expected: 'multi-select option: theThing',
+        expected: 'theThing',
       },
       {
         testName: 'multi select with default',
         multiSelect: true,
         ariaLabelPrefix: '',
         option: { label: 'theThing', value: '0', isAriaDefault: true },
-        expected: 'Default thing multi-select option: theThing',
+        expected: 'Default theThing',
       },
       {
         testName: 'multi select with default and aria label prefix',
         multiSelect: true,
         ariaLabelPrefix: 'prefix',
         option: { label: 'theThing', value: '0', isAriaDefault: true },
-        expected: 'Default thing multi-select option: prefix theThing',
+        expected: 'Default prefix theThing',
       },
       {
         testName: 'multi select without default and aria label prefix',
         multiSelect: true,
         ariaLabelPrefix: 'prefix',
         option: { label: 'theThing', value: '0', isAriaDefault: false },
-        expected: 'multi-select option: prefix theThing',
+        expected: 'prefix theThing',
       },
     ];
 
@@ -712,11 +712,11 @@ describe('ComboBoxAlt', () => {
         );
 
         const firstItem = document.querySelector('li');
-        expect(firstItem).toHaveAttribute('aria-label', expected + ' unselected');
+        expect(firstItem).toHaveAttribute('aria-label', expected + ', not selected');
 
         await TestingUtilities.toggleComboBoxItemSelection(comboboxId, 0);
 
-        expect(firstItem).toHaveAttribute('aria-label', expected + ' selected');
+        expect(firstItem).toHaveAttribute('aria-label', expected + ', selected');
       },
     );
   });
@@ -1113,7 +1113,7 @@ describe('ComboBoxAlt', () => {
       const listbox = document.querySelector(`#${comboboxId}-item-list`);
       expect(listbox).toHaveAttribute('role', 'listbox');
       expect(listbox).toHaveAttribute('aria-multiselectable', 'true');
-      expect(listbox).toHaveAttribute('aria-label', 'Test Combobox options');
+      expect(listbox).toHaveAttribute('aria-label', 'Test Combobox multi-select options');
     });
 
     test('should have correct ARIA attributes for single-select mode', async () => {
@@ -1165,14 +1165,8 @@ describe('ComboBoxAlt', () => {
       await userEvent.click(input);
 
       const listItems = document.querySelectorAll('li[role="option"]');
-      expect(listItems[0]).toHaveAttribute(
-        'aria-label',
-        'multi-select option: test-combobox option 0 selected',
-      );
-      expect(listItems[1]).toHaveAttribute(
-        'aria-label',
-        'multi-select option: test-combobox option 1 unselected',
-      );
+      expect(listItems[0]).toHaveAttribute('aria-label', 'test-combobox option 0, selected');
+      expect(listItems[1]).toHaveAttribute('aria-label', 'test-combobox option 1, not selected');
     });
 
     test('should work without a label prop', () => {

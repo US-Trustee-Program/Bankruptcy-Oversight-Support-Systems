@@ -104,6 +104,13 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
   // ========== MISC FUNCTIONS ==========
 
+  function buildAriaLabel(option: ComboOption) {
+    const typeLabel = multiSelect === true ? 'multi-select' : 'single-select';
+    const selectionLabel = selectedMap.has(option.value) ? 'selected' : 'unselected';
+    const labelPrefix = option.isAriaDefault ? `Default ${singularLabel} ` : '';
+    return `${labelPrefix}${typeLabel} option: ${ariaLabelPrefix ? ariaLabelPrefix + ' ' : ''}${option.label} ${selectionLabel}`;
+  }
+
   function clearFilter() {
     setFilter(null);
     if (filterRef.current) {
@@ -155,7 +162,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     if (items.length > 0) {
       const itemLabels = items.map((item) => item.label);
       message = `${items.length} items currently selected. `;
-      message += itemLabels.join(', ') + '. ';
+      message += itemLabels.join(', ') + '.';
     }
     return message;
   }
@@ -362,8 +369,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
           if (option) {
             handleDropdownItemSelection(option);
-            // Keep focus on the current item after toggling selection
-            // so screen reader announces the new selected/unselected state
+            setCurrentListItem(null);
           }
           ev.preventDefault();
         }
@@ -517,16 +523,15 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         </div>
       )}
       <div className="usa-combo-box">
-        {!expanded && (
-          <span id={`${comboBoxId}-closed-instructions`} hidden>
-            {multiSelect ? 'Multi-select. ' : ''}
-            {props.required ? 'Required. ' : ''}
-            {getSelectedItemsDescription()}
-            {!comboboxDisabled
-              ? 'Press Enter or Down Arrow to open the dropdown list.'
-              : 'Disabled.'}
-          </span>
-        )}
+        <span id={`${comboBoxId}-aria-description`} className="screen-reader-only">
+          {label && label + '. '}
+          Combo box {multiSelect ? 'multi-select ' : ''}
+          {props.required ? 'required. ' : ''}
+          {getSelectedItemsDescription()}
+          {!comboboxDisabled
+            ? 'Press Enter or Down Arrow key to open the dropdown list.'
+            : 'Combo box is disabled.'}
+        </span>
         <div
           className={`input-container usa-input ${comboboxDisabled ? 'disabled' : ''} ${errorMessage && errorMessage.length > 0 ? 'usa-input-group--error' : ''}`}
           role="combobox"
@@ -535,13 +540,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           aria-expanded={expanded}
           aria-controls={`${comboBoxId}-item-list`}
           aria-labelledby={comboBoxId + '-label'}
-          aria-describedby={
-            !expanded
-              ? `${comboBoxId}-closed-instructions${ariaDescription ? ` ${comboBoxId}-hint` : ''}`
-              : ariaDescription
-                ? `${comboBoxId}-hint`
-                : undefined
-          }
+          aria-describedby={`${comboBoxId}-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
           tabIndex={0}
           onClick={() => handleToggleDropdown()}
           onKeyDown={handleKeyDownOnToggleButton}
@@ -565,6 +564,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                   aria-autocomplete="list"
                   aria-activedescendant={currentListItem ?? ''}
                   aria-describedby={`${comboBoxId}-filter-input-aria-description${ariaDescription ? ` ${comboBoxId}-hint` : ''}`}
+                  aria-labelledby={`${comboBoxId}-label`}
                   ref={filterRef}
                 />
               </>
@@ -575,7 +575,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
             )}
           </div>
           {expanded && (
-            <span id={`${comboBoxId}-filter-input-aria-description`} hidden>
+            <span id={`${comboBoxId}-filter-input-aria-description`} className="screen-reader-only">
               Enter text to filter options. Use up and down arrows to select a filtered item from
               the list.
             </span>
@@ -619,24 +619,17 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
                     id={`option-${option.value}`}
                     className={setListItemClass(idx, option)}
                     role="option"
-                    aria-selected={selectedMap.has(option.value)}
                     data-value={option.value}
                     data-testid={`${comboBoxId}-option-item-${idx}`}
                     key={`${comboBoxId}-${idx}`}
                     onClick={() => handleDropdownItemSelection(option)}
                     onKeyDown={(ev) => handleKeyDown(ev, idx + 1, option)}
                     tabIndex={expanded ? 0 : -1}
-                    aria-label={
-                      (option.isAriaDefault ? 'Default ' : '') +
-                      option.label +
-                      (selectedMap.has(option.value) ? ', selected' : ', not selected')
-                    }
+                    aria-selected={selectedMap.has(option.value) ? 'true' : undefined}
+                    aria-label={buildAriaLabel(option)}
                   >
                     {
                       <>
-                        {option.isAriaDefault && (
-                          <span className="screen-reader-only">Default </span>
-                        )}
                         {option.label}
                         {selectedMap.has(option.value) && <Icon name="check"></Icon>}
                       </>
