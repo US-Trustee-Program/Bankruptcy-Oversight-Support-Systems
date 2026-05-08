@@ -1,9 +1,5 @@
 import { NavLink } from 'react-router-dom';
 
-export enum BankDetailNavState {
-  OVERVIEW,
-}
-
 interface BankDetailNavigationProps {
   bankId: string;
 }
