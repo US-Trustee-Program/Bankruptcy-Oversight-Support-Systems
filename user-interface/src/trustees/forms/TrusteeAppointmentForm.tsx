@@ -436,7 +436,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     !!formData.appointedDate &&
     !validationError;
 
-  const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (ev: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     ev.preventDefault();
 
     if (validationError) {

@@ -136,7 +136,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     return patch;
   };
 
-  const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (ev: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     ev.preventDefault();
     const currentFormData = normalizeFormData(formData);
 
