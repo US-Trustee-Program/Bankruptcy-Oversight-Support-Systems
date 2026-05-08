@@ -1,6 +1,5 @@
 import './Banks.scss';
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
 import Api2 from '@/lib/models/api2';
 import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
@@ -81,9 +80,7 @@ export function Banks() {
               <CamsTableBody>
                 {banks.map((bank) => (
                   <CamsTableRow key={bank.id}>
-                    <CamsTableCell>
-                      <Link to={`/admin/banks/${bank.id}`}>{bank.name}</Link>
-                    </CamsTableCell>
+                    <CamsTableCell>{bank.name}</CamsTableCell>
                     <CamsTableCell>
                       {bank.status === 'active' ? 'Active' : 'Inactive'}
                     </CamsTableCell>
