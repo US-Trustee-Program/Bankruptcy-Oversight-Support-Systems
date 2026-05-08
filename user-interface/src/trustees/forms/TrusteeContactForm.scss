@@ -24,7 +24,9 @@
           .usa-form-group.trustee-phone-input {
             max-width: 220px;
             width: 100%;
+            margin-right: 15px;
           }
+
           .usa-form-group.trustee-extension-input {
             max-width: 150px;
             width: 100%;
@@ -58,8 +60,10 @@
     .form-container {
       .form-column {
         min-width: 200px;
+
         .field-group {
           gap: 0;
+
           .usa-form-group.trustee-zip-input,
           .usa-form-group.trustee-phone-input,
           .usa-form-group.trustee-extension-input {
@@ -98,6 +102,7 @@
         }
       }
     }
+
     .usa-button-group {
       padding: 1rem 15px;
     }
