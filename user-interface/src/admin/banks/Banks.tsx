@@ -40,7 +40,7 @@ export function Banks() {
   }, []);
 
   function handleBankAdded(bank: BankProfile) {
-    setBanks((prev) => [...prev, bank]);
+    setBanks((prev) => [...prev, bank].sort((a, b) => a.name.localeCompare(b.name)));
     getAppInsights().appInsights.trackEvent({
       name: 'Bank Created',
       properties: { bankId: bank.id, bankName: bank.name },

@@ -56,7 +56,8 @@ export const AddBankModal = forwardRef<AddBankModalRef, AddBankModalProps>(funct
       modalRef.current?.hide();
       alert?.success('Bank added successfully.');
     } catch (error) {
-      alert?.error(`Failed to add bank. ${(error as Error).message}`);
+      console.error(error);
+      alert?.error('Failed to add bank. Please try again.');
     }
   }
 
