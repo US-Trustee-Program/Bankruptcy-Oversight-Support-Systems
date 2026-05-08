@@ -1558,7 +1558,7 @@ describe('ComboBoxAlt', () => {
 
       const itemListContainer = document.querySelector('.item-list-container');
       const style = itemListContainer?.getAttribute('style');
-      expect(style === null || !style.includes('bottom')).toBe(true);
+      expect(style === null || !style?.includes('bottom')).toBe(true);
     });
 
     test('should apply error styling when errorMessage is provided', () => {
@@ -2008,7 +2008,7 @@ describe('ComboBoxAlt', () => {
           `li[data-value="${options[5].value}"]`,
         ) as HTMLElement;
         expect(selectedElement).toBeInTheDocument();
-        delete (selectedElement as HTMLElement & { scrollIntoView?: unknown }).scrollIntoView;
+        selectedElement.scrollIntoView = vi.fn();
       });
 
       await toggleDropdown(comboboxId);
