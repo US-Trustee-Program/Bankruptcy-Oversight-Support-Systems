@@ -1,230 +1,386 @@
-import { vi, beforeAll, beforeEach, describe, test, expect } from 'vitest';
-import factory from './factory';
+import { vi, beforeEach, describe, test, expect } from 'vitest';
 import { ApplicationContext } from './adapters/types/basic';
-import OktaGateway from './adapters/gateways/okta/okta-gateway';
-import MockOpenIdConnectGateway from './testing/mock-gateways/mock-oauth2-gateway';
-import { MockUserSessionUseCase } from './testing/mock-gateways/mock-user-session-use-case';
-import { UserSessionUseCase } from './use-cases/user-session/user-session';
 import { createMockApplicationContext } from './testing/testing-utilities';
-import { CaseDocketUseCase } from './use-cases/case-docket/case-docket';
-import { CasesLocalGateway } from './adapters/gateways/cases.local.gateway';
-import { MockOrdersGateway } from './testing/mock-gateways/mock.orders.gateway';
-import { MockOfficesGateway } from './testing/mock-gateways/mock.offices.gateway';
-import { MockMongoRepository } from './testing/mock-gateways/mock-mongo.repository';
-import { MockAtsGateway } from './adapters/gateways/ats/ats.mock.gateway';
-import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
-import { AcmsGatewayImpl } from './adapters/gateways/acms/acms.gateway';
-import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
-import { OfficesMongoRepository } from './adapters/gateways/mongo/offices.mongo.repository';
 
-describe('Factory', () => {
+// Static imports are used only for type declarations.
+// Values are re-imported dynamically in each beforeEach after vi.resetModules()
+// because factory.ts holds module-level singletons that must be cleared between tests.
+import type OktaGatewayType from './adapters/gateways/okta/okta-gateway';
+import type MockOpenIdConnectGatewayType from './testing/mock-gateways/mock-oauth2-gateway';
+import type { UserSessionUseCase as UserSessionUseCaseType } from './use-cases/user-session/user-session';
+import type { MockUserSessionUseCase as MockUserSessionUseCaseType } from './testing/mock-gateways/mock-user-session-use-case';
+import type { CaseDocketUseCase as CaseDocketUseCaseType } from './use-cases/case-docket/case-docket';
+import type { CasesLocalGateway as CasesLocalGatewayType } from './adapters/gateways/cases.local.gateway';
+import type { MockOrdersGateway as MockOrdersGatewayType } from './testing/mock-gateways/mock.orders.gateway';
+import type { MockOfficesGateway as MockOfficesGatewayType } from './testing/mock-gateways/mock.offices.gateway';
+import type { MockMongoRepository as MockMongoRepositoryType } from './testing/mock-gateways/mock-mongo.repository';
+import type { MockAtsGateway as MockAtsGatewayType } from './adapters/gateways/ats/ats.mock.gateway';
+import type CasesDxtrGatewayType from './adapters/gateways/dxtr/cases.dxtr.gateway';
+import type DxtrOrdersGatewayType from './adapters/gateways/dxtr/orders.dxtr.gateway';
+import type OfficesDxtrGatewayType from './adapters/gateways/dxtr/offices.dxtr.gateway';
+import type { AtsGatewayImpl as AtsGatewayImplType } from './adapters/gateways/ats/ats.gateway';
+import type { AzureBlobObjectStorageGateway as AzureBlobObjectStorageGatewayType } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
+import type { AcmsGatewayImpl as AcmsGatewayImplType } from './adapters/gateways/acms/acms.gateway';
+import type { ApiToDataflowsGatewayImpl as ApiToDataflowsGatewayImplType } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
+import type { OfficesMongoRepository as OfficesMongoRepositoryType } from './adapters/gateways/mongo/offices.mongo.repository';
+import type { CaseNotesMongoRepository as CaseNotesMongoRepositoryType } from './adapters/gateways/mongo/case-notes.mongo.repository';
+import type { TrusteeNotesMongoRepository as TrusteeNotesMongoRepositoryType } from './adapters/gateways/mongo/trustee-notes.mongo.repository';
+import type { OrdersMongoRepository as OrdersMongoRepositoryType } from './adapters/gateways/mongo/orders.mongo.repository';
+import type ConsolidationOrdersMongoRepositoryType from './adapters/gateways/mongo/consolidations.mongo.repository';
+import type { ArchivedCasesMongoRepository as ArchivedCasesMongoRepositoryType } from './adapters/gateways/mongo/archived-cases.mongo.repository';
+import type { UserSessionCacheMongoRepository as UserSessionCacheMongoRepositoryType } from './adapters/gateways/mongo/user-session-cache.mongo.repository';
+import type { RuntimeStateMongoRepository as RuntimeStateMongoRepositoryType } from './adapters/gateways/mongo/runtime-state.mongo.repository';
+import type { UsersMongoRepository as UsersMongoRepositoryType } from './adapters/gateways/mongo/user.repository';
+import type { OfficeAssigneeMongoRepository as OfficeAssigneeMongoRepositoryType } from './adapters/gateways/mongo/office-assignee.mongo.repository';
+import type { UserGroupsMongoRepository as UserGroupsMongoRepositoryType } from './adapters/gateways/mongo/user-groups.mongo.repository';
+import type { TrusteesMongoRepository as TrusteesMongoRepositoryType } from './adapters/gateways/mongo/trustees.mongo.repository';
+import type { TrusteeAppointmentsMongoRepository as TrusteeAppointmentsMongoRepositoryType } from './adapters/gateways/mongo/trustee-appointments.mongo.repository';
+import type { TrusteeAssistantsMongoRepository as TrusteeAssistantsMongoRepositoryType } from './adapters/gateways/mongo/trustee-assistants.mongo.repository';
+import type { ListsMongoRepository as ListsMongoRepositoryType } from './adapters/gateways/mongo/lists.mongo.repository';
+import type { TrusteeUpcomingKeyDatesMongoRepository as TrusteeUpcomingKeyDatesMongoRepositoryType } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
+import type { TrusteeMatchVerificationMongoRepository as TrusteeMatchVerificationMongoRepositoryType } from './adapters/gateways/mongo/trustee-match-verification.mongo.repository';
+import type { TrusteeProfessionalIdsMongoRepository as TrusteeProfessionalIdsMongoRepositoryType } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
+
+type Factory = typeof import('./factory').default;
+type Constructor<T> = new (...args: unknown[]) => T;
+type Singleton<T> = { prototype: T };
+
+function cloneContext(
+  base: ApplicationContext,
+  authOverrides?: Partial<typeof base.config.authConfig>,
+  userGroupOverrides?: Partial<typeof base.config.userGroupGatewayConfig>,
+): ApplicationContext {
+  const config = Object.assign(Object.create(Object.getPrototypeOf(base.config)), base.config);
+  if (authOverrides) config.authConfig = { ...base.config.authConfig, ...authOverrides };
+  if (userGroupOverrides)
+    config.userGroupGatewayConfig = {
+      ...base.config.userGroupGatewayConfig,
+      ...userGroupOverrides,
+    };
+  return { ...base, config };
+}
+
+describe('Factory real implementations (DATABASE_MOCK=false)', () => {
   let context: ApplicationContext;
+  let factory: Factory;
 
-  beforeAll(async () => {
-    context = await createMockApplicationContext();
+  let CasesDxtrGateway: Constructor<CasesDxtrGatewayType>;
+  let DxtrOrdersGateway: Constructor<DxtrOrdersGatewayType>;
+  let OfficesDxtrGateway: Constructor<OfficesDxtrGatewayType>;
+  let CaseDocketUseCase: Constructor<CaseDocketUseCaseType>;
+  let CaseNotesMongoRepository: Constructor<CaseNotesMongoRepositoryType>;
+  let TrusteeNotesMongoRepository: Constructor<TrusteeNotesMongoRepositoryType>;
+  let OrdersMongoRepository: Singleton<OrdersMongoRepositoryType>;
+  let ConsolidationOrdersMongoRepository: Constructor<ConsolidationOrdersMongoRepositoryType>;
+  let ArchivedCasesMongoRepository: Constructor<ArchivedCasesMongoRepositoryType>;
+  let UserSessionCacheMongoRepository: Constructor<UserSessionCacheMongoRepositoryType>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let RuntimeStateMongoRepository: Singleton<RuntimeStateMongoRepositoryType<any>>;
+  let UsersMongoRepository: Constructor<UsersMongoRepositoryType>;
+  let OfficeAssigneeMongoRepository: Singleton<OfficeAssigneeMongoRepositoryType>;
+  let UserGroupsMongoRepository: Constructor<UserGroupsMongoRepositoryType>;
+  let TrusteesMongoRepository: Constructor<TrusteesMongoRepositoryType>;
+  let TrusteeAppointmentsMongoRepository: Constructor<TrusteeAppointmentsMongoRepositoryType>;
+  let TrusteeAssistantsMongoRepository: Constructor<TrusteeAssistantsMongoRepositoryType>;
+  let ListsMongoRepository: Constructor<ListsMongoRepositoryType>;
+  let TrusteeUpcomingKeyDatesMongoRepository: Constructor<TrusteeUpcomingKeyDatesMongoRepositoryType>;
+  let TrusteeMatchVerificationMongoRepository: Constructor<TrusteeMatchVerificationMongoRepositoryType>;
+  let TrusteeProfessionalIdsMongoRepository: Constructor<TrusteeProfessionalIdsMongoRepositoryType>;
+  let AzureBlobObjectStorageGateway: Constructor<AzureBlobObjectStorageGatewayType>;
+  let AcmsGatewayImpl: Constructor<AcmsGatewayImplType>;
+  let AtsGatewayImpl: Constructor<AtsGatewayImplType>;
+  let ApiToDataflowsGatewayImpl: Constructor<ApiToDataflowsGatewayImplType>;
+  let OfficesMongoRepository: Constructor<OfficesMongoRepositoryType>;
+  let OktaGateway: typeof OktaGatewayType;
+  let UserSessionUseCase: Constructor<UserSessionUseCaseType>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    factory = (await import('./factory')).default;
+    context = await createMockApplicationContext({
+      env: {
+        CAMS_LOGIN_PROVIDER: 'okta',
+        DATABASE_MOCK: 'false',
+        COSMOS_ENDPOINT: 'https://cosmos-ustp-cams-dev.documents.azure.us:443/',
+        CAMS_USER_GROUP_GATEWAY_CONFIG:
+          'url=https://fake.url|clientId=mock|keyId=mock|privateKey={"foo": "bar"}}',
+      },
+    });
+
+    CasesDxtrGateway = (await import('./adapters/gateways/dxtr/cases.dxtr.gateway')).default;
+    DxtrOrdersGateway = (await import('./adapters/gateways/dxtr/orders.dxtr.gateway')).default;
+    OfficesDxtrGateway = (await import('./adapters/gateways/dxtr/offices.dxtr.gateway')).default;
+    ({ CaseDocketUseCase } = await import('./use-cases/case-docket/case-docket'));
+    ({ CaseNotesMongoRepository } =
+      await import('./adapters/gateways/mongo/case-notes.mongo.repository'));
+    ({ TrusteeNotesMongoRepository } =
+      await import('./adapters/gateways/mongo/trustee-notes.mongo.repository'));
+    ({ OrdersMongoRepository } = await import('./adapters/gateways/mongo/orders.mongo.repository'));
+    ConsolidationOrdersMongoRepository = (
+      await import('./adapters/gateways/mongo/consolidations.mongo.repository')
+    ).default;
+    ({ ArchivedCasesMongoRepository } =
+      await import('./adapters/gateways/mongo/archived-cases.mongo.repository'));
+    ({ UserSessionCacheMongoRepository } =
+      await import('./adapters/gateways/mongo/user-session-cache.mongo.repository'));
+    ({ RuntimeStateMongoRepository } =
+      await import('./adapters/gateways/mongo/runtime-state.mongo.repository'));
+    ({ UsersMongoRepository } = await import('./adapters/gateways/mongo/user.repository'));
+    ({ OfficeAssigneeMongoRepository } =
+      await import('./adapters/gateways/mongo/office-assignee.mongo.repository'));
+    ({ UserGroupsMongoRepository } =
+      await import('./adapters/gateways/mongo/user-groups.mongo.repository'));
+    ({ TrusteesMongoRepository } =
+      await import('./adapters/gateways/mongo/trustees.mongo.repository'));
+    ({ TrusteeAppointmentsMongoRepository } =
+      await import('./adapters/gateways/mongo/trustee-appointments.mongo.repository'));
+    ({ TrusteeAssistantsMongoRepository } =
+      await import('./adapters/gateways/mongo/trustee-assistants.mongo.repository'));
+    ({ ListsMongoRepository } = await import('./adapters/gateways/mongo/lists.mongo.repository'));
+    ({ TrusteeUpcomingKeyDatesMongoRepository } =
+      await import('./adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository'));
+    ({ TrusteeMatchVerificationMongoRepository } =
+      await import('./adapters/gateways/mongo/trustee-match-verification.mongo.repository'));
+    ({ TrusteeProfessionalIdsMongoRepository } =
+      await import('./adapters/gateways/mongo/trustee-professional-ids.mongo.repository'));
+    ({ AzureBlobObjectStorageGateway } =
+      await import('./adapters/gateways/storage/azure-blob-object-storage.gateway'));
+    ({ AcmsGatewayImpl } = await import('./adapters/gateways/acms/acms.gateway'));
+    ({ AtsGatewayImpl } = await import('./adapters/gateways/ats/ats.gateway'));
+    ({ ApiToDataflowsGatewayImpl } =
+      await import('./adapters/gateways/api-to-dataflows/api-to-dataflows.gateway'));
+    ({ OfficesMongoRepository } =
+      await import('./adapters/gateways/mongo/offices.mongo.repository'));
+    OktaGateway = (await import('./adapters/gateways/okta/okta-gateway')).default;
+    ({ UserSessionUseCase } = await import('./use-cases/user-session/user-session'));
   });
 
-  function makeOktaUserGroupContext(base: ApplicationContext): ApplicationContext {
-    const ctx = { ...base };
-    ctx.config.authConfig.provider = 'okta';
-    ctx.config.userGroupGatewayConfig.provider = 'okta';
-    ctx.config.userGroupGatewayConfig.clientId = 'mock';
-    ctx.config.userGroupGatewayConfig.keyId = 'mock';
-    ctx.config.userGroupGatewayConfig.url = 'https://fake.url';
-    ctx.config.userGroupGatewayConfig.privateKey = '{}';
-    return ctx;
-  }
-
   test.each([
-    ['getCasesGateway', (f, ctx) => f.getCasesGateway(ctx), CasesLocalGateway],
-    ['getCaseDocketUseCase', (f, ctx) => f.getCaseDocketUseCase(ctx), CaseDocketUseCase],
-    ['getOrdersGateway', (f, ctx) => f.getOrdersGateway(ctx), MockOrdersGateway],
-    ['getOfficesGateway', (f, ctx) => f.getOfficesGateway(ctx), MockOfficesGateway],
-    ['getAssignmentRepository', (f, ctx) => f.getAssignmentRepository(ctx), MockMongoRepository],
-    ['getCaseNotesRepository', (f, ctx) => f.getCaseNotesRepository(ctx), MockMongoRepository],
-    [
-      'getTrusteeNotesRepository',
-      (f, ctx) => f.getTrusteeNotesRepository(ctx),
-      MockMongoRepository,
-    ],
-    ['getOrdersRepository', (f, ctx) => f.getOrdersRepository(ctx), MockMongoRepository],
-    [
-      'getConsolidationOrdersRepository',
-      (f, ctx) => f.getConsolidationOrdersRepository(ctx),
-      MockMongoRepository,
-    ],
-    ['getCasesRepository', (f, ctx) => f.getCasesRepository(ctx), MockMongoRepository],
-    [
-      'getArchivedCasesRepository',
-      (f, ctx) => f.getArchivedCasesRepository(ctx),
-      MockMongoRepository,
-    ],
-    [
-      'getUserSessionCacheRepository',
-      (f, ctx) => f.getUserSessionCacheRepository(ctx),
-      MockMongoRepository,
-    ],
-    [
-      'getRuntimeStateRepository',
-      (f, ctx) => f.getRuntimeStateRepository(ctx),
-      MockMongoRepository,
-    ],
-    ['getOrderSyncStateRepo', (f, ctx) => f.getOrderSyncStateRepo(ctx), MockMongoRepository],
-    [
-      'getOfficeStaffSyncStateRepo',
-      (f, ctx) => f.getOfficeStaffSyncStateRepo(ctx),
-      MockMongoRepository,
-    ],
-    ['getCasesSyncStateRepo', (f, ctx) => f.getCasesSyncStateRepo(ctx), MockMongoRepository],
-    [
-      'getPhoneticBackfillStateRepo',
-      (f, ctx) => f.getPhoneticBackfillStateRepo(ctx),
-      MockMongoRepository,
-    ],
-    [
-      'getCaseAppointmentDateBackfillStateRepo',
-      (f, ctx) => f.getCaseAppointmentDateBackfillStateRepo(ctx),
-      MockMongoRepository,
-    ],
-    [
-      'getTrusteeAppointmentsSyncStateRepo',
-      (f, ctx) => f.getTrusteeAppointmentsSyncStateRepo(ctx),
-      MockMongoRepository,
-    ],
-    [
-      'getTrusteeNotesMetricsSyncStateRepo',
-      (f, ctx) => f.getTrusteeNotesMetricsSyncStateRepo(ctx),
-      MockMongoRepository,
-    ],
-    ['getUsersRepository', (f, ctx) => f.getUsersRepository(ctx), MockMongoRepository],
-    [
-      'getOfficeAssigneesRepository',
-      (f, ctx) => f.getOfficeAssigneesRepository(ctx),
-      MockMongoRepository,
-    ],
-    ['getUserGroupsRepository', (f, ctx) => f.getUserGroupsRepository(ctx), MockMongoRepository],
-    ['getTrusteesRepository', (f, ctx) => f.getTrusteesRepository(ctx), MockMongoRepository],
-    [
-      'getTrusteeAppointmentsRepository',
-      (f, ctx) => f.getTrusteeAppointmentsRepository(ctx),
-      MockMongoRepository,
-    ],
-    [
-      'getTrusteeAssistantsRepository',
-      (f, ctx) => f.getTrusteeAssistantsRepository(ctx),
-      MockMongoRepository,
-    ],
-    ['getListsGateway', (f, ctx) => f.getListsGateway(ctx), MockMongoRepository],
-    [
-      'getTrusteeUpcomingKeyDatesRepository',
-      (f, ctx) => f.getTrusteeUpcomingKeyDatesRepository(ctx),
-      MockMongoRepository,
-    ],
-    [
-      'getTrusteeMatchVerificationRepository',
-      (f, ctx) => f.getTrusteeMatchVerificationRepository(ctx),
-      MockMongoRepository,
-    ],
-    [
-      'getTrusteeProfessionalIdsRepository',
-      (f, ctx) => f.getTrusteeProfessionalIdsRepository(ctx),
-      MockMongoRepository,
-    ],
-    [
-      'getObjectStorageGateway',
-      (f, ctx) => f.getObjectStorageGateway(ctx),
-      AzureBlobObjectStorageGateway,
-    ],
-    ['getAcmsGateway', (f, ctx) => f.getAcmsGateway(ctx), AcmsGatewayImpl],
-    ['getAtsGateway', (f, ctx) => f.getAtsGateway(ctx), MockAtsGateway],
-    [
-      'getApiToDataflowsGateway',
-      (f, ctx) => f.getApiToDataflowsGateway(ctx),
-      ApiToDataflowsGatewayImpl,
-    ],
-  ] as const)('%s returns an instance of the expected type', (_label, getter, ExpectedType) => {
-    expect(getter(factory, context)).toBeInstanceOf(ExpectedType);
+    ['getCasesGateway', () => CasesDxtrGateway],
+    ['getCaseDocketUseCase', () => CaseDocketUseCase],
+    ['getOrdersGateway', () => DxtrOrdersGateway],
+    ['getOfficesGateway', () => OfficesDxtrGateway],
+    ['getCaseNotesRepository', () => CaseNotesMongoRepository],
+    ['getTrusteeNotesRepository', () => TrusteeNotesMongoRepository],
+    ['getOrdersRepository', () => OrdersMongoRepository],
+    ['getConsolidationOrdersRepository', () => ConsolidationOrdersMongoRepository],
+    ['getArchivedCasesRepository', () => ArchivedCasesMongoRepository],
+    ['getUserSessionCacheRepository', () => UserSessionCacheMongoRepository],
+    ['getRuntimeStateRepository', () => RuntimeStateMongoRepository],
+    ['getOrderSyncStateRepo', () => RuntimeStateMongoRepository],
+    ['getOfficeStaffSyncStateRepo', () => RuntimeStateMongoRepository],
+    ['getCasesSyncStateRepo', () => RuntimeStateMongoRepository],
+    ['getPhoneticBackfillStateRepo', () => RuntimeStateMongoRepository],
+    ['getCaseAppointmentDateBackfillStateRepo', () => RuntimeStateMongoRepository],
+    ['getTrusteeAppointmentsSyncStateRepo', () => RuntimeStateMongoRepository],
+    ['getTrusteeNotesMetricsSyncStateRepo', () => RuntimeStateMongoRepository],
+    ['getUsersRepository', () => UsersMongoRepository],
+    ['getOfficeAssigneesRepository', () => OfficeAssigneeMongoRepository],
+    ['getUserGroupsRepository', () => UserGroupsMongoRepository],
+    ['getTrusteesRepository', () => TrusteesMongoRepository],
+    ['getTrusteeAppointmentsRepository', () => TrusteeAppointmentsMongoRepository],
+    ['getTrusteeAssistantsRepository', () => TrusteeAssistantsMongoRepository],
+    ['getListsGateway', () => ListsMongoRepository],
+    ['getTrusteeUpcomingKeyDatesRepository', () => TrusteeUpcomingKeyDatesMongoRepository],
+    ['getTrusteeMatchVerificationRepository', () => TrusteeMatchVerificationMongoRepository],
+    ['getTrusteeProfessionalIdsRepository', () => TrusteeProfessionalIdsMongoRepository],
+    ['getObjectStorageGateway', () => AzureBlobObjectStorageGateway],
+    ['getAcmsGateway', () => AcmsGatewayImpl],
+    ['getAtsGateway', () => AtsGatewayImpl],
+    ['getApiToDataflowsGateway', () => ApiToDataflowsGatewayImpl],
+  ] as const)('%s', (method, getExpectedType) => {
+    expect(factory[method](context)).toBeInstanceOf(getExpectedType());
+  });
+
+  // getAssignmentRepository has no real Mongo implementation — returns MockMongoRepository regardless
+  test('getAssignmentRepository returns a defined instance', () => {
+    expect(factory.getAssignmentRepository(context)).toBeDefined();
+  });
+
+  // getCasesRepository delegates to a separate CasesMongoRepository not in test fixtures
+  test('getCasesRepository returns a defined instance', () => {
+    expect(factory.getCasesRepository(context)).toBeDefined();
   });
 
   test('getStorageGateway returns a defined instance', () => {
     expect(factory.getStorageGateway(context)).toBeDefined();
   });
 
-  test('getOfficesRepository returns MockMongoRepository for mock provider and OfficesMongoRepository for okta', () => {
-    const mockCtx = { ...context };
-    mockCtx.config.authConfig.provider = 'mock';
-    expect(factory.getOfficesRepository(mockCtx)).toBeInstanceOf(MockMongoRepository);
-
-    const oktaCtx = { ...context };
-    oktaCtx.config.authConfig.provider = 'okta';
-    expect(factory.getOfficesRepository(oktaCtx)).toBeInstanceOf(OfficesMongoRepository);
+  test('getOfficesRepository returns OfficesMongoRepository for okta provider', () => {
+    expect(
+      factory.getOfficesRepository(cloneContext(context, { provider: 'okta' })),
+    ).toBeInstanceOf(OfficesMongoRepository);
   });
 
-  test('getAuthorizationGateway returns OktaGateway, MockOpenIdConnectGateway, or null by provider', () => {
-    const oktaCtx = { ...context };
-    oktaCtx.config.authConfig.provider = 'okta';
-    expect(factory.getAuthorizationGateway(oktaCtx)).toEqual(OktaGateway);
+  test('getAuthorizationGateway returns OktaGateway for okta provider', () => {
+    expect(factory.getAuthorizationGateway(cloneContext(context, { provider: 'okta' }))).toEqual(
+      OktaGateway,
+    );
+  });
 
-    const mockCtx = { ...context };
-    mockCtx.config.authConfig.provider = 'mock';
-    expect(factory.getAuthorizationGateway(mockCtx)).toEqual(MockOpenIdConnectGateway);
+  test('getUserSessionUseCase returns UserSessionUseCase for okta provider', () => {
+    expect(
+      factory.getUserSessionUseCase(cloneContext(context, { provider: 'okta' })),
+    ).toBeInstanceOf(UserSessionUseCase);
+  });
+});
 
-    const unknownCtx = { ...context };
-    unknownCtx.config.authConfig.provider = 'unknown';
-    expect(factory.getAuthorizationGateway(unknownCtx)).toBeNull();
+describe('Factory mock implementations (DATABASE_MOCK=true)', () => {
+  let context: ApplicationContext;
+  let factory: Factory;
+
+  let CasesLocalGateway: Constructor<CasesLocalGatewayType>;
+  let MockOrdersGateway: Constructor<MockOrdersGatewayType>;
+  let MockOfficesGateway: Constructor<MockOfficesGatewayType>;
+  let CaseDocketUseCase: Constructor<CaseDocketUseCaseType>;
+  let MockMongoRepository: Constructor<MockMongoRepositoryType>;
+  let MockAtsGateway: Singleton<MockAtsGatewayType>;
+  let AzureBlobObjectStorageGateway: Constructor<AzureBlobObjectStorageGatewayType>;
+  let AcmsGatewayImpl: Constructor<AcmsGatewayImplType>;
+  let ApiToDataflowsGatewayImpl: Constructor<ApiToDataflowsGatewayImplType>;
+  let MockOpenIdConnectGateway: typeof MockOpenIdConnectGatewayType;
+  let MockUserSessionUseCase: Constructor<MockUserSessionUseCaseType>;
+
+  beforeEach(async () => {
+    vi.resetModules();
+    factory = (await import('./factory')).default;
+    context = await createMockApplicationContext();
+
+    ({ CasesLocalGateway } = await import('./adapters/gateways/cases.local.gateway'));
+    ({ MockOrdersGateway } = await import('./testing/mock-gateways/mock.orders.gateway'));
+    ({ MockOfficesGateway } = await import('./testing/mock-gateways/mock.offices.gateway'));
+    ({ CaseDocketUseCase } = await import('./use-cases/case-docket/case-docket'));
+    ({ MockMongoRepository } = await import('./testing/mock-gateways/mock-mongo.repository'));
+    ({ MockAtsGateway } = await import('./adapters/gateways/ats/ats.mock.gateway'));
+    ({ AzureBlobObjectStorageGateway } =
+      await import('./adapters/gateways/storage/azure-blob-object-storage.gateway'));
+    ({ AcmsGatewayImpl } = await import('./adapters/gateways/acms/acms.gateway'));
+    ({ ApiToDataflowsGatewayImpl } =
+      await import('./adapters/gateways/api-to-dataflows/api-to-dataflows.gateway'));
+    MockOpenIdConnectGateway = (await import('./testing/mock-gateways/mock-oauth2-gateway'))
+      .default;
+    ({ MockUserSessionUseCase } =
+      await import('./testing/mock-gateways/mock-user-session-use-case'));
+  });
+
+  test.each([
+    ['getCasesGateway', () => CasesLocalGateway],
+    ['getCaseDocketUseCase', () => CaseDocketUseCase],
+    ['getOrdersGateway', () => MockOrdersGateway],
+    ['getOfficesGateway', () => MockOfficesGateway],
+    ['getAssignmentRepository', () => MockMongoRepository],
+    ['getCaseNotesRepository', () => MockMongoRepository],
+    ['getTrusteeNotesRepository', () => MockMongoRepository],
+    ['getOrdersRepository', () => MockMongoRepository],
+    ['getConsolidationOrdersRepository', () => MockMongoRepository],
+    ['getCasesRepository', () => MockMongoRepository],
+    ['getArchivedCasesRepository', () => MockMongoRepository],
+    ['getUserSessionCacheRepository', () => MockMongoRepository],
+    ['getRuntimeStateRepository', () => MockMongoRepository],
+    ['getOrderSyncStateRepo', () => MockMongoRepository],
+    ['getOfficeStaffSyncStateRepo', () => MockMongoRepository],
+    ['getCasesSyncStateRepo', () => MockMongoRepository],
+    ['getPhoneticBackfillStateRepo', () => MockMongoRepository],
+    ['getCaseAppointmentDateBackfillStateRepo', () => MockMongoRepository],
+    ['getTrusteeAppointmentsSyncStateRepo', () => MockMongoRepository],
+    ['getTrusteeNotesMetricsSyncStateRepo', () => MockMongoRepository],
+    ['getUsersRepository', () => MockMongoRepository],
+    ['getOfficeAssigneesRepository', () => MockMongoRepository],
+    ['getUserGroupsRepository', () => MockMongoRepository],
+    ['getTrusteesRepository', () => MockMongoRepository],
+    ['getTrusteeAppointmentsRepository', () => MockMongoRepository],
+    ['getTrusteeAssistantsRepository', () => MockMongoRepository],
+    ['getListsGateway', () => MockMongoRepository],
+    ['getTrusteeUpcomingKeyDatesRepository', () => MockMongoRepository],
+    ['getTrusteeMatchVerificationRepository', () => MockMongoRepository],
+    ['getTrusteeProfessionalIdsRepository', () => MockMongoRepository],
+    ['getObjectStorageGateway', () => AzureBlobObjectStorageGateway],
+    ['getAcmsGateway', () => AcmsGatewayImpl],
+    ['getAtsGateway', () => MockAtsGateway],
+    ['getApiToDataflowsGateway', () => ApiToDataflowsGatewayImpl],
+  ] as const)('%s', (method, getExpectedType) => {
+    expect(factory[method](context)).toBeInstanceOf(getExpectedType());
+  });
+
+  test('getStorageGateway returns a defined instance', () => {
+    expect(factory.getStorageGateway(context)).toBeDefined();
+  });
+
+  test('getOfficesRepository returns MockMongoRepository for mock provider', () => {
+    expect(
+      factory.getOfficesRepository(cloneContext(context, { provider: 'mock' })),
+    ).toBeInstanceOf(MockMongoRepository);
+  });
+
+  test('getAuthorizationGateway returns MockOpenIdConnectGateway for mock provider', () => {
+    expect(factory.getAuthorizationGateway(cloneContext(context, { provider: 'mock' }))).toEqual(
+      MockOpenIdConnectGateway,
+    );
+  });
+
+  test('getAuthorizationGateway returns null for unknown provider', () => {
+    expect(
+      factory.getAuthorizationGateway(cloneContext(context, { provider: 'unknown' })),
+    ).toBeNull();
+  });
+
+  test('getUserSessionUseCase returns MockUserSessionUseCase for mock provider', () => {
+    expect(
+      factory.getUserSessionUseCase(cloneContext(context, { provider: 'mock' })),
+    ).toBeInstanceOf(MockUserSessionUseCase);
   });
 
   describe('getUserGroupGateway', () => {
-    let f;
-    let OktaHumbleClass;
-    let OktaUserGroupGatewayClass;
-    let MockUserGroupGatewayClass;
+    let f: Factory;
+    let OktaHumble: typeof import('./humble-objects/okta-humble').default;
+    let OktaUserGroupGateway: typeof import('./adapters/gateways/okta/okta-user-group-gateway').default;
+    let MockUserGroupGateway: typeof import('./testing/mock-gateways/mock-user-group-gateway').default;
+
+    function makeOktaUserGroupContext(base: ApplicationContext): ApplicationContext {
+      return cloneContext(
+        base,
+        { provider: 'okta' },
+        {
+          provider: 'okta',
+          clientId: 'mock',
+          keyId: 'mock',
+          url: 'https://fake.url',
+          privateKey: '{}',
+        },
+      );
+    }
 
     beforeEach(async () => {
       vi.resetModules();
       f = (await import('./factory')).default;
-      OktaHumbleClass = (await import('./humble-objects/okta-humble')).default;
-      OktaUserGroupGatewayClass = (await import('./adapters/gateways/okta/okta-user-group-gateway'))
+      OktaHumble = (await import('./humble-objects/okta-humble')).default;
+      OktaUserGroupGateway = (await import('./adapters/gateways/okta/okta-user-group-gateway'))
         .default;
-      MockUserGroupGatewayClass = (await import('./testing/mock-gateways/mock-user-group-gateway'))
+      MockUserGroupGateway = (await import('./testing/mock-gateways/mock-user-group-gateway'))
         .default;
     });
 
     test('returns OktaUserGroupGateway for okta provider', async () => {
       const ctx = makeOktaUserGroupContext(context);
-      vi.spyOn(OktaHumbleClass.prototype, 'init').mockImplementation(vi.fn());
-      expect(await f.getUserGroupGateway(ctx)).toBeInstanceOf(OktaUserGroupGatewayClass);
+      vi.spyOn(OktaHumble.prototype, 'init').mockImplementation(vi.fn());
+      expect(await f.getUserGroupGateway(ctx)).toBeInstanceOf(OktaUserGroupGateway);
     });
 
     test('returns MockUserGroupGateway for mock provider', async () => {
-      const ctx = { ...context };
-      ctx.config.authConfig.provider = 'mock';
-      ctx.config.userGroupGatewayConfig.provider = 'mock';
-      expect(await f.getUserGroupGateway(ctx)).toBeInstanceOf(MockUserGroupGatewayClass);
+      const ctx = cloneContext(context, { provider: 'mock' }, { provider: 'mock' });
+      expect(await f.getUserGroupGateway(ctx)).toBeInstanceOf(MockUserGroupGateway);
     });
 
     test('throws when init fails', async () => {
       const ctx = makeOktaUserGroupContext(context);
-      vi.spyOn(OktaUserGroupGatewayClass.prototype, 'init').mockRejectedValue(
-        new Error('init failed'),
-      );
+      vi.spyOn(OktaUserGroupGateway.prototype, 'init').mockRejectedValue(new Error('init failed'));
       await expect(f.getUserGroupGateway(ctx)).rejects.toThrow();
     });
 
     test('throws for unsupported provider', async () => {
-      const ctx = { ...context };
-      ctx.config.authConfig.provider = 'unsupported';
-      await expect(f.getUserGroupGateway(ctx)).rejects.toThrow();
+      await expect(
+        f.getUserGroupGateway(cloneContext(context, { provider: 'unsupported' })),
+      ).rejects.toThrow();
     });
-  });
-
-  test('getUserSessionUseCase returns UserSessionUseCase or MockUserSessionUseCase by provider', () => {
-    const oktaCtx = { ...context };
-    oktaCtx.config.authConfig.provider = 'okta';
-    expect(factory.getUserSessionUseCase(oktaCtx)).toBeInstanceOf(UserSessionUseCase);
-
-    const mockCtx = { ...context };
-    mockCtx.config.authConfig.provider = 'mock';
-    expect(factory.getUserSessionUseCase(mockCtx)).toBeInstanceOf(MockUserSessionUseCase);
   });
 });
