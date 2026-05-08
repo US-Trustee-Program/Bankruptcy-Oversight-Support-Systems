@@ -111,9 +111,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
             <div className="filter-controls-row">
               <div className="filter-control">
                 <div className="filter-control-header">
-                  <span className="filter-control-label" aria-hidden="true">
-                    Trustee Name
-                  </span>
+                  <span className="filter-control-label">Trustee Name</span>
                   <div aria-live="off" aria-atomic="false">
                     <button
                       type="button"
@@ -132,6 +130,8 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   type="text"
                   className="usa-input"
                   aria-label="Trustee Name"
+                  aria-live="off"
+                  aria-atomic="false"
                   value={viewModel.nameSearch}
                   onChange={(e) => viewModel.handleFilterName(e.target.value)}
                   placeholder="Search by name"

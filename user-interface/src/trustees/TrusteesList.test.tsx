@@ -2824,4 +2824,98 @@ describe('TrusteesList Component', () => {
       expect(screen.queryByLabelText('Division')).not.toBeInTheDocument();
     });
   });
+
+  describe('Filter Expansion Screen Reader Announcements', () => {
+    test('should announce trustees filtered by name when expanding filter header', async () => {
+      const trusteeAlice = makeListItem({
+        trusteeId: 'alice',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        appointments: [makeAppointment({ courtId: 'NYSB' })],
+      });
+      const trusteeBob = makeListItem({
+        trusteeId: 'bob',
+        firstName: 'Bob',
+        lastName: 'Jones',
+        appointments: [makeAppointment({ courtId: 'CAB' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeAlice, trusteeBob] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trusteeAlice, matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      // Enter name filter
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /filters/i })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      const nameInput = await screen.findByRole('textbox', { name: /trustee name/i });
+      await userEvent.setup().type(nameInput, 'Alice');
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      // Close filter
+      await userEvent.setup().click(toggleButton);
+
+      // Re-open filter - should announce name filter
+      await userEvent.setup().click(toggleButton);
+
+      const liveRegion = screen.getByRole('status');
+      await waitFor(() => {
+        expect(liveRegion).toHaveTextContent('1 Trustee filtered by name');
+      });
+    });
+  });
+
+  describe('Name Filter Input Rendering', () => {
+    test('should not auto-announce input value when accordion expands with content', async () => {
+      const trustee = makeListItem({
+        trusteeId: '1',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        appointments: [makeAppointment({ courtId: 'NYSB' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trustee, matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      // Open filter and type content
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      const nameInput = await screen.findByRole('textbox', { name: /trustee name/i });
+      await userEvent.setup().type(nameInput, 'Alice');
+
+      // Input should have aria-live="off" to prevent auto-announcement of value
+      expect(nameInput).toHaveAttribute('aria-live', 'off');
+      expect(nameInput).toHaveAttribute('aria-atomic', 'false');
+
+      // Label should be visible (not aria-hidden) so it can be read
+      const label = screen.getByText('Trustee Name', { selector: '.filter-control-label' });
+      expect(label).toBeInTheDocument();
+      expect(label).not.toHaveAttribute('aria-hidden');
+    });
+  });
 });

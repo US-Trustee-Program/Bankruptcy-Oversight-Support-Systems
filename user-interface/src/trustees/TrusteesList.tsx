@@ -251,20 +251,23 @@ export default function TrusteesList() {
       hasExpandedOnceRef.current = true;
       const resultCount = filteredTrustees.length;
       const districtCount = selectedDistricts.length;
+      const divisionCount = selectedDivisions.length;
       const chapterCount = selectedChapters.length;
+      const hasNameFilter = nameSearch.length >= 2;
 
-      let announcement = resultCount + ' Trustees';
+      let announcement = resultCount + ' Trustee' + (resultCount === 1 ? '' : 's');
 
-      if (districtCount > 0) {
-        announcement += ' filtered by districts';
+      const filters = [];
+      if (hasNameFilter) filters.push('name');
+      if (districtDivisionEnabled && divisionCount > 0) {
+        filters.push('district (division)');
+      } else if (!districtDivisionEnabled && districtCount > 0) {
+        filters.push('district');
       }
+      if (chapterCount > 0) filters.push('chapter');
 
-      if (chapterCount > 0) {
-        if (districtCount > 0) {
-          announcement += ' and chapters';
-        } else {
-          announcement += ' filtered by chapters';
-        }
+      if (filters.length > 0) {
+        announcement += ' filtered by ' + filters.join(' and ');
       }
 
       setLiveAnnouncement(announcement);
@@ -288,7 +291,16 @@ export default function TrusteesList() {
 
     const announcement = filtered.length + ' Trustee' + (filtered.length === 1 ? '' : 's');
     setLiveAnnouncement(announcement);
-  }, [selectedDistricts, selectedChapters]);
+  }, [
+    selectedDistricts,
+    selectedChapters,
+    selectedDivisions,
+    trustees,
+    districtDivisionEnabled,
+    divisionFilterMap,
+    nameSearch,
+    nameSearchIds,
+  ]);
 
   const { filteredTrustees } = useMemo(() => {
     let filtered = filterTrustees(
