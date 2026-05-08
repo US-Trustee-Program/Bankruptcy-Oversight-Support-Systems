@@ -14,6 +14,9 @@ import Button, { UswdsButtonStyle } from '../uswds/Button';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 
+// Configuration constants
+const DROPDOWN_POSITION_THRESHOLD_RATIO = 0.5; // Show dropdown above input when element is in bottom half of viewport
+
 export type ComboOption<T = string> = {
   value: T;
   label: string;
@@ -73,6 +76,11 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     scrollToSelected,
     ...otherProps
   } = props;
+
+  // Validate required props
+  if (!comboBoxId || typeof comboBoxId !== 'string') {
+    throw new Error('ComboBox requires a valid id prop');
+  }
 
   // ========== STATE ==========
 
@@ -212,8 +220,13 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     currentIndex: number,
     listRef: React.RefObject<HTMLUListElement | null>,
   ) => {
-    const list = listRef.current!;
-    const listContainer = list.parentElement!;
+    const list = listRef.current;
+    const listContainer = list?.parentElement;
+
+    if (!list || !listContainer) {
+      console.warn('List ref not available for navigation');
+      return;
+    }
 
     let targetIndex = currentIndex;
     const total = list.children.length;
@@ -226,8 +239,14 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       list.children[targetIndex].classList.contains('hidden')
     );
 
-    const target = list.children[targetIndex] as HTMLElement;
-    if (target) {
+    // Validate array bounds before accessing
+    if (targetIndex < 0 || targetIndex >= list.children.length) {
+      console.warn('Invalid target index for list navigation');
+      return;
+    }
+
+    const target = list.children[targetIndex];
+    if (target instanceof HTMLElement) {
       const preventScroll = !elementIsVerticallyScrollable(listContainer, list);
       target.focus({ preventScroll });
       return target.id;
@@ -287,8 +306,8 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
-  function handleKeyDown(ev: React.KeyboardEvent, index: number, option?: ComboOption) {
-    switch (ev.key) {
+  function handleKeyDown(event: React.KeyboardEvent, index: number, option?: ComboOption) {
+    switch (event.key) {
       case 'Tab':
         // If has filter text and currently focused on input, check if there are filtered results
         if (filter && filter.trim().length > 0 && index === 0) {
@@ -298,8 +317,8 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
 
           // Only move focus to first item if there are actually filtered results
           if (filteredOptions.length > 0) {
-            ev.preventDefault(); // Prevent default tab behavior
-            ev.stopPropagation();
+            event.preventDefault(); // Prevent default tab behavior
+            event.stopPropagation();
             // Behave like ArrowDown - move to first item in the list
             const newId = navigateList('down', index - 1, comboBoxListRef);
             if (newId) {
@@ -314,14 +333,14 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         // Don't prevent default - let Tab move to next element naturally
         break;
       case 'Escape':
-        ev.preventDefault();
-        ev.stopPropagation();
+        event.preventDefault();
+        event.stopPropagation();
         closeDropdown(true);
         setCurrentListItem(null);
         break;
       case 'ArrowDown': {
-        ev.preventDefault();
-        ev.stopPropagation();
+        event.preventDefault();
+        event.stopPropagation();
         const newId = navigateList('down', index - 1, comboBoxListRef);
         if (newId) {
           setCurrentListItem(newId);
@@ -329,8 +348,8 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         break;
       }
       case 'ArrowUp': {
-        ev.preventDefault();
-        ev.stopPropagation();
+        event.preventDefault();
+        event.stopPropagation();
         openDropdown();
         if (document.activeElement === filterRef.current) {
           setCurrentListItem(null);
@@ -348,13 +367,21 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       }
       case 'Enter':
       case ' ':
-        if (!(ev.target as HTMLInputElement).classList.contains('combo-box-input')) {
+        if (
+          event.target instanceof HTMLInputElement &&
+          !event.target.classList.contains('combo-box-input')
+        ) {
           if (option) {
             handleDropdownItemSelection(option);
             // Keep focus on the current item after toggling selection
             // so screen reader announces the new selected/unselected state
           }
-          ev.preventDefault();
+          event.preventDefault();
+        } else if (!(event.target instanceof HTMLInputElement)) {
+          if (option) {
+            handleDropdownItemSelection(option);
+          }
+          event.preventDefault();
         }
         break;
     }
@@ -437,16 +464,25 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
 
     const inputContainer = document.querySelector(`#${comboBoxId} .input-container`);
-    const topYPos = inputContainer?.getBoundingClientRect().top;
-    const bottomYPos = inputContainer?.getBoundingClientRect().bottom;
-    const windowMiddle = window.innerHeight / 2;
-    if (topYPos && topYPos > windowMiddle) {
-      if (topYPos && bottomYPos) {
-        const inputHeight = bottomYPos - topYPos;
-        setDropdownLocation({ bottom: inputHeight });
+    if (!inputContainer) {
+      console.warn(`Input container not found for combobox: ${comboBoxId}`);
+      setDropdownLocation(null);
+      if (!expanded) {
+        openDropdown();
+        focusInput();
       } else {
-        setDropdownLocation(null);
+        closeDropdown();
       }
+      return;
+    }
+
+    const topYPos = inputContainer.getBoundingClientRect().top;
+    const bottomYPos = inputContainer.getBoundingClientRect().bottom;
+    const windowMiddle = window.innerHeight * DROPDOWN_POSITION_THRESHOLD_RATIO;
+
+    if (topYPos > windowMiddle) {
+      const inputHeight = bottomYPos - topYPos;
+      setDropdownLocation({ bottom: inputHeight });
     } else {
       setDropdownLocation(null);
     }
@@ -473,14 +509,21 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       if (scrollToSelected && selectedMap.size > 0 && comboBoxListRef.current) {
         requestAnimationFrame(() => {
           const firstSelected = Array.from(selectedMap.values())[0];
-          if (!firstSelected) return;
+          if (!firstSelected || !comboBoxListRef.current) return;
 
-          const selectedElement = comboBoxListRef.current?.querySelector(
+          const selectedElement = comboBoxListRef.current.querySelector(
             `li[data-value="${firstSelected.value}"]`,
-          ) as HTMLElement;
+          );
 
-          if (selectedElement && typeof selectedElement.scrollIntoView === 'function') {
-            selectedElement.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+          if (
+            selectedElement instanceof HTMLElement &&
+            typeof selectedElement.scrollIntoView === 'function'
+          ) {
+            try {
+              selectedElement.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+            } catch (error) {
+              console.warn('Failed to scroll to selected element', error);
+            }
           }
         });
       }
