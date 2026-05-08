@@ -372,8 +372,8 @@ describe('TrusteeDistrictFilter Component', () => {
       expect(screen.getByText('Filters')).toBeInTheDocument();
     });
 
-    // Should not call callback with empty selection on mount (no default)
-    expect(mockHandleFilterDistrict).not.toHaveBeenCalled();
+    // Should call callback with empty array on mount to signal default initialization complete
+    expect(mockHandleFilterDistrict).toHaveBeenCalledWith([]);
   });
 
   test('should call onExpandedChange callback when toggling between collapsed and expanded states', async () => {
