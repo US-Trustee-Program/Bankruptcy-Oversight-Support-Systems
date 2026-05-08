@@ -296,6 +296,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 autoComplete="off"
                 {...isRequired('firstName')}
               />
+            </div>
+            <div className="field-group">
               <Input
                 id="trustee-middle-name"
                 className="trustee-middle-name-input"
@@ -306,6 +308,8 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 errorMessage={fieldErrors['middleName']}
                 autoComplete="off"
               />
+            </div>
+            <div className="field-group">
               <Input
                 id="trustee-last-name"
                 className="trustee-last-name-input"
