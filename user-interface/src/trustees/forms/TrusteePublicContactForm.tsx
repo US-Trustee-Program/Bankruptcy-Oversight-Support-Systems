@@ -260,7 +260,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   }
 
   return (
-    <div className="trustee-form-screen">
+    <div className="trustee-public-contact-form-screen">
       <div className="form-header">
         {isCreate && (
           <h1 className="text-no-wrap display-inline-block margin-right-1 create-trustee">
@@ -296,8 +296,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 autoComplete="off"
                 {...isRequired('firstName')}
               />
-            </div>
-            <div className="field-group">
               <Input
                 id="trustee-middle-name"
                 className="trustee-middle-name-input"
@@ -308,8 +306,6 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
                 errorMessage={fieldErrors['middleName']}
                 autoComplete="off"
               />
-            </div>
-            <div className="field-group">
               <Input
                 id="trustee-last-name"
                 className="trustee-last-name-input"

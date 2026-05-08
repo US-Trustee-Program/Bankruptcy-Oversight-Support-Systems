@@ -46,7 +46,7 @@ export default function EditTrusteeAppointment() {
 
   if (error || !appointment || !trusteeId) {
     return (
-      <div className="trustee-form-screen">
+      <div className="trustee-edit-appointment-form-screen">
         <Alert type={UswdsAlertStyle.Error} inline={true} show={true}>
           {error || 'Unable to load appointment'}
         </Alert>

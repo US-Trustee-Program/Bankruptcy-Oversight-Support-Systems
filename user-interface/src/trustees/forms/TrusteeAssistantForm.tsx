@@ -298,7 +298,7 @@ function TrusteeAssistantForm(props: Readonly<TrusteeAssistantFormProps>) {
   }
 
   return (
-    <div className="trustee-form-screen">
+    <div className="trustee-assistant-form-screen">
       <form
         noValidate
         aria-label={isCreateMode ? 'Create Trustee Assistant' : 'Edit Trustee Assistant'}

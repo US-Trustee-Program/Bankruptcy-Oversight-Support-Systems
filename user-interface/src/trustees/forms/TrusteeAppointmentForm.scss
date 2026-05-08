@@ -1,12 +1,13 @@
 @use 'uswds-core' as *;
 
-.trustee-form-screen {
+.trustee-appointment-form-screen {
   // CSS variable for consistent field width
   --form-field-max-width: 385px;
 
   .usa-alert-container {
     margin-left: 0;
   }
+
   .field-group.appointedDate {
     margin-bottom: 0.5rem;
   }
