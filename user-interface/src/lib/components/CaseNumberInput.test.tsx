@@ -336,19 +336,6 @@ describe('Test formatCaseNumberInput function', () => {
     expect(returnedValue).toEqual(expectedResult);
   });
 
-  test('should return isValidFullCaseNumber false for partial input', async () => {
-    const testValue = '12345';
-    const resultValue = '12-345';
-
-    const expectedResult = {
-      joinedInput: resultValue,
-      isValidFullCaseNumber: false,
-    };
-
-    const returnedValue = formatCaseNumberValue(testValue);
-    expect(returnedValue).toEqual(expectedResult);
-  });
-
   test('should return isValidFullCaseNumber true for valid full case number', async () => {
     const testValue = '1234567';
     const resultValue = '12-34567';

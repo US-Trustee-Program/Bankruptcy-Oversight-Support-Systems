@@ -18,60 +18,23 @@ describe('GlobalAlert', () => {
     );
   };
 
-  test('should show error alert', async () => {
+  test.each([
+    ['error', 'Show Error', 'Test error', 'usa-alert--error'],
+    ['info', 'Show Info', 'Test info', 'usa-alert--info'],
+    ['success', 'Show Success', 'Test success', 'usa-alert--success'],
+    ['warning', 'Show Warning', 'Test warning', 'usa-alert--warning'],
+  ])('should show %s alert', async (_type, buttonText, expectedText, expectedClass) => {
     render(
       <BrowserRouter>
         <TestComponent />
       </BrowserRouter>,
     );
-    const errorButton = screen.getByText('Show Error');
-    act(() => errorButton.click());
+    const button = screen.getByText(buttonText);
+    act(() => button.click());
 
     const alert = await screen.findByTestId('alert');
-    expect(alert).toHaveTextContent('Test error');
-    expect(alert).toHaveClass('usa-alert--error');
-  });
-
-  test('should show info alert', async () => {
-    render(
-      <BrowserRouter>
-        <TestComponent />
-      </BrowserRouter>,
-    );
-    const infoButton = screen.getByText('Show Info');
-    act(() => infoButton.click());
-
-    const alert = await screen.findByTestId('alert');
-    expect(alert).toHaveTextContent('Test info');
-    expect(alert).toHaveClass('usa-alert--info');
-  });
-
-  test('should show success alert', async () => {
-    render(
-      <BrowserRouter>
-        <TestComponent />
-      </BrowserRouter>,
-    );
-    const successButton = screen.getByText('Show Success');
-    act(() => successButton.click());
-
-    const alert = await screen.findByTestId('alert');
-    expect(alert).toHaveTextContent('Test success');
-    expect(alert).toHaveClass('usa-alert--success');
-  });
-
-  test('should show warning alert', async () => {
-    render(
-      <BrowserRouter>
-        <TestComponent />
-      </BrowserRouter>,
-    );
-    const warningButton = screen.getByText('Show Warning');
-    act(() => warningButton.click());
-
-    const alert = await screen.findByTestId('alert');
-    expect(alert).toHaveTextContent('Test warning');
-    expect(alert).toHaveClass('usa-alert--warning');
+    expect(alert).toHaveTextContent(expectedText);
+    expect(alert).toHaveClass(expectedClass);
   });
 
   test('should show custom alert with show method', async () => {

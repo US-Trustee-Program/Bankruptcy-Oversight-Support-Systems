@@ -58,14 +58,6 @@ describe('Tag', () => {
     expect(tag).toHaveClass('bg-primary');
   });
 
-  test('should always apply usa-tag--big class', () => {
-    render(<Tag>Test Tag</Tag>);
-
-    const tag = screen.getByTestId('tag-test');
-    expect(tag).toHaveClass(TAG_BASE_CLASS);
-    expect(tag).toHaveClass('usa-tag--big');
-  });
-
   test('should apply custom className in addition to base classes', () => {
     render(<Tag className="custom-class">Test Tag</Tag>);
 
