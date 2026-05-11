@@ -13,6 +13,7 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsError } from '../../../common-errors/cams-error';
 import { closeDeferred } from '../../../deferrable/defer-close';
 import QueryBuilder, { Conjunction, using } from '../../../query/query-builder';
+import { Pipeline } from '../../../query/query-pipeline';
 import { CASE_HISTORY } from '../../../testing/mock-data/case-history.mock';
 import {
   createMockApplicationContext,
@@ -27,6 +28,7 @@ import { CamsPaginationResponse } from '../../../use-cases/gateways.types';
 import { CaseConsolidationHistory, CaseHistory } from '@common/cams/history';
 import { randomUUID } from 'crypto';
 import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import * as phoneticHelper from '../../../adapters/utils/phonetic-helper';
 
 /**
  * Helper to test that repository methods properly wrap and re-throw adapter errors.
@@ -92,6 +94,21 @@ describe('Cases repository', () => {
 
   afterAll(() => {
     CasesMongoRepository.dropInstance();
+  });
+
+  describe('getInstance / dropInstance singleton lifecycle', () => {
+    test('should return the same instance when getInstance is called multiple times', () => {
+      const second = CasesMongoRepository.getInstance(context);
+      expect(second).toBe(repo);
+      second.release();
+    });
+
+    test('dropInstance should not null the instance while referenceCount is still positive', () => {
+      CasesMongoRepository.getInstance(context);
+      repo.release();
+      expect(CasesMongoRepository.getInstance(context)).not.toBeNull();
+      repo.release();
+    });
   });
 
   test('should getTransfers', async () => {
@@ -595,6 +612,27 @@ describe('Cases repository', () => {
     await expect(repo.searchCases(predicate)).rejects.toThrow('Unknown CAMS Error');
   });
 
+  test('searchCases should include caseIds in error message when caseIds are provided', async () => {
+    const predicate: CasesSearchPredicate = {
+      caseIds: [caseId1, caseId2],
+      limit: 25,
+      offset: 0,
+    };
+
+    vi.spyOn(MongoCollectionAdapter.prototype, 'paginate').mockRejectedValue(
+      new Error('paginate failed'),
+    );
+    const actualError = await getTheThrownError(() => repo.searchCases(predicate));
+    expect(actualError.isCamsError).toBeTruthy();
+    expect(actualError.camsStack).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: expect.stringContaining(caseId1),
+        }),
+      ]),
+    );
+  });
+
   test('should throw error when paginate throws error with includeOnlyUnassigned', async () => {
     const predicate: CasesSearchPredicate = {
       chapters: ['15'],
@@ -839,6 +877,36 @@ describe('Cases repository', () => {
       expect(queryString).toContain('"condition":"GREATER_THAN"');
     });
 
+    test('should build pipeline without token pre-filter when allTokens is empty', async () => {
+      vi.spyOn(phoneticHelper, 'generateStructuredQueryTokens').mockReturnValue({
+        searchWords: ['john'],
+        nicknameWords: [],
+        searchMetaphones: ['JN'],
+        nicknameMetaphones: [],
+        searchTokens: [],
+        nicknameTokens: [],
+      });
+
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'john',
+        limit: 25,
+        offset: 0,
+      };
+
+      const paginateSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'paginate')
+        .mockResolvedValue({ data: [], metadata: { total: 0 } });
+
+      await repo.searchCasesWithPhoneticTokens(predicate);
+
+      expect(paginateSpy).toHaveBeenCalled();
+      const spec = paginateSpy.mock.calls[0][0] as Pipeline;
+      expect(spec.stages).toHaveLength(5);
+      const firstMatchStage = spec.stages[0];
+      expect(JSON.stringify(firstMatchStage)).not.toContain('CONTAINS');
+      expect(spec.stages[1].stage).toBe('SCORE');
+    });
+
     test('should use word-level matching to prevent false positives instead of bigram filtering', async () => {
       // The new word-level algorithm prevents false positives like "Mike" → "Mitchell" by:
       // 1. Requiring phonetic matches to be "qualified" (have exact, nickname, or prefix match)
@@ -883,6 +951,26 @@ describe('Cases repository', () => {
     );
     await expect(repo.getConsolidationMemberCaseIds(predicate)).rejects.toThrow(
       'Unknown CAMS Error',
+    );
+  });
+
+  test('getConsolidationMemberCaseIds should include caseIds in error message when caseIds are provided', async () => {
+    const predicate: CasesSearchPredicate = {
+      caseIds: [caseId1, caseId2],
+      excludeMemberConsolidations: true,
+    };
+
+    vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(new Error('find failed'));
+    const actualError = await getTheThrownError(() =>
+      repo.getConsolidationMemberCaseIds(predicate),
+    );
+    expect(actualError.isCamsError).toBeTruthy();
+    expect(actualError.camsStack).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          message: expect.stringContaining(caseId1),
+        }),
+      ]),
     );
   });
 
@@ -1481,6 +1569,223 @@ describe('Cases repository', () => {
         'find',
         () => repo.findSyncedCaseByDxtrId('12345', '081'),
         [],
+      );
+    });
+  });
+
+  describe('getAllCaseHistory', () => {
+    test('should return all case history for a given documentType', async () => {
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(CASE_HISTORY);
+
+      const result = await repo.getAllCaseHistory('AUDIT_ASSIGNMENT');
+
+      expect(findSpy).toHaveBeenCalled();
+      const queryString = JSON.stringify(findSpy.mock.calls[0][0]);
+      expect(queryString).toContain('AUDIT_ASSIGNMENT');
+      expect(result).toEqual(CASE_HISTORY);
+    });
+
+    // eslint-disable-next-line vitest/expect-expect
+    test('should wrap and rethrow adapter errors', async () => {
+      await expectAdapterErrorToBeWrapped(
+        'find',
+        () => repo.getAllCaseHistory('AUDIT_ASSIGNMENT'),
+        ['Failed to get all case history for document type AUDIT_ASSIGNMENT.'],
+      );
+    });
+  });
+
+  describe('updateCaseHistory', () => {
+    test('should call replaceOne with the history record', async () => {
+      const history = CASE_HISTORY[0];
+      const replaceOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'replaceOne')
+        .mockResolvedValue(undefined);
+
+      await repo.updateCaseHistory(history);
+
+      expect(replaceOneSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          condition: 'EQUALS',
+          leftOperand: { name: 'id' },
+          rightOperand: history.id,
+        }),
+        history,
+      );
+    });
+
+    test('should wrap and rethrow adapter errors', async () => {
+      const history = CASE_HISTORY[0];
+      vi.spyOn(MongoCollectionAdapter.prototype, 'replaceOne').mockRejectedValue(
+        new Error('adapter failure'),
+      );
+      const actualError = await getTheThrownError(() => repo.updateCaseHistory(history));
+      expect(actualError.isCamsError).toBeTruthy();
+      expect(actualError.camsStack).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            message: expect.stringContaining('Unable to update case history.'),
+            module: 'CASES-MONGO-REPOSITORY',
+          }),
+        ]),
+      );
+    });
+  });
+
+  describe('updateManyByQuery', () => {
+    test('should return updateMany result directly', async () => {
+      const doc = using<SyncedCase>();
+      const query = and(doc('caseId').equals(caseId1), doc('documentType').equals('SYNCED_CASE'));
+      const update = { $set: { someField: 'value' } };
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockResolvedValue({
+        modifiedCount: 2,
+        matchedCount: 2,
+      });
+
+      const result = await repo.updateManyByQuery(query, update);
+
+      expect(result).toEqual({ modifiedCount: 2, matchedCount: 2 });
+    });
+
+    test('should wrap and rethrow adapter errors', async () => {
+      const doc = using<SyncedCase>();
+      const query = and(doc('caseId').equals(caseId1), doc('documentType').equals('SYNCED_CASE'));
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'updateMany').mockRejectedValue(
+        new Error('adapter failure'),
+      );
+
+      await expect(repo.updateManyByQuery(query, {})).rejects.toThrow(UnknownError);
+    });
+  });
+
+  describe('findByCursor', () => {
+    test('should return sorted and limited results', async () => {
+      const doc = using<SyncedCase>();
+      const query = doc('documentType').equals('SYNCED_CASE');
+      const expected = [MockData.getSyncedCase()];
+
+      const findSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'find')
+        .mockResolvedValue(expected);
+
+      const result = await repo.findByCursor<SyncedCase>(query, {
+        limit: 10,
+        sortField: 'caseId',
+        sortDirection: 'ASCENDING',
+      });
+
+      expect(findSpy).toHaveBeenCalledWith(
+        query,
+        QueryBuilder.orderBy<SyncedCase>(['caseId', 'ASCENDING']),
+        10,
+      );
+      expect(result).toEqual(expected);
+    });
+
+    test('should wrap and rethrow adapter errors', async () => {
+      const doc = using<SyncedCase>();
+      const query = doc('documentType').equals('SYNCED_CASE');
+
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('adapter failure'),
+      );
+
+      await expect(
+        repo.findByCursor<SyncedCase>(query, {
+          limit: 10,
+          sortField: 'caseId',
+          sortDirection: 'ASCENDING',
+        }),
+      ).rejects.toThrow(UnknownError);
+    });
+  });
+
+  describe('findByCaseIdAndType', () => {
+    test('should return records matching caseId and documentType', async () => {
+      const bCase = MockData.getSyncedCase({ override: { caseId: caseId1 } });
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue([bCase]);
+
+      const result = await repo.findByCaseIdAndType<SyncedCase>(caseId1, 'SYNCED_CASE');
+
+      expect(findSpy).toHaveBeenCalled();
+      const queryString = JSON.stringify(findSpy.mock.calls[0][0]);
+      expect(queryString).toContain('caseId');
+      expect(queryString).toContain('documentType');
+      expect(result).toEqual([bCase]);
+    });
+
+    test('should wrap and rethrow adapter errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('adapter failure'),
+      );
+
+      await expect(repo.findByCaseIdAndType<SyncedCase>(caseId1, 'SYNCED_CASE')).rejects.toThrow(
+        UnknownError,
+      );
+    });
+  });
+
+  describe('findByCaseId', () => {
+    test('should return all documents for a caseId', async () => {
+      const docs = [{ caseId: caseId1, documentType: 'SYNCED_CASE' }];
+      const findSpy = vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockResolvedValue(docs);
+
+      const result = await repo.findByCaseId(caseId1);
+
+      expect(findSpy).toHaveBeenCalled();
+      const queryString = JSON.stringify(findSpy.mock.calls[0][0]);
+      expect(queryString).toContain('caseId');
+      expect(result).toEqual(docs);
+    });
+
+    test('should wrap and rethrow adapter errors', async () => {
+      vi.spyOn(MongoCollectionAdapter.prototype, 'find').mockRejectedValue(
+        new Error('adapter failure'),
+      );
+
+      await expect(repo.findByCaseId(caseId1)).rejects.toThrow(UnknownError);
+    });
+  });
+
+  describe('delete', () => {
+    test('should call deleteOne with the id query', async () => {
+      const id = randomUUID();
+      const deleteOneSpy = vi
+        .spyOn(MongoCollectionAdapter.prototype, 'deleteOne')
+        .mockResolvedValue(undefined);
+
+      await repo.delete(id);
+
+      expect(deleteOneSpy).toHaveBeenCalled();
+      const queryString = JSON.stringify(deleteOneSpy.mock.calls[0][0]);
+      expect(queryString).toContain('"id"');
+      expect(queryString).toContain(id);
+    });
+
+    test('should wrap and rethrow adapter errors', async () => {
+      const id = randomUUID();
+      vi.spyOn(MongoCollectionAdapter.prototype, 'deleteOne').mockRejectedValue(
+        new Error('adapter failure'),
+      );
+
+      await expect(repo.delete(id)).rejects.toThrow(UnknownError);
+    });
+  });
+
+  describe('searchCasesWithPhoneticTokens missing pagination', () => {
+    test('should throw when debtorName is provided but limit/offset are invalid', async () => {
+      const predicate: CasesSearchPredicate = {
+        debtorName: 'John Smith',
+        limit: 0,
+        offset: 0,
+      };
+
+      await expect(repo.searchCasesWithPhoneticTokens(predicate)).rejects.toThrow(
+        'Case Search requires a pagination predicate with a valid limit and offset',
       );
     });
   });
