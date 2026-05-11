@@ -1,6 +1,6 @@
 @import '@/lib/components/uswds/forms.scss';
 
-.trustee-other-info-form-screen {
+.other-info-trustee-form-screen {
   .form-container {
     .bank-field {
       position: relative;
@@ -37,7 +37,7 @@
 }
 
 @media screen and (max-width: 500px) {
-  .trustee-other-info-form-screen {
+  .other-info-trustee-form-screen {
     .form-container {
       .bank-field {
         .bank-field-input {
@@ -52,7 +52,7 @@
 }
 
 @media screen and (max-width: 479px) {
-  .trustee-other-info-form-screen {
+  .other-info-trustee-form-screen {
     .cancel-button {
       margin: 1rem auto;
     }
