@@ -91,7 +91,7 @@
       }
 
       // Position clear button absolutely in top right
-      > div[aria-live="off"] {
+      > .filter-clear-button-container {
         position: absolute;
         top: 0;
         right: 0;

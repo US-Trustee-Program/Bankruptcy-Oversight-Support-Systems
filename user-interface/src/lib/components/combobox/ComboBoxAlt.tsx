@@ -103,14 +103,14 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     setFilter(null);
   }
 
-  function closeDropdown(shouldFocus: boolean = true) {
+  function closeDropdown(shouldFocus: boolean = true, selectionsToClose?: ComboOption[]) {
     setExpanded(false);
     clearFilter();
     if (shouldFocus) {
       focusInput();
     }
     if (onClose) {
-      onClose([...selectedMap.values()]);
+      onClose(selectionsToClose ?? [...selectedMap.values()]);
     }
   }
 
@@ -252,35 +252,32 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     clearFilter();
     focusCombobox();
 
-    if (props.onUpdateSelection) {
-      props.onUpdateSelection([]);
-    }
-  }
-
-  function handleClearAllKeyDown(ev: React.KeyboardEvent) {
-    if (ev.key === 'Enter') {
-      handleClearAllClick();
+    if (onUpdateSelection) {
+      onUpdateSelection([]);
     }
   }
 
   function handleDropdownItemSelection(option: ComboOption) {
-    if (selectedMap.has(option.value)) {
-      selectedMap.delete(option.value);
+    // Create a new Map to avoid mutating state directly
+    const nextSelectedMap = new Map(selectedMap);
+
+    if (nextSelectedMap.has(option.value)) {
+      nextSelectedMap.delete(option.value);
     } else {
       if (!multiSelect) {
-        selectedMap.clear();
+        nextSelectedMap.clear();
       }
-      selectedMap.set(option.value, option);
+      nextSelectedMap.set(option.value, option);
     }
 
-    setSelectedMap(new Map(selectedMap));
+    setSelectedMap(nextSelectedMap);
 
     if (onUpdateSelection) {
-      onUpdateSelection([...selectedMap.values()]);
+      onUpdateSelection([...nextSelectedMap.values()]);
     }
 
     if (!multiSelect) {
-      closeDropdown(true);
+      closeDropdown(true, [...nextSelectedMap.values()]);
     }
   }
 
@@ -297,7 +294,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       case 'Tab':
         // If has filter text and currently focused on input, check if there are filtered results
         if (filter && filter.trim().length > 0 && index === 0) {
-          const filteredOptions = props.options.filter((option) =>
+          const filteredOptions = _options.filter((option) =>
             option.label.toLowerCase().includes(filter.toLowerCase()),
           );
 
@@ -529,12 +526,12 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   useEffect(() => {
     setSelectedMap(
       new Map(
-        props.selections?.map((selection) => {
+        selections?.map((selection) => {
           return [selection.value, selection];
         }),
       ),
     );
-  }, [props.selections]);
+  }, [selections]);
 
   useEffect(() => {
     setComboboxDisabled(!!disabled);
@@ -552,7 +549,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   return (
     <div
       id={comboBoxId}
-      className={`usa-form-group combo-box-form-group ${props.className ?? ''}`}
+      className={`usa-form-group combo-box-form-group ${otherProps.className ?? ''}`}
       ref={comboBoxRef}
     >
       <div className={`combo-box-label ${multiSelect === true ? 'multi-select' : 'single-select'}`}>
@@ -561,7 +558,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           id={comboBoxId + '-label'}
           htmlFor={`${comboBoxId}-combo-box-input`}
         >
-          {label} {props.required && <span className="required-form-field">*</span>}
+          {label} {otherProps.required && <span className="required-form-field">*</span>}
         </label>
       </div>
       {ariaDescription && (
@@ -644,7 +641,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
               ref={comboBoxListRef}
             >
               {/* eslint-disable jsx-a11y/role-has-required-aria-props */}
-              {props.options
+              {_options
                 .filter(
                   (option) => !filter || option.label.toLowerCase().includes(filter.toLowerCase()),
                 )
@@ -682,7 +679,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
           className="clear-all-button"
           uswdsStyle={UswdsButtonStyle.Unstyled}
           onClick={handleClearAllClick}
-          onKeyDown={handleClearAllKeyDown}
           id={`${comboBoxId}-clear-all`}
           aria-label={`Clear all ${label ?? ''} items selected.`}
         >
@@ -690,7 +686,7 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
         </Button>
       )}
       {errorMessage && errorMessage.length > 0 && (
-        <div id={`${props.id}-input__error-message`} className="usa-input__error-message">
+        <div id={`${comboBoxId}-input__error-message`} className="usa-input__error-message">
           {errorMessage}
         </div>
       )}

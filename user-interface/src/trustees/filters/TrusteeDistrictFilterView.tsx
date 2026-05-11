@@ -19,16 +19,9 @@ function renderDistrictFilter(
     return (
       <div className="filter-control">
         <div className="filter-control-header">
-          <span className="filter-control-label">District (Division)</span>
-          {viewModel.selectedDivisions.length > 0 && (
-            <button
-              type="button"
-              className="filter-clear-link"
-              onClick={viewModel.handleClearAllDivisions}
-            >
-              Clear
-            </button>
-          )}
+          <span className="filter-control-label" aria-hidden="true">
+            District (Division)
+          </span>
         </div>
         <ComboBox
           id="district-division-combobox"
@@ -44,6 +37,17 @@ function renderDistrictFilter(
           ref={viewModel.divisionFilterRef}
           hideClearAllButton={true}
         />
+        <div className="filter-clear-button-container" aria-live="off" aria-atomic="false">
+          {viewModel.selectedDivisions.length > 0 && (
+            <button
+              type="button"
+              className="filter-clear-link"
+              onClick={viewModel.handleClearAllDivisions}
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -53,12 +57,9 @@ function renderDistrictFilter(
   return (
     <div className="filter-control">
       <div className="filter-control-header">
-        <span className="filter-control-label">District</span>
-        {viewModel.selectedDistricts.length > 0 && (
-          <button type="button" className="filter-clear-link" onClick={viewModel.handleClearAll}>
-            Clear
-          </button>
-        )}
+        <span className="filter-control-label" aria-hidden="true">
+          District
+        </span>
       </div>
       <ComboBox
         id="district-combobox"
@@ -75,6 +76,13 @@ function renderDistrictFilter(
         ref={viewModel.districtFilterRef}
         hideClearAllButton={true}
       />
+      <div className="filter-clear-button-container" aria-live="off" aria-atomic="false">
+        {viewModel.selectedDistricts.length > 0 && (
+          <button type="button" className="filter-clear-link" onClick={viewModel.handleClearAll}>
+            Clear
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -112,7 +120,11 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
               <div className="filter-control">
                 <div className="filter-control-header">
                   <span className="filter-control-label">Trustee Name</span>
-                  <div aria-live="off" aria-atomic="false">
+                  <div
+                    className="filter-clear-button-container"
+                    aria-live="off"
+                    aria-atomic="false"
+                  >
                     <button
                       type="button"
                       className="filter-clear-link"
@@ -162,7 +174,7 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   ref={viewModel.chapterFilterRef}
                   hideClearAllButton={true}
                 />
-                <div aria-live="off" aria-atomic="false">
+                <div className="filter-clear-button-container" aria-live="off" aria-atomic="false">
                   <button
                     type="button"
                     className="filter-clear-link"
