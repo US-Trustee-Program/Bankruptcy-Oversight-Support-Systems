@@ -58,7 +58,7 @@ function hasContent(html: string): boolean {
 
 type NoteFormMode = 'create' | 'edit';
 
-export type NoteFormModalOpenProps = {
+type NoteFormModalOpenProps = {
   id?: string;
   entityId: string;
   title: string;

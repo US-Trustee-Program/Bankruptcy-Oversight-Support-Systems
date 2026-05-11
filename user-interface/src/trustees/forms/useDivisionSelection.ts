@@ -11,10 +11,18 @@ type UseDivisionSelectionParams = {
   divisionCodes: string[];
   enabled: boolean;
   onDivisionCodesChange: (codes: string[]) => void;
+  onAutoSelectAllDivisions?: () => void;
 };
 
 export function useDivisionSelection(params: UseDivisionSelectionParams) {
-  const { courtId, allCourts, divisionCodes, enabled, onDivisionCodesChange } = params;
+  const {
+    courtId,
+    allCourts,
+    divisionCodes,
+    enabled,
+    onDivisionCodesChange,
+    onAutoSelectAllDivisions,
+  } = params;
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const divisionOptions = useMemo<ComboOption[]>(() => {
@@ -36,9 +44,16 @@ export function useDivisionSelection(params: UseDivisionSelectionParams) {
     if (enabled && divisionOptions.length > 0) {
       if (divisionCodes.length === 0) {
         onDivisionCodesChange([ALL_DIVISIONS_VALUE]);
+        onAutoSelectAllDivisions?.();
       }
     }
-  }, [divisionOptions, enabled, divisionCodes.length, onDivisionCodesChange]);
+  }, [
+    divisionOptions,
+    enabled,
+    divisionCodes.length,
+    onDivisionCodesChange,
+    onAutoSelectAllDivisions,
+  ]);
 
   // Cleanup timeout on unmount
   useEffect(() => {

@@ -1,6 +1,6 @@
 import './TrusteeContactForm.scss';
 import './TrusteeAppointmentForm.scss';
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import DatePicker from '@/lib/components/uswds/DatePicker';
 import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import useFeatureFlags, {
@@ -199,6 +199,36 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
 
   const canManage = !!session?.user?.roles?.includes(CamsRole.TrusteeAdmin);
 
+  // Accessibility: focus management for validation errors
+  const validationAlertRef = useRef<HTMLDivElement>(null);
+  const [prevValidationError, setPrevValidationError] = useState<string | null>(null);
+
+  // Accessibility: live region for "All Divisions" auto-selection announcement
+  const [divisionAnnouncement, setDivisionAnnouncement] = useState('');
+  const announcementTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleAutoSelectAllDivisions = useCallback(() => {
+    const districtName = districtOptions.find((opt) => opt.value === formData.courtId)?.label;
+    if (districtName) {
+      setDivisionAnnouncement(`All Divisions selected for ${districtName}`);
+      if (announcementTimeoutRef.current) {
+        clearTimeout(announcementTimeoutRef.current);
+      }
+      announcementTimeoutRef.current = setTimeout(() => {
+        setDivisionAnnouncement('');
+      }, 1000);
+    }
+  }, [districtOptions, formData.courtId]);
+
+  // Cleanup announcement timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (announcementTimeoutRef.current) {
+        clearTimeout(announcementTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleDivisionCodesChange = useCallback(
     (codes: string[]) => {
       setFormData((prev) => ({ ...prev, divisionCodes: codes }));
@@ -218,6 +248,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     divisionCodes: formData.divisionCodes,
     enabled: districtDivisionEnabled,
     onDivisionCodesChange: handleDivisionCodesChange,
+    onAutoSelectAllDivisions: handleAutoSelectAllDivisions,
   });
 
   const appointmentTypeOptions = useMemo<ComboOption<AppointmentType>[]>(() => {
@@ -383,6 +414,18 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     doUseSeparateFields,
   );
 
+  // Accessibility: move focus to validation error when it newly appears.
+  // Uses requestAnimationFrame to run after ComboBox's own focus management.
+  useEffect(() => {
+    if (validationError && !prevValidationError && validationAlertRef.current) {
+      const alertEl = validationAlertRef.current;
+      requestAnimationFrame(() => {
+        alertEl.focus();
+      });
+    }
+    setPrevValidationError(validationError);
+  }, [validationError, prevValidationError]);
+
   const hasCourtSelection = !!extractCourtAndDivisions(formData, doUseSeparateFields, allCourts);
   const isFormValid =
     hasCourtSelection &&
@@ -393,7 +436,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     !!formData.appointedDate &&
     !validationError;
 
-  const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (ev: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     ev.preventDefault();
 
     if (validationError) {
@@ -532,7 +575,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   }
 
   return (
-    <div className="trustee-form-screen">
+    <div className="appointment-trustee-form-screen">
       <form
         aria-label={isEditMode ? 'Edit Trustee Appointment' : 'Add Trustee Appointment'}
         data-testid="trustee-appointment-form"
@@ -540,8 +583,20 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
       >
         <FormRequirementsNotice />
 
+        {/* Accessibility: live region for auto-selection announcements */}
+        <div role="status" aria-live="polite" aria-atomic="true" className="usa-sr-only">
+          {divisionAnnouncement}
+        </div>
+
         {validationError && (
-          <Alert type={UswdsAlertStyle.Error} inline={true} show={true} message={validationError} />
+          <div ref={validationAlertRef} tabIndex={-1} className="trustee-form-error-wrapper">
+            <Alert
+              type={UswdsAlertStyle.Error}
+              inline={true}
+              show={true}
+              message={validationError}
+            />
+          </div>
         )}
 
         <div className="form-container">
@@ -573,7 +628,11 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
                       singularLabel="division"
                       disabled={!formData.courtId}
                       options={divisionOptions}
-                      ariaDescription="Divisions where this trustee will be assigned"
+                      ariaDescription={
+                        formData.courtId
+                          ? `Divisions where this trustee will be assigned in ${districtOptions.find((opt) => opt.value === formData.courtId)?.label ?? 'the selected district'}`
+                          : 'Select a district first to enable division selection'
+                      }
                       selections={divisionSelections}
                       onUpdateSelection={handleDivisionSelection}
                       hideClearAllButton={

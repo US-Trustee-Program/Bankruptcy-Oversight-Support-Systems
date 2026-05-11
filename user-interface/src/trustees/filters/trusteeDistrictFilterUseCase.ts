@@ -148,8 +148,8 @@ const trusteeDistrictFilterUseCase = (
       store.setDefaultDistricts(defaultDistricts);
       store.setSelectedDistricts(defaultDistricts);
 
+      notifySelectionChange(defaultDistricts);
       if (defaultDistricts.length > 0) {
-        notifySelectionChange(defaultDistricts);
         if (districtDivisionEnabled) {
           const userDivisionCodes = getUserDivisionCodes(session);
 

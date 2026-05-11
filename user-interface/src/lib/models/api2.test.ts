@@ -12,7 +12,8 @@ import {
 } from '@common/cams/orders';
 import LocalStorage from '@/lib/utils/local-storage';
 import { blankConfiguration } from '../testing/mock-configuration';
-import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
+import { BankruptcySoftwareListItem } from '@common/cams/lists';
+import { BankProfile } from '@common/cams/banks';
 import { Creatable } from '@common/cams/creatable';
 
 type ApiType = {
@@ -478,7 +479,14 @@ describe('_Api2 functions', async () => {
   test('should call api.get function when calling getBanks', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: { items: [] } });
     api2.default.getBanks();
-    expect(getSpy).toHaveBeenCalledWith('/lists/banks', {});
+    expect(getSpy).toHaveBeenCalledWith('/banks', {});
+  });
+
+  test('should call api.post function when calling createBank', () => {
+    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: {} });
+    const bank: Pick<BankProfile, 'name'> = { name: 'Test Bank' };
+    api2.default.createBank(bank);
+    expect(postSpy).toHaveBeenCalledWith('/banks', bank, {});
   });
 
   test('should call api.post function when calling postBankruptcySoftware', () => {
@@ -499,24 +507,6 @@ describe('_Api2 functions', async () => {
     const softwareId = 'software-id';
     api2.default.deleteBankruptcySoftware(softwareId);
     expect(deleteSpy).toHaveBeenCalledWith(`/lists/bankruptcy-software/${softwareId}`, {});
-  });
-
-  test('should call api.post function when calling postBank', () => {
-    const postSpy = vi.spyOn(api.default, 'post').mockResolvedValue({ data: { id: 'bank-id' } });
-    const bankItem: Creatable<BankListItem> = {
-      list: 'banks' as const,
-      key: 'Test Bank',
-      value: 'Test Bank',
-    };
-    api2.default.postBank(bankItem);
-    expect(postSpy).toHaveBeenCalledWith('/lists/banks', bankItem, {});
-  });
-
-  test('should call api.delete function when calling deleteBank', () => {
-    const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue({ data: null });
-    const bankId = 'bank-id';
-    api2.default.deleteBank(bankId);
-    expect(deleteSpy).toHaveBeenCalledWith(`/lists/banks/${bankId}`, {});
   });
 
   test('should call api.get when calling getTrusteeNotes', () => {

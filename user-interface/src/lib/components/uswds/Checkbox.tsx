@@ -1,4 +1,4 @@
-import Button, { UswdsButtonStyle } from './Button';
+import { UswdsButtonStyle } from './Button';
 import './forms.scss';
 import './Checkbox.scss';
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -112,7 +112,7 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
   const checkboxTestId = `checkbox-${props.id}`;
   const labelTestId = `${checkboxTestId}-click-target`;
   return (
-    <div className={`usa-form-group usa-checkbox ${props.className ?? ''}`}>
+    <div className={`usa-form-group usa-checkbox ${props.className ?? ''}`} role="presentation">
       <input
         type="checkbox"
         data-testid={checkboxTestId}
@@ -128,22 +128,25 @@ function Checkbox_(props: CheckboxProps, ref: React.Ref<CheckboxRef>) {
         required={props.required}
         disabled={props.disabled}
         tabIndex={-1}
+        aria-hidden={true}
       />
-      <label htmlFor={checkboxTestId}>
-        <Button
-          id={labelTestId}
-          className={`usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
-          onClick={clickHandler}
-          onKeyDown={keyDownHandler}
-          onKeyUp={keyUpHandler}
-          title={props.title}
-          aria-label={props.label || `check ${props.value}`}
-          role="checkbox"
-          aria-checked={isChecked}
-        >
-          {props.label ?? <>&nbsp;</>}
-        </Button>
-      </label>
+      <span
+        id={labelTestId}
+        data-testid={`button-${labelTestId}`}
+        className={`usa-button usa-checkbox__label ${UswdsButtonStyle.Unstyled}`}
+        onClick={props.disabled ? undefined : clickHandler}
+        onKeyDown={props.disabled ? undefined : keyDownHandler}
+        onKeyUp={props.disabled ? undefined : keyUpHandler}
+        onFocus={props.disabled ? undefined : focusHandler}
+        title={props.title}
+        aria-label={props.label ? undefined : `check ${props.value}`}
+        role="checkbox"
+        aria-checked={isChecked}
+        aria-disabled={props.disabled}
+        tabIndex={props.disabled ? -1 : 0}
+      >
+        {props.label ?? <>&nbsp;</>}
+      </span>
     </div>
   );
 }

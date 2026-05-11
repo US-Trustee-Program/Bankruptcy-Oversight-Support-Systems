@@ -104,7 +104,7 @@ function TrusteeZoomInfoForm(props: Readonly<TrusteeZoomInfoFormProps>) {
   const isSaveDisabled = isSubmitting || hasErrors || hasEmptyFields;
 
   return (
-    <div className="trustee-zoom-info-form-screen">
+    <div className="zoom-info-trustee-form-screen">
       <p>
         A red asterisk (<span className="text-secondary-dark">*</span>) indicates a required field.
       </p>

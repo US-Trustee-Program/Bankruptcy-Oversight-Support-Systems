@@ -44,7 +44,8 @@ import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
 import { Creatable } from '@common/cams/creatable';
-import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
+import { BankruptcySoftwareListItem } from '@common/cams/lists';
+import { BankProfile } from '@common/cams/banks';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
 // Helper to generate a random ID
@@ -2809,36 +2810,51 @@ async function deleteBankruptcySoftware(_ignore: string) {
 }
 
 async function getBanks() {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
   return {
     data: [
       {
-        _id: '1',
-        list: 'banks',
-        key: 'Bank of America',
-        value: 'Bank of America',
+        id: '1',
+        documentType: 'BANK_PROFILE' as const,
+        name: 'Bank of America',
+        status: 'active' as const,
+        updatedOn: now,
+        updatedBy: mockUser,
       },
       {
-        _id: '2',
-        list: 'banks',
-        key: 'Chase Bank',
-        value: 'Chase Bank',
+        id: '2',
+        documentType: 'BANK_PROFILE' as const,
+        name: 'Chase Bank',
+        status: 'active' as const,
+        updatedOn: now,
+        updatedBy: mockUser,
       },
       {
-        _id: '3',
-        list: 'banks',
-        key: 'Wells Fargo',
-        value: 'Wells Fargo',
+        id: '3',
+        documentType: 'BANK_PROFILE' as const,
+        name: 'Wells Fargo',
+        status: 'active' as const,
+        updatedOn: now,
+        updatedBy: mockUser,
       },
-    ],
+    ] as BankProfile[],
   };
 }
 
-async function postBank(_ignore: Creatable<BankListItem>) {
-  return '--id--';
-}
-
-async function deleteBank(_ignore: string) {
-  return;
+async function createBank(data: Pick<BankProfile, 'name'>) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: crypto.randomUUID(),
+      documentType: 'BANK_PROFILE' as const,
+      name: data.name,
+      status: 'active' as const,
+      updatedOn: now,
+      updatedBy: mockUser,
+    } as BankProfile,
+  };
 }
 
 async function postCaseReload(_caseId: string) {
@@ -2963,8 +2979,7 @@ const MockApi2 = {
   getBankruptcySoftwareList,
   postBankruptcySoftware,
   deleteBankruptcySoftware,
-  deleteBank,
-  postBank,
+  createBank,
   getBanks,
   getUpcomingKeyDates,
   putUpcomingKeyDates,
