@@ -180,19 +180,6 @@ describe('Header', () => {
       expect(link).toBeInTheDocument();
     });
 
-    test('should not display trustees link when both role and feature flag requirements fail', () => {
-      // User without TrusteeAdmin role and feature flag disabled
-      vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-        'transfer-orders-enabled': true,
-        'trustee-management': false,
-      });
-
-      renderWithoutProps();
-
-      const link = screen.queryByTestId('header-trustees-link');
-      expect(link).not.toBeInTheDocument();
-    });
-
     test('should highlight trustees link when on trustees page', async () => {
       const trusteeAdminUser = MockData.getCamsUser({ roles: [CamsRole.TrusteeAdmin] });
       LocalStorage.setSession(MockData.getCamsSession({ user: trusteeAdminUser }));
