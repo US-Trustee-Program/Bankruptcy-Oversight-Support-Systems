@@ -39,7 +39,7 @@ export function isAuthorized(request: HttpRequest) {
 }
 
 // Re-export shared queue helpers from common
-export { buildFunctionName, buildQueueName } from '@common/cams';
+export { buildFunctionName, buildQueueName } from '@common/queues';
 
 /**
  * buildContainerName

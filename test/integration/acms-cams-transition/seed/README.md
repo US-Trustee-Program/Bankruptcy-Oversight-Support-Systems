@@ -17,8 +17,8 @@ Seeds the ACMS replica test database with mock data:
 - `081-24-99999`: Chapter 15 with NY attorney (will be overridden by CAMS)
 - `081-24-88888`: Chapter 15 with CA attorney (ACMS only, no CAMS override)
 
-### 02-seed-cmmap-staging.sql
-Seeds the CAMS downstream staging table with mock CAMS assignments:
+### 02-seed-cmmap-cams.sql
+Seeds the `CMMAP_CAMS` table with mock CAMS appointments:
 - 3 Chapter 15 assignments using placeholder professional IDs (ZZ-*)
 
 **Test Cases Created:**
@@ -28,7 +28,7 @@ Seeds the CAMS downstream staging table with mock CAMS assignments:
 
 ## Expected View Results
 
-When both seed scripts are run, the CMMAP view should return:
+When both seed scripts are run, `CMMAP_ALL` should return:
 
 | Case ID | Source | Professional | Active | Notes |
 |---------|--------|--------------|--------|-------|
@@ -42,7 +42,7 @@ When both seed scripts are run, the CMMAP view should return:
 
 **Key Observations:**
 - Total: 7 appointments (5 from ACMS, 3 from CAMS, minus 1 override)
-- ACMS case 081-24-99999 is **excluded** because CAMS has data for that case
+- ACMS case 081-24-99999 is **excluded** because CAMS has a row for that case
 - All CAMS assignments use placeholder professional IDs (ZZ-*)
 - One CAMS assignment is inactive (APPTEE_ACTIVE='N')
 
@@ -51,7 +51,7 @@ When both seed scripts are run, the CMMAP view should return:
 ```bash
 # Run on test databases
 sqlcmd -S localhost -d acms_replica_test -i 01-seed-acms-replica.sql
-sqlcmd -S localhost -d cams_downstream_test -i 02-seed-cmmap-staging.sql
+sqlcmd -S localhost -d acms_replica_test -i 02-seed-cmmap-cams.sql
 ```
 
 ## Notes

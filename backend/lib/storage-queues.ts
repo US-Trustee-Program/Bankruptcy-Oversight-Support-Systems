@@ -1,4 +1,4 @@
-import { buildQueueName } from '@common/cams';
+import { buildQueueName } from '@common/queues';
 import { output } from '@azure/functions';
 import ModuleNames from '../function-apps/dataflows/module-names';
 
@@ -41,5 +41,10 @@ export const CASE_DELETED_EVENT_DLQ = output.storageQueue({
 
 export const SYNC_CASES_PAGE_QUEUE = output.storageQueue({
   queueName: buildQueueName(ModuleNames.SYNC_CASES_PAGE),
+  connection,
+});
+
+export const TRUSTEE_APPOINTMENT_EVENT_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_APPOINTMENT_EVENT),
   connection,
 });
