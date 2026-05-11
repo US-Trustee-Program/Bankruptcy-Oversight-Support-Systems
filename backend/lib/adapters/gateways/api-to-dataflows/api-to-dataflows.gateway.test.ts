@@ -4,7 +4,7 @@ import { createMockApplicationContext } from '../../../testing/testing-utilities
 import { ApplicationContext } from '../../types/basic';
 import { InvocationContextExtraOutputs } from '@azure/functions';
 import { CASE_ASSIGNMENT_EVENT_QUEUE, SYNC_CASES_PAGE_QUEUE } from '../../../storage-queues';
-import { CaseAssignmentEvent } from '@common/cams/dataflow-events';
+import { CaseAssignmentDownstreamEvent } from '@common/cams/dataflow-events';
 
 describe('ApiToDataflowsGatewayImpl', () => {
   let mockContext: ApplicationContext;
@@ -81,7 +81,7 @@ describe('ApiToDataflowsGatewayImpl', () => {
         role: 'TrialAttorney',
         assignedOn: '2024-01-01',
       };
-      const event: CaseAssignmentEvent = eventData;
+      const event: CaseAssignmentDownstreamEvent = { ...eventData, acmsProfessionalId: null };
 
       await gateway.queueCaseAssignmentEvent(event);
 

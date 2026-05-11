@@ -7,7 +7,7 @@ This subproject provides an **intermediate integration layer** for downstream co
 ```
 CAMS (Cosmos DB)
   └─> Chapter 15 Case Assignment Event
-      └─> Azure Storage Queue: "downstream-chapter15-assignments-event"
+      └─> Azure Storage Queue: "downstream-staff-assignments-event"
           └─> Azure Function Handler
               └─> Write to CMMAP_STAGING table (Azure SQL)
                   └─> CMMAP View (UNION)
@@ -39,7 +39,7 @@ downstream/
 │       └── migrations/
 │           └── 001-initial-schema.sql
 ├── functions/
-│   ├── chapter15-assignment-handler/
+│   ├── staff-assignment-handler/
 │   │   ├── index.ts                # Event handler entry point
 │   │   ├── transform.ts            # CAMS → ACMS schema transformation
 │   │   └── transform.test.ts       # Unit tests
@@ -131,7 +131,7 @@ cd functions && func start
 ### Queue Naming Convention
 
 Following CAMS dataflows convention:
-- **Queue Name:** `downstream-chapter15-assignments-event`
+- **Queue Name:** `downstream-staff-assignments-event`
 - **Pattern:** `{MODULE_NAME}-{suffix}` (lowercase)
 - **Module Name:** `DOWNSTREAM-CHAPTER15-ASSIGNMENTS`
 - **Suffix:** `event`
@@ -170,7 +170,7 @@ ACMS_REPLICA_DATABASE="acms-replica"  # Name of ACMS database on same server
 AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;"
 ```
 
-**Note:** Queue name is hardcoded as `downstream-chapter15-assignments-event` following CAMS dataflows naming convention
+**Note:** Queue name is hardcoded as `downstream-staff-assignments-event` following CAMS dataflows naming convention
 
 ## Future Enhancements
 

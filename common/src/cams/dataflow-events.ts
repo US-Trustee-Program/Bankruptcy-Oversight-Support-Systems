@@ -11,6 +11,15 @@ import { TrusteeAppointment } from './trustee-appointments';
 export type CaseAssignmentEvent = CaseAssignment;
 
 /**
+ * CaseAssignmentEvent extended with ACMS integration fields for downstream consumers.
+ * acmsProfessionalId carries the compound ACMS key ("{GROUP_DESIGNATOR}-{PROF_CODE}")
+ * so the downstream handler needs no external lookups. null when unresolvable.
+ */
+export type CaseAssignmentDownstreamEvent = CaseAssignmentEvent & {
+  acmsProfessionalId: string | null;
+};
+
+/**
  * Event triggered when a case is closed.
  * Processed by dataflows to remove all office assignee records for the case.
  */

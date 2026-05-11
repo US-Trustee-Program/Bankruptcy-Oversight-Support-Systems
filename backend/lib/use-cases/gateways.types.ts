@@ -27,7 +27,7 @@ import {
 } from '@common/cams/users';
 import { UstpOfficeDetails } from '@common/cams/offices';
 import { CaseAssignment } from '@common/cams/assignments';
-import { CaseAssignmentEvent } from '@common/cams/dataflow-events';
+import { CaseAssignmentDownstreamEvent } from '@common/cams/dataflow-events';
 import { CamsSession } from '@common/cams/session';
 import { ConditionOrConjunction, Query, SortSpec } from '../query/query-builder';
 import { AcmsConsolidation, AcmsPredicate } from './dataflows/migrate-consolidations';
@@ -543,7 +543,7 @@ export type OfficeAssignee = {
 };
 
 export interface ApiToDataflowsGateway {
-  queueCaseAssignmentEvent(event: CaseAssignmentEvent): Promise<void>;
+  queueCaseAssignmentEvent(event: CaseAssignmentDownstreamEvent): Promise<void>;
   queueCaseReload(caseId: string): Promise<void>;
 }
 
