@@ -248,7 +248,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet DistrictVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nlet DivisionVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where toint(customMeasurements.divisionCount) > 0\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    DistrictFilterRate = round(iif(TotalVisits > 0, todouble(DistrictVisits) / todouble(TotalVisits) * 100, 0.0), 1),\n    DivisionFilterRate = round(iif(TotalVisits > 0, todouble(DivisionVisits) / todouble(TotalVisits) * 100, 0.0), 1)",
+        "query": "let TrusteePageVisits = pageViews \n    | where timestamp {TimeRange} \n    | where url contains \"/trustees\" \n    | project operation_Id;\nlet FilterEvents = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | extend divCount = toint(customMeasurements.divisionCount)\n    | project operation_Id, divCount;\nTrusteePageVisits\n| join kind=leftouter FilterEvents on operation_Id\n| summarize \n    TotalPageViews = dcount(operation_Id),\n    VisitsWithDistrictFilter = dcountif(operation_Id, isnotempty(divCount)),\n    VisitsWithDivisionFilter = dcountif(operation_Id, divCount > 0)\n| project \n    DistrictFilterRate = round(VisitsWithDistrictFilter * 100.0 / TotalPageViews, 1),\n    DivisionFilterRate = round(VisitsWithDivisionFilter * 100.0 / TotalPageViews, 1)",
         "size": 3,
         "title": "District vs. Division Filter Usage Rate (% of Page Visits)",
         "timeContextFromParameter": "TimeRange",
@@ -286,7 +286,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let TrusteePageVisits =\n    pageViews\n    | where timestamp {TimeRange}\n    | where url contains \"/trustees\"\n    | project operation_Id;\nlet TotalVisits = toscalar(TrusteePageVisits | count);\nlet DistrictThenDivisionVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | where toint(customMeasurements.divisionCount) > 0\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nlet DistrictOnlyVisits = toscalar(\n    customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | where tostring(customDimensions.isDefault) != \"true\"\n    | join kind=inner TrusteePageVisits on operation_Id\n    | summarize by operation_Id\n    | count\n);\nprint\n    TotalVisits = TotalVisits,\n    DistrictThenDivisionVisits = DistrictThenDivisionVisits,\n    RefinedWithDivisionRate = round(iif(DistrictOnlyVisits > 0, todouble(DistrictThenDivisionVisits) / todouble(DistrictOnlyVisits) * 100, 0.0), 1)",
+        "query": "let Sessions = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | project operation_Id, \n              // We'll count everything for now to verify the math\n              isDistrictEvent = true, \n              hasDivision = toint(customMeasurements.divisionCount) > 0;\nSessions\n| summarize \n    TotalDistrictSessions = dcountif(operation_Id, isDistrictEvent),\n    DistrictAndDivisionSessions = dcountif(operation_Id, isDistrictEvent and hasDivision)\n| project \n    ['% of District Sessions with Division Filter'] = iff(TotalDistrictSessions > 0, round(DistrictAndDivisionSessions * 100.0 / TotalDistrictSessions, 1), 0.0),\n    ['Total District Sessions (Denominator)'] = TotalDistrictSessions",
         "size": 3,
         "title": "% of District Filter Sessions That Also Used Division Filter",
         "timeContextFromParameter": "TimeRange",
@@ -294,7 +294,22 @@
         "resourceType": "microsoft.insights/components",
         "visualization": "tiles",
         "tileSettings": {
-          "titleContent": {},
+          "titleContent": {
+            "columnMatch": "% of District Sessions with Division Filter",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal"
+              }
+            }
+          },
+          "subtitleContent": {
+            "columnMatch": "Total District Sessions (Denominator)"
+          },
           "leftContent": {
             "columnMatch": "RefinedWithDivisionRate",
             "formatter": 12,
@@ -396,6 +411,44 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
+        "query": "let DistrictSessions = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | extend selectedCount = toint(customMeasurements.selectedCount)\n    | extend divisionCount = toint(customMeasurements.divisionCount)\n    | where selectedCount > 0\n    | summarize\n        EarliestDistrictOnlyTime = minif(timestamp, divisionCount == 0),\n        EarliestDivisionTime = minif(timestamp, divisionCount > 0)\n    by operation_Id;\nlet TotalDistrictSessions = toscalar(DistrictSessions | count);\nlet DivisionAfterDistrictSessions = toscalar(\n    DistrictSessions\n    | where isnotempty(EarliestDistrictOnlyTime) and isnotempty(EarliestDivisionTime)\n    | where EarliestDivisionTime > EarliestDistrictOnlyTime\n    | count\n);\nprint\n    TotalDistrictSessions = TotalDistrictSessions,\n    DivisionAfterDistrictSessions = DivisionAfterDistrictSessions,\n    Rate = round(iif(TotalDistrictSessions > 0, todouble(DivisionAfterDistrictSessions) / todouble(TotalDistrictSessions) * 100, 0.0), 1)",
+        "size": 3,
+        "title": "% of District Sessions That Subsequently Refined by Division",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "titleContent": {},
+          "leftContent": {
+            "columnMatch": "Rate",
+            "formatter": 12,
+            "formatOptions": {
+              "palette": "blue"
+            },
+            "numberFormat": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          },
+          "secondaryContent": {
+            "columnMatch": "TotalDistrictSessions",
+            "formatter": 1
+          },
+          "showBorder": true
+        }
+      },
+      "customWidth": "25",
+      "name": "division-after-district-sequential-kpi"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
         "query": "customEvents\n| where timestamp {TimeRange}\n| where name in (\"Trustee District Filter Changed\", \"Trustee Division Filter Cleared\")\n| summarize\n    DistrictModifications = countif(name == \"Trustee District Filter Changed\" and tostring(customDimensions.isDefault) != \"true\"),\n    DivisionActive = countif(name == \"Trustee District Filter Changed\" and toint(customMeasurements.divisionCount) > 0),\n    DivisionClears = countif(name == \"Trustee Division Filter Cleared\")\n    by Day = bin(timestamp, 1d)\n| order by Day asc",
         "size": 0,
         "title": "Division Filter Activity Over Time",
@@ -435,6 +488,42 @@
         }
       },
       "name": "division-filter-activity-trend"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where timestamp {TimeRange}\n| where name == \"Trustee District Filter Changed\"\n| where toint(customMeasurements.selectedCount) > 0\n| summarize\n    DistrictOnlySessions = dcountif(operation_Id, toint(customMeasurements.divisionCount) == 0),\n    DistrictAndDivisionSessions = dcountif(operation_Id, toint(customMeasurements.divisionCount) > 0)\n    by Day = bin(timestamp, 1d)\n| extend TotalDistrictSessions = DistrictOnlySessions + DistrictAndDivisionSessions\n| extend DivisionUsageRate = round(iif(TotalDistrictSessions > 0, todouble(DistrictAndDivisionSessions) / todouble(TotalDistrictSessions) * 100, 0.0), 1)\n| project Day, DivisionUsageRate, TotalDistrictSessions\n| order by Day asc",
+        "size": 0,
+        "title": "Daily Division Filter Usage Rate (% of District Sessions with Division Active)",
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "linechart",
+        "chartSettings": {
+          "xAxis": "Day",
+          "yAxis": ["DivisionUsageRate"],
+          "showDataPoints": true,
+          "seriesLabelSettings": [
+            {
+              "seriesName": "DivisionUsageRate",
+              "label": "% Sessions Using Division Filter",
+              "color": "green"
+            }
+          ],
+          "ySettings": {
+            "numberFormatSettings": {
+              "unit": 1,
+              "options": {
+                "style": "decimal",
+                "minimumFractionDigits": 1,
+                "maximumFractionDigits": 1
+              }
+            }
+          }
+        }
+      },
+      "name": "division-adoption-rate-trend"
     },
     {
       "type": 1,
@@ -1027,7 +1116,7 @@
     }
   ],
   "fallbackResourceIds": [
-    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-b2abcd/providers/Microsoft.Insights/components/appi-ustp-cams-dev-b2abcd-webapp"
+    "/subscriptions/729f9083-9edf-4269-919f-3f05f7a0ab20/resourceGroups/rg-cams-app-dev-bea1f4/providers/Microsoft.Insights/components/appi-ustp-cams-dev-bea1f4-webapp"
   ],
   "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
 }
