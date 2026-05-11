@@ -25,13 +25,11 @@ describe('appConfiguration', () => {
     expect(config.inactiveTimeout).toBe(300);
   });
 
-  test('returns useFakeApi true when CAMS_USE_FAKE_API is "true"', () => {
-    window.CAMS_CONFIGURATION = { ...originalConfig, CAMS_USE_FAKE_API: 'true' };
-    expect(getAppConfiguration().useFakeApi).toBe(true);
-  });
-
-  test('returns useFakeApi false when CAMS_USE_FAKE_API is "false"', () => {
-    window.CAMS_CONFIGURATION = { ...originalConfig, CAMS_USE_FAKE_API: 'false' };
-    expect(getAppConfiguration().useFakeApi).toBe(false);
+  test.each([
+    ['true', true],
+    ['false', false],
+  ])('returns useFakeApi %s when CAMS_USE_FAKE_API is "%s"', (value, expected) => {
+    window.CAMS_CONFIGURATION = { ...originalConfig, CAMS_USE_FAKE_API: value };
+    expect(getAppConfiguration().useFakeApi).toBe(expected);
   });
 });
