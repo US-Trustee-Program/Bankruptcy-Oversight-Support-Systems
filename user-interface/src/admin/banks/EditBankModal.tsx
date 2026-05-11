@@ -56,7 +56,7 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
 
       try {
         const response = await Api2.updateBank(bank.id, { name: trimmed, status });
-        const updated = (response as { data: BankProfile }).data;
+        const updated = response.data;
         onSuccess(updated);
         modalRef.current?.hide();
         alert?.success('Bank updated successfully.');

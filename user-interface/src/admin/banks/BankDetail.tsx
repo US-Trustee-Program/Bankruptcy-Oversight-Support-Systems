@@ -20,16 +20,28 @@ export function BankDetail() {
 
   useEffect(() => {
     if (!bankId) return;
+
+    let isCancelled = false;
+
     setIsLoaded(false);
     Api2.getBank(bankId)
       .then((response) => {
-        setBank((response as { data: BankProfile }).data);
+        if (isCancelled) return;
+        setBank(response.data);
         setLoadError(null);
       })
       .catch((error: Error) => {
+        if (isCancelled) return;
         setLoadError(error.message);
       })
-      .finally(() => setIsLoaded(true));
+      .finally(() => {
+        if (isCancelled) return;
+        setIsLoaded(true);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
   }, [bankId]);
 
   function handleBankUpdated(updated: BankProfile) {
