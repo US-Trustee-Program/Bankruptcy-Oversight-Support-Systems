@@ -6,7 +6,7 @@ interface BankDetailNavigationProps {
 
 export function BankDetailNavigation({ bankId }: Readonly<BankDetailNavigationProps>) {
   return (
-    <nav aria-label="Bank detail navigation" role="navigation">
+    <nav aria-label="Bank detail navigation">
       <ul className="usa-sidenav">
         <li className="usa-sidenav__item">
           <NavLink

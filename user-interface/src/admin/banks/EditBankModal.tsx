@@ -61,7 +61,7 @@ export const EditBankModal = forwardRef<EditBankModalRef, EditBankModalProps>(
         modalRef.current?.hide();
         alert?.success('Bank updated successfully.');
       } catch (error) {
-        getAppInsights().appInsights.trackException({ exception: error as Error });
+        getAppInsights()?.appInsights?.trackException({ exception: error as Error });
         alert?.error('Failed to update bank. Please try again.');
       }
     }

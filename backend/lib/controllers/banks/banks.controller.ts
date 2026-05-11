@@ -27,6 +27,7 @@ export class BanksController {
   async handleGetOne(context: ApplicationContext): Promise<CamsHttpResponseInit<BankProfile>> {
     this.requireSuperUser(context);
     const { bankId } = context.request.params;
+    if (!bankId) throw new BadRequestError(MODULE_NAME, { message: 'Bank ID is required.' });
     const bank = await this.useCase.getBank(bankId);
     return httpSuccess({
       statusCode: 200,
@@ -37,6 +38,7 @@ export class BanksController {
   async handlePut(context: ApplicationContext): Promise<CamsHttpResponseInit<BankProfile>> {
     this.requireSuperUser(context);
     const { bankId } = context.request.params;
+    if (!bankId) throw new BadRequestError(MODULE_NAME, { message: 'Bank ID is required.' });
     const body = context.request.body as Partial<Pick<BankProfile, 'name' | 'status'>> | null;
     if (!body || !body.name || !body.name.trim()) {
       throw new BadRequestError(MODULE_NAME, { message: 'Bank name is required.' });
