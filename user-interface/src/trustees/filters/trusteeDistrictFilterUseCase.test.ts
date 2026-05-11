@@ -563,13 +563,13 @@ describe('trustee district filter use case tests', () => {
       mockStore.setSelectedDistricts = vi.fn();
     });
 
-    test('should not call onFilterDistrict when session has no matching offices', async () => {
+    test('should call onFilterDistrict with empty array when session has no matching offices', async () => {
       vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockDistricts });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       await useCase.fetchDistricts();
 
-      expect(mockOnFilterDistrict).not.toHaveBeenCalled();
+      expect(mockOnFilterDistrict).toHaveBeenCalledWith([]);
     });
 
     test('should call onFilterDistrict with defaults when user has matching offices', async () => {

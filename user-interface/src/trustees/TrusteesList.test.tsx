@@ -473,6 +473,77 @@ describe('TrusteesList Component', () => {
         );
       });
     });
+
+    test('should track chapterCount correctly in Trustee District Filter Changed when chapter is selected', async () => {
+      const apptNY = makeAppointment({ courtId: 'NYSB', divisionCode: '081', chapter: '7' });
+      const trusteeNY = makeListItem({
+        trusteeId: 'ny',
+        name: 'NY Trustee',
+        appointments: [apptNY],
+      });
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeNY] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'NYSB',
+            courtName: 'Southern District of New York',
+            officeCode: '081',
+            officeName: 'Manhattan',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Manhattan',
+            groupDesignator: 'NY',
+            regionId: '02',
+            regionName: 'New York Region',
+          },
+        ],
+      });
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue({
+        ...MockData.getCamsSession(),
+        user: {
+          ...MockData.getCamsSession().user,
+          offices: [
+            {
+              officeCode: '081',
+              officeName: 'Manhattan',
+              idpGroupName: 'Manhattan',
+              regionId: '02',
+              regionName: 'New York Region',
+              groups: [
+                {
+                  groupDesignator: 'NY',
+                  divisions: [
+                    {
+                      divisionCode: '081',
+                      court: { courtId: 'NYSB', courtName: 'Southern District of New York' },
+                      courtOffice: { courtOfficeCode: '081', courtOfficeName: 'Manhattan' },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      renderWithRouter(<TrusteesList />);
+      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+
+      const user = userEvent.setup();
+      await user.click(screen.getByRole('button', { name: /filters/i }));
+      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+      await user.click(screen.getByLabelText('Chapter'));
+      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: /option: 7/ }));
+
+      await waitFor(() => {
+        const districtFilterChangedCalls = mockTrackEvent.mock.calls.filter(
+          ([event]) => event.name === 'Trustee District Filter Changed',
+        );
+        const lastCall = districtFilterChangedCalls.at(-1);
+        expect(lastCall).toBeDefined();
+        expect(lastCall![1]).toMatchObject({ chapterCount: 1 });
+      });
+    });
   });
 
   describe('Chapter Filtering', () => {
