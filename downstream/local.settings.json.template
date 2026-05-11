@@ -1,0 +1,19 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;AccountName=YOUR_ACCOUNT;AccountKey=YOUR_KEY;EndpointSuffix=core.usgovcloudapi.net",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "ACMS_MSSQL_HOST": "sql-ustp-cams.database.usgovcloudapi.net",
+    "ACMS_MSSQL_DATABASE": "ACMS_REP_SUB",
+    "ACMS_MSSQL_USER": "YOUR_SQL_USER",
+    "ACMS_MSSQL_PASS": "YOUR_SQL_PASS",
+    "ACMS_MSSQL_ENCRYPT": "true",
+    "ACMS_MSSQL_TRUST_UNSIGNED_CERT": "true"
+  },
+  "ConnectionStrings": {},
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}

@@ -1,0 +1,35 @@
+export interface CmmapCamsRow {
+  DELETE_CODE: string;
+  CASE_DIV: number;
+  CASE_YEAR: number;
+  CASE_NUMBER: number;
+  RECORD_SEQ_NBR: number;
+  PROF_CODE: number;
+  GROUP_DESIGNATOR: string;
+  APPT_TYPE: string;
+  APPT_DATE: number | null;
+  APPT_DATE_DT: Date | null;
+  APPT_DISP: string | null;
+  DISP_DATE: number | null;
+  DISP_DATE_DT: Date | null;
+  COMMENTS: string | null;
+  APPTEE_ACTIVE: string;
+  ALPHA_SEARCH: string | null;
+  USER_ID: string | null;
+  HEARING_SEQUENCE: number | null;
+  REGION_CODE: string | null;
+  RGN_CREATE_DATE: number | null;
+  RGN_UPDATE_DATE: number | null;
+  RGN_CREATE_DATE_DT: Date | null;
+  RGN_UPDATE_DATE_DT: Date | null;
+  CDB_CREATE_DATE: number | null;
+  CDB_UPDATE_DATE: number | null;
+  CDB_CREATE_DATE_DT: Date | null;
+  CDB_UPDATE_DATE_DT: Date | null;
+  UPDATE_DATE: Date;
+  SOURCE: string;
+  CAMS_CASE_ID: string;
+  CAMS_USER_ID: string;
+  CAMS_USER_NAME: string;
+  LAST_UPDATED: Date;
+}
