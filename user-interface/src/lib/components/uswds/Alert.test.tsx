@@ -106,91 +106,30 @@ describe('Test Alert component', () => {
     });
   });
 
-  test('should have info class', async () => {
+  test.each([
+    [UswdsAlertStyle.Info, 'usa-alert--info'],
+    [UswdsAlertStyle.Warning, 'usa-alert--warning'],
+    [UswdsAlertStyle.Error, 'usa-alert--error'],
+    [UswdsAlertStyle.Success, 'usa-alert--success'],
+  ])('should apply %s type class to alert', async (type, expectedClass) => {
     const alertRef = React.createRef<AlertRefType>();
     render(
       <React.StrictMode>
         <BrowserRouter>
           <Alert
             message="Test alert message"
-            type={UswdsAlertStyle.Info}
+            type={type}
             role="status"
             slim={true}
             ref={alertRef}
-          ></Alert>
+          />
         </BrowserRouter>
       </React.StrictMode>,
     );
 
     const alert = screen.getByTestId('alert');
     await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert--info');
-    });
-  });
-
-  test('should have warning class', async () => {
-    const alertRef = React.createRef<AlertRefType>();
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <Alert
-            message="Test alert message"
-            type={UswdsAlertStyle.Warning}
-            role="status"
-            slim={true}
-            ref={alertRef}
-          ></Alert>
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
-
-    const alert = screen.getByTestId('alert');
-    await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert--warning');
-    });
-  });
-
-  test('should have error class', async () => {
-    const alertRef = React.createRef<AlertRefType>();
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <Alert
-            message="Test alert message"
-            type={UswdsAlertStyle.Error}
-            role="status"
-            slim={true}
-            ref={alertRef}
-          ></Alert>
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
-
-    const alert = screen.getByTestId('alert');
-    await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert--error');
-    });
-  });
-
-  test('should have success class', async () => {
-    const alertRef = React.createRef<AlertRefType>();
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <Alert
-            message="Test alert message"
-            type={UswdsAlertStyle.Success}
-            role="status"
-            slim={true}
-            ref={alertRef}
-          ></Alert>
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
-
-    const alert = screen.getByTestId('alert');
-    await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert--success');
+      expect(alert).toHaveClass(expectedClass);
     });
   });
 
@@ -245,28 +184,6 @@ describe('Test Alert component', () => {
           <Alert
             message="Test alert message"
             title="Test Title"
-            type={UswdsAlertStyle.Info}
-            role="status"
-            slim={true}
-            ref={alertRef}
-          ></Alert>
-        </BrowserRouter>
-      </React.StrictMode>,
-    );
-
-    const alert = screen.getByTestId('alert');
-    await waitFor(() => {
-      expect(alert).toHaveClass('usa-alert--slim');
-    });
-  });
-
-  test('should have slim class when slim is provided without title', async () => {
-    const alertRef = React.createRef<AlertRefType>();
-    render(
-      <React.StrictMode>
-        <BrowserRouter>
-          <Alert
-            message="Test alert message"
             type={UswdsAlertStyle.Info}
             role="status"
             slim={true}

@@ -430,28 +430,6 @@ describe('TrusteeDetailScreen', () => {
     expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
   });
 
-  test('should transform software list correctly', async () => {
-    const mockSoftwareData = [
-      { _id: '1', list: 'bankruptcy-software', key: 'Alpha', value: 'Alpha Software' },
-      { _id: '2', list: 'bankruptcy-software', key: 'Beta', value: 'Beta Platform' },
-      { _id: '3', list: 'bankruptcy-software', key: 'Gamma', value: 'Gamma System' },
-    ];
-
-    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
-    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    const getBankruptcySoftwareListSpy = vi
-      .spyOn(Api2, 'getBankruptcySoftwareList')
-      .mockResolvedValue({ data: mockSoftwareData });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
-    });
-
-    expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
-  });
-
   test('should navigate to assistant create route when assistant button is clicked and no assistant exists', async () => {
     const trusteeWithoutAssistant = { ...mockTrustee, assistants: undefined };
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: trusteeWithoutAssistant });

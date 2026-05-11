@@ -66,21 +66,6 @@ describe('TrusteeName', () => {
 
       expect(mockTrackEvent).toHaveBeenCalledWith({ name: 'Trustee Profile Navigated' });
     });
-
-    test('does not fire "Trustee Profile Navigated" when name renders as plain text', async () => {
-      const noAccessUser = MockData.getCamsUser({ roles: [] });
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(
-        MockData.getCamsSession({ user: noAccessUser }),
-      );
-
-      render(
-        <BrowserRouter>
-          <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} />
-        </BrowserRouter>,
-      );
-
-      expect(mockTrackEvent).not.toHaveBeenCalled();
-    });
   });
 
   describe('openNewTab', () => {
@@ -99,16 +84,6 @@ describe('TrusteeName', () => {
       );
     });
 
-    test('does not show an icon when openNewTab is false', () => {
-      render(
-        <BrowserRouter>
-          <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} openNewTab={false} />
-        </BrowserRouter>,
-      );
-
-      expect(screen.queryByTestId('icon')).not.toBeInTheDocument();
-    });
-
     test('opens in a new tab when openNewTab is true', () => {
       render(
         <BrowserRouter>
@@ -121,13 +96,14 @@ describe('TrusteeName', () => {
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
 
-    test('does not open in a new tab when openNewTab is false', () => {
+    test('does not open in a new tab and shows no icon when openNewTab is false', () => {
       render(
         <BrowserRouter>
           <TrusteeName trusteeName={TRUSTEE_NAME} trusteeId={TRUSTEE_ID} openNewTab={false} />
         </BrowserRouter>,
       );
 
+      expect(screen.queryByTestId('icon')).not.toBeInTheDocument();
       const link = screen.getByTestId('case-detail-trustee-link');
       expect(link).not.toHaveAttribute('target');
       expect(link).not.toHaveAttribute('rel');

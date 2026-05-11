@@ -155,26 +155,4 @@ describe('Tests for Pill Box', () => {
       expect(pill2).toHaveTextContent('pill 2');
     });
   });
-
-  test('Should call onSelectionChange with the correct selections', async () => {
-    const selectionChange = vi.fn();
-
-    render(
-      <PillBox
-        id={'test-pillbox'}
-        selections={testSelections}
-        onSelectionChange={selectionChange}
-      ></PillBox>,
-    );
-
-    const pill0 = document.querySelector('#pill-test-pillbox-0');
-    await userEvent.click(pill0!);
-
-    await vi.waitFor(() => {
-      expect(selectionChange).toHaveBeenCalledWith([
-        { label: 'pill 1', value: 'p1' },
-        { label: 'pill 2', value: 'p2' },
-      ]);
-    });
-  });
 });

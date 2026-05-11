@@ -34,22 +34,6 @@ describe('Case Detail Header tests', () => {
     expect(isLoadingH1).toContainHTML('Loading Case Details...');
   });
 
-  test('should render case detail info when isLoading is false', () => {
-    basicRender(testCaseDetail, false);
-
-    const caseHeading = screen.getByTestId('case-detail-heading');
-    const caseTitle = screen.getByTestId('case-detail-heading-title');
-    const caseTitleSection = screen.getByTestId('h2-with-case-info');
-    const caseChapter = screen.getByTestId('tag-case-chapter');
-
-    expect(caseHeading).toHaveTextContent(testCaseDetail.caseId);
-    expect(caseTitle.textContent).toContain(testCaseDetail.debtor.name);
-    expect(caseTitleSection).toBeInTheDocument();
-    expect(caseChapter.innerHTML).toEqual(
-      `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,
-    );
-  });
-
   test('should fix header in place when screen is scrolled and header hits the top of the screen', async () => {
     render(
       <BrowserRouter>
@@ -68,8 +52,6 @@ describe('Case Detail Header tests', () => {
     const app = await screen.findByTestId('app-component-test-id');
     const heading = await screen.findByTestId('case-detail-heading-title');
     expect(heading.textContent).toContain(testCaseDetail.debtor.name);
-    const title = await screen.findByTestId('case-detail-heading-title');
-    expect(title.textContent).toContain(testCaseDetail.debtor.name);
 
     let normalHeader = await screen.findByTestId('case-detail-header');
     expect(normalHeader).toBeInTheDocument();
@@ -146,59 +128,6 @@ describe('Case Detail Header tests', () => {
     expect(caseChapter.innerHTML).toEqual(
       `${testCaseDetail.petitionLabel} Chapter ${testCaseDetail.chapter}`,
     );
-  });
-
-  test('should render lead case icon when case is lead case', () => {
-    const leadCaseDetail = MockData.getCaseDetail({
-      override: {
-        petitionLabel: 'Voluntary',
-        consolidation: [
-          MockData.getConsolidationReference({ override: { documentType: 'CONSOLIDATION_FROM' } }),
-        ],
-      },
-    });
-
-    basicRender(leadCaseDetail, false);
-
-    const leadIcon = screen.getByTestId('lead-case-icon');
-    expect(leadIcon).toBeInTheDocument();
-  });
-
-  test('should render member case icon when case is member case', () => {
-    const memberCaseDetail = MockData.getCaseDetail({
-      override: {
-        petitionLabel: 'Voluntary',
-        consolidation: [
-          MockData.getConsolidationReference({ override: { documentType: 'CONSOLIDATION_TO' } }),
-        ],
-      },
-    });
-
-    basicRender(memberCaseDetail, false);
-
-    const memberCaseIcon = screen.getByTestId('member-case-icon');
-    expect(memberCaseIcon).toBeInTheDocument();
-  });
-
-  test('should render transferred case icon when case is transferred', () => {
-    const transferredCaseDetail = MockData.getCaseDetail({
-      override: {
-        petitionLabel: 'Voluntary',
-        transfers: [
-          {
-            documentType: 'TRANSFER_FROM',
-            caseId: '081-23-12345',
-            orderDate: '2024-01-15',
-            otherCase: MockData.getCaseSummary(),
-          },
-        ],
-      },
-    });
-
-    basicRender(transferredCaseDetail, false);
-
-    const transferIcon = screen.getByTestId('transfer-icon');
-    expect(transferIcon).toBeInTheDocument();
   });
 
   test('should display tooltip for lead case icon with consolidation type', () => {

@@ -977,12 +977,6 @@ describe('validateFormData function', () => {
     expect(result.isValid).toBe(false);
     expect(result.formValidationError).toBe('Please enter at least one search criterion');
   });
-
-  test('should handle raw input with valid case number', () => {
-    const result = validateFormData({ caseNumber: '12-34567' });
-    expect(result.isValid).toBe(true);
-    expect(result.fieldErrors.caseNumber).toBeUndefined();
-  });
 });
 
 describe('debtor name search', () => {

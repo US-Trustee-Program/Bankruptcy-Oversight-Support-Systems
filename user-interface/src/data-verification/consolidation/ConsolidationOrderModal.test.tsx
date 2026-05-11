@@ -161,24 +161,6 @@ describe('ConsolidationOrderModalComponent', () => {
     expect(onCancelSpy).toHaveBeenCalled();
   });
 
-  test('should call onCancel callback when cancel button is clicked', async () => {
-    const id = 'test';
-    const cases = MockData.buildArray(MockData.getCaseSummary, 2);
-
-    const view = renderModalWithProps({ id });
-
-    await waitFor(() => {
-      view.current?.show({ status: 'rejected', cases });
-    });
-
-    const button = screen.queryByTestId(`button-${id}-cancel-button`);
-    fireEvent.click(button as Element);
-
-    await waitFor(() => {
-      expect(onCancelSpy).toHaveBeenCalled();
-    });
-  });
-
   test('should render Oxford comma for attorney list.', async () => {
     const nameList: string[] = [];
 

@@ -116,9 +116,6 @@ describe('court docket panel tests', () => {
     const docketEntry1 = screen.getByTestId('docket-entry-0');
     const docketEntry2 = screen.getByTestId('docket-entry-1');
     const docketEntry3 = screen.getByTestId('docket-entry-2');
-    expect(docketEntry1).toBeInTheDocument();
-    expect(docketEntry2).toBeInTheDocument();
-    expect(docketEntry3).toBeInTheDocument();
 
     const document1NumberColumn = docketEntry1.querySelector('.document-number-column');
     const document2NumberColumn = docketEntry2.querySelector('.document-number-column');
@@ -163,10 +160,7 @@ describe('court docket panel tests', () => {
       );
 
       const alertContainer = await screen.findByTestId('alert-container');
-      expect(alertContainer).toBeInTheDocument();
-
-      const alert = await screen.findByTestId('alert');
-      expect(alert.className).not.toContain('usa-alert__visible');
+      expect(alertContainer).not.toHaveClass('visible');
     });
   });
 

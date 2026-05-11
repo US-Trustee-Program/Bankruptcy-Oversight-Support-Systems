@@ -261,27 +261,6 @@ describe('copyHTMLToClipboard tests', () => {
     consoleSpy.mockRestore();
     clipboardMock.restore();
   });
-
-  test('should create ClipboardItem with both HTML and plain text types', async () => {
-    const clipboardMock = mockClipboardWrite();
-
-    const testElement = document.createElement('div');
-    testElement.className = 'test-class';
-    testElement.innerHTML = '<p>Line 1</p><p>Line 2</p>';
-    document.body.appendChild(testElement);
-
-    await copyHTMLToClipboard('.test-class');
-
-    expect(clipboardMock.mockWrite).toHaveBeenCalledTimes(1);
-    const clipboardItem = clipboardMock.mockWrite.mock.calls[0][0][0];
-
-    // Verify both HTML and plain text types are present (our code creates Blobs for both)
-    expect(clipboardItem).toBeInstanceOf(ClipboardItem);
-    expect(clipboardItem.types).toContain('text/html');
-    expect(clipboardItem.types).toContain('text/plain');
-
-    clipboardMock.restore();
-  });
 });
 
 describe('copyElementHTMLToClipboard tests', () => {

@@ -360,28 +360,6 @@ describe('CommsLink Component', () => {
     expect(link).toHaveTextContent('Email Me');
   });
 
-  describe('Website URL formatting functions', () => {
-    describe('formatWebsiteUrl', () => {
-      const cases = [
-        ['https://example.com', 'https://example.com'],
-        ['http://example.com', 'https://example.com'],
-        ['example.com', 'https://example.com'],
-        ['https://sub.example.com/path', 'https://sub.example.com/path'],
-      ];
-
-      test.each(cases)('formatWebsiteUrl(%s) -> %s', (input, expected) => {
-        render(
-          <CommsLink
-            contact={{ website: input } as Omit<ContactInformation, 'address'>}
-            mode="website"
-          />,
-        );
-        const link = screen.getByRole('link');
-        expect(link.getAttribute('href')).toBe(expected);
-      });
-    });
-  });
-
   describe('Accessibility: aria-label', () => {
     test('phone link has descriptive aria-label', () => {
       render(

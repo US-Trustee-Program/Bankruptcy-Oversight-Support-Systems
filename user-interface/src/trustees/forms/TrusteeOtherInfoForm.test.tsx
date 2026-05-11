@@ -331,43 +331,25 @@ describe('TrusteeOtherInfoForm', () => {
     expect(mockNavigate.navigateTo).toHaveBeenCalledWith(`/trustees/${TEST_TRUSTEE_ID}`);
   });
 
-  test('shows error and prevents submission when trusteeId is empty', async () => {
-    render(
-      <TrusteeOtherInfoForm
-        trusteeId=""
-        banks={TEST_BANKS}
-        softwareOptions={mockSoftwareOptions}
-      />,
-    );
+  test.each([[''], ['   ']])(
+    'shows error and prevents submission when trusteeId is %j',
+    async (trusteeId) => {
+      render(
+        <TrusteeOtherInfoForm
+          trusteeId={trusteeId}
+          banks={TEST_BANKS}
+          softwareOptions={mockSoftwareOptions}
+        />,
+      );
 
-    // Submit the form
-    await userEvent.click(screen.getByTestId('button-submit-button'));
+      await userEvent.click(screen.getByTestId('button-submit-button'));
 
-    // Should show error message and not call API
-    expect(mockGlobalAlert.error).toHaveBeenCalledWith(
-      'Cannot save trustee information: Trustee ID is missing',
-    );
-    expect(patchTrusteeSpy).not.toHaveBeenCalled();
-  });
-
-  test('shows error and prevents submission when trusteeId is whitespace only', async () => {
-    render(
-      <TrusteeOtherInfoForm
-        trusteeId="   "
-        banks={TEST_BANKS}
-        softwareOptions={mockSoftwareOptions}
-      />,
-    );
-
-    // Submit the form
-    await userEvent.click(screen.getByTestId('button-submit-button'));
-
-    // Should show error message and not call API
-    expect(mockGlobalAlert.error).toHaveBeenCalledWith(
-      'Cannot save trustee information: Trustee ID is missing',
-    );
-    expect(patchTrusteeSpy).not.toHaveBeenCalled();
-  });
+      expect(mockGlobalAlert.error).toHaveBeenCalledWith(
+        'Cannot save trustee information: Trustee ID is missing',
+      );
+      expect(patchTrusteeSpy).not.toHaveBeenCalled();
+    },
+  );
 
   test('updates software value when a software option is selected from ComboBox', async () => {
     const initialSoftware = 'Axos';

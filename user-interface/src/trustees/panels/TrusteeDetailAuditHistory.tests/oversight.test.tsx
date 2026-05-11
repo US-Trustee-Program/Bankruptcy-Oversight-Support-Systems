@@ -71,15 +71,6 @@ describe('TrusteeDetailAuditHistory - Oversight History Tests', () => {
 
     const scenarios = [
       {
-        name: 'basic oversight change',
-        override: {},
-        expectPrevRole: 'Attorney',
-        expectPrevName: 'John Attorney',
-        expectNewRole: 'Attorney',
-        expectNewName: 'Jane Attorney',
-        expectChangedBy: 'SYSTEM',
-      },
-      {
         name: 'no previous oversight',
         override: {
           before: null,

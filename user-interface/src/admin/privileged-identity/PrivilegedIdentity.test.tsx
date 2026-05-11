@@ -130,7 +130,7 @@ describe('Privileged Identity screen tests', () => {
 
     expect(sortUserList(userA, userZ)).toEqual(-1);
     expect(sortUserList(userZ, userA)).toEqual(1);
-    expect(sortUserList(userA, userA)).toEqual(0);
+    expect(sortUserList(userA, { id: '2', name: 'user A' })).toEqual(0);
   });
 
   test('should show alert if feature flag is not set', async () => {
@@ -162,35 +162,19 @@ describe('Privileged Identity screen tests', () => {
 
     await userEvent.click(userItem);
 
-    await expectFormToBeEnabled();
-
-    await expectItemToBeDisabled(`#delete-button`);
-    await expectItemToBeDisabled(`#save-button`);
-  });
-
-  test('should load screen with expected user list, office list, and role list', async () => {
-    renderWithoutProps();
-
-    await waitFor(() => {
-      expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
-    });
-
-    await expectComboBoxToBeDisabled(`${officeListComboBoxContainer}`);
-
-    const userItem = screen.getByTestId('user-list-option-item-4');
-    expect(userItem).toBeInTheDocument();
-
-    await userEvent.click(userItem);
-
     await waitFor(() => {
       expectComboBoxToBeEnabled(`${officeListComboBoxContainer}`);
+      expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
+      expect(document.querySelector(`#${dateInputId}`)).not.toBeDisabled();
+      expect(document.querySelector('#cancel-button')).not.toBeDisabled();
     });
 
     expect(screen.getByTestId(officeListItemId)).toBeInTheDocument();
-
     expect(screen.getByTestId(roleListItemId)).toBeInTheDocument();
-
     expect(screen.getByTestId('privileged-expiration-date')).toBeInTheDocument();
+
+    await expectItemToBeDisabled(`#delete-button`);
+    await expectItemToBeDisabled(`#save-button`);
   });
 
   test('should enable cancel button after selecting a user and save button after filling everything out. Delete should always be disabled for a new entry.', async () => {
@@ -203,11 +187,11 @@ describe('Privileged Identity screen tests', () => {
     const userItem = screen.getByTestId('user-list-option-item-4');
     expect(userItem).toBeInTheDocument();
 
-    await expectItemToBeDisabled(`#delete-button`);
-    await expectItemToBeDisabled(`#save-button`);
-    await expectItemToBeDisabled(`#cancel-button`);
-
     await userEvent.click(userItem);
+
+    await waitFor(() => {
+      expect(document.querySelector('#cancel-button')).not.toBeDisabled();
+    });
 
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeDisabled(`#delete-button`);
@@ -246,10 +230,6 @@ describe('Privileged Identity screen tests', () => {
     await waitFor(() => {
       expect(document.querySelector('.loading-spinner-caption')).not.toBeInTheDocument();
     });
-
-    await expectItemToBeDisabled(`#cancel-button`);
-    await expectItemToBeDisabled(`#save-button`);
-    await expectItemToBeDisabled(`#delete-button`);
 
     const userItem = screen.getByTestId('user-list-option-item-0');
     expect(userItem).toBeInTheDocument();

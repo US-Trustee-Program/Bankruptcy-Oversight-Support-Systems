@@ -134,24 +134,6 @@ describe('TransferOrderAccordion', () => {
     expect(form).toBeInTheDocument();
   });
 
-  test('should expand and show detail when a header is clicked', async () => {
-    let heading;
-    renderWithProps();
-
-    await waitFor(async () => {
-      heading = findAccordionHeading(order.id);
-      findAccordionContent(order.id, false);
-    });
-
-    if (heading) {
-      await userEvent.click(heading);
-    }
-
-    await waitFor(async () => {
-      findAccordionContent(order.id, true);
-    });
-  });
-
   test('should expand and show order reject details with reason undefined when a rejected header is clicked if rejection does not have a reason.', async () => {
     let heading;
     const rejectedOrder: TransferOrder = { ...order, reason: '', status: 'rejected' };
