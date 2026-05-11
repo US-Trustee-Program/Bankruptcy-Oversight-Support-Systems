@@ -37,7 +37,7 @@ export class BanksController {
   async handlePut(context: ApplicationContext): Promise<CamsHttpResponseInit<BankProfile>> {
     this.requireSuperUser(context);
     const { bankId } = context.request.params;
-    const body = context.request.body as { name?: string; status?: string } | null;
+    const body = context.request.body as Partial<Pick<BankProfile, 'name' | 'status'>> | null;
     if (!body || !body.name || !body.name.trim()) {
       throw new BadRequestError(MODULE_NAME, { message: 'Bank name is required.' });
     }
