@@ -436,7 +436,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
     !!formData.appointedDate &&
     !validationError;
 
-  const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (ev: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     ev.preventDefault();
 
     if (validationError) {
@@ -575,7 +575,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
   }
 
   return (
-    <div className="trustee-form-screen">
+    <div className="appointment-trustee-form-screen">
       <form
         aria-label={isEditMode ? 'Edit Trustee Appointment' : 'Add Trustee Appointment'}
         data-testid="trustee-appointment-form"
@@ -589,7 +589,7 @@ function TrusteeAppointmentForm(props: Readonly<TrusteeAppointmentFormProps>) {
         </div>
 
         {validationError && (
-          <div ref={validationAlertRef} tabIndex={-1}>
+          <div ref={validationAlertRef} tabIndex={-1} className="trustee-form-error-wrapper">
             <Alert
               type={UswdsAlertStyle.Error}
               inline={true}

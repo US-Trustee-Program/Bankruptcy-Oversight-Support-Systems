@@ -136,7 +136,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
     return patch;
   };
 
-  const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (ev: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     ev.preventDefault();
     const currentFormData = normalizeFormData(formData);
 
@@ -260,7 +260,7 @@ function TrusteePublicContactForm(props: Readonly<TrusteePublicContactFormProps>
   }
 
   return (
-    <div className="trustee-form-screen">
+    <div className="public-contact-trustee-form-screen">
       <div className="form-header">
         {isCreate && (
           <h1 className="text-no-wrap display-inline-block margin-right-1 create-trustee">
