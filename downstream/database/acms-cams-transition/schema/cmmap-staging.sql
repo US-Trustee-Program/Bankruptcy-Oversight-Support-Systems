@@ -1,35 +1,42 @@
--- CMMAP_STAGING: Staging table for CAMS case assignments
--- Matches ACMS CMMAP schema for Chapter 15 attorney assignments
--- Source: CAMS CaseAssignmentEvent → Azure Function → This table
+-- CMMAP_STAGING: Staging table for CAMS case assignments and trustee appointments
+-- Matches ACMS CMMAP schema for use by downstream consumers (TUFR, Business Objects)
+-- Sources:
+--   APPT_TYPE='S1' — Ch15 staff attorney assignments (CaseAssignmentEvent)
+--   APPT_TYPE='TR' — Trustee appointments, all chapters (TrusteeAppointmentDownstreamEvent)
+
+IF OBJECT_ID('dbo.CMMAP_STAGING', 'U') IS NOT NULL
+    DROP TABLE dbo.CMMAP_STAGING;
+
+GO
 
 CREATE TABLE CMMAP_STAGING (
     -- Soft delete flag (ACMS pattern)
     DELETE_CODE CHAR(1) NOT NULL DEFAULT ' ',
 
-    -- Case identifiers (composite key)
+    -- Case identifiers (part of primary key)
     CASE_DIV NUMERIC(5,3) NOT NULL,
     CASE_YEAR NUMERIC(5,2) NOT NULL,
     CASE_NUMBER NUMERIC(5,5) NOT NULL,
 
-    -- Record sequence (for multiple appointments per case)
-    -- For Chapter 15, we only have one attorney (S1), so this is always 1
+    -- Record sequence (for multiple appointments of the same type per case)
     RECORD_SEQ_NBR NUMERIC(5,5) NOT NULL DEFAULT 1,
 
+    -- Appointment type (part of primary key — required, no default)
+    -- 'S1' = Ch15 staff attorney assignment
+    -- 'TR' = Trustee appointment (all chapters)
+    APPT_TYPE CHAR(2) NOT NULL,
+
     -- Professional identifiers
-    -- PLACEHOLDER: Professional ID mapping strategy TBD
-    -- Options: "ZZ-{incrementing_int}" OR "{GROUP_DESIGNATOR}-{decrementing_int}"
     PROF_CODE NUMERIC(5,5) NOT NULL,
     GROUP_DESIGNATOR CHAR(2) NOT NULL,
-
-    -- Appointment type
-    -- For Chapter 15 attorney assignments, this is 'S1' (staff type 1)
-    APPT_TYPE CHAR(2) NOT NULL DEFAULT 'S1',
 
     -- Appointment dates (ACMS uses numeric date format YYYYMMDD)
     APPT_DATE NUMERIC(9,11) NULL,
     APPT_DATE_DT DATETIME2(3) NULL,
 
-    -- Disposition (termination/unassignment)
+    -- Disposition
+    -- Active:     'AP' (Approved by UST) for S1; 'GR' (Granted by Court) for TR
+    -- Terminated: 'WD' (Withdrawn)
     APPT_DISP CHAR(2) NULL,
     DISP_DATE NUMERIC(9,11) NULL,
     DISP_DATE_DT DATETIME2(3) NULL,
@@ -37,13 +44,13 @@ CREATE TABLE CMMAP_STAGING (
     -- Comments and metadata
     COMMENTS CHAR(30) NULL,
     APPTEE_ACTIVE CHAR(1) NOT NULL DEFAULT 'Y',
-    ALPHA_SEARCH CHAR(30) NULL,  -- Usually attorney last name for searching
-    USER_ID CHAR(10) NULL,       -- ACMS user who created record
+    ALPHA_SEARCH CHAR(30) NULL,
+    USER_ID CHAR(10) NULL,
 
-    -- Hearing sequence (not used for Chapter 15)
+    -- Hearing sequence (not used by CAMS)
     HEARING_SEQUENCE NUMERIC(5,5) NULL,
 
-    -- Region code (not used in current CAMS)
+    -- Region code (not used by CAMS)
     REGION_CODE CHAR(2) NULL,
 
     -- Audit dates - Regional (RGN) and Central DB (CDB)
@@ -57,25 +64,25 @@ CREATE TABLE CMMAP_STAGING (
     CDB_CREATE_DATE_DT DATETIME2(3) NULL,
     CDB_UPDATE_DATE_DT DATETIME2(3) NULL,
 
-    -- Full case ID (computed)
-    CASE_FULL_ACMS VARCHAR(10) NULL,
-
     -- Update tracking
     UPDATE_DATE DATETIME2(3) NOT NULL DEFAULT GETDATE(),
 
     -- CAMS-specific metadata (not in ACMS CMMAP)
     SOURCE VARCHAR(10) NOT NULL DEFAULT 'CAMS',
-    CAMS_CASE_ID VARCHAR(50) NOT NULL,     -- Original CAMS case ID
-    CAMS_USER_ID VARCHAR(50) NOT NULL,     -- Original CAMS user ID
-    CAMS_USER_NAME VARCHAR(100) NOT NULL,  -- Attorney name from CAMS
+    CAMS_CASE_ID VARCHAR(50) NOT NULL,
+    CAMS_USER_ID VARCHAR(50) NOT NULL,
+    CAMS_USER_NAME VARCHAR(100) NOT NULL,
     LAST_UPDATED DATETIME2 NOT NULL DEFAULT GETDATE(),
 
-    -- Primary key matches ACMS CMMAP
-    CONSTRAINT PK_CMMAP_STAGING PRIMARY KEY (CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR),
+    -- Primary key: one row per case + appointment type + sequence
+    -- APPT_TYPE added so S1 and TR rows for the same case can coexist
+    CONSTRAINT PK_CMMAP_STAGING PRIMARY KEY (CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE, RECORD_SEQ_NBR),
 
-    -- Indexes for common queries
-    CONSTRAINT IX_CMMAP_STAGING_PROF UNIQUE (PROF_CODE, GROUP_DESIGNATOR, CASE_DIV, CASE_YEAR, CASE_NUMBER),
-    CONSTRAINT IX_CMMAP_STAGING_CAMS_CASE UNIQUE (CAMS_CASE_ID)
+    -- One professional per case per appointment type
+    CONSTRAINT UQ_CMMAP_STAGING_PROF UNIQUE (PROF_CODE, GROUP_DESIGNATOR, CASE_DIV, CASE_YEAR, CASE_NUMBER, APPT_TYPE),
+
+    -- One CAMS case ID per appointment type (a case can have both S1 and TR rows)
+    CONSTRAINT UQ_CMMAP_STAGING_CAMS_CASE UNIQUE (CAMS_CASE_ID, APPT_TYPE)
 );
 
 GO
@@ -90,22 +97,33 @@ ADD CASE_FULL_ACMS AS (
 
 GO
 
--- Index on source for efficient view queries
 CREATE INDEX IX_CMMAP_STAGING_SOURCE ON CMMAP_STAGING(SOURCE);
 
 GO
 
--- Index on active appointments
 CREATE INDEX IX_CMMAP_STAGING_ACTIVE ON CMMAP_STAGING(APPTEE_ACTIVE, DELETE_CODE)
 WHERE DELETE_CODE = ' ' AND APPTEE_ACTIVE = 'Y';
 
 GO
 
+CREATE INDEX IX_CMMAP_STAGING_APPT_TYPE ON CMMAP_STAGING(APPT_TYPE);
+
+GO
+
 EXEC sp_addextendedproperty
     @name = N'MS_Description',
-    @value = N'Staging table for CAMS Chapter 15 case assignments. Unioned with ACMS CMMAP in view.',
+    @value = N'Staging table for CAMS case assignments (S1) and trustee appointments (TR). Unioned with ACMS CMMAP in view.',
     @level0type = N'SCHEMA', @level0name = N'dbo',
     @level1type = N'TABLE',  @level1name = N'CMMAP_STAGING';
+
+GO
+
+EXEC sp_addextendedproperty
+    @name = N'MS_Description',
+    @value = N'Appointment type. S1=Ch15 staff attorney, TR=Trustee (all chapters). Required — no default.',
+    @level0type = N'SCHEMA', @level0name = N'dbo',
+    @level1type = N'TABLE',  @level1name = N'CMMAP_STAGING',
+    @level2type = N'COLUMN', @level2name = N'APPT_TYPE';
 
 GO
 
@@ -115,14 +133,5 @@ EXEC sp_addextendedproperty
     @level0type = N'SCHEMA', @level0name = N'dbo',
     @level1type = N'TABLE',  @level1name = N'CMMAP_STAGING',
     @level2type = N'COLUMN', @level2name = N'CAMS_CASE_ID';
-
-GO
-
-EXEC sp_addextendedproperty
-    @name = N'MS_Description',
-    @value = N'Professional code placeholder. Mapping strategy TBD: "ZZ-{int}" or "{GROUP}-{int}"',
-    @level0type = N'SCHEMA', @level0name = N'dbo',
-    @level1type = N'TABLE',  @level1name = N'CMMAP_STAGING',
-    @level2type = N'COLUMN', @level2name = N'PROF_CODE';
 
 GO
