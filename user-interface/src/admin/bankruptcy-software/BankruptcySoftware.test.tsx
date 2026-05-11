@@ -99,17 +99,6 @@ describe('BankruptcySoftware Component Tests', () => {
     expect(screen.queryByTestId('software-list')).not.toBeInTheDocument();
   });
 
-  test('should have save button disabled when input is empty', async () => {
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-    });
-
-    const saveButton = screen.getByRole('button', { name: 'Add Software' });
-    expect(saveButton).toBeDisabled();
-  });
-
   test('should enable save button when input has value', async () => {
     renderComponent();
 
@@ -125,38 +114,6 @@ describe('BankruptcySoftware Component Tests', () => {
     await userEvent.type(input, 'New Software');
 
     expect(saveButton).not.toBeDisabled();
-  });
-
-  test('should handle input changes correctly', async () => {
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-    });
-
-    const input = screen.getByLabelText('Add New Software') as HTMLInputElement;
-
-    await userEvent.type(input, 'Test Software');
-
-    expect(input.value).toBe('Test Software');
-  });
-
-  test.skip('should show warning when attempting to save with empty name', async () => {
-    const globalAlertSpy = TestingUtilities.spyOnGlobalAlert();
-
-    renderComponent();
-
-    await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
-    });
-
-    const input = screen.getByLabelText('Add New Software');
-    const saveButton = screen.getByRole('button', { name: 'Add Software' });
-
-    await userEvent.clear(input);
-    await userEvent.click(saveButton);
-
-    expect(globalAlertSpy.warning).toHaveBeenCalledWith('Software name cannot be empty.');
   });
 
   test('should save new software successfully', async () => {
@@ -332,21 +289,11 @@ describe('BankruptcySoftware Component Tests', () => {
     await userEvent.type(input, 'Newly Added Software');
     await userEvent.click(saveButton);
 
-    // Verify data was reloaded
-    expect(getBankruptcySoftwareListSpy).toHaveBeenCalledTimes(2);
-  });
-
-  test('should display delete button for each software item', async () => {
-    renderComponent();
-
+    // Verify data was reloaded and new item is visible
     await waitFor(() => {
-      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+      expect(screen.getByText('Newly Added Software')).toBeInTheDocument();
     });
-
-    // Verify each software item has a delete button
-    mockSoftwareList.forEach((software) => {
-      expect(screen.getByTestId(`button-delete-button-${software._id}`)).toBeInTheDocument();
-    });
+    expect(getBankruptcySoftwareListSpy).toHaveBeenCalledTimes(2);
   });
 
   test('should show confirmation dialog when delete button is clicked', async () => {

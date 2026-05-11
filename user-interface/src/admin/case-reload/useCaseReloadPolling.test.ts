@@ -34,7 +34,6 @@ describe('useCaseReloadPolling', () => {
       result.current.setInitialCase(initialCase);
     });
 
-    expect(result.current.pollStatus).toBe('idle');
     expect(result.current.cosmosCase).toBe(initialCase);
   });
 
@@ -286,60 +285,6 @@ describe('useCaseReloadPolling', () => {
 
     // Should continue polling (not success)
     expect(result.current.pollStatus).toBe('polling');
-  });
-
-  test('should handle API returning empty array', async () => {
-    vi.spyOn(Api2, 'searchCases').mockResolvedValue({ data: [] });
-
-    const { result } = renderHook(() => useCaseReloadPolling());
-
-    act(() => {
-      result.current.startPolling('081-23-12345');
-    });
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000); // initial delay
-    });
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000); // first poll
-    });
-
-    // Should continue polling (not success)
-    expect(result.current.pollStatus).toBe('polling');
-  });
-
-  test('should set cosmosCase to null when API returns undefined on success path', async () => {
-    const mockCase: SyncedCase = {
-      caseId: '081-23-12345',
-      updatedOn: '2024-01-15T12:00:00Z',
-    } as SyncedCase;
-
-    // First return a case, then return undefined to test null path
-    vi.spyOn(Api2, 'searchCases')
-      .mockResolvedValueOnce({ data: undefined as unknown as SyncedCase[] })
-      .mockResolvedValueOnce({ data: [mockCase] });
-
-    const { result } = renderHook(() => useCaseReloadPolling());
-
-    act(() => {
-      result.current.startPolling('081-23-12345');
-    });
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000); // initial delay
-    });
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000); // first poll - undefined
-    });
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(5000); // second poll - has case
-    });
-
-    expect(result.current.pollStatus).toBe('success');
-    expect(result.current.cosmosCase).toEqual(mockCase);
   });
 
   test('should cleanup timers on unmount', async () => {

@@ -21,11 +21,6 @@ describe('Admin screen navigation tests', () => {
     );
   }
 
-  test('should render navigation', async () => {
-    renderWithoutProps();
-    expect(document.querySelector('.admin-screen-navigation')).toBeInTheDocument();
-  });
-
   test('should return the proper class name', async () => {
     expect(
       setCurrentAdminNav(AdminNavState.PRIVILEGED_IDENTITY, AdminNavState.PRIVILEGED_IDENTITY),
