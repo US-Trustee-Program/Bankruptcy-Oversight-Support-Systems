@@ -72,6 +72,26 @@ describe('useCaseAppointment', () => {
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 
+  test('cancels in-flight request when component unmounts', async () => {
+    let resolveRequest!: (value: { data: typeof mockAppointment }) => void;
+    vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+
+    const { result, unmount } = renderHook(() => useCaseAppointment('111-24-00001'));
+
+    expect(result.current.loading).toBe(true);
+
+    unmount();
+
+    resolveRequest({ data: mockAppointment });
+
+    expect(result.current.appointedDate).toBeNull();
+  });
+
   test('returns null and logs error when API throws non-404 error', async () => {
     const consoleSpy = vi.spyOn(console, 'error');
     vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockRejectedValue(

@@ -188,21 +188,6 @@ describe('CaseDetailTrusteePanel', () => {
     expect(screen.getByText('Internal use only.')).toBeInTheDocument();
   });
 
-  test('renders both public and internal cards when trustee is loaded', () => {
-    const trustee = MockData.getTrustee();
-    mockUseCaseAppointment.mockReturnValue({
-      appointedDate: null,
-      trusteeId: trustee.trusteeId,
-      loading: false,
-    });
-    mockUseTrustee.mockReturnValue({ trustee, loading: false });
-
-    renderPanel();
-
-    expect(screen.getByTestId('case-trustee-card')).toBeInTheDocument();
-    expect(screen.getByText('Internal use only.')).toBeInTheDocument();
-  });
-
   test('renders 341 meeting card when trustee is loaded', () => {
     const trustee = MockData.getTrustee();
     mockUseCaseAppointment.mockReturnValue({

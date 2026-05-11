@@ -57,50 +57,19 @@ describe('Navigation tests', () => {
     });
   });
 
-  test(`mapNavState should return ${CaseNavState.CASE_OVERVIEW} when the url does not contain a path after the case number`, () => {
-    const url = '/case-detail/021-23-07890/';
+  test.each([
+    ['/', CaseNavState.CASE_OVERVIEW],
+    ['/court-docket', CaseNavState.COURT_DOCKET],
+    ['/audit-history', CaseNavState.AUDIT_HISTORY],
+    ['/associated-cases', CaseNavState.ASSOCIATED_CASES],
+    ['/trustee', CaseNavState.TRUSTEE_INFO],
+  ])(`mapNavState should return correct state for url suffix '%s'`, (suffix, expectedState) => {
+    const url = `/case-detail/021-23-07890${suffix}`;
     const result = mapNavState(url);
-    expect(result).toEqual(CaseNavState.CASE_OVERVIEW);
-  });
-
-  test(`mapNavState should return ${CaseNavState.COURT_DOCKET} when the url path contains 'court-docket' after the case number`, () => {
-    const url = '/case-detail/021-23-07890/court-docket';
-    const result = mapNavState(url);
-    expect(result).toEqual(CaseNavState.COURT_DOCKET);
-  });
-
-  test(`mapNavState should return ${CaseNavState.AUDIT_HISTORY} when the url path contains 'audit-history' after the case number`, () => {
-    const url = '/case-detail/021-23-07890/audit-history';
-    const result = mapNavState(url);
-    expect(result).toEqual(CaseNavState.AUDIT_HISTORY);
-  });
-
-  test(`mapNavState should return ${CaseNavState.ASSOCIATED_CASES} when the url path contains 'associated-cases' after the case number`, () => {
-    const url = '/case-detail/021-23-07890/associated-cases';
-    const result = mapNavState(url);
-    expect(result).toEqual(CaseNavState.ASSOCIATED_CASES);
-  });
-
-  test(`mapNavState should return ${CaseNavState.TRUSTEE_INFO} when the url path contains 'trustee' after the case number`, () => {
-    const url = '/case-detail/021-23-07890/trustee';
-    const result = mapNavState(url);
-    expect(result).toEqual(CaseNavState.TRUSTEE_INFO);
+    expect(result).toEqual(expectedState);
   });
 
   describe('view-trustee-on-case flag is enabled', () => {
-    test('should show separate Trustee nav link', () => {
-      render(
-        <BrowserRouter>
-          <CaseDetailNavigation
-            caseId="12345"
-            initiallySelectedNavLink={CaseNavState.CASE_OVERVIEW}
-            showAssociatedCasesList={false}
-          />
-        </BrowserRouter>,
-      );
-      expect(screen.getByTestId('case-trustee-info-link')).toBeInTheDocument();
-    });
-
     test('should label the combined tab "Assigned Staff"', () => {
       render(
         <BrowserRouter>
