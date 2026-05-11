@@ -6,6 +6,7 @@ import { CamsUserReference, UserGroup } from '@common/cams/users';
 import { ApplicationContext } from '../../adapters/types/basic';
 import {
   ArchivedCasesRepository,
+  BanksRepository,
   CamsPaginationResponse,
   CaseAssignmentRepository,
   CasesRepository,
@@ -37,11 +38,13 @@ import {
   BankruptcySoftwareList,
   BankruptcySoftwareListItem,
 } from '@common/cams/lists';
+import { BankAuditHistory, BankProfile } from '@common/cams/banks';
 import { Creatable } from '@common/cams/creatable';
 
 export class MockMongoRepository
   implements
     ArchivedCasesRepository,
+    BanksRepository,
     CaseAssignmentRepository,
     CasesRepository,
     ConsolidationOrdersRepository,
@@ -68,6 +71,18 @@ export class MockMongoRepository
 
   static getInstance(_context: ApplicationContext) {
     return new MockMongoRepository();
+  }
+
+  getBanks(): Promise<BankProfile[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  createBank(_bank: Creatable<BankProfile>): Promise<BankProfile> {
+    throw new Error('Method not implemented.');
+  }
+
+  createBankAuditRecord(_history: Creatable<BankAuditHistory>): Promise<void> {
+    throw new Error('Method not implemented.');
   }
 
   getAssignmentsForCases(..._ignore): Promise<any> {

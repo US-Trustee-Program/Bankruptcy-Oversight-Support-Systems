@@ -131,7 +131,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
     navigate.navigateTo(cancelTo);
   }, [navigate, cancelTo]);
 
-  const handleSubmit = async (ev: React.FormEvent): Promise<void> => {
+  const handleSubmit = async (ev: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
     ev.preventDefault();
     const currentFormData = normalizeFormData(formData);
 
@@ -204,7 +204,7 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
   }
 
   return (
-    <div className="trustee-form-screen">
+    <div className="internal-contact-trustee-form-screen">
       <form aria-label="Edit Trustee" data-testid="trustee-internal-form" onSubmit={handleSubmit}>
         <div className="form-container">
           <div className="form-column">
@@ -317,15 +317,17 @@ function TrusteeInternalContactForm(props: Readonly<TrusteeInternalContactFormPr
           </div>
         </div>
 
-        <Alert
-          role="alert"
-          className="form-field-warning"
-          type={UswdsAlertStyle.Error}
-          inline={true}
-          slim={false}
-          ref={partialAddressAlertRef}
-          message={saveAlert ?? ''}
-        />
+        <div className="trustee-form-error-wrapper">
+          <Alert
+            role="alert"
+            className="form-field-warning"
+            type={UswdsAlertStyle.Error}
+            inline={true}
+            slim={false}
+            ref={partialAddressAlertRef}
+            message={saveAlert ?? ''}
+          />
+        </div>
         <div className="usa-button-group">
           <Button id="submit-button" type="submit">
             {isSubmitting ? 'Saving…' : 'Save'}

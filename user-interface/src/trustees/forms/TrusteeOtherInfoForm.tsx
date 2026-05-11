@@ -86,7 +86,7 @@ function TrusteeOtherInfoForm(props: Readonly<TrusteeOtherInfoFormProps>) {
   }
 
   return (
-    <div className="trustee-other-info-form-screen">
+    <div className="other-info-trustee-form-screen">
       <form data-testid="trustee-other-info-form">
         <div className="form-container">
           <div className="form-column">

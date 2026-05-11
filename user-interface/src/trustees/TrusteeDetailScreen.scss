@@ -4,7 +4,7 @@
   }
 }
 .trustee-detail-screen,
-.trustee-form-screen {
+[class$="-trustee-form-screen"] {
   .field-group {
     .usa-form-group {
       margin-top: 0;

@@ -6,6 +6,7 @@ import { CamsRole } from '@common/cams/roles';
 import { PrivilegedIdentity } from './privileged-identity/PrivilegedIdentity';
 import { BankruptcySoftware } from './bankruptcy-software/BankruptcySoftware';
 import { CaseReload } from './case-reload/CaseReload';
+import { Banks } from './banks/Banks';
 import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import useFeatureFlags, { PRIVILEGED_IDENTITY_MANAGEMENT } from '../lib/hooks/UseFeatureFlags';
@@ -26,6 +27,9 @@ export function AdminScreen() {
     }
     if (location.pathname.includes('/admin/case-reload')) {
       return AdminNavState.CASE_RELOAD;
+    }
+    if (location.pathname.includes('/admin/banks')) {
+      return AdminNavState.BANKS;
     }
     return AdminNavState.UNKNOWN;
   };
@@ -58,6 +62,7 @@ export function AdminScreen() {
             <div className="grid-col-10">
               <Routes>
                 <Route path="privileged-identity" element={<PrivilegedIdentity />} />
+                <Route path="banks" element={<Banks />} />
                 <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
                 <Route path="case-reload" element={<CaseReload />} />
                 <Route path="*" element={<div data-testid={'no-admin-panel-selected'} />} />
