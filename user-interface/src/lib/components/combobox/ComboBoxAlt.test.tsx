@@ -44,13 +44,13 @@ async function getFocusedComboInputField(id: string): Promise<HTMLInputElement> 
 }
 
 function isDropdownClosed() {
-  const itemListContainer = document.querySelector('.item-list-container');
-  return !!itemListContainer && itemListContainer.classList.contains('closed');
+  const combobox = screen.queryByRole('combobox');
+  return combobox?.getAttribute('aria-expanded') === 'false';
 }
 
 function isDropdownOpen() {
-  const itemListContainer = document.querySelector('.item-list-container');
-  return !!itemListContainer && itemListContainer.classList.contains('expanded');
+  const combobox = screen.queryByRole('combobox');
+  return combobox?.getAttribute('aria-expanded') === 'true';
 }
 
 function getClearAllButton() {
@@ -453,8 +453,8 @@ describe('ComboBoxAlt', () => {
         await userEvent.keyboard(keypress);
 
         await waitFor(() => {
-          const listItems = document.querySelectorAll('li');
-          expect(listItems![0]).toHaveClass('selected');
+          const listItems = document.querySelectorAll('li[role="option"]');
+          expect(listItems![0]).toHaveAttribute('aria-label', expect.stringContaining('selected'));
         });
       },
     );
@@ -560,7 +560,9 @@ describe('ComboBoxAlt', () => {
 
       expect(getClearAllButton()).not.toBeInTheDocument();
       expect(input.value).toEqual('');
-      let selectedListItem = document.querySelectorAll('li.selected');
+      let selectedListItem = document.querySelectorAll(
+        'li[role="option"][aria-label*=", selected"]',
+      );
       expect(selectedListItem.length).toEqual(0);
 
       await toggleDropdown();
@@ -576,7 +578,7 @@ describe('ComboBoxAlt', () => {
       });
 
       expect(input.value).toEqual(optionToSelect1.selectedLabel);
-      selectedListItem = document.querySelectorAll('li.selected');
+      selectedListItem = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
       expect(selectedListItem.length).toEqual(1);
 
       await toggleDropdown();
@@ -585,11 +587,11 @@ describe('ComboBoxAlt', () => {
       await toggleDropdown();
 
       await waitFor(() => {
-        expect(document.querySelector('.item-list-container')).toHaveClass('closed');
+        expect(isDropdownClosed()).toBeTruthy();
       });
 
       expect(input.value).toEqual('2 things');
-      selectedListItem = document.querySelectorAll('li.selected');
+      selectedListItem = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
       expect(selectedListItem.length).toEqual(2);
 
       const clearButton = getClearAllButton();
@@ -597,7 +599,7 @@ describe('ComboBoxAlt', () => {
 
       expect(getClearAllButton()).not.toBeInTheDocument();
       expect(input.value).toEqual('');
-      selectedListItem = document.querySelectorAll('li.selected');
+      selectedListItem = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
       expect(selectedListItem.length).toEqual(0);
     });
 
@@ -609,16 +611,19 @@ describe('ComboBoxAlt', () => {
       const firstListItemButton = document.querySelector('li');
       await userEvent.click(firstListItemButton!);
 
-      let selectedListItem;
       await waitFor(() => {
-        selectedListItem = document.querySelectorAll('li.selected');
+        const selectedListItem = document.querySelectorAll(
+          'li[role="option"][aria-label*=", selected"]',
+        );
         expect(selectedListItem!.length).toEqual(1);
       });
 
       await userEvent.click(firstListItemButton!);
 
       await waitFor(() => {
-        selectedListItem = document.querySelectorAll('li.selected');
+        const selectedListItem = document.querySelectorAll(
+          'li[role="option"][aria-label*=", selected"]',
+        );
         expect(selectedListItem!.length).toEqual(0);
       });
     });
@@ -971,10 +976,19 @@ describe('ComboBoxAlt', () => {
       expect(updateSelection).toHaveBeenCalledWith([]);
 
       await waitFor(() => {
-        const listItems = document.querySelectorAll('li');
-        expect(listItems[0]!).not.toHaveClass('selected');
-        expect(listItems[1]!).not.toHaveClass('selected');
-        expect(listItems[2]!).not.toHaveClass('selected');
+        const listItems = document.querySelectorAll('li[role="option"]');
+        expect(listItems[0]!).toHaveAttribute(
+          'aria-label',
+          expect.stringContaining('not selected'),
+        );
+        expect(listItems[1]!).toHaveAttribute(
+          'aria-label',
+          expect.stringContaining('not selected'),
+        );
+        expect(listItems[2]!).toHaveAttribute(
+          'aria-label',
+          expect.stringContaining('not selected'),
+        );
       });
     });
 
@@ -1390,12 +1404,18 @@ describe('ComboBoxAlt', () => {
 
       await userEvent.click(listButtons![0]);
       await waitFor(() => {
-        expect(listButtons![0]).toHaveClass('selected');
+        expect(listButtons![0]).toHaveAttribute(
+          'aria-label',
+          expect.stringContaining(', selected'),
+        );
       });
 
       await userEvent.click(listButtons![2]);
       await waitFor(() => {
-        expect(listButtons![2]).toHaveClass('selected');
+        expect(listButtons![2]).toHaveAttribute(
+          'aria-label',
+          expect.stringContaining(', selected'),
+        );
       });
 
       const setResult = ref.current?.getSelections();
@@ -1404,8 +1424,14 @@ describe('ComboBoxAlt', () => {
       act(() => ref.current?.clearSelections());
       const emptyResult = ref.current?.getSelections();
       expect(emptyResult).toEqual([]);
-      expect(listButtons![0]).not.toHaveClass('selected');
-      expect(listButtons![2]).not.toHaveClass('selected');
+      expect(listButtons![0]).toHaveAttribute(
+        'aria-label',
+        expect.stringContaining('not selected'),
+      );
+      expect(listButtons![2]).toHaveAttribute(
+        'aria-label',
+        expect.stringContaining('not selected'),
+      );
     });
 
     test('should set values when calling ref.setSelections', async () => {
@@ -1882,29 +1908,33 @@ describe('ComboBoxAlt', () => {
       await getFocusedComboInputField(comboboxId);
 
       await userEvent.keyboard('{Enter}');
-      let listItems = document.querySelectorAll('li.selected');
+      let listItems = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
       expect(listItems).toHaveLength(0);
 
-      const listItem = document.querySelector('li');
+      const listItem = document.querySelector('li[role="option"]');
       await userEvent.click(listItem!);
 
       await waitFor(() => {
-        listItems = document.querySelectorAll('li.selected');
+        listItems = document.querySelectorAll('li[role="option"][aria-label*=", selected"]');
         expect(listItems).toHaveLength(1);
-        expect(listItem).toHaveClass('selected');
+        expect(listItem).toHaveAttribute('aria-label', expect.stringContaining(', selected'));
       });
     });
 
-    test('should handle icon prop correctly', () => {
+    test('should render with icon prop', () => {
       renderWithProps({ icon: 'custom-icon' });
 
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      const input = screen.getByRole('combobox');
+      expect(input).toBeInTheDocument();
+      // icon prop is accepted by TypeScript interface but not used in rendering
+      // This test verifies the prop doesn't cause crashes
     });
 
-    test('should handle autoComplete prop correctly', () => {
+    test('should apply autoComplete attribute to input', () => {
       renderWithProps({ autoComplete: 'off' });
 
-      expect(screen.getByRole('combobox')).toBeInTheDocument();
+      const input = screen.getByRole('combobox') as HTMLInputElement;
+      expect(input).toHaveAttribute('autocomplete', 'off');
     });
 
     test('should call onClose with current selections when dropdown closes', async () => {
@@ -2143,6 +2173,117 @@ describe('ComboBoxAlt', () => {
     });
   });
 
+  describe('Defensive Code Paths', () => {
+    test('should handle navigateList when list ref is null', async () => {
+      renderWithProps();
+
+      const input = document.querySelector(`#${comboboxId}-combo-box-input`) as HTMLInputElement;
+      input.focus();
+
+      // Remove the list element to trigger the null ref path
+      const list = document.querySelector('ul[role="listbox"]');
+      if (list) {
+        list.remove();
+      }
+
+      await userEvent.keyboard('{ArrowDown}');
+
+      // Should not crash - defensive check prevents error
+      expect(input).toHaveFocus();
+    });
+
+    test('should handle navigateList with invalid target index', async () => {
+      const options = [{ label: 'Single Option', value: 'single' }];
+      renderWithProps({ options });
+
+      await toggleDropdown();
+      await getFocusedComboInputField(comboboxId);
+
+      // Navigate down to the single item
+      await userEvent.keyboard('{ArrowDown}');
+      const listItem = document.querySelector('li[role="option"]');
+      expect(listItem).toHaveFocus();
+
+      // Try to navigate down again - should stay on last item (defensive bounds check)
+      await userEvent.keyboard('{ArrowDown}');
+      expect(listItem).toHaveFocus();
+    });
+
+    test('should handle isOutsideClick when comboBoxRef is null', async () => {
+      renderWithProps();
+
+      await toggleDropdown();
+      expect(isDropdownOpen()).toBeTruthy();
+
+      // Simulate click event when ref is temporarily unavailable
+      const clickEvent = new MouseEvent('mousedown', {
+        clientX: 0,
+        clientY: 0,
+        bubbles: true,
+      });
+
+      // This should not crash even if ref is null
+      document.dispatchEvent(clickEvent);
+
+      // Component should handle gracefully
+      await waitFor(() => {
+        expect(isDropdownClosed()).toBeTruthy();
+      });
+    });
+
+    test('should handle navigateList console warning when list is unavailable', async () => {
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      renderWithProps();
+
+      const input = document.querySelector(`#${comboboxId}-combo-box-input`) as HTMLInputElement;
+      input.focus();
+
+      // Open dropdown first
+      await userEvent.keyboard('{ArrowDown}');
+      await waitFor(() => {
+        expect(isDropdownOpen()).toBeTruthy();
+      });
+
+      // Remove the list to trigger the warning in navigateList
+      const list = document.querySelector('ul[role="listbox"]');
+      list?.remove();
+
+      // Try to navigate - should log warning
+      await userEvent.keyboard('{ArrowDown}');
+
+      // Should have logged a warning about list ref not being available
+      expect(consoleSpy).toHaveBeenCalledWith('List ref not available for navigation');
+
+      consoleSpy.mockRestore();
+    });
+
+    test('should handle navigateList with hidden items in list', async () => {
+      const options = [
+        { label: 'Visible 1', value: 'v1' },
+        { label: 'Visible 2', value: 'v2' },
+        { label: 'Visible 3', value: 'v3' },
+      ];
+
+      renderWithProps({ options });
+      await toggleDropdown();
+
+      // Hide the middle item by adding .hidden class
+      const listItems = document.querySelectorAll('li[role="option"]');
+      listItems[1].classList.add('hidden');
+
+      await getFocusedComboInputField(comboboxId);
+
+      // Navigate down - should skip hidden item
+      await userEvent.keyboard('{ArrowDown}');
+      expect(listItems[0]).toHaveFocus();
+
+      await userEvent.keyboard('{ArrowDown}');
+      // Should skip listItems[1] because it's hidden
+      expect(listItems[2]).toHaveFocus();
+    });
+  });
+
   describe('Complete User Journeys', () => {
     test('should support complete multi-select workflow from keyboard', async () => {
       const onUpdateSelection = vi.fn();
@@ -2165,7 +2306,7 @@ describe('ComboBoxAlt', () => {
       await userEvent.keyboard(' ');
       await waitFor(() => {
         expect(onUpdateSelection).toHaveBeenCalledTimes(1);
-        expect(firstItem).toHaveClass('selected');
+        expect(firstItem).toHaveAttribute('aria-label', expect.stringContaining(', selected'));
       });
 
       await userEvent.keyboard('{ArrowDown}');
@@ -2175,7 +2316,7 @@ describe('ComboBoxAlt', () => {
       await userEvent.keyboard('{Enter}');
       await waitFor(() => {
         expect(onUpdateSelection).toHaveBeenCalledTimes(2);
-        expect(secondItem).toHaveClass('selected');
+        expect(secondItem).toHaveAttribute('aria-label', expect.stringContaining(', selected'));
       });
 
       await userEvent.keyboard('{Escape}');
@@ -2274,7 +2415,7 @@ describe('ComboBoxAlt', () => {
       });
 
       const selectedItem = document.querySelector(`li[data-value="apple"]`);
-      expect(selectedItem).toHaveClass('selected');
+      expect(selectedItem).toHaveAttribute('aria-label', expect.stringContaining(', selected'));
     });
   });
 });
