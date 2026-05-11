@@ -80,6 +80,7 @@ import { TrusteeMatchVerificationMongoRepository } from './adapters/gateways/mon
 import { TrusteeUpcomingKeyDatesMongoRepository } from './adapters/gateways/mongo/trustee-upcoming-key-dates.mongo.repository';
 import { TrusteeProfessionalIdsMongoRepository } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
+import { BanksMongoRepository } from './adapters/gateways/mongo/banks.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
 import {
   ServerConfigError,
@@ -87,6 +88,7 @@ import {
 } from './common-errors/server-config-error';
 import {
   ApiToDataflowsGateway,
+  BanksRepository,
   ObjectStorageGateway,
   TrusteeMatchVerificationRepository,
   TrusteeUpcomingKeyDatesRepository,
@@ -150,6 +152,15 @@ const getCaseNotesRepository = (context: ApplicationContext): CaseNotesRepositor
     return new MockMongoRepository();
   }
   const repo = CaseNotesMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+const getBanksRepository = (context: ApplicationContext): BanksRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = BanksMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -517,6 +528,7 @@ const factory = {
   getAtsGateway,
   getCasesGateway,
   getAssignmentRepository,
+  getBanksRepository,
   getCaseNotesRepository,
   getCaseDocketUseCase,
   getOrdersGateway,

@@ -54,12 +54,8 @@ import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-as
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { OversightRoleType } from '@common/cams/roles';
-import {
-  BankList,
-  BankListItem,
-  BankruptcySoftwareList,
-  BankruptcySoftwareListItem,
-} from '@common/cams/lists';
+import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
+import { BankProfile } from '@common/cams/banks';
 import { Creatable } from '@common/cams/creatable';
 import {
   TrusteeUpcomingKeyDates,
@@ -547,15 +543,11 @@ async function deleteBankruptcySoftware(id: string) {
 }
 
 async function getBanks() {
-  return api().get<BankList>('/lists/banks');
+  return api().get<BankProfile[]>('/banks');
 }
 
-async function postBank(item: Creatable<BankListItem>) {
-  return api().post('/lists/banks', item);
-}
-
-async function deleteBank(id: string) {
-  return api().delete(`/lists/banks/${id}`);
+async function createBank(data: Pick<BankProfile, 'name'>) {
+  return api().post('/banks', data);
 }
 
 async function getCaseTrusteeAppointment(caseId: string) {
@@ -653,8 +645,7 @@ export const _Api2 = {
   putPrivilegedIdentityUser,
   searchCases,
   getBanks,
-  postBank,
-  deleteBank,
+  createBank,
   getBankruptcySoftwareList,
   postBankruptcySoftware,
   deleteBankruptcySoftware,
