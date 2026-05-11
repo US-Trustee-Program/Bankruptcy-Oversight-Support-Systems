@@ -411,7 +411,7 @@
       "type": 3,
       "content": {
         "version": "KqlItem/1.0",
-        "query": "let DistrictSessions = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | extend selectedCount = toint(customMeasurements.selectedCount)\n    | extend divisionCount = toint(customMeasurements.divisionCount)\n    | where selectedCount > 0\n    | summarize\n        EarliestDistrictOnlyTime = minif(timestamp, divisionCount == 0),\n        EarliestDivisionTime = minif(timestamp, divisionCount > 0)\n    by operation_Id;\nlet TotalDistrictSessions = toscalar(DistrictSessions | count);\nlet DivisionAfterDistrictSessions = toscalar(\n    DistrictSessions\n    | where isnotempty(EarliestDistrictOnlyTime) and isnotempty(EarliestDivisionTime)\n    | where EarliestDivisionTime > EarliestDistrictOnlyTime\n    | count\n);\nprint\n    TotalDistrictSessions = TotalDistrictSessions,\n    DivisionAfterDistrictSessions = DivisionAfterDistrictSessions,\n    Rate = round(iif(TotalDistrictSessions > 0, todouble(DivisionAfterDistrictSessions) / todouble(TotalDistrictSessions) * 100, 0.0), 1)",
+        "query": "let DistrictSessions = customEvents\n    | where timestamp {TimeRange}\n    | where name == \"Trustee District Filter Changed\"\n    | extend divisionCount = toint(customMeasurements.divisionCount)\n    | summarize \n        EverHadDistrictOnly = maxif(1, divisionCount == 0), \n        EverHadDivision = maxif(1, divisionCount > 0) \n        by operation_Id;\nDistrictSessions\n| summarize \n    TotalSessions = count(),\n    RefinedSessions = countif(EverHadDistrictOnly == 1 and EverHadDivision == 1)\n| project \n    Rate = round(iff(TotalSessions > 0, todouble(RefinedSessions) * 100.0 / TotalSessions, 0.0), 1),\n    Total = TotalSessions",
         "size": 3,
         "title": "% of District Sessions That Subsequently Refined by Division",
         "timeContextFromParameter": "TimeRange",
@@ -502,7 +502,9 @@
         "visualization": "linechart",
         "chartSettings": {
           "xAxis": "Day",
-          "yAxis": ["DivisionUsageRate"],
+          "yAxis": [
+            "DivisionUsageRate"
+          ],
           "showDataPoints": true,
           "seriesLabelSettings": [
             {
