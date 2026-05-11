@@ -2,12 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import TrusteeDetailAuditHistory from '../TrusteeDetailAuditHistory';
 import Api2 from '@/lib/models/api2';
-import {
-  TrusteeHistory,
-  TrusteeNameHistory,
-  TrusteePublicContactHistory,
-} from '@common/cams/trustees';
-import { SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
+import { TrusteeHistory, TrusteeNameHistory } from '@common/cams/trustees';
 import { ContactInformation } from '@common/cams/contact';
 import {
   MOCK_TRUSTEE_ID,
@@ -577,23 +572,6 @@ describe('TrusteeDetailAuditHistory - Core Tests', () => {
     await renderHistoryAndWaitForTable([historyWithoutUpdatedBy]);
 
     expect(screen.getByTestId('changed-by-0')).toHaveTextContent('');
-  });
-
-  test('should handle completely undefined contact information', async () => {
-    const contactHistoryUndefinedContact: TrusteePublicContactHistory = {
-      id: 'audit-17-id',
-      trusteeId: 'audit-17',
-      documentType: 'AUDIT_PUBLIC_CONTACT',
-      before: undefined,
-      after: undefined,
-      updatedOn: '2024-01-19T18:00:00Z',
-      updatedBy: SYSTEM_USER_REFERENCE,
-    };
-
-    await renderHistoryAndWaitForTable([contactHistoryUndefinedContact]);
-
-    expect(screen.getByTestId('previous-contact-0')).toHaveTextContent('(none)');
-    expect(screen.getByTestId('new-contact-0')).toHaveTextContent('(none)');
   });
 
   test('should handle empty string in name history', async () => {

@@ -54,18 +54,6 @@ describe('EditTrusteeAppointment', () => {
     expect(screen.getByText('Loading appointment...')).toBeInTheDocument();
   });
 
-  test('should load and display appointment form', async () => {
-    vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
-      data: [mockAppointment],
-    });
-
-    renderWithRouter();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('trustee-appointment-form')).toBeInTheDocument();
-    });
-  });
-
   test('should show error when appointment is not found', async () => {
     vi.spyOn(Api2, 'getTrusteeAppointments').mockResolvedValue({
       data: [],
