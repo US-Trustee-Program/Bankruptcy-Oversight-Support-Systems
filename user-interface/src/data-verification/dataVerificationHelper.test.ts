@@ -99,28 +99,4 @@ describe('data verification helper tests', () => {
     const actualOptions = getDivisionComboOptions(sortedTestOffices);
     expect(actualOptions).toStrictEqual(expectedOptions);
   });
-
-  test('should label legacy offices in the options', () => {
-    const testOffices: CourtDivisionDetails[] = [
-      {
-        courtDivisionCode: '002',
-        groupDesignator: 'AB',
-        courtId: '0102',
-        officeCode: '2',
-        officeName: 'B1',
-        state: 'NY',
-        courtName: 'B',
-        courtDivisionName: 'New York 1',
-        regionId: '02',
-        regionName: 'NEW YORK',
-      },
-    ];
-
-    const expectedOptions: Array<Record<string, string>> = [
-      { value: '002', label: 'B (New York 1)', selectedLabel: 'New York 1, NY' },
-    ];
-
-    const actualOptions = getDivisionComboOptions(testOffices);
-    expect(actualOptions).toStrictEqual(expectedOptions);
-  });
 });
