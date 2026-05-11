@@ -4,7 +4,7 @@ import { SubmitCancelBtnProps } from '@/lib/components/uswds/modal/SubmitCancelB
 import { UswdsButtonStyle } from '@/lib/components/uswds/Button';
 import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 
-export type RemovalModalShowOptions = {
+type RemovalModalShowOptions = {
   openModalButtonRef: React.RefObject<OpenModalButtonRef | null>;
   onDelete: () => Promise<void>;
 };

@@ -1,7 +1,7 @@
 import { Address, PhoneNumber } from './contact';
 import { TrusteeAppointment } from './trustee-appointments';
 
-export type TrusteeMatchType = 'exact' | 'phonetic';
+type TrusteeMatchType = 'exact' | 'phonetic';
 
 export type TrusteeSearchResult = {
   trusteeId: string;
