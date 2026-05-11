@@ -414,16 +414,14 @@ export default function SearchScreen() {
                 role="search"
               >
                 <div className="case-include-closed form-field">
-                  <div className="usa-search usa-search--small">
-                    <Checkbox
-                      id="include-closed"
-                      name="includeClosedCases"
-                      value="true"
-                      checked={!temporarySearchPredicate.excludeClosedCases}
-                      label="Include Closed Cases"
-                      onChange={handleIncludeClosedCheckbox}
-                    />
-                  </div>
+                  <Checkbox
+                    id="include-closed"
+                    name="includeClosedCases"
+                    value="true"
+                    checked={!temporarySearchPredicate.excludeClosedCases}
+                    label="Include Closed Cases"
+                    onChange={handleIncludeClosedCheckbox}
+                  />
                 </div>
                 <div className="case-number-search form-field" data-testid="case-number-search">
                   <div className="usa-search usa-search--small">
