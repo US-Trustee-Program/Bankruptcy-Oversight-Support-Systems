@@ -2,7 +2,7 @@ import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import Input, { InputProps } from './uswds/Input';
 import { InputRef } from '../type-declarations/input-fields';
 
-export function validateZipCodeInputEvent(ev: React.ChangeEvent<HTMLInputElement>) {
+function validateZipCodeInputEvent(ev: React.ChangeEvent<HTMLInputElement>) {
   return formatZipCodeInput(ev.target.value);
 }
 
