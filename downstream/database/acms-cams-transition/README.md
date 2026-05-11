@@ -4,11 +4,12 @@ This directory contains database schema and migrations for the **ACMS-to-CAMS tr
 
 ## Purpose
 
-During the transition from ACMS to CAMS, this database serves as an integration point for downstream systems (primarily BOBJ) that cannot easily modify their queries. The database provides:
+During the transition from ACMS to CAMS, this schema serves as an integration point for downstream systems (primarily BOBJ) that cannot easily modify their queries. It provides:
 
-1. **Hybrid CMMAP view** - Unions CAMS Chapter 15 data with ACMS data for all other chapters
-2. **Pass-through views** - Read-only views to ACMS replica tables
-3. **CMMAP_STAGING table** - Stores Chapter 15 assignments from CAMS
+1. **`CMMAP_CAMS` table** - Stores CAMS-originated appointments (staff assignments, trustee appointments)
+2. **`CMMAP_ALL` view** - Unions CAMS data with ACMS data, letting CAMS rows take precedence
+
+Both objects live in the existing `ACMS_REP_SUB` database — no separate database is needed.
 
 ## Directory Structure
 
@@ -16,114 +17,88 @@ During the transition from ACMS to CAMS, this database serves as an integration 
 acms-cams-transition/
 ├── README.md (this file)
 ├── schema/
-│   ├── cmmap-staging.sql          # Staging table for CAMS Chapter 15 assignments
-│   ├── cmmap-view.sql             # Hybrid view (CAMS + ACMS union)
-│   └── acms-passthrough-views.sql # 60+ pass-through views to ACMS tables
+│   ├── cmmap-cams.sql   # CMMAP_CAMS table (CAMS appointments)
+│   └── cmmap-all.sql    # CMMAP_ALL view (CAMS + ACMS union)
 └── migrations/
-    └── 001-initial-schema.sql     # Initial schema deployment script
+    └── 001-initial-schema.sql  # Initial schema deployment script
 ```
 
 ## Schema Components
 
-### CMMAP_STAGING Table
-- Stores Chapter 15 case assignments from CAMS
-- Matches ACMS CMMAP schema structure
-- Includes metadata columns (`SOURCE='CAMS'`, `CAMS_CASE_ID`, etc.)
-- Updated via Azure Function when CAMS emits assignment events
+### CMMAP_CAMS Table
 
-### CMMAP View
-**Hybrid view that returns:**
-- **CAMS data** for Chapter 15 cases (from `CMMAP_STAGING`)
-- **ACMS data** for all other cases (from `ACMS_REPLICA.dbo.CMMAP`)
+Stores appointments written by CAMS downstream handlers (staff assignments and trustee appointments). The schema mirrors the ACMS `CMMAP` table with additional metadata columns (`SOURCE='CAMS'`, `CAMS_CASE_ID`, `CAMS_USER_ID`, `CAMS_USER_NAME`, `LAST_UPDATED`).
+
+### CMMAP_ALL View
+
+Hybrid view that returns:
+- **CAMS rows** from `CMMAP_CAMS` for any case+appointment type where CAMS has written a record
+- **ACMS rows** from `CMMAP` for all other appointments
 
 **Logic:**
 ```sql
-SELECT * FROM CMMAP_STAGING WHERE SOURCE = 'CAMS'
+SELECT * FROM CMMAP_CAMS
 UNION ALL
-SELECT * FROM ACMS_REPLICA.dbo.CMMAP
-WHERE NOT EXISTS (SELECT 1 FROM CMMAP_STAGING WHERE case matches);
+SELECT * FROM CMMAP AS acms
+WHERE NOT EXISTS (
+  SELECT 1 FROM CMMAP_CAMS
+  WHERE CASE_DIV = acms.CASE_DIV
+    AND CASE_YEAR = acms.CASE_YEAR
+    AND CASE_NUMBER = acms.CASE_NUMBER
+    AND APPT_TYPE = acms.APPT_TYPE
+);
 ```
 
-**Key Behavior:**
-- CAMS data **overrides** ACMS data when both exist for the same case
-- Transparent to downstream consumers (same table name, same schema)
-
-### Pass-through Views
-Read-only views for ACMS tables:
-- **Core**: CMMBA, CMMDB, CMMPR, CMMPT, CMMPD
-- **Hearing**: CMHHR, CMHMR, CMHNO, CMHOR, etc.
-- **Reference**: CMLOC, CMMGD, CMMRG, CMMLC
-- **Summary**: CMSSUM, CMSSPR, CMSSD, CMSSBO
-- **Reports**: ORO*, RPT*, TOT* series
+**Key behavior:** CAMS data overrides ACMS data when both exist for the same case + appointment type. The view is transparent to downstream consumers.
 
 ## Deployment
 
 ### Prerequisites
-1. Azure SQL Server instance (existing)
-2. ACMS replica database on same server
-3. Create new database: `cams-downstream` (or name provided by DBA)
-4. Cross-database query permissions
+
+1. Access to `ACMS_REP_SUB` database (or the equivalent ACMS replica database)
+2. Permission to create tables and views in that database
 
 ### Deploy Schema
 
 **Option 1: Run migration script**
 ```bash
 sqlcmd -S your-server.database.windows.net \
-       -d cams-downstream \
+       -d ACMS_REP_SUB \
        -U your-user -P your-password \
        -i migrations/001-initial-schema.sql
 ```
 
 **Option 2: Run schema files individually**
 ```bash
-sqlcmd -S your-server -d cams-downstream -i schema/cmmap-staging.sql
-sqlcmd -S your-server -d cams-downstream -i schema/cmmap-view.sql
-sqlcmd -S your-server -d cams-downstream -i schema/acms-passthrough-views.sql
+sqlcmd -S your-server -d ACMS_REP_SUB -i schema/cmmap-cams.sql
+sqlcmd -S your-server -d ACMS_REP_SUB -i schema/cmmap-all.sql
 ```
-
-### Update ACMS Database Name
-
-If ACMS replica database has a different name, update the three-part names in SQL files:
-
-**Current:** `ACMS_REPLICA.dbo.CMMAP`
-**Update to:** `YOUR_ACMS_DB_NAME.dbo.CMMAP`
-
-Files to update:
-- `schema/cmmap-view.sql`
-- `schema/acms-passthrough-views.sql`
 
 ## Verification
 
 After deployment, verify the schema:
 
 ```sql
--- Check staging table exists
+-- Check CMMAP_CAMS table exists
 SELECT * FROM INFORMATION_SCHEMA.TABLES
-WHERE TABLE_NAME = 'CMMAP_STAGING';
+WHERE TABLE_NAME = 'CMMAP_CAMS';
 
--- Check CMMAP view exists
+-- Check CMMAP_ALL view exists
 SELECT * FROM INFORMATION_SCHEMA.VIEWS
-WHERE TABLE_NAME = 'CMMAP';
+WHERE TABLE_NAME = 'CMMAP_ALL';
 
--- Check pass-through views (should be 60+)
-SELECT COUNT(*) FROM INFORMATION_SCHEMA.VIEWS
-WHERE TABLE_NAME LIKE 'CM%';
-
--- Test CMMAP view returns data
-SELECT TOP 10 * FROM CMMAP;
+-- Test CMMAP_ALL view returns data
+SELECT TOP 10 * FROM CMMAP_ALL;
 ```
 
 ## Future Migrations
 
-As CAMS assumes responsibility for additional chapters beyond Chapter 15:
+As CAMS takes responsibility for additional appointment types:
 
-1. Update `CMMAP_STAGING` to handle new chapters
-2. Modify `CMMAP` view union logic
-3. Create new migration scripts (002-, 003-, etc.)
-4. Eventually deprecate this database in favor of REST API
+1. Add migration scripts (`002-`, `003-`, etc.) rather than modifying `001-initial-schema.sql`
+2. The `CMMAP_ALL` view logic does not need to change — it already handles any appointment type written to `CMMAP_CAMS`
 
 ## Related Documentation
 
 - [Downstream README](../../README.md) - Overall architecture
-- [CAMS-362 Brainstorming](../../../.ustp-cams-fdp/ai/specs/CAMS-362-downstream-staff-asssignment/brainstorming/read-only/CAMS-362-DOWNSTREAM-STAFF-ASSIGNMENT-BRAINSTORMING.md)
-- [Integration Tests](../../test/acms-cams-transition/README.md)
+- [Integration Tests](../../../test/integration/acms-cams-transition/README.md)

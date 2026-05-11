@@ -1,7 +1,7 @@
 import { vi, Mock } from 'vitest';
 import { ApplicationContext } from '../../adapters/types/basic';
 import { CaseAssignmentUseCase } from './case-assignment';
-import { CaseAssignmentEvent } from '@common/cams/dataflow-events';
+import { CaseAssignmentDownstreamEvent } from '@common/cams/dataflow-events';
 import {
   createMockApplicationContext,
   createMockApplicationContextSession,
@@ -18,6 +18,7 @@ import { ACMS_SYSTEM_USER_REFERENCE } from '@common/cams/auditable';
 import { MANHATTAN } from '@common/cams/test-utilities/courts.mock';
 import { OfficeUserRolesPredicate } from '@common/api/search';
 import { delay } from '@common/delay';
+import { OfficesRepository } from '../../use-cases/gateways.types';
 
 const randomId = () => {
   return '' + Math.random() * 99999999;
@@ -96,7 +97,7 @@ describe('Case assignment tests', () => {
     const caseId = '081-23-01176';
     const role = CamsRole.TrialAttorney;
 
-    let assignmentEventSpy: Mock<(event: CaseAssignmentEvent) => Promise<void>>;
+    let assignmentEventSpy: Mock<(event: CaseAssignmentDownstreamEvent) => Promise<void>>;
 
     beforeEach(async () => {
       applicationContext = await createMockApplicationContext({
@@ -105,26 +106,29 @@ describe('Case assignment tests', () => {
         },
       });
       applicationContext.session = await createMockApplicationContextSession({ user });
+      applicationContext.featureFlags['downstream-staff-assignments-enabled'] = true;
       vi.spyOn(MockMongoRepository.prototype, 'getAssignmentsForCases').mockResolvedValue(
         new Map([[caseId, []]]),
       );
       const syncedCase = MockData.getSyncedCase({ override: { caseId } });
       vi.spyOn(MockMongoRepository.prototype, 'getSyncedCase').mockResolvedValue(syncedCase);
-      vi.spyOn(MockMongoRepository.prototype, 'search').mockImplementation(
-        (predicate: OfficeUserRolesPredicate) => {
-          if (predicate.userId === attorneyJoeNobel.id) {
-            return Promise.resolve([officeStaffJoeNobel]);
-          } else if (predicate.userId === attorneyJaneSmith.id) {
-            return Promise.resolve([officeStaffJaneSmith]);
-          } else {
-            return Promise.resolve([]);
-          }
-        },
-      );
+      const searchImpl = (predicate: OfficeUserRolesPredicate) => {
+        if (predicate.userId === attorneyJoeNobel.id) {
+          return Promise.resolve([officeStaffJoeNobel]);
+        } else if (predicate.userId === attorneyJaneSmith.id) {
+          return Promise.resolve([officeStaffJaneSmith]);
+        } else {
+          return Promise.resolve([]);
+        }
+      };
+      vi.spyOn(factory, 'getOfficesRepository').mockReturnValue({
+        search: searchImpl,
+      } as unknown as OfficesRepository);
 
       assignmentEventSpy = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
         queueCaseAssignmentEvent: assignmentEventSpy,
+        queueTrusteeAppointmentEvent: vi.fn(),
         queueCaseReload: vi.fn(),
       });
     });
@@ -134,15 +138,15 @@ describe('Case assignment tests', () => {
     });
 
     test('should not create assignments if one or more user ids is not found', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'search').mockImplementation(
-        (predicate: OfficeUserRolesPredicate) => {
+      vi.spyOn(factory, 'getOfficesRepository').mockReturnValue({
+        search: (predicate: OfficeUserRolesPredicate) => {
           if (predicate.userId === attorneyJoeNobel.id) {
             return Promise.resolve([officeStaffJoeNobel]);
           } else {
             return Promise.resolve([]);
           }
         },
-      );
+      } as unknown as OfficesRepository);
       const context = { ...applicationContext };
       context.session = MockData.getManhattanAssignmentManagerSession();
       const assignmentUseCase = new CaseAssignmentUseCase(context);
@@ -158,8 +162,8 @@ describe('Case assignment tests', () => {
     });
 
     test('should not create assignments if one or more names do not match', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'search').mockImplementation(
-        (predicate: OfficeUserRolesPredicate) => {
+      vi.spyOn(factory, 'getOfficesRepository').mockReturnValue({
+        search: (predicate: OfficeUserRolesPredicate) => {
           if (predicate.userId === attorneyJoeNobel.id) {
             return Promise.resolve([officeStaffJoeNobel]);
           } else if (predicate.userId === attorneyJaneSmith.id) {
@@ -168,7 +172,7 @@ describe('Case assignment tests', () => {
             return Promise.resolve([]);
           }
         },
-      );
+      } as unknown as OfficesRepository);
       const context = { ...applicationContext };
       context.session = MockData.getManhattanAssignmentManagerSession();
       const assignmentUseCase = new CaseAssignmentUseCase(context);
@@ -184,8 +188,8 @@ describe('Case assignment tests', () => {
     });
 
     test('should not create assignments if one or more roles do not match', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'search').mockImplementation(
-        (predicate: OfficeUserRolesPredicate) => {
+      vi.spyOn(factory, 'getOfficesRepository').mockReturnValue({
+        search: (predicate: OfficeUserRolesPredicate) => {
           if (predicate.userId === attorneyJoeNobel.id) {
             return Promise.resolve([officeStaffJoeNobel]);
           } else if (predicate.userId === attorneyJaneSmith.id) {
@@ -194,7 +198,7 @@ describe('Case assignment tests', () => {
             return Promise.resolve([]);
           }
         },
-      );
+      } as unknown as OfficesRepository);
       const context = { ...applicationContext };
       context.session = MockData.getManhattanAssignmentManagerSession();
       const assignmentUseCase = new CaseAssignmentUseCase(context);
@@ -210,8 +214,8 @@ describe('Case assignment tests', () => {
     });
 
     test('should log but not reject Promise.all when one of multiple searches fails', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'search').mockImplementation(
-        async (predicate: OfficeUserRolesPredicate) => {
+      vi.spyOn(factory, 'getOfficesRepository').mockReturnValue({
+        search: async (predicate: OfficeUserRolesPredicate) => {
           if (predicate.userId === attorneyJoeNobel.id) {
             await delay(200);
             return Promise.resolve([officeStaffJoeNobel]);
@@ -219,7 +223,7 @@ describe('Case assignment tests', () => {
             return Promise.reject();
           }
         },
-      );
+      } as unknown as OfficesRepository);
       const context = { ...applicationContext };
       context.session = MockData.getManhattanAssignmentManagerSession();
       const assignmentUseCase = new CaseAssignmentUseCase(context);
@@ -238,8 +242,8 @@ describe('Case assignment tests', () => {
     });
 
     test('should not create assignments if role is not a CamsRole', async () => {
-      vi.spyOn(MockMongoRepository.prototype, 'search').mockImplementation(
-        (predicate: OfficeUserRolesPredicate) => {
+      vi.spyOn(factory, 'getOfficesRepository').mockReturnValue({
+        search: (predicate: OfficeUserRolesPredicate) => {
           if (predicate.userId === attorneyJoeNobel.id) {
             return Promise.resolve([officeStaffJoeNobel]);
           } else if (predicate.userId === attorneyJaneSmith.id) {
@@ -248,7 +252,7 @@ describe('Case assignment tests', () => {
             return Promise.resolve([]);
           }
         },
-      );
+      } as unknown as OfficesRepository);
       const context = { ...applicationContext };
       context.session = MockData.getManhattanAssignmentManagerSession();
       const assignmentUseCase = new CaseAssignmentUseCase(context);
@@ -358,7 +362,7 @@ describe('Case assignment tests', () => {
       expect(createAssignment).toHaveBeenCalledTimes(1);
 
       expect(assignmentEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ ...assignmentTwo }),
+        expect.objectContaining({ ...assignmentTwo, acmsProfessionalId: null }),
       );
     });
 
@@ -399,7 +403,7 @@ describe('Case assignment tests', () => {
       expect(updateAssignment.mock.calls[0][0]).toEqual(expect.objectContaining(assignmentOne));
       expect(updateAssignment).toHaveBeenCalledTimes(1);
       expect(assignmentEventSpy).toHaveBeenCalledWith(
-        expect.objectContaining({ ...assignmentOne }),
+        expect.objectContaining({ ...assignmentOne, acmsProfessionalId: null }),
       );
     });
 
@@ -449,14 +453,15 @@ describe('Case assignment tests', () => {
     });
 
     test('should use TrialAttorney as assignableRole when role is LeadTrialAttorney', async () => {
-      const searchSpy = vi
-        .spyOn(MockMongoRepository.prototype, 'search')
-        .mockImplementation((predicate: OfficeUserRolesPredicate) => {
-          if (predicate.userId === attorneyJaneSmith.id) {
-            return Promise.resolve([officeStaffJaneSmith]);
-          }
-          return Promise.resolve([]);
-        });
+      const searchSpy = vi.fn().mockImplementation((predicate: OfficeUserRolesPredicate) => {
+        if (predicate.userId === attorneyJaneSmith.id) {
+          return Promise.resolve([officeStaffJaneSmith]);
+        }
+        return Promise.resolve([]);
+      });
+      vi.spyOn(factory, 'getOfficesRepository').mockReturnValue({
+        search: searchSpy,
+      } as unknown as OfficesRepository);
       vi.spyOn(CaseManagement.prototype, 'getCaseSummary').mockResolvedValue(
         MockData.getCaseDetail({
           override: { courtDivisionCode: getCourtDivisionCodes(user)[0] },

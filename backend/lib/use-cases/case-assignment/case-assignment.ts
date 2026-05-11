@@ -199,8 +199,13 @@ export class CaseAssignmentUseCase {
     history.updatedOn = currentDate;
     await casesRepo.createCaseHistory(history);
 
-    for (const assignment of [...addedAssignments, ...removedAssignments]) {
-      await this.apiToDataflowsGateway.queueCaseAssignmentEvent(assignment);
+    if (context.featureFlags['downstream-staff-assignments-enabled']) {
+      for (const assignment of [...addedAssignments, ...removedAssignments]) {
+        await this.apiToDataflowsGateway.queueCaseAssignmentEvent({
+          ...assignment,
+          acmsProfessionalId: null, // Staff attorney ACMS IDs not yet available; tracked in CAMS-362
+        });
+      }
     }
 
     context.logger.info(

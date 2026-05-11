@@ -3,7 +3,6 @@
     "module": "commonjs",
     "target": "ES2022",
     "outDir": "dist",
-    "rootDir": ".",
     "sourceMap": true,
     "strict": true,
     "esModuleInterop": true,
@@ -11,6 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
+    "ignoreDeprecations": "5.0",
     "types": ["node", "@azure/functions"],
     "baseUrl": ".",
     "paths": {
@@ -18,11 +18,15 @@
     }
   },
   "include": [
-    "functions/**/*.ts"
+    "index.ts",
+    "shared/**/*.ts",
+    "staff-assignment-handler/**/*.ts",
+    "trustee-appointment-handler/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "**/*.test.ts"
-  ]
+  ],
+  "references": [{ "path": "../common" }]
 }

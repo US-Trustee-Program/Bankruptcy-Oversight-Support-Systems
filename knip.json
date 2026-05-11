@@ -58,17 +58,24 @@
     },
     "downstream": {
       "entry": [
-        "functions/**/index.ts",
+        "index.ts",
         "**/*.test.ts"
       ],
       "project": ["**/*.ts"],
       "ignore": [],
       "ignoreFiles": []
+    },
+    "test/integration": {
+      "entry": ["**/*.ts"],
+      "project": ["**/*.ts"],
+      "ignore": [],
+      "ignoreDependencies": ["dotenv", "@azure/functions", "@azure/storage-queue", "mongodb", "mssql"]
     }
   },
   "ignoreBinaries": [
     "pushd",
     "popd",
+    "tsx",
 
     "playwright",
     "dot",
@@ -109,7 +116,7 @@
     "launchdarkly-react-client-sdk",
     "react-router-dom",
     "common",
-    "@common/cams",
+
     "globals"
     "globals",
     "@stryker-mutator/core"

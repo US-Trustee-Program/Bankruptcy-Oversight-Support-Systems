@@ -6,25 +6,27 @@ This subproject provides an **intermediate integration layer** for downstream co
 
 ```
 CAMS (Cosmos DB)
-  └─> Chapter 15 Case Assignment Event
-      └─> Azure Storage Queue: "downstream-chapter15-assignments-event"
-          └─> Azure Function Handler
-              └─> Write to CMMAP_STAGING table (Azure SQL)
-                  └─> CMMAP View (UNION)
-                      ├─> SELECT * FROM CMMAP_STAGING (CAMS Ch15)
+  └─> Case Assignment / Trustee Appointment Event
+      └─> Azure Storage Queue
+          └─> Azure Function Handler (downstream/)
+              └─> Write to CMMAP_CAMS table (ACMS_REP_SUB Azure SQL)
+                  └─> CMMAP_ALL View (UNION)
+                      ├─> SELECT * FROM CMMAP_CAMS (CAMS data)
                       └─> UNION ALL
-                          └─> SELECT * FROM ACMS.dbo.CMMAP WHERE chapter != 15
-                              └─> BOBJ reads CMMAP view
+                          └─> SELECT * FROM CMMAP WHERE no active CAMS row exists
+                              └─> BOBJ reads CMMAP_ALL view
 ```
 
 ## Purpose
 
-**Problem:** BOBJ reports query ACMS tables directly and cannot be easily modified. CAMS is replacing ACMS functionality incrementally, starting with Chapter 15 case assignments.
+**Problem:** BOBJ reports query ACMS tables directly and cannot be easily modified. CAMS is replacing ACMS functionality incrementally.
 
-**Solution:** Create a new database on the existing Azure SQL Server that:
-1. **Pass-through views** - Most ACMS tables are read-only views pointing to ACMS replica database
-2. **Hybrid CMMAP view** - Unions CAMS Chapter 15 data with ACMS data for all other chapters
-3. **Event-driven sync** - CAMS emits events, Azure Function writes to staging table
+**Solution:** Write CAMS appointment data into the existing `ACMS_REP_SUB` database alongside the ACMS replica data:
+1. **`CMMAP_CAMS` table** — Stores CAMS-originated appointments
+2. **`CMMAP_ALL` view** — Unions CAMS and ACMS data; CAMS rows take precedence by case + appointment type
+3. **Event-driven sync** — CAMS emits events, Azure Functions write to `CMMAP_CAMS`
+
+No separate database is needed — both objects live in `ACMS_REP_SUB`.
 
 ## Project Structure
 
@@ -32,18 +34,22 @@ CAMS (Cosmos DB)
 downstream/
 ├── database/
 │   └── acms-cams-transition/
+│       ├── README.md
 │       ├── schema/
-│       │   ├── cmmap-staging.sql       # Staging table for CAMS assignments
-│       │   ├── cmmap-view.sql          # Union view (CAMS + ACMS)
-│       │   └── acms-passthrough-views.sql  # Pass-through views
+│       │   ├── cmmap-cams.sql          # CMMAP_CAMS table DDL
+│       │   └── cmmap-all.sql           # CMMAP_ALL view DDL
 │       └── migrations/
-│           └── 001-initial-schema.sql
-├── functions/
-│   ├── chapter15-assignment-handler/
-│   │   ├── index.ts                # Event handler entry point
-│   │   ├── transform.ts            # CAMS → ACMS schema transformation
-│   │   └── transform.test.ts       # Unit tests
-│   └── host.json                   # Azure Functions configuration
+│           └── 001-initial-schema.sql  # Initial deployment migration
+├── shared/
+│   └── cmmap-cams-row.ts               # Shared TypeScript type (CmmapCamsRow)
+├── staff-assignment-handler/
+│   ├── staff-assignment-handler.ts     # Handler + transform (entry point)
+│   └── staff-assignment-handler.test.ts
+├── trustee-appointment-handler/
+│   ├── trustee-appointment-handler.ts  # Handler + transform (entry point)
+│   └── trustee-appointment-handler.test.ts
+├── index.ts                            # Azure Functions registration entry point
+├── host.json                           # Azure Functions host configuration
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -51,50 +57,35 @@ downstream/
 
 ## Key Design Decisions
 
-### 1. Scope: Chapter 15 Only (Initial Phase)
-- CAMS currently only manages Chapter 15 case assignments
-- All other chapters (7, 11, 12, 13) continue to flow from ACMS
-- Future: Expand to other chapters as CAMS assumes more functionality
+### 1. ACMS_REP_SUB as the target database
+CAMS writes into the same `ACMS_REP_SUB` database where the ACMS replica already lives. No separate database is needed. BOBJ and other consumers can query `CMMAP_ALL` in place of ACMS's `CMMAP`.
 
 ### 2. Event-Driven Architecture
-- **Loose coupling** - CAMS and downstream are decoupled via queue
-- **Eventual consistency** - Acceptable for reporting use case
-- **Idempotency** - Handler can process same event multiple times safely
+- **Loose coupling** — CAMS and downstream are decoupled via Azure Storage Queue
+- **Eventual consistency** — Acceptable for reporting use case
+- **Idempotency** — MERGE statement makes handlers safe to replay
 
-### 3. Professional ID Placeholder Strategy
-Two options under consideration:
-- **Option A:** `"ZZ-{incrementing_int}"` - Generic placeholder pattern
-- **Option B:** `"{GROUP_DESIGNATOR}-{decrementing_int}"` - Court-specific, starts at 99999 to avoid ACMS collisions
-
-Current implementation uses string placeholders that can accommodate either strategy.
-
-### 4. Staging Table Pattern
-- **CMMAP_STAGING** - Separate table for CAMS data, not direct writes to ACMS
-- **Upsert semantics** - Updates existing records, inserts new ones
-- **Metadata tracking** - Includes `SOURCE='CAMS'`, `LAST_UPDATED`, `CAMS_CASE_ID`
-
-### 5. View Union Strategy
+### 3. CMMAP_ALL View Union Strategy
 ```sql
--- CMMAP View returns CAMS data for Chapter 15, ACMS data for everything else
-CREATE VIEW CMMAP AS
-  SELECT * FROM CMMAP_STAGING WHERE SOURCE = 'CAMS'
+-- CMMAP_ALL returns CAMS rows + ACMS rows where no CAMS row exists for that case+APPT_TYPE
+CREATE VIEW CMMAP_ALL AS
+  SELECT * FROM CMMAP_CAMS
   UNION ALL
-  SELECT * FROM ACMS_REPLICA.dbo.CMMAP
+  SELECT * FROM CMMAP AS acms
   WHERE NOT EXISTS (
-    SELECT 1 FROM CMMAP_STAGING s
-    WHERE s.CASE_DIV = CMMAP.CASE_DIV
-      AND s.CASE_YEAR = CMMAP.CASE_YEAR
-      AND s.CASE_NUMBER = CMMAP.CASE_NUMBER
+    SELECT 1 FROM CMMAP_CAMS
+    WHERE CASE_DIV = acms.CASE_DIV
+      AND CASE_YEAR = acms.CASE_YEAR
+      AND CASE_NUMBER = acms.CASE_NUMBER
+      AND APPT_TYPE = acms.APPT_TYPE
   );
 ```
 
-## Dependencies
+### 4. Appointment Types
+- **S1** — Staff attorney assignments
+- **TR** — Trustee appointments
 
-- **CAMS backend** - Emits `CaseAssignmentEvent` to Azure Storage Queue
-- **ACMS replica database** - Source for non-Chapter 15 data (existing database on same server)
-- **Azure SQL Database** - New database `cams-downstream` on existing SQL Server instance
-- **Azure Storage Queue** - Message bus for assignment events
-- **Azure Functions** - Serverless event handlers
+Each handler writes to `CMMAP_CAMS` using the appropriate `APPT_TYPE`.
 
 ## Development
 
@@ -107,83 +98,47 @@ npm install
 
 2. **Configure local settings:**
 ```bash
-# Copy template and update with your settings
-cp functions/local.settings.json.template functions/local.settings.json
-# Edit local.settings.json with your connection strings
+cp local.settings.local.json local.settings.json
+# Edit local.settings.json with your SQL and Storage connection strings
 ```
 
 3. **Run tests:**
 ```bash
 npm test
-npm run test:coverage
-npm run test:mutation
 ```
 
 4. **Start Azure Functions locally:**
 ```bash
-npm run start
-# Or use Azure Functions Core Tools directly
-cd functions && func start
+npm start
 ```
 
-**Note:** `local.settings.json` is gitignored and contains local connection strings
+### Environment Variables
 
-### Queue Naming Convention
-
-Following CAMS dataflows convention:
-- **Queue Name:** `downstream-chapter15-assignments-event`
-- **Pattern:** `{MODULE_NAME}-{suffix}` (lowercase)
-- **Module Name:** `DOWNSTREAM-CHAPTER15-ASSIGNMENTS`
-- **Suffix:** `event`
-
-This aligns with existing CAMS queues like:
-- `sync-cases-start`, `sync-cases-page`
-- `migrate-trustees-start`, `migrate-trustees-page`
-
-### Queue Message Format
-The event is already defined in CAMS as `CaseAssignmentEvent`:
-```typescript
-interface CaseAssignmentEvent {
-  caseId: string;           // CAMS case ID (e.g., "081-24-12345")
-  userId: string;           // CAMS user ID
-  name: string;             // Attorney name
-  role: string;             // "TrialAttorney"
-  assignedOn: string;       // ISO timestamp
-  unassignedOn?: string;    // ISO timestamp (if unassigned)
-  // Professional ID mapping TBD
-}
+```bash
+ACMS_MSSQL_HOST=          # SQL Server hostname
+ACMS_MSSQL_DATABASE=      # Database name (e.g. ACMS_REP_SUB)
+ACMS_MSSQL_USER=          # SQL user
+ACMS_MSSQL_PASS=          # SQL password
+ACMS_MSSQL_ENCRYPT=       # "true" | "false"
+ACMS_MSSQL_TRUST_UNSIGNED_CERT=  # "true" | "false" (local dev only)
+AzureWebJobsStorage=      # Azure Storage connection string (queues)
 ```
 
 ## Deployment
 
-### Azure Resources
-- **SQL Server:** Existing instance (shared with ACMS replica)
-- **SQL Database:** `cams-downstream` (new database on existing server)
-- **Function App:** `func-cams-ch15-assign-{env}`
-- **Storage Account:** Existing CAMS storage account (reuse queue infrastructure)
+### Schema Deployment
 
-### Environment Variables
 ```bash
-# Azure Function Configuration
-DOWNSTREAM_SQL_CONNECTION_STRING="Server=...;Database=cams-downstream;..."
-ACMS_REPLICA_DATABASE="acms-replica"  # Name of ACMS database on same server
-AzureWebJobsStorage="DefaultEndpointsProtocol=https;AccountName=...;AccountKey=...;"
+sqlcmd -S your-server -d ACMS_REP_SUB \
+  -i downstream/database/acms-cams-transition/migrations/001-initial-schema.sql
 ```
 
-**Note:** Queue name is hardcoded as `downstream-chapter15-assignments-event` following CAMS dataflows naming convention
-
-## Future Enhancements
-
-1. **Expand to other chapters** - As CAMS assumes responsibility for Ch7/11/12/13
-2. **Multiple staff members** - ACMS supports S1 and S2; expand staging table as needed
-3. **Professional ID resolution** - Implement final strategy for CAMS → ACMS ID mapping
-4. **Dead letter queue handling** - Monitor and resolve failed messages
-5. **REST API** - Long-term goal to replace SQL views with HAL+JSON API
+### Function App
+- Deployed as an Azure Functions app (Node.js v4 programming model)
+- Triggered by Azure Storage Queue messages
+- Dead-letter queue (DLQ) outputs for failed messages
 
 ## Related Documentation
 
-- [ACMS-CAMS Transition Database](database/acms-cams-transition/README.md) - Database schema and deployment
-- [Integration Testing Guide](test/acms-cams-transition/README.md) - Local testing with seed data
-- [CAMS-362 Brainstorming](../.ustp-cams-fdp/ai/specs/CAMS-362-downstream-staff-asssignment/brainstorming/read-only/CAMS-362-DOWNSTREAM-STAFF-ASSIGNMENT-BRAINSTORMING.md)
-- [ACMS Data Dictionary](../.ustp-cams-fdp/ai/specs/CAMS-362-downstream-staff-asssignment/brainstorming/read-only/ACMSDataDictionary.xlsx)
-- [ACMS Table Structures](../.ustp-cams-fdp/ai/specs/CAMS-362-downstream-staff-asssignment/brainstorming/read-only/acms-tables.tsv)
+- [ACMS-CAMS Transition Database](database/acms-cams-transition/README.md)
+- [Integration Testing](../test/integration/acms-cams-transition/README.md)
