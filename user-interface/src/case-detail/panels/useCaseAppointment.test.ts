@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useCaseAppointment } from './useCaseAppointment';
 import Api2 from '@/lib/models/api2';
 import { CaseAppointment } from '@common/cams/trustee-appointments';
@@ -69,6 +69,27 @@ describe('useCaseAppointment', () => {
     });
 
     expect(result.current.appointedDate).toBeNull();
+    expect(consoleSpy).not.toHaveBeenCalled();
+  });
+
+  test('cancels in-flight request when component unmounts', async () => {
+    const consoleSpy = vi.spyOn(console, 'error');
+    let resolveRequest!: (value: { data: typeof mockAppointment }) => void;
+    vi.spyOn(Api2, 'getCaseTrusteeAppointment').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        }),
+    );
+
+    const { unmount } = renderHook(() => useCaseAppointment('111-24-00001'));
+
+    unmount();
+
+    await act(async () => {
+      resolveRequest({ data: mockAppointment });
+    });
+
     expect(consoleSpy).not.toHaveBeenCalled();
   });
 

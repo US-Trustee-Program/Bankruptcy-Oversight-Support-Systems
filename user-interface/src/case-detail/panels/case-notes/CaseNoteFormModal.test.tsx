@@ -449,26 +449,6 @@ describe('CaseNoteFormModal - Simple Tests', () => {
     });
   });
 
-  test('should call onModalClosed callback when modal closes after cancellation', async () => {
-    const onModalClosedSpy = vi.fn();
-
-    const modalRef = React.createRef<CaseNoteFormModalRef>();
-    renderComponent(modalRef, { onModalClosed: onModalClosedSpy });
-
-    const openButton = screen.getByTestId(OPEN_BUTTON_ID);
-    await userEvent.click(openButton);
-
-    const titleInput = screen.getByTestId(TITLE_INPUT_ID);
-    const contentInput = screen.getByTestId(RICH_TEXT_CONTENT_INPUT_ID);
-    await userEvent.type(titleInput, 'Draft Title');
-    await userEvent.type(contentInput, 'Draft Content');
-
-    const cancelButton = screen.getByTestId(CANCEL_BUTTON_ID);
-    await userEvent.click(cancelButton);
-
-    expect(onModalClosedSpy).toHaveBeenCalledWith(TEST_CASE_ID, 'create');
-  });
-
   test('should clear form cache when modal is cancelled', async () => {
     const clearFormSpy = vi.spyOn(LocalFormCache, 'clearForm');
 

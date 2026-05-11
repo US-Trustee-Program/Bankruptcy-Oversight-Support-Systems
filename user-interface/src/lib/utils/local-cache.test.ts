@@ -189,13 +189,6 @@ describe('LocalCache', () => {
     expect(reloaded.default.isCacheEnabled()).toBeFalsy();
   });
 
-  test('should check if cache is enabled', async () => {
-    vi.resetModules();
-    vi.stubGlobal('localStorage', mockLocalStorage);
-    const reloaded = await import('./local-cache');
-    expect(reloaded.default.isCacheEnabled()).toBeTruthy();
-  });
-
   test('should return false if localStorage is disabled', () => {
     vi.stubGlobal('localStorage', null);
 

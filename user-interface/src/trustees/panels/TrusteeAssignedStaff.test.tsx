@@ -34,14 +34,6 @@ describe('TrusteeAssignedStaff', () => {
     vi.spyOn(Api2, 'getOversightStaff').mockResolvedValue({ data: mockStaffByRole });
   });
 
-  test('should render component with correct structure', async () => {
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('attorney-assignment-section')).toBeInTheDocument();
-    });
-  });
-
   test('should call getTrusteeOversightAssignments on mount with correct trusteeId', () => {
     render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
 
@@ -83,17 +75,6 @@ describe('TrusteeAssignedStaff', () => {
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
     expect(screen.getByTestId('alert')).toHaveTextContent('Failed to load assignments');
-  });
-
-  test('should show alert container when error is present', () => {
-    vi.spyOn(UseTrusteeAssignmentsModule, 'useTrusteeAssignments').mockReturnValue({
-      ...mockUseTrusteeAssignments,
-      error: 'Failed to load assignments',
-    });
-
-    render(<TrusteeAssignedStaff trusteeId="trustee-123" />);
-
-    expect(screen.getByTestId('alert-container')).toBeInTheDocument();
   });
 
   test('should have correct container structure', async () => {

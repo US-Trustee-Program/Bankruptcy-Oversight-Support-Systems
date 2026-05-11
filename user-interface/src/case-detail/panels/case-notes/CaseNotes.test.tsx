@@ -40,46 +40,18 @@ describe('CaseNotes Adapter', () => {
   });
 
   describe('Notes props configuration', () => {
-    test('passes caseId as entityId', async () => {
+    test('passes all expected props to Notes component', async () => {
       render(<CaseNotes caseId={caseId} />);
       await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-      expect(getNotesProps().entityId).toBe(caseId);
-    });
 
-    test('passes title "Case Notes"', async () => {
-      render(<CaseNotes caseId={caseId} />);
-      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-      expect(getNotesProps().title).toBe('Case Notes');
-    });
-
-    test('passes correct createDraftKey', async () => {
-      render(<CaseNotes caseId={caseId} />);
-      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-      expect(getNotesProps().createDraftKey).toBe(`case-notes-${caseId}`);
-    });
-
-    test('passes correct editDraftKeyPrefix', async () => {
-      render(<CaseNotes caseId={caseId} />);
-      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-      expect(getNotesProps().editDraftKeyPrefix).toBe(`case-notes-${caseId}`);
-    });
-
-    test('passes EditNote as editAction', async () => {
-      render(<CaseNotes caseId={caseId} />);
-      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-      expect(getNotesProps().editAction).toBe(Actions.EditNote);
-    });
-
-    test('passes RemoveNote as removeAction', async () => {
-      render(<CaseNotes caseId={caseId} />);
-      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-      expect(getNotesProps().removeAction).toBe(Actions.RemoveNote);
-    });
-
-    test('passes correct emptyMessage', async () => {
-      render(<CaseNotes caseId={caseId} />);
-      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-      expect(getNotesProps().emptyMessage).toBe('No notes exist for this case.');
+      const props = getNotesProps();
+      expect(props.entityId).toBe(caseId);
+      expect(props.title).toBe('Case Notes');
+      expect(props.createDraftKey).toBe(`case-notes-${caseId}`);
+      expect(props.editDraftKeyPrefix).toBe(`case-notes-${caseId}`);
+      expect(props.editAction).toBe(Actions.EditNote);
+      expect(props.removeAction).toBe(Actions.RemoveNote);
+      expect(props.emptyMessage).toBe('No notes exist for this case.');
     });
   });
 
@@ -142,6 +114,27 @@ describe('CaseNotes Adapter', () => {
     });
   });
 
+  describe('session missing', () => {
+    test('does not call API for create, update, or delete when session is missing', async () => {
+      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
+      const postSpy = vi.spyOn(Api2, 'postCaseNote').mockResolvedValue();
+      const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue(undefined);
+      const deleteSpy = vi.spyOn(Api2, 'deleteCaseNote').mockResolvedValue();
+      const noteData: NoteInput = { entityId: caseId, title: 'Note', content: 'Content' };
+
+      render(<CaseNotes caseId={caseId} />);
+      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
+
+      await getNotesProps().onCreateNote(noteData);
+      await getNotesProps().onUpdateNote('note-id', noteData);
+      await getNotesProps().onDeleteNote('note-id');
+
+      expect(postSpy).not.toHaveBeenCalled();
+      expect(putSpy).not.toHaveBeenCalled();
+      expect(deleteSpy).not.toHaveBeenCalled();
+    });
+  });
+
   describe('onCreateNote handler', () => {
     const noteData: NoteInput = { entityId: caseId, title: 'New Note', content: 'Content' };
 
@@ -175,18 +168,6 @@ describe('CaseNotes Adapter', () => {
       await getNotesProps().onCreateNote(noteData);
 
       expect(getCaseNotesSpy).toHaveBeenCalledTimes(2);
-    });
-
-    test('does not call API when session is missing', async () => {
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-      const postSpy = vi.spyOn(Api2, 'postCaseNote').mockResolvedValue();
-
-      render(<CaseNotes caseId={caseId} />);
-      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-
-      await getNotesProps().onCreateNote(noteData);
-
-      expect(postSpy).not.toHaveBeenCalled();
     });
 
     test('throws when postCaseNote fails', async () => {
@@ -242,18 +223,6 @@ describe('CaseNotes Adapter', () => {
       expect(getCaseNotesSpy).toHaveBeenCalledTimes(2);
     });
 
-    test('does not call API when session is missing', async () => {
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-      const putSpy = vi.spyOn(Api2, 'putCaseNote').mockResolvedValue(undefined);
-
-      render(<CaseNotes caseId={caseId} />);
-      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-
-      await getNotesProps().onUpdateNote(noteId, noteData);
-
-      expect(putSpy).not.toHaveBeenCalled();
-    });
-
     test('throws when putCaseNote fails', async () => {
       const session = MockData.getCamsSession();
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(session);
@@ -298,18 +267,6 @@ describe('CaseNotes Adapter', () => {
       await getNotesProps().onDeleteNote(noteId);
 
       expect(getCaseNotesSpy).toHaveBeenCalledTimes(2);
-    });
-
-    test('does not call API when session is missing', async () => {
-      vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
-      const deleteSpy = vi.spyOn(Api2, 'deleteCaseNote').mockResolvedValue();
-
-      render(<CaseNotes caseId={caseId} />);
-      await waitFor(() => expect(MockNotes).toHaveBeenCalled());
-
-      await getNotesProps().onDeleteNote(noteId);
-
-      expect(deleteSpy).not.toHaveBeenCalled();
     });
 
     test('throws when deleteCaseNote fails', async () => {

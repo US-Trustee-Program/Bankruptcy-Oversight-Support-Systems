@@ -87,12 +87,10 @@ describe('Case Detail sort, search, and filter tests', () => {
         expect(sortButton).not.toBeInTheDocument();
         searchInput = screen.queryByTestId(searchInputId);
         expect(searchInput).not.toBeInTheDocument();
-        const docketEntryLink = screen.getByTestId('court-docket-link');
-        expect(docketEntryLink).toBeInTheDocument();
+        expect(screen.getByTestId('court-docket-link')).toBeInTheDocument();
       });
 
       const docketEntryLink = screen.getByTestId('court-docket-link');
-      expect(docketEntryLink).toBeInTheDocument();
       await userEvent.click(docketEntryLink);
       await waitFor(() => {
         sortButton = screen.queryByTestId(sortButtonId);

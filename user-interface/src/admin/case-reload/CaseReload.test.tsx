@@ -159,9 +159,6 @@ describe.sequential('CaseReload Component', () => {
       await waitFor(() => {
         expect(screen.getByText('Case Exists')).toBeInTheDocument();
       });
-
-      expect(screen.getByTestId('button-reload-button')).toBeInTheDocument();
-      expect(screen.getByTestId('button-reset-button')).toBeInTheDocument();
     });
 
     test('shows search form results when cosmosCase is returned', async () => {
@@ -222,6 +219,8 @@ describe.sequential('CaseReload Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('validation-error-container')).toBeInTheDocument();
       });
+      expect(screen.getByText('Error')).toBeInTheDocument();
+      expect(screen.getByText('Internal Server Error')).toBeInTheDocument();
     });
   });
 
@@ -293,9 +292,9 @@ describe.sequential('CaseReload Component', () => {
       await userEvent.click(screen.getByTestId('button-reset-button'));
 
       await waitFor(() => {
-        expect(screen.getByTestId('button-validate-button')).toBeInTheDocument();
+        expect(screen.queryByText('Case Exists')).not.toBeInTheDocument();
       });
-      expect(screen.queryByText('Case Exists')).not.toBeInTheDocument();
+      expect(screen.getByLabelText('Case Number')).toHaveValue('');
     });
   });
 });

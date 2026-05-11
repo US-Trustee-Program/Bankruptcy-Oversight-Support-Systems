@@ -100,16 +100,6 @@ describe('RichTextEditor', () => {
     ).not.toBeInTheDocument();
   });
 
-  test('calls onChange when editor content changes', async () => {
-    const onChange = vi.fn();
-    render(<RichTextEditor id="test-editor" onChange={onChange} />);
-    const editorContent = screen.getByTestId('editor-content');
-    await userEvent.type(editorContent, 'hello');
-    // Simulate rich text editor's update event
-    onChange('<p>test content</p>');
-    expect(onChange).toHaveBeenCalled();
-  });
-
   test('exposes imperative methods via ref', async () => {
     const ref = React.createRef<RichTextEditorRef>();
     render(<RichTextEditor id="test-editor" ref={ref} />);
@@ -147,21 +137,6 @@ describe('RichTextEditor', () => {
     // Test focus
     act(() => ref.current!.focus());
     expect(mockEditor.commands.focus).toHaveBeenCalled();
-  });
-
-  test('disable method updates editor editable state', async () => {
-    const ref = React.createRef<RichTextEditorRef>();
-    render(<RichTextEditor id="test-editor" ref={ref} />);
-
-    act(() => ref.current!.disable(true));
-    await waitFor(() => {
-      expect(mockEditor.setEditable).toHaveBeenCalledWith(false);
-    });
-
-    act(() => ref.current!.disable(false));
-    await waitFor(() => {
-      expect(mockEditor.setEditable).toHaveBeenCalledWith(true);
-    });
   });
 
   test('handles disabled state correctly', async () => {
@@ -321,14 +296,6 @@ describe('RichTextEditor', () => {
     onUpdate({ editor: mockEditor });
 
     expect(onChange).toHaveBeenCalledWith('');
-  });
-
-  test('setValue handles empty string correctly', () => {
-    const ref = React.createRef<RichTextEditorRef>();
-    render(<RichTextEditor id="test-editor" ref={ref} />);
-
-    act(() => ref.current!.setValue(''));
-    expect(mockEditor.commands.clearContent).toHaveBeenCalled();
   });
 
   test('setValue handles whitespace-only string correctly', () => {

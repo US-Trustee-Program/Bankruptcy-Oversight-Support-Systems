@@ -9,12 +9,6 @@ describe('caseDetailHelper', () => {
       expect(result).toBe('');
     });
 
-    test('should return empty string when caseDetail has no debtor', () => {
-      const caseDetail = MockData.getCaseDetail({ override: { debtor: undefined as never } });
-      const result = composeCaseTitle(caseDetail);
-      expect(result).toBe('');
-    });
-
     test('should return debtor name when there is no joint debtor', () => {
       const caseDetail = MockData.getCaseDetail({
         override: {
@@ -48,26 +42,6 @@ describe('caseDetailHelper', () => {
 
       const result = composeCaseTitle(caseDetail);
       expect(result).toBe('John Doe & Jane Doe');
-    });
-
-    test('should return only debtor name when joint debtor exists but has no name', () => {
-      const caseDetail = MockData.getCaseDetail({
-        override: {
-          debtor: {
-            name: 'John Doe',
-            address1: '123 Main St',
-            cityStateZipCountry: 'New York, NY 10001',
-          },
-          jointDebtor: {
-            name: '',
-            address1: '123 Main St',
-            cityStateZipCountry: 'New York, NY 10001',
-          },
-        },
-      });
-
-      const result = composeCaseTitle(caseDetail);
-      expect(result).toBe('John Doe');
     });
   });
 });

@@ -35,7 +35,9 @@ describe('ErrorDisplay', () => {
   test('renders both errors when both are set', () => {
     render(<ErrorDisplay validationError="Validation failed" reloadError="Reload failed" />);
     expect(screen.getByTestId('validation-error-container')).toBeInTheDocument();
+    expect(screen.getByText('Validation failed')).toBeInTheDocument();
     expect(screen.getByTestId('reload-error-container')).toBeInTheDocument();
+    expect(screen.getByText('Reload failed')).toBeInTheDocument();
   });
 });
 
@@ -47,11 +49,6 @@ describe('CaseReloadActions', () => {
     onReload: vi.fn(),
     onReset: vi.fn(),
   };
-
-  test('renders Reload Case button when pollStatus is not "success"', () => {
-    render(<CaseReloadActions {...defaultProps} />);
-    expect(screen.getByTestId('button-reload-button')).toBeInTheDocument();
-  });
 
   test('does not render Reload Case button when pollStatus is "success"', () => {
     render(<CaseReloadActions {...defaultProps} pollStatus="success" />);
@@ -76,11 +73,6 @@ describe('CaseReloadActions', () => {
   test('Reload Case button is disabled when isReloading is true', () => {
     render(<CaseReloadActions {...defaultProps} isReloadable={true} isReloading={true} />);
     expect(screen.getByTestId('button-reload-button')).toBeDisabled();
-  });
-
-  test('Reset button is always rendered', () => {
-    render(<CaseReloadActions {...defaultProps} pollStatus="success" />);
-    expect(screen.getByTestId('button-reset-button')).toBeInTheDocument();
   });
 
   test('calls onReload when Reload Case button is clicked', async () => {

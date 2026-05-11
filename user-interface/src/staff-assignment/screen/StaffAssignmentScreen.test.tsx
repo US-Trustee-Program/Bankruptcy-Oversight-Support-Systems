@@ -50,18 +50,6 @@ describe('StaffAssignmentScreen', () => {
     vi.restoreAllMocks();
   });
 
-  test('screen should contain staff assignment filters', async () => {
-    const expectedAssignments = MockData.getStaffAssignee();
-    vi.spyOn(Api2, 'getOfficeAssignees').mockResolvedValue({
-      data: [expectedAssignments],
-    });
-    renderWithoutProps();
-    await TestingUtilities.waitForDocumentBody();
-
-    const filter = document.querySelector('.staff-assignment-filter-container');
-    expect(filter).toBeInTheDocument();
-  });
-
   test('staff assignment filter should pass valid search predicate to search results component when changed filter is updated', async () => {
     const expectedAssignments = MockData.getStaffAssignee();
 

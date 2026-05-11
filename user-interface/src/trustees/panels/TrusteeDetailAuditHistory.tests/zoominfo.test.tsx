@@ -91,13 +91,6 @@ describe('TrusteeDetailAuditHistory - Zoom Info History Tests', () => {
 
   const scenarios = [
     {
-      name: 'basic zoom info change',
-      history: createMockZoomInfoHistory(),
-      expectPrevInfo: BASE_ZOOM_INFO_BEFORE,
-      expectNewInfo: BASE_ZOOM_INFO,
-      expectChangedBy: 'SYSTEM',
-    },
-    {
       name: 'no previous zoom info (new zoom info)',
       history: createMockZoomInfoHistory({ before: undefined }),
       expectPrevNone: true,

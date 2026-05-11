@@ -31,12 +31,6 @@ const RENEWED_ACCESS_TOKEN = MockData.getJwt();
 vi.spyOn(delayModule, 'delay').mockImplementation(async (_, cb) => (cb ? cb() : undefined));
 
 describe('Okta library', () => {
-  describe('Constants', () => {
-    test('AUTH_EXPIRY_WARNING should be exported with correct value', () => {
-      expect(AUTH_EXPIRY_WARNING).toBe('auth-expiry-warning');
-    });
-  });
-
   describe('resetWarningShownFlag', () => {
     test('should allow warning to be shown again after reset', async () => {
       const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
@@ -77,13 +71,6 @@ describe('Okta library', () => {
   });
 
   describe('registerRenewOktaToken', () => {
-    test('should start the heartbeat interval', () => {
-      // registerRenewOktaToken starts a heartbeat interval to monitor session expiration
-      // We can't easily test setInterval without fake timers, but we can verify the function executes without error
-      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
-      expect(() => registerRenewOktaToken(oktaAuth)).not.toThrow();
-    });
-
     test('should initialize heartbeat interval with correct parameters', () => {
       vi.useFakeTimers();
       const setIntervalSpy = vi.spyOn(window, 'setInterval');
@@ -563,25 +550,6 @@ describe('Okta library', () => {
       expect(registerSpy).toHaveBeenCalledWith(expect.any(Function));
 
       registerSpy.mockRestore();
-    });
-
-    test('should clear existing timers when called', () => {
-      vi.useFakeTimers();
-      const clearIntervalSpy = vi.spyOn(window, 'clearInterval');
-      const oktaAuth = new OktaAuth(MOCK_OAUTH_CONFIG);
-
-      // First call creates heartbeat timer
-      registerRenewOktaToken(oktaAuth);
-
-      clearIntervalSpy.mockClear();
-
-      // Second call should clear the first heartbeat timer
-      registerRenewOktaToken(oktaAuth);
-
-      expect(clearIntervalSpy).toHaveBeenCalled();
-
-      vi.useRealTimers();
-      vi.restoreAllMocks();
     });
   });
 

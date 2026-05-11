@@ -478,16 +478,6 @@ describe('DateRangePicker additional coverage tests', () => {
     act(() => callback());
   });
 
-  test('should handle edge case in formatDateForVoiceOver with invalid date components', async () => {
-    const module = await import('./DateRangePicker');
-    const { formatDateForVoiceOver } = module;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = formatDateForVoiceOver(null as any);
-
-    expect(result).toBeUndefined();
-  });
-
   test('should have accessible descriptions for both date fields', async () => {
     const min = '2024-01-01';
     const max = '2024-12-31';

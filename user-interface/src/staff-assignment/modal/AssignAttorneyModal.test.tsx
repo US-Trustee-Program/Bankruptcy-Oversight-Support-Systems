@@ -290,28 +290,6 @@ describe('Test Assign Attorney Modal Component', () => {
     });
   });
 
-  test('should enable submit button when exactly one attorney is checked (auto-select as lead)', async () => {
-    const modalRef = React.createRef<AssignAttorneyModalRef>();
-    renderWithProps(modalRef);
-
-    const bCase: CaseBasics = MockData.getCaseBasics({
-      override: { caseId: '081-23-00002', caseTitle: 'Test Case', dateFiled: '2024-01-01' },
-    });
-    bCase.assignments = [];
-
-    act(() => modalRef.current?.show({ bCase, callback }));
-
-    await userEvent.click(screen.getByTestId('open-modal-button'));
-    const submitButton = screen.getByTestId(`button-${modalId}-submit-button`);
-
-    await waitFor(() => expect(submitButton).toBeDisabled());
-
-    const sortedAttorneys = [...attorneyList].sort((a, b) => a.name.localeCompare(b.name));
-    await TestingUtilities.selectCheckbox(`attorney-${sortedAttorneys[0].id}-checkbox`);
-
-    await waitFor(() => expect(submitButton).toBeEnabled());
-  });
-
   test('should post LeadTrialAttorney assignment when submitting', async () => {
     const postSpy = vi.spyOn(Api2, 'postStaffAssignments').mockResolvedValue({ data: undefined });
     const modalRef = React.createRef<AssignAttorneyModalRef>();

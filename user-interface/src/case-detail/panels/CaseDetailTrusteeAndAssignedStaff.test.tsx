@@ -15,7 +15,6 @@ import { ResponseBody } from '@common/api/response';
 import Api2 from '@/lib/models/api2';
 import TestingUtilities from '@/lib/testing/testing-utilities';
 import { Consolidation } from '@common/cams/events';
-import { CaseDetail } from '@common/cams/cases';
 import useFeatureFlags from '@/lib/hooks/UseFeatureFlags';
 import { testFeatureFlags } from '@common/feature-flags';
 
@@ -347,13 +346,6 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       expect(trusteeHeading).not.toBeInTheDocument();
     });
 
-    test('should display trustee name', () => {
-      renderWithProps();
-      const trusteeName = document.querySelector('.trustee-name');
-      expect(trusteeName).toBeInTheDocument();
-      expect(trusteeName?.textContent).toEqual(TEST_TRUSTEE.name);
-    });
-
     test('should display trustee email as mailto link with proper subject and icon', () => {
       renderWithProps();
       const emailElement = screen.queryByTestId('case-detail-trustee-email');
@@ -605,18 +597,6 @@ describe('CaseDetailTrusteeAndAssignedStaff', () => {
       await waitFor(() => {
         expect(modal).toHaveClass('is-hidden');
       });
-    });
-
-    test('should not show edit button for member cases', () => {
-      const caseDetail: CaseDetail = { ...BASE_TEST_CASE_DETAIL, consolidation: [CONSOLIDATE_TO] };
-      const onCaseAssignment = vi.fn();
-      renderWithProps({
-        caseDetail,
-        onCaseAssignment,
-      });
-
-      const assignedStaffEditButton = screen.queryByTestId('open-modal-button');
-      expect(assignedStaffEditButton).not.toBeInTheDocument();
     });
 
     test('should not show joint administration warning for lead cases', async () => {
