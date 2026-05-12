@@ -76,10 +76,8 @@ export class BanksMongoRepository extends BaseMongoRepository implements BanksRe
   async updateBank(id: string, bank: BankProfile): Promise<BankProfile> {
     const query = doc('id').equals(id);
     try {
-      // replaceOne + findOne is not atomic; a concurrent update between these
-      // two calls could cause the returned document to reflect a different write.
       await this.getAdapter<BankProfile>().replaceOne(query, bank);
-      return await this.getAdapter<BankProfile>().findOne(query);
+      return bank;
     } catch (originalError) {
       throw getCamsError(originalError, MODULE_NAME, 'Unable to update bank.');
     }

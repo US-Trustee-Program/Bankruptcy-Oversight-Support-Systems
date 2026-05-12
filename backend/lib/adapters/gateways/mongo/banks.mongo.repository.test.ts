@@ -207,7 +207,6 @@ describe('BanksMongoRepository', () => {
         modifiedCount: 1,
         upsertedCount: 0,
       });
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(updated);
 
       const result = await repo.updateBank('bank-1', updated);
 
