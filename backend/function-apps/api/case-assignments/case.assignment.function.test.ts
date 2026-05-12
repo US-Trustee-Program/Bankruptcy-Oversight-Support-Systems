@@ -7,7 +7,6 @@ import MockData from '@common/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import { CamsHttpRequest } from '../../../lib/adapters/types/http';
 import { InvocationContext } from '@azure/functions';
-import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 import {
   buildTestResponseError,
   buildTestResponseSuccess,

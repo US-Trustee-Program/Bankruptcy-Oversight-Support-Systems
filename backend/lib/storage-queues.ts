@@ -43,3 +43,13 @@ export const SYNC_CASES_PAGE_QUEUE = output.storageQueue({
   queueName: buildQueueName(ModuleNames.SYNC_CASES_PAGE),
   connection,
 });
+
+export const TRUSTEE_APPOINTMENT_EVENT_QUEUE = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_APPOINTMENT_EVENT),
+  connection,
+});
+
+export const TRUSTEE_APPOINTMENT_EVENT_DLQ = output.storageQueue({
+  queueName: buildQueueName(ModuleNames.TRUSTEE_APPOINTMENT_EVENT, 'DLQ'),
+  connection,
+});

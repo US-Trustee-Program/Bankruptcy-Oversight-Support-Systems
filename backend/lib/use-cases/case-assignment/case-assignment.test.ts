@@ -128,6 +128,7 @@ describe('Case assignment tests', () => {
       assignmentEventSpy = vi.fn().mockResolvedValue(undefined);
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
         queueCaseAssignmentEvent: assignmentEventSpy,
+        queueTrusteeAppointmentEvent: vi.fn(),
         queueCaseReload: vi.fn(),
       });
     });
