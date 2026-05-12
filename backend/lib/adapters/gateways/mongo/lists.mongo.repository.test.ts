@@ -1,12 +1,7 @@
 import { vi } from 'vitest';
 import { ApplicationContext } from '../../types/basic';
 import { ListsMongoRepository } from './lists.mongo.repository';
-import {
-  BankList,
-  BankruptcySoftwareList,
-  BankruptcySoftwareListItem,
-  BankListItem,
-} from '@common/cams/lists';
+import { BankList, BankruptcySoftwareList, BankListItem } from '@common/cams/lists';
 import { createMockApplicationContext } from '../../../testing/testing-utilities';
 import { MongoCollectionAdapter } from './utils/mongo-adapter';
 import { closeDeferred } from '../../../deferrable/defer-close';
@@ -152,32 +147,6 @@ describe('ListsMongoRepository', () => {
     });
   });
 
-  describe('postBankruptcySoftware', () => {
-    test('should create bankruptcy software item in database', async () => {
-      const mockItemId = '12345';
-      const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
-        list: 'bankruptcy-software' as const,
-        key: 'new-software',
-        value: 'New Software',
-      };
-      mockInsertOne.mockResolvedValue(mockItemId);
-      const result = await repository.postBankruptcySoftware(itemToCreate);
-      expect(mockInsertOne).toHaveBeenCalledWith(itemToCreate);
-      expect(result).toEqual(mockItemId);
-    });
-
-    test('should handle database errors when creating bankruptcy software', async () => {
-      const error = new Error('Failed to create bankruptcy software');
-      const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
-        list: 'bankruptcy-software' as const,
-        key: 'new-software',
-        value: 'New Software',
-      };
-      mockInsertOne.mockRejectedValue(error);
-      await expect(repository.postBankruptcySoftware(itemToCreate)).rejects.toThrow();
-    });
-  });
-
   describe('postBank', () => {
     test('should create bank item in database', async () => {
       const mockItemId = '67890';
@@ -201,24 +170,6 @@ describe('ListsMongoRepository', () => {
       };
       mockInsertOne.mockRejectedValue(error);
       await expect(repository.postBank(itemToCreate)).rejects.toThrow();
-    });
-  });
-
-  describe('deleteBankruptcySoftware', () => {
-    test('should delete bankruptcy software item from database', async () => {
-      const itemId = '12345';
-      // Mock with the correct result structure expected by deleteOne
-      mockDeleteOne.mockResolvedValue({ deletedCount: 1 });
-      await repository.deleteBankruptcySoftware(itemId);
-      expect(mockDeleteOne).toHaveBeenCalled();
-      expect(mockDeleteOne).toHaveBeenCalledTimes(1);
-    });
-
-    test('should handle database errors when deleting bankruptcy software', async () => {
-      const error = new Error('Failed to delete bankruptcy software');
-      const itemId = '12345';
-      mockDeleteOne.mockRejectedValue(error);
-      await expect(repository.deleteBankruptcySoftware(itemId)).rejects.toThrow();
     });
   });
 

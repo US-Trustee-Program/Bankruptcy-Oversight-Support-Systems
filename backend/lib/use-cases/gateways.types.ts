@@ -54,20 +54,15 @@ import {
 } from '@common/cams/trustee-upcoming-key-dates';
 import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-assistants';
 import { Auditable } from '@common/cams/auditable';
-import {
-  BankList,
-  BankListItem,
-  BankruptcySoftwareList,
-  BankruptcySoftwareListItem,
-} from '@common/cams/lists';
+import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 import { Identifiable } from '@common/cams/document';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
-import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 import {
   BankruptcySoftwareAuditHistory,
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
+import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
 
 export type ReplaceResult = {
   id: string;
@@ -295,10 +290,8 @@ export interface OfficesRepository
 
 export interface ListsRepository extends Releasable {
   getBankruptcySoftwareList(): Promise<BankruptcySoftwareList>;
-  postBankruptcySoftware(item: Creatable<BankruptcySoftwareListItem>): Promise<string>;
   getBankList(): Promise<BankList>;
   postBank(item: Creatable<BankListItem>): Promise<string>;
-  deleteBankruptcySoftware(id: string): Promise<void>;
   deleteBank(id: string): Promise<void>;
 }
 
@@ -311,10 +304,10 @@ export interface BanksRepository extends Releasable {
 }
 
 export interface BankruptcySoftwareRepository extends Releasable {
+  getSoftwareList(): Promise<BankruptcySoftwareProfile[]>;
   createSoftware(
     software: Creatable<BankruptcySoftwareProfile>,
   ): Promise<BankruptcySoftwareProfile>;
-  getSoftwareList(): Promise<BankruptcySoftwareProfile[]>;
   createSoftwareAuditRecord(history: Creatable<BankruptcySoftwareAuditHistory>): Promise<void>;
 }
 

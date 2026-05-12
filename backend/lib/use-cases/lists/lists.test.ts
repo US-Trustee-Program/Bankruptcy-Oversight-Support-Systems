@@ -4,12 +4,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import { ListsRepository } from '../gateways.types';
 import factory from '../../factory';
-import {
-  BankList,
-  BankruptcySoftwareList,
-  BankruptcySoftwareListItem,
-  BankListItem,
-} from '@common/cams/lists';
+import { BankList, BankruptcySoftwareList, BankListItem } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 
 describe('ListsUseCase tests', () => {
@@ -25,9 +20,7 @@ describe('ListsUseCase tests', () => {
     mockListsRepository = {
       getBankruptcySoftwareList: vi.fn(),
       getBankList: vi.fn(),
-      postBankruptcySoftware: vi.fn(),
       postBank: vi.fn(),
-      deleteBankruptcySoftware: vi.fn(),
       deleteBank: vi.fn(),
       release: vi.fn(),
     };
@@ -126,45 +119,6 @@ describe('ListsUseCase tests', () => {
     });
   });
 
-  describe('createBankruptcySoftware', () => {
-    test('should create bankruptcy software item through the repository', async () => {
-      // Arrange
-      const mockItemId = '12345';
-      const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
-        list: 'bankruptcy-software',
-        key: 'new-software',
-        value: 'New Software',
-      };
-      mockListsRepository.postBankruptcySoftware.mockResolvedValue(mockItemId);
-
-      // Act
-      const result = await useCase.createBankruptcySoftware(context, itemToCreate);
-
-      // Assert
-      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
-      expect(mockListsRepository.postBankruptcySoftware).toHaveBeenCalledWith(itemToCreate);
-      expect(result).toEqual(mockItemId);
-    });
-
-    test('should propagate errors from the repository', async () => {
-      // Arrange
-      const errorMessage = 'Failed to create bankruptcy software';
-      const itemToCreate: Creatable<BankruptcySoftwareListItem> = {
-        list: 'bankruptcy-software',
-        key: 'new-software',
-        value: 'New Software',
-      };
-      mockListsRepository.postBankruptcySoftware.mockRejectedValue(new Error(errorMessage));
-
-      // Act & Assert
-      await expect(useCase.createBankruptcySoftware(context, itemToCreate)).rejects.toThrow(
-        errorMessage,
-      );
-      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
-      expect(mockListsRepository.postBankruptcySoftware).toHaveBeenCalledWith(itemToCreate);
-    });
-  });
-
   describe('createBank', () => {
     test('should create bank item through the repository', async () => {
       // Arrange
@@ -199,33 +153,6 @@ describe('ListsUseCase tests', () => {
       await expect(useCase.createBank(context, itemToCreate)).rejects.toThrow(errorMessage);
       expect(factory.getListsGateway).toHaveBeenCalledWith(context);
       expect(mockListsRepository.postBank).toHaveBeenCalledWith(itemToCreate);
-    });
-  });
-
-  describe('deleteBankruptcySoftware', () => {
-    test('should delete bankruptcy software item through the repository', async () => {
-      // Arrange
-      const itemId = '12345';
-      mockListsRepository.deleteBankruptcySoftware.mockResolvedValue(undefined);
-
-      // Act
-      await useCase.deleteBankruptcySoftware(context, itemId);
-
-      // Assert
-      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
-      expect(mockListsRepository.deleteBankruptcySoftware).toHaveBeenCalledWith(itemId);
-    });
-
-    test('should propagate errors from the repository', async () => {
-      // Arrange
-      const itemId = '12345';
-      const errorMessage = 'Failed to delete bankruptcy software';
-      mockListsRepository.deleteBankruptcySoftware.mockRejectedValue(new Error(errorMessage));
-
-      // Act & Assert
-      await expect(useCase.deleteBankruptcySoftware(context, itemId)).rejects.toThrow(errorMessage);
-      expect(factory.getListsGateway).toHaveBeenCalledWith(context);
-      expect(mockListsRepository.deleteBankruptcySoftware).toHaveBeenCalledWith(itemId);
     });
   });
 });

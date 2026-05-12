@@ -1,12 +1,13 @@
-import { ApplicationContext } from 'lib/adapters/types/basic';
-import { BaseMongoRepository } from './utils/base-mongo-repository';
 import {
   BankruptcySoftwareAuditHistory,
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
-import QueryBuilder from 'lib/query/query-builder';
-import { getCamsError } from 'lib/common-errors/error-utilities';
 import { Creatable } from '@common/cams/creatable';
+import { getCamsError } from '../../../common-errors/error-utilities';
+import QueryBuilder from '../../../query/query-builder';
+import { BankruptcySoftwareRepository } from '../../../use-cases/gateways.types';
+import { ApplicationContext } from '../../types/basic';
+import { BaseMongoRepository } from './utils/base-mongo-repository';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-MONGO-REPOSITORY';
 const COLLECTION_NAME = 'bankruptcy-software';
@@ -14,7 +15,10 @@ const COLLECTION_NAME = 'bankruptcy-software';
 const { using, orderBy } = QueryBuilder;
 const doc = using<BankruptcySoftwareProfile>();
 
-export class BankruptcySoftwareMongoRepository extends BaseMongoRepository {
+export class BankruptcySoftwareMongoRepository
+  extends BaseMongoRepository
+  implements BankruptcySoftwareRepository
+{
   private static referenceCount: number = 0;
   private static instance: BankruptcySoftwareMongoRepository;
 
@@ -52,11 +56,7 @@ export class BankruptcySoftwareMongoRepository extends BaseMongoRepository {
         orderBy<BankruptcySoftwareProfile>(['name', 'ASCENDING']),
       );
     } catch (originalError) {
-      throw getCamsError(
-        originalError,
-        MODULE_NAME,
-        'Unable to retrieve bankruptcy software list.',
-      );
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bankruptcy software.');
     }
   }
 

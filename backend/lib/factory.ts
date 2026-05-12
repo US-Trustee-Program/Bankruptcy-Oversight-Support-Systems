@@ -82,6 +82,7 @@ import { TrusteeUpcomingKeyDatesMongoRepository } from './adapters/gateways/mong
 import { TrusteeProfessionalIdsMongoRepository } from './adapters/gateways/mongo/trustee-professional-ids.mongo.repository';
 import { ListsMongoRepository } from './adapters/gateways/mongo/lists.mongo.repository';
 import { BanksMongoRepository } from './adapters/gateways/mongo/banks.mongo.repository';
+import { BankruptcySoftwareMongoRepository } from './adapters/gateways/mongo/bankruptcy-software.mongo.repository';
 import { UserGroupsMongoRepository } from './adapters/gateways/mongo/user-groups.mongo.repository';
 import {
   ServerConfigError,
@@ -90,6 +91,7 @@ import {
 import {
   ApiToDataflowsGateway,
   BanksRepository,
+  BankruptcySoftwareRepository,
   ObjectStorageGateway,
   TrusteeMatchVerificationRepository,
   TrusteeUpcomingKeyDatesRepository,

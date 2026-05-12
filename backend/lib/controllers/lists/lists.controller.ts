@@ -4,7 +4,7 @@ import { getCamsError } from '../../common-errors/error-utilities';
 import { CamsController } from '../controller';
 import { finalizeDeferrable } from '../../deferrable/finalize-deferrable';
 import ListsUseCase from '../../use-cases/lists/lists';
-import { BankListItem, BankruptcySoftwareListItem } from '@common/cams/lists';
+import { BankListItem } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 
 const MODULE_NAME = 'LISTS-CONTROLLER';
@@ -32,18 +32,6 @@ export class ListsController implements CamsController {
           context.request.body as Creatable<BankListItem>,
         );
         data = { _id };
-      } else if (method === 'POST' && listName === 'bankruptcy-software') {
-        const _id = await this.useCase.createBankruptcySoftware(
-          context,
-          context.request.body as Creatable<BankruptcySoftwareListItem>,
-        );
-        data = { _id };
-      } else if (method === 'DELETE' && listName === 'bankruptcy-software') {
-        const { id } = context.request.params;
-        if (typeof id !== 'string' || id.trim() === '') {
-          throw new Error('ID is required for deletion');
-        }
-        this.useCase.deleteBankruptcySoftware(context, id);
       } else {
         throw new Error('Invalid list name');
       }
