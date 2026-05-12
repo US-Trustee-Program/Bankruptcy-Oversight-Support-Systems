@@ -1,6 +1,6 @@
 import { app, InvocationContext, output } from '@azure/functions';
 import * as sql from 'mssql';
-import { buildQueueName } from '@common/cams';
+import { buildQueueName } from '@common/queues';
 import {
   TrusteeAppointmentDownstreamEvent,
   transformTrusteeToStagingRow,
