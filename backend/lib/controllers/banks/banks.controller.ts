@@ -15,7 +15,11 @@ export class BanksController {
     this.useCase = new BanksUseCase(context);
   }
 
-  async handleRequest(context: ApplicationContext): Promise<CamsHttpResponseInit> {
+  async handleRequest(
+    context: ApplicationContext,
+  ): Promise<
+    CamsHttpResponseInit | CamsHttpResponseInit<BankProfile> | CamsHttpResponseInit<BankProfile[]>
+  > {
     const { method } = context.request;
     const { bankId } = context.request.params;
 
