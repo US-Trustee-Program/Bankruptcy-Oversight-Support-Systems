@@ -3,7 +3,6 @@
     "module": "commonjs",
     "target": "ES2022",
     "outDir": "dist",
-    "rootDir": ".",
     "sourceMap": true,
     "strict": true,
     "esModuleInterop": true,
@@ -11,6 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
     "types": ["node", "@azure/functions"],
     "baseUrl": ".",
     "paths": {
@@ -24,5 +24,6 @@
     "node_modules",
     "dist",
     "**/*.test.ts"
-  ]
+  ],
+  "references": [{ "path": "../common" }]
 }
