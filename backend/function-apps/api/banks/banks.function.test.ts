@@ -9,6 +9,7 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { BanksController } from '../../../lib/controllers/banks/banks.controller';
+import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
 import { BankProfile } from '@common/cams/banks';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
@@ -46,7 +47,9 @@ describe('Banks Function tests', () => {
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<BankProfile[]>({
       data: mockBanks,
     });
-    vi.spyOn(BanksController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(BanksController.prototype, 'handleRequest').mockResolvedValue(
+      camsHttpResponse as CamsHttpResponseInit,
+    );
 
     const response = await handler(request, context);
 
