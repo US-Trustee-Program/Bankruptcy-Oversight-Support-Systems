@@ -282,33 +282,39 @@ describe('TrusteeAppointmentForm Tests', () => {
 
     await selectDistrict(userEvent, courtDivisionName.alaskaJ);
     await waitFor(() =>
-      expect(document.querySelector('#district .selection-label')).toHaveTextContent(
+      expect(document.querySelector('#district-combo-box-input') as HTMLInputElement).toHaveValue(
         courtDivisionName.alaskaJ,
       ),
     );
 
     await selectChapter(userEvent, chapter.seven);
     await waitFor(() =>
-      expect(document.querySelector('#chapter .selection-label')).toHaveTextContent(chapter.seven),
+      expect(document.querySelector('#chapter-combo-box-input') as HTMLInputElement).toHaveValue(
+        chapter.seven,
+      ),
     );
 
     // Manually select appointment type since Chapter 7 has multiple options
     await selectAppointmentType(userEvent, 'Panel');
     await waitFor(() =>
-      expect(document.querySelector('#appointmentType .selection-label')).toHaveTextContent(
-        'Panel',
-      ),
+      expect(
+        document.querySelector('#appointmentType-combo-box-input') as HTMLInputElement,
+      ).toHaveValue('Panel'),
     );
 
     fillDate(TEST_APPOINTED_DATE);
 
-    const districtSelection = document.querySelector('#district .selection-label');
-    const chapterSelection = document.querySelector('#chapter .selection-label');
-    const appointmentTypeSelection = document.querySelector('#appointmentType .selection-label');
+    const districtSelection = document.querySelector(
+      '#district-combo-box-input',
+    ) as HTMLInputElement;
+    const chapterSelection = document.querySelector('#chapter-combo-box-input') as HTMLInputElement;
+    const appointmentTypeSelection = document.querySelector(
+      '#appointmentType-combo-box-input',
+    ) as HTMLInputElement;
 
-    expect(districtSelection).toHaveTextContent(courtDivisionName.alaskaJ);
-    expect(chapterSelection).toHaveTextContent(chapter.seven);
-    expect(appointmentTypeSelection).toHaveTextContent('Panel');
+    expect(districtSelection).toHaveValue(courtDivisionName.alaskaJ);
+    expect(chapterSelection).toHaveValue(chapter.seven);
+    expect(appointmentTypeSelection).toHaveValue('Panel');
 
     expect(appointedDateInput.value).toBe(TEST_APPOINTED_DATE);
 
@@ -884,7 +890,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       await selectDistrict(userEvent, courtDivisionName.alaskaJ);
 
       await waitFor(() =>
-        expect(document.querySelector('#district .selection-label')).toHaveTextContent(
+        expect(document.querySelector('#district-combo-box-input') as HTMLInputElement).toHaveValue(
           courtDivisionName.alaskaJ,
         ),
       );
@@ -894,7 +900,9 @@ describe('TrusteeAppointmentForm Tests', () => {
       await userEvent.click(clearButton as HTMLElement);
 
       await waitFor(() => {
-        expect(document.querySelector('#district .selection-label')).toHaveTextContent('');
+        expect(document.querySelector('#district-combo-box-input') as HTMLInputElement).toHaveValue(
+          '',
+        );
       });
     });
 
@@ -904,7 +912,7 @@ describe('TrusteeAppointmentForm Tests', () => {
       await selectChapter(userEvent, chapter.seven);
 
       await waitFor(() =>
-        expect(document.querySelector('#chapter .selection-label')).toHaveTextContent(
+        expect(document.querySelector('#chapter-combo-box-input') as HTMLInputElement).toHaveValue(
           chapter.seven,
         ),
       );
@@ -914,7 +922,9 @@ describe('TrusteeAppointmentForm Tests', () => {
       await userEvent.click(clearButton as HTMLElement);
 
       await waitFor(() => {
-        expect(document.querySelector('#chapter .selection-label')).toHaveTextContent('');
+        expect(document.querySelector('#chapter-combo-box-input') as HTMLInputElement).toHaveValue(
+          '',
+        );
       });
     });
   });

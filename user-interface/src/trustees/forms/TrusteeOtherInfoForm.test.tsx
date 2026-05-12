@@ -363,10 +363,10 @@ describe('TrusteeOtherInfoForm', () => {
       />,
     );
 
-    // Verify initial software selection is displayed in the selection label
+    // Verify initial software selection is displayed in the input
     await waitFor(() => {
-      const selectionLabel = document.querySelector('.selection-label');
-      expect(selectionLabel).toHaveTextContent(initialSoftware);
+      const input = document.querySelector('#trustee-software-combo-box-input') as HTMLInputElement;
+      expect(input).toHaveValue(initialSoftware);
     });
 
     // Open the ComboBox dropdown
@@ -413,10 +413,10 @@ describe('TrusteeOtherInfoForm', () => {
       />,
     );
 
-    // Verify initial software selection is displayed in the selection label
+    // Verify initial software selection is displayed in the input
     await waitFor(() => {
-      const selectionLabel = document.querySelector('.selection-label');
-      expect(selectionLabel).toHaveTextContent(initialSoftware);
+      const input = document.querySelector('#trustee-software-combo-box-input') as HTMLInputElement;
+      expect(input).toHaveValue(initialSoftware);
     });
 
     const clearButton = document.querySelector('#trustee-software-clear-all') as HTMLButtonElement;

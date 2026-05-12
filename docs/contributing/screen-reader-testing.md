@@ -176,6 +176,16 @@ To verify the rules are in place:
 netsh interface portproxy show all
 ```
 
+After running the PowerShell commands:
+
+1. **Shut down the VM** (do not just close the window)
+2. In UTM, select the VM and click the **settings icon** (gear)
+3. Navigate to **Network** settings
+4. Change **Network Mode** to **Emulated VLAN**
+5. Save and restart the VM
+
+This network mode change ensures the port proxy rules work correctly with UTM's networking.
+
 ### Starting CAMS
 
 From the repository root on macOS:

@@ -239,12 +239,43 @@ describe('Privileged Identity screen tests', () => {
     await expectItemToBeDisabled(`#save-button`);
     await expectItemToBeEnabled(`#delete-button`);
 
-    const roleListItem = screen.getByTestId(roleListItemId);
+    // Wait for role ComboBox to be enabled after user selection
+    await waitFor(() => {
+      expectComboBoxToBeEnabled(roleListComboBoxContainer);
+    });
+
+    // Expand the role list dropdown
+    const roleExpandButton = document.querySelector('#role-list-expand') as HTMLButtonElement;
+    expect(roleExpandButton).toBeInTheDocument();
+    await userEvent.click(roleExpandButton);
+
+    // Wait for dropdown to be visible
+    await waitFor(() => {
+      const dropdown = document.querySelector('#role-list-item-list');
+      expect(dropdown).toBeInTheDocument();
+    });
+
+    const roleListItem = await screen.findByTestId(roleListItemId);
     await userEvent.click(roleListItem);
 
-    await expectItemToBeEnabled(`#save-button`);
+    // Verify the item was clicked by checking if it has the selected class
+    await waitFor(() => {
+      expect(roleListItem).toHaveClass('selected');
+    });
+
+    // Now the save button should be enabled
+    await waitFor(() => {
+      const saveButton = document.querySelector('#save-button') as HTMLButtonElement;
+      expect(saveButton).not.toBeDisabled();
+    });
     await expectItemToBeEnabled(`#cancel-button`);
     await expectItemToBeEnabled(`#delete-button`);
+
+    // Re-expand dropdown for second click
+    await userEvent.click(roleExpandButton);
+    await waitFor(() => {
+      expect(document.querySelector('#role-list-item-list')).toBeInTheDocument();
+    });
 
     await userEvent.click(roleListItem);
 
@@ -295,10 +326,14 @@ describe('Privileged Identity screen tests', () => {
 
     expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
 
+    // Expand the role list dropdown
+    const roleExpandButton = document.querySelector('#role-list-expand') as HTMLButtonElement;
+    await userEvent.click(roleExpandButton);
+
     const roleListItem = screen.getByTestId(roleListItemId);
     await userEvent.click(roleListItem);
 
-    await expectItemToBeEnabled(`#save-button`);
+    await waitFor(() => expectItemToBeEnabled(`#save-button`));
 
     const saveButton = document.querySelector('#save-button');
     await userEvent.click(saveButton!);
@@ -323,10 +358,14 @@ describe('Privileged Identity screen tests', () => {
 
     await expectComboBoxToBeEnabled(`${roleListComboBoxContainer}`);
 
+    // Expand the role list dropdown
+    const roleExpandButton = document.querySelector('#role-list-expand') as HTMLButtonElement;
+    await userEvent.click(roleExpandButton);
+
     const roleListItem = screen.getByTestId(roleListItemId);
     await userEvent.click(roleListItem);
 
-    await expectItemToBeEnabled(`#save-button`);
+    await waitFor(() => expectItemToBeEnabled(`#save-button`));
 
     const saveButton = document.querySelector('#save-button');
     await userEvent.click(saveButton!);
