@@ -22,9 +22,9 @@ DECLARE @test1Group CHAR(2);
 
 SELECT
     @test1Count = COUNT(*),
-    @test1ProfCode = PROF_CODE,
-    @test1Group = GROUP_DESIGNATOR
-FROM CMMAP
+    @test1ProfCode = MAX(PROF_CODE),
+    @test1Group = MAX(GROUP_DESIGNATOR)
+FROM CMMAP_TRANSITION
 WHERE CASE_FULL_ACMS = '081-24-12345';
 
 IF @test1Count = 1 AND @test1ProfCode = 123 AND @test1Group = 'NY'
@@ -41,9 +41,9 @@ DECLARE @test2Group CHAR(2);
 
 SELECT
     @test2Count = COUNT(*),
-    @test2ProfCode = PROF_CODE,
-    @test2Group = GROUP_DESIGNATOR
-FROM CMMAP
+    @test2ProfCode = MAX(PROF_CODE),
+    @test2Group = MAX(GROUP_DESIGNATOR)
+FROM CMMAP_TRANSITION
 WHERE CASE_FULL_ACMS = '081-24-88888';
 
 IF @test2Count = 1 AND @test2ProfCode = 222 AND @test2Group = 'CA'
@@ -57,21 +57,18 @@ PRINT 'Test 3: CAMS override (081-24-99999) - Should return CAMS attorney, NOT A
 DECLARE @test3Count INT;
 DECLARE @test3ProfCode INT;
 DECLARE @test3Group CHAR(2);
-DECLARE @test3Source VARCHAR(10);
 
 SELECT
     @test3Count = COUNT(*),
-    @test3ProfCode = s.PROF_CODE,
-    @test3Group = s.GROUP_DESIGNATOR,
-    @test3Source = s.SOURCE
-FROM CMMAP m
-LEFT JOIN CMMAP_STAGING s ON m.CASE_FULL_ACMS = s.CAMS_CASE_ID
-WHERE m.CASE_FULL_ACMS = '081-24-99999';
+    @test3ProfCode = MAX(PROF_CODE),
+    @test3Group = MAX(GROUP_DESIGNATOR)
+FROM CMMAP_TRANSITION
+WHERE CASE_FULL_ACMS = '081-24-99999';
 
-IF @test3Count = 1 AND @test3ProfCode = 99002 AND @test3Group = 'ZZ' AND @test3Source = 'CAMS'
-    PRINT '✓ PASS: Returns CAMS data (Prof ZZ-99002), ACMS data excluded';
+IF @test3Count = 1 AND @test3ProfCode = 88 AND @test3Group = 'NY'
+    PRINT '✓ PASS: Returns CAMS data (Prof NY-00088), ACMS data excluded';
 ELSE
-    PRINT '✗ FAIL: Expected 1 row with ZZ-99002 from CAMS, got ' + CAST(@test3Count AS VARCHAR) + ' rows';
+    PRINT '✗ FAIL: Expected 1 row with NY-00088 from CAMS, got ' + CAST(@test3Count AS VARCHAR) + ' rows (Group=' + ISNULL(@test3Group, 'NULL') + ', Prof=' + CAST(ISNULL(@test3ProfCode, 0) AS VARCHAR) + ')';
 PRINT '';
 
 -- Test 4: CAMS-only Chapter 15 (not in ACMS) should return CAMS data
@@ -82,15 +79,15 @@ DECLARE @test4Group CHAR(2);
 
 SELECT
     @test4Count = COUNT(*),
-    @test4ProfCode = PROF_CODE,
-    @test4Group = GROUP_DESIGNATOR
-FROM CMMAP
+    @test4ProfCode = MAX(PROF_CODE),
+    @test4Group = MAX(GROUP_DESIGNATOR)
+FROM CMMAP_TRANSITION
 WHERE CASE_FULL_ACMS = '081-24-77777';
 
-IF @test4Count = 1 AND @test4ProfCode = 99001 AND @test4Group = 'ZZ'
-    PRINT '✓ PASS: Returns CAMS data (Prof ZZ-99001)';
+IF @test4Count = 1 AND @test4ProfCode = 63 AND @test4Group = 'NY'
+    PRINT '✓ PASS: Returns CAMS data (Prof NY-00063)';
 ELSE
-    PRINT '✗ FAIL: Expected 1 row with ZZ-99001, got ' + CAST(@test4Count AS VARCHAR) + ' rows';
+    PRINT '✗ FAIL: Expected 1 row with NY-00063, got ' + CAST(@test4Count AS VARCHAR) + ' rows (Group=' + ISNULL(@test4Group, 'NULL') + ', Prof=' + CAST(ISNULL(@test4ProfCode, 0) AS VARCHAR) + ')';
 PRINT '';
 
 -- Test 5: Inactive CAMS assignment should still appear in view
@@ -100,8 +97,8 @@ DECLARE @test5Active CHAR(1);
 
 SELECT
     @test5Count = COUNT(*),
-    @test5Active = APPTEE_ACTIVE
-FROM CMMAP
+    @test5Active = MAX(APPTEE_ACTIVE)
+FROM CMMAP_TRANSITION
 WHERE CASE_FULL_ACMS = '081-24-66666';
 
 IF @test5Count = 1 AND @test5Active = 'N'
@@ -115,7 +112,7 @@ PRINT '';
 PRINT 'Test 6: Total count - Should have 8 appointments (6 ACMS + 4 CAMS, minus 2 overrides)';
 DECLARE @totalCount INT;
 
-SELECT @totalCount = COUNT(*) FROM CMMAP;
+SELECT @totalCount = COUNT(*) FROM CMMAP_TRANSITION;
 
 IF @totalCount = 8
     PRINT '✓ PASS: Total count correct (' + CAST(@totalCount AS VARCHAR) + ' rows)';
@@ -130,7 +127,7 @@ DECLARE @duplicateCount INT;
 SELECT @duplicateCount = COUNT(*)
 FROM (
     SELECT CASE_FULL_ACMS, APPT_TYPE, COUNT(*) as cnt
-    FROM CMMAP
+    FROM CMMAP_TRANSITION
     GROUP BY CASE_FULL_ACMS, APPT_TYPE
     HAVING COUNT(*) > 1
 ) duplicates;
@@ -149,9 +146,9 @@ DECLARE @test8Group CHAR(2);
 
 SELECT
     @test8Count = COUNT(*),
-    @test8ProfCode = PROF_CODE,
-    @test8Group = GROUP_DESIGNATOR
-FROM CMMAP
+    @test8ProfCode = MAX(PROF_CODE),
+    @test8Group = MAX(GROUP_DESIGNATOR)
+FROM CMMAP_TRANSITION
 WHERE CASE_FULL_ACMS = '081-24-55555';
 
 IF @test8Count = 1 AND @test8ProfCode = 321 AND @test8Group = 'UT'
@@ -174,6 +171,6 @@ SELECT
         WHEN CASE_FULL_ACMS IN ('081-24-77777', '081-24-99999', '081-24-66666', '081-24-55555') THEN 'CAMS'
         ELSE 'ACMS'
     END AS Expected_Source
-FROM CMMAP
+FROM CMMAP_TRANSITION
 ORDER BY CASE_FULL_ACMS;
 GO

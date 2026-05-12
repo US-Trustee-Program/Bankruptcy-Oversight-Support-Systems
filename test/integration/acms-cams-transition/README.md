@@ -8,6 +8,8 @@ One-shot integration harnesses for the ACMS-CAMS transition database layer, incl
 
 **Never commit credentials.** All configuration lives in gitignored files — see Prerequisites.
 
+**Database topology:** All objects (`CMMAP_STAGING`, `CMMAP_TRANSITION` view) live in `ACMS_REP_SUB` alongside the existing ACMS `CMMAP` table. No separate transition database is needed.
+
 ---
 
 ## Harness shorthand
@@ -38,7 +40,6 @@ ACMS_MSSQL_ENCRYPT=true
 ACMS_MSSQL_TRUST_UNSIGNED_CERT=true
 MSSQL_HOST=sql-ustp-cams.database.usgovcloudapi.net
 MSSQL_DATABASE_DXTR=AODATEX_SUB
-DOWNSTREAM_SQL_CONNECTION_STRING=<connection string targeting ACMS_REP_SUB_TRANSITION>
 INTEGRATION_TEST_TRUSTEE_ID=<a real CAMS trustee ID in lower-env Cosmos>
 INTEGRATION_TEST_ACMS_PROF_ID=<that trustee's ACMS professional ID, e.g. NY-00063>
 INTEGRATION_TEST_CASE_ID=<a case ID that exists in lower-env DXTR for that trustee>
@@ -61,7 +62,12 @@ INTEGRATION_TEST_COURT_ID=<the court ID for that case>
 {
   "Values": {
     "AzureWebJobsStorage": "<lower-env Azure Storage connection string>",
-    "DOWNSTREAM_SQL_CONNECTION_STRING": "<connection string targeting ACMS_REP_SUB_TRANSITION>",
+    "ACMS_MSSQL_HOST": "sql-ustp-cams.database.usgovcloudapi.net",
+    "ACMS_MSSQL_DATABASE": "ACMS_REP_SUB",
+    "ACMS_MSSQL_USER": "<sql user>",
+    "ACMS_MSSQL_PASS": "<sql password>",
+    "ACMS_MSSQL_ENCRYPT": "true",
+    "ACMS_MSSQL_TRUST_UNSIGNED_CERT": "true",
     "FUNCTIONS_WORKER_RUNTIME": "node"
   }
 }
@@ -71,7 +77,7 @@ INTEGRATION_TEST_COURT_ID=<the court ID for that case>
 
 ## Part 1: Database setup (first time only)
 
-Run these once to create and seed the transition database on the lower-env Azure SQL instance.
+Run these once to create and seed the schema objects in `ACMS_REP_SUB`.
 
 ### Step 1 — Verify environment
 ```bash
@@ -79,37 +85,33 @@ $HARNESS check-env
 ```
 All lines must show `✓ PASS`. Resolve any `✗ FAIL` before proceeding.
 
-### Step 2 — Create the transition database
+### Step 2 — Apply schema
+Creates `CMMAP_STAGING` table and `CMMAP_TRANSITION` view in `ACMS_REP_SUB`.
 ```bash
-$HARNESS create-db ACMS_REP_SUB_TRANSITION
+$HARNESS run-sql downstream/database/acms-cams-transition/schema/cmmap-staging.sql ACMS_REP_SUB
+$HARNESS run-sql downstream/database/acms-cams-transition/schema/cmmap-view.sql ACMS_REP_SUB
 ```
 
-### Step 3 — Apply schema
-```bash
-$HARNESS run-sql downstream/database/acms-cams-transition/schema/cmmap-staging.sql ACMS_REP_SUB_TRANSITION
-$HARNESS run-sql downstream/database/acms-cams-transition/schema/cmmap-view.sql ACMS_REP_SUB_TRANSITION
-```
-
-### Step 4 — Seed mock ACMS replica data
-Seeds `CMMAP`, `CMMPR`, `CMMPT` tables in the existing ACMS replica database with 6 test case appointments (3 TR, 2 S1, 1 TR that will be overridden by CAMS).
+### Step 3 — Seed mock ACMS replica data
+Seeds `CMMAP`, `CMMPR`, `CMMPT` tables in `ACMS_REP_SUB` with 6 test case appointments (3 TR, 2 S1, 1 TR that will be overridden by CAMS).
 ```bash
 $HARNESS run-sql test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql ACMS_REP_SUB
 ```
 
-### Step 5 — Seed CAMS staging data
-Seeds `CMMAP_STAGING` in the transition database with 4 test rows (3 S1, 1 TR).
+### Step 4 — Seed CAMS staging data
+Seeds `CMMAP_STAGING` in `ACMS_REP_SUB` with 4 test rows (3 S1, 1 TR).
 ```bash
-$HARNESS run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB_TRANSITION
+$HARNESS run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB
 ```
 
 ---
 
-## Part 2: CMMAP view SQL tests
+## Part 2: CMMAP_TRANSITION view SQL tests
 
-Run the 8-test assertion script to verify the `CMMAP` union view merges CAMS staging and ACMS replica rows correctly.
+Run the 8-test assertion script to verify the `CMMAP_TRANSITION` union view merges CAMS staging and ACMS replica rows correctly.
 
 ```bash
-$HARNESS run-sql test/integration/acms-cams-transition/integration-tests/test-cmmap-view.sql ACMS_REP_SUB_TRANSITION
+$HARNESS run-sql test/integration/acms-cams-transition/integration-tests/test-cmmap-view.sql ACMS_REP_SUB
 ```
 
 **All 8 tests must print `✓ PASS`.** If any print `✗ FAIL`, the view or seed data is incorrect — do not proceed to Part 3.
@@ -169,7 +171,7 @@ $HARNESS clean
 
 # Re-seed if needed (seed scripts are idempotent — they drop and recreate tables)
 $HARNESS run-sql test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql ACMS_REP_SUB
-$HARNESS run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB_TRANSITION
+$HARNESS run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB
 ```
 
 ---
@@ -183,7 +185,7 @@ test/integration/acms-cams-transition/
 │   ├── 02-seed-cmmap-staging.sql         # Mock CAMS staging rows (3 S1 + 1 TR)
 │   └── README.md
 ├── integration-tests/
-│   └── test-cmmap-view.sql               # 8 PRINT-based assertions for the CMMAP union view
+│   └── test-cmmap-view.sql               # 8 PRINT-based assertions for the CMMAP_TRANSITION view
 ├── scripts/
 │   └── test-trustee-appointment-downstream.ts   # All-in-one harness (setup + test + clean)
 └── README.md (this file)

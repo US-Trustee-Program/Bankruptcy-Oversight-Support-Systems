@@ -117,9 +117,7 @@ async function getContext() {
 }
 
 async function getDownstreamSqlPool(): Promise<sql.ConnectionPool> {
-  const connStr = process.env.DOWNSTREAM_SQL_CONNECTION_STRING;
-  if (!connStr) throw new Error('DOWNSTREAM_SQL_CONNECTION_STRING is not set');
-  return sql.connect(connStr);
+  return getAcmsSqlPool(process.env.ACMS_MSSQL_DATABASE || 'ACMS_REP_SUB');
 }
 
 // Build an mssql ConnectionPool using the ACMS_MSSQL_* env vars — same logic
@@ -172,7 +170,9 @@ async function executeSqlFile(pool: sql.ConnectionPool, filePath: string): Promi
   for (let i = 0; i < batches.length; i++) {
     const batch = batches[i];
     try {
-      await pool.request().query(batch);
+      const req = pool.request();
+      req.on('info', (msg) => process.stdout.write(msg.message + '\n'));
+      await req.query(batch);
     } catch (err) {
       throw new Error(
         `Batch ${i + 1} of ${batches.length} failed:\n${batch.slice(0, 200)}...\n\nError: ${err instanceof Error ? err.message : String(err)}`,
@@ -192,10 +192,9 @@ async function checkEnv() {
     ['MONGO_CONNECTION_STRING', 'Cosmos DB / MongoDB connection string'],
     ['COSMOS_DATABASE_NAME', 'Cosmos database name'],
     ['ACMS_MSSQL_HOST', 'ACMS SQL Server host (also used for create-db and run-sql)'],
-    ['ACMS_MSSQL_DATABASE', 'ACMS replica database name'],
+    ['ACMS_MSSQL_DATABASE', 'ACMS replica database name (staging table and view live here)'],
     ['MSSQL_HOST', 'DXTR SQL Server host'],
     ['MSSQL_DATABASE_DXTR', 'DXTR database name'],
-    ['DOWNSTREAM_SQL_CONNECTION_STRING', 'Downstream Azure SQL connection string'],
     [
       'AzureWebJobsDataflowsStorage',
       'Azure Storage connection string (from dataflows/local.settings.json)',
@@ -254,11 +253,15 @@ async function createDb(dbName: string) {
       throw new Error(`Database name '${dbName}' contains invalid characters`);
     }
 
-    await pool.request().query(`
-      IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '${dbName}')
-        CREATE DATABASE [${dbName}]
+    const exists = await pool.request().query(`
+      SELECT COUNT(*) AS cnt FROM sys.databases WHERE name = '${dbName}'
     `);
-    pass(`Database '${dbName}' created (or already exists)`);
+    if (exists.recordset[0].cnt > 0) {
+      pass(`Database '${dbName}' already exists — skipping creation`);
+    } else {
+      await pool.request().query(`CREATE DATABASE [${dbName}]`);
+      pass(`Database '${dbName}' created`);
+    }
   } finally {
     await pool.close();
   }
@@ -514,16 +517,14 @@ async function main() {
       console.log('  check-staging         Print current CMMAP_STAGING rows for the test case');
       console.log('  clean                 Remove seeded test data from Cosmos and CMMAP_STAGING');
       console.log('  help                  Show this help');
-      console.log('\nExample — full setup workflow:');
-      console.log('  # 1. Create the transition database');
-      console.log('  ... create-db ACMS_REP_SUB_TRANSITION');
-      console.log('  # 2. Apply schema');
-      console.log('  ... run-sql downstream/database/acms-cams-transition/schema/cmmap-staging.sql ACMS_REP_SUB_TRANSITION');
-      console.log('  ... run-sql downstream/database/acms-cams-transition/schema/cmmap-view.sql ACMS_REP_SUB_TRANSITION');
-      console.log('  # 3. Seed mock ACMS data');
+      console.log('\nExample — full setup workflow (all objects live in ACMS_REP_SUB):');
+      console.log('  # 1. Apply schema to ACMS_REP_SUB');
+      console.log('  ... run-sql downstream/database/acms-cams-transition/schema/cmmap-staging.sql ACMS_REP_SUB');
+      console.log('  ... run-sql downstream/database/acms-cams-transition/schema/cmmap-view.sql ACMS_REP_SUB');
+      console.log('  # 2. Seed mock ACMS data');
       console.log('  ... run-sql test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql ACMS_REP_SUB');
-      console.log('  # 4. Seed CAMS staging data');
-      console.log('  ... run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB_TRANSITION');
+      console.log('  # 3. Seed CAMS staging data');
+      console.log('  ... run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB');
       console.log('\nOptional env var overrides (in backend/.env):');
       console.log(`  INTEGRATION_TEST_TRUSTEE_ID   (default: ${TEST_TRUSTEE_ID})`);
       console.log(`  INTEGRATION_TEST_ACMS_PROF_ID (default: ${TEST_ACMS_PROFESSIONAL_ID})`);
