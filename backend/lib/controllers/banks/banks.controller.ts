@@ -32,7 +32,7 @@ export class BanksController {
     } else if (method === 'PUT' && bankId) {
       return this.handlePut(context);
     }
-    return httpSuccess({ statusCode: 405 });
+    return httpSuccess({ statusCode: 405 }) as CamsHttpResponseInit;
   }
 
   async handleGet(context: ApplicationContext): Promise<CamsHttpResponseInit<BankProfile[]>> {
