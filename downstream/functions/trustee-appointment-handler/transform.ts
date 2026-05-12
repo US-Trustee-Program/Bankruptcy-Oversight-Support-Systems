@@ -1,7 +1,7 @@
-import { CaseAssignmentDownstreamEvent } from '@common/cams/dataflow-events';
+import { TrusteeAppointmentDownstreamEvent } from '@common/cams/dataflow-events';
 import { CmmapStagingRow } from '../shared/cmmap-staging-row';
 
-export type { CaseAssignmentDownstreamEvent };
+export type { TrusteeAppointmentDownstreamEvent };
 export type { CmmapStagingRow };
 
 export function parseCaseId(caseId: string): { div: number; year: number; number: number } {
@@ -22,11 +22,6 @@ export function toAcmsDateNumeric(isoDateString: string): number {
   return parseInt(datePortion.replace(/-/g, ''), 10);
 }
 
-export function extractLastName(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/);
-  return parts[parts.length - 1].toUpperCase();
-}
-
 // Parse "{GROUP_DESIGNATOR}-{PROF_CODE}" (e.g. "NY-00063") into components
 function parseProfessionalId(acmsProfessionalId: string): { group: string; code: number } {
   const dashIndex = acmsProfessionalId.indexOf('-');
@@ -35,19 +30,16 @@ function parseProfessionalId(acmsProfessionalId: string): { group: string; code:
   return { group, code };
 }
 
-export function transformToStagingRow(event: CaseAssignmentDownstreamEvent): CmmapStagingRow {
-  if (!event.acmsProfessionalId) {
-    throw new Error(
-      `Cannot transform event: acmsProfessionalId is null for caseId ${event.caseId}`,
-    );
-  }
-
+export function transformTrusteeToStagingRow(
+  event: TrusteeAppointmentDownstreamEvent,
+): CmmapStagingRow {
   const { div, year, number } = parseCaseId(event.caseId);
   const { group, code } = parseProfessionalId(event.acmsProfessionalId);
   const now = new Date();
 
   const isUnassigned = !!event.unassignedOn;
-  const apptDate = toAcmsDateNumeric(event.assignedOn);
+  const apptDateSource = event.appointedDate ?? event.assignedOn;
+  const apptDate = toAcmsDateNumeric(apptDateSource);
   const dispDate = isUnassigned ? toAcmsDateNumeric(event.unassignedOn!) : null;
 
   return {
@@ -58,15 +50,15 @@ export function transformToStagingRow(event: CaseAssignmentDownstreamEvent): Cmm
     RECORD_SEQ_NBR: 1,
     PROF_CODE: code,
     GROUP_DESIGNATOR: group,
-    APPT_TYPE: 'S1',
+    APPT_TYPE: 'TR',
     APPT_DATE: apptDate,
-    APPT_DATE_DT: new Date(event.assignedOn),
-    APPT_DISP: isUnassigned ? 'WD' : 'AP',
+    APPT_DATE_DT: new Date(apptDateSource),
+    APPT_DISP: isUnassigned ? 'WD' : 'GR',
     DISP_DATE: dispDate,
     DISP_DATE_DT: isUnassigned ? new Date(event.unassignedOn!) : null,
     COMMENTS: null,
     APPTEE_ACTIVE: isUnassigned ? 'N' : 'Y',
-    ALPHA_SEARCH: extractLastName(event.name),
+    ALPHA_SEARCH: null,
     USER_ID: 'CAMS',
     HEARING_SEQUENCE: null,
     REGION_CODE: null,
@@ -81,8 +73,8 @@ export function transformToStagingRow(event: CaseAssignmentDownstreamEvent): Cmm
     UPDATE_DATE: now,
     SOURCE: 'CAMS',
     CAMS_CASE_ID: event.caseId,
-    CAMS_USER_ID: event.userId,
-    CAMS_USER_NAME: event.name,
+    CAMS_USER_ID: 'CAMS',
+    CAMS_USER_NAME: 'CAMS',
     LAST_UPDATED: now,
   };
 }
