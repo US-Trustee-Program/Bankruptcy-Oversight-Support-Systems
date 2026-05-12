@@ -189,12 +189,30 @@ INSERT INTO CMMAP (
  GETDATE());
 GO
 
+-- Case 6: Chapter 7 trustee (NY-00123) - WILL BE OVERRIDDEN BY CAMS TR row
+INSERT INTO CMMAP (
+    DELETE_CODE, CASE_DIV, CASE_YEAR, CASE_NUMBER, RECORD_SEQ_NBR,
+    PROF_CODE, GROUP_DESIGNATOR, APPT_TYPE,
+    APPT_DATE, APPT_DATE_DT,
+    APPTEE_ACTIVE, ALPHA_SEARCH, USER_ID,
+    CDB_CREATE_DATE, CDB_UPDATE_DATE, CDB_CREATE_DATE_DT, CDB_UPDATE_DATE_DT,
+    UPDATE_DATE
+) VALUES
+(' ', 081, 24, 55555, 1,
+ 123, 'NY', 'TR',
+ 20240901, '2024-09-01',
+ 'Y', 'SMITH', 'ACMS',
+ 20240901, 20240901, '2024-09-01', '2024-09-01',
+ GETDATE());
+GO
+
 PRINT 'ACMS replica seeded with ' + CAST(@@ROWCOUNT AS VARCHAR) + ' appointments';
 PRINT '';
 PRINT 'Test Cases:';
 PRINT '  081-24-12345: Chapter 7 (ACMS only, no CAMS override)';
 PRINT '  081-24-23456: Chapter 11 (ACMS only, no CAMS override)';
 PRINT '  081-24-34567: Chapter 13 (ACMS only, no CAMS override)';
-PRINT '  081-24-99999: Chapter 15 (ACMS data exists, WILL BE overridden by CAMS)';
+PRINT '  081-24-99999: Chapter 15 (ACMS data exists, WILL BE overridden by CAMS S1)';
 PRINT '  081-24-88888: Chapter 15 (ACMS only, no CAMS override)';
+PRINT '  081-24-55555: Chapter 7 trustee (ACMS data exists, WILL BE overridden by CAMS TR)';
 GO

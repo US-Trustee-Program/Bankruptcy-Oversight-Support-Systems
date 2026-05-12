@@ -110,20 +110,17 @@ ELSE
     PRINT '✗ FAIL: Expected 1 row with APPTEE_ACTIVE=N, got ' + CAST(@test5Count AS VARCHAR) + ' rows';
 PRINT '';
 
--- Test 6: Total count should be all ACMS + all CAMS
-PRINT 'Test 6: Total count - Should have 7 appointments (5 ACMS + 2 CAMS, minus 1 override)';
+-- Test 6: Total count should be ACMS rows + CAMS staging rows - overrides
+-- ACMS: 6 rows; CAMS staging: 4 rows; Overrides: 2 (99999 S1, 55555 TR) = 8 total
+PRINT 'Test 6: Total count - Should have 8 appointments (6 ACMS + 4 CAMS, minus 2 overrides)';
 DECLARE @totalCount INT;
-DECLARE @acmsOnlyCount INT;
-DECLARE @camsCount INT;
 
 SELECT @totalCount = COUNT(*) FROM CMMAP;
-SELECT @acmsOnlyCount = (SELECT COUNT(*) FROM ACMS_REPLICA.dbo.CMMAP) - 1;  -- Minus 1 for override
-SELECT @camsCount = COUNT(*) FROM CMMAP_STAGING;
 
-IF @totalCount = (@acmsOnlyCount + @camsCount)
+IF @totalCount = 8
     PRINT '✓ PASS: Total count correct (' + CAST(@totalCount AS VARCHAR) + ' rows)';
 ELSE
-    PRINT '✗ FAIL: Expected ' + CAST(@acmsOnlyCount + @camsCount AS VARCHAR) + ' rows, got ' + CAST(@totalCount AS VARCHAR);
+    PRINT '✗ FAIL: Expected 8 rows, got ' + CAST(@totalCount AS VARCHAR);
 PRINT '';
 
 -- Test 7: Verify no duplicate cases
@@ -132,16 +129,35 @@ DECLARE @duplicateCount INT;
 
 SELECT @duplicateCount = COUNT(*)
 FROM (
-    SELECT CASE_FULL_ACMS, COUNT(*) as cnt
+    SELECT CASE_FULL_ACMS, APPT_TYPE, COUNT(*) as cnt
     FROM CMMAP
-    GROUP BY CASE_FULL_ACMS
+    GROUP BY CASE_FULL_ACMS, APPT_TYPE
     HAVING COUNT(*) > 1
 ) duplicates;
 
 IF @duplicateCount = 0
-    PRINT '✓ PASS: No duplicate cases found';
+    PRINT '✓ PASS: No duplicate case+type combinations found';
 ELSE
-    PRINT '✗ FAIL: Found ' + CAST(@duplicateCount AS VARCHAR) + ' duplicate cases';
+    PRINT '✗ FAIL: Found ' + CAST(@duplicateCount AS VARCHAR) + ' duplicate case+type combinations';
+PRINT '';
+
+-- Test 8: CAMS overrides ACMS TR row (081-24-55555)
+PRINT 'Test 8: CAMS TR override (081-24-55555) - Should return CAMS trustee UT-00321, NOT ACMS NY-00123';
+DECLARE @test8Count INT;
+DECLARE @test8ProfCode INT;
+DECLARE @test8Group CHAR(2);
+
+SELECT
+    @test8Count = COUNT(*),
+    @test8ProfCode = PROF_CODE,
+    @test8Group = GROUP_DESIGNATOR
+FROM CMMAP
+WHERE CASE_FULL_ACMS = '081-24-55555';
+
+IF @test8Count = 1 AND @test8ProfCode = 321 AND @test8Group = 'UT'
+    PRINT '✓ PASS: Returns CAMS data (Prof UT-00321), ACMS NY-00123 excluded';
+ELSE
+    PRINT '✗ FAIL: Expected 1 row with UT-00321 from CAMS, got ' + CAST(@test8Count AS VARCHAR) + ' rows (Group=' + ISNULL(@test8Group, 'NULL') + ', Prof=' + CAST(ISNULL(@test8ProfCode, 0) AS VARCHAR) + ')';
 PRINT '';
 
 -- Summary
@@ -155,7 +171,7 @@ SELECT
     APPT_TYPE,
     APPTEE_ACTIVE,
     CASE
-        WHEN CASE_FULL_ACMS IN ('081-24-77777', '081-24-99999', '081-24-66666') THEN 'CAMS'
+        WHEN CASE_FULL_ACMS IN ('081-24-77777', '081-24-99999', '081-24-66666', '081-24-55555') THEN 'CAMS'
         ELSE 'ACMS'
     END AS Expected_Source
 FROM CMMAP
