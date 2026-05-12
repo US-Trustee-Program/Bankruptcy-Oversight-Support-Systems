@@ -14,15 +14,6 @@ describe('GatewayTimeoutError', () => {
     expect(error.isCamsError).toBe(true);
   });
 
-  test('should create error with default message when empty options provided', () => {
-    const error = new GatewayTimeoutError(moduleName, {});
-
-    expect(error.module).toBe(moduleName);
-    expect(error.message).toBe('Gateway Timeout');
-    expect(error.status).toBe(HttpStatusCodes.GATEWAY_TIMEOUT);
-    expect(error.isCamsError).toBe(true);
-  });
-
   test('should create error with custom message when provided', () => {
     const customMessage = 'Custom gateway timeout message';
     const error = new GatewayTimeoutError(moduleName, { message: customMessage });

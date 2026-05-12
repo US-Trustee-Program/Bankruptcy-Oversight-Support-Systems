@@ -12,12 +12,4 @@ describe('user-groups-gateway-configuration', () => {
     const config2 = getUserGroupGatewayConfig();
     expect(config2).toEqual(config);
   });
-
-  test('should return consistent config on multiple calls', () => {
-    const config = getUserGroupGatewayConfig();
-    const config2 = getUserGroupGatewayConfig();
-
-    // Should return the same configuration object
-    expect(config2).toEqual(config);
-  });
 });
