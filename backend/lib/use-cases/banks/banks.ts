@@ -3,6 +3,9 @@ import { createAuditRecord } from '@common/cams/auditable';
 import { getCamsUserReference } from '@common/cams/session';
 import { ApplicationContext } from '../../adapters/types/basic';
 import factory from '../../factory';
+import { getCamsError } from '../../common-errors/error-utilities';
+
+const MODULE_NAME = 'BANKS-USE-CASE';
 
 export class BanksUseCase {
   private readonly repository;
@@ -14,11 +17,19 @@ export class BanksUseCase {
   }
 
   async getBanks(): Promise<BankProfile[]> {
-    return this.repository.getBanks();
+    try {
+      return await this.repository.getBanks();
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve banks.');
+    }
   }
 
   async getBank(id: string): Promise<BankProfile> {
-    return this.repository.getBank(id);
+    try {
+      return await this.repository.getBank(id);
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to retrieve bank.');
+    }
   }
 
   async updateBank(
@@ -36,21 +47,25 @@ export class BanksUseCase {
       updatedBy: userRef,
     };
 
-    const updated = await this.repository.updateBank(id, bankData);
+    try {
+      const updated = await this.repository.updateBank(id, bankData);
 
-    await this.repository.createBankAuditRecord(
-      createAuditRecord(
-        {
-          documentType: 'AUDIT_BANK',
-          bankId: id,
-          before: existing,
-          after: updated,
-        },
-        userRef,
-      ),
-    );
+      await this.repository.createBankAuditRecord(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_BANK',
+            bankId: id,
+            before: existing,
+            after: updated,
+          },
+          userRef,
+        ),
+      );
 
-    return updated;
+      return updated;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to update bank.');
+    }
   }
 
   async createBank(input: { name: string }): Promise<BankProfile> {
@@ -65,20 +80,24 @@ export class BanksUseCase {
       userRef,
     );
 
-    const createdBank = await this.repository.createBank(bankData);
+    try {
+      const createdBank = await this.repository.createBank(bankData);
 
-    await this.repository.createBankAuditRecord(
-      createAuditRecord(
-        {
-          documentType: 'AUDIT_BANK',
-          bankId: createdBank.id,
-          before: null,
-          after: createdBank,
-        },
-        userRef,
-      ),
-    );
+      await this.repository.createBankAuditRecord(
+        createAuditRecord(
+          {
+            documentType: 'AUDIT_BANK',
+            bankId: createdBank.id,
+            before: null,
+            after: createdBank,
+          },
+          userRef,
+        ),
+      );
 
-    return createdBank;
+      return createdBank;
+    } catch (originalError) {
+      throw getCamsError(originalError, MODULE_NAME, 'Unable to create bank.');
+    }
   }
 }

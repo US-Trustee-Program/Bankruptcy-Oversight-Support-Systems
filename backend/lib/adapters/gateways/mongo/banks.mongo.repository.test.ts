@@ -87,7 +87,6 @@ describe('BanksMongoRepository', () => {
       const expected: BankProfile = { ...input, id: newId };
 
       vi.spyOn(MongoCollectionAdapter.prototype, 'insertOne').mockResolvedValue(newId);
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(expected);
 
       const result = await repo.createBank(input);
 

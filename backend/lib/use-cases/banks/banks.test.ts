@@ -44,6 +44,14 @@ describe('BanksUseCase', () => {
 
       expect(result).toEqual([]);
     });
+
+    test('should wrap repository errors in CamsError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getBanks').mockRejectedValue(new Error('db error'));
+
+      await expect(useCase.getBanks()).rejects.toThrow(
+        expect.objectContaining({ message: 'Unable to retrieve banks.', status: 500 }),
+      );
+    });
   });
 
   describe('getBank', () => {
@@ -61,6 +69,14 @@ describe('BanksUseCase', () => {
       const result = await useCase.getBank('bank-1');
 
       expect(result).toEqual(bank);
+    });
+
+    test('should wrap repository errors in CamsError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockRejectedValue(new Error('not found'));
+
+      await expect(useCase.getBank('bad-id')).rejects.toThrow(
+        expect.objectContaining({ message: 'Unable to retrieve bank.', status: 500 }),
+      );
     });
   });
 
@@ -109,6 +125,24 @@ describe('BanksUseCase', () => {
       );
       expect(result).toEqual(updated);
     });
+
+    test('should wrap repository errors in CamsError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'getBank').mockResolvedValue({
+        id: 'bank-1',
+        documentType: 'BANK_PROFILE',
+        name: 'Alpha',
+        status: 'active',
+        updatedOn: '',
+        updatedBy: { id: 'u', name: 'u' },
+      });
+      vi.spyOn(MockMongoRepository.prototype, 'updateBank').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.updateBank('bank-1', { name: 'New', status: 'active' })).rejects.toThrow(
+        expect.objectContaining({ message: 'Unable to update bank.', status: 500 }),
+      );
+    });
   });
 
   describe('createBank', () => {
@@ -151,6 +185,16 @@ describe('BanksUseCase', () => {
       );
 
       expect(result).toEqual(createdBank);
+    });
+
+    test('should wrap repository errors in CamsError', async () => {
+      vi.spyOn(MockMongoRepository.prototype, 'createBank').mockRejectedValue(
+        new Error('db error'),
+      );
+
+      await expect(useCase.createBank({ name: 'Fail Bank' })).rejects.toThrow(
+        expect.objectContaining({ message: 'Unable to create bank.', status: 500 }),
+      );
     });
 
     test('should set createdBy and updatedBy from context user', async () => {

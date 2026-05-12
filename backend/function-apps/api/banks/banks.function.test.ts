@@ -41,81 +41,23 @@ describe('Banks Function tests', () => {
     },
   ];
 
-  test('should return 200 with bank list for GET request', async () => {
+  test('should delegate to controller.handleRequest and return response', async () => {
     const request = createMockAzureFunctionRequest({ method: 'GET' });
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<BankProfile[]>({
       data: mockBanks,
     });
-    vi.spyOn(BanksController.prototype, 'handleGet').mockResolvedValue(camsHttpResponse);
+    vi.spyOn(BanksController.prototype, 'handleRequest').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 
     expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should return 201 with created bank for POST request', async () => {
-    const request = createMockAzureFunctionRequest({
-      method: 'POST',
-      body: { name: 'Alpha Bank' },
-    });
-    const createdBank = mockBanks[0];
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<BankProfile>(
-      { data: createdBank },
-      { statusCode: 201 },
-    );
-    vi.spyOn(BanksController.prototype, 'handlePost').mockResolvedValue(camsHttpResponse);
-
-    const response = await handler(request, context);
-
-    expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should return 200 with single bank for GET /banks/{bankId}', async () => {
-    const bank = mockBanks[0];
-    const request = createMockAzureFunctionRequest({
-      method: 'GET',
-      params: { bankId: 'bank-1' },
-    });
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<BankProfile>({
-      data: bank,
-    });
-    vi.spyOn(BanksController.prototype, 'handleGetOne').mockResolvedValue(camsHttpResponse);
-
-    const response = await handler(request, context);
-
-    expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should return 200 with updated bank for PUT /banks/{bankId}', async () => {
-    const updated = { ...mockBanks[0], name: 'Updated', status: 'inactive' as const };
-    const request = createMockAzureFunctionRequest({
-      method: 'PUT',
-      params: { bankId: 'bank-1' },
-      body: { name: 'Updated', status: 'inactive' },
-    });
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<BankProfile>({
-      data: updated,
-    });
-    vi.spyOn(BanksController.prototype, 'handlePut').mockResolvedValue(camsHttpResponse);
-
-    const response = await handler(request, context);
-
-    expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should return 405 for unsupported HTTP method', async () => {
-    const request = createMockAzureFunctionRequest({ method: 'DELETE' });
-
-    const response = await handler(request, context);
-
-    expect(response.status).toBe(405);
   });
 
   test('should return error response when controller throws', async () => {
     const request = createMockAzureFunctionRequest({ method: 'GET' });
     const error = new CamsError('BANKS-CONTROLLER', { message: 'Something went wrong.' });
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
-    vi.spyOn(BanksController.prototype, 'handleGet').mockRejectedValue(error);
+    vi.spyOn(BanksController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
 

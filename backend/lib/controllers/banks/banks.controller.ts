@@ -15,6 +15,22 @@ export class BanksController {
     this.useCase = new BanksUseCase(context);
   }
 
+  async handleRequest(context: ApplicationContext): Promise<CamsHttpResponseInit> {
+    const { method } = context.request;
+    const { bankId } = context.request.params;
+
+    if (method === 'GET' && bankId) {
+      return this.handleGetOne(context);
+    } else if (method === 'GET') {
+      return this.handleGet(context);
+    } else if (method === 'POST') {
+      return this.handlePost(context);
+    } else if (method === 'PUT' && bankId) {
+      return this.handlePut(context);
+    }
+    return httpSuccess({ statusCode: 405 });
+  }
+
   async handleGet(context: ApplicationContext): Promise<CamsHttpResponseInit<BankProfile[]>> {
     this.requireSuperUser(context);
     const banks = await this.useCase.getBanks();
