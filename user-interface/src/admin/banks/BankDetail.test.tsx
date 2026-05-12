@@ -42,10 +42,9 @@ describe('BankDetail', () => {
       expect(
         screen.getByRole('heading', { name: 'Fifth Third Bank', level: 1 }),
       ).toBeInTheDocument();
-      expect(screen.getByRole('link', { name: /back to banks/i })).toHaveAttribute(
-        'href',
-        '/admin/banks',
-      );
+      const backLink = screen.getByRole('link', { name: /back to banks/i });
+      expect(backLink).toHaveAttribute('href', '/admin/banks');
+      expect(backLink).toHaveAttribute('title', 'Back to Banks list');
 
       expect(screen.getByText('Overview')).toBeInTheDocument();
       expect(screen.getByText('General Information')).toBeInTheDocument();
