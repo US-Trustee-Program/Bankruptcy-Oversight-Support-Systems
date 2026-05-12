@@ -14,7 +14,6 @@ import Button, { UswdsButtonStyle } from '../uswds/Button';
 import useOutsideClick from '@/lib/hooks/UseOutsideClick';
 import { ComboBoxRef } from '@/lib/type-declarations/input-fields';
 
-// Configuration constants
 const DROPDOWN_POSITION_THRESHOLD_RATIO = 0.5; // Show dropdown above input when element is in bottom half of viewport
 
 export type ComboOption<T = string> = {
@@ -77,13 +76,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     ...otherProps
   } = props;
 
-  // Validate required props
-  if (!comboBoxId || typeof comboBoxId !== 'string') {
-    throw new Error('ComboBox requires a valid id prop');
-  }
-
-  // ========== STATE ==========
-
   const [comboboxDisabled, setComboboxDisabled] = useState<boolean>(!!disabled);
   const [expanded, setExpanded] = useState<boolean>(false);
   const expandedRef = useRef<boolean>(false);
@@ -100,16 +92,12 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
   );
   const [filter, setFilter] = useState<string | null>(null);
 
-  // ========== REFS ==========
-
   const comboBoxRef = useRef(null);
   const comboBoxListRef = useRef<HTMLUListElement>(null);
   const filterRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useOutsideClick([comboBoxRef], isOutsideClick);
-
-  // ========== MISC FUNCTIONS ==========
 
   function clearFilter() {
     setFilter(null);
@@ -258,8 +246,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
       containerRef.current?.focus();
     });
   }
-
-  // ========== HANDLERS ==========
 
   function handleClearAllClick() {
     clearSelections();
@@ -495,8 +481,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     }
   }
 
-  // ========== USE EFFECTS ==========
-
   useEffect(() => {
     expandedRef.current = expanded;
 
@@ -564,8 +548,6 @@ function ComboBox_(props: ComboBoxProps, ref: React.Ref<ComboBoxRef>) {
     focusInput,
     focus: focusInput,
   }));
-
-  // ========== JSX ==========
 
   return (
     <div
