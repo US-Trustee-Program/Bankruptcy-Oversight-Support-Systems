@@ -1,5 +1,5 @@
--- CMMAP View: Union of CAMS-managed appointments and ACMS appointments
--- Downstream consumers (TUFR, Business Objects) query this view in place of ACMS.dbo.CMMAP
+-- CMMAP_TRANSITION View: Union of CAMS-managed appointments and ACMS appointments
+-- Lives in ACMS_REP_SUB alongside the existing CMMAP table and CMMAP_STAGING.
 --
 -- Strategy:
 --   Return CAMS rows from CMMAP_STAGING for appointment types CAMS owns on a given case.
@@ -8,12 +8,12 @@
 -- This means CAMS can own TR rows for a case while ACMS still owns other appointment types
 -- on the same case — the exclusion is per (case, APPT_TYPE), not per case.
 
-IF OBJECT_ID('dbo.CMMAP', 'V') IS NOT NULL
-    DROP VIEW dbo.CMMAP;
+IF OBJECT_ID('dbo.CMMAP_TRANSITION', 'V') IS NOT NULL
+    DROP VIEW dbo.CMMAP_TRANSITION;
 
 GO
 
-CREATE VIEW CMMAP AS
+CREATE VIEW CMMAP_TRANSITION AS
 
 -- CAMS-managed appointments from staging table
 SELECT
@@ -88,7 +88,7 @@ SELECT
     REPLICATED_DATE,
     id,
     RRN
-FROM ACMS_REPLICA.dbo.CMMAP AS acms
+FROM dbo.CMMAP AS acms
 WHERE NOT EXISTS (
     SELECT 1
     FROM CMMAP_STAGING AS cams
@@ -103,12 +103,8 @@ GO
 
 EXEC sp_addextendedproperty
     @name = N'MS_Description',
-    @value = N'Union view of CAMS appointments (from staging) and ACMS appointments (from replica). CAMS overrides ACMS per case+APPT_TYPE, not per case. TUFR and Business Objects query this view.',
+    @value = N'Union view of CAMS appointments (from CMMAP_STAGING) and ACMS appointments (from CMMAP). CAMS overrides ACMS per case+APPT_TYPE. Lives in ACMS_REP_SUB alongside CMMAP and CMMAP_STAGING.',
     @level0type = N'SCHEMA', @level0name = N'dbo',
-    @level1type = N'VIEW',   @level1name = N'CMMAP';
+    @level1type = N'VIEW',   @level1name = N'CMMAP_TRANSITION';
 
 GO
-
--- Note: The view uses a three-part name (ACMS_REPLICA.dbo.CMMAP) to reference
--- the ACMS database on the same SQL Server instance. Requires appropriate
--- permissions for the downstream database user.

@@ -4,8 +4,20 @@ import { buildQueueName } from '@common/queues';
 import { CaseAssignmentDownstreamEvent, transformToStagingRow, CmmapStagingRow } from './transform';
 
 const MODULE_NAME = 'DOWNSTREAM-STAFF-ASSIGNMENTS';
-const CONNECTION_STRING = process.env.DOWNSTREAM_SQL_CONNECTION_STRING || '';
 const QUEUE_NAME = buildQueueName(MODULE_NAME, 'event');
+
+function getSqlConfig(): sql.config {
+  return {
+    server: process.env.ACMS_MSSQL_HOST || '',
+    database: process.env.ACMS_MSSQL_DATABASE || '',
+    user: process.env.ACMS_MSSQL_USER,
+    password: process.env.ACMS_MSSQL_PASS,
+    options: {
+      encrypt: process.env.ACMS_MSSQL_ENCRYPT !== 'false',
+      trustServerCertificate: process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT === 'true',
+    },
+  };
+}
 
 const DLQ = output.storageQueue({
   queueName: buildQueueName(MODULE_NAME, 'dlq'),
@@ -16,7 +28,7 @@ let _pool: sql.ConnectionPool | null = null;
 
 async function getPool(): Promise<sql.ConnectionPool> {
   if (!_pool) {
-    _pool = await sql.connect(CONNECTION_STRING);
+    _pool = await sql.connect(getSqlConfig());
   }
   return _pool;
 }

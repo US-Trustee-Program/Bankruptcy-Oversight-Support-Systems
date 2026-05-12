@@ -14,12 +14,12 @@ CREATE TABLE CMMAP_STAGING (
     DELETE_CODE CHAR(1) NOT NULL DEFAULT ' ',
 
     -- Case identifiers (part of primary key)
-    CASE_DIV NUMERIC(5,3) NOT NULL,
-    CASE_YEAR NUMERIC(5,2) NOT NULL,
-    CASE_NUMBER NUMERIC(5,5) NOT NULL,
+    CASE_DIV NUMERIC(3,0) NOT NULL,
+    CASE_YEAR NUMERIC(2,0) NOT NULL,
+    CASE_NUMBER NUMERIC(5,0) NOT NULL,
 
     -- Record sequence (for multiple appointments of the same type per case)
-    RECORD_SEQ_NBR NUMERIC(5,5) NOT NULL DEFAULT 1,
+    RECORD_SEQ_NBR NUMERIC(5,0) NOT NULL DEFAULT 1,
 
     -- Appointment type (part of primary key — required, no default)
     -- 'S1' = Ch15 staff attorney assignment
@@ -27,18 +27,18 @@ CREATE TABLE CMMAP_STAGING (
     APPT_TYPE CHAR(2) NOT NULL,
 
     -- Professional identifiers
-    PROF_CODE NUMERIC(5,5) NOT NULL,
+    PROF_CODE NUMERIC(5,0) NOT NULL,
     GROUP_DESIGNATOR CHAR(2) NOT NULL,
 
     -- Appointment dates (ACMS uses numeric date format YYYYMMDD)
-    APPT_DATE NUMERIC(9,11) NULL,
+    APPT_DATE NUMERIC(8,0) NULL,
     APPT_DATE_DT DATETIME2(3) NULL,
 
     -- Disposition
     -- Active:     'AP' (Approved by UST) for S1; 'GR' (Granted by Court) for TR
     -- Terminated: 'WD' (Withdrawn)
     APPT_DISP CHAR(2) NULL,
-    DISP_DATE NUMERIC(9,11) NULL,
+    DISP_DATE NUMERIC(8,0) NULL,
     DISP_DATE_DT DATETIME2(3) NULL,
 
     -- Comments and metadata
@@ -48,19 +48,19 @@ CREATE TABLE CMMAP_STAGING (
     USER_ID CHAR(10) NULL,
 
     -- Hearing sequence (not used by CAMS)
-    HEARING_SEQUENCE NUMERIC(5,5) NULL,
+    HEARING_SEQUENCE NUMERIC(5,0) NULL,
 
     -- Region code (not used by CAMS)
     REGION_CODE CHAR(2) NULL,
 
     -- Audit dates - Regional (RGN) and Central DB (CDB)
-    RGN_CREATE_DATE NUMERIC(5,8) NULL,
-    RGN_UPDATE_DATE NUMERIC(5,8) NULL,
+    RGN_CREATE_DATE NUMERIC(8,0) NULL,
+    RGN_UPDATE_DATE NUMERIC(8,0) NULL,
     RGN_CREATE_DATE_DT DATETIME2(3) NULL,
     RGN_UPDATE_DATE_DT DATETIME2(3) NULL,
 
-    CDB_CREATE_DATE NUMERIC(5,8) NULL,
-    CDB_UPDATE_DATE NUMERIC(5,8) NULL,
+    CDB_CREATE_DATE NUMERIC(8,0) NULL,
+    CDB_UPDATE_DATE NUMERIC(8,0) NULL,
     CDB_CREATE_DATE_DT DATETIME2(3) NULL,
     CDB_UPDATE_DATE_DT DATETIME2(3) NULL,
 
