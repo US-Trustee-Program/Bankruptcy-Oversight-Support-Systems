@@ -9,6 +9,7 @@ export * from './api/search';
 export * from './cams/actions';
 export * from './cams/assignments';
 export * from './cams/auditable';
+export * from './cams/bankruptcy-software';
 export * from './cams/banks';
 export * from './cams/cases';
 export * from './cams/contact';
