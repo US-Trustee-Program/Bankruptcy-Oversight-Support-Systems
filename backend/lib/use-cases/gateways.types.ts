@@ -64,6 +64,10 @@ import { Creatable } from '@common/cams/creatable';
 import { Identifiable } from '@common/cams/document';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
+import {
+  BankruptcySoftwareAuditHistory,
+  BankruptcySoftwareProfile,
+} from '@common/cams/bankruptcy-software';
 
 export type ReplaceResult = {
   id: string;
@@ -304,6 +308,14 @@ export interface BanksRepository extends Releasable {
   createBank(bank: Creatable<BankProfile>): Promise<BankProfile>;
   updateBank(id: string, bank: BankProfile): Promise<BankProfile>;
   createBankAuditRecord(history: Creatable<BankAuditHistory>): Promise<void>;
+}
+
+export interface BankruptcySoftwareRepository extends Releasable {
+  createSoftware(
+    software: Creatable<BankruptcySoftwareProfile>,
+  ): Promise<BankruptcySoftwareProfile>;
+  getSoftwareList(): Promise<BankruptcySoftwareProfile[]>;
+  createSoftwareAuditRecord(history: Creatable<BankruptcySoftwareAuditHistory>): Promise<void>;
 }
 
 export interface UsersRepository extends Releasable {

@@ -28,6 +28,7 @@ import {
   UserGroupsRepository,
   UserSessionCacheRepository,
   UsersRepository,
+  BankruptcySoftwareRepository,
 } from '../../use-cases/gateways.types';
 import { Trustee, TrusteeHistory } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
@@ -40,11 +41,16 @@ import {
 } from '@common/cams/lists';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
 import { Creatable } from '@common/cams/creatable';
+import {
+  BankruptcySoftwareAuditHistory,
+  BankruptcySoftwareProfile,
+} from '@common/cams/bankruptcy-software';
 
 export class MockMongoRepository
   implements
     ArchivedCasesRepository,
     BanksRepository,
+    BankruptcySoftwareRepository,
     CaseAssignmentRepository,
     CasesRepository,
     ConsolidationOrdersRepository,
@@ -65,6 +71,7 @@ export class MockMongoRepository
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
+
   release() {
     return;
   }
@@ -90,6 +97,20 @@ export class MockMongoRepository
   }
 
   createBankAuditRecord(_history: Creatable<BankAuditHistory>): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getSoftwareList(): Promise<BankruptcySoftwareProfile[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  createSoftware(
+    _software: Creatable<BankruptcySoftwareProfile>,
+  ): Promise<BankruptcySoftwareProfile> {
+    throw new Error('Method not implemented.');
+  }
+
+  createSoftwareAuditRecord(_history: Creatable<BankruptcySoftwareAuditHistory>): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
