@@ -96,6 +96,8 @@ describe('Banks component', () => {
     await waitFor(() => {
       const link = screen.getByRole('link', { name: 'Alpha Bank' });
       expect(link).toHaveAttribute('href', '/admin/banks/bank-1');
+      expect(link).toHaveClass('usa-link');
+      expect(link).toHaveAttribute('title', 'View details for Alpha Bank');
     });
   });
 

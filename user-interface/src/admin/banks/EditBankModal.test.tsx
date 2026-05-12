@@ -1,8 +1,8 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { EditBankModal, EditBankModalRef } from './EditBankModal';
 import Api2 from '@/lib/models/api2';
-import TestingUtilities from '@/lib/testing/testing-utilities';
+import TestingUtilities, { CamsUserEvent } from '@/lib/testing/testing-utilities';
 import { BankProfile } from '@common/cams/banks';
 
 const MODAL_ID = 'edit-bank-modal';
@@ -28,6 +28,7 @@ const updatedBank: BankProfile = {
 describe('EditBankModal', () => {
   let modalRef: React.RefObject<EditBankModalRef | null>;
   let onSuccess: (bank: BankProfile) => void;
+  let userEvent: CamsUserEvent;
 
   function renderComponent(bank = mockBank) {
     modalRef = React.createRef<EditBankModalRef>();
@@ -42,6 +43,7 @@ describe('EditBankModal', () => {
   beforeEach(() => {
     vi.stubEnv('CAMS_USE_FAKE_API', 'true');
     TestingUtilities.spyOnGlobalAlert();
+    userEvent = TestingUtilities.setupUserEvent();
   });
 
   afterEach(() => {
@@ -77,8 +79,8 @@ describe('EditBankModal', () => {
     openModal();
     await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
 
-    fireEvent.change(screen.getByLabelText(/bank name/i), { target: { value: '' } });
-    fireEvent.click(screen.getByTestId(SUBMIT_BTN));
+    await userEvent.clear(screen.getByLabelText(/bank name/i));
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
 
     await waitFor(() => {
       expect(screen.getByText('Bank Name is required')).toBeInTheDocument();
@@ -94,11 +96,12 @@ describe('EditBankModal', () => {
     openModal();
     await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
 
-    fireEvent.change(screen.getByLabelText(/bank name/i), {
-      target: { value: '  Fifth Third Bank Updated  ' },
-    });
-    fireEvent.click(screen.getByTestId(`button-radio-${MODAL_ID}-status-inactive-click-target`));
-    fireEvent.click(screen.getByTestId(SUBMIT_BTN));
+    await userEvent.clear(screen.getByLabelText(/bank name/i));
+    await userEvent.type(screen.getByLabelText(/bank name/i), '  Fifth Third Bank Updated  ');
+    await userEvent.click(
+      screen.getByTestId(`button-radio-${MODAL_ID}-status-inactive-click-target`),
+    );
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
 
     await waitFor(() => {
       expect(updateBankSpy).toHaveBeenCalledWith('bank-1', {
@@ -114,10 +117,9 @@ describe('EditBankModal', () => {
     openModal();
     await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
 
-    fireEvent.change(screen.getByLabelText(/bank name/i), {
-      target: { value: 'Fifth Third Bank Updated' },
-    });
-    fireEvent.click(screen.getByTestId(SUBMIT_BTN));
+    await userEvent.clear(screen.getByLabelText(/bank name/i));
+    await userEvent.type(screen.getByLabelText(/bank name/i), 'Fifth Third Bank Updated');
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
 
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith(updatedBank);
@@ -131,8 +133,9 @@ describe('EditBankModal', () => {
     openModal();
     await waitFor(() => expect(screen.getByTestId(SUBMIT_BTN)).toBeVisible());
 
-    fireEvent.change(screen.getByLabelText(/bank name/i), { target: { value: 'Updated' } });
-    fireEvent.click(screen.getByTestId(SUBMIT_BTN));
+    await userEvent.clear(screen.getByLabelText(/bank name/i));
+    await userEvent.type(screen.getByLabelText(/bank name/i), 'Updated');
+    await userEvent.click(screen.getByTestId(SUBMIT_BTN));
 
     await waitFor(() => {
       expect(onSuccess).not.toHaveBeenCalled();
@@ -145,8 +148,9 @@ describe('EditBankModal', () => {
     openModal();
     await waitFor(() => expect(screen.getByTestId(CANCEL_BTN)).toBeVisible());
 
-    fireEvent.change(screen.getByLabelText(/bank name/i), { target: { value: 'Changed' } });
-    fireEvent.click(screen.getByTestId(CANCEL_BTN));
+    await userEvent.clear(screen.getByLabelText(/bank name/i));
+    await userEvent.type(screen.getByLabelText(/bank name/i), 'Changed');
+    await userEvent.click(screen.getByTestId(CANCEL_BTN));
 
     await waitFor(() => {
       expect(screen.getByTestId(MODAL_WRAPPER)).toHaveClass('is-hidden');

@@ -82,7 +82,13 @@ export function Banks() {
                 {banks.map((bank) => (
                   <CamsTableRow key={bank.id}>
                     <CamsTableCell>
-                      <Link to={`/admin/banks/${bank.id}`}>{bank.name}</Link>
+                      <Link
+                        to={`/admin/banks/${bank.id}`}
+                        className="usa-link"
+                        title={`View details for ${bank.name}`}
+                      >
+                        {bank.name}
+                      </Link>
                     </CamsTableCell>
                     <CamsTableCell>
                       {bank.status === 'active' ? 'Active' : 'Inactive'}
