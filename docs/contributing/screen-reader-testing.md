@@ -151,6 +151,46 @@ Replace `<host-ip>` with the IP from the previous step.
 - **NVDA:** Launch from the Start menu or desktop shortcut. Press `Insert + Q` to quit.
 - **Narrator:** Press `Win + Ctrl + Enter` to toggle on/off.
 
+## Running CAMS with Real Data (UTM + Okta)
+
+The `test:screen-reader` script uses the fake API and bypasses login, which is convenient but shows mock data. To test with real Okta authentication and live backend data, use the following approach instead.
+
+### Why this is needed
+
+UTM's default QEMU user-mode networking makes the Mac host reachable from the VM at `10.0.2.2`. However, after Okta login the browser is redirected to `http://localhost:3000/login/callback` — inside the VM, `localhost` resolves to the VM itself, not the Mac. The same applies to backend API calls on port 7071. Windows port proxy rules fix this permanently.
+
+### One-time VM setup
+
+Inside the Windows VM, open **PowerShell as Administrator** and run:
+
+```powershell
+netsh interface portproxy add v4tov4 listenaddress=127.0.0.1 listenport=3000 connectaddress=10.0.2.2 connectport=3000
+netsh interface portproxy add v4tov4 listenaddress=127.0.0.1 listenport=7071 connectaddress=10.0.2.2 connectport=7071
+```
+
+These rules persist across VM reboots and do not need to be removed. The address `10.0.2.2` is hardcoded in QEMU and always refers to the Mac host regardless of network conditions.
+
+To verify the rules are in place:
+
+```powershell
+netsh interface portproxy show all
+```
+
+### Starting CAMS
+
+From the repository root on macOS:
+
+```sh
+npm run start:backend
+npm run start:frontend  # or: cd user-interface && npm run start:utm
+```
+
+`start:utm` (`start:frontend` also works) binds Vite to `0.0.0.0:3000`, making it reachable from the VM. The backend must be running so API calls succeed after login.
+
+### Connecting from the VM
+
+Navigate to `http://localhost:3000` in the VM browser. Log in through Okta normally — the post-login redirect to `http://localhost:3000/login/callback` resolves through the port proxy to the Mac, and subsequent API calls to `http://localhost:7071` do the same.
+
 ## Testing Checklist
 
 Use this checklist when testing a page or component:
