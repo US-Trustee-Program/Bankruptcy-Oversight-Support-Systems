@@ -189,10 +189,12 @@ describe('TrusteeSearchModal', () => {
     );
     act(() => modalRef.current?.show());
 
-    // The selection is reflected in the aria-description element (collapsed state)
+    // The selection is reflected in the input value
     await waitFor(() => {
-      const selectionLabel = document.querySelector(`#${districtComboBoxId} .selection-label`);
-      expect(selectionLabel?.textContent).toBe('Southern District of New York');
+      const input = document.querySelector(
+        `#${districtComboBoxId}-combo-box-input`,
+      ) as HTMLInputElement;
+      expect(input?.value).toBe('Southern District of New York');
     });
   });
 
