@@ -5,6 +5,7 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { CamsRole } from '@common/cams/roles';
 import { BankProfile } from '@common/cams/banks';
 import { BanksUseCase } from '../../use-cases/banks/banks';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 const MODULE_NAME = 'BANKS-CONTROLLER';
 
@@ -32,14 +33,14 @@ export class BanksController {
     } else if (method === 'PUT' && bankId) {
       return this.handlePut(context);
     }
-    return httpSuccess({ statusCode: 405 }) as CamsHttpResponseInit;
+    return httpSuccess({ statusCode: HttpStatusCodes.METHOD_NOT_ALLOWED }) as CamsHttpResponseInit;
   }
 
   async handleGet(context: ApplicationContext): Promise<CamsHttpResponseInit<BankProfile[]>> {
     this.requireSuperUser(context);
     const banks = await this.useCase.getBanks();
     return httpSuccess({
-      statusCode: 200,
+      statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: banks },
     });
   }
@@ -50,7 +51,7 @@ export class BanksController {
     if (!bankId) throw new BadRequestError(MODULE_NAME, { message: 'Bank ID is required.' });
     const bank = await this.useCase.getBank(bankId);
     return httpSuccess({
-      statusCode: 200,
+      statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: bank },
     });
   }
@@ -73,7 +74,7 @@ export class BanksController {
       status: body.status,
     });
     return httpSuccess({
-      statusCode: 200,
+      statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: bank },
     });
   }
@@ -86,7 +87,7 @@ export class BanksController {
     }
     const bank = await this.useCase.createBank({ name: body.name.trim() });
     return httpSuccess({
-      statusCode: 201,
+      statusCode: HttpStatusCodes.CREATED,
       body: { meta: { self: context.request.url }, data: bank },
     });
   }

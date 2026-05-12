@@ -50,7 +50,7 @@ export function BankDetail() {
 
   return (
     <div className="bank-detail" data-testid="bank-detail">
-      <Link to="/admin/banks" className="usa-link back-link">
+      <Link to="/admin/banks" className="usa-link back-link" title="Back to Banks list">
         <Icon name="navigate_before" />
         Back to Banks
       </Link>
