@@ -526,14 +526,14 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup();
       await user.click(screen.getByRole('button', { name: /filters/i }));
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       await user.click(screen.getByLabelText('Chapter'));
-      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
-      await user.click(screen.getByRole('option', { name: /option: 7/ }));
+      expect(await screen.findByRole('option', { name: /Chapter 7/ })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: /Chapter 7/ }));
 
       await waitFor(() => {
         const districtFilterChangedCalls = mockTrackEvent.mock.calls.filter(
