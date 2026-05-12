@@ -1,10 +1,5 @@
 import { ApplicationContext } from '../../adapters/types/basic';
-import {
-  BankList,
-  BankListItem,
-  BankruptcySoftwareList,
-  BankruptcySoftwareListItem,
-} from '@common/cams/lists';
+import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
 import factory from '../../factory';
 import { Creatable } from '@common/cams/creatable';
 
@@ -19,13 +14,6 @@ class ListsUseCase {
     return softwareList;
   }
 
-  public async createBankruptcySoftware(
-    context: ApplicationContext,
-    item: Creatable<BankruptcySoftwareListItem>,
-  ): Promise<string> {
-    return await factory.getListsGateway(context).postBankruptcySoftware(item);
-  }
-
   public async getBanksList(context: ApplicationContext): Promise<BankList> {
     return await factory.getListsGateway(context).getBankList();
   }
@@ -35,10 +23,6 @@ class ListsUseCase {
     item: Creatable<BankListItem>,
   ): Promise<string> {
     return await factory.getListsGateway(context).postBank(item);
-  }
-
-  public async deleteBankruptcySoftware(context: ApplicationContext, id: string): Promise<void> {
-    return await factory.getListsGateway(context).deleteBankruptcySoftware(id);
   }
 }
 

@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import useFeatureFlags, { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import useFeatureFlags, {
+  PRIVILEGED_IDENTITY_MANAGEMENT,
+  TRUSTEE_SOFTWARE_BANK_DISPLAY,
+} from '@/lib/hooks/UseFeatureFlags';
 
 export enum AdminNavState {
   UNKNOWN,
@@ -41,19 +44,21 @@ function AdminScreenNavigation(props: Readonly<AdminScreenNavigationProps>) {
             </NavLink>
           )}
         </li>
-        <li className="usa-sidenav__item">
-          <NavLink
-            to={`/admin/bankruptcy-software`}
-            data-testid="bankruptcy-software-nav-link"
-            className={
-              'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKRUPTCY_SOFTWARE)
-            }
-            onClick={() => setActiveNav(AdminNavState.BANKRUPTCY_SOFTWARE)}
-            title="Manage bankruptcy software"
-          >
-            Bankruptcy Software
-          </NavLink>
-        </li>
+        {!!flags[TRUSTEE_SOFTWARE_BANK_DISPLAY] && (
+          <li className="usa-sidenav__item">
+            <NavLink
+              to={`/admin/bankruptcy-software`}
+              data-testid="bankruptcy-software-nav-link"
+              className={
+                'usa-nav-link ' + setCurrentAdminNav(activeNav, AdminNavState.BANKRUPTCY_SOFTWARE)
+              }
+              onClick={() => setActiveNav(AdminNavState.BANKRUPTCY_SOFTWARE)}
+              title="Manage bankruptcy software"
+            >
+              Bankruptcy Software
+            </NavLink>
+          </li>
+        )}
         <li className="usa-sidenav__item">
           <NavLink
             to="/admin/banks"

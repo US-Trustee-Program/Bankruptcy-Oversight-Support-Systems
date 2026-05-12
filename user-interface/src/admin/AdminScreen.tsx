@@ -71,7 +71,7 @@ export function AdminScreen() {
                     <Routes>
                       <Route path="privileged-identity" element={<PrivilegedIdentity />} />
                       <Route path="banks" element={<Banks />} />
-                      <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
+                      <Route path="bankruptcy-software/*" element={<BankruptcySoftware />} />
                       <Route path="case-reload" element={<CaseReload />} />
                       <Route path="*" element={<div data-testid={'no-admin-panel-selected'} />} />
                     </Routes>

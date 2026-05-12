@@ -74,28 +74,12 @@ export class ListsMongoRepository extends BaseMongoRepository implements ListsRe
     return this.getList<BankruptcySoftwareListItem>('bankruptcy-software');
   }
 
-  public async postBankruptcySoftware(
-    item: Creatable<BankruptcySoftwareListItem>,
-  ): Promise<string> {
-    return this.postListItem<BankruptcySoftwareListItem>(item);
-  }
-
   public async getBankList(): Promise<BankList> {
     return this.getList<BankListItem>('banks');
   }
 
   public async postBank(item: Creatable<BankListItem>): Promise<string> {
     return this.postListItem<BankListItem>(item);
-  }
-
-  public async deleteBankruptcySoftware(id: string): Promise<void> {
-    try {
-      await this.getAdapter<BankruptcySoftwareListItem>().deleteOne(
-        and(this.doc('_id').equals(id), this.doc('list').equals('bankruptcy-software')),
-      );
-    } catch (originalError) {
-      throw getCamsError(originalError, MODULE_NAME);
-    }
   }
 
   public async deleteBank(id: string): Promise<void> {
