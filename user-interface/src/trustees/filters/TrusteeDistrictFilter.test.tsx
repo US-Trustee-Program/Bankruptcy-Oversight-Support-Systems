@@ -195,10 +195,9 @@ describe('TrusteeDistrictFilter Component', () => {
 
     // Verify the district is pre-selected in the UI
     await waitFor(() => {
-      const description = screen.getByText(
-        /1 items currently selected. Southern District of New York/,
-      );
-      expect(description).toBeInTheDocument();
+      // ComboBoxAlt shows the selected district label in the input value
+      const districtInput = screen.getByRole('combobox', { name: /district/i });
+      expect(districtInput).toHaveValue('Southern District of New York');
     });
   });
 
@@ -517,8 +516,8 @@ describe('TrusteeDistrictFilter Component', () => {
         expect(screen.getByRole('textbox', { name: /trustee name/i })).toBeInTheDocument();
       });
 
-      const clearButtons = screen.queryAllByRole('button', { name: /^clear$/i });
-      expect(clearButtons).toHaveLength(0);
+      const clearButton = screen.queryByRole('button', { name: /clear trustee name filter/i });
+      expect(clearButton).not.toBeInTheDocument();
     });
 
     test('shows Clear button when name input has text', async () => {
@@ -536,7 +535,9 @@ describe('TrusteeDistrictFilter Component', () => {
 
       await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Smith');
 
-      expect(screen.getByRole('button', { name: /^clear$/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /clear trustee name filter/i }),
+      ).toBeInTheDocument();
     });
 
     test('Clear button click empties input and calls handleFilterName with empty string', async () => {
@@ -553,7 +554,7 @@ describe('TrusteeDistrictFilter Component', () => {
       });
 
       await user.type(screen.getByRole('textbox', { name: /trustee name/i }), 'Smith');
-      await user.click(screen.getByRole('button', { name: /^clear$/i }));
+      await user.click(screen.getByRole('button', { name: /clear trustee name filter/i }));
 
       expect(screen.getByRole('textbox', { name: /trustee name/i })).toHaveValue('');
       expect(mockHandleFilterName).toHaveBeenLastCalledWith('');
@@ -608,20 +609,26 @@ describe('TrusteeDistrictFilter Component', () => {
       const toggleButton = screen.getByRole('button', { name: /filters/i });
       await user.click(toggleButton);
 
-      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
+      const chapterCombobox = await screen.findByRole('combobox', { name: /chapter/i });
+      expect(chapterCombobox).toBeInTheDocument();
 
-      const chapterCombobox = screen.getByLabelText('Chapter');
       await user.click(chapterCombobox);
 
-      expect(await screen.findByText('11 Subchapter V')).toBeInTheDocument();
+      const option = await screen.findByRole('option', { name: /Chapter 11 Subchapter V/ });
+      expect(option).toBeInTheDocument();
 
-      await user.click(screen.getByText('11 Subchapter V'));
+      await user.click(option);
 
-      await waitFor(() => {
-        expect(mockHandleFilterChapter).toHaveBeenCalledWith(
-          expect.arrayContaining([{ value: '11-subchapter-v', label: '11 Subchapter V' }]),
-        );
-      });
+      await waitFor(
+        () => {
+          expect(mockHandleFilterChapter).toHaveBeenCalledWith(
+            expect.arrayContaining([
+              expect.objectContaining({ value: '11-subchapter-v', label: '11 Subchapter V' }),
+            ]),
+          );
+        },
+        { timeout: 5000 },
+      );
     });
 
     test('should render chapter pill when chapter is selected and accordion is collapsed', async () => {

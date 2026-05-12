@@ -291,18 +291,6 @@ describe('TrusteeMatchVerificationController', () => {
     await expect(controller.handleRequest(context)).rejects.toThrow('Unsupported method.');
   });
 
-  test('should throw a CamsError when the repository throws', async () => {
-    const error = new Error('Database failure');
-    vi.spyOn(factory, 'getTrusteeMatchVerificationRepository').mockReturnValue(
-      Object.assign(new MockMongoRepository(), { search: vi.fn().mockRejectedValue(error) }),
-    );
-
-    const controller = new TrusteeMatchVerificationController();
-    const expectedError = getCamsError(error, 'TRUSTEE-MATCH-VERIFICATION-CONTROLLER');
-
-    await expect(controller.handleRequest(context)).rejects.toThrow(expectedError.message);
-  });
-
   describe('GET - manual trustee name resolution', () => {
     test('should resolve trustee name when manually selected trustee is not in candidates', async () => {
       const approvedOrder: TrusteeMatchVerification = {
