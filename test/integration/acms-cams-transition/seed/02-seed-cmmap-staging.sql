@@ -4,9 +4,6 @@
 -- Seeds Ch15 staff attorney assignments (APPT_TYPE='S1') and
 -- trustee appointments (APPT_TYPE='TR')
 
-USE cams_downstream_test;
-GO
-
 DELETE FROM CMMAP_STAGING;
 GO
 

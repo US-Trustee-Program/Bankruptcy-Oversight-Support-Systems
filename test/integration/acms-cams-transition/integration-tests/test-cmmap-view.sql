@@ -2,12 +2,12 @@
 -- Tests that CMMAP view correctly unions CAMS and ACMS data
 --
 -- Prerequisites:
--- 1. Run test/acms-cams-transition/seed/01-seed-acms-replica.sql on acms_replica_test
--- 2. Run test/acms-cams-transition/seed/02-seed-cmmap-staging.sql on cams_downstream_test
--- 3. Run database/migrations/001-initial-schema.sql on cams_downstream_test
-
-USE cams_downstream_test;
-GO
+-- 1. Run seed/01-seed-acms-replica.sql on ACMS_REP_SUB (or environment equivalent)
+-- 2. Run seed/02-seed-cmmap-staging.sql on ACMS_REP_SUB_TRANSITION (or environment equivalent)
+-- 3. Schema applied: downstream/database/acms-cams-transition/schema/ scripts
+--
+-- Run via harness:
+--   ... run-sql test/integration/acms-cams-transition/integration-tests/test-cmmap-view.sql ACMS_REP_SUB_TRANSITION
 
 PRINT '======================================';
 PRINT 'CMMAP View Integration Tests';

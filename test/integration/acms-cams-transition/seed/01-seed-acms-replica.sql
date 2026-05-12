@@ -4,9 +4,6 @@
 -- Creates mock CMMAP (appointments) and supporting tables
 -- for integration testing of the downstream CMMAP view
 
-USE acms_replica_test;
-GO
-
 -- Drop existing tables if they exist
 IF OBJECT_ID('dbo.CMMAP', 'U') IS NOT NULL DROP TABLE dbo.CMMAP;
 IF OBJECT_ID('dbo.CMMPR', 'U') IS NOT NULL DROP TABLE dbo.CMMPR;

@@ -2,185 +2,187 @@
 
 One-shot integration harnesses for the ACMS-CAMS transition database layer, including the CAMS-616 trustee appointment downstream flow.
 
-These are **manual test scripts** — not Vitest unit tests, not Playwright e2e tests. They seed real databases, invoke real use cases against lower-environment infrastructure, and query databases to assert the expected state changes occurred.
+**Intended executor:** AI agent running from the repo root. All SQL operations go through the TypeScript harness — no `sqlcmd` required.
 
-**IMPORTANT:** Never commit credentials or connection strings. All configuration lives in gitignored files — see Prerequisites below.
+**Not** Vitest unit tests. **Not** Playwright e2e tests. These seed real databases, invoke real use cases against lower-environment infrastructure, and assert the expected state.
 
-## Structure
+**Never commit credentials.** All configuration lives in gitignored files — see Prerequisites.
+
+---
+
+## Harness shorthand
+
+All commands below use this prefix (from repo root):
 
 ```
-test/integration/acms-cams-transition/
-├── seed/
-│   ├── 01-seed-acms-replica.sql          # Mock ACMS data (CMMAP, CMMPR, CMMPT)
-│   ├── 02-seed-cmmap-staging.sql         # Mock CAMS staging data (S1 and TR rows)
-│   └── README.md
-├── integration-tests/
-│   └── test-cmmap-view.sql               # SQL assertions for CMMAP union view (8 tests)
-├── scripts/
-│   └── test-trustee-appointment-downstream.ts   # CAMS-616 TypeScript harness
-└── README.md (this file)
+HARNESS="npx tsx --tsconfig backend/tsconfig.json test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts"
 ```
 
 ---
 
-## Part 1: CMMAP View SQL Tests
+## Prerequisites
 
-Tests that the `CMMAP` union view merges CAMS staging and ACMS replica rows correctly, with CAMS overriding ACMS per `(case, APPT_TYPE)`.
+Verify these gitignored files exist and are populated before running anything.
 
-### Prerequisites
-
-- Local or Azure SQL Server with databases `acms_replica_test` and `cams_downstream_test`
-- Schema applied: `downstream/database/acms-cams-transition/schema/` run on `cams_downstream_test`
-- `sqlcmd` available in PATH
-
-### Run
-
-```bash
-# From repo root — seed both databases
-sqlcmd -S <server> -d acms_replica_test \
-  -i test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql
-
-sqlcmd -S <server> -d cams_downstream_test \
-  -i test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql
-
-# Run 8-test view assertion script
-sqlcmd -S <server> -d cams_downstream_test \
-  -i test/integration/acms-cams-transition/integration-tests/test-cmmap-view.sql
+**`backend/.env`** — must contain:
 ```
-
-### Expected output: all 8 tests print `✓ PASS`
-
-| Test | Scenario |
-|---|---|
-| 1–3 | ACMS-only TR cases pass through unchanged |
-| 4 | CAMS-only S1 case passes through |
-| 5 | Inactive CAMS S1 (APPTEE_ACTIVE=N) still appears |
-| 6 | Total count = 8 (6 ACMS + 4 CAMS − 2 overrides) |
-| 7 | No duplicate (case, APPT_TYPE) combinations |
-| 8 | CAMS TR row for case 55555 overrides ACMS TR row (CAMS-616) |
-
----
-
-## Part 2: Trustee Appointment Downstream Harness (CAMS-616)
-
-Tests the full downstream flow: `processAppointments` use case → queue → `CMMAP_STAGING`.
-
-### Prerequisites
-
-**1. `backend/.env`** — primary config (gitignored via `backend/.gitignore`):
-
-```bash
-# Cosmos DB / MongoDB
-MONGO_CONNECTION_STRING=mongodb+srv://...
-COSMOS_DATABASE_NAME=cams-dev
-
-# DXTR SQL (read-only)
-MSSQL_HOST=<dxtr-server>.database.usgovcloudapi.net
-MSSQL_DATABASE_DXTR=<dxtr-database>
-MSSQL_ENCRYPT=true
-MSSQL_TRUST_UNSIGNED_CERT=false
-# MSSQL_USER=<user>      # omit if using Azure AD default auth
-# MSSQL_PASS=<password>
-
-# Downstream Azure SQL (CMMAP_STAGING)
-DOWNSTREAM_SQL_CONNECTION_STRING=Server=tcp:<server>.database.usgovcloudapi.net,1433;Database=<db>;...
-
-# Optional: override test fixture values
+MONGO_CONNECTION_STRING=<lower-env Cosmos connection string>
+COSMOS_DATABASE_NAME=<lower-env Cosmos database name>
+ACMS_MSSQL_HOST=sql-ustp-cams.database.usgovcloudapi.net
+ACMS_MSSQL_DATABASE=ACMS_REP_SUB
+ACMS_MSSQL_USER=<sql user>
+ACMS_MSSQL_PASS=<sql password>
+ACMS_MSSQL_ENCRYPT=true
+ACMS_MSSQL_TRUST_UNSIGNED_CERT=true
+MSSQL_HOST=sql-ustp-cams.database.usgovcloudapi.net
+MSSQL_DATABASE_DXTR=AODATEX_SUB
+DOWNSTREAM_SQL_CONNECTION_STRING=<connection string targeting ACMS_REP_SUB_TRANSITION>
 INTEGRATION_TEST_TRUSTEE_ID=<a real CAMS trustee ID in lower-env Cosmos>
-INTEGRATION_TEST_ACMS_PROF_ID=<matching ACMS professional ID, e.g. NY-00063>
-INTEGRATION_TEST_CASE_ID=<a case ID that exists in lower-env DXTR>
+INTEGRATION_TEST_ACMS_PROF_ID=<that trustee's ACMS professional ID, e.g. NY-00063>
+INTEGRATION_TEST_CASE_ID=<a case ID that exists in lower-env DXTR for that trustee>
 INTEGRATION_TEST_COURT_ID=<the court ID for that case>
 ```
 
-**2. `backend/function-apps/dataflows/local.settings.json`** — provides `AzureWebJobsDataflowsStorage` (gitignored via `backend/.gitignore`):
-
+**`backend/function-apps/dataflows/local.settings.json`** — must contain:
 ```json
 {
-  "IsEncrypted": false,
   "Values": {
-    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsDataflowsStorage": "<lower-env Azure Storage connection string>",
     "AzureWebJobsStorage": "<lower-env Azure Storage connection string>",
-    "AzureWebJobsDataflowsStorage": "<lower-env Azure Storage connection string>"
-  }
-}
-```
-
-The harness loads this file's `Values` into `process.env` at startup, exactly as the Functions runtime does locally. This makes `AzureWebJobsDataflowsStorage` available to `ApiToDataflowsGatewayImpl` so it can write to the storage queue.
-
-**3. `downstream/functions/local.settings.json`** — required when running the downstream handler locally (gitignored via `downstream/.gitignore`):
-
-```json
-{
-  "IsEncrypted": false,
-  "Values": {
-    "AzureWebJobsStorage": "<lower-env Azure Storage connection string>",
-    "DOWNSTREAM_SQL_CONNECTION_STRING": "<lower-env downstream SQL connection string>",
     "FUNCTIONS_WORKER_RUNTIME": "node"
   }
 }
 ```
 
-### Commands
-
-```bash
-# From repo root:
-npx tsx --tsconfig backend/tsconfig.json \
-  test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts [command]
+**`downstream/functions/local.settings.json`** — required when running the downstream handler locally:
+```json
+{
+  "Values": {
+    "AzureWebJobsStorage": "<lower-env Azure Storage connection string>",
+    "DOWNSTREAM_SQL_CONNECTION_STRING": "<connection string targeting ACMS_REP_SUB_TRANSITION>",
+    "FUNCTIONS_WORKER_RUNTIME": "node"
+  }
+}
 ```
 
-| Command | Description |
+---
+
+## Part 1: Database setup (first time only)
+
+Run these once to create and seed the transition database on the lower-env Azure SQL instance.
+
+### Step 1 — Verify environment
+```bash
+$HARNESS check-env
+```
+All lines must show `✓ PASS`. Resolve any `✗ FAIL` before proceeding.
+
+### Step 2 — Create the transition database
+```bash
+$HARNESS create-db ACMS_REP_SUB_TRANSITION
+```
+
+### Step 3 — Apply schema
+```bash
+$HARNESS run-sql downstream/database/acms-cams-transition/schema/cmmap-staging.sql ACMS_REP_SUB_TRANSITION
+$HARNESS run-sql downstream/database/acms-cams-transition/schema/cmmap-view.sql ACMS_REP_SUB_TRANSITION
+```
+
+### Step 4 — Seed mock ACMS replica data
+Seeds `CMMAP`, `CMMPR`, `CMMPT` tables in the existing ACMS replica database with 6 test case appointments (3 TR, 2 S1, 1 TR that will be overridden by CAMS).
+```bash
+$HARNESS run-sql test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql ACMS_REP_SUB
+```
+
+### Step 5 — Seed CAMS staging data
+Seeds `CMMAP_STAGING` in the transition database with 4 test rows (3 S1, 1 TR).
+```bash
+$HARNESS run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB_TRANSITION
+```
+
+---
+
+## Part 2: CMMAP view SQL tests
+
+Run the 8-test assertion script to verify the `CMMAP` union view merges CAMS staging and ACMS replica rows correctly.
+
+```bash
+$HARNESS run-sql test/integration/acms-cams-transition/integration-tests/test-cmmap-view.sql ACMS_REP_SUB_TRANSITION
+```
+
+**All 8 tests must print `✓ PASS`.** If any print `✗ FAIL`, the view or seed data is incorrect — do not proceed to Part 3.
+
+| Test | What it verifies |
 |---|---|
-| `check-env` | Verify all required env vars are present (run this first) |
-| `seed-cosmos` | Upsert a `TrusteeProfessionalId` doc linking test trustee to ACMS professional ID |
-| `run` | Call `processAppointments` with the test event; assert CMMAP_STAGING state |
-| `check-staging` | Print current CMMAP_STAGING rows for the test case (read-only) |
-| `clean` | Delete test rows from CMMAP_STAGING; report Cosmos doc for manual removal |
-| `help` | Show command reference |
+| 1–3 | ACMS-only TR cases pass through the view unchanged |
+| 4 | CAMS-only S1 case passes through |
+| 5 | Inactive CAMS S1 (APPTEE_ACTIVE=N) still appears |
+| 6 | Total row count = 8 (6 ACMS + 4 CAMS staging − 2 overrides) |
+| 7 | No duplicate (case, APPT_TYPE) combinations in view |
+| 8 | CAMS TR row for case 081-24-55555 overrides ACMS TR row (CAMS-616) |
 
-### Recommended workflow
+---
 
+## Part 3: Trustee appointment downstream flow (CAMS-616)
+
+Tests the full pipeline: `processAppointments` use case → Azure Storage Queue → `trustee-appointment-handler` → `CMMAP_STAGING`.
+
+### Step 1 — Seed Cosmos with trustee↔professional ID mapping
 ```bash
-# 1. Verify environment
-npx tsx --tsconfig backend/tsconfig.json \
-  test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts check-env
-
-# 2. Seed Cosmos with trustee ↔ ACMS professional ID mapping
-npx tsx --tsconfig backend/tsconfig.json \
-  test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts seed-cosmos
-
-# 3. Start downstream handler locally (separate terminal — consumes from queue)
-cd downstream/functions && func start
-
-# 4. Run the harness — invokes processAppointments, which emits to the storage queue
-npx tsx --tsconfig backend/tsconfig.json \
-  test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts run
-
-# 5. Confirm CMMAP_STAGING after the downstream handler processes the queue message
-npx tsx --tsconfig backend/tsconfig.json \
-  test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts check-staging
-
-# 6. Clean up when done
-npx tsx --tsconfig backend/tsconfig.json \
-  test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts clean
+$HARNESS seed-cosmos
 ```
+This upserts a `TrusteeProfessionalId` document linking `INTEGRATION_TEST_TRUSTEE_ID` to `INTEGRATION_TEST_ACMS_PROF_ID`. If these already exist in lower-env Cosmos from real data, this step can be skipped.
 
-### Expected assertions
+### Step 2 — Start the downstream handler locally
+In a separate terminal, start the downstream Azure Function so it consumes messages from the queue and writes to `CMMAP_STAGING`:
+```bash
+cd downstream/functions && func start
+```
+Leave this running during Step 3.
 
-- `processAppointments` returns `successCount >= 1`, `dlqMessages.length === 0`
-- CMMAP_STAGING has a row for the test case with `APPT_TYPE='TR'`, `SOURCE='CAMS'`
-- Active appointment: `APPT_DISP='GR'`, `APPTEE_ACTIVE='Y'`
-- Closed appointment (if `unassignedOn` present): `APPT_DISP='WD'`, `APPTEE_ACTIVE='N'`, `DISP_DATE` set
+### Step 3 — Run the integration test
+```bash
+$HARNESS run
+```
+This calls `processAppointments` with the test `TrusteeAppointmentSyncEvent`. The use case matches the trustee, writes to Cosmos, and emits a `TrusteeAppointmentDownstreamEvent` to the Azure Storage Queue. The downstream handler (running in Step 2) picks it up and writes to `CMMAP_STAGING`.
+
+**Expected output:**
+- `✓ PASS: processAppointments completed without DLQ errors`
+- `✓ PASS: Found 1 row(s) in CMMAP_STAGING for case <TEST_CASE_ID>`
+- `✓ PASS: TR row has APPT_DISP='GR'`
+- `✓ PASS: TR row SOURCE='CAMS'`
+
+### Step 4 — Confirm CMMAP_STAGING (optional read-only check)
+```bash
+$HARNESS check-staging
+```
 
 ---
 
 ## Cleanup
 
 ```bash
-# Drop local test databases when done with SQL tests
-sqlcmd -Q "DROP DATABASE acms_replica_test;"
-sqlcmd -Q "DROP DATABASE cams_downstream_test;"
+# Remove test data inserted by harness
+$HARNESS clean
 
-# Remove TypeScript harness test data from lower env
-npx tsx --tsconfig backend/tsconfig.json \
-  test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts clean
+# Re-seed if needed (seed scripts are idempotent — they drop and recreate tables)
+$HARNESS run-sql test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql ACMS_REP_SUB
+$HARNESS run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB_TRANSITION
+```
+
+---
+
+## Structure
+
+```
+test/integration/acms-cams-transition/
+├── seed/
+│   ├── 01-seed-acms-replica.sql          # Mock ACMS CMMAP/CMMPR/CMMPT rows (6 appointments)
+│   ├── 02-seed-cmmap-staging.sql         # Mock CAMS staging rows (3 S1 + 1 TR)
+│   └── README.md
+├── integration-tests/
+│   └── test-cmmap-view.sql               # 8 PRINT-based assertions for the CMMAP union view
+├── scripts/
+│   └── test-trustee-appointment-downstream.ts   # All-in-one harness (setup + test + clean)
+└── README.md (this file)
 ```

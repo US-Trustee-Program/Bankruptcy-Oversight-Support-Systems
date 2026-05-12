@@ -12,17 +12,19 @@
  *     test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts [command]
  *
  * Commands:
- *   check-env       Verify all required environment variables are set
- *   seed-cosmos     Seed Cosmos with a test trustee + professional ID mapping
- *   run             Run processAppointments for the test event and assert results
- *   check-staging   Query CMMAP_STAGING and print current rows for test cases
- *   clean           Remove seeded test data from Cosmos and CMMAP_STAGING
- *   help            Show this help
+ *   check-env             Verify all required environment variables are set
+ *   create-db <dbname>    CREATE DATABASE on the ACMS SQL Server instance
+ *   run-sql <file> <db>   Execute a .sql file (GO-delimited) against a named database
+ *   seed-cosmos           Seed Cosmos with a test trustee + professional ID mapping
+ *   run                   Run processAppointments for the test event and assert results
+ *   check-staging         Query CMMAP_STAGING and print current rows for test cases
+ *   clean                 Remove seeded test data from Cosmos and CMMAP_STAGING
+ *   help                  Show this help
  *
  * Prerequisites:
  *   1. backend/.env populated with lower-env connection strings (see check-env output)
- *   2. CMMAP_STAGING table exists in the downstream SQL database
- *   3. VPN connected (if databases are on Azure Government)
+ *   2. backend/function-apps/dataflows/local.settings.json with AzureWebJobsDataflowsStorage
+ *   3. VPN connected (databases are on Azure Government)
  */
 
 import * as dotenv from 'dotenv';
@@ -67,8 +69,7 @@ loadLocalSettings('backend/function-apps/dataflows/local.settings.json');
 // ---------------------------------------------------------------------------
 
 const TEST_TRUSTEE_ID = process.env.INTEGRATION_TEST_TRUSTEE_ID || 'INTEGRATION-TEST-TRUSTEE-001';
-const TEST_ACMS_PROFESSIONAL_ID =
-  process.env.INTEGRATION_TEST_ACMS_PROF_ID || 'NY-00063';
+const TEST_ACMS_PROFESSIONAL_ID = process.env.INTEGRATION_TEST_ACMS_PROF_ID || 'NY-00063';
 const TEST_CASE_ID = process.env.INTEGRATION_TEST_CASE_ID || '081-24-12345';
 const TEST_COURT_ID = process.env.INTEGRATION_TEST_COURT_ID || '0208';
 
@@ -113,6 +114,65 @@ async function getDownstreamSqlPool(): Promise<sql.ConnectionPool> {
   return sql.connect(connStr);
 }
 
+// Build an mssql ConnectionPool using the ACMS_MSSQL_* env vars — same logic
+// as ApplicationConfiguration.getAcmsDbConfig(), but targeting a specific database.
+async function getAcmsSqlPool(database: string): Promise<sql.ConnectionPool> {
+  const server = process.env.ACMS_MSSQL_HOST;
+  if (!server) throw new Error('ACMS_MSSQL_HOST is not set');
+
+  const port = Number(process.env.ACMS_MSSQL_PORT) || 1433;
+  const encrypt = process.env.ACMS_MSSQL_ENCRYPT?.toLowerCase() === 'true';
+  const trustServerCertificate =
+    process.env.ACMS_MSSQL_TRUST_UNSIGNED_CERT?.toLowerCase() === 'true';
+  const user = process.env.ACMS_MSSQL_USER;
+  const password = process.env.ACMS_MSSQL_PASS;
+  const authType = process.env.ACMS_MSSQL_AUTH_TYPE || 'azure-active-directory-default';
+  const identityClientId = process.env.ACMS_MSSQL_CLIENT_ID;
+
+  const config: sql.config = {
+    server,
+    port,
+    database,
+    options: { encrypt, trustServerCertificate },
+    pool: { max: 5, min: 0, idleTimeoutMillis: 30000 },
+  };
+
+  if (user && password) {
+    config.user = user;
+    config.password = password;
+  } else {
+    config.authentication = {
+      type: authType as sql.AuthenticationType,
+      options: identityClientId ? { clientId: identityClientId } : {},
+    };
+  }
+
+  return sql.connect(config);
+}
+
+// Split a SQL file on GO batch separators and execute each batch in sequence.
+// Skips empty batches (blank lines between GO statements).
+async function executeSqlFile(pool: sql.ConnectionPool, filePath: string): Promise<void> {
+  const content = fs.readFileSync(path.resolve(filePath), 'utf-8');
+  const batches = content
+    .split(/^\s*GO\s*$/im)
+    .map((b) => b.trim())
+    .filter((b) => b.length > 0);
+
+  info(`Executing ${batches.length} batch(es) from ${path.basename(filePath)}`);
+
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
+    try {
+      await pool.request().query(batch);
+    } catch (err) {
+      throw new Error(
+        `Batch ${i + 1} of ${batches.length} failed:\n${batch.slice(0, 200)}...\n\nError: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // check-env
 // ---------------------------------------------------------------------------
@@ -123,6 +183,8 @@ async function checkEnv() {
   const required = [
     ['MONGO_CONNECTION_STRING', 'Cosmos DB / MongoDB connection string'],
     ['COSMOS_DATABASE_NAME', 'Cosmos database name'],
+    ['ACMS_MSSQL_HOST', 'ACMS SQL Server host (also used for create-db and run-sql)'],
+    ['ACMS_MSSQL_DATABASE', 'ACMS replica database name'],
     ['MSSQL_HOST', 'DXTR SQL Server host'],
     ['MSSQL_DATABASE_DXTR', 'DXTR database name'],
     ['DOWNSTREAM_SQL_CONNECTION_STRING', 'Downstream Azure SQL connection string'],
@@ -133,6 +195,7 @@ async function checkEnv() {
   ];
 
   const optional = [
+    ['ACMS_MSSQL_USER', 'ACMS SQL user (omit to use Azure AD default auth)'],
     ['INTEGRATION_TEST_TRUSTEE_ID', `CAMS trustee ID to use (default: ${TEST_TRUSTEE_ID})`],
     ['INTEGRATION_TEST_ACMS_PROF_ID', `ACMS professional ID (default: ${TEST_ACMS_PROFESSIONAL_ID})`],
     ['INTEGRATION_TEST_CASE_ID', `Case ID to test (default: ${TEST_CASE_ID})`],
@@ -149,16 +212,74 @@ async function checkEnv() {
     }
   }
 
-  console.log('\nOptional overrides:');
+  console.log('\nOptional / informational:');
   for (const [name, description] of optional) {
     const value = process.env[name];
-    info(`${name}=${value ?? '(using default)'} — ${description}`);
+    info(`${name}=${value ?? '(not set)'} — ${description}`);
   }
 
   if (!allPresent) {
     console.log('\n⚠️  Set missing variables in backend/.env before running.');
   } else {
     console.log('\n✓ All required variables present.');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// create-db
+// ---------------------------------------------------------------------------
+
+async function createDb(dbName: string) {
+  if (!dbName) {
+    console.error('Usage: create-db <database-name>');
+    process.exit(1);
+  }
+
+  console.log(`\nCreating database '${dbName}' on ${process.env.ACMS_MSSQL_HOST}...\n`);
+
+  // Connect to master to run CREATE DATABASE
+  const pool = await getAcmsSqlPool('master');
+  try {
+    // Parameterized identifiers are not supported for CREATE DATABASE — name is
+    // validated here to contain only safe characters before embedding in the statement.
+    if (!/^[A-Za-z0-9_]+$/.test(dbName)) {
+      throw new Error(`Database name '${dbName}' contains invalid characters`);
+    }
+
+    await pool.request().query(`
+      IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '${dbName}')
+        CREATE DATABASE [${dbName}]
+    `);
+    pass(`Database '${dbName}' created (or already exists)`);
+  } finally {
+    await pool.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// run-sql
+// ---------------------------------------------------------------------------
+
+async function runSql(filePath: string, dbName: string) {
+  if (!filePath || !dbName) {
+    console.error('Usage: run-sql <file.sql> <database-name>');
+    process.exit(1);
+  }
+
+  const resolved = path.resolve(filePath);
+  if (!fs.existsSync(resolved)) {
+    console.error(`File not found: ${resolved}`);
+    process.exit(1);
+  }
+
+  console.log(`\nRunning ${path.basename(filePath)} against '${dbName}'...\n`);
+
+  const pool = await getAcmsSqlPool(dbName);
+  try {
+    await executeSqlFile(pool, resolved);
+    pass(`${path.basename(filePath)} executed successfully against '${dbName}'`);
+  } finally {
+    await pool.close();
   }
 }
 
@@ -203,7 +324,6 @@ async function run() {
   console.log(JSON.stringify(TEST_SYNC_EVENT, null, 2));
   console.log('');
 
-  // Step 1: processAppointments
   console.log('Step 1: processAppointments (sync-trustee-appointments use case)');
   const context = await getContext();
 
@@ -228,7 +348,6 @@ async function run() {
 
   pass('processAppointments completed without DLQ errors');
 
-  // Step 2: Check CMMAP_STAGING
   console.log('\nStep 2: Query CMMAP_STAGING for test case');
   await checkStagingForCase(TEST_CASE_ID);
 }
@@ -303,7 +422,6 @@ async function checkStaging() {
 async function clean() {
   console.log('\nCleaning up test data...\n');
 
-  // Remove from Cosmos
   console.log('Removing TrusteeProfessionalId from Cosmos...');
   const context = await getContext();
   const repo = factory.getTrusteeProfessionalIdsRepository(context);
@@ -311,7 +429,6 @@ async function clean() {
     const existing = await repo.findByAcmsProfessionalId(TEST_ACMS_PROFESSIONAL_ID);
     const testDoc = existing.find((d) => d.camsTrusteeId === TEST_TRUSTEE_ID);
     if (testDoc?.id) {
-      // Soft-delete by upsert with a marker, or just inform — depends on repo capability
       info(
         `Found TrusteeProfessionalId doc id=${testDoc.id} — manual deletion required in Cosmos if needed`,
       );
@@ -322,7 +439,6 @@ async function clean() {
     repo.release();
   }
 
-  // Remove from CMMAP_STAGING
   console.log('\nRemoving test rows from CMMAP_STAGING...');
   const pool = await getDownstreamSqlPool();
   try {
@@ -352,6 +468,12 @@ async function main() {
     case 'check-env':
       await checkEnv();
       break;
+    case 'create-db':
+      await createDb(process.argv[3]);
+      break;
+    case 'run-sql':
+      await runSql(process.argv[3], process.argv[4]);
+      break;
     case 'seed-cosmos':
       await seedCosmos();
       break;
@@ -367,19 +489,30 @@ async function main() {
     case 'help':
     default:
       console.log('\nUsage:');
-      console.log(
-        '  npx tsx --tsconfig backend/tsconfig.json \\',
-      );
+      console.log('  npx tsx --tsconfig backend/tsconfig.json \\');
       console.log(
         '    test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts [command]',
       );
-      console.log('\nCommands:');
-      console.log('  check-env       Verify all required environment variables are set');
-      console.log('  seed-cosmos     Seed Cosmos with test trustee + professional ID mapping');
-      console.log('  run             Run processAppointments and assert CMMAP_STAGING state');
-      console.log('  check-staging   Print current CMMAP_STAGING rows for the test case');
-      console.log('  clean           Remove seeded test data from Cosmos and CMMAP_STAGING');
-      console.log('  help            Show this help');
+      console.log('\nDatabase setup commands (use ACMS_MSSQL_* env vars to connect):');
+      console.log('  create-db <name>      CREATE DATABASE [name] if it does not exist');
+      console.log('  run-sql <file> <db>   Execute a GO-delimited .sql file against a database');
+      console.log('\nTest commands:');
+      console.log('  check-env             Verify all required environment variables are set');
+      console.log('  seed-cosmos           Seed Cosmos with test trustee + professional ID mapping');
+      console.log('  run                   Run processAppointments and assert CMMAP_STAGING state');
+      console.log('  check-staging         Print current CMMAP_STAGING rows for the test case');
+      console.log('  clean                 Remove seeded test data from Cosmos and CMMAP_STAGING');
+      console.log('  help                  Show this help');
+      console.log('\nExample — full setup workflow:');
+      console.log('  # 1. Create the transition database');
+      console.log('  ... create-db ACMS_REP_SUB_TRANSITION');
+      console.log('  # 2. Apply schema');
+      console.log('  ... run-sql downstream/database/acms-cams-transition/schema/cmmap-staging.sql ACMS_REP_SUB_TRANSITION');
+      console.log('  ... run-sql downstream/database/acms-cams-transition/schema/cmmap-view.sql ACMS_REP_SUB_TRANSITION');
+      console.log('  # 3. Seed mock ACMS data');
+      console.log('  ... run-sql test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql ACMS_REP_SUB');
+      console.log('  # 4. Seed CAMS staging data');
+      console.log('  ... run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB_TRANSITION');
       console.log('\nOptional env var overrides (in backend/.env):');
       console.log(`  INTEGRATION_TEST_TRUSTEE_ID   (default: ${TEST_TRUSTEE_ID})`);
       console.log(`  INTEGRATION_TEST_ACMS_PROF_ID (default: ${TEST_ACMS_PROFESSIONAL_ID})`);
