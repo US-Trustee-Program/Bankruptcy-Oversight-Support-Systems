@@ -1,5 +1,5 @@
 import './TrusteeDistrictFilter.scss';
-import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBox';
+import ComboBox, { ComboOption } from '@/lib/components/combobox/ComboBoxAlt';
 import PillBox from '@/lib/components/PillBox';
 import { Accordion, AccordionGroup } from '@/lib/components/uswds/Accordion';
 import { TrusteeDistrictFilterViewProps } from './trusteeDistrictFilter.types';
@@ -19,16 +19,9 @@ function renderDistrictFilter(
     return (
       <div className="filter-control">
         <div className="filter-control-header">
-          <span className="filter-control-label">District (Division)</span>
-          {viewModel.selectedDivisions.length > 0 && (
-            <button
-              type="button"
-              className="filter-clear-link"
-              onClick={viewModel.handleClearAllDivisions}
-            >
-              Clear
-            </button>
-          )}
+          <span className="filter-control-label" aria-hidden="true">
+            District (Division)
+          </span>
         </div>
         <ComboBox
           id="district-division-combobox"
@@ -44,6 +37,17 @@ function renderDistrictFilter(
           ref={viewModel.divisionFilterRef}
           hideClearAllButton={true}
         />
+        <div className="filter-clear-button-container" aria-live="off" aria-atomic="false">
+          {viewModel.selectedDivisions.length > 0 && (
+            <button
+              type="button"
+              className="filter-clear-link"
+              onClick={viewModel.handleClearAllDivisions}
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -53,12 +57,9 @@ function renderDistrictFilter(
   return (
     <div className="filter-control">
       <div className="filter-control-header">
-        <span className="filter-control-label">District</span>
-        {viewModel.selectedDistricts.length > 0 && (
-          <button type="button" className="filter-clear-link" onClick={viewModel.handleClearAll}>
-            Clear
-          </button>
-        )}
+        <span className="filter-control-label" aria-hidden="true">
+          District
+        </span>
       </div>
       <ComboBox
         id="district-combobox"
@@ -75,6 +76,13 @@ function renderDistrictFilter(
         ref={viewModel.districtFilterRef}
         hideClearAllButton={true}
       />
+      <div className="filter-clear-button-container" aria-live="off" aria-atomic="false">
+        {viewModel.selectedDistricts.length > 0 && (
+          <button type="button" className="filter-clear-link" onClick={viewModel.handleClearAll}>
+            Clear
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -112,21 +120,30 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
               <div className="filter-control">
                 <div className="filter-control-header">
                   <span className="filter-control-label">Trustee Name</span>
-                  {viewModel.nameSearch.length > 0 && (
+                  <div
+                    className="filter-clear-button-container"
+                    aria-live="off"
+                    aria-atomic="false"
+                  >
                     <button
                       type="button"
                       className="filter-clear-link"
                       onClick={() => viewModel.handleFilterName('')}
+                      aria-label="Clear Trustee Name filter"
+                      style={{ visibility: viewModel.nameSearch.length > 0 ? 'visible' : 'hidden' }}
+                      disabled={viewModel.nameSearch.length === 0}
                     >
                       Clear
                     </button>
-                  )}
+                  </div>
                 </div>
                 <input
                   id="trustee-name-filter"
                   type="text"
                   className="usa-input"
                   aria-label="Trustee Name"
+                  aria-live="off"
+                  aria-atomic="false"
                   value={viewModel.nameSearch}
                   onChange={(e) => viewModel.handleFilterName(e.target.value)}
                   placeholder="Search by name"
@@ -138,20 +155,14 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
 
               <div className="filter-control">
                 <div className="filter-control-header">
-                  <span className="filter-control-label">Chapter</span>
-                  {viewModel.selectedChapters.length > 0 && (
-                    <button
-                      type="button"
-                      className="filter-clear-link"
-                      onClick={viewModel.handleClearAllChapters}
-                    >
-                      Clear
-                    </button>
-                  )}
+                  <span className="filter-control-label" aria-hidden="true">
+                    Chapter
+                  </span>
                 </div>
                 <ComboBox
                   id="chapter-combobox"
                   label="Chapter"
+                  ariaLabelPrefix="Chapter"
                   options={viewModel.chaptersToComboOptions()}
                   selections={viewModel.selectedChapters}
                   onUpdateSelection={viewModel.handleFilterChapter}
@@ -163,6 +174,20 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
                   ref={viewModel.chapterFilterRef}
                   hideClearAllButton={true}
                 />
+                <div className="filter-clear-button-container" aria-live="off" aria-atomic="false">
+                  <button
+                    type="button"
+                    className="filter-clear-link"
+                    onClick={viewModel.handleClearAllChapters}
+                    aria-label="Clear Chapter filter"
+                    style={{
+                      visibility: viewModel.selectedChapters.length > 0 ? 'visible' : 'hidden',
+                    }}
+                    disabled={viewModel.selectedChapters.length === 0}
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -170,31 +195,33 @@ function TrusteeDistrictFilterView(props: TrusteeDistrictFilterViewProps) {
       </AccordionGroup>
 
       {hasPills && (
-        <PillBox
-          id="filter-pills"
-          className="filter-pills-container"
-          selections={[
-            ...tagPills(pillDistricts, 'district'),
-            ...tagPills(viewModel.selectedDivisions, 'division'),
-            ...tagPills(viewModel.selectedChapters, 'chapter'),
-          ]}
-          onSelectionChange={(updatedPills) => {
-            const pills = updatedPills as FilterPill[];
-            const updatedDistricts = pills.filter((p) => p.kind === 'district');
-            const updatedDivisions = pills.filter((p) => p.kind === 'division');
-            const updatedChapters = pills.filter((p) => p.kind === 'chapter');
+        <div aria-live="off" aria-atomic="false">
+          <PillBox
+            id="filter-pills"
+            className="filter-pills-container"
+            selections={[
+              ...tagPills(pillDistricts, 'district'),
+              ...tagPills(viewModel.selectedDivisions, 'division'),
+              ...tagPills(viewModel.selectedChapters, 'chapter'),
+            ]}
+            onSelectionChange={(updatedPills) => {
+              const pills = updatedPills as FilterPill[];
+              const updatedDistricts = pills.filter((p) => p.kind === 'district');
+              const updatedDivisions = pills.filter((p) => p.kind === 'division');
+              const updatedChapters = pills.filter((p) => p.kind === 'chapter');
 
-            if (updatedDistricts.length !== pillDistricts.length) {
-              viewModel.handleFilterChange(updatedDistricts);
-            }
-            if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
-              viewModel.handleFilterDivision(updatedDivisions);
-            }
-            if (updatedChapters.length !== viewModel.selectedChapters.length) {
-              viewModel.handleFilterChapter(updatedChapters);
-            }
-          }}
-        />
+              if (updatedDistricts.length !== pillDistricts.length) {
+                viewModel.handleFilterChange(updatedDistricts);
+              }
+              if (updatedDivisions.length !== viewModel.selectedDivisions.length) {
+                viewModel.handleFilterDivision(updatedDivisions);
+              }
+              if (updatedChapters.length !== viewModel.selectedChapters.length) {
+                viewModel.handleFilterChapter(updatedChapters);
+              }
+            }}
+          />
+        </div>
       )}
     </section>
   );
