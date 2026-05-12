@@ -87,7 +87,11 @@ const buildDistrictOptions = (
 const CHAPTER_OPTIONS: AppointmentChapterType[] = ['7', '11', '11-subchapter-v', '12', '13'];
 
 const chaptersToComboOptions = (): ComboOption[] =>
-  CHAPTER_OPTIONS.map((chapter) => ({ value: chapter, label: formatChapterType(chapter) }));
+  CHAPTER_OPTIONS.map((chapter) => ({
+    value: chapter,
+    label: formatChapterType(chapter),
+    selectedLabel: formatChapterType(chapter), // Full label for both display and screen reader
+  }));
 
 const trusteeDistrictFilterUseCase = (
   store: TrusteeDistrictFilterStore,

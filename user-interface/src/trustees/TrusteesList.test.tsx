@@ -69,7 +69,7 @@ describe('TrusteesList Component', () => {
     renderWithRouter(<TrusteesList />);
 
     await waitFor(() => {
-      expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
     });
   });
 
@@ -526,14 +526,14 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup();
       await user.click(screen.getByRole('button', { name: /filters/i }));
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       await user.click(screen.getByLabelText('Chapter'));
-      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
-      await user.click(screen.getByRole('option', { name: /option: 7/ }));
+      expect(await screen.findByRole('option', { name: /Chapter 7/ })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: /Chapter 7/ }));
 
       await waitFor(() => {
         const districtFilterChangedCalls = mockTrackEvent.mock.calls.filter(
@@ -547,6 +547,12 @@ describe('TrusteesList Component', () => {
   });
 
   describe('Chapter Filtering', () => {
+    beforeEach(() => {
+      vi.spyOn(FeatureFlagHook, 'default').mockReturnValue({
+        'trustee-district-division': true,
+      } as FeatureFlagSet);
+    });
+
     test('should filter trustees by selected chapter', async () => {
       const ch7Appt = makeAppointment({ chapter: '7', divisionCode: '081' });
       const ch13Appt = makeAppointment({ chapter: '13', divisionCode: '088' });
@@ -564,26 +570,38 @@ describe('TrusteesList Component', () => {
       });
 
       vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee7, trustee13] });
-      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({
+        data: [
+          {
+            courtId: 'TEST',
+            courtName: 'Test Court',
+            officeCode: '081',
+            officeName: 'Test Office',
+            courtDivisionCode: '081',
+            courtDivisionName: 'Test Division',
+            groupDesignator: 'TST',
+            regionId: '01',
+            regionName: 'Test Region',
+          },
+        ],
+      });
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderWithRouter(<TrusteesList />);
 
-      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
       await userEvent.setup().click(toggleButton);
 
-      expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
-
-      const chapterCombobox = screen.getByLabelText('Chapter');
+      const chapterCombobox = await screen.findByRole('combobox', { name: /chapter/i });
       await userEvent.setup().click(chapterCombobox);
 
-      expect(await screen.findByRole('option', { name: /option: 13/ })).toBeInTheDocument();
-      await userEvent.setup().click(screen.getByRole('option', { name: /option: 13/ }));
+      const option13 = await screen.findByRole('option', { name: /Chapter 13/ });
+      await userEvent.setup().click(option13);
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Thirteen, Bob')).toBeInTheDocument();
         expect(screen.queryByText('Seven, Alice')).not.toBeInTheDocument();
       });
@@ -610,7 +628,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Seven, Alice')).toBeInTheDocument();
         expect(screen.getByText('Thirteen, Bob')).toBeInTheDocument();
       });
@@ -686,7 +704,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       // Wait for default district filter (Manhattan) to be applied — shows A and B
-      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       // Now select chapter 7
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -694,12 +712,12 @@ describe('TrusteesList Component', () => {
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       const chapterCombobox = screen.getByLabelText('Chapter');
       await userEvent.setup().click(chapterCombobox);
-      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
-      await userEvent.setup().click(screen.getByRole('option', { name: /option: 7/ }));
+      expect(await screen.findByRole('option', { name: /Chapter 7/ })).toBeInTheDocument();
+      await userEvent.setup().click(screen.getByRole('option', { name: /Chapter 7/ }));
 
       // Only Trustee A (ch7 + Manhattan) should remain
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Alpha, Alice')).toBeInTheDocument();
         expect(screen.queryByText('Beta, Bob')).not.toBeInTheDocument();
         expect(screen.queryByText('Gamma, Carol')).not.toBeInTheDocument();
@@ -731,7 +749,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('3 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('3 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -740,13 +758,13 @@ describe('TrusteesList Component', () => {
 
       const chapterCombobox = screen.getByLabelText('Chapter');
       await user.click(chapterCombobox);
-      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
-      await user.click(screen.getByRole('option', { name: /option: 7/ }));
-      expect(await screen.findByRole('option', { name: /option: 13/ })).toBeInTheDocument();
-      await user.click(screen.getByRole('option', { name: /option: 13/ }));
+      expect(await screen.findByRole('option', { name: /Chapter 7/ })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: /Chapter 7/ }));
+      expect(await screen.findByRole('option', { name: /Chapter 13/ })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: /Chapter 13/ }));
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Seven, Alice')).toBeInTheDocument();
         expect(screen.getByText('Thirteen, Carol')).toBeInTheDocument();
         expect(screen.queryByText('Eleven, Bob')).not.toBeInTheDocument();
@@ -772,7 +790,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       const liveRegion = screen.getByRole('status');
       // live region starts empty — only populated after chapter interaction
@@ -784,11 +802,11 @@ describe('TrusteesList Component', () => {
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       const chapterCombobox = screen.getByLabelText('Chapter');
       await user.click(chapterCombobox);
-      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
-      await user.click(screen.getByRole('option', { name: /option: 7/ }));
+      expect(await screen.findByRole('option', { name: /Chapter 7/ })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: /Chapter 7/ }));
 
       await waitFor(() => {
-        expect(liveRegion).toHaveTextContent('1 Trustees');
+        expect(liveRegion).toHaveTextContent('1 Trustee');
       });
     });
   });
@@ -807,7 +825,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(LocalStorage, 'getSession').mockReturnValue(null);
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -815,8 +833,8 @@ describe('TrusteesList Component', () => {
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       const chapterCombobox = screen.getByLabelText('Chapter');
       await user.click(chapterCombobox);
-      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
-      await user.click(screen.getByRole('option', { name: /option: 7/ }));
+      expect(await screen.findByRole('option', { name: /Chapter 7/ })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: /Chapter 7/ }));
 
       await waitFor(() => {
         expect(mockTrackEvent).toHaveBeenCalledWith(
@@ -885,7 +903,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup();
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -893,8 +911,8 @@ describe('TrusteesList Component', () => {
       expect(await screen.findByLabelText('Chapter')).toBeInTheDocument();
       const chapterCombobox = screen.getByLabelText('Chapter');
       await user.click(chapterCombobox);
-      expect(await screen.findByRole('option', { name: /option: 7/ })).toBeInTheDocument();
-      await user.click(screen.getByRole('option', { name: /option: 7/ }));
+      expect(await screen.findByRole('option', { name: /Chapter 7/ })).toBeInTheDocument();
+      await user.click(screen.getByRole('option', { name: /Chapter 7/ }));
 
       await waitFor(() => {
         expect(mockTrackEvent).toHaveBeenCalledWith(
@@ -926,7 +944,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       await userEvent
         .setup({ delay: null })
@@ -942,7 +960,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       await userEvent
         .setup({ delay: null })
@@ -954,7 +972,7 @@ describe('TrusteesList Component', () => {
       await vi.advanceTimersByTimeAsync(300);
 
       expect(searchSpy).not.toHaveBeenCalled();
-      expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
     });
 
     test('filters trustees by name when 2+ characters typed', async () => {
@@ -966,7 +984,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       await userEvent
         .setup({ delay: null })
@@ -980,7 +998,7 @@ describe('TrusteesList Component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
         expect(screen.queryByText('Jones, Bob')).not.toBeInTheDocument();
       });
@@ -993,7 +1011,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({ data: [] });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       await userEvent
         .setup({ delay: null })
@@ -1007,7 +1025,7 @@ describe('TrusteesList Component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('0 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('0 Trustees', { selector: 'p' })).toBeInTheDocument();
         expect(screen.queryByText('Smith, Alice')).not.toBeInTheDocument();
       });
     });
@@ -1021,7 +1039,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1030,12 +1048,12 @@ describe('TrusteesList Component', () => {
       await act(async () => {
         await vi.advanceTimersByTimeAsync(300);
       });
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
-      await user.click(screen.getByRole('button', { name: /^clear$/i }));
+      await user.click(screen.getByRole('button', { name: /clear trustee name filter/i }));
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
         expect(screen.getByText('Jones, Bob')).toBeInTheDocument();
       });
@@ -1050,7 +1068,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       const liveRegion = screen.getByRole('status');
       expect(liveRegion).toHaveTextContent('');
@@ -1067,7 +1085,7 @@ describe('TrusteesList Component', () => {
       });
 
       await waitFor(() => {
-        expect(liveRegion).toHaveTextContent('1 Trustees');
+        expect(liveRegion).toHaveTextContent('1 Trustee');
       });
     });
 
@@ -1079,7 +1097,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       await userEvent
         .setup({ delay: null })
@@ -1114,7 +1132,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       await userEvent
         .setup({ delay: null })
@@ -1128,7 +1146,7 @@ describe('TrusteesList Component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
       const changedCalls = mockTrackEvent.mock.calls.filter(
@@ -1145,7 +1163,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1154,7 +1172,7 @@ describe('TrusteesList Component', () => {
         await vi.advanceTimersByTimeAsync(300);
       });
 
-      await user.click(screen.getByRole('button', { name: /^clear$/i }));
+      await user.click(screen.getByRole('button', { name: /clear trustee name filter/i }));
 
       await waitFor(() => {
         expect(mockTrackEvent).toHaveBeenCalledWith(
@@ -1174,7 +1192,7 @@ describe('TrusteesList Component', () => {
       });
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1206,7 +1224,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(Api2, 'searchTrustees').mockRejectedValue(new Error('Network error'));
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1216,9 +1234,9 @@ describe('TrusteesList Component', () => {
         await vi.advanceTimersByTimeAsync(300);
       });
 
-      // Should NOT silently show "0 Trustee(s)" — either full list restored or error surfaced
+      // Should NOT silently show "0 Trustees" — either full list restored or error surfaced
       await waitFor(() => {
-        expect(screen.queryByText('0 Trustee(s)', { selector: 'p' })).not.toBeInTheDocument();
+        expect(screen.queryByText('0 Trustees', { selector: 'p' })).not.toBeInTheDocument();
       });
     });
 
@@ -1238,7 +1256,7 @@ describe('TrusteesList Component', () => {
       );
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1273,7 +1291,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(Api2, 'searchTrustees').mockImplementation(() => new Promise(() => {}));
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1293,7 +1311,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(Api2, 'searchTrustees').mockImplementation(() => new Promise(() => {}));
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1325,7 +1343,7 @@ describe('TrusteesList Component', () => {
         .mockImplementationOnce(() => new Promise(() => {}));
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1340,7 +1358,7 @@ describe('TrusteesList Component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
       // Type another character — triggers second (never-resolving) request
@@ -1351,7 +1369,7 @@ describe('TrusteesList Component', () => {
       });
 
       // Snapshot count (1) should be displayed, not the full list (2) or zero
-      expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       expect(screen.getByText('Searching trustees...')).toBeInTheDocument();
     });
 
@@ -1370,7 +1388,7 @@ describe('TrusteesList Component', () => {
       );
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1388,7 +1406,7 @@ describe('TrusteesList Component', () => {
 
       await waitFor(() => {
         expect(screen.queryByText('Searching trustees...')).not.toBeInTheDocument();
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
         expect(screen.queryByText('Jones, Bob')).not.toBeInTheDocument();
       });
@@ -1401,7 +1419,7 @@ describe('TrusteesList Component', () => {
       vi.spyOn(Api2, 'searchTrustees').mockImplementation(() => new Promise(() => {}));
 
       renderWithRouter(<TrusteesList />);
-      expect(await screen.findByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(await screen.findByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
 
       const user = userEvent.setup({ delay: null });
       await user.click(screen.getByRole('button', { name: /filters/i }));
@@ -1417,7 +1435,7 @@ describe('TrusteesList Component', () => {
 
       await waitFor(() => {
         expect(screen.queryByText('Searching trustees...')).not.toBeInTheDocument();
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Smith, Alice')).toBeInTheDocument();
         expect(screen.getByText('Jones, Bob')).toBeInTheDocument();
       });
@@ -1458,7 +1476,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
       });
 
       // Check live region for filter announcements
@@ -1594,7 +1612,7 @@ describe('TrusteesList Component', () => {
         expect(screen.getByText('Trustee, Vermont')).toBeInTheDocument();
         expect(screen.queryByText('Trustee, California')).not.toBeInTheDocument();
       });
-      expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+      expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
     });
 
     test('should show all trustees when no district filter is active, including unassigned ones', async () => {
@@ -1628,7 +1646,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('3 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('3 Trustees', { selector: 'p' })).toBeInTheDocument();
       });
 
       expect(screen.getByText('Trustee, Appointed')).toBeInTheDocument();
@@ -1822,7 +1840,7 @@ describe('TrusteesList Component', () => {
 
       // Should remove the filter and show all trustees
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
     });
   });
@@ -1951,7 +1969,7 @@ describe('TrusteesList Component', () => {
 
       await waitFor(() => {
         expect(screen.getByText('Divisions, All')).toBeInTheDocument();
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
     });
 
@@ -2028,7 +2046,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('York, New')).toBeInTheDocument();
         expect(screen.getByText('Fornia, Cali')).toBeInTheDocument();
       });
@@ -2087,7 +2105,7 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(screen.getByText('York, New')).toBeInTheDocument();
         expect(screen.queryByText('Person, Other')).not.toBeInTheDocument();
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
     });
   });
@@ -2351,7 +2369,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
       });
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -2367,19 +2385,19 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(
           screen.getByRole('option', {
-            name: /option: Southern District of New York \(Manhattan\)/i,
+            name: /Southern District of New York \(Manhattan\)/i,
           }),
         ).toBeInTheDocument();
       });
 
       await userEvent.setup().click(
         screen.getByRole('option', {
-          name: /option: Southern District of New York \(Manhattan\)/i,
+          name: /Southern District of New York \(Manhattan\)/i,
         }),
       );
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
         expect(screen.queryByText('WhitePlains, Bob')).not.toBeInTheDocument();
       });
@@ -2416,7 +2434,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
       });
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -2432,19 +2450,19 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(
           screen.getByRole('option', {
-            name: /option: Southern District of New York \(White Plains\)/i,
+            name: /Southern District of New York \(White Plains\)/i,
           }),
         ).toBeInTheDocument();
       });
 
       await userEvent.setup().click(
         screen.getByRole('option', {
-          name: /option: Southern District of New York \(White Plains\)/i,
+          name: /Southern District of New York \(White Plains\)/i,
         }),
       );
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('AllDivisions, Alice')).toBeInTheDocument();
         expect(screen.getByText('WhitePlains, Bob')).toBeInTheDocument();
       });
@@ -2459,7 +2477,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -2482,7 +2500,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -2498,17 +2516,17 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(
           screen.getByRole('option', {
-            name: /option: Southern District of New York \(All\)/i,
+            name: /Southern District of New York \(All\)/i,
           }),
         ).toBeInTheDocument();
         expect(
           screen.getByRole('option', {
-            name: /option: Southern District of New York \(Manhattan\)/i,
+            name: /Southern District of New York \(Manhattan\)/i,
           }),
         ).toBeInTheDocument();
         expect(
           screen.getByRole('option', {
-            name: /option: Southern District of New York \(White Plains\)/i,
+            name: /Southern District of New York \(White Plains\)/i,
           }),
         ).toBeInTheDocument();
       });
@@ -2539,7 +2557,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
       });
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -2555,18 +2573,18 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(
           screen.getByRole('option', {
-            name: /option: Southern District of New York \(Manhattan\)/i,
+            name: /Southern District of New York \(Manhattan\)/i,
           }),
         ).toBeInTheDocument();
       });
       await userEvent.setup().click(
         screen.getByRole('option', {
-          name: /option: Southern District of New York \(Manhattan\)/i,
+          name: /Southern District of New York \(Manhattan\)/i,
         }),
       );
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
         expect(screen.queryByText('WhitePlains, Bob')).not.toBeInTheDocument();
       });
@@ -2577,7 +2595,7 @@ describe('TrusteesList Component', () => {
       await userEvent.setup().click(manhattanPill);
 
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
         expect(screen.getByText('WhitePlains, Bob')).toBeInTheDocument();
       });
@@ -2599,7 +2617,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -2615,14 +2633,14 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(
           screen.getByRole('option', {
-            name: /option: Southern District of New York \(Manhattan\)/i,
+            name: /Southern District of New York \(Manhattan\)/i,
           }),
         ).toBeInTheDocument();
       });
 
       await userEvent.setup().click(
         screen.getByRole('option', {
-          name: /option: Southern District of New York \(Manhattan\)/i,
+          name: /Southern District of New York \(Manhattan\)/i,
         }),
       );
 
@@ -2673,7 +2691,7 @@ describe('TrusteesList Component', () => {
 
       // Session default (NYSB Manhattan) is applied on mount — only Manhattan trustee visible
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
         expect(screen.queryByText('OfDistrict, Out')).not.toBeInTheDocument();
       });
@@ -2691,7 +2709,7 @@ describe('TrusteesList Component', () => {
       // With no active filters, trustees from ALL districts must appear.
       // The bug would have kept selectedDistricts = [NYSB] active, showing only 1 trustee.
       await waitFor(() => {
-        expect(screen.getByText('2 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
         expect(screen.getByText('OfDistrict, Out')).toBeInTheDocument();
       });
@@ -2720,7 +2738,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
         expect(screen.getByText('Manhattan, Alice')).toBeInTheDocument();
         expect(screen.queryByText('WhitePlains, Bob')).not.toBeInTheDocument();
       });
@@ -2745,7 +2763,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -2761,7 +2779,7 @@ describe('TrusteesList Component', () => {
       await waitFor(() => {
         expect(
           screen.getByRole('option', {
-            name: /option: Southern District of New York \(Manhattan\)/i,
+            name: /Southern District of New York \(Manhattan\)/i,
           }),
         ).toBeInTheDocument();
       });
@@ -2793,7 +2811,7 @@ describe('TrusteesList Component', () => {
       renderWithRouter(<TrusteesList />);
 
       await waitFor(() => {
-        expect(screen.getByText('1 Trustee(s)', { selector: 'p' })).toBeInTheDocument();
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
       });
 
       const toggleButton = screen.getByRole('button', { name: /filters/i });
@@ -2804,6 +2822,100 @@ describe('TrusteesList Component', () => {
       });
 
       expect(screen.queryByLabelText('Division')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Filter Expansion Screen Reader Announcements', () => {
+    test('should announce trustees filtered by name when expanding filter header', async () => {
+      const trusteeAlice = makeListItem({
+        trusteeId: 'alice',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        appointments: [makeAppointment({ courtId: 'NYSB' })],
+      });
+      const trusteeBob = makeListItem({
+        trusteeId: 'bob',
+        firstName: 'Bob',
+        lastName: 'Jones',
+        appointments: [makeAppointment({ courtId: 'CAB' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trusteeAlice, trusteeBob] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trusteeAlice, matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('2 Trustees', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      // Enter name filter
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /filters/i })).toBeInTheDocument();
+      });
+
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      const nameInput = await screen.findByRole('textbox', { name: /trustee name/i });
+      await userEvent.setup().type(nameInput, 'Alice');
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      // Close filter
+      await userEvent.setup().click(toggleButton);
+
+      // Re-open filter - should announce name filter
+      await userEvent.setup().click(toggleButton);
+
+      const liveRegion = screen.getByRole('status');
+      await waitFor(() => {
+        expect(liveRegion).toHaveTextContent('1 Trustee filtered by name');
+      });
+    });
+  });
+
+  describe('Name Filter Input Rendering', () => {
+    test('should not auto-announce input value when accordion expands with content', async () => {
+      const trustee = makeListItem({
+        trusteeId: '1',
+        firstName: 'Alice',
+        lastName: 'Smith',
+        appointments: [makeAppointment({ courtId: 'NYSB' })],
+      });
+
+      vi.spyOn(Api2, 'getTrustees').mockResolvedValue({ data: [trustee] });
+      vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: [] });
+      vi.spyOn(Api2, 'searchTrustees').mockResolvedValue({
+        data: [{ ...trustee, matchType: 'exact' }],
+      });
+
+      renderWithRouter(<TrusteesList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('1 Trustee', { selector: 'p' })).toBeInTheDocument();
+      });
+
+      // Open filter and type content
+      const toggleButton = screen.getByRole('button', { name: /filters/i });
+      await userEvent.setup().click(toggleButton);
+
+      const nameInput = await screen.findByRole('textbox', { name: /trustee name/i });
+      await userEvent.setup().type(nameInput, 'Alice');
+
+      // Input should have aria-live="off" to prevent auto-announcement of value
+      expect(nameInput).toHaveAttribute('aria-live', 'off');
+      expect(nameInput).toHaveAttribute('aria-atomic', 'false');
+
+      // Label should be visible (not aria-hidden) so it can be read
+      const label = screen.getByText('Trustee Name', { selector: '.filter-control-label' });
+      expect(label).toBeInTheDocument();
+      expect(label).not.toHaveAttribute('aria-hidden');
     });
   });
 });
