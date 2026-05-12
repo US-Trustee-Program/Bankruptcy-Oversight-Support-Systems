@@ -510,11 +510,11 @@ describe('trustee district filter use case tests', () => {
 
       expect(options).toHaveLength(5);
       expect(options).toEqual([
-        { value: '7', label: '7' },
-        { value: '11', label: '11' },
-        { value: '11-subchapter-v', label: '11 Subchapter V' },
-        { value: '12', label: '12' },
-        { value: '13', label: '13' },
+        { value: '7', label: '7', selectedLabel: '7' },
+        { value: '11', label: '11', selectedLabel: '11' },
+        { value: '11-subchapter-v', label: '11 Subchapter V', selectedLabel: '11 Subchapter V' },
+        { value: '12', label: '12', selectedLabel: '12' },
+        { value: '13', label: '13', selectedLabel: '13' },
       ]);
     });
   });

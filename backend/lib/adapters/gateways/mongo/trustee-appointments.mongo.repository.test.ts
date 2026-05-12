@@ -146,14 +146,6 @@ describe('TrusteeAppointmentsMongoRepository', () => {
       expect(mockAdapter).toHaveBeenCalledWith(expectedReadQuery);
     });
 
-    test('should throw error when appointment does not belong to trustee', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(null);
-
-      await expect(repository.read('wrong-trustee', 'appointment-1')).rejects.toThrow(
-        'Trustee appointment with ID appointment-1 not found.',
-      );
-    });
-
     test('should handle database errors', async () => {
       const error = new Error('Database connection failed');
       vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockRejectedValue(error);
@@ -432,14 +424,6 @@ describe('TrusteeAppointmentsMongoRepository', () => {
       ).rejects.toThrow(`Trustee appointment with ID ${appointmentId} not found.`);
 
       expect(mockFindOne).toHaveBeenCalledWith(expectedUpdateQuery);
-    });
-
-    test('should throw error when appointment does not belong to trustee', async () => {
-      vi.spyOn(MongoCollectionAdapter.prototype, 'findOne').mockResolvedValue(null);
-
-      await expect(
-        repository.updateAppointment('wrong-trustee', appointmentId, appointmentUpdate, mockUser),
-      ).rejects.toThrow(`Trustee appointment with ID ${appointmentId} not found.`);
     });
 
     test('should handle database errors during update', async () => {

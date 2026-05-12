@@ -85,6 +85,11 @@ $listItemHoverBackground: #b0b0b0;
         .combo-box-input.hide-input {
           display: none;
         }
+        .combo-box-input.ellipsis {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
       }
     }
     .input-container.disabled {

@@ -101,21 +101,6 @@ describe('Division Change Cleanup Migration', () => {
       );
     });
 
-    test('should call DivisionChangeCleanupUseCase.cleanupOrphanedCase', async () => {
-      const message: OrphanedCaseMessage = {
-        orphanedCaseId: 'orphaned-123',
-        currentCaseId: 'current-456',
-      };
-
-      const cleanupSpy = vi
-        .spyOn(DivisionChangeCleanupUseCase, 'cleanupOrphanedCase')
-        .mockResolvedValue(0);
-
-      await handleFix(message, mockInvocationContext);
-
-      expect(cleanupSpy).toHaveBeenCalled();
-    });
-
     test('should pass both orphaned and current case IDs to cleanup', async () => {
       const message: OrphanedCaseMessage = {
         orphanedCaseId: 'orphaned-123',
@@ -208,14 +193,6 @@ describe('Division Change Cleanup Migration', () => {
     test('should register start handler', () => {
       expect(DivisionChangeCleanupMigration.setup).toBeDefined();
       expect(typeof DivisionChangeCleanupMigration.setup).toBe('function');
-    });
-
-    test('should create START queue output binding', () => {
-      expect(DivisionChangeCleanupMigration.setup).toBeDefined();
-    });
-
-    test('should create FIX queue output binding', () => {
-      expect(DivisionChangeCleanupMigration.setup).toBeDefined();
     });
 
     test('should register handleStart function', () => {
