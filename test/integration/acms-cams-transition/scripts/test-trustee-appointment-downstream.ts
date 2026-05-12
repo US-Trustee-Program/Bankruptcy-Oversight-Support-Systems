@@ -11,6 +11,9 @@
  *   npx tsx --tsconfig backend/tsconfig.json \
  *     test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts [command]
  *
+ * Or via package.json script (from test/integration/):
+ *   npm run acms-cams-transition -- [command]
+ *
  * Commands:
  *   check-env             Verify all required environment variables are set
  *   create-db <dbname>    CREATE DATABASE on the ACMS SQL Server instance
@@ -39,8 +42,11 @@ import { TrusteeAppointmentSyncEvent } from '../../../../common/src/cams/dataflo
 import { TrusteeProfessionalId } from '../../../../common/src/cams/trustee-professional-ids';
 import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
 
+// Resolve paths relative to the repo root (two levels up from test/integration/)
+const REPO_ROOT = path.resolve(__dirname, '../../../../');
+
 // Load backend/.env first (primary config: Cosmos, DXTR, downstream SQL)
-dotenv.config({ path: 'backend/.env' });
+dotenv.config({ path: path.join(REPO_ROOT, 'backend/.env') });
 
 // Load local.settings.json Values into process.env so the harness behaves like
 // the Functions runtime locally (provides AzureWebJobsDataflowsStorage etc.)
@@ -60,7 +66,9 @@ function loadLocalSettings(settingsPath: string) {
   }
 }
 
-loadLocalSettings('backend/function-apps/dataflows/local.settings.json');
+loadLocalSettings(
+  path.join(REPO_ROOT, 'backend/function-apps/dataflows/local.settings.json'),
+);
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -153,7 +161,7 @@ async function getAcmsSqlPool(database: string): Promise<sql.ConnectionPool> {
 // Split a SQL file on GO batch separators and execute each batch in sequence.
 // Skips empty batches (blank lines between GO statements).
 async function executeSqlFile(pool: sql.ConnectionPool, filePath: string): Promise<void> {
-  const content = fs.readFileSync(path.resolve(filePath), 'utf-8');
+  const content = fs.readFileSync(filePath, 'utf-8');
   const batches = content
     .split(/^\s*GO\s*$/im)
     .map((b) => b.trim())
@@ -266,7 +274,10 @@ async function runSql(filePath: string, dbName: string) {
     process.exit(1);
   }
 
-  const resolved = path.resolve(filePath);
+  // Accept both repo-root-relative and absolute paths
+  const resolved = path.isAbsolute(filePath)
+    ? filePath
+    : path.resolve(REPO_ROOT, filePath);
   if (!fs.existsSync(resolved)) {
     console.error(`File not found: ${resolved}`);
     process.exit(1);
@@ -277,7 +288,7 @@ async function runSql(filePath: string, dbName: string) {
   const pool = await getAcmsSqlPool(dbName);
   try {
     await executeSqlFile(pool, resolved);
-    pass(`${path.basename(filePath)} executed successfully against '${dbName}'`);
+    pass(`${path.basename(resolved)} executed successfully against '${dbName}'`);
   } finally {
     await pool.close();
   }

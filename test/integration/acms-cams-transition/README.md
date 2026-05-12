@@ -2,7 +2,7 @@
 
 One-shot integration harnesses for the ACMS-CAMS transition database layer, including the CAMS-616 trustee appointment downstream flow.
 
-**Intended executor:** AI agent running from the repo root. All SQL operations go through the TypeScript harness — no `sqlcmd` required.
+**Intended executor:** AI agent running from `test/integration/`. All SQL operations go through the TypeScript harness — no `sqlcmd` required.
 
 **Not** Vitest unit tests. **Not** Playwright e2e tests. These seed real databases, invoke real use cases against lower-environment infrastructure, and assert the expected state.
 
@@ -12,11 +12,13 @@ One-shot integration harnesses for the ACMS-CAMS transition database layer, incl
 
 ## Harness shorthand
 
-All commands below use this prefix (from repo root):
+All commands run from `test/integration/` via the npm script:
 
 ```
-HARNESS="npx tsx --tsconfig backend/tsconfig.json test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts"
+HARNESS="npm run acms-cams-transition --"
 ```
+
+File path arguments to `run-sql` are resolved relative to the repo root.
 
 ---
 

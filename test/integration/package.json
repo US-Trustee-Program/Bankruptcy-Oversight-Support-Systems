@@ -1,0 +1,8 @@
+{
+  "name": "cams-integration-tests",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "acms-cams-transition": "npx tsx --tsconfig ../../backend/tsconfig.json acms-cams-transition/scripts/test-trustee-appointment-downstream.ts"
+  }
+}
