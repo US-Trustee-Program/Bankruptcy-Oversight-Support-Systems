@@ -35,6 +35,7 @@ import {
   UserGroupsRepository,
   UserSessionCacheRepository,
   UsersRepository,
+  BankruptcySoftwareRepository,
 } from './use-cases/gateways.types';
 import DxtrOrdersGateway from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
@@ -95,6 +96,7 @@ import {
 } from './use-cases/gateways.types';
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
+import { BankruptcySoftwareMongoRepository } from './adapters/gateways/mongo/bankruptcy-software.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
@@ -161,6 +163,17 @@ const getBanksRepository = (context: ApplicationContext): BanksRepository => {
     return new MockMongoRepository();
   }
   const repo = BanksMongoRepository.getInstance(context);
+  deferRelease(repo, context);
+  return repo;
+};
+
+const getBankruptcySoftwareRepository = (
+  context: ApplicationContext,
+): BankruptcySoftwareRepository => {
+  if (context.config.get('dbMock')) {
+    return new MockMongoRepository();
+  }
+  const repo = BankruptcySoftwareMongoRepository.getInstance(context);
   deferRelease(repo, context);
   return repo;
 };
@@ -529,6 +542,7 @@ const factory = {
   getCasesGateway,
   getAssignmentRepository,
   getBanksRepository,
+  getBankruptcySoftwareRepository,
   getCaseNotesRepository,
   getCaseDocketUseCase,
   getOrdersGateway,
