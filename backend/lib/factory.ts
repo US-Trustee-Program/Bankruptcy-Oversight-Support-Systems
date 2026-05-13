@@ -35,7 +35,6 @@ import {
   UserGroupsRepository,
   UserSessionCacheRepository,
   UsersRepository,
-  BankruptcySoftwareRepository,
 } from './use-cases/gateways.types';
 import DxtrOrdersGateway from './adapters/gateways/dxtr/orders.dxtr.gateway';
 import { OfficesGateway } from './use-cases/offices/offices.types';
@@ -98,7 +97,6 @@ import {
 } from './use-cases/gateways.types';
 import { ApiToDataflowsGatewayImpl } from './adapters/gateways/api-to-dataflows/api-to-dataflows.gateway';
 import { AzureBlobObjectStorageGateway } from './adapters/gateways/storage/azure-blob-object-storage.gateway';
-import { BankruptcySoftwareMongoRepository } from './adapters/gateways/mongo/bankruptcy-software.mongo.repository';
 
 let casesGateway: CasesInterface;
 let ordersGateway: OrdersGateway;
