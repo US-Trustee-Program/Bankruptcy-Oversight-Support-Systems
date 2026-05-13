@@ -2857,6 +2857,36 @@ async function createBank(data: Pick<BankProfile, 'name'>) {
   };
 }
 
+async function getBank(bankId: string) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: bankId,
+      documentType: 'BANK_PROFILE' as const,
+      name: 'Mock Bank',
+      status: 'active' as const,
+      updatedOn: now,
+      updatedBy: mockUser,
+    } as BankProfile,
+  };
+}
+
+async function updateBank(bankId: string, data: Pick<BankProfile, 'name' | 'status'>) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: bankId,
+      documentType: 'BANK_PROFILE' as const,
+      name: data.name,
+      status: data.status,
+      updatedOn: now,
+      updatedBy: mockUser,
+    } as BankProfile,
+  };
+}
+
 async function postCaseReload(_caseId: string) {
   return;
 }
@@ -2981,6 +3011,8 @@ const MockApi2 = {
   deleteBankruptcySoftware,
   createBank,
   getBanks,
+  getBank,
+  updateBank,
   getUpcomingKeyDates,
   putUpcomingKeyDates,
   getTrusteeOversightAssignments,

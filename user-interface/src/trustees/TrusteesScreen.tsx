@@ -4,6 +4,7 @@ import LocalStorage from '@/lib/utils/local-storage';
 import { CamsRole } from '@common/cams/roles';
 import TrusteesList from './TrusteesList';
 import { MainContent } from '@/lib/components/cams/MainContent/MainContent';
+import DocumentTitle from '@/lib/components/cams/DocumentTitle/DocumentTitle';
 
 export default function TrusteesScreen() {
   const flags = useFeatureFlags();
@@ -24,6 +25,7 @@ export default function TrusteesScreen() {
   if (hasNestedRoute) {
     return (
       <MainContent data-testid="trustees">
+        <DocumentTitle name="Trustees" />
         <Outlet />
       </MainContent>
     );
@@ -32,6 +34,7 @@ export default function TrusteesScreen() {
   // For authorized access to main trustees view, render full interface
   return (
     <MainContent data-testid="trustees">
+      <DocumentTitle name="Trustees" />
       <div>
         <div className="display-flex flex-justify flex-align-end">
           <h1 className="display-inline-block margin-bottom-0">Trustees</h1>

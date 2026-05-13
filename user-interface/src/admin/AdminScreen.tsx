@@ -7,6 +7,7 @@ import { PrivilegedIdentity } from './privileged-identity/PrivilegedIdentity';
 import { BankruptcySoftware } from './bankruptcy-software/BankruptcySoftware';
 import { CaseReload } from './case-reload/CaseReload';
 import { Banks } from './banks/Banks';
+import { BankDetail } from './banks/BankDetail';
 import { Stop } from '@/lib/components/Stop';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import useFeatureFlags, { PRIVILEGED_IDENTITY_MANAGEMENT } from '../lib/hooks/UseFeatureFlags';
@@ -37,13 +38,8 @@ export function AdminScreen() {
   return (
     <MainContent className="admin-screen" data-testid="admin-screen">
       <DocumentTitle name="Administration" />
-      <div className="grid-row">
-        <div className="grid-col-12">
-          <h1>Administration</h1>
-        </div>
-      </div>
-      <div className="grid-row grid-gap-lg">
-        {hasInvalidPermission || flags[PRIVILEGED_IDENTITY_MANAGEMENT] === false ? (
+      {hasInvalidPermission || flags[PRIVILEGED_IDENTITY_MANAGEMENT] === false ? (
+        <div className="grid-row">
           <div className="grid-col-12">
             <Stop
               id="forbidden-alert"
@@ -52,25 +48,40 @@ export function AdminScreen() {
               asError
             ></Stop>
           </div>
-        ) : (
-          <>
-            <div className="grid-col-2">
-              <div className={'left-navigation-pane-container'}>
-                <AdminScreenNavigation initiallySelectedNavLink={getInitialNavState()} />
-              </div>
-            </div>
-            <div className="grid-col-10">
-              <Routes>
-                <Route path="privileged-identity" element={<PrivilegedIdentity />} />
-                <Route path="banks" element={<Banks />} />
-                <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
-                <Route path="case-reload" element={<CaseReload />} />
-                <Route path="*" element={<div data-testid={'no-admin-panel-selected'} />} />
-              </Routes>
-            </div>
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <Routes>
+          <Route path="banks/:bankId/*" element={<BankDetail />} />
+          <Route
+            path="*"
+            element={
+              <>
+                <div className="grid-row">
+                  <div className="grid-col-12">
+                    <h1>Administration</h1>
+                  </div>
+                </div>
+                <div className="grid-row grid-gap-lg">
+                  <div className="grid-col-2">
+                    <div className="left-navigation-pane-container">
+                      <AdminScreenNavigation initiallySelectedNavLink={getInitialNavState()} />
+                    </div>
+                  </div>
+                  <div className="grid-col-10">
+                    <Routes>
+                      <Route path="privileged-identity" element={<PrivilegedIdentity />} />
+                      <Route path="banks" element={<Banks />} />
+                      <Route path="bankruptcy-software" element={<BankruptcySoftware />} />
+                      <Route path="case-reload" element={<CaseReload />} />
+                      <Route path="*" element={<div data-testid={'no-admin-panel-selected'} />} />
+                    </Routes>
+                  </div>
+                </div>
+              </>
+            }
+          />
+        </Routes>
+      )}
     </MainContent>
   );
 }

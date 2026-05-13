@@ -77,7 +77,15 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
+  getBank(_id: string): Promise<BankProfile> {
+    throw new Error('Method not implemented.');
+  }
+
   createBank(_bank: Creatable<BankProfile>): Promise<BankProfile> {
+    throw new Error('Method not implemented.');
+  }
+
+  updateBank(_id: string, _bank: BankProfile): Promise<BankProfile> {
     throw new Error('Method not implemented.');
   }
 

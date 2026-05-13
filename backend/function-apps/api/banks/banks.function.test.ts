@@ -9,13 +9,18 @@ import {
   createMockAzureFunctionRequest,
 } from '../../azure/testing-helpers';
 import { BanksController } from '../../../lib/controllers/banks/banks.controller';
+import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
 import { BankProfile } from '@common/cams/banks';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 
 describe('Banks Function tests', () => {
   let context: InvocationContext;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const camsContext = await createMockApplicationContext();
+    camsContext.session = MockData.getCamsSession();
+    vi.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
     vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
       MockData.getCamsSession(),
     );
@@ -37,48 +42,25 @@ describe('Banks Function tests', () => {
     },
   ];
 
-  test('should return 200 with bank list for GET request', async () => {
+  test('should delegate to controller.handleRequest and return response', async () => {
     const request = createMockAzureFunctionRequest({ method: 'GET' });
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<BankProfile[]>({
       data: mockBanks,
     });
-    vi.spyOn(BanksController.prototype, 'handleGet').mockResolvedValue(camsHttpResponse);
-
-    const response = await handler(request, context);
-
-    expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should return 201 with created bank for POST request', async () => {
-    const request = createMockAzureFunctionRequest({
-      method: 'POST',
-      body: { name: 'Alpha Bank' },
-    });
-    const createdBank = mockBanks[0];
-    const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<BankProfile>(
-      { data: createdBank },
-      { statusCode: 201 },
+    vi.spyOn(BanksController.prototype, 'handleRequest').mockResolvedValue(
+      camsHttpResponse as CamsHttpResponseInit,
     );
-    vi.spyOn(BanksController.prototype, 'handlePost').mockResolvedValue(camsHttpResponse);
 
     const response = await handler(request, context);
 
     expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should return 405 for unsupported HTTP method', async () => {
-    const request = createMockAzureFunctionRequest({ method: 'DELETE' });
-
-    const response = await handler(request, context);
-
-    expect(response.status).toBe(405);
   });
 
   test('should return error response when controller throws', async () => {
     const request = createMockAzureFunctionRequest({ method: 'GET' });
     const error = new CamsError('BANKS-CONTROLLER', { message: 'Something went wrong.' });
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
-    vi.spyOn(BanksController.prototype, 'handleGet').mockRejectedValue(error);
+    vi.spyOn(BanksController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
 
