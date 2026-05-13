@@ -541,6 +541,12 @@ async function seedIntegration() {
 
 async function run() {
   console.log('\nRunning trustee appointment downstream integration test...\n');
+
+  console.log('Pre-run: Reset to known state');
+  await clean();
+  await seedIntegration();
+  console.log('');
+
   console.log('Test event:');
   console.log(JSON.stringify(TEST_SYNC_EVENT, null, 2));
   console.log('');
