@@ -7,7 +7,7 @@
  *
  * Usage (from repo root):
  *   npx tsx --tsconfig backend/tsconfig.json \
- *     test/migration/bankruptcy-software/CAMS-669-migrate-bankruptcy-software.ts
+ *     ops/migrations/CAMS-669-migrate-bankruptcy-software.ts
  *
  * After running:
  *   1. Count in `bankruptcy-software` should match count of
@@ -22,11 +22,11 @@
 import * as dotenv from 'dotenv';
 import { MongoClient } from 'mongodb';
 import { InvocationContext } from '@azure/functions';
-import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../../common/src/cams/auditable';
-import { BankruptcySoftwareProfile } from '../../../common/src/cams/bankruptcy-software';
-import { Creatable } from '../../../common/src/cams/creatable';
-import ApplicationContextCreator from '../../../backend/function-apps/azure/application-context-creator';
-import factory from '../../../backend/lib/factory';
+import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../common/src/cams/auditable';
+import { BankruptcySoftwareProfile } from '../../common/src/cams/bankruptcy-software';
+import { Creatable } from '../../common/src/cams/creatable';
+import ApplicationContextCreator from '../../backend/function-apps/azure/application-context-creator';
+import factory from '../../backend/lib/factory';
 
 dotenv.config({ path: 'backend/.env' });
 
