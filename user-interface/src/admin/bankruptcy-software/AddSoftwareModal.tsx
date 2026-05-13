@@ -50,8 +50,7 @@ export const AddSoftwareModal = forwardRef<AddSoftwareModalRef, AddSoftwareModal
 
       try {
         const response = await Api2.createSoftware({ name: trimmed });
-        const created = (response as { data: BankruptcySoftwareProfile }).data;
-        onSuccess(created);
+        onSuccess(response!.data);
         modalRef.current?.hide();
         alert?.success('Bankruptcy software added successfully.');
       } catch (error) {
