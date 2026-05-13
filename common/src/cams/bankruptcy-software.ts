@@ -1,0 +1,17 @@
+import { Auditable } from './auditable';
+import { Identifiable } from './document';
+
+export type BankruptcySoftwareProfile = Identifiable &
+  Auditable & {
+    documentType: 'BANKRUPTCY_SOFTWARE';
+    name: string;
+    status: 'active' | 'inactive';
+  };
+
+export type BankruptcySoftwareAuditHistory = Identifiable &
+  Auditable & {
+    documentType: 'AUDIT_BANKRUPTCY_SOFTWARE';
+    softwareId: string;
+    before: Partial<BankruptcySoftwareProfile> | null;
+    after: Partial<BankruptcySoftwareProfile>;
+  };

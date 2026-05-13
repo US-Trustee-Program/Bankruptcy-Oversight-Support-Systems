@@ -4,8 +4,13 @@ import { AdminScreen } from './AdminScreen';
 import LocalStorage from '@/lib/utils/local-storage';
 import MockData from '@common/cams/test-utilities/mock-data';
 import { CamsRole } from '@common/cams/roles';
-import * as FeatureFlags from '@/lib/hooks/UseFeatureFlags';
-import { PRIVILEGED_IDENTITY_MANAGEMENT } from '@/lib/hooks/UseFeatureFlags';
+import { testFeatureFlags } from '@common/feature-flags';
+
+vi.mock('@/lib/hooks/UseFeatureFlags', () => ({
+  default: () => testFeatureFlags,
+  PRIVILEGED_IDENTITY_MANAGEMENT: 'privileged-identity-management',
+  TRUSTEE_SOFTWARE_BANK_DISPLAY: 'trustee-software-bank-display',
+}));
 
 vi.mock('./privileged-identity/PrivilegedIdentity', () => ({
   PrivilegedIdentity: () => <div data-testid="mocked-privileged-identity" />,
@@ -79,9 +84,6 @@ describe('Admin screen tests', () => {
   });
 
   test('should select privileged-identity nav when path matches', () => {
-    vi.spyOn(FeatureFlags, 'default').mockReturnValue({
-      [PRIVILEGED_IDENTITY_MANAGEMENT]: true,
-    });
     renderAtPath('/admin/privileged-identity');
     const navLink = screen.getByTestId('privileged-identity-nav-link');
     expect(navLink).toHaveClass('usa-current');

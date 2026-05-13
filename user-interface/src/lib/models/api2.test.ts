@@ -12,9 +12,7 @@ import {
 } from '@common/cams/orders';
 import LocalStorage from '@/lib/utils/local-storage';
 import { blankConfiguration } from '../testing/mock-configuration';
-import { BankruptcySoftwareListItem } from '@common/cams/lists';
 import { BankProfile } from '@common/cams/banks';
-import { Creatable } from '@common/cams/creatable';
 
 type ApiType = {
   addApiBeforeHook: typeof addApiBeforeHook;
@@ -104,7 +102,7 @@ describe('_Api2 functions', async () => {
     await callApiFunction(api2.default.getTrusteeAppointments, 'some-id', api);
     await callApiFunction(api2.default.getTrusteeOversightAssignments, 'some-id', api);
     await callApiFunction(api2.default.getBanks, null, api);
-    await callApiFunction(api2.default.getBankruptcySoftwareList, null, api);
+    await callApiFunction(api2.default.getSoftwareList, null, api);
   });
 
   test('should call api.put function when calling putPrivilegedIdentityUser', () => {
@@ -338,7 +336,7 @@ describe('_Api2 functions', async () => {
       ),
     ).rejects.toThrow(error);
     await expect(api2.default.getBanks()).rejects.toThrow(error);
-    await expect(api2.default.getBankruptcySoftwareList()).rejects.toThrow(error);
+    await expect(api2.default.getSoftwareList()).rejects.toThrow(error);
     const mockOrder = MockData.getConsolidationOrder();
     await expect(
       api2.default.putConsolidationOrderApproval({
@@ -470,10 +468,18 @@ describe('_Api2 functions', async () => {
     );
   });
 
-  test('should call api.get function when calling getBankruptcySoftwareList', () => {
-    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: { items: [] } });
-    api2.default.getBankruptcySoftwareList();
-    expect(getSpy).toHaveBeenCalledWith('/lists/bankruptcy-software', {});
+  test('should call api.get function when calling getSoftwareList', () => {
+    const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
+    api2.default.getSoftwareList();
+    expect(getSpy).toHaveBeenCalledWith('/bankruptcy-software', {});
+  });
+
+  test('should call api.post function when calling createSoftware', () => {
+    const postSpy = vi
+      .spyOn(api.default, 'post')
+      .mockResolvedValue({ data: { id: 'software-id' } });
+    api2.default.createSoftware({ name: 'Test Software' });
+    expect(postSpy).toHaveBeenCalledWith('/bankruptcy-software', { name: 'Test Software' }, {});
   });
 
   test('should call api.get function when calling getBanks', () => {
@@ -500,26 +506,6 @@ describe('_Api2 functions', async () => {
     const update = { name: 'Updated', status: 'inactive' as const };
     api2.default.updateBank('bank-1', update);
     expect(putSpy).toHaveBeenCalledWith('/banks/bank-1', update, {});
-  });
-
-  test('should call api.post function when calling postBankruptcySoftware', () => {
-    const postSpy = vi
-      .spyOn(api.default, 'post')
-      .mockResolvedValue({ data: { id: 'software-id' } });
-    const softwareItem: Creatable<BankruptcySoftwareListItem> = {
-      list: 'bankruptcy-software',
-      key: 'Test Software',
-      value: 'Test Software',
-    };
-    api2.default.postBankruptcySoftware(softwareItem);
-    expect(postSpy).toHaveBeenCalledWith('/lists/bankruptcy-software', softwareItem, {});
-  });
-
-  test('should call api.delete function when calling deleteBankruptcySoftware', () => {
-    const deleteSpy = vi.spyOn(api.default, 'delete').mockResolvedValue({ data: null });
-    const softwareId = 'software-id';
-    api2.default.deleteBankruptcySoftware(softwareId);
-    expect(deleteSpy).toHaveBeenCalledWith(`/lists/bankruptcy-software/${softwareId}`, {});
   });
 
   test('should call api.get when calling getTrusteeNotes', () => {
