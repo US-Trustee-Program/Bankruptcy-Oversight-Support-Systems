@@ -85,7 +85,8 @@ describe('Admin screen tests', () => {
 
   test('should select privileged-identity nav when path matches', () => {
     renderAtPath('/admin/privileged-identity');
-    expect(screen.getByTestId('admin-screen')).toBeInTheDocument();
+    const navLink = screen.getByTestId('privileged-identity-nav-link');
+    expect(navLink).toHaveClass('usa-current');
   });
 
   test('should select case-reload nav when path matches', () => {

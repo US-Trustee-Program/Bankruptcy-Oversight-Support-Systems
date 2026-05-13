@@ -11,11 +11,16 @@ import {
 import { BankruptcySoftwareController } from '../../../lib/controllers/bankruptcy-software/bankruptcy-software.controller';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import MockData from '@common/cams/test-utilities/mock-data';
+import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
+import { createMockApplicationContext } from '../../../lib/testing/testing-utilities';
 
 describe('Bankruptcy Software Function tests', () => {
   let context: InvocationContext;
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    const camsContext = await createMockApplicationContext();
+    camsContext.session = MockData.getCamsSession();
+    vi.spyOn(ContextCreator, 'applicationContextCreator').mockResolvedValue(camsContext);
     vi.spyOn(ContextCreator, 'getApplicationContextSession').mockResolvedValue(
       MockData.getCamsSession(),
     );
@@ -37,48 +42,18 @@ describe('Bankruptcy Software Function tests', () => {
     },
   ];
 
-  test('should return 200 with software list for GET request', async () => {
+  test('should delegate to controller.handleRequest and return response', async () => {
     const request = createMockAzureFunctionRequest({ method: 'GET' });
     const { camsHttpResponse, azureHttpResponse } = buildTestResponseSuccess<
       BankruptcySoftwareProfile[]
-    >({
-      data: mockSoftware,
-    });
-    vi.spyOn(BankruptcySoftwareController.prototype, 'handleGet').mockResolvedValue(
-      camsHttpResponse,
+    >({ data: mockSoftware });
+    vi.spyOn(BankruptcySoftwareController.prototype, 'handleRequest').mockResolvedValue(
+      camsHttpResponse as CamsHttpResponseInit,
     );
 
     const response = await handler(request, context);
 
     expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should return 201 with created software for POST request', async () => {
-    const request = createMockAzureFunctionRequest({
-      method: 'POST',
-      body: { name: 'Axos' },
-    });
-    const createdSoftware = mockSoftware[0];
-    const { camsHttpResponse, azureHttpResponse } =
-      buildTestResponseSuccess<BankruptcySoftwareProfile>(
-        { data: createdSoftware },
-        { statusCode: 201 },
-      );
-    vi.spyOn(BankruptcySoftwareController.prototype, 'handlePost').mockResolvedValue(
-      camsHttpResponse,
-    );
-
-    const response = await handler(request, context);
-
-    expect(response).toEqual(azureHttpResponse);
-  });
-
-  test('should return 405 for unsupported HTTP method', async () => {
-    const request = createMockAzureFunctionRequest({ method: 'DELETE' });
-
-    const response = await handler(request, context);
-
-    expect(response.status).toBe(405);
   });
 
   test('should return error response when controller throws', async () => {
@@ -87,7 +62,7 @@ describe('Bankruptcy Software Function tests', () => {
       message: 'Something went wrong.',
     });
     const { azureHttpResponse, loggerCamsErrorSpy } = buildTestResponseError(error);
-    vi.spyOn(BankruptcySoftwareController.prototype, 'handleGet').mockRejectedValue(error);
+    vi.spyOn(BankruptcySoftwareController.prototype, 'handleRequest').mockRejectedValue(error);
 
     const response = await handler(request, context);
 
