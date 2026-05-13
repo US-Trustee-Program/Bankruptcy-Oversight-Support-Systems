@@ -34,6 +34,7 @@ describe('SyncTrusteeAppointments', () => {
     });
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
 
       mockCasesRepo = {
@@ -87,7 +88,6 @@ describe('SyncTrusteeAppointments', () => {
 
     afterEach(async () => {
       await closeDeferred(context);
-      vi.restoreAllMocks();
     });
 
     test('should create a new CASE_APPOINTMENT when no existing appointment', async () => {
@@ -1100,6 +1100,172 @@ describe('SyncTrusteeAppointments', () => {
         expect(scenarioDistribution.perfectMatchInactiveCount).toBe(1);
       });
     });
+
+    test('should track reVerificationCount for NO_TRUSTEE_MATCH when already resolved', async () => {
+      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        caseId: 'case-001',
+        status: 'approved',
+        createdOn: '2025-01-01T00:00:00.000Z',
+        updatedOn: '2025-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'Operator' },
+      });
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new CamsError('TRUSTEE-MATCH', {
+          message: 'No match',
+          data: { mismatchReason: 'NO_TRUSTEE_MATCH' },
+        }),
+      );
+
+      const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'Ghost Trustee'),
+      ]);
+
+      expect(scenarioDistribution.reVerificationCount).toBe(1);
+      expect(scenarioDistribution.noMatchCount).toBe(1);
+    });
+
+    test('should track reVerificationCount for IMPERFECT_MATCH when already resolved', async () => {
+      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        caseId: 'case-001',
+        status: 'approved',
+        createdOn: '2025-01-01T00:00:00.000Z',
+        updatedOn: '2025-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'Operator' },
+      });
+      vi.spyOn(trusteeMatchHelpers, 'isPerfectMatch').mockReturnValue(false);
+      vi.spyOn(trusteeMatchHelpers, 'calculateCandidateScore').mockReturnValue({
+        trusteeId: 'trustee-123',
+        trusteeName: 'John Doe',
+        totalScore: 60,
+        addressScore: 100,
+        districtDivisionScore: 50,
+        chapterScore: 0,
+      });
+
+      const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'John Doe'),
+      ]);
+
+      expect(scenarioDistribution.reVerificationCount).toBe(1);
+      expect(scenarioDistribution.imperfectMatchCount).toBe(1);
+    });
+
+    test('should track reVerificationCount for HIGH_CONFIDENCE_MATCH when already resolved', async () => {
+      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        caseId: 'case-001',
+        status: 'approved',
+        createdOn: '2025-01-01T00:00:00.000Z',
+        updatedOn: '2025-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'Operator' },
+      });
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new CamsError('TRUSTEE-MATCH', {
+          message: 'Multiple match',
+          data: {
+            mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+            matchCandidates: [
+              {
+                trusteeId: 't-1',
+                trusteeName: 'T1',
+                totalScore: -1,
+                addressScore: -1,
+                districtDivisionScore: -1,
+                chapterScore: -1,
+              },
+              {
+                trusteeId: 't-2',
+                trusteeName: 'T2',
+                totalScore: -1,
+                addressScore: -1,
+                districtDivisionScore: -1,
+                chapterScore: -1,
+              },
+            ],
+          },
+        }),
+      );
+      vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce({
+        winnerId: 't-1',
+        candidateScores: [
+          {
+            trusteeId: 't-1',
+            trusteeName: 'T1',
+            totalScore: 90,
+            addressScore: 100,
+            districtDivisionScore: 100,
+            chapterScore: 100,
+          },
+          {
+            trusteeId: 't-2',
+            trusteeName: 'T2',
+            totalScore: 40,
+            addressScore: 0,
+            districtDivisionScore: 50,
+            chapterScore: 0,
+          },
+        ],
+      });
+
+      const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'Common Name'),
+      ]);
+
+      expect(scenarioDistribution.reVerificationCount).toBe(1);
+      expect(scenarioDistribution.highConfidenceMatchCount).toBe(1);
+    });
+
+    test('should track reVerificationCount for MULTIPLE_TRUSTEES_MATCH when already resolved', async () => {
+      (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
+        documentType: 'TRUSTEE_MATCH_VERIFICATION',
+        caseId: 'case-001',
+        status: 'approved',
+        createdOn: '2025-01-01T00:00:00.000Z',
+        updatedOn: '2025-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'Operator' },
+      });
+      (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new CamsError('TRUSTEE-MATCH', {
+          message: 'Multiple match',
+          data: {
+            mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+            matchCandidates: [
+              {
+                trusteeId: 't-1',
+                trusteeName: 'T1',
+                totalScore: -1,
+                addressScore: -1,
+                districtDivisionScore: -1,
+                chapterScore: -1,
+              },
+              {
+                trusteeId: 't-2',
+                trusteeName: 'T2',
+                totalScore: -1,
+                addressScore: -1,
+                districtDivisionScore: -1,
+                chapterScore: -1,
+              },
+            ],
+          },
+        }),
+      );
+      vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockRejectedValueOnce(
+        new CamsError('TRUSTEE-MATCH', {
+          message: 'Fuzzy failed',
+          data: { mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates: [] },
+        }),
+      );
+
+      const { scenarioDistribution } = await SyncTrusteeAppointments.processAppointments(context, [
+        makeEvent('case-001', 'Common Name'),
+      ]);
+
+      expect(scenarioDistribution.reVerificationCount).toBe(1);
+      expect(scenarioDistribution.multipleMatchCount).toBe(1);
+    });
   });
 
   describe('getAppointmentEvents', () => {
@@ -1113,6 +1279,7 @@ describe('SyncTrusteeAppointments', () => {
     const mockLatestSyncDate = '2025-01-15T00:00:00Z';
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
 
       mockRuntimeStateRepo = {
@@ -1137,7 +1304,6 @@ describe('SyncTrusteeAppointments', () => {
 
     afterEach(async () => {
       await closeDeferred(context);
-      vi.restoreAllMocks();
     });
 
     test('should use provided lastSyncDate without reading from repo', async () => {
@@ -1188,10 +1354,16 @@ describe('SyncTrusteeAppointments', () => {
       vi.spyOn(factory, 'getCasesGateway').mockReturnValue({
         getTrusteeAppointments: vi.fn().mockRejectedValue(new Error('DXTR unavailable')),
       } as unknown as CasesInterface);
+      const camsErrorSpy = vi.spyOn(context.logger, 'camsError');
 
       await expect(
         SyncTrusteeAppointments.getAppointmentEvents(context, '2025-01-01T00:00:00Z'),
-      ).rejects.toThrow();
+      ).rejects.toMatchObject({
+        isCamsError: true,
+        originalError: expect.stringContaining('DXTR unavailable'),
+      });
+
+      expect(camsErrorSpy).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -1200,6 +1372,7 @@ describe('SyncTrusteeAppointments', () => {
     let mockRuntimeStateRepo: Partial<RuntimeStateRepository<TrusteeAppointmentsSyncState>>;
 
     beforeEach(async () => {
+      vi.restoreAllMocks();
       context = await createMockApplicationContext();
 
       mockRuntimeStateRepo = {
@@ -1213,7 +1386,6 @@ describe('SyncTrusteeAppointments', () => {
 
     afterEach(async () => {
       await closeDeferred(context);
-      vi.restoreAllMocks();
     });
 
     test('should upsert the runtime state with the given lastSyncDate', async () => {
