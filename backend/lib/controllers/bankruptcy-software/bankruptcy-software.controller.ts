@@ -5,6 +5,7 @@ import { ForbiddenError } from '../../common-errors/forbidden-error';
 import { CamsRole } from '@common/cams/roles';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import { BankruptcySoftwareUseCase } from '../../use-cases/bankruptcy-software/bankruptcy-software';
+import HttpStatusCodes from '@common/api/http-status-codes';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-CONTROLLER';
 
@@ -15,13 +16,29 @@ export class BankruptcySoftwareController {
     this.useCase = new BankruptcySoftwareUseCase(context);
   }
 
+  async handleRequest(
+    context: ApplicationContext,
+  ): Promise<
+    | CamsHttpResponseInit
+    | CamsHttpResponseInit<BankruptcySoftwareProfile>
+    | CamsHttpResponseInit<BankruptcySoftwareProfile[]>
+  > {
+    const { method } = context.request;
+    if (method === 'GET') {
+      return this.handleGet(context);
+    } else if (method === 'POST') {
+      return this.handlePost(context);
+    }
+    return httpSuccess({ statusCode: HttpStatusCodes.METHOD_NOT_ALLOWED }) as CamsHttpResponseInit;
+  }
+
   async handleGet(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<BankruptcySoftwareProfile[]>> {
     this.requireSuperUser(context);
     const softwareList = await this.useCase.getSoftwareList();
     return httpSuccess({
-      statusCode: 200,
+      statusCode: HttpStatusCodes.OK,
       body: { meta: { self: context.request.url }, data: softwareList },
     });
   }
@@ -36,7 +53,7 @@ export class BankruptcySoftwareController {
     }
     const software = await this.useCase.createSoftware({ name: body.name.trim() });
     return httpSuccess({
-      statusCode: 201,
+      statusCode: HttpStatusCodes.CREATED,
       body: { meta: { self: context.request.url }, data: software },
     });
   }

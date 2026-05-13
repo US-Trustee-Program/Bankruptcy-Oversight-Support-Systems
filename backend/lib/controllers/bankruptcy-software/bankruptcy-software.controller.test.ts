@@ -6,8 +6,6 @@ import { BankruptcySoftwareUseCase } from '../../use-cases/bankruptcy-software/b
 import { CamsRole } from '@common/cams/roles';
 import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 
-vi.mock('../../use-cases/bankruptcy-software/bankruptcy-software');
-
 describe('BankruptcySoftwareController', () => {
   let context: ApplicationContext;
   let controller: BankruptcySoftwareController;
@@ -42,6 +40,39 @@ describe('BankruptcySoftwareController', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  describe('handleRequest', () => {
+    test('should route GET to handleGet', async () => {
+      context.request.method = 'GET';
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftwareList').mockResolvedValue(
+        mockSoftware,
+      );
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(200);
+    });
+
+    test('should route POST to handlePost', async () => {
+      context.request.method = 'POST';
+      context.request.body = { name: 'New Software' };
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'createSoftware').mockResolvedValue(
+        createdSoftware,
+      );
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(201);
+    });
+
+    test('should return 405 for unsupported method', async () => {
+      context.request.method = 'DELETE';
+
+      const result = await controller.handleRequest(context);
+
+      expect(result.statusCode).toBe(405);
+    });
   });
 
   describe('handleGet', () => {

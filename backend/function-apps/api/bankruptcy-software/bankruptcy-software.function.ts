@@ -2,6 +2,7 @@ import { app, HttpRequest, HttpResponseInit, InvocationContext } from '@azure/fu
 import ContextCreator from '../../azure/application-context-creator';
 import { toAzureError, toAzureSuccess } from '../../azure/functions';
 import { BankruptcySoftwareController } from '../../../lib/controllers/bankruptcy-software/bankruptcy-software.controller';
+import { CamsHttpResponseInit } from '../../../lib/adapters/utils/http-response';
 
 const MODULE_NAME = 'BANKRUPTCY-SOFTWARE-FUNCTION';
 
@@ -20,19 +21,8 @@ export default async function handler(
 
     context.session = await ContextCreator.getApplicationContextSession(context);
     const controller = new BankruptcySoftwareController(context);
-
-    const method = request.method;
-    let responseBody;
-
-    if (method === 'GET') {
-      responseBody = await controller.handleGet(context);
-    } else if (method === 'POST') {
-      responseBody = await controller.handlePost(context);
-    } else {
-      return { status: 405, jsonBody: 'Method Not Allowed' };
-    }
-
-    return toAzureSuccess(responseBody);
+    const response = await controller.handleRequest(context);
+    return toAzureSuccess(response as CamsHttpResponseInit);
   } catch (error) {
     return toAzureError(logger, MODULE_NAME, error);
   }

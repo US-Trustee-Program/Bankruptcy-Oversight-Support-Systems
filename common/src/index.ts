@@ -11,7 +11,6 @@ export * from './cams/assignments';
 export * from './cams/auditable';
 export * from './cams/bankruptcy-software';
 export * from './cams/banks';
-export * from './cams/bankruptcy-software';
 export * from './cams/cases';
 export * from './cams/contact';
 export * from './cams/courts';
