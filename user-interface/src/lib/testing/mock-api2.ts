@@ -43,8 +43,6 @@ import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-as
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { TrusteeUpcomingKeyDates } from '@common/cams/trustee-upcoming-key-dates';
-import { Creatable } from '@common/cams/creatable';
-import { BankruptcySoftwareListItem } from '@common/cams/lists';
 import { BankProfile } from '@common/cams/banks';
 import { CamsRole, OversightRoleType } from '@common/cams/roles';
 
@@ -2776,37 +2774,52 @@ async function deleteTrusteeAssistant(_trusteeId: string, _assistantId: string) 
   return;
 }
 
-async function getBankruptcySoftwareList() {
+async function getSoftwareList() {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
   return {
     data: [
       {
-        _id: '1',
-        list: 'bankruptcy-software',
-        key: 'Axos',
-        value: 'Axos',
+        id: '1',
+        documentType: 'BANKRUPTCY_SOFTWARE' as const,
+        name: 'Axos',
+        status: 'active' as const,
+        updatedOn: now,
+        updatedBy: mockUser,
       },
       {
-        _id: '2',
-        list: 'bankruptcy-software',
-        key: 'BlueStylus',
-        value: 'BlueStylus',
+        id: '2',
+        documentType: 'BANKRUPTCY_SOFTWARE' as const,
+        name: 'BlueStylus',
+        status: 'active' as const,
+        updatedOn: now,
+        updatedBy: mockUser,
       },
       {
-        _id: '3',
-        list: 'bankruptcy-software',
-        key: 'Epiq',
-        value: 'Epiq',
+        id: '3',
+        documentType: 'BANKRUPTCY_SOFTWARE' as const,
+        name: 'Epiq',
+        status: 'active' as const,
+        updatedOn: now,
+        updatedBy: mockUser,
       },
     ],
   };
 }
 
-async function postBankruptcySoftware(_ignore: Creatable<BankruptcySoftwareListItem>) {
-  return '--id--';
-}
-
-async function deleteBankruptcySoftware(_ignore: string) {
-  return;
+async function createSoftware(data: { name: string }) {
+  const mockUser = { id: 'system', name: 'System' };
+  const now = new Date().toISOString();
+  return {
+    data: {
+      id: crypto.randomUUID(),
+      documentType: 'BANKRUPTCY_SOFTWARE' as const,
+      name: data.name,
+      status: 'active' as const,
+      updatedOn: now,
+      updatedBy: mockUser,
+    },
+  };
 }
 
 async function getBanks() {
@@ -3006,13 +3019,12 @@ const MockApi2 = {
   putConsolidationOrderRejection,
   putPrivilegedIdentityUser,
   searchCases,
-  getBankruptcySoftwareList,
-  postBankruptcySoftware,
-  deleteBankruptcySoftware,
   createBank,
   getBanks,
   getBank,
   updateBank,
+  getSoftwareList,
+  createSoftware,
   getUpcomingKeyDates,
   putUpcomingKeyDates,
   getTrusteeOversightAssignments,

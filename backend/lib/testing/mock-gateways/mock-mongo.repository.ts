@@ -7,6 +7,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import {
   ArchivedCasesRepository,
   BanksRepository,
+  BankruptcySoftwareRepository,
   CamsPaginationResponse,
   CaseAssignmentRepository,
   CasesRepository,
@@ -32,19 +33,19 @@ import {
 import { Trustee, TrusteeHistory } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
 import { TrusteeProfessionalId } from '@common/cams/trustee-professional-ids';
-import {
-  BankList,
-  BankListItem,
-  BankruptcySoftwareList,
-  BankruptcySoftwareListItem,
-} from '@common/cams/lists';
+import { BankList, BankListItem, BankruptcySoftwareList } from '@common/cams/lists';
 import { BankAuditHistory, BankProfile } from '@common/cams/banks';
+import {
+  BankruptcySoftwareAuditHistory,
+  BankruptcySoftwareProfile,
+} from '@common/cams/bankruptcy-software';
 import { Creatable } from '@common/cams/creatable';
 
 export class MockMongoRepository
   implements
     ArchivedCasesRepository,
     BanksRepository,
+    BankruptcySoftwareRepository,
     CaseAssignmentRepository,
     CasesRepository,
     ConsolidationOrdersRepository,
@@ -65,6 +66,7 @@ export class MockMongoRepository
     UserGroupsRepository
 {
   private professionalIds = new Map<string, TrusteeProfessionalId>();
+
   release() {
     return;
   }
@@ -90,6 +92,20 @@ export class MockMongoRepository
   }
 
   createBankAuditRecord(_history: Creatable<BankAuditHistory>): Promise<void> {
+    throw new Error('Method not implemented.');
+  }
+
+  getSoftwareList(): Promise<BankruptcySoftwareProfile[]> {
+    throw new Error('Method not implemented.');
+  }
+
+  createSoftware(
+    _software: Creatable<BankruptcySoftwareProfile>,
+  ): Promise<BankruptcySoftwareProfile> {
+    throw new Error('Method not implemented.');
+  }
+
+  createSoftwareAuditRecord(_history: Creatable<BankruptcySoftwareAuditHistory>): Promise<void> {
     throw new Error('Method not implemented.');
   }
 
@@ -325,19 +341,11 @@ export class MockMongoRepository
     throw new Error('Method not implemented.');
   }
 
-  postBankruptcySoftware(_ignore: Creatable<BankruptcySoftwareListItem>): Promise<string> {
-    throw new Error('Method not implemented.');
-  }
-
   getBankList(): Promise<BankList> {
     throw new Error('Method not implemented.');
   }
 
   postBank(_ignore: Creatable<BankListItem>): Promise<string> {
-    throw new Error('Method not implemented.');
-  }
-
-  deleteBankruptcySoftware(_ignore: string): Promise<void> {
     throw new Error('Method not implemented.');
   }
 

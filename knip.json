@@ -7,7 +7,7 @@
   "workspaces": {
     ".": {
       "ignore": [],
-      "ignoreFiles": ["test/migration/**"]
+      "ignoreFiles": ["test/migration/**", "ops/migrations/**"]
     },
     "backend": {
       "entry": [

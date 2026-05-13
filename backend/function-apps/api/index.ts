@@ -18,6 +18,7 @@ import './case-summary/case-summary.function';
 import './case-trustee-appointment/case-trustee-appointment.function';
 import './cases/cases.function';
 import './banks/banks.function';
+import './bankruptcy-software/bankruptcy-software.function';
 import './consolidations/consolidations.function';
 import './courts/courts.function';
 import './healthcheck/healthcheck.function';

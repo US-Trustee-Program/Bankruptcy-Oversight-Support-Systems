@@ -1,146 +1,97 @@
 import './BankruptcySoftware.scss';
-import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
-import Button, { ButtonRef, UswdsButtonStyle } from '@/lib/components/uswds/Button';
-import Input from '@/lib/components/uswds/Input';
+import { useEffect, useRef, useState } from 'react';
 import Api2 from '@/lib/models/api2';
-import { useGlobalAlert } from '@/lib/hooks/UseGlobalAlert';
-import { InputRef } from '@/lib/type-declarations/input-fields';
-import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
-import React, { useEffect, useRef, useState } from 'react';
-import { Creatable } from '@common/cams/creatable';
+import { LoadingSpinner } from '@/lib/components/LoadingSpinner';
+import Button, { UswdsButtonStyle } from '@/lib/components/uswds/Button';
+import Alert, { UswdsAlertStyle } from '@/lib/components/uswds/Alert';
+import {
+  CamsTable,
+  CamsTableHeader,
+  CamsTableHeaderCell,
+  CamsTableBody,
+  CamsTableRow,
+  CamsTableCell,
+} from '@/lib/components/cams/CamsTable';
+import { getAppInsights } from '@/lib/hooks/UseApplicationInsights';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
+import { AddSoftwareModal, AddSoftwareModalRef } from './AddSoftwareModal';
 
 export function BankruptcySoftware() {
-  const alert = useGlobalAlert();
-
   const [isLoaded, setIsLoaded] = useState(false);
-  const [softwareList, setSoftwareList] = useState<BankruptcySoftwareList>([]);
-  const [newSoftwareName, setNewSoftwareName] = useState<string>('');
+  const [softwareList, setSoftwareList] = useState<BankruptcySoftwareProfile[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const softwareInputRef = useRef<InputRef>(null);
-  const saveButtonRef = useRef<ButtonRef>(null);
-
-  function handleSoftwareNameChange(ev: React.ChangeEvent<HTMLInputElement>) {
-    setNewSoftwareName(ev.target.value);
-  }
-
-  async function handleSave() {
-    const trimmedName = newSoftwareName.trim();
-
-    if (trimmedName.length === 0) {
-      alert?.warning('Software name cannot be empty.');
-      return;
-    }
-
-    const payload: Creatable<BankruptcySoftwareListItem> = {
-      list: 'bankruptcy-software' as const,
-      key: trimmedName,
-      value: trimmedName,
-    };
-
-    try {
-      await Api2.postBankruptcySoftware(payload);
-      alert?.success('Bankruptcy software added successfully.');
-      setNewSoftwareName('');
-      loadSoftwareList();
-    } catch (error) {
-      alert?.warning(`Failed to add bankruptcy software. ${(error as Error).message}`);
-    }
-  }
-
-  function isSavable() {
-    return newSoftwareName.trim().length > 0;
-  }
-
-  async function handleDelete(software: BankruptcySoftwareListItem) {
-    const confirmed = window.confirm(`Are you sure you want to delete ${software.value}?`);
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      await Api2.deleteBankruptcySoftware(software._id);
-      alert?.success('Bankruptcy software deleted successfully.');
-      loadSoftwareList();
-    } catch (error) {
-      alert?.warning(`Failed to delete bankruptcy software. ${(error as Error).message}`);
-    }
-  }
+  const addSoftwareModalRef = useRef<AddSoftwareModalRef>(null);
 
   async function loadSoftwareList() {
     try {
-      const response = await Api2.getBankruptcySoftwareList();
-      setSoftwareList(response.data as BankruptcySoftwareList);
+      const response = await Api2.getSoftwareList();
+      setSoftwareList(response.data as BankruptcySoftwareProfile[]);
+      setLoadError(null);
     } catch (error) {
-      alert?.warning(`Failed to load bankruptcy software list. ${(error as Error).message}`);
+      setLoadError((error as Error).message);
     }
   }
 
   useEffect(() => {
     setIsLoaded(false);
-    loadSoftwareList().then(() => {
-      setIsLoaded(true);
-    });
+    loadSoftwareList().then(() => setIsLoaded(true));
   }, []);
+
+  function handleSoftwareAdded(software: BankruptcySoftwareProfile) {
+    setSoftwareList((prev) => [...prev, software].sort((a, b) => a.name.localeCompare(b.name)));
+    getAppInsights().appInsights.trackEvent({
+      name: 'Bankruptcy Software Created',
+      properties: { softwareId: software.id, softwareName: software.name },
+    });
+  }
 
   return (
     <div className="bankruptcy-software-admin-panel" data-testid="bankruptcy-software-panel">
-      <h2>Bankruptcy Software</h2>
-      {!isLoaded && <LoadingSpinner caption="Loading..."></LoadingSpinner>}
-      {isLoaded && (
-        <div className="bankruptcy-software-form">
+      <h2 className="screen-reader-only">Bankruptcy Software</h2>
+      {!isLoaded && <LoadingSpinner caption="Loading..." />}
+      {isLoaded && loadError && (
+        <Alert
+          id="bankruptcy-software-load-error"
+          message={`Failed to load bankruptcy software. ${loadError}`}
+          type={UswdsAlertStyle.Error}
+          show={true}
+        />
+      )}
+      {isLoaded && !loadError && (
+        <>
           <div className="grid-row">
             <div className="grid-col-12">
-              <h3>Current Software Options</h3>
-              {softwareList.length === 0 ? (
-                <p>No bankruptcy software options are currently configured.</p>
-              ) : (
-                <ul className="software-list" data-testid="software-list">
-                  {softwareList.map((software) => (
-                    <li key={software._id} data-testid={`software-item-${software._id}`}>
-                      <span>{software.value}</span>
-                      <Button
-                        id={`delete-button-${software._id}`}
-                        data-testid={`delete-button-${software._id}`}
-                        uswdsStyle={UswdsButtonStyle.Outline}
-                        onClick={() => handleDelete(software)}
-                      >
-                        Delete
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              <Button
+                id="add-software-button"
+                uswdsStyle={UswdsButtonStyle.Default}
+                onClick={() => addSoftwareModalRef.current?.show()}
+              >
+                + Add Software
+              </Button>
             </div>
           </div>
-          <div className="grid-row">
-            <div className="grid-col-6">
-              <Input
-                id="new-software-name"
-                label="Add New Software"
-                value={newSoftwareName}
-                onChange={handleSoftwareNameChange}
-                autoComplete="off"
-                ref={softwareInputRef}
-              ></Input>
-            </div>
+          <div className="bankruptcy-software-table-container">
+            <CamsTable aria-label="Bankruptcy Software" data-testid="bankruptcy-software-table">
+              <CamsTableHeader>
+                <CamsTableHeaderCell>Software Name</CamsTableHeaderCell>
+              </CamsTableHeader>
+              <CamsTableBody>
+                {softwareList.map((software) => (
+                  <CamsTableRow key={software.id}>
+                    <CamsTableCell>{software.name}</CamsTableCell>
+                  </CamsTableRow>
+                ))}
+              </CamsTableBody>
+            </CamsTable>
           </div>
-          <div className="grid-row">
-            <div className="button-bar grid-col-6">
-              <div className="save-button button-container">
-                <Button
-                  id="save-button"
-                  uswdsStyle={UswdsButtonStyle.Default}
-                  onClick={handleSave}
-                  disabled={!isSavable()}
-                  ref={saveButtonRef}
-                >
-                  Add Software
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
+        </>
       )}
+      <AddSoftwareModal
+        ref={addSoftwareModalRef}
+        modalId="add-software-modal"
+        onSuccess={handleSoftwareAdded}
+      />
     </div>
   );
 }

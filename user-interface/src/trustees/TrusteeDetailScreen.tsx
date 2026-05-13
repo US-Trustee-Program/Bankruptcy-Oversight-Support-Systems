@@ -18,7 +18,7 @@ import { GoHome } from '@/lib/components/GoHome';
 import TrusteeAssignedStaff from './panels/TrusteeAssignedStaff';
 import TrusteeAppointments from './panels/TrusteeAppointments';
 import { ComboOption } from '@/lib/components/combobox/ComboBox';
-import { BankruptcySoftwareList } from '@common/cams/lists';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import TrusteePublicContactForm from './forms/TrusteePublicContactForm';
 import TrusteeInternalContactForm from './forms/TrusteeInternalContactForm';
 import TrusteeAssistantForm from './forms/TrusteeAssistantForm';
@@ -49,10 +49,10 @@ function TrusteeHeader({ trustee, isLoading, subHeading, children }: TrusteeHead
   );
 }
 
-const transformSoftwareList = (items: BankruptcySoftwareList): ComboOption[] => {
-  return items.map((item: { key: string; value: string }) => ({
-    value: item.key,
-    label: item.value,
+const transformSoftwareList = (items: BankruptcySoftwareProfile[]): ComboOption[] => {
+  return items.map((item) => ({
+    value: item.name,
+    label: item.name,
   }));
 };
 
@@ -95,9 +95,11 @@ export default function TrusteeDetailScreen() {
   useEffect(() => {
     const fetchSoftwareOptions = async () => {
       try {
-        const response = await Api2.getBankruptcySoftwareList();
+        const response = await Api2.getSoftwareList();
         if (response?.data) {
-          const transformedOptions = transformSoftwareList(response.data as BankruptcySoftwareList);
+          const transformedOptions = transformSoftwareList(
+            response.data as BankruptcySoftwareProfile[],
+          );
           setSoftwareOptions(transformedOptions);
         }
       } catch (e) {

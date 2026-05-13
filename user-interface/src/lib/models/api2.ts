@@ -54,9 +54,8 @@ import { TrusteeAssistant, TrusteeAssistantInput } from '@common/cams/trustee-as
 import { TrusteeNote, TrusteeNoteInput } from '@common/cams/trustee-notes';
 import { TrusteeSearchResult } from '@common/cams/trustee-search';
 import { OversightRoleType } from '@common/cams/roles';
-import { BankruptcySoftwareList, BankruptcySoftwareListItem } from '@common/cams/lists';
 import { BankProfile } from '@common/cams/banks';
-import { Creatable } from '@common/cams/creatable';
+import { BankruptcySoftwareProfile } from '@common/cams/bankruptcy-software';
 import {
   TrusteeUpcomingKeyDates,
   TrusteeUpcomingKeyDatesInput,
@@ -530,18 +529,6 @@ async function deletePrivilegedIdentityUser(userId: string) {
   await api().delete(`/dev-tools/privileged-identity/${userId}`);
 }
 
-async function getBankruptcySoftwareList() {
-  return api().get<BankruptcySoftwareList>('/lists/bankruptcy-software');
-}
-
-async function postBankruptcySoftware(item: Creatable<BankruptcySoftwareListItem>) {
-  return api().post('/lists/bankruptcy-software', item);
-}
-
-async function deleteBankruptcySoftware(id: string) {
-  return api().delete(`/lists/bankruptcy-software/${id}`);
-}
-
 async function getBanks() {
   return api().get<BankProfile[]>('/banks');
 }
@@ -556,6 +543,14 @@ async function getBank(bankId: string) {
 
 async function updateBank(bankId: string, data: Pick<BankProfile, 'name' | 'status'>) {
   return api().put<BankProfile>(`/banks/${bankId}`, data);
+}
+
+async function getSoftwareList() {
+  return api().get<BankruptcySoftwareProfile[]>('/bankruptcy-software');
+}
+
+async function createSoftware(data: { name: string }) {
+  return api().post<BankruptcySoftwareProfile, { name: string }>('/bankruptcy-software', data);
 }
 
 async function getCaseTrusteeAppointment(caseId: string) {
@@ -656,9 +651,8 @@ export const _Api2 = {
   getBank,
   createBank,
   updateBank,
-  getBankruptcySoftwareList,
-  postBankruptcySoftware,
-  deleteBankruptcySoftware,
+  getSoftwareList,
+  createSoftware,
   getOversightStaff,
   postCaseReload,
   getCaseTrusteeAppointment,

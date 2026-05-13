@@ -379,7 +379,7 @@ describe('TrusteeDetailScreen', () => {
   test('should fetch software options from API on component mount', async () => {
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    const getBankruptcySoftwareListSpy = vi.spyOn(Api2, 'getBankruptcySoftwareList');
+    const getSoftwareListSpy = vi.spyOn(Api2, 'getSoftwareList');
 
     renderWithRouter();
 
@@ -387,7 +387,7 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
+    expect(getSoftwareListSpy).toHaveBeenCalled();
   });
 
   test('should handle software options API error and log error message', async () => {
@@ -395,8 +395,8 @@ describe('TrusteeDetailScreen', () => {
 
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    const getBankruptcySoftwareListSpy = vi
-      .spyOn(Api2, 'getBankruptcySoftwareList')
+    const getSoftwareListSpy = vi
+      .spyOn(Api2, 'getSoftwareList')
       .mockRejectedValue(new Error('Software API error'));
 
     renderWithRouter();
@@ -405,7 +405,7 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
+    expect(getSoftwareListSpy).toHaveBeenCalled();
     expect(consoleSpy).toHaveBeenCalledWith(
       'Failed to fetch software options',
       'Software API error',
@@ -417,9 +417,7 @@ describe('TrusteeDetailScreen', () => {
   test('should handle software options API returning response without data property', async () => {
     vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
     vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
-    const getBankruptcySoftwareListSpy = vi
-      .spyOn(Api2, 'getBankruptcySoftwareList')
-      .mockResolvedValue({ data: [] });
+    const getSoftwareListSpy = vi.spyOn(Api2, 'getSoftwareList').mockResolvedValue({ data: [] });
 
     renderWithRouter();
 
@@ -427,7 +425,50 @@ describe('TrusteeDetailScreen', () => {
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
     });
 
-    expect(getBankruptcySoftwareListSpy).toHaveBeenCalled();
+    expect(getSoftwareListSpy).toHaveBeenCalled();
+  });
+
+  test('should transform software list correctly', async () => {
+    const mockSoftwareData = [
+      {
+        id: '1',
+        documentType: 'BANKRUPTCY_SOFTWARE' as const,
+        name: 'Alpha Software',
+        status: 'active' as const,
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+      {
+        id: '2',
+        documentType: 'BANKRUPTCY_SOFTWARE' as const,
+        name: 'Beta Platform',
+        status: 'active' as const,
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+      {
+        id: '3',
+        documentType: 'BANKRUPTCY_SOFTWARE' as const,
+        name: 'Gamma System',
+        status: 'active' as const,
+        updatedOn: '2024-01-01T00:00:00.000Z',
+        updatedBy: { id: 'user-1', name: 'User One' },
+      },
+    ];
+
+    vi.spyOn(Api2, 'getTrustee').mockResolvedValue({ data: mockTrustee });
+    vi.spyOn(Api2, 'getCourts').mockResolvedValue({ data: mockCourts });
+    const getSoftwareListSpy = vi
+      .spyOn(Api2, 'getSoftwareList')
+      .mockResolvedValue({ data: mockSoftwareData });
+
+    renderWithRouter();
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('John Doe');
+    });
+
+    expect(getSoftwareListSpy).toHaveBeenCalled();
   });
 
   test('should navigate to assistant create route when assistant button is clicked and no assistant exists', async () => {

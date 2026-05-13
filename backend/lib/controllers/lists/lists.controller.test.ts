@@ -4,12 +4,7 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { CamsError } from '../../common-errors/cams-error';
 import { mockCamsHttpRequest } from '../../testing/mock-data/cams-http-request-helper';
 import { ListsController } from './lists.controller';
-import {
-  BankList,
-  BankruptcySoftwareList,
-  BankListItem,
-  BankruptcySoftwareListItem,
-} from '@common/cams/lists';
+import { BankList, BankruptcySoftwareList, BankListItem } from '@common/cams/lists';
 import { Creatable } from '@common/cams/creatable';
 import ListsUseCase from '../../use-cases/lists/lists';
 
@@ -141,100 +136,5 @@ describe('lists controller tests', () => {
         },
       }),
     );
-  });
-
-  test('should create bankruptcy software item and return ID on POST', async () => {
-    const softwareId = '789012';
-    vi.spyOn(ListsUseCase.prototype, 'createBankruptcySoftware').mockResolvedValue(softwareId);
-
-    const softwareItem: Creatable<BankruptcySoftwareListItem> = {
-      list: 'bankruptcy-software' as const,
-      key: 'test-software',
-      value: 'Test Software',
-    };
-
-    const controller = new ListsController();
-    applicationContext.request = mockCamsHttpRequest({
-      method: 'POST',
-      params: { listName: 'bankruptcy-software' },
-      body: softwareItem,
-    });
-
-    const response = await controller.handleRequest(applicationContext);
-
-    expect(response).toEqual(
-      expect.objectContaining({
-        body: {
-          meta: expect.objectContaining({ self: expect.any(String) }),
-          data: { _id: softwareId },
-        },
-      }),
-    );
-  });
-
-  test('should delete bankruptcy software item successfully on DELETE', async () => {
-    const deleteSpy = vi
-      .spyOn(ListsUseCase.prototype, 'deleteBankruptcySoftware')
-      .mockResolvedValue(undefined);
-
-    const controller = new ListsController();
-    applicationContext.request = mockCamsHttpRequest({
-      method: 'DELETE',
-      params: { listName: 'bankruptcy-software', id: 'test-id-123' },
-    });
-
-    const response = await controller.handleRequest(applicationContext);
-
-    expect(deleteSpy).toHaveBeenCalledWith(applicationContext, 'test-id-123');
-    expect(response).toEqual(
-      expect.objectContaining({
-        body: {
-          meta: expect.objectContaining({ self: expect.any(String) }),
-          data: undefined,
-        },
-      }),
-    );
-  });
-
-  test('should throw error when ID is missing for DELETE bankruptcy-software', async () => {
-    const deleteSpy = vi.spyOn(ListsUseCase.prototype, 'deleteBankruptcySoftware');
-
-    const controller = new ListsController();
-    applicationContext.request = mockCamsHttpRequest({
-      method: 'DELETE',
-      params: { listName: 'bankruptcy-software' },
-    });
-
-    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
-
-    expect(deleteSpy).not.toHaveBeenCalled();
-  });
-
-  test('should throw error when ID is empty string for DELETE bankruptcy-software', async () => {
-    const deleteSpy = vi.spyOn(ListsUseCase.prototype, 'deleteBankruptcySoftware');
-
-    const controller = new ListsController();
-    applicationContext.request = mockCamsHttpRequest({
-      method: 'DELETE',
-      params: { listName: 'bankruptcy-software', id: '   ' },
-    });
-
-    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
-
-    expect(deleteSpy).not.toHaveBeenCalled();
-  });
-
-  test('should throw error when ID is not a string for DELETE bankruptcy-software', async () => {
-    const deleteSpy = vi.spyOn(ListsUseCase.prototype, 'deleteBankruptcySoftware');
-
-    const controller = new ListsController();
-    applicationContext.request = mockCamsHttpRequest({
-      method: 'DELETE',
-      params: { listName: 'bankruptcy-software', id: 123 as unknown as string },
-    });
-
-    await expect(controller.handleRequest(applicationContext)).rejects.toThrow('Unknown Error');
-
-    expect(deleteSpy).not.toHaveBeenCalled();
   });
 });
