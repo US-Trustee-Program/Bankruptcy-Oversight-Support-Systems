@@ -111,7 +111,8 @@ test.describe('Transfer Orders', () => {
     await page.getByTestId(`button-accordion-cancel-button-${firstOrderId}`).click();
     await expect(page.getByTestId(`validated-cases-row-0`)).not.toBeVisible();
 
-    await expect(page.locator(`#court-selection-${orderId}-combo-box-input`)).not.toBeAttached();
+    // Verify court selection is cleared after cancel
+    await expect(page.locator(`#court-selection-${orderId}-combo-box-input`)).toHaveValue('');
 
     await expect(page.getByTestId(`new-case-input-${firstOrderId}`)).toBeDisabled();
   });
@@ -147,6 +148,8 @@ test.describe('Transfer Orders', () => {
 
     // Action click Cancel
     await page.getByTestId(`button-accordion-cancel-button-${orderId}`).click();
-    await expect(page.locator(`#court-selection-${orderId}-combo-box-input`)).not.toBeAttached();
+    // Verify inputs are reset after cancel
+    await expect(page.locator(`#court-selection-${orderId}-combo-box-input`)).toHaveValue('');
+    await expect(page.getByTestId(`new-case-input-${orderId}`)).toHaveValue('');
   });
 });
