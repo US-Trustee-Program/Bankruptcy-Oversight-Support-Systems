@@ -101,8 +101,8 @@ test.describe('Trustees', () => {
       await stateOptions.first().click();
     }
 
-    const selectedOption = page.locator('#trustee-state .selection-label');
-    await expect(selectedOption).toBeVisible();
+    // Verify the ComboBox input has a value (not placeholder)
+    await expect(stateCombobox).not.toHaveValue('');
 
     const zipInput = page.locator('#trustee-zip');
     await expect(zipInput).toBeVisible();
