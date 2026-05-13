@@ -35,7 +35,6 @@ export class BankruptcySoftwareController {
   async handleGet(
     context: ApplicationContext,
   ): Promise<CamsHttpResponseInit<BankruptcySoftwareProfile[]>> {
-    this.requireSuperUser(context);
     const softwareList = await this.useCase.getSoftwareList();
     return httpSuccess({
       statusCode: HttpStatusCodes.OK,
