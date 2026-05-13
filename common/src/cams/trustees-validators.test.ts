@@ -553,6 +553,20 @@ describe('trustees-validators', () => {
     });
   });
 
+  describe('FULL_NAME_MAX constant', () => {
+    test('should equal FIRST_NAME_MAX + MIDDLE_NAME_MAX + LAST_NAME_MAX + 2 (spaces between names)', () => {
+      // Kills all three ArithmeticOperator mutants on line 23 (-, - operators replacing +)
+      expect(TV.FULL_NAME_MAX).toEqual(
+        TV.FIRST_NAME_MAX + TV.MIDDLE_NAME_MAX + TV.LAST_NAME_MAX + 2,
+      );
+    });
+
+    test('should equal 52', () => {
+      // Explicitly pins the expected computed value (15 + 15 + 20 + 2 = 52)
+      expect(TV.FULL_NAME_MAX).toEqual(52);
+    });
+  });
+
   describe('zoomInfoSpec', () => {
     test('should validate complete zoom info', () => {
       const validZoom = {
@@ -646,6 +660,145 @@ describe('trustees-validators', () => {
       expect(result.reasonMap?.passcode?.reasons).toContain(
         FIELD_VALIDATION_MESSAGES.PASSCODE_REQUIRED,
       );
+    });
+
+    test('should reject zoom info with invalid phone number format', () => {
+      // Kills ArrayDeclaration mutant: phone: [] (line 92) — empty array skips phone validation
+      const invalidZoom = {
+        link: 'https://zoom.us/j/123456789',
+        phone: 'not-a-phone',
+        meetingId: '123456789',
+        passcode: MockData.randomAlphaNumeric(6),
+      };
+
+      const result = validateObject(TV.zoomInfoSpec, invalidZoom);
+      expect(result.reasonMap?.phone).toBeDefined();
+      expect(result.reasonMap?.phone?.reasons).toContain(FIELD_VALIDATION_MESSAGES.PHONE_NUMBER);
+    });
+  });
+
+  describe('addressSpec - optional field validation', () => {
+    test('should reject address with address2 exceeding max length', () => {
+      // Kills ArrayDeclaration mutant: address2: [] (line 100)
+      const address = {
+        address1: '123 Main St',
+        address2: 'x'.repeat(41),
+        city: 'New York',
+        state: 'NY',
+        zipCode: '12345',
+        countryCode: 'US',
+      };
+
+      const result = validateObject(TV.addressSpec, address);
+      expect(result.reasonMap?.address2).toBeDefined();
+      expect(result.reasonMap?.address2?.reasons).toContain('Max length 40 characters');
+    });
+
+    test('should reject address with address3 exceeding max length', () => {
+      // Kills ArrayDeclaration mutant: address3: [] (line 101)
+      const address = {
+        address1: '123 Main St',
+        address3: 'x'.repeat(41),
+        city: 'New York',
+        state: 'NY',
+        zipCode: '12345',
+        countryCode: 'US',
+      };
+
+      const result = validateObject(TV.addressSpec, address);
+      expect(result.reasonMap?.address3).toBeDefined();
+      expect(result.reasonMap?.address3?.reasons).toContain('Max length 40 characters');
+    });
+
+    test('should reject address with invalid countryCode', () => {
+      // Kills ArrayDeclaration mutant: countryCode: [] (line 105)
+      const address = {
+        address1: '123 Main St',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '12345',
+        countryCode: 'USA',
+      };
+
+      const result = validateObject(TV.addressSpec, address);
+      expect(result.reasonMap?.countryCode).toBeDefined();
+      expect(result.reasonMap?.countryCode?.reasons).toContain('Should be 2 characters in length');
+    });
+  });
+
+  describe('contactInformationSpec - optional field validation', () => {
+    const baseAddress = {
+      address1: '123 Main St',
+      city: 'New York',
+      state: 'NY',
+      zipCode: '12345',
+      countryCode: 'US',
+    };
+
+    test('should reject contact with invalid phone number format', () => {
+      // Kills ArrayDeclaration mutant: phone: [] in contactInformationSpec (line 115)
+      const contact = {
+        address: baseAddress,
+        phone: { number: 'bad-number' },
+      };
+
+      const result = validateObject(TV.contactInformationSpec, contact);
+      expect(result.reasonMap?.phone).toBeDefined();
+    });
+
+    test('should reject contact with invalid website', () => {
+      // Kills ArrayDeclaration mutant: website: [] (line 117)
+      const contact = {
+        address: baseAddress,
+        website: 'not a valid website!!',
+      };
+
+      const result = validateObject(TV.contactInformationSpec, contact);
+      expect(result.reasonMap?.website).toBeDefined();
+      expect(result.reasonMap?.website?.reasons).toContain(FIELD_VALIDATION_MESSAGES.WEBSITE);
+    });
+
+    test('should reject contact with companyName exceeding max length', () => {
+      // Kills ArrayDeclaration mutant: companyName: [] (line 118)
+      const contact = {
+        address: baseAddress,
+        companyName: 'x'.repeat(51),
+      };
+
+      const result = validateObject(TV.contactInformationSpec, contact);
+      expect(result.reasonMap?.companyName).toBeDefined();
+      expect(result.reasonMap?.companyName?.reasons).toContain('Max length 50 characters');
+    });
+  });
+
+  describe('assistantContactInformationSpec - optional address', () => {
+    test('should accept missing address for assistant contact (address is optional)', () => {
+      // Kills ArrayDeclaration mutant: address: [] (line 123) — empty array would cause required validation to be skipped
+      // but we need the OPPOSITE: verify the optional wrapper is active (undefined address = VALID)
+      const contact = {
+        email: 'assistant@example.com',
+      };
+
+      const result = validateObject(TV.assistantContactInformationSpec, contact);
+      // address is optional in assistantContactInformationSpec, so missing address is valid
+      expect(result.reasonMap?.address).toBeUndefined();
+    });
+
+    test('should reject assistant contact with invalid address when provided', () => {
+      // Kills ArrayDeclaration mutant: address: [] (line 123) — empty array would skip validation of the provided address
+      const contact = {
+        address: {
+          address1: '',
+          city: '',
+          state: '',
+          zipCode: '',
+          countryCode: 'US',
+        },
+      };
+
+      const result = validateObject(TV.assistantContactInformationSpec, contact);
+      // When address IS provided, it must be valid
+      expect(result.reasonMap?.address).toBeDefined();
     });
   });
 });
