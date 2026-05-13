@@ -550,7 +550,7 @@ async function getSoftwareList() {
 }
 
 async function createSoftware(data: { name: string }) {
-  return api().post('/bankruptcy-software', data);
+  return api().post<BankruptcySoftwareProfile, { name: string }>('/bankruptcy-software', data);
 }
 
 async function getCaseTrusteeAppointment(caseId: string) {
