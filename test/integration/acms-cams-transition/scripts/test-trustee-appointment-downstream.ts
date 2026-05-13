@@ -2,54 +2,79 @@
  * Integration test harness for CAMS-616 trustee appointment downstream flow.
  *
  * Exercises the end-to-end path from processAppointments (use case) through to
- * CMMAP_STAGING (downstream SQL), using real lower-environment databases.
+ * CMMAP_STAGING (downstream SQL).
+ *
+ * Two environments are supported via INTEGRATION_ENV:
+ *   local  (default) — localhost containers started by start-services.sh
+ *   azure            — lower-env Azure Government databases (VPN required)
  *
  * This is a one-shot script — NOT a Vitest test, NOT an e2e Playwright test.
- * Run it manually against a lower environment to verify the full flow.
  *
- * Usage (from repo root):
- *   npx tsx --tsconfig backend/tsconfig.json \
- *     test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts [command]
- *
- * Or via package.json script (from test/integration/):
+ * Usage (from test/integration/):
  *   npm run acms-cams-transition -- [command]
+ *
+ * Local workflow:
+ *   1. cd test/integration/acms-cams-transition/scripts && ./start-services.sh
+ *   2. npm run acms-cams-transition -- seed-schema
+ *   3. npm run acms-cams-transition -- seed-sql
+ *   4. npm run acms-cams-transition -- seed-integration
+ *   5. cd downstream && cp local.settings.local.json local.settings.json && npm start
+ *   6. npm run acms-cams-transition -- run
+ *   7. npm run acms-cams-transition -- clean
+ *   8. cd test/integration/acms-cams-transition/scripts && ./stop-services.sh
  *
  * Commands:
  *   check-env             Verify all required environment variables are set
+ *   seed-schema           Create ACMS_REP_SUB and apply CMMAP_STAGING + CMMAP_TRANSITION schema
+ *   seed-sql              Seed CMMAP / CMMPR / CMMPT (ACMS replica) and CMMAP_STAGING mock data
+ *   seed-integration      Seed all Cosmos fixtures (trustee, synced case, professional ID mapping)
+ *   run                   Run processAppointments and assert CMMAP_STAGING state
+ *   check-staging         Query CMMAP_STAGING for the test case
+ *   clean                 Remove seeded Cosmos and CMMAP_STAGING test data
+ *   run-sql <file> <db>   Execute a GO-delimited .sql file against a named database
  *   create-db <dbname>    CREATE DATABASE on the ACMS SQL Server instance
- *   run-sql <file> <db>   Execute a .sql file (GO-delimited) against a named database
- *   seed-cosmos           Seed Cosmos with a test trustee + professional ID mapping
- *   run                   Run processAppointments for the test event and assert results
- *   check-staging         Query CMMAP_STAGING and print current rows for test cases
- *   clean                 Remove seeded test data from Cosmos and CMMAP_STAGING
+ *   check-env             Verify all required environment variables are set
  *   help                  Show this help
- *
- * Prerequisites:
- *   1. backend/.env populated with lower-env connection strings (see check-env output)
- *   2. backend/function-apps/dataflows/local.settings.json with AzureWebJobsDataflowsStorage
- *   3. VPN connected (databases are on Azure Government)
  */
 
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
+import { randomUUID } from 'crypto';
 import { InvocationContext } from '@azure/functions';
+import { QueueServiceClient } from '@azure/storage-queue';
+import { MongoClient } from 'mongodb';
 import * as sql from 'mssql';
 import ApplicationContextCreator from '../../../../backend/function-apps/azure/application-context-creator';
 import SyncTrusteeAppointments from '../../../../backend/lib/use-cases/dataflows/sync-trustee-appointments';
-import factory from '../../../../backend/lib/factory';
 import { TrusteeAppointmentSyncEvent } from '../../../../common/src/cams/dataflow-events';
-import { TrusteeProfessionalId } from '../../../../common/src/cams/trustee-professional-ids';
-import { createAuditRecord, SYSTEM_USER_REFERENCE } from '../../../../common/src/cams/auditable';
+import { TRUSTEE_APPOINTMENT_EVENT_QUEUE } from '../../../../backend/lib/storage-queues';
 
 // Resolve paths relative to the repo root (two levels up from test/integration/)
 const REPO_ROOT = path.resolve(__dirname, '../../../../');
+const HARNESS_DIR = path.resolve(__dirname, '../');
 
-// Load backend/.env first (primary config: Cosmos, DXTR, downstream SQL)
-dotenv.config({ path: path.join(REPO_ROOT, 'backend/.env') });
+// Environment selection: local (default) or azure
+const INTEGRATION_ENV = process.env.INTEGRATION_ENV || 'local';
+const IS_LOCAL = INTEGRATION_ENV !== 'azure';
 
-// Load local.settings.json Values into process.env so the harness behaves like
-// the Functions runtime locally (provides AzureWebJobsDataflowsStorage etc.)
+// Load environment — local .env.local overrides backend/.env for local runs
+function loadEnv() {
+  if (IS_LOCAL) {
+    // Local: .env.local in the harness directory, no fallback to backend/.env
+    const localEnvPath = path.join(HARNESS_DIR, '.env.local');
+    if (!fs.existsSync(localEnvPath)) {
+      console.error(`Missing ${localEnvPath} — run start-services.sh first, then copy .env.local.template`);
+      process.exit(1);
+    }
+    dotenv.config({ path: localEnvPath, override: true });
+  } else {
+    // Azure: load backend/.env then dataflows local.settings.json
+    dotenv.config({ path: path.join(REPO_ROOT, 'backend/.env') });
+    loadLocalSettings(path.join(REPO_ROOT, 'backend/function-apps/dataflows/local.settings.json'));
+  }
+}
+
 function loadLocalSettings(settingsPath: string) {
   const resolved = path.resolve(settingsPath);
   if (!fs.existsSync(resolved)) return;
@@ -57,23 +82,17 @@ function loadLocalSettings(settingsPath: string) {
     const settings = JSON.parse(fs.readFileSync(resolved, 'utf-8'));
     const values: Record<string, string> = settings?.Values ?? {};
     for (const [key, value] of Object.entries(values)) {
-      if (!(key in process.env)) {
-        process.env[key] = value;
-      }
+      if (!(key in process.env)) process.env[key] = value;
     }
   } catch {
-    // Non-fatal — harness will surface missing vars via check-env
+    // Non-fatal
   }
 }
 
-loadLocalSettings(
-  path.join(REPO_ROOT, 'backend/function-apps/dataflows/local.settings.json'),
-);
+loadEnv();
 
 // ---------------------------------------------------------------------------
 // Test fixtures
-// These values must correspond to real data in the lower-env DXTR / CAMS
-// databases, OR be seeded by the seed-cosmos command below.
 // ---------------------------------------------------------------------------
 
 const TEST_TRUSTEE_ID = process.env.INTEGRATION_TEST_TRUSTEE_ID || 'INTEGRATION-TEST-TRUSTEE-001';
@@ -110,14 +129,45 @@ function info(msg: string) {
 
 async function getContext() {
   const invocationContext = new InvocationContext();
-  return ApplicationContextCreator.getApplicationContext({
+  const appContext = await ApplicationContextCreator.getApplicationContext({
     invocationContext,
     logger: ApplicationContextCreator.getLogger(invocationContext),
   });
+  return { appContext, invocationContext };
+}
+
+async function flushExtraOutputsToAzurite(invocationContext: InvocationContext): Promise<number> {
+  const connectionString = process.env.AzureWebJobsDataflowsStorage || process.env.AzureWebJobsStorage;
+  if (!connectionString) throw new Error('No storage connection string for Azurite');
+
+  const messages = invocationContext.extraOutputs.get(TRUSTEE_APPOINTMENT_EVENT_QUEUE) as unknown[];
+  if (!messages || messages.length === 0) return 0;
+
+  const queueClient = QueueServiceClient.fromConnectionString(connectionString)
+    .getQueueClient(TRUSTEE_APPOINTMENT_EVENT_QUEUE.queueName);
+
+  await queueClient.createIfNotExists();
+
+  for (const msg of messages) {
+    const inner = Array.isArray(msg) ? msg[0] : msg;
+    const encoded = Buffer.from(JSON.stringify(inner)).toString('base64');
+    await queueClient.sendMessage(encoded);
+  }
+
+  return messages.length;
 }
 
 async function getDownstreamSqlPool(): Promise<sql.ConnectionPool> {
   return getAcmsSqlPool(process.env.ACMS_MSSQL_DATABASE || 'ACMS_REP_SUB');
+}
+
+async function getMongoDb() {
+  const uri = process.env.MONGO_CONNECTION_STRING;
+  const dbName = process.env.COSMOS_DATABASE_NAME;
+  if (!uri || !dbName) throw new Error('MONGO_CONNECTION_STRING and COSMOS_DATABASE_NAME must be set');
+  const client = new MongoClient(uri);
+  await client.connect();
+  return { client, db: client.db(dbName) };
 }
 
 // Build an mssql ConnectionPool using the ACMS_MSSQL_* env vars — same logic
@@ -298,33 +348,190 @@ async function runSql(filePath: string, dbName: string) {
 }
 
 // ---------------------------------------------------------------------------
-// seed-cosmos
+// seed-schema  (local only)
+// ---------------------------------------------------------------------------
+// Creates ACMS_REP_SUB in SQL Edge and applies the CMMAP_STAGING table +
+// CMMAP_TRANSITION view schema. Safe to run multiple times (idempotent).
+
+async function seedSchema() {
+  if (!IS_LOCAL) {
+    console.error('seed-schema is only for local container runs. Schema already exists in Azure.');
+    process.exit(1);
+  }
+  console.log('\nCreating ACMS_REP_SUB and applying schema...\n');
+
+  // Connect to master to create the database
+  const master = await getAcmsSqlPool('master');
+  try {
+    await master.request().query(`
+      IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = 'ACMS_REP_SUB')
+        CREATE DATABASE [ACMS_REP_SUB]
+    `);
+    pass('ACMS_REP_SUB ready');
+  } finally {
+    await master.close();
+  }
+
+  // Apply CMMAP_STAGING schema only — the view depends on dbo.CMMAP which is
+  // created by seed-sql. Run seed-sql next, then the view is applied there.
+  const pool = await getAcmsSqlPool('ACMS_REP_SUB');
+  try {
+    const schemaDir = path.join(REPO_ROOT, 'downstream/database/acms-cams-transition/schema');
+    await executeSqlFile(pool, path.join(schemaDir, 'cmmap-staging.sql'));
+    pass('cmmap-staging.sql applied');
+  } finally {
+    await pool.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// seed-sql  (local only)
+// ---------------------------------------------------------------------------
+// Seeds ACMS replica mock data (CMMAP / CMMPR / CMMPT) and CMMAP_STAGING
+// mock rows into the local SQL Edge ACMS_REP_SUB database.
+
+async function seedSql() {
+  if (!IS_LOCAL) {
+    console.error('seed-sql is only for local container runs. Use run-sql for Azure.');
+    process.exit(1);
+  }
+  console.log('\nSeeding SQL mock data into ACMS_REP_SUB...\n');
+
+  const pool = await getAcmsSqlPool('ACMS_REP_SUB');
+  try {
+    const seedDir = path.join(HARNESS_DIR, 'seed');
+    // Seed ACMS replica tables (creates CMMAP, CMMPR, CMMPT)
+    await executeSqlFile(pool, path.join(seedDir, '01-seed-acms-replica.sql'));
+    pass('01-seed-acms-replica.sql seeded');
+    // Now that dbo.CMMAP exists, apply the CMMAP_TRANSITION view
+    const schemaDir = path.join(REPO_ROOT, 'downstream/database/acms-cams-transition/schema');
+    await executeSqlFile(pool, path.join(schemaDir, 'cmmap-view.sql'));
+    pass('cmmap-view.sql applied');
+    // Seed CMMAP_STAGING mock rows
+    await executeSqlFile(pool, path.join(seedDir, '02-seed-cmmap-staging.sql'));
+    pass('02-seed-cmmap-staging.sql seeded');
+  } finally {
+    await pool.close();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// seed-integration
+// ---------------------------------------------------------------------------
+// Synthesizes all Cosmos fixtures needed for the `run` command:
+//   1. A SyncedCase for TEST_CASE_ID with matching courtId/division/chapter
+//   2. A Trustee whose name matches dxtrTrustee.fullName in TEST_SYNC_EVENT,
+//      with an active appointment covering that court/division/chapter
+//   3. A TrusteeProfessionalId linking the trustee to TEST_ACMS_PROFESSIONAL_ID
+//
+// The trustee name "Integration TestTrustee" must match exactly what processAppointments
+// receives in TrusteeAppointmentSyncEvent.dxtrTrustee.fullName.
 // ---------------------------------------------------------------------------
 
-async function seedCosmos() {
-  console.log('\nSeeding Cosmos with test trustee + professional ID mapping...\n');
-  console.log(`  Trustee ID:           ${TEST_TRUSTEE_ID}`);
-  console.log(`  ACMS Professional ID: ${TEST_ACMS_PROFESSIONAL_ID}`);
+const INTEGRATION_COURT_ID = '0208';
+const INTEGRATION_DIVISION_CODE = '1';
+const INTEGRATION_CHAPTER = '7';
 
-  const context = await getContext();
-  const repo = factory.getTrusteeProfessionalIdsRepository(context);
+async function seedIntegration() {
+  console.log('\nSeeding all Cosmos fixtures for integration test...\n');
+  console.log(`  Trustee name:         ${TEST_SYNC_EVENT.dxtrTrustee.fullName}`);
+  console.log(`  Case ID:              ${TEST_CASE_ID}`);
+  console.log(`  Court ID:             ${INTEGRATION_COURT_ID}`);
+  console.log(`  Division code:        ${INTEGRATION_DIVISION_CODE}`);
+  console.log(`  Chapter:              ${INTEGRATION_CHAPTER}`);
+  console.log(`  ACMS professional ID: ${TEST_ACMS_PROFESSIONAL_ID}`);
+  console.log('');
 
+  const { client, db } = await getMongoDb();
   try {
-    const doc: TrusteeProfessionalId = {
-      ...createAuditRecord<TrusteeProfessionalId>(
-        {
-          documentType: 'TRUSTEE_PROFESSIONAL_ID',
-          camsTrusteeId: TEST_TRUSTEE_ID,
-          acmsProfessionalId: TEST_ACMS_PROFESSIONAL_ID,
-        },
-        SYSTEM_USER_REFERENCE,
-      ),
-    };
+    const now = new Date().toISOString();
+    const trusteeId = randomUUID();
 
-    await repo.upsert(TEST_TRUSTEE_ID, TEST_ACMS_PROFESSIONAL_ID, doc);
-    pass(`Upserted TrusteeProfessionalId: ${TEST_TRUSTEE_ID} ↔ ${TEST_ACMS_PROFESSIONAL_ID}`);
+    // Step 1 — Synced case (upsert by caseId)
+    await db.collection('cases').updateOne(
+      { documentType: 'SYNCED_CASE', caseId: TEST_CASE_ID },
+      {
+        $set: {
+          documentType: 'SYNCED_CASE',
+          caseId: TEST_CASE_ID,
+          dxtrId: '9999999',
+          courtId: INTEGRATION_COURT_ID,
+          courtName: 'U.S. Bankruptcy Court - Southern District of New York',
+          courtDivisionCode: INTEGRATION_DIVISION_CODE,
+          courtDivisionName: 'Manhattan',
+          officeName: 'Manhattan',
+          officeCode: INTEGRATION_DIVISION_CODE,
+          groupDesignator: 'NY',
+          regionId: '02',
+          regionName: 'Region 2',
+          chapter: INTEGRATION_CHAPTER,
+          caseTitle: 'Integration Test Debtor',
+          caseNumber: '24-12345',
+          dateFiled: '2024-01-15',
+          debtor: { name: 'Integration Test Debtor' },
+          updatedOn: now,
+        },
+        $setOnInsert: { createdOn: now },
+      },
+      { upsert: true },
+    );
+    pass(`Upserted SyncedCase: ${TEST_CASE_ID} (court ${INTEGRATION_COURT_ID}, div ${INTEGRATION_DIVISION_CODE}, ch ${INTEGRATION_CHAPTER})`);
+
+    // Step 2 — Trustee document
+    // name must match dxtrTrustee.fullName exactly so matchTrusteeByName regex finds it
+    await db.collection('trustees').insertOne({
+      documentType: 'TRUSTEE',
+      trusteeId,
+      name: TEST_SYNC_EVENT.dxtrTrustee.fullName,
+      firstName: 'Integration',
+      lastName: 'TestTrustee',
+      status: 'active',
+      public: {
+        address: { address1: '100 Integration Ave', city: 'New York', state: 'NY', zip: '10001' },
+        phone: '212-555-0100',
+        email: 'integration.testtrustee@example.com',
+      },
+      legacy: {},
+      createdOn: now,
+      updatedOn: now,
+    });
+    pass(`Inserted Trustee: ${trusteeId} (name="${TEST_SYNC_EVENT.dxtrTrustee.fullName}")`);
+
+    // Step 3 — TrusteeAppointment (panel appointment — drives isPerfectMatch)
+    await db.collection('trustee-appointments').insertOne({
+      documentType: 'TRUSTEE_APPOINTMENT',
+      id: randomUUID(),
+      trusteeId,
+      chapter: INTEGRATION_CHAPTER,
+      appointmentType: 'panel',
+      courtId: INTEGRATION_COURT_ID,
+      divisionCode: INTEGRATION_DIVISION_CODE,
+      divisionCodes: [INTEGRATION_DIVISION_CODE],
+      appointedDate: '2020-01-01',
+      status: 'active',
+      effectiveDate: '2020-01-01',
+      courtName: 'U.S. Bankruptcy Court - Southern District of New York',
+      courtDivisionName: 'Manhattan',
+      createdOn: now,
+      updatedOn: now,
+    });
+    pass(`Inserted TrusteeAppointment: court ${INTEGRATION_COURT_ID}, div ${INTEGRATION_DIVISION_CODE}, ch ${INTEGRATION_CHAPTER}, status=active`);
+
+    // Step 4 — TrusteeProfessionalId mapping
+    await db.collection('trustee-professional-ids').insertOne({
+      documentType: 'TRUSTEE_PROFESSIONAL_ID',
+      id: randomUUID(),
+      camsTrusteeId: trusteeId,
+      acmsProfessionalId: TEST_ACMS_PROFESSIONAL_ID,
+      createdOn: now,
+      updatedOn: now,
+    });
+    pass(`Inserted TrusteeProfessionalId: ${trusteeId} ↔ ${TEST_ACMS_PROFESSIONAL_ID}`);
+
+    info(`Trustee ID: ${trusteeId}`);
+    info(`Run 'run' now, then 'clean' when done.`);
   } finally {
-    repo.release();
+    await client.close();
   }
 }
 
@@ -339,10 +546,10 @@ async function run() {
   console.log('');
 
   console.log('Step 1: processAppointments (sync-trustee-appointments use case)');
-  const context = await getContext();
+  const { appContext, invocationContext } = await getContext();
 
   const { successCount, dlqMessages, scenarioDistribution } =
-    await SyncTrusteeAppointments.processAppointments(context, [TEST_SYNC_EVENT]);
+    await SyncTrusteeAppointments.processAppointments(appContext, [TEST_SYNC_EVENT]);
 
   info(`successCount: ${successCount}`);
   info(`dlqMessages: ${dlqMessages.length}`);
@@ -362,7 +569,42 @@ async function run() {
 
   pass('processAppointments completed without DLQ errors');
 
-  console.log('\nStep 2: Query CMMAP_STAGING for test case');
+  console.log('\nStep 1b: Flush queued downstream events to Azurite');
+  const flushed = await flushExtraOutputsToAzurite(invocationContext);
+  if (flushed === 0) {
+    fail('No downstream events were queued by processAppointments — check extraOutputs wiring');
+    return;
+  }
+  pass(`Flushed ${flushed} event(s) to Azurite queue '${TRUSTEE_APPOINTMENT_EVENT_QUEUE.queueName}'`);
+
+  console.log('\nStep 2: Wait for func host to process queue message (up to 30s)');
+  const WAIT_MS = 2000;
+  const MAX_ATTEMPTS = 15;
+  let found = false;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    await new Promise((r) => setTimeout(r, WAIT_MS));
+    const pool = await getDownstreamSqlPool();
+    try {
+      const req = pool.request();
+      req.input('caseId', sql.VarChar(50), TEST_CASE_ID);
+      const result = await req.query(`SELECT COUNT(*) AS cnt FROM CMMAP_STAGING WHERE CAMS_CASE_ID = @caseId`);
+      const cnt = result.recordset[0]?.cnt ?? 0;
+      if (cnt > 0) {
+        found = true;
+        break;
+      }
+      info(`Attempt ${attempt}/${MAX_ATTEMPTS}: 0 rows yet, waiting...`);
+    } finally {
+      await pool.close();
+    }
+  }
+
+  if (!found) {
+    fail('Timed out waiting for func host to write to CMMAP_STAGING');
+    return;
+  }
+
+  console.log('\nStep 3: Assert CMMAP_STAGING content for test case');
   await checkStagingForCase(TEST_CASE_ID);
 }
 
@@ -436,21 +678,66 @@ async function checkStaging() {
 async function clean() {
   console.log('\nCleaning up test data...\n');
 
-  console.log('Removing TrusteeProfessionalId from Cosmos...');
-  const context = await getContext();
-  const repo = factory.getTrusteeProfessionalIdsRepository(context);
+  const { client, db } = await getMongoDb();
   try {
-    const existing = await repo.findByAcmsProfessionalId(TEST_ACMS_PROFESSIONAL_ID);
-    const testDoc = existing.find((d) => d.camsTrusteeId === TEST_TRUSTEE_ID);
-    if (testDoc?.id) {
-      info(
-        `Found TrusteeProfessionalId doc id=${testDoc.id} — manual deletion required in Cosmos if needed`,
-      );
-    } else {
-      info('No matching TrusteeProfessionalId doc found in Cosmos (may have already been removed)');
+    // Find all integration trustee IDs via the professional ID mapping
+    console.log('Removing integration trustees and related documents...');
+    const profIdDocs = await db
+      .collection('trustee-professional-ids')
+      .find({ acmsProfessionalId: TEST_ACMS_PROFESSIONAL_ID })
+      .toArray();
+
+    const trusteeIds = [...new Set(profIdDocs.map((d) => d.camsTrusteeId as string))];
+
+    if (trusteeIds.length === 0) {
+      info('No TrusteeProfessionalId docs found — already clean');
     }
+
+    for (const trusteeId of trusteeIds) {
+      // Delete professional ID mappings
+      const r1 = await db
+        .collection('trustee-professional-ids')
+        .deleteMany({ camsTrusteeId: trusteeId });
+      pass(`Deleted ${r1.deletedCount} TrusteeProfessionalId doc(s) for trustee ${trusteeId}`);
+
+      // Delete panel TrusteeAppointments
+      const r2 = await db
+        .collection('trustee-appointments')
+        .deleteMany({ documentType: 'TRUSTEE_APPOINTMENT', trusteeId });
+      pass(`Deleted ${r2.deletedCount} TrusteeAppointment(s) for trustee ${trusteeId}`);
+
+      // Delete the Trustee document itself
+      const r3 = await db
+        .collection('trustees')
+        .deleteMany({ documentType: 'TRUSTEE', trusteeId });
+      pass(`Deleted ${r3.deletedCount} Trustee doc(s) for trusteeId ${trusteeId}`);
+    }
+
+    // Also delete by integration test name to catch any orphans from failed previous runs
+    const r4 = await db.collection('trustees').deleteMany({
+      documentType: 'TRUSTEE',
+      name: TEST_SYNC_EVENT.dxtrTrustee.fullName,
+    });
+    if (r4.deletedCount > 0) {
+      pass(`Deleted ${r4.deletedCount} orphaned Trustee doc(s) by name "${TEST_SYNC_EVENT.dxtrTrustee.fullName}"`);
+    }
+
+    // Delete CaseAppointments created by processAppointments during `run`
+    console.log('\nRemoving CaseAppointments...');
+    const r5 = await db.collection('trustee-appointments').deleteMany({
+      documentType: 'CASE_APPOINTMENT',
+      caseId: TEST_CASE_ID,
+    });
+    pass(`Deleted ${r5.deletedCount} CaseAppointment(s) for case ${TEST_CASE_ID}`);
+
+    // Clear trusteeId from the SyncedCase so it's ready for the next run
+    await db.collection('cases').updateOne(
+      { documentType: 'SYNCED_CASE', caseId: TEST_CASE_ID },
+      { $unset: { trusteeId: '' } },
+    );
+    pass(`Cleared trusteeId from SyncedCase ${TEST_CASE_ID}`);
   } finally {
-    repo.release();
+    await client.close();
   }
 
   console.log('\nRemoving test rows from CMMAP_STAGING...');
@@ -488,8 +775,14 @@ async function main() {
     case 'run-sql':
       await runSql(process.argv[3], process.argv[4]);
       break;
-    case 'seed-cosmos':
-      await seedCosmos();
+    case 'seed-schema':
+      await seedSchema();
+      break;
+    case 'seed-sql':
+      await seedSql();
+      break;
+    case 'seed-integration':
+      await seedIntegration();
       break;
     case 'run':
       await run();
@@ -501,36 +794,33 @@ async function main() {
       await clean();
       break;
     case 'help':
-    default:
-      console.log('\nUsage:');
-      console.log('  npx tsx --tsconfig backend/tsconfig.json \\');
-      console.log(
-        '    test/integration/acms-cams-transition/scripts/test-trustee-appointment-downstream.ts [command]',
-      );
-      console.log('\nDatabase setup commands (use ACMS_MSSQL_* env vars to connect):');
-      console.log('  create-db <name>      CREATE DATABASE [name] if it does not exist');
-      console.log('  run-sql <file> <db>   Execute a GO-delimited .sql file against a database');
-      console.log('\nTest commands:');
-      console.log('  check-env             Verify all required environment variables are set');
-      console.log('  seed-cosmos           Seed Cosmos with test trustee + professional ID mapping');
-      console.log('  run                   Run processAppointments and assert CMMAP_STAGING state');
-      console.log('  check-staging         Print current CMMAP_STAGING rows for the test case');
-      console.log('  clean                 Remove seeded test data from Cosmos and CMMAP_STAGING');
-      console.log('  help                  Show this help');
-      console.log('\nExample — full setup workflow (all objects live in ACMS_REP_SUB):');
-      console.log('  # 1. Apply schema to ACMS_REP_SUB');
-      console.log('  ... run-sql downstream/database/acms-cams-transition/schema/cmmap-staging.sql ACMS_REP_SUB');
-      console.log('  ... run-sql downstream/database/acms-cams-transition/schema/cmmap-view.sql ACMS_REP_SUB');
-      console.log('  # 2. Seed mock ACMS data');
-      console.log('  ... run-sql test/integration/acms-cams-transition/seed/01-seed-acms-replica.sql ACMS_REP_SUB');
-      console.log('  # 3. Seed CAMS staging data');
-      console.log('  ... run-sql test/integration/acms-cams-transition/seed/02-seed-cmmap-staging.sql ACMS_REP_SUB');
-      console.log('\nOptional env var overrides (in backend/.env):');
-      console.log(`  INTEGRATION_TEST_TRUSTEE_ID   (default: ${TEST_TRUSTEE_ID})`);
-      console.log(`  INTEGRATION_TEST_ACMS_PROF_ID (default: ${TEST_ACMS_PROFESSIONAL_ID})`);
-      console.log(`  INTEGRATION_TEST_CASE_ID      (default: ${TEST_CASE_ID})`);
-      console.log(`  INTEGRATION_TEST_COURT_ID     (default: ${TEST_COURT_ID})`);
+    default: {
+      const HARNESS = 'npm run acms-cams-transition --';
+      console.log('\nUsage (from test/integration/):');
+      console.log(`  INTEGRATION_ENV=local  ${HARNESS} <command>   (default — localhost containers)`);
+      console.log(`  INTEGRATION_ENV=azure  ${HARNESS} <command>   (lower-env Azure, VPN required)`);
+      console.log('\nLocal workflow:');
+      console.log('  1. ./acms-cams-transition/scripts/start-services.sh');
+      console.log(`  2. ${HARNESS} seed-schema        (create DB + apply SQL schema)`);
+      console.log(`  3. ${HARNESS} seed-sql           (seed ACMS replica + CMMAP_STAGING mock data)`);
+      console.log(`  4. ${HARNESS} seed-integration   (seed Cosmos: trustee, case, proId)`);
+      console.log('  5. cd downstream && cp local.settings.local.json local.settings.json && npm start');
+      console.log(`  6. ${HARNESS} run                (run use case + assert CMMAP_STAGING)`);
+      console.log(`  7. ${HARNESS} clean              (remove test data)`);
+      console.log('  8. ./acms-cams-transition/scripts/stop-services.sh');
+      console.log('\nAll commands:');
+      console.log('  check-env         Verify required environment variables');
+      console.log('  seed-schema       [local] Create ACMS_REP_SUB + apply schema');
+      console.log('  seed-sql          [local] Seed ACMS mock data into SQL Edge');
+      console.log('  seed-integration  Seed Cosmos fixtures (trustee, synced case, proId)');
+      console.log('  run               Run processAppointments + assert CMMAP_STAGING');
+      console.log('  check-staging     Print CMMAP_STAGING rows for test case');
+      console.log('  clean             Remove seeded test data');
+      console.log('  run-sql <f> <db>  Execute a GO-delimited .sql file');
+      console.log('  create-db <name>  CREATE DATABASE if not exists');
+      console.log('  help              Show this help');
       break;
+    }
   }
 
   console.log('\n' + '='.repeat(60));

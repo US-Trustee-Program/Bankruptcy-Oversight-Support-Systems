@@ -23,7 +23,7 @@ export default defineConfig({
         statements: 80,
       },
     },
-    include: ['functions/**/*.test.ts'],
+    include: ['**/*.test.ts'],
     exclude: ['node_modules', 'dist', 'temp', 'test/acms-cams-transition'],
   },
 });

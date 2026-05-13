@@ -10,7 +10,7 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "types": ["node", "@azure/functions"],
     "baseUrl": ".",
     "paths": {
@@ -18,7 +18,10 @@
     }
   },
   "include": [
-    "functions/**/*.ts"
+    "index.ts",
+    "shared/**/*.ts",
+    "staff-assignment-handler/**/*.ts",
+    "trustee-appointment-handler/**/*.ts"
   ],
   "exclude": [
     "node_modules",

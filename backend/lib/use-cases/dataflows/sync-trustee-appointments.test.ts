@@ -3,7 +3,10 @@ import { ApplicationContext } from '../../adapters/types/basic';
 import { createMockApplicationContext } from '../../testing/testing-utilities';
 import SyncTrusteeAppointments from './sync-trustee-appointments';
 import factory from '../../factory';
-import { TrusteeAppointmentSyncEvent, TrusteeAppointmentDownstreamEvent } from '@common/cams/dataflow-events';
+import {
+  TrusteeAppointmentSyncEvent,
+  TrusteeAppointmentDownstreamEvent,
+} from '@common/cams/dataflow-events';
 import { CaseAppointment, TrusteeAppointment } from '@common/cams/trustee-appointments';
 import {
   ApiToDataflowsGateway,
@@ -1130,8 +1133,22 @@ describe('SyncTrusteeAppointments', () => {
 
       test('should track reVerificationCount when HIGH_CONFIDENCE_MATCH already resolved', async () => {
         const matchCandidates = [
-          { trusteeId: 't-1', trusteeName: 'T1', totalScore: -1, addressScore: -1, districtDivisionScore: -1, chapterScore: -1 },
-          { trusteeId: 't-2', trusteeName: 'T2', totalScore: -1, addressScore: -1, districtDivisionScore: -1, chapterScore: -1 },
+          {
+            trusteeId: 't-1',
+            trusteeName: 'T1',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
+          {
+            trusteeId: 't-2',
+            trusteeName: 'T2',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
         ];
         (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
           new CamsError('TRUSTEE-MATCH', {
@@ -1142,7 +1159,14 @@ describe('SyncTrusteeAppointments', () => {
         vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce({
           winnerId: 't-1',
           candidateScores: [
-            { trusteeId: 't-1', trusteeName: 'T1', totalScore: 90, addressScore: 100, districtDivisionScore: 100, chapterScore: 100 },
+            {
+              trusteeId: 't-1',
+              trusteeName: 'T1',
+              totalScore: 90,
+              addressScore: 100,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+            },
           ],
         });
         (mockVerificationRepo.getVerification as ReturnType<typeof vi.fn>).mockResolvedValue({
@@ -1165,8 +1189,22 @@ describe('SyncTrusteeAppointments', () => {
 
       test('should omit scoringBreakdown when fuzzy winner is not in candidateScores', async () => {
         const matchCandidates = [
-          { trusteeId: 't-1', trusteeName: 'T1', totalScore: -1, addressScore: -1, districtDivisionScore: -1, chapterScore: -1 },
-          { trusteeId: 't-2', trusteeName: 'T2', totalScore: -1, addressScore: -1, districtDivisionScore: -1, chapterScore: -1 },
+          {
+            trusteeId: 't-1',
+            trusteeName: 'T1',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
+          {
+            trusteeId: 't-2',
+            trusteeName: 'T2',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
         ];
         (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
           new CamsError('TRUSTEE-MATCH', {
@@ -1177,7 +1215,14 @@ describe('SyncTrusteeAppointments', () => {
         vi.spyOn(trusteeMatchHelpers, 'resolveTrusteeWithFuzzyMatching').mockResolvedValueOnce({
           winnerId: 'unknown-winner', // not in candidateScores
           candidateScores: [
-            { trusteeId: 't-1', trusteeName: 'T1', totalScore: 90, addressScore: 100, districtDivisionScore: 100, chapterScore: 100 },
+            {
+              trusteeId: 't-1',
+              trusteeName: 'T1',
+              totalScore: 90,
+              addressScore: 100,
+              districtDivisionScore: 100,
+              chapterScore: 100,
+            },
           ],
         });
         const infoSpy = vi.spyOn(context.logger, 'info');
@@ -1189,13 +1234,24 @@ describe('SyncTrusteeAppointments', () => {
         const auditCalls = infoSpy.mock.calls.filter((call) => call[1] === 'TRUSTEE_MATCH_AUDIT');
         expect(auditCalls).toHaveLength(1);
         expect(auditCalls[0][2]).toEqual(
-          expect.objectContaining({ matchOutcome: 'high-confidence', matchedTrusteeId: 'unknown-winner', scoringBreakdown: null }),
+          expect.objectContaining({
+            matchOutcome: 'high-confidence',
+            matchedTrusteeId: 'unknown-winner',
+            scoringBreakdown: null,
+          }),
         );
       });
 
       test('should default matchCandidates to empty array when fuzzy fail error has no candidates', async () => {
         const matchCandidates = [
-          { trusteeId: 't-1', trusteeName: 'T1', totalScore: -1, addressScore: -1, districtDivisionScore: -1, chapterScore: -1 },
+          {
+            trusteeId: 't-1',
+            trusteeName: 'T1',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
         ];
         (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
           new CamsError('TRUSTEE-MATCH', {
@@ -1216,13 +1272,23 @@ describe('SyncTrusteeAppointments', () => {
 
         expect(dlqMessages).toHaveLength(0);
         expect(mockVerificationRepo.upsertVerification).toHaveBeenCalledWith(
-          expect.objectContaining({ mismatchReason: 'MULTIPLE_TRUSTEES_MATCH', matchCandidates: [] }),
+          expect.objectContaining({
+            mismatchReason: 'MULTIPLE_TRUSTEES_MATCH',
+            matchCandidates: [],
+          }),
         );
       });
 
       test('should track reVerificationCount when MULTIPLE_TRUSTEES_MATCH already resolved', async () => {
         const matchCandidates = [
-          { trusteeId: 't-1', trusteeName: 'T1', totalScore: -1, addressScore: -1, districtDivisionScore: -1, chapterScore: -1 },
+          {
+            trusteeId: 't-1',
+            trusteeName: 'T1',
+            totalScore: -1,
+            addressScore: -1,
+            districtDivisionScore: -1,
+            chapterScore: -1,
+          },
         ];
         (trusteeMatchHelpers.matchTrusteeByName as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
           new CamsError('TRUSTEE-MATCH', {
@@ -1472,7 +1538,11 @@ describe('SyncTrusteeAppointments', () => {
         mockVerificationRepo as TrusteeMatchVerificationRepository,
       );
       vi.spyOn(factory, 'getTrusteesRepository').mockReturnValue({
-        read: vi.fn().mockResolvedValue({ trusteeId: 'trustee-123', name: 'John Doe', public: { address: {} } }),
+        read: vi.fn().mockResolvedValue({
+          trusteeId: 'trustee-123',
+          name: 'John Doe',
+          public: { address: {} },
+        }),
         release: vi.fn(),
       } as unknown as TrusteesRepository);
       vi.spyOn(factory, 'getApiToDataflowsGateway').mockReturnValue({
@@ -1508,9 +1578,7 @@ describe('SyncTrusteeAppointments', () => {
           appointedDate: '2024-01-15',
         }),
       );
-      expect(
-        queueTrusteeAppointmentEventSpy.mock.calls[0][0].unassignedOn,
-      ).toBeUndefined();
+      expect(queueTrusteeAppointmentEventSpy.mock.calls[0][0].unassignedOn).toBeUndefined();
     });
 
     test('should emit closed appointment event on soft-close of previous trustee', async () => {
@@ -1531,10 +1599,12 @@ describe('SyncTrusteeAppointments', () => {
       await SyncTrusteeAppointments.processAppointments(context, [makeEvent('case-001')]);
 
       expect(queueTrusteeAppointmentEventSpy).toHaveBeenCalledTimes(2);
-      const closeCall = queueTrusteeAppointmentEventSpy.mock.calls[0][0] as TrusteeAppointmentDownstreamEvent;
+      const closeCall = queueTrusteeAppointmentEventSpy.mock
+        .calls[0][0] as TrusteeAppointmentDownstreamEvent;
       expect(closeCall.trusteeId).toBe('trustee-old');
       expect(closeCall.unassignedOn).toBeDefined();
-      const openCall = queueTrusteeAppointmentEventSpy.mock.calls[1][0] as TrusteeAppointmentDownstreamEvent;
+      const openCall = queueTrusteeAppointmentEventSpy.mock
+        .calls[1][0] as TrusteeAppointmentDownstreamEvent;
       expect(openCall.trusteeId).toBe('trustee-123');
       expect(openCall.unassignedOn).toBeUndefined();
     });
