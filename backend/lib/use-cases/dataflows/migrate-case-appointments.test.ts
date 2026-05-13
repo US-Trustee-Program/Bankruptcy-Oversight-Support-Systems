@@ -237,4 +237,151 @@ describe('MigrateCaseAppointmentsUseCase', () => {
       expect(callArg).not.toHaveProperty('unassignedOn');
     });
   });
+
+  describe('discrepancy check', () => {
+    function makeActiveDxtrAppointment(override: Partial<CaseAppointment> = {}): CaseAppointment {
+      return {
+        id: 'ca-dxtr-1',
+        caseId: '081-24-12345',
+        trusteeId: 'trustee-A',
+        assignedOn: '2023-01-01',
+        source: 'dxtr',
+        createdOn: '2023-01-01T00:00:00Z',
+        createdBy: { id: 'system', name: 'System' },
+        updatedOn: '2023-01-01T00:00:00Z',
+        updatedBy: { id: 'system', name: 'System' },
+        ...override,
+      };
+    }
+
+    test('logs DXTR_ACMS_TRUSTEE_DISCREPANCY when trustees differ', async () => {
+      setupStateRepo();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue([makeRecord({ unassignDate: null })]),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi
+            .fn()
+            .mockResolvedValue([makeProfessionalId({ camsTrusteeId: 'trustee-B' })]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([
+        makeActiveDxtrAppointment({ trusteeId: 'trustee-A' }),
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockResolvedValue(
+        {} as CaseAppointment,
+      );
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        'DXTR_ACMS_TRUSTEE_DISCREPANCY',
+        expect.objectContaining({
+          caseId: '081-24-12345',
+          dxtrTrusteeId: 'trustee-A',
+          acmsTrusteeId: 'trustee-B',
+        }),
+      );
+    });
+
+    test('no warning when DXTR and ACMS trustees match', async () => {
+      setupStateRepo();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue([makeRecord({ unassignDate: null })]),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi
+            .fn()
+            .mockResolvedValue([makeProfessionalId({ camsTrusteeId: 'trustee-A' })]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([
+        makeActiveDxtrAppointment({ trusteeId: 'trustee-A' }),
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockResolvedValue(
+        {} as CaseAppointment,
+      );
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        expect.any(String),
+        'DXTR_ACMS_TRUSTEE_DISCREPANCY',
+        expect.anything(),
+      );
+    });
+
+    test('no warning when no active DXTR appointment exists', async () => {
+      setupStateRepo();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue([makeRecord({ unassignDate: null })]),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi
+            .fn()
+            .mockResolvedValue([makeProfessionalId({ camsTrusteeId: 'trustee-B' })]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([]);
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockResolvedValue(
+        {} as CaseAppointment,
+      );
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        expect.any(String),
+        'DXTR_ACMS_TRUSTEE_DISCREPANCY',
+        expect.anything(),
+      );
+    });
+
+    test('no warning for historical ACMS records (unassignDate set)', async () => {
+      setupStateRepo();
+      const warnSpy = vi.spyOn(context.logger, 'warn');
+
+      vi.spyOn(factory, 'getAcmsGateway').mockReturnValue({
+        getCmmapAppointments: vi.fn().mockResolvedValue([makeRecord({ unassignDate: 20220101 })]),
+      } as never);
+
+      vi.spyOn(factory, 'getTrusteeProfessionalIdsRepository').mockReturnValue(
+        Object.assign(new MockMongoRepository(), {
+          findByAcmsProfessionalId: vi
+            .fn()
+            .mockResolvedValue([makeProfessionalId({ camsTrusteeId: 'trustee-B' })]),
+        }),
+      );
+
+      vi.spyOn(MockMongoRepository.prototype, 'findByCaseId').mockResolvedValue([
+        makeActiveDxtrAppointment({ trusteeId: 'trustee-A' }),
+      ]);
+      vi.spyOn(MockMongoRepository.prototype, 'createCaseAppointment').mockResolvedValue(
+        {} as CaseAppointment,
+      );
+
+      await MigrateCaseAppointmentsUseCase.processPage(context, null, 10);
+
+      expect(warnSpy).not.toHaveBeenCalledWith(
+        expect.any(String),
+        'DXTR_ACMS_TRUSTEE_DISCREPANCY',
+        expect.anything(),
+      );
+    });
+  });
 });
