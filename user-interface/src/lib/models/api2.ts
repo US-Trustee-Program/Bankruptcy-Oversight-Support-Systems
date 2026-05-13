@@ -550,6 +550,14 @@ async function createBank(data: Pick<BankProfile, 'name'>) {
   return api().post('/banks', data);
 }
 
+async function getBank(bankId: string) {
+  return api().get<BankProfile>(`/banks/${bankId}`);
+}
+
+async function updateBank(bankId: string, data: Pick<BankProfile, 'name' | 'status'>) {
+  return api().put<BankProfile>(`/banks/${bankId}`, data);
+}
+
 async function getCaseTrusteeAppointment(caseId: string) {
   return api().get<CaseAppointment>(`/cases/${caseId}/trustee-appointment`);
 }
@@ -645,7 +653,9 @@ export const _Api2 = {
   putPrivilegedIdentityUser,
   searchCases,
   getBanks,
+  getBank,
   createBank,
+  updateBank,
   getBankruptcySoftwareList,
   postBankruptcySoftware,
   deleteBankruptcySoftware,
