@@ -24,10 +24,6 @@ describe('Dataflows Common', () => {
     process.env = env;
   });
 
-  // Note: buildFunctionName and buildQueueName tests have been moved to
-  // common/src/queues/queue-helpers.test.ts
-  // Tests for these functions are now in the shared common package
-
   describe('buildContainerName', () => {
     test('should convert module name with hyphens to lowercase container name with direction suffix', () => {
       expect(buildContainerName('SYNC-OFFICE-STAFF', 'in')).toEqual('sync-office-staff-in');

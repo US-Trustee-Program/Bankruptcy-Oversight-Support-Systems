@@ -11,6 +11,7 @@ export default defineConfig({
         find: /^@common\/cams\/(.+)$/,
         replacement: path.resolve(__dirname, '../common/src/cams/$1'),
       },
+      // Catch-all for @common/queues and other non-cams subpaths
       { find: '@common', replacement: path.resolve(__dirname, '../common/src') },
     ],
   },

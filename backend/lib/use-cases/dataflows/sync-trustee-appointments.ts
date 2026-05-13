@@ -138,7 +138,8 @@ async function applyResolvedTrustee(
 
   const professionalIdsRepo = factory.getTrusteeProfessionalIdsRepository(context);
   const professionalIds = await professionalIdsRepo.findByCamsTrusteeId(trusteeId);
-  const canEmitDownstream = professionalIds.length > 0;
+  const acmsProfessionalId = professionalIds[0]?.acmsProfessionalId ?? null;
+  const canEmitDownstream = !!acmsProfessionalId;
   if (!canEmitDownstream) {
     context.logger.warn(
       MODULE_NAME,
@@ -160,7 +161,7 @@ async function applyResolvedTrustee(
       const closeEvent: TrusteeAppointmentDownstreamEvent = {
         caseId: event.caseId,
         trusteeId: existingAppointment.trusteeId,
-        acmsProfessionalId: professionalIds[0].acmsProfessionalId,
+        acmsProfessionalId,
         apptType: 'TR',
         assignedOn: existingAppointment.assignedOn,
         appointedDate: existingAppointment.appointedDate,
@@ -185,7 +186,7 @@ async function applyResolvedTrustee(
     const openEvent: TrusteeAppointmentDownstreamEvent = {
       caseId: event.caseId,
       trusteeId,
-      acmsProfessionalId: professionalIds[0].acmsProfessionalId,
+      acmsProfessionalId,
       apptType: 'TR',
       assignedOn: now,
       appointedDate: event.appointedDate,

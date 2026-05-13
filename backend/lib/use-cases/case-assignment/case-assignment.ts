@@ -203,7 +203,7 @@ export class CaseAssignmentUseCase {
       for (const assignment of [...addedAssignments, ...removedAssignments]) {
         await this.apiToDataflowsGateway.queueCaseAssignmentEvent({
           ...assignment,
-          acmsProfessionalId: null, // TODO: resolve from trustee-professionalids when staff attorney ACMS IDs are available
+          acmsProfessionalId: null, // Staff attorney ACMS IDs not yet available; tracked in CAMS-362
         });
       }
     }
