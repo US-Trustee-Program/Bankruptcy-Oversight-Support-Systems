@@ -115,4 +115,9 @@ async function run() {
   console.log(`\nDone. ${success} migrated, ${fail} failed.`);
 }
 
-run().catch(console.error).finally(() => process.exit(0));
+run()
+  .then(() => process.exit(0))
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

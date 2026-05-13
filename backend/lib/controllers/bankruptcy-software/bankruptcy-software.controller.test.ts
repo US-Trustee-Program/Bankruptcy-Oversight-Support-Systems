@@ -76,7 +76,7 @@ describe('BankruptcySoftwareController', () => {
   });
 
   describe('handleGet', () => {
-    test('should return 200 with software list for SuperUser', async () => {
+    test('should return 200 with software list for any authenticated user', async () => {
       vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftwareList').mockResolvedValue(
         mockSoftware,
       );
@@ -87,20 +87,15 @@ describe('BankruptcySoftwareController', () => {
       expect(result.body.data).toEqual(mockSoftware);
     });
 
-    test('should throw ForbiddenError when user lacks SuperUser role', async () => {
+    test('should return 200 for non-SuperUser roles', async () => {
       context.session.user.roles = [CamsRole.TrialAttorney];
-
-      await expect(controller.handleGet(context)).rejects.toThrow(
-        expect.objectContaining({ status: 403 }),
+      vi.spyOn(BankruptcySoftwareUseCase.prototype, 'getSoftwareList').mockResolvedValue(
+        mockSoftware,
       );
-    });
 
-    test('should throw ForbiddenError when user has no roles', async () => {
-      context.session.user.roles = [];
+      const result = await controller.handleGet(context);
 
-      await expect(controller.handleGet(context)).rejects.toThrow(
-        expect.objectContaining({ status: 403 }),
-      );
+      expect(result.statusCode).toBe(200);
     });
   });
 

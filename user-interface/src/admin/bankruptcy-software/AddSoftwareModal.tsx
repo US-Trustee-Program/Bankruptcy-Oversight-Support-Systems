@@ -54,7 +54,7 @@ export const AddSoftwareModal = forwardRef<AddSoftwareModalRef, AddSoftwareModal
         modalRef.current?.hide();
         alert?.success('Bankruptcy software added successfully.');
       } catch (error) {
-        getAppInsights().appInsights.trackException({ exception: error as Error });
+        getAppInsights()?.appInsights?.trackException({ exception: error as Error });
         alert?.error('Failed to add bankruptcy software. Please try again.');
       }
     }
