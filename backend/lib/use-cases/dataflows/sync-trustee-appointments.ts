@@ -156,6 +156,7 @@ async function applyResolvedTrustee(
     trusteeId,
     assignedOn: now,
     appointedDate: event.appointedDate,
+    source: 'dxtr',
   });
   const method = viaFuzzyMatching ? ' (fuzzy match)' : '';
   context.logger.info(
