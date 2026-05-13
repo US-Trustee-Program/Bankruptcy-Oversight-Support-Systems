@@ -35,6 +35,9 @@ const mockAcmsGateway: AcmsGateway = {
   getTrusteeProfessionalIds(..._ignore): Promise<string[]> {
     throw new Error('Function not implemented.');
   },
+  getCmmapAppointments(..._ignore) {
+    throw new Error('Function not implemented.');
+  },
 };
 
 describe('Migrate cases use case', () => {
