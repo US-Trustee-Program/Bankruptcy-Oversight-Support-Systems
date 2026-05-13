@@ -29,7 +29,6 @@ import {
   UserGroupsRepository,
   UserSessionCacheRepository,
   UsersRepository,
-  BankruptcySoftwareRepository,
 } from '../../use-cases/gateways.types';
 import { Trustee, TrusteeHistory } from '@common/cams/trustees';
 import { TrusteeNote } from '@common/cams/trustee-notes';
@@ -41,10 +40,6 @@ import {
   BankruptcySoftwareProfile,
 } from '@common/cams/bankruptcy-software';
 import { Creatable } from '@common/cams/creatable';
-import {
-  BankruptcySoftwareAuditHistory,
-  BankruptcySoftwareProfile,
-} from '@common/cams/bankruptcy-software';
 
 export class MockMongoRepository
   implements

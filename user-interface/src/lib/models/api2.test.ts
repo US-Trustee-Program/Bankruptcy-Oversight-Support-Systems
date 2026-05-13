@@ -508,7 +508,6 @@ describe('_Api2 functions', async () => {
     expect(putSpy).toHaveBeenCalledWith('/banks/bank-1', update, {});
   });
 
-
   test('should call api.get when calling getTrusteeNotes', () => {
     const getSpy = vi.spyOn(api.default, 'get').mockResolvedValue({ data: [] });
     const trusteeId = 'trustee-id';
